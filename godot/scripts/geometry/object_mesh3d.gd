@@ -163,6 +163,14 @@ func top_world_2d() -> Vector2:
 	return screen_position - Vector2(0.0, _model_size.y * float(_board.call("px_per_unit")) * COS_ELEVATION)
 
 
+## A point of the MODEL (standing on Y = 0, centred in X / Z, in the fitted size) as a world point: it follows the placement, the flight height and
+## the tumble, which `top_world_2d()` (a 2D top-centre that ignores the tumble) cannot. The pivot is the model's centre, hence the half-height shift.
+func model_point_world(p: Vector3) -> Vector3:
+	if _pivot == null or not _pivot.is_inside_tree():
+		return global_position
+	return _pivot.global_transform * (p - Vector3(0.0, _model_size.y * 0.5, 0.0))
+
+
 func _place() -> void:
 	if _board == null:
 		return

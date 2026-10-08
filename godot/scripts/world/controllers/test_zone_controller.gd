@@ -376,6 +376,65 @@ func open_menu_for(index: int) -> void:
 
 
 ## T-MODE (Phase B): enter targeting mode for a grenade via the G key.
+## --- A1 FUSE FX (Director, 2026-10-08) -------------------------------------------------------------------------------------------------
+## The fuse burns from the moment the agent AIMS (sparks at the raised hand, `FUSE_AIM_INTENSITY`), grows through the flight and the roll
+## (`fuse_fx_set` from the arc's progress) and keeps at full until the boom, always at the fuse point of the MESH (`GrenadeProp.fuse_point_world()`,
+## which follows the flight and the tumble). One emitter per live grenade, keyed by its sprite; `Room._process` ticks them (`fuse_fx_tick`) so the
+## rate does not depend on which coroutine happens to be awaiting. The smoke is what the embers hand over when they go out.
+const FUSE_AIM_INTENSITY: float = 0.3
+var _fuse_fx: Dictionary = {}   ## sprite instance id -> {"grenade": Dictionary, "intensity": float, "hand": bool}
+
+
+func fuse_fx_start(grenade: Dictionary, intensity: float, hand: bool) -> void:
+	var sprite = grenade.get("sprite")
+	if sprite == null or not is_instance_valid(sprite):
+		return
+	_fuse_fx[sprite.get_instance_id()] = {"grenade": grenade, "intensity": intensity, "hand": hand}
+
+
+## Changes a running emitter; starts it when it is not running (`detonate` can reach the fuse without an aim or a throw).
+func fuse_fx_set(grenade: Dictionary, intensity: float, hand: bool = false) -> void:
+	var sprite = grenade.get("sprite")
+	if sprite == null or not is_instance_valid(sprite):
+		return
+	_fuse_fx[sprite.get_instance_id()] = {"grenade": grenade, "intensity": intensity, "hand": hand}
+
+
+func fuse_fx_stop(grenade: Dictionary) -> void:
+	var sprite = grenade.get("sprite")
+	if sprite == null or not is_instance_valid(sprite):
+		return
+	_fuse_fx.erase(sprite.get_instance_id())
+	room.end_fuse_fx(sprite.get_instance_id())
+
+
+func fuse_fx_tick(dt: float) -> void:
+	if _fuse_fx.is_empty():
+		return
+	var board: Node = room.board3d()
+	for key in _fuse_fx.keys():
+		var fx: Dictionary = _fuse_fx[key]
+		var sprite = (fx["grenade"] as Dictionary).get("sprite")
+		if sprite == null or not is_instance_valid(sprite) or not sprite.visible:
+			_fuse_fx.erase(key)
+			room.end_fuse_fx(key)
+			continue
+		if bool(fx["hand"]):
+			## The grenade in the raised hand (the live rig's `hand_L` attachment) — NOT `throw_origin()`, which is the head anchor: the first capture
+			## showed the sparks at the agent's face. With no rig grenade showing, the head anchor is the fallback.
+			var figure = room.agent.sprite.get_meta("figure3d") if room.agent.sprite != null and room.agent.sprite.has_meta("figure3d") else null
+			var in_hand: Vector3 = (figure as ActorMesh3D).hand_grenade_world() if is_instance_valid(figure) and board != null else ParticleMath.NO_ANCHOR
+			if in_hand != ParticleMath.NO_ANCHOR:
+				var hand_pair: Array[Vector2] = board.call("particle_pair", in_hand)
+				room.tick_fuse_fx(key, hand_pair[0], hand_pair[1], in_hand, float(fx["intensity"]), dt)
+			else:
+				room.tick_fuse_fx(key, room.agent.throw_origin(), room.agent.position, ParticleMath.NO_ANCHOR, float(fx["intensity"]), dt)
+		elif board != null:
+			var point: Vector3 = (sprite as GrenadePropClass).fuse_point_world()
+			var pair: Array[Vector2] = board.call("particle_pair", point)
+			room.tick_fuse_fx(key, pair[0], pair[1], point, float(fx["intensity"]), dt)
+
+
 func enter_grenade_mode() -> void:
 	## First grenade that has NOT already gone off. This used to be a flat
 	## `_targeting_grenade_index = 0`, which is the bug the Director reported as
@@ -405,6 +464,7 @@ func enter_grenade_mode() -> void:
 	## whole aim — `hold: true` freezes the raise on its last frame, which is the
 	## cocked pose. By the time the player commits, the throw is already loaded.
 	room.agent.play_throw_raise()
+	fuse_fx_start(_grenades[_targeting_grenade_index], FUSE_AIM_INTENSITY, true)
 	_update_grenade_targeting_display()
 
 
@@ -604,6 +664,8 @@ func cancel_targeting() -> void:
 	if not _targeting_mode:
 		return
 	_targeting_mode = false
+	if _targeting_grenade_index >= 0 and _targeting_grenade_index < _grenades.size():
+		fuse_fx_stop(_grenades[_targeting_grenade_index])
 	_targeting_grenade_index = -1
 	Telemetry.event("aim.cancel")
 	## Director: *"cancelar a granada [...] bem rapidinho, só pra não sumir de
@@ -862,6 +924,7 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 		turns += flight_rate * delta
 		sprite.roll(turns * TAU)
 		sprite.set_flight_height_px(ground_start.lerp(target_world, t).y - sprite.screen_position.y)
+		fuse_fx_set(grenade, lerpf(FUSE_AIM_INTENSITY, 1.0, t))
 	sprite.screen_position = target_world
 	sprite.set_flight_height_px(0.0)
 	grenade["gu_cell"] = target_gu
@@ -1252,6 +1315,8 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## the map load and the seconds the player spent aiming are all outside it.
 	room.event_probe_arm("BEAT 1")
 	_prof("BEAT 1 — fuse burning, grenade intact")
+	## The fuse emitter is already running when the grenade was thrown; a `detonate` that skipped the aim and the throw starts it here, at full.
+	fuse_fx_set(grenade, 1.0)
 	## D-6 — agent actions lock from here; `DetonationPresenter` releases the lock
 	## once every smoke entry is dispatched (see `Room.is_resolving_action()`).
 	room.begin_blast_lock()
@@ -1272,8 +1337,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		job.step(cook_budget_ms)
 		var step_us: int = Time.get_ticks_usec() - ct0
 		cook_work_us += step_us
-		## The fuse keeps sputtering while the engine finishes thinking.
-		room.spawn_fuse_sputter(anchor)
+		## (The fuse keeps sputtering while the engine finishes thinking: `fuse_fx_tick`, from `Room._process`.)
 		await room.get_tree().process_frame
 		if cook_trace:
 			var frame_ms: float = float(Time.get_ticks_usec() - ct0) / 1000.0
@@ -1291,6 +1355,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		## was burning. Loud rather than silent: the fire is already on screen and
 		## no destruction is going to follow it, which is worth a line in the log.
 		push_warning("[P-COOK] prediction for gu=%s was cancelled mid-fuse — no destruction" % gu)
+		fuse_fx_stop(grenade)
 		return
 	if cook_frames > 0:
 		print_debug("[P-COOK] gu=%s cooked %d frame(s) at %.1f ms — pre-production was short by %.0f ms"
@@ -1317,7 +1382,6 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## already spent frames here, so a long fuse does not additionally delay the
 	## strobe — `burst_lead_frames` is a MINIMUM, not an extra.
 	for _i in range(maxi(burst_lead_frames - cook_frames, 0)):
-		room.spawn_fuse_sputter(anchor)
 		await room.get_tree().process_frame
 	_prof("BEAT 1 ends — fuse served (%d of %d frame(s) owed)" % [
 		maxi(burst_lead_frames - cook_frames, 0), burst_lead_frames])
@@ -1348,6 +1412,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 			prev_eased = eased
 			await _pace(presenter)
 		g_sprite.visible = false
+	fuse_fx_stop(grenade)
 	var burst0: int = Time.get_ticks_usec()
 	room.spawn_blast_burst(boom_anchor)
 	_prof_clock("spawn_blast_burst", burst0)

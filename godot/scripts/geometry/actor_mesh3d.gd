@@ -137,6 +137,14 @@ func _load_rig(board: Node3D, path: String) -> bool:
 	return true
 
 
+## Where the grenade in the raised hand is, in the world: the `hand_L` attachment's own origin, which the pose seeks every frame. Vector3(INF, INF, INF)
+## ("none", the emitters' `NO_ANCHOR`) while that grenade is hidden (not in a throw's raise, or past the release).
+func hand_grenade_world() -> Vector3:
+	if _grenade == null or not _grenade.visible or not _grenade.is_inside_tree():
+		return Vector3(INF, INF, INF)
+	return _grenade.global_position
+
+
 func _process(_delta: float) -> void:
 	if not is_instance_valid(_source) or not is_instance_valid(_board):
 		queue_free()

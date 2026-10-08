@@ -575,3 +575,13 @@ Result: worst frame per blast 356 / 151 (hit-stop run before) -> **145 / 140 ms*
 frames is the hit-stop's own stages 2-3 (118-130 / 110 ms, the 110 ms frame budget). Mean frame 31-33 ms; GPU 25-29 ms of it (the Galaxy is GPU-bound here).
 **Open:** the second prediction still stretches the fuse by ~1 s (SLICES 525 ms of work at the 4 ms `predict_budget_ms`, about 100 frames at 33 ms
 because the first blast's tail is playing); a larger budget while the fuse is waiting trades frame time for latency, a design call, not changed.
+
+## Fuse FX (2026-10-08, Director): sparks from the aim to the boom, following the mesh in 3D
+Before: `spawn_fuse_sputter(anchor)` was a fixed 2D point (`top_world_2d()`, read once) lit only after the grenade landed; it did not follow the roll, the
+flight or the tumble. Now one emitter per live grenade (`TestZoneController.fuse_fx_*`, ticked from `Room._process`; `Room.tick_fuse_fx`): intensity 0.3 at the
+raised hand (`ActorMesh3D.hand_grenade_world()`, the rig's `hand_L` grenade — `throw_origin()` is the head anchor and put the first version's sparks on the
+face), rising 0.3 -> 1.0 over the flight, 1.0 through the roll and the cook, stopped at the boom; in flight and on the ground it sits on the mesh's fuse point
+(`GrenadeProp.fuse_point_world()`, a model point carried by the pivot, so the tumble moves it). Smoke: a pale explicit puff (the embers' own death puff was a
+black column over the aim). Rates are per second (`fuse_*` vars on Room), a stalled frame is capped. Evidence: captures in `Screenshots/fuse/` (git-ignored); Galaxy
+standard round with the effect on: 0 ERROR, worst frames 83 / 174 ms, PSS peak 1 199 MB (before: 100 / 184 ms, 1 205 MB).
+**Owed:** the grenade CANCEL motion (the spark must die down while the agent stows the grenade on the back pack; today `cancel_targeting()` stops it at once).

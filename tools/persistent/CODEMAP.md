@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**277 scripts · 82708 lines total** (under `godot/scripts/`)
+**277 scripts · 82846 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -432,7 +432,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 325 lines
+`class_name ActorMesh3D` · extends `Node3D` · 333 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -459,6 +459,7 @@ extends `ConfirmationDialog` · 64 lines
 
 **Public API**
 - `func setup_actor(board: Node3D, source: ActorPose) -> bool:`
+- `func hand_grenade_world() -> Vector3:`
 - `func head_offset_px() -> Vector2:`
 
 ---
@@ -836,7 +837,7 @@ extends `Node3D` · 2573 lines
 
 ### `object_mesh3d.gd`
 
-`class_name ObjectMesh3D` · extends `Node3D` · 188 lines
+`class_name ObjectMesh3D` · extends `Node3D` · 196 lines
 
 `godot/scripts/geometry/object_mesh3d.gd`
 
@@ -1719,7 +1720,7 @@ extends `Node2D` · 164 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `ObjectMesh3D` · 87 lines
+`class_name GrenadeProp` · extends `ObjectMesh3D` · 96 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
@@ -1737,6 +1738,7 @@ extends `Node2D` · 164 lines
 - `SHADOW_SCALE_AT_GROUND` = `0.80`
 - `SHADOW_SCALE_IN_FLIGHT` = `1.05`
 - `SHADOW_SOFTNESS_IN_FLIGHT` = `0.7`
+- `FUSE_LOCAL_FRACTION` = `Vector3(0.0, 1.0, 0.0)`
 
 **Public vars**
 - `var room: Node = null`
@@ -1745,6 +1747,7 @@ extends `Node2D` · 164 lines
 
 **Public API**
 - `func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i, board: Node3D) -> bool:`
+- `func fuse_point_world() -> Vector3:`
 - `func set_roll_direction(screen_dir: Vector2) -> void:`
 - `func roll(angle: float) -> void:`
 - `func billboard_height_px() -> float:`
@@ -5637,7 +5640,7 @@ extends `Node2D` · 63 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1728 lines
+`class_name TestZoneController` · 1793 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -5876,7 +5879,7 @@ extends `Node2D` · 63 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11252 lines
+extends `Node2D` · 11300 lines
 
 `godot/scripts/world/room.gd`
 

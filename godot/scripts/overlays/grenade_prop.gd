@@ -59,6 +59,15 @@ func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i, board: Node
 	return true
 
 
+## Where the fuse burns, in the fitted model (feet on Y = 0, FIT_SIZE 0.2): the lever / pin at the top of the body. A fraction of the model's
+## height and of its half-width, so a refit moves it with the model. Tuned on a close-up capture, not by reasoning.
+const FUSE_LOCAL_FRACTION := Vector3(0.0, 1.0, 0.0)
+
+## The fuse tip in the world, following the flight and the roll.
+func fuse_point_world() -> Vector3:
+	return model_point_world(Vector3(FUSE_LOCAL_FRACTION.x * FIT_SIZE.x * 0.5, FUSE_LOCAL_FRACTION.y * model_height(), FUSE_LOCAL_FRACTION.z * FIT_SIZE.z * 0.5))
+
+
 func set_roll_direction(screen_dir: Vector2) -> void:
 	_roll_axis = roll_axis_for(screen_dir)
 

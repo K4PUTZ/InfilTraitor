@@ -4501,28 +4501,74 @@ func spawn_blast_burst(world_pos: Vector2) -> void:
 ## fuse burning down, not one puff. Deliberately not `spawn_blast_burst()` scaled
 ## down: that one blooms outward and fires once; this stays put and repeats. Same
 ## overlay, same vocabulary (E-NATIVE-01), no new node.
-var fuse_sputter_embers_per_frame: int = 2
+##
+## A1 (Director, 2026-10-08): *"pode começar a faísca ainda quando o agente está mirando, depois aumenta durante o voo e solta a fumacinha"* and *"o efeito
+## [tem que] acompanhar o pavio em 3D"*. So the fuse is no longer a fixed 2D point lit when the grenade has landed: `TestZoneController` drives one
+## emitter per live grenade from the aim (at the hand) through the flight and the roll (at the fuse point of the MESH) to the boom, with an INTENSITY
+## from 0 to 1, and this turns the intensity and the elapsed time into embers and sparks. The smoke is the one the embers already hand over when
+## they go out (`smoke_on_death`), so a stronger fuse leaves more of it and nothing new is drawn.
+## Rates are per SECOND (a frame-rate-independent fuse; a stalled frame is capped, not made up) as [at intensity 0, at intensity 1]; at 1 it is the
+## look the cook beat always had (two embers a frame, sparks every third).
+var fuse_ember_rate: Vector2 = Vector2(9.0, 80.0)
+var fuse_ember_radius_scale: Vector2 = Vector2(0.30, 0.52)   ## a spark on the grenade, not a coal
+var fuse_spark_burst_rate: Vector2 = Vector2(1.5, 10.0)      ## bursts of 2 sparks per second
 var fuse_sputter_life_min: float = 0.14
 var fuse_sputter_life_max: float = 0.32
-var fuse_sputter_radius_scale: float = 0.52   ## a spark on the grenade, not a coal
 var fuse_sputter_jitter_px: float = 3.5       ## how far a flicker strays from the fuse
 var fuse_sputter_rise_px_s: float = 36.0      ## a lazy curl upward
-var fuse_sputter_spark_every: int = 3         ## a couple of sparks every Nth call
-var _fuse_sputter_tick: int = 0
-func spawn_fuse_sputter(world_pos: Vector2) -> void:
+var fuse_max_dt: float = 0.1                  ## a stall is capped, not paid back
+## The "fumacinha": a thin pale wisp, the muzzle's powder grey, not the dark burn-out puff of a coal (an ember's own death puff made a black column over
+## the aim, 2026-10-08 capture, so the fuse's embers leave none and this is the only smoke). One blob a puff, a short life, barely any drift.
+var fuse_smoke_rate: Vector2 = Vector2(1.6, 5.0)             ## puffs per second at intensity 0 / 1
+var fuse_smoke_color: Color = Color(0.88, 0.87, 0.84, 0.30)
+var fuse_smoke_scale: float = 0.30
+var fuse_smoke_duration_scale: float = 0.55
+var fuse_smoke_drift_scale: float = 0.30
+var _fuse_acc: Dictionary = {}                ## emitter key -> Vector3(ember, spark, smoke) fractional accumulators
+
+
+## One tick of one fuse emitter. `pos_2d` / `floor_2d` are the 2D pair of the emission point (the floor point carries the height) and `anchor_3d` the
+## world point itself, so the particles are born where the mesh's fuse is in 3D and depth-test against the board.
+func tick_fuse_fx(key: int, pos_2d: Vector2, floor_2d: Vector2, anchor_3d: Vector3, intensity: float, dt: float) -> void:
+	var i: float = clampf(intensity, 0.0, 1.0)
+	var step: float = minf(dt, fuse_max_dt)
+	var acc: Vector3 = _fuse_acc.get(key, Vector3.ZERO)
+	acc.x += lerpf(fuse_ember_rate.x, fuse_ember_rate.y, i) * step
+	acc.y += lerpf(fuse_spark_burst_rate.x, fuse_spark_burst_rate.y, i) * step
+	acc.z += lerpf(fuse_smoke_rate.x, fuse_smoke_rate.y, i) * step
+	var embers: int = mini(int(acc.x), 4)
+	var bursts: int = mini(int(acc.y), 2)
+	var puffs: int = mini(int(acc.z), 1)
+	acc.x -= float(int(acc.x))
+	acc.y -= float(int(acc.y))
+	acc.z -= float(int(acc.z))
+	_fuse_acc[key] = acc
 	if _ember_overlay != null:
-		for _i in range(maxi(fuse_sputter_embers_per_frame, 1)):
+		for _n in range(embers):
 			var off := Vector2(
 				randf_range(-fuse_sputter_jitter_px, fuse_sputter_jitter_px),
 				randf_range(-fuse_sputter_jitter_px, fuse_sputter_jitter_px) * BLAST_ISO_GROUND_SQUASH)
-			_ember_overlay.add_ember(world_pos + off,
+			## The flicker's stray is a 2D displacement, so a 3D anchor carries it across the way the particles' own motion is carried.
+			var anchor_j: Vector3 = anchor_3d
+			var board: Node = board3d()
+			if anchor_3d != ParticleMath.NO_ANCHOR and board != null:
+				anchor_j = anchor_3d + ParticleMath.displace(off, board.call("lattice_basis"), board.call("px_per_unit"))
+			_ember_overlay.add_ember(pos_2d + off,
 				randf_range(fuse_sputter_life_min, fuse_sputter_life_max),
 				Vector2.ZERO, 0.0,
 				fuse_sputter_rise_px_s * randf_range(0.7, 1.3),
-				1.0, 0.0, fuse_sputter_radius_scale)
-	_fuse_sputter_tick += 1
-	if _smoke_spark_overlay != null and _fuse_sputter_tick % maxi(fuse_sputter_spark_every, 1) == 0:
-		_smoke_spark_overlay.add_sparks(world_pos, 2, Color(1.0, 0.85, 0.5, 1.0), 0.5, 0.4)
+				1.0, 0.0, lerpf(fuse_ember_radius_scale.x, fuse_ember_radius_scale.y, i), 1.0, false,
+				floor_2d + off, anchor_j)
+	if _smoke_spark_overlay != null:
+		for _b in range(bursts):
+			_smoke_spark_overlay.add_sparks(pos_2d, 2, Color(1.0, 0.85, 0.5, 1.0), 0.5, 0.4, floor_2d, anchor_3d)
+		for _p in range(puffs):
+			_smoke_spark_overlay.add_smoke(pos_2d, fuse_smoke_color, fuse_smoke_scale, fuse_smoke_duration_scale, 1, fuse_smoke_drift_scale,
+				0.0, floor_2d, anchor_3d)
+
+
+func end_fuse_fx(key: int) -> void:
+	_fuse_acc.erase(key)
 
 
 ## E-MUZZLE-01 (Director, 2026-08-13): *"as armas de fogo também precisam de um
@@ -6634,6 +6680,8 @@ func _telemetry_view_tick() -> void:
 
 func _process(_delta: float) -> void:
 	_sync_dev_overlay_view()
+	if _test_zone_controller != null:
+		_test_zone_controller.fuse_fx_tick(_delta)
 	if _frame_probe:
 		var t_now: int = Time.get_ticks_usec()
 		if not _frame_probe_armed:
@@ -9995,7 +10043,7 @@ func _populate_test_zone_if_playground() -> void:
 		## ACTOR_MASTER_PLAN D21 — the spinning pickups, one per model (`TEST_ZONE_COLLECTIBLES`: model, fit, materials).
 		if TEST_ZONE_COLLECTIBLES_ENABLED:
 			for collectible in TEST_ZONE_COLLECTIBLES:
-				var board: Node3D = board3d()
+				var board: Node = board3d()
 				var pickup := FloatingCollectibleClass.new()
 				if board == null:
 					push_error("[TestZone] no 3D board to put the pickups on")

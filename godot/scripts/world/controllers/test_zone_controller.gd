@@ -1279,115 +1279,22 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		print_debug("[P-COOK] gu=%s cooked %d frame(s) at %.1f ms — pre-production was short by %.0f ms"
 			% [gu, cook_frames, cook_budget_ms, float(cook_frames) * cook_budget_ms])
 
-	## The commit, and everything that reads real Voxel state after it.
-	var commit_t0: int = Time.get_ticks_usec()
-	## SS-3 — `room` is passed so the Delta's `scorch_writes` land in the same call
-	## that writes the damage. The blast's scorch stops reaching the store
-	## second-hand, through a later repaint's own re-derivation, and becomes part
-	## of the commit like every other thing this blast did.
-	job.delta.commit(room)
-	_prof("COMMIT — %.1f ms, %d voxel(s) written" % [
-		float(Time.get_ticks_usec() - commit_t0) / 1000.0, job.delta.touched_voxels.size()])
-	## R3D-PROPS Tier 4 (Director, 2026-09-28): the SAME wall-aware ring flood the footprint
-	## preview and the shrapnel rays already read, so a prop breaks exactly where the wall-
-	## destruction table says a wall would at that ring — see Room.apply_prop_proximity_effects()
-	## and Room.apply_prop_debris_fall() (Tier 1/2's own falling-voxel debris, same ring data).
-	var prop_bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
-	if prop_bomb_def != null:
-		## The plan's own flood (`_phase_setup`: the wall-aware rings AND the prop rule — a prop diagonal to the blast, or sheltered
-		## by its neighbours, still takes a ring, else a Tier 4 table would stay whole beside a crate that broke). It is carried on
-		## the Delta: recomputing it here was 545 ms of the Moto's commit frame. A Delta without it (a selftest's) falls back to the
-		## recomputation.
-		var prop_gu_rings: Dictionary = job.delta.gu_rings
-		if prop_gu_rings.is_empty():
-			prop_gu_rings = BlastCalculatorClass.flood_gu_rings(
-				gu, prop_bomb_def, _blocked_edges_dict(), room._blocked_cells)
-			BlastCalculatorClass.add_prop_boundary_rings(prop_gu_rings, room._voxel_board.prop_gus(),
-				_blocked_edges_dict(), room._blocked_cells, prop_bomb_def.ring_multipliers.size() - 1)
-		_prof("PROP RINGS — flood_gu_rings + add_prop_boundary_rings")
-		room.apply_prop_proximity_effects(prop_gu_rings, prop_bomb_def)
-		_prof("PROP PROXIMITY — apply_prop_proximity_effects")
-		room.apply_prop_debris_fall(job.delta.touched_voxels, gu, prop_gu_rings, prop_bomb_def)
-		_prof("PROP DEBRIS FALL — apply_prop_debris_fall")
-	## The census and the passage report are diagnostics: 34 ms of the Moto's commit frame (2026-09-26, R3D-LIGHT), so a
-	## release build skips them unless `BLAST_REPORT=1` asks (the desktop, a debug build, keeps both).
-	var blast_report: bool = OS.is_debug_build() or room._dev_flag_on("BLAST_REPORT")
-	if blast_report:
-		DetonationPlanBuilderClass.print_census(job.delta, gu)
-	## Deep diagnostic, off by default — the per-phase profile and the worst
-	## single frame the prediction actually cost. §4.4's budget can only honestly
-	## be judged on the REAL map (the two unsuspendable phases are both cheap on a
-	## synthetic fixture), so this is the seam that measurement goes through.
-	## DIAG-22 — through DevFlags, so the per-phase profile reaches a release APK (an
-	## environment variable never does). The profile itself is always collected.
-	if room._dev_flag_on("PREDICTION_PROFILE"):
-		print("[P-SLICE] %d step(s) · worst step %.1f ms (phase %s) · total %.1f ms"
-			% [job.steps, job.worst_step_ms, job.worst_step_phase, job.delta.cost_ms])
-		for line in job.profile_lines():
-			print("[P-SLICE]   " + line)
-		print(room._prediction_cache.stats_line())
-	## D-6 — no burn schedule to hand over any more. D-2 folded the fire into the
-	## Delta (`burnt_cells`, committed above); D-6 removed `BurnScheduler` and
-	## `waves["burn"]` entirely. `INFILTRAITOR_NO_BURN=1` still runs a blast with
-	## no fire, now gated in `DetonationPlanBuilder._maybe_burn()` where the fire
-	## actually lives.
-	## D-2 — the passage, reported off the committed world. It used to ride out on
-	## the fire's own end-of-schedule line, which no longer happens.
-	if blast_report:
-		room.report_blast_passage(job.delta)
-	_prof("CENSUS — print_census done")
-	room._gu_blast_count[gu] = int(room._gu_blast_count.get(gu, 0)) + 1
-	var rec0: int = Time.get_ticks_usec()
-	## VL-PERSIST: record every voxel this blast actually changed so rotation
-	## replays it — the exact set the Delta already carries, no second flood/
-	## find_affected_containers pass needed. Reads the real Voxel fields, so it
-	## has to follow the commit.
-	for voxel in job.delta.touched_voxels:
-		room.record_voxel_damage_to_base(voxel.grid_pos, voxel.level, voxel.damage_state,
-			voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
-			voxel.damage_substrate, voxel)
-	## R3D-8 step 4: the other claims of a shared cell (box corner, junction column) that this blast also damaged.
-	for entry in job.delta.damage:
-		var claim_voxel: Voxel = entry["voxel"]
-		if claim_voxel != null:
-			room.record_claim_damage_to_base(claim_voxel)
-	_prof("PERSIST — record_voxel_damage_to_base x%d took %.2f ms" % [
-		job.delta.touched_voxels.size(), float(Time.get_ticks_usec() - rec0) / 1000.0])
-
-	## ⚠️ THE BLAST OWNS ITS OWN RENDERING, SO IT MUST DROP ITS OWN FLAGS.
-	##
-	## `set_damage()` marks every written voxel dirty, and `dirty` means exactly
-	## one thing: SOMEBODY STILL HAS TO RENDER THIS. For a blast nobody does —
-	## `DetonationChoreographer` writes `erase_cell()`/`set_cell()` straight to
-	## the TileMapLayers from its pre-built plan and never touches the dirty
-	## pipeline (its own `_apply_entry()` header says so). So the flags stayed
-	## set forever, and the next unfiltered `process_dirty_async()` — which only
-	## the FIREARM path ever calls — walked the whole backlog and re-emitted
-	## `voxel_destroyed` for every destroyed voxel in it.
-	##
-	## Measured before the fix (`INFILTRAITOR_CAPTURE_ACTION=grenade_then_shot`):
-	##     grenade 0: 0 dispatches · grenade 1: 0 · THE SHOT: 498
-	## against 5 voxels the shot actually destroyed. That is the Director's
-	## report exactly — *"todos os voxels afetados pelas explosões soltam fumaça
-	## novamente"*.
-	##
-	## Cleared HERE, at the commit, rather than after the choreographer finishes:
-	## the moment the plan exists the choreographer owns these pixels, and a shot
-	## fired DURING the playback would otherwise hit the same backlog in a
-	## smaller window. `touched_voxels` is the exact written set, so this is not a
-	## blanket clear — a flag set by anything else survives it.
-	for voxel in job.delta.touched_voxels:
-		voxel.clear_dirty()
-	## Held in a local from HERE, before the awaits below: `bump_world_revision()`
-	## can evict this job from the prediction cache and null `job.delta` out from
-	## under the beat. The Delta object itself stays alive as long as this ref
-	## does — `waves` alone used to be what carried it through, D-7 needs the whole
-	## Delta for `play_consequence_light()`.
+	## The commit, and everything that reads real Voxel state after it. Held in a local BEFORE anything below can evict the job
+	## (`bump_world_revision()` can null `job.delta` out from under the beat); the Delta object stays alive as long as this ref
+	## does — `waves` alone used to carry it through, D-7 needs the whole Delta for `play_consequence_light()`.
 	var delta: WorldDelta = job.delta
 	var waves: Dictionary = delta.waves
-	## §5.2: the world just moved, so every cached prediction — including this
-	## one — is now stale. AFTER the commit, never before.
-	room.bump_world_revision()
+	var stage := {"delta": delta, "gu": gu, "job": job, "debris": {"done": true}}
+	## A1 (Director, 2026-10-07): the strongest grenade does this work UNDER ITS FLASH, spread over the flash frames, instead of in
+	## one frame at the end of the fuse (230 ms PLAYGROUND, ~540 ms on a crowded map, on the desktop). Meshes are rebuilt only at
+	## `on_blast_commit`, and the fuse shows none of this, so the picture does not change; every other blast keeps the one frame.
+	var hit_stop: bool = _hit_stop_enabled()
+	if not hit_stop:
+		_stage_commit(stage)
+		_stage_props_begin(stage)
+		_stage_props_finish(stage, 0)
+		_stage_census(stage)
+		_stage_persist(stage)
 
 	## The rest of beat 1: however much fire-only lead is still owed. Cooking
 	## already spent frames here, so a long fuse does not additionally delay the
@@ -1410,7 +1317,8 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## between anchor and sprite-local space).
 	## R3D-LIGHT: the presenter exists from here, and its soot ramp is collected a few ms per frame of the beats below.
 	var presenter: DetonationPresenter = _make_presenter(delta)
-	presenter.prepare(waves)
+	if not hit_stop:
+		presenter.prepare(waves)   ## (a hit-stop blast prepares after its commit: the ramp reads the scorch the commit wrote)
 	var boom_anchor: Vector2 = anchor - Vector2(0.0, blast_pop_height_px)
 	var g_sprite = grenade.get("sprite")
 	if g_sprite != null and is_instance_valid(g_sprite):
@@ -1459,17 +1367,19 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		var hold_peak: int = Time.get_ticks_usec()
 		flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
 		_prof_clock("flash hold_frame", hold_peak)
-		## A1 hit-stop: the world changes under the inverted screen, on the peak frame.
-		if presenter.hit_stop:
-			_prof("HIT-STOP commit %.2f ms (under the flash peak)" % presenter.commit_under_flash(waves, room._voxel_board))
+		## A1 hit-stop: the world changes under the inverted screen, from the peak frame on (stage 0 here, 1-3 on the fade frames).
+		if hit_stop:
+			var peak_t0: int = Time.get_ticks_usec()
+			_stage_commit(stage)
+			_prof("HIT-STOP world commit %.2f ms (under the flash peak)" % (float(Time.get_ticks_usec() - peak_t0) / 1000.0))
 		await _pace(presenter)
 		## The fade is UNCHANGED at three frames — it is what keeps the strobe
 		## from reading as a single dropped frame, and nothing asked for it to
 		## move.
 		for i in range(3):
 			flash_overlay.strobe_negative_amount = 1.0 - float(i + 1) / 3.0
-			if i == 0 and presenter.hit_stop:
-				_prof("HIT-STOP glass tail %.2f ms (flash frame after the peak)" % presenter.run_hit_stop_tail(room._voxel_board))
+			if hit_stop:
+				_hit_stop_fade_stage(i + 1, stage, presenter, waves)
 			var hold_i: int = Time.get_ticks_usec()
 			flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
 			_prof_clock("flash hold_frame (fade)", hold_i)
@@ -1477,6 +1387,15 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		var clear0: int = Time.get_ticks_usec()
 		flash_overlay.clear()
 		_prof_clock("flash clear", clear0)
+	## A hit-stop blast whose flash did not run every stage (no overlay, e.g. headless) finishes them here, before anything is released.
+	if hit_stop:
+		if not bool(stage.get("committed", false)):
+			_stage_commit(stage)
+		for rest in range(int(stage.get("next", 1)), 4):
+			_hit_stop_fade_stage(rest, stage, presenter, waves)
+		_stage_props_finish(stage, 0)
+		## The census and the passage report are desktop diagnostics (a release build skips them): after the flash, outside the ceiling.
+		_stage_census(stage)
 	## The first frame AFTER the flash: a broken Tier 4 prop's mesh is replaced by its board-size voxels, already falling.
 	var release0: int = Time.get_ticks_usec()
 	room.release_prop_breaks()
@@ -1486,6 +1405,139 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 
 	## Beat 3 — destruction, clean.
 	_start_waves(delta, presenter)
+
+
+## --- The world commit, as stages (A1, 2026-10-07) -----------------------------------------------------------------
+## One blast's logical commit is five pieces of work. A normal blast runs them back to back (the old single frame); the strongest
+## grenade (`_hit_stop_enabled()`) spreads them over the flash: 0 the world commit (peak frame), 1 the presenter's commit + remesh,
+## 2 the glass flush + prop rings/proximity + a first slice of the prop debris, 3 the rest of the debris + persist (the desktop-only census follows the flash).
+## Each stage is timed against the presenter's ceiling in the log. ORDER is load-bearing: everything after 0 reads what 0 wrote.
+
+## Prop debris is a budgeted job inside the flash (microseconds per stage); whatever is left runs unbudgeted before the flash ends.
+var hit_stop_debris_budget_us: int = 60000
+
+
+func _hit_stop_enabled() -> bool:
+	var bomb = Registries.get_bomb_registry().get_bomb(BOMB_ID)
+	return bomb != null and bomb.tags.has("hit_stop") and DevFlags.value("HIT_STOP", "1") != "0"
+
+
+func _hit_stop_fade_stage(n: int, stage: Dictionary, presenter: DetonationPresenter, waves: Dictionary) -> void:
+	if n < int(stage.get("next", 1)):
+		return
+	stage["next"] = n + 1
+	var t0: int = Time.get_ticks_usec()
+	match n:
+		1:
+			presenter.prepare(waves)
+			presenter.commit_under_flash(waves, room._voxel_board)
+		2:
+			presenter.run_hit_stop_tail(room._voxel_board)
+			_stage_props_begin(stage)
+			_stage_props_finish(stage, hit_stop_debris_budget_us)
+		3:
+			_stage_props_finish(stage, hit_stop_debris_budget_us)
+			_stage_persist(stage)
+	var ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
+	_prof("HIT-STOP stage %d %.2f ms (flash fade frame)" % [n, ms])
+	if ms > presenter.hit_stop_ceiling_ms:
+		push_warning("[TestZone] hit-stop stage %d took %.1f ms, past its %.0f ms ceiling" % [n, ms, presenter.hit_stop_ceiling_ms])
+
+
+## Stage 0 — the world commit. SS-3: `room` is passed so the Delta's `scorch_writes` land in the same call that writes the damage;
+## the blast's scorch stops reaching the store second-hand and becomes part of the commit like every other thing this blast did.
+func _stage_commit(stage: Dictionary) -> void:
+	var delta: WorldDelta = stage["delta"]
+	var commit_t0: int = Time.get_ticks_usec()
+	stage["committed"] = true
+	delta.commit(room)
+	_prof("COMMIT — %.1f ms, %d voxel(s) written" % [
+		float(Time.get_ticks_usec() - commit_t0) / 1000.0, delta.touched_voxels.size()])
+
+
+## R3D-PROPS Tier 4 (Director, 2026-09-28): the SAME wall-aware ring flood the footprint preview and the shrapnel rays already read,
+## so a prop breaks exactly where the wall-destruction table says a wall would at that ring — see Room.apply_prop_proximity_effects()
+## and Room.begin_prop_debris_fall() (Tier 1/2's own falling-voxel debris, same ring data). The debris is a job (`stage["debris"]`),
+## finished by `_stage_props_finish()`.
+func _stage_props_begin(stage: Dictionary) -> void:
+	var delta: WorldDelta = stage["delta"]
+	var gu: Vector2i = stage["gu"]
+	var prop_bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
+	if prop_bomb_def == null:
+		return
+	## The plan's own flood (`_phase_setup`: the wall-aware rings AND the prop rule — a prop diagonal to the blast, or sheltered by its
+	## neighbours, still takes a ring, else a Tier 4 table would stay whole beside a crate that broke). It is carried on the Delta:
+	## recomputing it here was 545 ms of the Moto's commit frame. A Delta without it (a selftest's) falls back to the recomputation.
+	var prop_gu_rings: Dictionary = delta.gu_rings
+	if prop_gu_rings.is_empty():
+		prop_gu_rings = BlastCalculatorClass.flood_gu_rings(
+			gu, prop_bomb_def, _blocked_edges_dict(), room._blocked_cells)
+		BlastCalculatorClass.add_prop_boundary_rings(prop_gu_rings, room._voxel_board.prop_gus(),
+			_blocked_edges_dict(), room._blocked_cells, prop_bomb_def.ring_multipliers.size() - 1)
+	_prof("PROP RINGS — flood_gu_rings + add_prop_boundary_rings")
+	room.apply_prop_proximity_effects(prop_gu_rings, prop_bomb_def)
+	_prof("PROP PROXIMITY — apply_prop_proximity_effects")
+	stage["debris"] = room.begin_prop_debris_fall(delta.touched_voxels, gu, prop_gu_rings, prop_bomb_def)
+
+
+## Runs the prop debris job for `budget_usec` (0 = to the end).
+func _stage_props_finish(stage: Dictionary, budget_usec: int) -> void:
+	var job: Dictionary = stage["debris"]
+	if bool(job["done"]):
+		return
+	var t0: int = Time.get_ticks_usec()
+	var finished: bool = room.step_prop_debris_fall(job, budget_usec)
+	if finished:
+		_prof("PROP DEBRIS FALL — %.1f ms this slice, finished" % (float(Time.get_ticks_usec() - t0) / 1000.0))
+
+
+## The census and the passage report are diagnostics: 34 ms of the Moto's commit frame (2026-09-26, R3D-LIGHT), so a release build
+## skips them unless `BLAST_REPORT=1` asks (the desktop, a debug build, keeps both).
+func _stage_census(stage: Dictionary) -> void:
+	var delta: WorldDelta = stage["delta"]
+	var gu: Vector2i = stage["gu"]
+	var job = stage.get("job")
+	var blast_report: bool = OS.is_debug_build() or room._dev_flag_on("BLAST_REPORT")
+	if blast_report:
+		DetonationPlanBuilderClass.print_census(delta, gu)
+	## Deep diagnostic, off by default — the per-phase profile and the worst single frame the prediction actually cost (§4.4's budget can
+	## only honestly be judged on the REAL map). DIAG-22 — through DevFlags, so it reaches a release APK.
+	if job != null and room._dev_flag_on("PREDICTION_PROFILE"):
+		print("[P-SLICE] %d step(s) · worst step %.1f ms (phase %s) · total %.1f ms"
+			% [job.steps, job.worst_step_ms, job.worst_step_phase, delta.cost_ms])
+		for line in job.profile_lines():
+			print("[P-SLICE]   " + line)
+		print(room._prediction_cache.stats_line())
+	## D-6 — no burn schedule to hand over any more (D-2 folded the fire into the Delta, `burnt_cells`, committed above;
+	## `INFILTRAITOR_NO_BURN=1` is gated in `DetonationPlanBuilder._maybe_burn()`). D-2 — the passage is reported off the committed world.
+	if blast_report:
+		room.report_blast_passage(delta)
+	_prof("CENSUS — print_census done")
+	var gu_key: Vector2i = gu
+	room._gu_blast_count[gu_key] = int(room._gu_blast_count.get(gu_key, 0)) + 1
+
+
+## VL-PERSIST: record every voxel this blast actually changed so rotation replays it — the exact set the Delta already carries, no
+## second flood pass needed. Reads the real Voxel fields, so it follows the commit. Then the blast drops its own dirty flags (it owns its
+## rendering: `dirty` means somebody still has to render the voxel, and for a blast nobody does — measured 2026-08, a shot after a
+## grenade re-emitted 498 `voxel_destroyed` for 5 real voxels) and the world revision moves (every cached prediction is stale now).
+func _stage_persist(stage: Dictionary) -> void:
+	var delta: WorldDelta = stage["delta"]
+	var rec0: int = Time.get_ticks_usec()
+	for voxel in delta.touched_voxels:
+		room.record_voxel_damage_to_base(voxel.grid_pos, voxel.level, voxel.damage_state,
+			voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
+			voxel.damage_substrate, voxel)
+	## R3D-8 step 4: the other claims of a shared cell (box corner, junction column) that this blast also damaged.
+	for entry in delta.damage:
+		var claim_voxel: Voxel = entry["voxel"]
+		if claim_voxel != null:
+			room.record_claim_damage_to_base(claim_voxel)
+	_prof("PERSIST — record_voxel_damage_to_base x%d took %.2f ms" % [
+		delta.touched_voxels.size(), float(Time.get_ticks_usec() - rec0) / 1000.0])
+	for voxel in delta.touched_voxels:
+		voxel.clear_dirty()
+	room.bump_world_revision()
 
 
 ## D-6 (2026-08-29) — `DetonationPresenter` is the only path now. The
@@ -1505,8 +1557,7 @@ func _make_presenter(delta) -> DetonationPresenter:
 		_active_presenters = _active_presenters.filter(func(p): return not p.is_done))
 	presenter.consequence_room = room
 	## A1 — the strongest grenade commits under its flash (BombDef tag); `HIT_STOP=0` is the ablation for A/B timing.
-	var bomb = Registries.get_bomb_registry().get_bomb(BOMB_ID)
-	presenter.hit_stop = bomb != null and bomb.tags.has("hit_stop") and DevFlags.value("HIT_STOP", "1") != "0"
+	presenter.hit_stop = _hit_stop_enabled()
 	## D-7 (§7.4) — the Delta carries the cook's light field inputs; the presenter
 	## hands them to `Room.play_consequence_light()` so it skips the map-wide
 	## re-derivation.

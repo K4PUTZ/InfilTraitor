@@ -5155,8 +5155,19 @@ func _respawn_base_prop_piles() -> void:
 ## isso já existe", exactly as the Director expected.
 func apply_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings: Dictionary,
 		bomb_def) -> void:
+	var job: Dictionary = begin_prop_debris_fall(touched_voxels, source_gu, gu_rings, bomb_def)
+	while not step_prop_debris_fall(job, 0):
+		pass
+
+
+## A1 (2026-10-07) — the same work as `apply_prop_debris_fall()`, as a RESUMABLE job: on a crowded map (60 props) it was 258 ms of the
+## fuse-end frame on the desktop. `begin_` gathers (cheap), `step_` does at most `budget_usec` of the rest (0 = all of it) and answers
+## true when finished. The order of everything (materials, landings, piles, the random rolls) is unchanged, so one call to
+## `apply_prop_debris_fall()` and a stepped run produce the same debris.
+func begin_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings: Dictionary, bomb_def) -> Dictionary:
+	var job: Dictionary = {"done": true}
 	if _voxel_board == null or _slab_registry == null:
-		return
+		return job
 	## The blast has committed: a crate it brought down stops blocking. (`voxel_destroyed` is never told for a prop's
 	## voxels, so nothing else would ask.)
 	_release_destroyed_prop_cells()
@@ -5177,7 +5188,7 @@ func apply_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 			by_material[material_id] = []
 		(by_material[material_id] as Array).append({"grid_pos": voxel.grid_pos, "level": voxel.level})
 	if by_material.is_empty():
-		return
+		return job
 	## The SAME epicenter DetonationPlanBuilder.build_plan() computes (its own `s["epicenter"]`
 	## line): the source GU's centre voxel.
 	var half: int = int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
@@ -5185,42 +5196,78 @@ func apply_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 	var ring: int = int(gu_rings.get(source_gu, 0))
 	var multipliers: Array = bomb_def.ring_multipliers
 	var strength: float = clampf(float(multipliers[ring]) if ring < multipliers.size() else 0.0, 0.0, 1.0)
-	var impulse: Dictionary = {"from": Vector2(epicenter_vx), "strength": strength, "lift": 0.0}
+	job["done"] = false
+	job["by_material"] = by_material
+	job["materials"] = by_material.keys()
+	job["m"] = 0
+	job["impulse"] = {"from": Vector2(epicenter_vx), "strength": strength, "lift": 0.0}
+	job["piles"] = {}      ## the current material's piles, once its landings are planned
+	job["pile_keys"] = []
+	job["pile_i"] = 0
+	job["tint"] = Color.WHITE
+	return job
+
+
+func step_prop_debris_fall(job: Dictionary, budget_usec: int) -> bool:
+	if bool(job["done"]):
+		return true
+	var t0: int = Time.get_ticks_usec()
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
-	for material_id in by_material:
-		var landings: Array = GlassFall.plan_landings(
-			by_material[material_id], _slab_registry.all_slabs(), impulse)
-		if landings.is_empty():
-			continue
-		for li in range(landings.size()):
-			var l: Dictionary = landings[li]
-			var src: Vector2i = l["origin_pos"]
-			var far: Vector2i = l["grid_pos"]
-			var reach: float = 1.0 if li % PROP_DEBRIS_FAR_EVERY == 0 else vfx_prop_debris_scatter
-			l["grid_pos"] = src + Vector2i((Vector2(far - src) * reach).round())
-		var tint: Color = _vfx_material_base_color(material_id)
-		var flight_tint: Color = tint
-		flight_tint.a = 0.85
-		spawn_glass_rain(landings, false, flight_tint)
-		var piles: Dictionary = GlassFall.pile_by_cell(landings)
-		var i: int = 0
-		for key in piles:
-			var k: Vector3i = key
+	while true:
+		var materials: Array = job["materials"]
+		if int(job["m"]) >= materials.size():
+			job["done"] = true
+			return true
+		var material_id = materials[int(job["m"])]
+		var keys: Array = job["pile_keys"]
+		if int(job["pile_i"]) >= keys.size():
+			## the next material's landings (this one's piles are all placed, or it has none yet)
+			if bool(job.get("planned", false)):
+				job["m"] = int(job["m"]) + 1
+				job["planned"] = false
+				job["pile_keys"] = []
+				job["pile_i"] = 0
+			else:
+				job["planned"] = true
+				var landings: Array = GlassFall.plan_landings(
+					(job["by_material"] as Dictionary)[material_id], _slab_registry.all_slabs(), job["impulse"])
+				if not landings.is_empty():
+					for li in range(landings.size()):
+						var l: Dictionary = landings[li]
+						var src: Vector2i = l["origin_pos"]
+						var far: Vector2i = l["grid_pos"]
+						var reach: float = 1.0 if li % PROP_DEBRIS_FAR_EVERY == 0 else vfx_prop_debris_scatter
+						l["grid_pos"] = src + Vector2i((Vector2(far - src) * reach).round())
+					var tint: Color = _vfx_material_base_color(material_id)
+					var flight_tint: Color = tint
+					flight_tint.a = 0.85
+					spawn_glass_rain(landings, false, flight_tint)
+					var piles: Dictionary = GlassFall.pile_by_cell(landings)
+					job["piles"] = piles
+					job["pile_keys"] = piles.keys()
+					job["tint"] = tint
+					if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+						var first: Vector3i = piles.keys()[0] if not piles.is_empty() else Vector3i.ZERO
+						print("[PROP-DEBUG] debris soot-tone histogram so far: %s (4 = clean)" % [_debris_tone_hist])
+						var dbg_pile = _voxel_board._debris_piles.get(material_id)
+						print("[PROP-DEBUG] debris %s: %d landing(s) -> %d pile cell(s), tint=%s, first cell=%s ground=%d, pile node: %s"
+							% [material_id, landings.size(), piles.size(), tint, first, _voxel_board.ground_plane_level(),
+							"NONE" if dbg_pile == null else "%d stored, %d mesh(es) attached" % [dbg_pile.pile_count(), dbg_pile._nodes.size()]])
+		else:
+			var i: int = int(job["pile_i"])
+			var k: Vector3i = keys[i]
+			var piles: Dictionary = job["piles"]
 			var center := Vector2((float(k.x) + 0.5) * unit, (float(k.y) + 0.5) * unit)
 			## A dense cell (under the object) gets several pieces, jittered inside it.
-			var pieces: int = clampi(int(piles[key]), 1, 8)
+			var pieces: int = clampi(int(piles[k]), 1, 8)
 			for j in range(pieces):
 				var jitter := Vector2(randf_range(-0.5, 0.5), randf_range(-0.5, 0.5)) * unit if j > 0 else Vector2.ZERO
 				_place_debris_piece("%s_%d_%d_%d_%d" % [material_id, k.x, k.y, k.z, j],
-					center + jitter, k.z, material_id, (i + j) % 3, tint, randf_range(0.0, TAU))
-			i += 1
-		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
-			var first: Vector3i = piles.keys()[0] if not piles.is_empty() else Vector3i.ZERO
-			print("[PROP-DEBUG] debris soot-tone histogram so far: %s (4 = clean)" % [_debris_tone_hist])
-			var dbg_pile = _voxel_board._debris_piles.get(material_id)
-			print("[PROP-DEBUG] debris %s: %d landing(s) -> %d pile cell(s), tint=%s, first cell=%s ground=%d, pile node: %s"
-				% [material_id, landings.size(), piles.size(), tint, first, _voxel_board.ground_plane_level(),
-				"NONE" if dbg_pile == null else "%d stored, %d mesh(es) attached" % [dbg_pile.pile_count(), dbg_pile._nodes.size()]])
+					center + jitter, k.z, material_id, (i + j) % 3, job["tint"], randf_range(0.0, TAU))
+			job["pile_i"] = i + 1
+		if budget_usec > 0 and Time.get_ticks_usec() - t0 >= budget_usec:
+			return false
+	return false
 
 
 ## VFX-01: MaterialDef.base_color for `material_id`, or a neutral gray if the

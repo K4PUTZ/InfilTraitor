@@ -508,14 +508,18 @@ touched here — a full renumbering is out of scope for a consistency pass.
 
 
 ## Stress scenario findings (2026-10-07, roadmap A1)
-Found by `tools/persistent/stress_scenario.py` (desktop, `maps/STRESS.map.json`); none fixed, each needs a decision.
-1. **Overlapping blasts share one `_active_presenter`.** A second grenade thrown while the first blast's consequence still plays replaces the
-   reference; the log then shows ONE "smoke cleared" / "light landed" / `WAVES end` for two blasts, and the process exits with
-   "1 resources still in use". Reachable in play only once a second throw can start after the action lock lifts (dev grenades today).
-   The control (`--mode sequential`) logs two of each and no leak. Needs: a list of live presenters, or a refusal to start a blast
-   while one is in its light/smoke tail.
-2. **A throw builds its plan inside the throw frame** (`[P-COOK] ... pre-production was short by 168 ms`; an `aim` first does not warm
-   it): the glass-hall blast's BEAT 0 frame is ~490-520 ms on the desktop (census 340 ms), against 205 ms for PLAYGROUND's glass box.
-   This is plan cost, not the hit-stop (commit 19 ms, glass tail 14 ms). Whether the real aim path hands its prediction to the
-   throw on a handset is the question for step B.
+Found by `tools/persistent/stress_scenario.py` (desktop, `maps/STRESS.map.json`).
+1. **Overlapping blasts shared one `_active_presenter`: FIXED 2026-10-07.** A second grenade thrown inside the first blast's tail replaced
+   the reference (one "light landed" for two blasts, 8 scripts leaked at exit). `TestZoneController._active_presenters` is a list swept
+   by `DetonationPresenter.is_done` (a callback that captured the presenter was a reference cycle, found by `--verbose`). The scenario
+   now fails unless both blasts land their light and nothing leaks (`stress_scenario.py`; red proven before, green after).
+2. **The throw's worst frame is the FUSE-END frame, not the plan** (corrects the first reading: `P-COOK` was the scenario throwing without
+   waiting). With `THROW_PROFILE=1` the plan is pumped during the arc (28-36 frames, 4 ms budget, fine) and the leftover cook is 0 frames. The
+   hitch is ONE frame at the end of the fuse that does, before any flash covers it: `_take_prediction` (ctx rebuild) 89 ms PLAYGROUND /
+   142 ms STRESS; `delta.commit()` 122 ms / 109 ms (1 601 / 2 749 voxels); `apply_prop_debris_fall` 1 ms / **258 ms** (60 props: it scales
+   with props); `record_voxel_damage_to_base` 15 / 25 ms. Total ~230 ms PLAYGROUND, ~540 ms STRESS on the desktop, x3-4 on the Moto
+   (the 632-641 ms worst frame of grenade 1 is this frame plus the glass work). Candidates, none built (they move work across beats, a
+   design call): (a) take the prediction's ctx at aim time, (b) do `delta.commit()` + persist under the flash peak with the hit-stop,
+   since meshes are rebuilt only at `on_blast_commit` and the fuse beat shows nothing of it, (c) spread `apply_prop_debris_fall` over the
+   fuse frames. Needs the Moto row at step B to size it.
 3. The pane grouper rejects a pane wider than 8 GU x 4 storeys (G-D23, loud `ERROR`): the generator keeps panes at 8.

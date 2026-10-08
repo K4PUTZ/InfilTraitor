@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**277 scripts · 82296 lines total** (under `godot/scripts/`)
+**277 scripts · 82308 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2376,7 +2376,7 @@ extends `Node2D` · 68 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 592 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 597 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -2386,6 +2386,7 @@ extends `Node2D` · 68 lines
 - `signal finished()`
 
 **Public vars**
+- `var is_done: bool = false`
 - `var consequence_room = null`
 - `var consequence_delta = null`
 - `var ring_step_s: float = 0.055`
@@ -5639,7 +5640,7 @@ extends `Node2D` · 63 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1601 lines
+`class_name TestZoneController` · 1608 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

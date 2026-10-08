@@ -14,10 +14,9 @@
 ## The summary reads the engine's own log lines (`[E-FRAME]`, `[E-PRESENT]`, `ERROR`); it never judges a number against a budget:
 ## budgets are read by the person, on the handset (step B).
 ##
-## ⚠️ A throw builds its plan INSIDE the throw frame here (`P-COOK ... pre-production was short`; an `aim` before it does not warm the
-## prediction): the second blast's BEAT 0 frame (~500 ms desktop, census 340 ms) is that cost, 205 ms on PLAYGROUND's glass box.
-## ⚠️ `ScenarioRunner` `wait` is SECONDS, `frames` is frames. ⚠️ Two blasts in flight share ONE `_active_presenter`: the log then
-## shows one "smoke cleared"/"light landed" for two blasts (see technical_debt.md, "Overlapping blasts").
+## ⚠️ The second blast's worst frame (~500 ms desktop) is the fuse-end frame (ctx rebuild + `delta.commit()` + prop debris fall + persist),
+## not the plan: `INFILTRAITOR_THROW_PROFILE=1` prints it (technical_debt.md, "Stress scenario findings" 2).
+## ⚠️ `ScenarioRunner` `wait` is SECONDS, `frames` is frames. ⚠️ Two blasts in flight share ONE `_active_presenters` (a list, fixed 2026-10-07): each blast lands its own light, checked below.
 
 import argparse
 import os
@@ -53,6 +52,13 @@ def summarize(text: str) -> int:
         if any(k in l for k in keep) and "E-FRAME]   f" not in l or "BEAT 0 " in l:
             print(l[:200])
     leaked = "resources still in use" in text
+    ## the A1 finding-1 regression: every blast must land its own light (one presenter each) and nothing may leak at exit
+    landed = text.count("[CONSEQUENCE] light landed")
+    if landed != 2:
+        print("[STRESS] FAIL: %d 'light landed' line(s) for 2 blasts" % landed)
+        errors.append("light landed x%d" % landed)
+    if leaked:
+        errors.append("exit leak")
     print("[STRESS] %d ERROR line(s)%s%s" % (len(errors), "" if not errors else ": " + errors[0][:160],
                                               "; exit leak: resources still in use" if leaked else ""))
     return 1 if errors else 0

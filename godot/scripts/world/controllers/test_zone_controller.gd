@@ -138,7 +138,12 @@ const DEFAULT_TARGET_OFFSET := Vector2i(3, 0)
 ## this controller (the whole room's), the same explicit-ownership pattern
 ## `_grenades` already uses instead of leaning on implicit signal-connection
 ## keep-alive semantics.
-var _active_presenter = null
+##
+## A LIST, not one reference (A1 stress finding, 2026-10-07): the world lock lifts while a blast's smoke and light are still
+## playing, so a second blast can start inside the first one's tail. With a single slot the second replaced the first, whose
+## `finished` then never cleared anything and whose coroutine was left to the reference counter (one "light landed" for two
+## blasts, "1 resources still in use" at exit). Each presenter removes itself when it finishes.
+var _active_presenters: Array = []
 
 ## P-COOK (PREDICTION_MASTER_PLAN Task 6, 2026-08-09) — whether the
 ## pre-production pump coroutine is running. The prediction itself lives in
@@ -265,7 +270,7 @@ func clear() -> void:
 	## renderer is rebuilt by `load_map()`. Releasing the reference lets the
 	## coroutine's own `is_instance_valid()` guard end it on the next frame
 	## instead of it running on against freed geometry.
-	_active_presenter = null
+	_active_presenters.clear()
 	## D-6 — a blast abandoned mid-sequence must not leave agent actions locked.
 	if room != null and room.has_method("end_blast_lock"):
 		room.end_blast_lock()
@@ -994,7 +999,7 @@ func is_in_targeting_mode() -> bool:
 ## `event_probe_report()` fires, and the run produces no `[E-FRAME]` line at all
 ## while looking like it completed.
 func is_blast_playing() -> bool:
-	return _active_presenter != null
+	return not _active_presenters.is_empty()
 
 
 func detonate_active() -> void:
@@ -1217,7 +1222,7 @@ func cancel_preproduction() -> void:
 ## detonate_active(): the caller's remaining work — clearing the wireframe,
 ## resetting _active_index — belongs to the click, not to the animation. `self`
 ## stays alive because room holds `_test_zone_controller`, the same explicit
-## ownership `_active_presenter` exists for.
+## ownership `_active_presenters` exists for.
 func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		anchor: Vector2, grenade: Dictionary = {}) -> void:
 	Telemetry.event("blast.start", {"gu": gu})
@@ -1490,12 +1495,14 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 ## writes + the VFX dispatch) survived the removal; nothing else did.
 func _make_presenter(delta) -> DetonationPresenter:
 	var presenter := DetonationPresenterClass.new()
-	_active_presenter = presenter
+	_active_presenters.append(presenter)
 	presenter.finished.connect(func():
 		Telemetry.event("blast.end")
 		_prof("WAVES end — the blast is over")
 		room.event_probe_report("detonation")
-		_active_presenter = null)
+		## No capture of `presenter` here: the connection lives on the presenter, so a capture is a reference cycle (it leaked
+		## 8 scripts at exit). Finished ones are swept by flag instead.
+		_active_presenters = _active_presenters.filter(func(p): return not p.is_done))
 	presenter.consequence_room = room
 	## A1 — the strongest grenade commits under its flash (BombDef tag); `HIT_STOP=0` is the ablation for A/B timing.
 	var bomb = Registries.get_bomb_registry().get_bomb(BOMB_ID)

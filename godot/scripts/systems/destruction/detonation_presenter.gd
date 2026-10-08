@@ -36,6 +36,10 @@ extends RefCounted
 
 signal finished()
 
+## True from just before `finished` is emitted. The owner sweeps its list by this flag (a capture of `self` in the signal's
+## callback would be a reference cycle).
+var is_done: bool = false
+
 
 ## §13.3 — the Room that owns the consequence beat and the light. Null keeps this
 ## usable headless (no light beat), which is what a selftest wants.
@@ -149,6 +153,7 @@ func start(plan: Dictionary, voxel_board, smoke_overlay, tree: SceneTree) -> voi
 		await consequence_room.play_consequence_light(consequence_delta)
 		if board3d != null and is_instance_valid(board3d):
 			board3d.on_blast_light(consequence_delta)
+	is_done = true
 	finished.emit()
 
 

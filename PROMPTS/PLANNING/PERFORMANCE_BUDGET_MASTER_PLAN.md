@@ -1,0 +1,91 @@
+# PERFORMANCE_BUDGET_MASTER_PLAN
+## One content, many phones: the memory and time budget a segment has to fit — v0.1 (PLANNED, NOT BUILT)
+
+> **Status: 🟡 v0.1, 2026-10-08.** Opened by the Director on the Galaxy A16 round of 2026-10-08 (PSS at the 1.2 GB ceiling with ONE map and little content, while the game is going to gain many more props, walls, roofs, guard AI, skills and accessories). **Nothing here is built; the steps are planned and the first (the estimate of what a segment holds) is the next session, done with the Director.**
+>
+> **Where this lives.** The Director asked for this to go into the performance plan and to "move it forward". `PERFORMANCE_MASTER_PLAN` (in `PROMPTS/DONE/`) was ARCHIVED on 2026-10-07 at the Director's own request (3 400 lines of 2D-board history, "nothing open is carried"); resurrecting it would bury this under dead text, so this is its successor and the old file carries a pointer. The handset rows and the budget table stay in `DEVICE_DIAGNOSTICS_MASTER_PLAN` (§0.5: 30 fps / 33.3 ms); this plan owns the question "does the CONTENT we are going to author fit?". Overrule the placement and it moves in one commit.
+>
+> **Related:** `RENDER3D_MASTER_PLAN` (the board), `PROP_PIPELINE_PLAN` / `PROPS_TIER4_PLAN` (prop slots and budgets), `MOVEMENT_MASTER_PLAN` §6.0 and the roadmap step A1b (the agent model's budget), `docs/production/technical_debt.md` ("PSS against the 1.2 GB ceiling", "A1 Galaxy A16 round").
+
+---
+
+## 0. What the documents ALREADY say (read before estimating anything)
+
+| Fact | Source | What it means for the budget |
+|---|---|---|
+| **A segment IS a map; only one is loaded at a time.** A level is a set of segments (`LevelGraph` → `MapCatalog.get_spec(map_id, {connections, segment_grid_pos, seed})`); what the player changed outlives the unload (checkpoint tiers). | `docs/ARCHITECTURE.md` (run state model), `docs/systems/MAP_MASTER_PLAN.md` | The unit of load, and so of memory, is ONE segment. The whole-map-built-at-load model does not have to scale to a 3×3 level. |
+| Segment structure (locked): a **3×3 grid of 18×36 segments**, playable interior 7×25, 1 main + 1 secondary + 1 secret access per active edge, a 2-tile safe zone on the entry edge, full AP reset on entering a segment. | `docs/DESIGN_MASTER_PLAN.md` §14.1 | 18×36 = 648 GU² (+ the 5 GU buffer ring = 28×46 = 1 288 GU²). PLAYGROUND, the map every handset number so far comes from, is 44×22 = 968 GU² (+ ring 54×32 = 1 728): **bigger than a segment.** ⚠️ The doc says "tile" and the engine says GU, and the 7×25 interior is a second number: which one binds today is a question for the Director (§6, Q2). |
+| A segment "does not hold many enemies (special maps aside)". | `DESIGN_MASTER_PLAN` §8.7 (target selection) | The STRESS map (24 guards, 60 props, 14 lights, 3×3 rooms) is deliberately beyond a typical segment: it is a ceiling test, not a typical one. |
+| The cell plane is 512×512 cells (= 64 GU): a map past ~46 GU per side draws wrong. | `docs/measurements/scale_study_desktop_dense_2026-10-07.md` | A segment fits with room to spare. The plane's size is still a memory lever (§4). |
+| Size alone is cheap, content is not: blast worst frame and idle `process` bend with props / guards / glass, not with floor area. | same study | The estimate must be in CONTENT, not in GU². |
+| The frag grenade is the stress case and ships late-game; budgets are judged on it. | roadmap, 2026-10-07 decisions | The budget is "the strongest blast beside the densest segment". |
+
+**Handset facts of 2026-10-08 (Galaxy A16, PLAYGROUND, release APK):** peak TOTAL PSS 1 257 MiB (other runs 1 198-1 230); at the peak Graphics 620 · System 301 · native heap 248 · code 43 (swap PSS 317). Load timeline: Graphics 0 -> 119 (boot) -> +64 (room build) -> +128 -> **+255 at the map-loaded submission**, then a ~590 MiB plateau that blasts do not raise; native heap peaks at ~450 MiB DURING the load. `COSMETIC_DENSITY` does not move the PSS. What owns the Graphics plateau is NOT attributed (`RenderingServer.get_rendering_info` reads nothing on Android release).
+
+## 1. The principle: ONE content, N profiles
+
+Every multi-device game ships quality tiers; the cost is acceptable when a tier is a DERIVATION (texture size, density, particle counts, LOD set at import / export / boot from the same authored content) and unacceptable when it is a second hand-authored version. Authoring rule that follows: content is authored once, at the fidelity of the pipeline already canon (facade 1024×512 grayscale, props through slots and their budgets, 16 texels per voxel), and every per-device reduction lives in a profile.
+
+**Cheap to change later (do not pre-optimise):** texture resolution and mipmaps per tier, cosmetic density, instance sharing, prop LOD. **Expensive to change later (decide now):** the unit of load (settled: a segment), the per-actor budget (A1b: the agent model, the guards share a rig?), the voxel conventions that decide how many claims a prop and a wall cost, the cell-plane size, what is built at load versus on demand.
+
+## 2. The method: a budget is derived, never typed
+
+```
+floor device (RAM, GPU)  ->  app ceiling (what the OS leaves a foreground game)
+  -> minus the engine's fixed cost (boot Graphics ~119, shaders, code ~43, the actors' rig)
+  -> minus the transient peak of a LOAD (native ~450 MiB today)
+  -> = what ONE segment of content may cost
+  -> divided by the marginal cost of each kind of content = how much of each fits
+```
+A rule of thumb used only to frame the Director's choice, NOT a measurement: a foreground app keeps roughly 40-50 % of the device RAM before the system reclaims it, so 1.2 GB reads as a ~3 GB floor device. The number that decides being killed is closer to RSS plus swap pressure than to PSS (RSS peaked at 982 MiB while PSS read 1 257): to be settled in PB-0.
+
+## 3. The steps (planned; none built)
+
+| Step | What | Who / when | Output |
+|---|---|---|---|
+| **PB-0** | **Decide the floor device** (RAM, GPU class), **the ceiling's unit** (GiB or decimal GB; plans say "1.2 GB" without saying) and **which number is the ceiling** (PSS or RSS+swap). Recommendation: a Moto g04s class floor (about 4 GB), ceiling 1.0-1.2 GB with margin. | Director, next session | a signed line in this plan + `DEVICE_DIAGNOSTICS` §0.5 |
+| **PB-1** | **The estimate of a segment's content** — done TOGETHER with the Director, from the design docs: rooms, props by tier (1-4), guards by type, lights, glass panes, roofs, materials in use, destructible area, objectives; three specs: LOW / TYPICAL / HEAVY (the heavy one carries the frag grenade). Read first: `DESIGN_MASTER_PLAN` §14, §8.7, `MAP_MASTER_PLAN`, the dormitory in `PROP_PIPELINE_PLAN` §8, STRESS as the upper bound. Confirm the segment's size in GU (Q2). | **NEXT SESSION**, with the Director | `segment_spec` table (this plan, §5) |
+| **PB-2** | **Attribute Graphics on the desktop**, per load stage: textures vs buffers vs render targets, by category (facades, decals, board meshes, cell planes, actors, props). `RenderingServer` info works on the desktop; the handset confirms only the total (`GL mtrack`). The `MEM_STAGES=1` markers exist (`mem_stage.gd`). | Claude, desktop | a table: who owns the +255 MiB and the 590 MiB plateau |
+| **PB-3** | **Marginal-cost table** on the Galaxy and the Moto: extend `scale_study.py` to read PSS / RSS / load time and vary ONE thing at a time on segment-shaped synthetic maps (18×36 footprint): props (0 / 30 / 60 / 120, per tier), guards (0 / 6 / 12 / 24), lights, materials in use, glass panes, roofs. | Claude, handsets | "+10 props = X MiB, Y ms load" per kind |
+| **PB-4** | **The segment cycle**: load and unload N segments in a row (scenario `reload` / `load_map`), PSS and RSS must stay FLAT, plus the load time and the transient native peak per segment on both handsets (the 6 s load above is the number to beat or hide). The game unloads and reloads segments for the whole run, so a leak or fragmentation that a single load never shows is a bug here. | Claude, handsets | a flat-or-not verdict + load seconds per device |
+| **PB-5** | **The verdict**: PB-1's specs × PB-3's marginal costs, against PB-0's ceiling and the fixed cost. Fits / fits with a profile / does not fit. | Claude with the Director | one table, one decision |
+| **PB-6** | **Levers, one at a time, each measured** (only if PB-5 says so), in order of saving per loss of quality: (1) texture size and mipmaps per device tier (facades, decals); (2) the cell planes (512×512 for an 18×36 segment + ring is 224×368 cells: check a non-square or smaller plane); (3) the load staging (the native peak of ~450 MiB); (4) instance sharing of props and actors; (5) mesh budgets per prop slot. `COSMETIC_DENSITY` is measured NOT to be one. | Claude | each lever: MiB saved, ms, look change (capture) |
+| **PB-7** | **Enforcement**: a per-segment memory budget checked the way `apk_audit.py --max-mb` checks the package (and the prop slot budgets of `PropValidator`), so new content cannot silently exceed the ceiling; a tier of `verify.py` or a standalone gate. | Claude | the check + its place in `verify.py` |
+| **PB-8** | **The device-profile mechanism** (texture tier, density, particle caps from one setting at boot, default by device class). Built only if PB-5 needs it; `CosmeticDensity` is its first member. | Claude | `DeviceProfile` + the per-device defaults |
+
+**Order and parallelism:** PB-0 and PB-1 first (the Director's input; nothing else makes sense without them). PB-2 and PB-3 need no Director input and can start the moment PB-1 names the content kinds. PB-4 is independent and cheap: it can run any time. PB-5 closes the study; PB-6 to PB-8 are conditional.
+
+## 4. What NOT to do
+
+- Do not trim before PB-2 attributes the memory: the last +255 MiB step and the 590 MiB plateau have owners nobody has named, and cutting the wrong one costs look for nothing.
+- Do not chase the `System` bucket of `dumpsys meminfo` (it grew 7 -> 300 MiB over the run while native fell and swap rose: the OS compressing the app's pages).
+- Do not author a second, lighter version of any content for phones.
+- Do not widen the content before PB-1 and PB-3 exist: that is how the estimate becomes a guess again.
+
+## 5. `segment_spec` (to fill in PB-1)
+
+| Kind | LOW | TYPICAL | HEAVY (frag grenade) | Notes |
+|---|---|---|---|---|
+| Footprint (GU) | | | | confirm 18×36 (Q2) |
+| Rooms | | | | |
+| Props tier 1 / 2 / 3 / 4 | | | | |
+| Guards (by type) | | | | "does not hold many enemies" |
+| Lights | | | | |
+| Glass panes (largest) | | | | no all-glass rooms in INFILTRAITOR 1 |
+| Materials in use | | | | |
+| Roofs / storeys | | | | |
+| Destructible area at once | | | | the blast's cost bends with this |
+
+## 6. Open questions (the Director's)
+
+1. **Q1 (PB-0)** — the floor device and the ceiling's unit and number.
+2. **Q2 (PB-1)** — is a segment 18×36 in GU today, and is the 7×25 "playable interior" a second, smaller number the build should respect? PLAYGROUND (44×22) is larger than either.
+3. **Q3** — a typical versus a heavy segment: is the heavy one the only place the frag grenade appears?
+4. **Q4 (A1b)** — do the guards share the agent's rig and mesh (instancing), or are they separate models?
+5. **Q5** — is a load of a few seconds (about 6 s on the Galaxy at PLAYGROUND's size: stage `11` to `40`, 16:48:12 -> 16:48:18) acceptable between segments, or should the next segment be prepared while the player is still in the current one? (This changes PB-4's target and the transient peak.)
+
+## 7. Evidence log
+
+- 2026-10-08 Galaxy A16: `docs/production/technical_debt.md` ("A1 Galaxy A16 round", "PSS against the 1.2 GB ceiling"); logs in `/tmp` are not kept: the numbers are in that file.
+- 2026-10-07 desktop scale study: `docs/measurements/scale_study_desktop_{dense,empty}_2026-10-07.md` (the 46 GU wall; content, not size, bends the cost).
+- Moto g04s, 2026-10-05 (C4): PSS peak 945-967 MiB (R3D-CLAIMS), `DEVICE_DIAGNOSTICS_MASTER_PLAN` top blocks.

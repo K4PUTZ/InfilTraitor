@@ -118,6 +118,19 @@ is drawn, which is why every `MemStage` mark during the load prints 0).
    veil (the add pass is calibrated for a background of sRGB 0.35, `glass_add_base`). **Open, for the Director:** adopt the
    new glass; and the flash warm (≈ +260 MiB of driver memory on the Galaxy) against its first-flash hitch.
 
+10. **ADOPTED (Director, 2026-10-09): the screen-free glass and a snapshot flash.** *"Visualmente o vidro anterior estava
+   melhor, mas se o ganho de performance é grande, vamos adotar."* The screen-reading pane (`glass_pane3d.gdshader`) is
+   deleted; `GLASS_BLEND` is gone. Explosions on GLASS checked side by side (cracks, holes, falling shards, piles, decals at
+   the same places and frames; local `Screenshots/glass_explosions_cmp.png`). The flash (Director: *"um resquício do método
+   2D"*) inverts a ONE-TIME snapshot of the last frame (`get_viewport().get_texture().get_image()`, freed at `clear()`),
+   drawn at alpha `amount` over the live screen, so the blend gives mix(live, inverted snapshot, amount) with no screen read;
+   the 2 s warm and `FLASH_WARM` are gone. Galaxy A16, PLAYGROUND portrait: **GL mtrack ~205 MiB** (was ~490), engine 137 MiB;
+   snapshot 2340×1080 in 36-37 ms once per detonation; grenade worst frames 115 / 79 ms (the warm-era 94-108; the cold
+   190 ms hitch is gone with the screen copy). Pixel gate: PLAYGROUND 0 px, GLASS differs (the intended glass look), new
+   baseline taken. **New finding:** a runtime ORIENTATION change (the `framing landscape` step on a portrait boot) reopens
+   the 256 MiB block on the Galaxy (GL 205 -> ~466): the screen buffers are rebuilt at the new size while the old ones still
+   exist. Portrait play is unaffected; a game that lets the player rotate would pay it.
+
 **Frame-rate cap study (Director, 2026-10-08; Moto g04s, PLAYGROUND, zoom 0.2, grenade 0 centred; `MAX_FPS=<n>` flag;
 videos `videos/fps_z02_<n>.mp4`, local):**
 

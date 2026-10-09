@@ -481,7 +481,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	for i: int in range(_shader_materials.size()):
 		if _material_glass[i] and _shader_materials[i].shader.resource_path.get_file().begins_with("glass_pane3d"):
 			_crack_mirror.pane_materials.append(_shader_materials[i])
-			if _shader_materials[i].next_pass is ShaderMaterial:  ## GLASS_BLEND's add pass is cut by the same openings
+			if _shader_materials[i].next_pass is ShaderMaterial:  ## the add pass is cut by the same openings
 				_crack_mirror.pane_materials.append(_shader_materials[i].next_pass)
 	_diag_step("c camera + crack mirror")
 	var quads: int = 0
@@ -2536,18 +2536,15 @@ func _get_surface_macro_tex() -> ImageTexture:
 func _make_glass_material(material_id: String) -> ShaderMaterial:
 	var tint: Color = GlassMaterials.pane_tint(material_id)
 	var shader_material := ShaderMaterial.new()
-	## PB-2 (2026-10-08): `GLASS_BLEND=1` draws the pane with no screen read (multiply pass + add pass, `glass_pane3d_mul`),
-	## for the side-by-side with the original while the Director decides; the original costs ~250-295 MiB of driver memory on the
-	## Galaxy A16 just by existing.
-	var blend: bool = _room != null and str(_room.call("_dev_flag", "GLASS_BLEND", "0")) == "1"
-	shader_material.shader = load("res://godot/shaders/glass_pane3d_mul.gdshader" if blend else "res://godot/shaders/glass_pane3d.gdshader") as Shader
+	## PB-2 (Director, 2026-10-09): the pane is drawn WITHOUT a screen read, a multiply pass and an add pass
+	## (`glass_pane3d_mul` + its next_pass `glass_pane3d_add`). The screen-reading original cost ~250-295 MiB of driver memory on
+	## the Galaxy A16 just by existing; the Director judged it the better look and adopted this one for the memory.
+	shader_material.shader = load("res://godot/shaders/glass_pane3d_mul.gdshader") as Shader
 	var frost: Texture2D = load("res://ASSETS/materials/glass/facade_glass.png") as Texture2D
-	var passes: Array[ShaderMaterial] = [shader_material]
-	if blend:
-		var add_pass := ShaderMaterial.new()
-		add_pass.shader = load("res://godot/shaders/glass_pane3d_add.gdshader") as Shader
-		shader_material.next_pass = add_pass
-		passes.append(add_pass)
+	var add_pass := ShaderMaterial.new()
+	add_pass.shader = load("res://godot/shaders/glass_pane3d_add.gdshader") as Shader
+	shader_material.next_pass = add_pass
+	var passes: Array[ShaderMaterial] = [shader_material, add_pass]
 	for m: ShaderMaterial in passes:
 		m.set_shader_parameter("glass_tint", Vector3(tint.r, tint.g, tint.b))
 		if frost != null:
@@ -2601,7 +2598,7 @@ func set_view(direction: String) -> void:
 			var yaw: float = deg_to_rad(float(VIEW_YAW_DEG[_view]))
 			var gx := Vector2(cos(yaw), sin(yaw))
 			var gz := Vector2(-sin(yaw), cos(yaw))
-			## `GLASS_BLEND`'s add pass (next_pass) takes the same view terms.
+			## The add pass (next_pass) takes the same view terms.
 			var pane: ShaderMaterial = m
 			while pane != null:
 				pane.set_shader_parameter("face_se", 0.966 if swap else 0.982)

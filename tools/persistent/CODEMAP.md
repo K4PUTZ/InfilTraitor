@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**280 scripts · 83546 lines total** (under `godot/scripts/`)
+**280 scripts · 83534 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -466,7 +466,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2617 lines
+extends `Node3D` · 2614 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1605,13 +1605,12 @@ extends `Node2D` · 255 lines
 
 ### `explosion_flash_overlay.gd`
 
-`class_name ExplosionFlashOverlay` · extends `Node2D` · 268 lines
+`class_name ExplosionFlashOverlay` · extends `Node2D` · 255 lines
 
 `godot/scripts/overlays/explosion_flash_overlay.gd`
 
 **Constants / tuning**
 - `NEGATIVE_FLASH_SHADER` = `"""`
-- `KEEPALIVE_SECONDS` = `2.0`
 
 **Public vars**
 - `var strobe_white_alpha: float = 1.0`
@@ -1622,7 +1621,6 @@ extends `Node2D` · 255 lines
 **Public API**
 - `func set_negative_z_index(z: int) -> void:`
 - `func hold_frame(mode: int) -> void:`
-- `func warm() -> void:`
 - `func clear() -> void:`
 
 ---
@@ -4097,11 +4095,11 @@ extends `SceneTree` · 232 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 1683 lines
+extends `SceneTree` · 1687 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
-> GLASS_MASTER_PLAN §8.1 / CRACK-01 — the CRACKED tier for glass. Rodar: python3 tools/persistent/run_selftests.py --only glass_crack §8.1 was written up as a CONTRADICTION: the art order's step 3 asked to raise `glass.json`'s `crack_factor` above 0 and add `glass` to `IMPACT_DECAL_MATERIALS`, which together make `voxel_decal_selftest` [12] demand `decal_crack_glass_{0,1,2}.png` — the per-voxel crack family G-D21 explicitly folded into the fracture SHEET. The resolution (Director, 2026-09-02): glass reaches CRACKED by the route it ALREADY has — `ShotPunchTable.damage_state_for()` returns CRACKED for a sub-breach glass hit — and NOT through the blast `crack_factor` probability path. So `crack_factor` stays 0.0, `glass` stays out of both decal lists, and the whole [12] coupling is untouched. Glass is simply the first material whose CRACKED art is a sheet, not a decal family. This suite is the guard on that resolution — it fails if a future edit "fixes" §8.1 by commissioning the decal family, and (from CRACK-01 stages B/C) it grows to pin the render and the shot-path event. What each test catches: [1] the CRACKED tier going unreachable for glass — the enum path breaking. [2] a crack DECAL FAMILY appearing for glass — in data, in the wiring lists, or on disk. [3] the fracture SHEETS (the real CRACKED art) going missing or unimported. [8] the crack coming back INSIDE the pane shader (glass_pane3d.gdshader) — CRACK-02 / G-D27 took it out of the voxel because a crack drawn there inherits `dim`, `cover` and the quad seams, and no tuning survives that; and a uniform the mirror feeds that glass_crack3d.gdshader does not declare (dropped with no error). [11] a crack bleeding past the frame of the pane it is on. [12] G-D30's cut reading anything other than the live glass state (the store's pane cells), the occupancy rows going upside down, or the dial collapsing to a boolean. [13] S-3's rebuild path acquiring side effects — a perspective flip that re-damages the pane it is only supposed to redraw. [16] the opening FAMILY going malformed — an opening that does not leave the struck cell, a pooled id with no shape, a pick that stops hashing, or the SHEET's void drifting from the voxel cut (G-D34's whole point). [15] the applied hole drifting from the opening it claims to be — a cell cut that coverage() calls outside, or left whole that it calls PARTIAL — and the rebuild path (a flip, a load) shaping different cells from the shot path. [22] a rotation re-shaping every standing hole with the DEFAULT opening — CRACK-04, GLASS §16.13. The mechanism was never broken; the ORDER was. The perspective rebuild renders the pane intact, erases the recorded holes back out of it and flushes, so unless it CLAIMS first the flush sees a batch of unclaimed erases and invents a shape for each. R3D-END (END-2): [10] (the 2D sprite's transform on the wall-face basis), [14] (the shard ATOMS a cell's cut was drawn with) and [20] (the remnant atom) went with the 2D board, whose tiles they drew; the openings, the shaped cells, the occupancy and the sheet are what the 3D board draws from, and those stay pinned.
+> GLASS_MASTER_PLAN §8.1 / CRACK-01 — the CRACKED tier for glass. Rodar: python3 tools/persistent/run_selftests.py --only glass_crack §8.1 was written up as a CONTRADICTION: the art order's step 3 asked to raise `glass.json`'s `crack_factor` above 0 and add `glass` to `IMPACT_DECAL_MATERIALS`, which together make `voxel_decal_selftest` [12] demand `decal_crack_glass_{0,1,2}.png` — the per-voxel crack family G-D21 explicitly folded into the fracture SHEET. The resolution (Director, 2026-09-02): glass reaches CRACKED by the route it ALREADY has — `ShotPunchTable.damage_state_for()` returns CRACKED for a sub-breach glass hit — and NOT through the blast `crack_factor` probability path. So `crack_factor` stays 0.0, `glass` stays out of both decal lists, and the whole [12] coupling is untouched. Glass is simply the first material whose CRACKED art is a sheet, not a decal family. This suite is the guard on that resolution — it fails if a future edit "fixes" §8.1 by commissioning the decal family, and (from CRACK-01 stages B/C) it grows to pin the render and the shot-path event. What each test catches: [1] the CRACKED tier going unreachable for glass — the enum path breaking. [2] a crack DECAL FAMILY appearing for glass — in data, in the wiring lists, or on disk. [3] the fracture SHEETS (the real CRACKED art) going missing or unimported. [8] the crack coming back INSIDE the pane shader (glass_pane3d_mul / _add) — CRACK-02 / G-D27 took it out of the voxel because a crack drawn there inherits `dim`, `cover` and the quad seams, and no tuning survives that; and a uniform the mirror feeds that glass_crack3d.gdshader does not declare (dropped with no error). [11] a crack bleeding past the frame of the pane it is on. [12] G-D30's cut reading anything other than the live glass state (the store's pane cells), the occupancy rows going upside down, or the dial collapsing to a boolean. [13] S-3's rebuild path acquiring side effects — a perspective flip that re-damages the pane it is only supposed to redraw. [16] the opening FAMILY going malformed — an opening that does not leave the struck cell, a pooled id with no shape, a pick that stops hashing, or the SHEET's void drifting from the voxel cut (G-D34's whole point). [15] the applied hole drifting from the opening it claims to be — a cell cut that coverage() calls outside, or left whole that it calls PARTIAL — and the rebuild path (a flip, a load) shaping different cells from the shot path. [22] a rotation re-shaping every standing hole with the DEFAULT opening — CRACK-04, GLASS §16.13. The mechanism was never broken; the ORDER was. The perspective rebuild renders the pane intact, erases the recorded holes back out of it and flushes, so unless it CLAIMS first the flush sees a batch of unclaimed erases and invents a shape for each. R3D-END (END-2): [10] (the 2D sprite's transform on the wall-face basis), [14] (the shard ATOMS a cell's cut was drawn with) and [20] (the remnant atom) went with the 2D board, whose tiles they drew; the openings, the shaped cells, the occupancy and the sheet are what the 3D board draws from, and those stay pinned.
 
 **Constants / tuning**
 - `ShotPunchTableClass` = `preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")`

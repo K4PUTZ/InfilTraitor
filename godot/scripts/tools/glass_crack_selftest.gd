@@ -23,7 +23,7 @@
 ##   [2] a crack DECAL FAMILY appearing for glass — in data, in the wiring lists,
 ##       or on disk.
 ##   [3] the fracture SHEETS (the real CRACKED art) going missing or unimported.
-##   [8] the crack coming back INSIDE the pane shader (glass_pane3d.gdshader) — CRACK-02 / G-D27 took
+##   [8] the crack coming back INSIDE the pane shader (glass_pane3d_mul / _add) — CRACK-02 / G-D27 took
 ##       it out of the voxel because a crack drawn there inherits `dim`, `cover`
 ##       and the quad seams, and no tuning survives that; and a uniform the mirror feeds that
 ##       glass_crack3d.gdshader does not declare (dropped with no error).
@@ -441,30 +441,9 @@ func test_the_glass_shaders_split_the_crack_out() -> void:
 
 	## R3D-END (END-2): the 2D `glass_pane.gdshader` / `glass_crack.gdshader` went with the 2D board; the rule is the
 	## same on the shaders the 3D board draws with.
-	var pane_shader := load("res://godot/shaders/glass_pane3d.gdshader") as Shader
-	if pane_shader == null:
-		_fail("glass_pane3d.gdshader did not load as a Shader")
-		print("")
-		return
-
-	## ⚠️ CRACK-02 / G-D27 — THE PANE SHADER MUST CARRY NO CRACK AT ALL.
-	## CRACK-01 put the web in here and the Director rejected it three times; the
-	## third rejection was the mechanism, not the tuning: a crack drawn by the
-	## voxel shader inherits the atom's `dim`, the coverage alpha and the quad
-	## seams. Any crack uniform reappearing on this shader is that design coming
-	## back, whatever it is called.
-	var pane_names: Array = []
-	for prop in pane_shader.get_shader_uniform_list():
-		pane_names.append(prop.name)
-	var leaked: Array = []
-	for n in pane_names:
-		if String(n).contains("crack") or String(n).contains("fracture"):
-			leaked.append(n)
-	if leaked.is_empty():
-		_pass("glass_pane3d.gdshader declares no crack/fracture uniform — the web is not the voxel's any more")
-	else:
-		_fail("glass_pane3d.gdshader is drawing the crack again (%s) — G-D27 moved it off the pane"
-			% ", ".join(leaked))
+	## PB-2 (2026-10-09): the pane is two passes now (`glass_pane3d_mul` + `glass_pane3d_add`); the rule holds on both.
+	for pane_path: String in ["res://godot/shaders/glass_pane3d_mul.gdshader", "res://godot/shaders/glass_pane3d_add.gdshader"]:
+		_check_pane_shader_has_no_crack(pane_path)
 
 	var crack_shader := load("res://godot/shaders/glass_crack3d.gdshader") as Shader
 	if crack_shader == null:
@@ -1681,3 +1660,28 @@ func _cut_set_for(opening: String, claim: bool) -> Dictionary:
 	r.free()
 	VoxelStore.active = null
 	return out
+
+
+func _check_pane_shader_has_no_crack(path: String) -> void:
+	var pane_shader := load(path) as Shader
+	if pane_shader == null:
+		_fail("%s did not load as a Shader" % path.get_file())
+		return
+	## ⚠️ CRACK-02 / G-D27 — THE PANE SHADER MUST CARRY NO CRACK AT ALL.
+	## CRACK-01 put the web in here and the Director rejected it three times; the
+	## third rejection was the mechanism, not the tuning: a crack drawn by the
+	## voxel shader inherits the atom's `dim`, the coverage alpha and the quad
+	## seams. Any crack uniform reappearing on this shader is that design coming
+	## back, whatever it is called.
+	var pane_names: Array = []
+	for prop in pane_shader.get_shader_uniform_list():
+		pane_names.append(prop.name)
+	var leaked: Array = []
+	for n in pane_names:
+		if String(n).contains("crack") or String(n).contains("fracture"):
+			leaked.append(n)
+	if leaked.is_empty():
+		_pass("%s declares no crack/fracture uniform — the web is not the voxel's any more" % path.get_file())
+	else:
+		_fail("%s is drawing the crack again (%s) — G-D27 moved it off the pane"
+			% [path.get_file(), ", ".join(leaked)])

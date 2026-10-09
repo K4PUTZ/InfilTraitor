@@ -1,6 +1,6 @@
-// PERFORMANCE_BUDGET PB-2 (2026-10-08): what the two passes of the screen-free glass share with each other (and, by copy, with
-// `glass_pane3d.gdshader`, the screen-reading original): uniforms, the frost/sheen world mapping, the CRACK-03/04 opening cut,
-// and the sRGB tint maths. See `glass_pane3d_mul.gdshader` for why there are two passes.
+// PERFORMANCE_BUDGET PB-2 (2026-10-08): what the two passes of the glass pane share: uniforms, the frost/sheen world mapping,
+// the CRACK-03/04 opening cut, and the sRGB tint maths (carried over from the deleted screen-reading pane). See
+// `glass_pane3d_mul.gdshader` for why there are two passes.
 uniform vec3 glass_tint = vec3(0.47, 0.63, 0.90);
 uniform float face_top : hint_range(0.0, 1.0) = 1.000;
 uniform float face_se : hint_range(0.0, 1.0) = 0.982;

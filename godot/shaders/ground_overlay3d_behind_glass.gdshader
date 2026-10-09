@@ -1,5 +1,5 @@
 // A ground overlay seen THROUGH a glass pane (RETIRE-3 follow-up): the same colour and alpha as `ground_overlay3d.gdshader`, drawn
-// only where a pane is in front (stencil 1, written by `glass_pane3d.gdshader`) and at `fade` of its strength, so a line or a fill
+// only where a pane is in front (stencil 3, written by `glass_pane3d_mul` / `_add`) and at `fade` of its strength, so a line or a fill
 // that lies behind glass reads as behind it instead of painted over it. The other half of the pair, for every other pixel, is
 // `ground_overlay3d.gdshader` (stencil not equal 1); `GroundCanvas3D` chains this one as its `next_pass`.
 shader_type spatial;

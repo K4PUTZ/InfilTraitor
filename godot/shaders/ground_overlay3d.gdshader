@@ -4,7 +4,7 @@
 // depth-writing: a wall in front of a tile hides it, an actor standing on it covers it.
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, blend_mix;
-// Full strength everywhere EXCEPT behind a glass pane (stencil 1, written by `glass_pane3d.gdshader`): there the
+// Full strength everywhere EXCEPT behind a glass pane (stencil 3, written by `glass_pane3d_mul` / `_add`): there the
 // `ground_overlay3d_behind_glass.gdshader` pass draws it softer.
 stencil_mode read, compare_not_equal, 3;  // 3 = a glass pane is in front (glass_pane3d*)
 

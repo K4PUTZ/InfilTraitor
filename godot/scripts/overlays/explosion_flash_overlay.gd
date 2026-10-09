@@ -79,10 +79,9 @@ enum FlashMode { WHITE, NEGATIVE }
 var flash_mode: int = FlashMode.NEGATIVE
 
 ## Inverts whatever the frame already rendered, by `amount`, then pulls the
-## result toward its own luminance by `desaturate`. One screen-texture read, no
-## per-frame allocation — this is the entire cost of the Director's "frame
-## negativo" idea, which they flagged as possibly hard or slow at runtime and is
-## neither.
+## result toward its own luminance by `desaturate`. Since PB-2 (2026-10-09) the
+## image inverted is a one-time snapshot of the last frame, not a screen read (see the
+## note above the shader).
 ##
 ## The desaturation step is P-DARKFIRE's second half (Director, 2026-08-09:
 ## "dessatura a inversão pra ficar escuro neutro em vez de azul"). Once the
@@ -95,17 +94,20 @@ var flash_mode: int = FlashMode.NEGATIVE
 ## Rec.709 luma, not a flat (r+g+b)/3: an equal-weight average would read the
 ## inverted fire's green channel as no brighter than its red, and the whole
 ## point here is that the result lands where the eye says it should.
+## PB-2 (Director, 2026-10-09): the inversion reads a SNAPSHOT of the last rendered frame, taken once per strobe, not the screen.
+## A `hint_screen_texture` read held a full-screen copy that the Galaxy A16's driver charged ~260 MiB for (it had to be kept warm
+## every 2 s, or its first use hitched ~190 ms). The live image still shows through: the quad is drawn at alpha `amount` over it,
+## so the blend unit computes mix(live, inverted snapshot, amount), the same mix the screen read did. Only the inverted half is
+## frozen at the snapshot, and at the peak (amount 1) that is exactly the frame the hit-stop commit hides under.
 const NEGATIVE_FLASH_SHADER := """
 shader_type canvas_item;
-uniform sampler2D screen_tex : hint_screen_texture, filter_nearest;
+uniform sampler2D snapshot : filter_linear;
 uniform float amount : hint_range(0.0, 1.0) = 0.0;
 uniform float desaturate : hint_range(0.0, 1.0) = 1.0;
 void fragment() {
-	vec3 src = texture(screen_tex, SCREEN_UV).rgb;
-	vec3 inv = vec3(1.0) - src;
+	vec3 inv = vec3(1.0) - texture(snapshot, SCREEN_UV).rgb;
 	float luma = dot(inv, vec3(0.2126, 0.7152, 0.0722));
-	inv = mix(inv, vec3(luma), desaturate);
-	COLOR = vec4(mix(src, inv, amount), 1.0);
+	COLOR = vec4(mix(inv, vec3(luma), desaturate), amount);
 }
 """
 
@@ -116,10 +118,9 @@ var _holding: bool = false
 ## The NEGATIVE flash needs a ShaderMaterial reading the screen texture; the
 ## WHITE flash is a plain draw_rect on this node and needs none. Two canvases
 ## rather than one because a material is per-node.
-const KEEPALIVE_SECONDS := 2.0  ## see warm()
 
 var _negative_layer: Node2D = null
-var _warming: bool = false  ## warm() is in flight
+var _snapshot: ImageTexture = null  ## the frame the current strobe inverts (see _take_snapshot())
 var _negative_material: ShaderMaterial = null
 
 
@@ -160,16 +161,6 @@ func _ready() -> void:
 	_negative_layer.material = _negative_material
 	_negative_layer.draw.connect(_draw_negative)
 	add_child(_negative_layer)
-	## The flash resource goes cold when it is not drawn for a while (see warm()): keep it hot. `FLASH_WARM=0` (PB-2) skips it, to
-	## measure what holding the screen copy costs in driver memory.
-	var flags: Node = get_node_or_null("/root/DevFlags")
-	if flags != null and str(flags.value("FLASH_WARM", "1")) == "0":
-		return
-	var keepalive := Timer.new()
-	keepalive.wait_time = KEEPALIVE_SECONDS
-	keepalive.timeout.connect(warm)
-	add_child(keepalive)
-	keepalive.start()
 
 
 ## Holds ONE strobe frame of `mode` at full intensity. The caller is expected to
@@ -186,29 +177,21 @@ func _ready() -> void:
 func hold_frame(mode: int) -> void:
 	flash_mode = mode
 	_holding = true
+	if mode == FlashMode.NEGATIVE and _snapshot == null:
+		_take_snapshot()
 	_redraw_all()
 
 
-## Keeps the NEGATIVE flash's screen copy hot. The shader reads `hint_screen_texture`; after the flash has not been drawn for a while
-## (measured: boot to the first blast is ~50 s; the second flash of a boot, ~8 s after the first, is already cheap) the first draw
-## costs ~190 ms more on the Galaxy A16 (1080x2340): the grenade-0 worst frame was 231-323 ms, and with a draw every 2 s the first
-## flash frame reads 65 ms and the worst frame of the blast 102-122 ms. A draw at boot alone did NOT hold, a draw at the fuse only moves
-## the hitch there (DEVICE_DIAGNOSTICS round 0b, 2026-10-04). The mechanism inside the engine is not proven; the A/B is.
-## The warm frame draws at `amount` 0: the shader returns the screen unchanged, so no pixel moves (captures and gates are unaffected).
-## Never over a real strobe: a held frame is not ours to clear.
-func warm() -> void:
-	if not is_inside_tree() or _negative_material == null or _warming or _holding:
+## The last rendered frame, read back ONCE at the start of a strobe (the negative frames of one detonation share it).
+func _take_snapshot() -> void:
+	var t0: int = Time.get_ticks_usec()
+	var image: Image = get_viewport().get_texture().get_image()
+	if image == null or image.is_empty():
+		push_warning("[ExplosionFlashOverlay] the viewport returned no image: the negative frame shows the live screen")
 		return
-	_warming = true
-	var saved_amount: float = strobe_negative_amount
-	strobe_negative_amount = 0.0
-	hold_frame(FlashMode.NEGATIVE)
-	await get_tree().process_frame
-	## A real strobe may have started in that frame (its caller set `_holding` itself): leave it alone.
-	if strobe_negative_amount == 0.0:
-		clear()
-		strobe_negative_amount = saved_amount
-	_warming = false
+	_snapshot = ImageTexture.create_from_image(image)
+	_negative_material.set_shader_parameter("snapshot", _snapshot)
+	print_debug("[FLASH] snapshot %dx%d in %.1f ms" % [image.get_width(), image.get_height(), float(Time.get_ticks_usec() - t0) / 1000.0])
 
 
 ## Both canvases redraw together — only the one matching `flash_mode` paints.
@@ -233,7 +216,7 @@ func _draw() -> void:
 func _draw_negative() -> void:
 	if not _holding or flash_mode != FlashMode.NEGATIVE or _negative_material == null:
 		return
-	if strobe_negative_amount <= 0.001 and not _warming:
+	if strobe_negative_amount <= 0.001 or _snapshot == null:
 		return
 	_negative_material.set_shader_parameter("amount", strobe_negative_amount)
 	_negative_material.set_shader_parameter("desaturate", strobe_negative_desaturate)
@@ -265,4 +248,8 @@ func _visible_world_rect() -> Rect2:
 ## state a reload restores. Every strobe MUST end with this (see hold_frame()).
 func clear() -> void:
 	_holding = false
+	## The snapshot dies with its strobe: nothing screen-sized is held between detonations.
+	_snapshot = null
+	if _negative_material != null:
+		_negative_material.set_shader_parameter("snapshot", null)
 	_redraw_all()

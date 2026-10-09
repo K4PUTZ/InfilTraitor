@@ -77,8 +77,8 @@ static func tint_index(material_id: String) -> int:
 ## ── THE PANE TINTS (G-D16) ───────────────────────────────────────────────────
 ##
 ## ⚠️ THIS IS NOT `base_color`, AND CONFLATING THE TWO WOULD BE WRONG RATHER THAN
-## MERELY UNTIDY. A pane does not alpha-blend: `glass_pane3d.gdshader` MULTIPLIES this
-## colour over the scene behind it (the screen texture) and adds a sheen on top
+## MERELY UNTIDY. A pane does not alpha-blend: `glass_pane3d_mul.gdshader` MULTIPLIES this
+## colour over the scene behind it (blend_mul) and `glass_pane3d_add` adds a sheen on top
 ## (G-D1). It is a filter, not a paint. `base_color` is the opaque MULTIPLY a
 ## material's atom takes on the ordinary wall path — a different operation on a
 ## different surface — and the two have carried different values for base glass
@@ -86,7 +86,7 @@ static func tint_index(material_id: String) -> int:
 ## 0.47/0.63/0.90, the Director's calibrated "painel 005"). Reading the JSON here
 ## would silently repaint every pane in the game.
 ##
-## Index 0 MUST equal `glass_pane3d.gdshader`'s `glass_tint` default — two copies
+## Index 0 MUST equal `glass_pane3d_common.gdshaderinc`'s `glass_tint` default — two copies
 ## of one number, which is one too many, and no selftest pins them equal today,
 ## so change both or neither.
 ##

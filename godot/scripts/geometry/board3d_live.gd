@@ -201,8 +201,10 @@ float soot_tone(float code, int face, ivec3 vv) {
 	}
 	return 1.0;
 }
+// PB-6 (2026-10-09): the sRGB curve as a cubic (the usual fit, within ~0.003 of the exact piecewise curve on [0, 1]) instead of
+// three pow()s and a mix of both branches: 3.4 ms of GPU per frame on the Moto g04s at idle (SEG_BASE), for no visible change.
 vec3 srgb_to_linear(vec3 c) {
-	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
+	return c * (c * (c * 0.305306011 + 0.682171111) + 0.012522878);
 }
 void vertex() {
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -273,6 +275,17 @@ void fragment() {
 	}
 }
 """
+## PB-6 (2026-10-09): the same shader with the cutaway compiled OUT, for the faces the cutaway can never reach (the floor stack and
+## the bottom `OcclusionSet.BASE_VISIBLE_LEVELS` of every wall: the ghost starts above them). A shader that CAN `discard` turns off the
+## Mali's early hidden-surface removal (Forward Pixel Kill) for every pixel it draws, used or not: on the Moto g04s the board's
+## `discard` alone was 9.5 ms of GPU per frame at idle (SEG_BASE 27.9 -> 18.4 with it removed). Each non-glass material gets a twin
+## with this shader (`_solid_twin`), and the mesher gives the never-cut faces to the twin.
+static var SOLID_SHADER: String = OPAQUE_SHADER \
+	.replace("""	int cs = cut_state(v, FRAGCOORD.xy);
+	if (cs == 1) {
+		discard;
+	}
+	bool ghost = cs == 2; // GHOST_TOP""", "	bool ghost = false;")
 ## R3D-6 item 3 — damage decals: the opaque face shader's lighting and soot, with the face's colour
 ## replaced by one layer of the decal array (COLOR.r * 255 = the layer). The quad sits 0.02 voxel off
 ## its face, so the voxel lookup steps back 0.06 instead of 0.01 to stay in the voxel it decorates.
@@ -379,6 +392,17 @@ var _decal_material_index: int = -1
 var _surface_macro_tex: ImageTexture = null
 var _surface_macro_tried: bool = false
 var _material_index: Dictionary = {}
+## PB-6: material index -> its SOLID twin's index (the same material without the cutaway, see `SOLID_SHADER`), -1 for glass, the
+## decals and the twins themselves. The twin sits in `_material_ids` (id + `SOLID_SUFFIX`), `_material_glass` and `_shader_materials`
+## like any material, so every loop that sets uniforms reaches it; it is never in `_material_index`.
+var _solid_twin: PackedInt32Array = PackedInt32Array()
+var _warned_cut_below: bool = false
+## PB-6: the chunks the cutaway currently reaches (a ghosted column or a revealed roof GU in them): only these draw the
+## cuttable shader; every other chunk's surfaces point at the solid twins. Switched per occlusion update by material swap
+## (`_apply_chunk_cut`), never a remesh. `_chunk_surface_materials`: chunk -> the base material index of each mesh surface.
+var _cut_chunks: Dictionary = {}
+var _chunk_surface_materials: Dictionary = {}
+const SOLID_SUFFIX: String = "#solid"
 var _material_glass: Array[bool] = []
 var _shader_materials: Array[ShaderMaterial] = []
 ## R3D-PROPS: prop-mesh materials (`prop_mesh3d.gdshader`) kept lit by the same pass as the board's
@@ -815,8 +839,12 @@ func on_occlusion(occ_set) -> void:
 	var columns: Dictionary = occ_set.get_column_entries()
 	var bytes := PackedByteArray()
 	bytes.resize(size * size * 4)
+	var never_cut: int = _never_cut_below()
 	for column: Vector2i in columns:
 		var entry: Dictionary = columns[column]
+		if int(entry["min_level"]) < never_cut and not _warned_cut_below:
+			_warned_cut_below = true
+			push_warning("[Board3DLive] the cutaway ghosts level %d at column %s, below the solid-face line %d: those faces are on the SOLID twin and will not ghost (a wall standing below the ground plane?)" % [int(entry["min_level"]), column, never_cut])
 		var px: Vector2i = column + VoxelBoard.SOOT_PLANE_ORIGIN
 		if px.x < 0 or px.y < 0 or px.x >= size or px.y >= size:
 			continue
@@ -855,6 +883,7 @@ func on_occlusion(occ_set) -> void:
 		material.set_shader_parameter("roof_tex", _roof_texture)
 		material.set_shader_parameter("occ_on", 1 if not occ_set.is_empty() else 0)
 		material.set_shader_parameter("roof_on", 1 if not roof_gus.is_empty() else 0)
+	_update_cut_chunks(columns, roof_gus)
 	last_occ_usec[0] = Time.get_ticks_usec() - oc0
 	_rebuild_occlusion_lines(occ_set)
 
@@ -1320,6 +1349,16 @@ func _material(material_id: String) -> int:
 		_material_ids.append(material_id)
 		_material_glass.append(GlassMaterials.is_glass(material_id))
 		_shader_materials.append(_make_material(material_id))
+		_solid_twin.append(-1)
+		var index: int = _shader_materials.size() - 1
+		if not _material_glass[index] and material_id != DECAL_MATERIAL_ID:
+			var twin := _shader_materials[index].duplicate() as ShaderMaterial
+			twin.shader = BoardLook.shared_shader(SOLID_SHADER)
+			_material_ids.append(material_id + SOLID_SUFFIX)
+			_material_glass.append(false)
+			_shader_materials.append(twin)
+			_solid_twin.append(-1)
+			_solid_twin[index] = _shader_materials.size() - 1
 	return int(_material_index[material_id])
 
 
@@ -2028,6 +2067,7 @@ func _collect_and_merge_chunk(chunk: Vector2i) -> Dictionary:
 				planes[plane_key] = {}
 			(planes[plane_key] as Dictionary)[uv] = material
 			faces += 1
+	_give_never_cut_faces_to_twins(planes)
 	var t1: int = Time.get_ticks_usec()
 
 	var surfaces: Dictionary = {}  ## material → SurfaceData
@@ -2043,10 +2083,69 @@ func _collect_and_merge_chunk(chunk: Vector2i) -> Dictionary:
 		"collect_us": t1 - t0, "merge_us": t2 - t1}
 
 
+## PB-6: point a chunk's surfaces at the cuttable materials (`cut`) or at their solid twins. A surface already on a twin (a
+## never-cut face) or without one (glass, decals) is left as it is.
+func _apply_chunk_cut(chunk: Vector2i, cut: bool) -> void:
+	var node: MeshInstance3D = _chunk_nodes.get(chunk) as MeshInstance3D
+	if node == null or node.mesh == null:
+		return
+	var mats: PackedInt32Array = _chunk_surface_materials.get(chunk, PackedInt32Array())
+	for s: int in range(mini(mats.size(), node.mesh.get_surface_count())):
+		var base: int = mats[s]
+		var twin: int = _solid_twin[base] if base < _solid_twin.size() else -1
+		if twin < 0:
+			continue
+		node.mesh.surface_set_material(s, _shader_materials[base if cut else twin])
+
+
+## PB-6: the chunks the cutaway reaches now, from the occlusion set's columns and revealed roof GUs; the chunks that changed side
+## swap their materials.
+func _update_cut_chunks(columns: Dictionary, roof_gus: Dictionary) -> void:
+	var wanted: Dictionary = {}
+	for column: Vector2i in columns:
+		wanted[Vector2i(floori(float(column.x) / float(CHUNK_VOXELS)), floori(float(column.y) / float(CHUNK_VOXELS)))] = true
+	for gu: Vector2i in roof_gus:
+		for corner: Vector2i in [Vector2i(0, 0), Vector2i(7, 0), Vector2i(0, 7), Vector2i(7, 7)]:
+			var c: Vector2i = gu * 8 + corner
+			wanted[Vector2i(floori(float(c.x) / float(CHUNK_VOXELS)), floori(float(c.y) / float(CHUNK_VOXELS)))] = true
+	for chunk: Vector2i in _cut_chunks:
+		if not wanted.has(chunk):
+			_apply_chunk_cut(chunk, false)
+	for chunk: Vector2i in wanted:
+		if not _cut_chunks.has(chunk):
+			_apply_chunk_cut(chunk, true)
+	_cut_chunks = wanted
+
+
+## PB-6: the level from which the cutaway can ghost a voxel: a wall's ghost starts `BASE_VISIBLE_LEVELS` above its own base, and the
+## playable storey's walls stand on the ground plane. Below it, a face goes to its material's SOLID twin (no `discard`).
+func _never_cut_below() -> int:
+	return _ground_level + OcclusionSet.BASE_VISIBLE_LEVELS
+
+
+## PB-6: hand every face below `_never_cut_below()` to its material's solid twin, before the planes merge (so a merged quad never
+## spans the two). A side face's level is its uv's y, a top face's is its plane.
+func _give_never_cut_faces_to_twins(planes: Dictionary) -> void:
+	var limit: int = _never_cut_below()
+	for plane_key: Vector2i in planes:
+		var cells: Dictionary = planes[plane_key]
+		var top: bool = plane_key.x == Dir.TOP
+		if top and plane_key.y >= limit:
+			continue
+		for uv: Vector2i in cells:
+			if (plane_key.y if top else uv.y) >= limit:
+				continue
+			var material: int = cells[uv]
+			var twin: int = _solid_twin[material] if material < _solid_twin.size() else -1
+			if twin >= 0:
+				cells[uv] = twin
+
+
 ## The main-thread-only half: turn `SurfaceData` into a real `ArrayMesh`/`MeshInstance3D`
 ## and swap it into `_geometry_root`.
 func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 	var mesh := ArrayMesh.new()
+	var surface_materials := PackedInt32Array()
 	for material: int in surfaces:
 		var surface: SurfaceData = surfaces[material]
 		var arrays: Array = []
@@ -2059,6 +2158,7 @@ func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 		arrays[Mesh.ARRAY_INDEX] = surface.indices
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		mesh.surface_set_material(mesh.get_surface_count() - 1, _shader_materials[material])
+		surface_materials.append(material)
 	var previous: Node = _chunk_nodes.get(chunk)
 	if previous != null:
 		previous.queue_free()
@@ -2070,6 +2170,10 @@ func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_geometry_root.add_child(instance)
 		_chunk_nodes[chunk] = instance
+		_chunk_surface_materials[chunk] = surface_materials
+		_apply_chunk_cut(chunk, _cut_chunks.has(chunk))
+	else:
+		_chunk_surface_materials.erase(chunk)
 
 
 ## R3D-1c step 5 — `_build_chunk()`'s face pass, read from the store: a cell is drawn by

@@ -1207,6 +1207,17 @@ artifact in the project.**
 - Performance optimization (target 60 FPS on 5-year-old devices)
 - **Baking System cache + decals — final verification pass** *(Director-assigned
   2026-08-13; see the note below)*
+- **Offline cook of FIXED maps / segments — to consider** *(Director-assigned
+  2026-10-09)*. Write a fixed segment's `VoxelStore` and light-plane bytes at
+  export and load them instead of rebuilding: measured worth up to ~1.9 s of a
+  4.65 s Moto reload (store ~0.8 s + light apply ~1.1 s). Only for fixed specs
+  (a parametrised `get_spec(map_id, {connections, seed})` segment is built at run
+  time); every input must be hashed into the cooked file (map, materials, light
+  constants, code version) with a rebuild on mismatch, or stale bytes fail
+  silently; mind the APK size (~16 MB of store per HEAVY segment before
+  compression). The Director foresees a **hybrid** eventually: fixed segments
+  that the run can mutate (cooked base + checkpoint state laid over it, as today).
+  Evaluation: `PERFORMANCE_BUDGET_MASTER_PLAN` §0g.
 - **Pose and clothing bake cache** *(Director-assigned 2026-08-14)* — *"Vamos
   fazer o cache nas poses e roupas também se possível."* The character's frame
   catalog is far larger than the wall atlas it would extend: `CHARACTER_MASTER_PLAN`

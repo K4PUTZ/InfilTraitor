@@ -161,6 +161,8 @@ def main() -> int:
     ap.add_argument("--boots", type=int, default=1)
     ap.add_argument("--gpu-ablation", action="store_true", help="the GPU attribution rows (ABLATIONS) instead of the variants")
     ap.add_argument("--out", default="", help="also write the table (and the raw rows as JSON next to it)")
+    ap.add_argument("--max-pss-mib", type=int, default=0,
+                    help="PB-7: exit 1 when any row's TOTAL PSS peak is above this (1024 = the 1.0 GiB ceiling); handset only")
     args = ap.parse_args()
     if args.write:
         write_all()
@@ -195,6 +197,12 @@ def main() -> int:
     if args.out:
         Path(args.out).write_text(text + "\n")
         Path(args.out).with_suffix(".json").write_text(json.dumps(rows, indent=1) + "\n")
+    if args.max_pss_mib > 0:
+        over = [r for r in rows if r.get("pss_mib") is None or r["pss_mib"] > args.max_pss_mib]
+        for r in over:
+            print("[PB-7] %s: PSS %s MiB over the %d MiB ceiling (None = not read)" % (r["variant"], r.get("pss_mib"), args.max_pss_mib))
+        if over:
+            return 1
     return 0
 
 

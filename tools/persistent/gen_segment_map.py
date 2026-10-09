@@ -150,6 +150,8 @@ def build(spec: dict, map_id: str, w: int = W, h: int = H) -> dict:
             "Written by tools/persistent/gen_segment_map.py." % (w, h, len(rooms), min(spec["materials"], len(WALL_MATERIALS)),
                                                                  len(props), len(guards), len(lights), len(panels), len(roofs)))
     out["meta"] = {"title": "Segment %s" % map_id, "description": desc}
+    if map_id in ("SEG_LOW", "SEG_TYPICAL", "SEG_HEAVY"):
+        out["meta"]["segment"] = True   ## PB-7: the spec maps are segments, held to the budget by `segment_budget.py`
     out["description"] = desc
     sec = {k: json.loads(json.dumps(v)) for k, v in base["sections"].items()}
     sec["board"]["inner_size"] = [w, h]

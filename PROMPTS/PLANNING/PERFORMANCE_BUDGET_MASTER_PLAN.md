@@ -1,7 +1,9 @@
 # PERFORMANCE_BUDGET_MASTER_PLAN
 ## One content, many phones: the memory and time budget a segment has to fit — v0.3 (PB-0/1 ratified, PB-2 attributed and acted on)
 
-> **Status: 🟢 v0.4, 2026-10-09 (session record `PROMPTS/RESUMO_SESSAO_2026-10-09_PROJECT_EVALUATION.md`).** **The exit criterion is §0d** (Director). **PB-3 done, PB-4 done, PB-6 levers applied (§0f): on the Moto g04s the HEAVY segment now meets every measured part of §0d** — PSS 757 MiB, idle GPU 24.4 ms, hit-stop worst stage 152 ms, worst non-flash frame 81 ms, segment cycle flat — against 953 MiB / 39.4 ms / 332 ms in the first PB-3 round (§0e). Open: Q5 (the load time between segments: 11.9 s cold, ~7 s per reload on the Moto), the Galaxy A16 round (not attached), GLASS g1's intermittent pixel-gate difference (pre-existing). v0.3 below: PB-0/1 ratified, PB-2 attributed and acted on.
+> **Status: 🟢 v0.5, 2026-10-09 — PB-5 VERDICT: THE SEGMENT FITS ON BOTH HANDSETS; PB-7 BUILT.** HEAVY on the Moto g04s: PSS 757 MiB, idle GPU 24.4 ms, hit-stop worst stage 152 ms, load 7.6 s cold / 4.65 s reload (§0f, §0g); on the Galaxy A16: PSS 741 MiB, idle GPU 20.7 ms, blast worst 73 ms, load 3.4 s, reload ~1.6 s, segment cycle flat at 715-765 MiB (§0h). PB-7: `segment_budget.py` holds every segment map (`meta.segment: true`) to the HEAVY counts in `verify.py quick`; `pb3_study.py --max-pss-mib 1024` is the handset half. PB-8 (device profiles ultra / high / medium / low that switch features) moves to the last milestone (M7.0, Director). Open: GLASS g1's intermittent pixel-gate difference (0 px in every run of 2026-10-09 after `79febbcf`), the cooked segment (parked, M7.0 note).
+>
+> v0.4, 2026-10-09: PB-3, PB-4 and the PB-6 levers (§0e, §0f).
 >
 > v0.3, 2026-10-09 (session record `PROMPTS/RESUMO_SESSAO_2026-10-08_PERF_BUDGET_PB2.md`).** **PB-0 ratified** (§0b: Android 4 GB / Mali-G57 MP1 = the Moto g04s, 1.0 GiB TOTAL PSS at the peak; iOS A12 / 3 GB provisional). **PB-1 ratified** (§5, `segment_spec`, conservative). **PB-2 attributed and acted on** (§0c items 1-12): Android `Graphics` counts the Vulkan allocator's BLOCKS (32/64/128/256 MiB) and driver memory, and the two owners of the Galaxy's ~280 MiB jump were the glass pane's and the explosion flash's SCREEN READS — both replaced (screen-free glass, snapshot flash), plus facades as L8, dead cell-plane textures deleted, one Shader per source text. **Result, PLAYGROUND portrait: Moto PSS peak 890-914 MiB, Galaxy GL mtrack ~490 -> ~205 MiB (PSS ~785)** — both under the ceiling. Also built: the 30 fps default cap + an Options window (§0c, frame-cap study), the 3D aim dome and the cached aim update (§0c 11-12). **Resume at PB-3** (the marginal-cost table, segment-shaped maps) and PB-4 (the segment cycle); open questions in §6.
 >
@@ -269,6 +271,28 @@ seed})`), so an export-time cook only covers fixed maps. Gameplay is not touched
 Recommendation: park it until `LevelGraph` decides how segments are generated; the variant that fits procedural segments is preparing
 the NEXT segment's store + light on a worker while the current one is played (data only, ~20-40 MB, not the GPU), not a cook.
 
+## 0h. The Galaxy A16 round and the PB-5 verdict (2026-10-09, release APK at `99f8f4c1`, uncapped, zoom 0.5 portrait)
+
+| Spec | load s | PSS MiB | GL MiB | native MiB | idle GPU ms | blast worst ms |
+|---|---|---|---|---|---|---|
+| LOW (2 boots; the first boot after the install read a 231 ms blast, the documented first-boot noise) | 2.8 | 707-710 | 286-288 | 321 | 18.6 | 64-66 |
+| TYPICAL | 3.4 | 747 | 287 | 280 | 21.6 | 128 |
+| HEAVY | 3.4 | 741 | 291 | 343 | 20.7 | 73 |
+
+Segment cycle (TYPICAL, a blast, then five `reload` + blast cycles): PSS 684-766 MiB, flat; reload (stage 11 -> 40) 1.55-1.65 s.
+Tables: `docs/measurements/pb3_galaxy_2026-10-09.md` (logs `device_pb3_R5CY81_*.log`, git-ignored).
+
+**PB-5 verdict (Director, 2026-10-09): every spec FITS §0d on both handsets with no device profile.** The margin under the 1.0 GiB
+ceiling is ~260 MiB on the Moto and ~280 MiB on the Galaxy; the Galaxy's load peak does not reach the 1.2 GiB of the 2026-10-08 round.
+PB-8 is not needed to fit: device profiles (ultra / high / medium / low, switching features) are a last-milestone item (M7.0), once the
+features exist.
+
+**PB-7 (built):** `tools/persistent/segment_budget.py`, step `segment-budget` of `verify.py quick`. A map that declares
+`"meta": {"segment": true}` may not exceed HEAVY in footprint, guards, props, lights, glass (GU x storeys), materials in use or roofs;
+the gate runs its own self-test first (HEAVY passes, HEAVY + 1 of each kind and a wider footprint fail). It is valid because HEAVY was
+measured to fit; a change of COST (a heavier model, a new shader, a new kind) is re-measured with
+`pb3_study.py --device <serial> --only HEAVY --max-pss-mib 1024` (exit 1 above the ceiling).
+
 ## 1. The principle: ONE content, N profiles
 
 Every multi-device game ships quality tiers; the cost is acceptable when a tier is a DERIVATION (texture size, density, particle counts, LOD set at import / export / boot from the same authored content) and unacceptable when it is a second hand-authored version. Authoring rule that follows: content is authored once, at the fidelity of the pipeline already canon (facade 1024×512 grayscale, props through slots and their budgets, 16 texels per voxel), and every per-device reduction lives in a profile.
@@ -295,10 +319,10 @@ A rule of thumb used only to frame the Director's choice, NOT a measurement: a f
 | **PB-2** ✅ (2026-10-09, §0c) | **Attribute Graphics on the desktop**, per load stage: textures vs buffers vs render targets, by category (facades, decals, board meshes, cell planes, actors, props). `RenderingServer` info works on the desktop; the handset confirms only the total (`GL mtrack`). The `MEM_STAGES=1` markers exist (`mem_stage.gd`). | Claude, desktop | a table: who owns the +255 MiB and the 590 MiB plateau |
 | **PB-3** ✅ (2026-10-09, §0e/§0f) | **Marginal-cost table** on the Galaxy and the Moto: extend `scale_study.py` to read PSS / RSS / load time and vary ONE thing at a time on segment-shaped synthetic maps (18×36 footprint): props (0 / 30 / 60 / 120, per tier), guards (0 / 6 / 12 / 24), lights, materials in use, glass panes, roofs. | Claude, handsets | "+10 props = X MiB, Y ms load" per kind |
 | **PB-4** ✅ (2026-10-09, §0f: flat) | **The segment cycle**: load and unload N segments in a row (scenario `reload` / `load_map`), PSS and RSS must stay FLAT, plus the load time and the transient native peak per segment on both handsets (the 6 s load above is the number to beat or hide). The game unloads and reloads segments for the whole run, so a leak or fragmentation that a single load never shows is a bug here. **Known leak to fold in (found 2026-10-09, pre-existing):** a throw scenario that quits 9 s after the throw ends with `ObjectDB instances leaked at exit` + `8 resources still in use at exit` (desktop: `INFILTRAITOR_MAP=PLAYGROUND INFILTRAITOR_RNG_SEED=1 INFILTRAITOR_SCENARIO="wait 5; aim 9,11; frames 5; aim 11,12; frames 5; throw 0 11,12; wait 9; quit"`, add `--verbose` for the names); the same with the code before AIM-DOME-3D. Find the owner (a static, a cache, a RefCounted cycle, a node the detonation never frees) and show red-before-green on that scenario: a leak per grenade is a leak per segment. | Claude, handsets | a flat-or-not verdict + load seconds per device |
-| **PB-5** | **The verdict**: PB-1's specs × PB-3's marginal costs, against PB-0's ceiling and the fixed cost. Fits / fits with a profile / does not fit. | Claude with the Director | one table, one decision |
+| **PB-5** ✅ (2026-10-09, §0h: fits on both handsets) | **The verdict**: PB-1's specs × PB-3's marginal costs, against PB-0's ceiling and the fixed cost. Fits / fits with a profile / does not fit. | Claude with the Director | one table, one decision |
 | **PB-6** 🟡 (begun 2026-10-08/09: facades L8, dead per-level plane textures, one Shader per source text, screen-free glass, snapshot flash, the aim's edge-set cache — §0c; NOT yet: the plane sized to the map, decal arrays, mesh budgets) | **Levers, one at a time, each measured** (only if PB-5 says so), in order of saving per loss of quality: (1) texture size and mipmaps per device tier (facades, decals); (2) the cell planes (512×512 for an 18×36 segment + ring is 224×368 cells: check a non-square or smaller plane); (3) the load staging (the native peak of ~450 MiB); (4) instance sharing of props and actors; (5) mesh budgets per prop slot. `COSMETIC_DENSITY` is measured NOT to be one. | Claude | each lever: MiB saved, ms, look change (capture) |
-| **PB-7** | **Enforcement**: a per-segment memory budget checked the way `apk_audit.py --max-mb` checks the package (and the prop slot budgets of `PropValidator`), so new content cannot silently exceed the ceiling; a tier of `verify.py` or a standalone gate. | Claude | the check + its place in `verify.py` |
-| **PB-8** 🟡 (first members: `FrameRate` — 30 default / 60 / uncapped in Options; candidate value: 3D render scale 0.7-0.8 for weak devices, Director 2026-10-09) | **The device-profile mechanism** (texture tier, density, particle caps from one setting at boot, default by device class). Built only if PB-5 needs it; `CosmeticDensity` is its first member. | Claude | `DeviceProfile` + the per-device defaults |
+| **PB-7** ✅ (2026-10-09, §0h: `segment_budget.py` in `verify.py quick`) | **Enforcement**: a per-segment memory budget checked the way `apk_audit.py --max-mb` checks the package (and the prop slot budgets of `PropValidator`), so new content cannot silently exceed the ceiling; a tier of `verify.py` or a standalone gate. | Claude | the check + its place in `verify.py` |
+| **PB-8** ⏭️ MOVED TO M7.0 (Director 2026-10-09: ultra / high / medium / low profiles switching features, once everything exists) 🟡 (first members: `FrameRate` — 30 default / 60 / uncapped in Options; candidate value: 3D render scale 0.7-0.8 for weak devices, Director 2026-10-09) | **The device-profile mechanism** (texture tier, density, particle caps from one setting at boot, default by device class). Built only if PB-5 needs it; `CosmeticDensity` is its first member. | Claude | `DeviceProfile` + the per-device defaults |
 
 **Order and parallelism:** PB-0 and PB-1 first (the Director's input; nothing else makes sense without them). PB-2 and PB-3 need no Director input and can start the moment PB-1 names the content kinds. PB-4 is independent and cheap: it can run any time. PB-5 closes the study; PB-6 to PB-8 are conditional.
 

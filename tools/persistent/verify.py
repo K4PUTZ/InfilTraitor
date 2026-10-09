@@ -83,6 +83,7 @@ def steps_for(tier: str, have_baseline: bool):
         ("invariants", False, sh("check_invariants.py")),
         ("codemap", False, sh("gen_codemap.py", "--check")),
         ("surfaces", False, sh("check_surface.py", "--declared")),
+        ("segment-budget", False, sh("segment_budget.py")),
         ("selftests", False, sh("run_selftests.py")),
     ]
     if tier == "docs":

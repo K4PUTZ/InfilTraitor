@@ -1207,6 +1207,12 @@ artifact in the project.**
 - Performance optimization (target 60 FPS on 5-year-old devices)
 - **Baking System cache + decals — final verification pass** *(Director-assigned
   2026-08-13; see the note below)*
+- **Device profiles: ultra / high / medium / low** *(Director-assigned 2026-10-09)*
+  — one setting that switches features on and off per device class (texture
+  tier, cosmetic density, particle caps, render scale, ...), built when the
+  features exist. `PERFORMANCE_BUDGET_MASTER_PLAN` PB-8 (the mechanism's first
+  members are `CosmeticDensity` and `FrameRate`); PB-5 measured that the segment
+  fits both handsets WITHOUT a profile, so this is quality headroom, not a fit.
 - **Offline cook of FIXED maps / segments — to consider** *(Director-assigned
   2026-10-09)*. Write a fixed segment's `VoxelStore` and light-plane bytes at
   export and load them instead of rebuilding: measured worth up to ~1.9 s of a

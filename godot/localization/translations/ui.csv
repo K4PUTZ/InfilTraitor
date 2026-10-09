@@ -22,3 +22,8 @@ ui.showcase.item.shotgun_breaching_desc,Short-stock pump-action. Close-range wal
 ui.context_menu.detonate,Detonate (Enter),Detonar (Enter)
 ui.context_menu.cancel,Cancel (Esc),Cancelar (Esc)
 ui.context_menu.fire,Fire (Enter),Atirar (Enter)
+ui.options.title,OPTIONS,OPÇÕES
+ui.options.frame_rate,FRAME RATE,TAXA DE QUADROS
+ui.options.fps_n,%d FPS,%d FPS
+ui.options.fps_uncapped,UNCAPPED,SEM LIMITE
+ui.options.language,LANGUAGE,IDIOMA

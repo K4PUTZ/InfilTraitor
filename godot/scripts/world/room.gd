@@ -1770,6 +1770,7 @@ var _hud_controller: Node = null
 
 ## PAUSE-MENU-01: Main menu panel
 var _main_menu_panel: Node = null
+var _options_panel: OptionsPanel = null
 
 ## PAUSE-MENU-02: Controls panel
 var _controls_panel: Node = null
@@ -2387,6 +2388,7 @@ func _ready() -> void:
 	_main_menu_panel.reset_requested.connect(_on_hud_reset_requested)
 	_main_menu_panel.controls_requested.connect(_on_controls_requested)
 	_main_menu_panel.showcase_requested.connect(_on_showcase_requested)
+	_main_menu_panel.settings_requested.connect(_on_options_requested)
 	_main_menu_panel.hide() # Hidden by default
 	## ESC-STACK-01: pause is a side effect of the panel actually being open,
 	## not of the keypress that opened it — fires the same way whether it
@@ -2407,6 +2409,13 @@ func _ready() -> void:
 	## Controls, revealing Main Menu still open; a second Escape closes that.
 	_controls_panel.opened.connect(func(): _modal_stack.push(_controls_panel.close))
 	_controls_panel.closed.connect(func(): _modal_stack.remove(_controls_panel.close))
+
+	## OPTIONS-01: the Options window, on top of the open Main Menu, like Controls (first Escape closes only it).
+	_options_panel = OptionsPanel.new()
+	$HUD.add_child(_options_panel)
+	_options_panel.hide()
+	_options_panel.opened.connect(func(): _modal_stack.push(_options_panel.close))
+	_options_panel.closed.connect(func(): _modal_stack.remove(_options_panel.close))
 
 	## ACTOR_MASTER_PLAN D20/Part 5a: Showcase screen (live 3D inspection window).
 	var ShowcasePanelClass = preload("res://godot/scripts/ui/showcase_panel.gd")
@@ -11257,6 +11266,10 @@ func _on_grenade_cancel_requested() -> void:
 
 func _on_controls_requested() -> void:
 	_controls_panel.open()
+
+
+func _on_options_requested() -> void:
+	_options_panel.open()
 
 
 func _on_showcase_requested() -> void:

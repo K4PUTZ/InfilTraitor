@@ -80,7 +80,19 @@ func _ready() -> void:
 	_setup_button(_btn_quit, "ui.main_menu.quit", _on_quit_pressed)
 	
 	_btn_load.disabled = true
-	_btn_options.disabled = true
+	## OPTIONS-01: the language can change from Options while this menu is open beneath it.
+	var localization: Node = get_node_or_null("/root/Localization")
+	if localization != null:
+		localization.language_changed.connect(func(_locale: String) -> void: _apply_texts())
+
+
+func _apply_texts() -> void:
+	title = tr("ui.main_menu.title")
+	_lbl_title.text = title
+	for pair: Array in [[_btn_resume, "ui.main_menu.resume"], [_btn_new_game, "ui.main_menu.new_game"],
+			[_btn_load, "ui.main_menu.load"], [_btn_controls, "ui.main_menu.controls"],
+			[_btn_showcase, "ui.main_menu.showcase"], [_btn_options, "ui.main_menu.options"], [_btn_quit, "ui.main_menu.quit"]]:
+		(pair[0] as Button).text = tr(pair[1])
 
 ## ESC-STACK-01: "Resume" starts focused so Enter advances immediately —
 ## same native Button/ui_accept mechanism DetonateContextMenu already relies

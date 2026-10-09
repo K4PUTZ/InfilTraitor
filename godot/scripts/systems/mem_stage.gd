@@ -58,9 +58,7 @@ static func mark(label: String) -> void:
 	## PERFORMANCE_BUDGET PB-2 (2026-10-08): the engine's own VRAM counters DO read on the Android release build now
 	## (Galaxy A16: video 247 MiB, texture 203 MiB at PLAYGROUND), so every stage prints them beside the process numbers.
 	print("[MEM-STAGE] %-34s vram: texture %.1f · buffer %.1f · video %.1f MiB" % [label,
-		Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0,
-		Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / 1048576.0,
-		Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0])
+		_rd_mib(RenderingDevice.MEMORY_TEXTURES), _rd_mib(RenderingDevice.MEMORY_BUFFERS), _rd_mib(RenderingDevice.MEMORY_TOTAL)])
 	var stats: Dictionary = _read_proc_self_status()
 	if stats.is_empty():
 		## ⚠️ ANDROID CANNOT USE THE PER-PROCESS READER, measured 2026-09-12:
@@ -162,3 +160,29 @@ static func _read_proc_self_status() -> Dictionary:
 			if digits.is_valid_int():
 				out[key] = int(digits)
 	return out
+
+
+## The rendering device's allocator, read NOW (the `RenderingServer` / `Performance` counters refresh once per drawn frame,
+## and the whole map load happens before one is drawn). -1 when there is no rendering device (Compatibility, headless).
+static func _rd_mib(kind: RenderingDevice.MemoryType) -> float:
+	var rd: RenderingDevice = RenderingServer.get_rendering_device()
+	return float(rd.get_memory_usage(kind)) / 1048576.0 if rd != null else -1.0
+
+
+static var _trace_frames: int = 0
+static var _trace_last: float = 0.0
+static var _trace_peak: float = 0.0
+
+
+## PB-2: the first 600 frames after boot, one line whenever the allocator's total moves by 2 MiB or more, plus the
+## running peak: the first frames upload, compile and allocate render buffers the load itself never touched.
+static func trace_frame() -> void:
+	if not enabled or _trace_frames >= 600:
+		return
+	_trace_frames += 1
+	var total: float = _rd_mib(RenderingDevice.MEMORY_TOTAL)
+	_trace_peak = maxf(_trace_peak, total)
+	if absf(total - _trace_last) >= 2.0:
+		print("[MEM-TRACE] frame %d  vram total %.1f MiB (textures %.1f, buffers %.1f)  peak %.1f" % [_trace_frames, total,
+			_rd_mib(RenderingDevice.MEMORY_TEXTURES), _rd_mib(RenderingDevice.MEMORY_BUFFERS), _trace_peak])
+		_trace_last = total

@@ -53,7 +53,7 @@ static func report(root: Node, label: String) -> void:
 			var tcat: String = _texture_category(tex, cat)
 			tex_bytes[tcat] = int(tex_bytes.get(tcat, 0)) + b
 			tex_count[tcat] = int(tex_count.get(tcat, 0)) + 1
-			top.append([b, "%s %s (%s)" % [tex.get_class(), _tex_desc(tex), tcat]])
+			top.append([b, "%s %s (%s) gpu %s" % [tex.get_class(), _tex_desc(tex), tcat, _gpu_desc(tex)]])
 		for mesh: Mesh in _meshes_of(node):
 			var rid_id: int = mesh.get_rid().get_id()
 			if rid_id == 0 or seen.has(rid_id):
@@ -311,3 +311,16 @@ static func _print_shaders(nodes: Array[Node]) -> void:
 				by_code[h] = int(by_code.get(h, 0)) + (0 if by_rid.has(-sh.get_rid().get_id()) else 1)
 				by_rid[-sh.get_rid().get_id()] = true
 	print("[GFX-CENSUS] shaders: %d distinct Shader resources, %d distinct source texts" % [by_rid.size() / 2, by_code.size()])
+
+
+## What the GPU actually holds for a texture: the RenderingDevice format, size, mipmaps and layers. The CPU image can be
+## RGB8 or L8 while the device stores RGBA8 (a format the driver does not support is converted at upload).
+static func _gpu_desc(tex: Texture) -> String:
+	var rd: RenderingDevice = RenderingServer.get_rendering_device()
+	if rd == null:
+		return "?"
+	var rd_rid: RID = RenderingServer.texture_get_rd_texture(tex.get_rid())
+	if not rd_rid.is_valid():
+		return "?"
+	var f: RDTextureFormat = rd.texture_get_format(rd_rid)
+	return "fmt %d %dx%d mips %d layers %d" % [f.format, f.width, f.height, f.mipmaps, f.array_layers]

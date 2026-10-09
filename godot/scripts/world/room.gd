@@ -1860,6 +1860,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	VoxelStore.active = null
 	_room_builder.build_from_layout(view_layout, room_size)
 	_rebuild_voxel_store("map load: %s" % new_map_id)
+	MemStage.mark("12 voxel store built")
 	## VL-D3: floor columns under structure, from the intact just-built geometry.
 	_under_structure = _voxel_board.columns_with_structure()
 	_room_size = room_size
@@ -1992,6 +1993,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	assert(agent.z_index < 200, "Agent z_index must stay below dev overlay (200)")
 	
 	_spawn_guards(view_layout.get("enemy_defs", []))
+	MemStage.mark("20 agent + guards spawned")
 	enemies_root.z_index = 10
 	
 	## Sync game state to TurnController
@@ -2027,6 +2029,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 
 	tile_labels_overlay.queue_redraw()
 	_lighting_controller.rebuild_all()
+	MemStage.mark("25 lighting rebuilt")
 	if _ceiling_overlay != null:
 		_ceiling_overlay.set_lights(_current_light_sources)
 	_agent_trail.clear()
@@ -2041,6 +2044,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_update_alert_label()
 	_update_guard_los_data()
 	_populate_test_zone_if_playground()
+	MemStage.mark("30 test zone populated")
 
 	## DIAG-09 §1 — the cheapest question that could falsify the memory
 	## hypothesis: how much graphics memory is already committed with the map
@@ -2049,6 +2053,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## DIAG-21 (DEVICE_DIAGNOSTICS §15.7) — the loaded board is drawn as 3D meshes read from the live registries.
 	## R3D-END: it is the only board (the 2D voxel board was deleted; `34881f81` is the last commit that has it).
 	_start_board3d_live()
+	MemStage.mark("35 3D board built")
 	## OCC-FIX-02's header claims map load as one of "exactly three places" this runs from,
 	## but the call was never actually here: the PREVIOUS map's `_occlusion_set` (built
 	## against slices/registries this load just replaced) kept being handed to the fresh
@@ -6690,6 +6695,7 @@ func _telemetry_view_tick() -> void:
 
 
 func _process(_delta: float) -> void:
+	MemStage.trace_frame()
 	_sync_dev_overlay_view()
 	if _test_zone_controller != null:
 		_test_zone_controller.fuse_fx_tick(_delta)

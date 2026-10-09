@@ -67,6 +67,19 @@ is drawn, which is why every `MemStage` mark during the load prints 0).
    (the 256 MiB block never opens), **TOTAL PSS peak 890-914 MiB: inside the 1.0 GiB ceiling**, against 945-1 304 MB in
    the earlier rounds.
 
+6. **Live allocator reads (2026-10-08, later):** `MemStage` now reads `RenderingDevice.get_memory_usage()` (the
+   `RenderingServer` / `Performance` counters refresh once per DRAWN frame, and the whole load happens before one), with
+   marks 12 / 20 / 25 / 30 / 35 inside `load_map()` and `[MEM-TRACE]` for the first 600 frames; `gfx_census` prints each
+   texture's GPU format. **Moto, PLAYGROUND:** everything before the 3D board is 11.5 MiB; **`_start_board3d_live()` takes
+   it to 83.5** (GL mtrack 67 -> 199: the first blocks open there); frame 2 peaks at 133.1, steady 140.8. Textures 107.6 on
+   the Moto against ~50 on the desktop with the SAME scene textures (identical list and GPU formats: facades R8, planes
+   RGBA8 512²×26, decals RGBA8 256²×42 with mips): **the difference is screen-sized buffers, ~50 B per pixel on the device**
+   (~14 B/px measured on the desktop). `SCALE_3D=0.5` takes textures 107.6 -> 89.5: **~25 MiB of it is the 3D view's own
+   buffers** at full resolution; the other ~45 is on the canvas / screen-copy side (the flash's warm screen copy is ~6 of
+   it). GL mtrack sits 60-95 MiB over the engine total on the Moto (block slack, never the 256 block).
+   **The Galaxy's open item is unchanged and needs the handset:** whether its load peaks past ~215 MiB (opening the 256
+   MiB block that then stays) — the `[MEM-TRACE]` peak answers it in one run.
+
 **Frame-rate cap study (Director, 2026-10-08; Moto g04s, PLAYGROUND, zoom 0.2, grenade 0 centred; `MAX_FPS=<n>` flag;
 videos `videos/fps_z02_<n>.mp4`, local):**
 

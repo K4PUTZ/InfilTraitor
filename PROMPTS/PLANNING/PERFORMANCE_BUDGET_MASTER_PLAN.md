@@ -80,6 +80,17 @@ is drawn, which is why every `MemStage` mark during the load prints 0).
    **The Galaxy's open item is unchanged and needs the handset:** whether its load peaks past ~215 MiB (opening the 256
    MiB block that then stays) — the `[MEM-TRACE]` peak answers it in one run.
 
+7. **Galaxy A16 trace (2026-10-08, night): the 256 MiB block is NOT opened by the engine's use.** GL mtrack goes 201 ->
+   480 MiB DURING `_start_board3d_live()`, while the engine's allocator holds 89 MiB (peak over the first frames 193.6,
+   steady 193.5): the jump is driver memory the engine does not count. Sharing one Shader per source text (20 -> 13
+   resources, `466dcb98`, 0 px) moved GL 470-535 -> 458-522 and PSS 1 088-1 152 -> 1 035-1 099: real but small, not
+   the cause. **The 3D render-scale lever does NOT touch it** (Galaxy, landscape, zoom 0.6, same scene): `SCALE_3D` 1.0 /
+   0.7 FSR / 0.7 bilinear / 0.5 FSR read engine video 164.9 / 153.0 / 153.0 / 149.5 MiB and GL max 484 / 476 / 479 /
+   475 MiB, PSS max 1 095 / 1 091 / 1 094 / 1 088. Captures (local, `Screenshots/lever_*.png`): 0.7 is slightly softer,
+   0.5 shows stair-stepped voxel edges. **Verdict: restricting large screens buys ~12 MiB and costs sharpness: not worth
+   it.** Next: what the driver allocates while the board is built (pipelines per material variant, the meshes' upload
+   path), bisecting `_start_board3d_live()` with live GL reads.
+
 **Frame-rate cap study (Director, 2026-10-08; Moto g04s, PLAYGROUND, zoom 0.2, grenade 0 centred; `MAX_FPS=<n>` flag;
 videos `videos/fps_z02_<n>.mp4`, local):**
 

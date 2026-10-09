@@ -142,6 +142,21 @@ is drawn, which is why every `MemStage` mark during the load prints 0).
     once, the lat/long grid and the wall section in its shader from the nearby wall segments as uniforms, the wall patches as
     a few quads), so moving the target sets uniforms instead of re-tessellating.
 
+12. **AIM-DOME-3D + aim update (Director, 2026-10-09: "refaz o domo em 3D e otimiza o cálculo do alvo").** The dome is 3D
+    geometry now: a unit hemisphere shell and floor disc built once, one quad per wall that reaches it, and the section
+    decided per pixel in `aim_dome3d*.gdshader` from the nearby walls as uniforms (the CPU's ~900 rays and thousands of
+    polyline points per redraw are gone). Five passes, priorities 0-4 under the rays' 5: volume (front faces: one entry
+    surface per pixel, so no doubled seam), floor section, grid, wall patches, rim. Lines keep the 2D widths (canvas px at
+    zoom 1 -> render-target px through the ortho projection). Side by side with the 2D dome on four views (open floor, cut
+    by the back block, by the metal block's side, view E; local `Screenshots/aim_dome_cmp.png`): same shape, cuts, patches
+    and grid. The aim update's dominant cost was `_clamp_gu_to_throw_range()` rebuilding `room._movement_edge_set()` (every
+    wall edge of the map, a string key each) on every move, and the flood rebuilding `_blocked_edges_dict()`: both are now
+    cached for the aim by `room._world_revision`. **Galaxy A16, target moving every 3 frames, uncapped: aim update 1.55-2.87
+    -> 0.42-0.82 ms/frame, dome 1.18-2.92 -> 0.09-0.22 ms/frame, frame 17.8-22.0 -> 17.0-18.1 ms; the dome's GPU ~+1.2 ms
+    (the 2D one ~+1.6).** Desktop: aim update 1.24-1.63 -> 0.27-0.38 ms/frame (clamp 0.9-1.1 -> 0.02). `verify.py look`
+    0 px. Pre-existing, not from this: a throw scenario that quits 9 s after the throw reports 8 resources still in use at
+    exit (same on the code before the change).
+
 **Frame-rate cap study (Director, 2026-10-08; Moto g04s, PLAYGROUND, zoom 0.2, grenade 0 centred; `MAX_FPS=<n>` flag;
 videos `videos/fps_z02_<n>.mp4`, local):**
 

@@ -11103,6 +11103,11 @@ func scenario_aim(cell: Vector2i) -> bool:
 		push_error("[Room] scenario_aim: no TestZoneController — dev grenades exist on PLAYGROUND only")
 		return false
 	_seed_dev_grenades_if_empty("SCENARIO")
+	## `SHOT_AGENT_CELL` places the agent first, as `scenario_shoot()` does: the aim is clamped to the throw range FROM the agent,
+	## so a capture of the dome against a given wall needs the agent near it.
+	var agent_xy: PackedStringArray = _dev_flag("SHOT_AGENT_CELL", "").split(",")
+	if agent_xy.size() == 2 and agent_xy[0].is_valid_int() and agent_xy[1].is_valid_int():
+		agent.set_cell(Vector2i(agent_xy[0].to_int(), agent_xy[1].to_int()))
 	_test_zone_controller.enter_grenade_mode()
 	if not _test_zone_controller.is_in_targeting_mode():
 		push_error("[Room] scenario_aim: targeting did not open")

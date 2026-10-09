@@ -526,6 +526,7 @@ func _set_targeting_target_body(cell: Vector2i) -> void:
 	if not _targeting_mode or _targeting_grenade_index < 0:
 		return
 
+	var _t: int = Time.get_ticks_usec()
 	var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
 	if bomb_def == null:
 		push_error("[TestZoneController] targeting: bomb '%s' is not in the registry" % BOMB_ID)
@@ -557,13 +558,16 @@ func _set_targeting_target_body(cell: Vector2i) -> void:
 		else:
 			room._throw_perimeter_overlay.clear()
 
+	_t = _split("aim: start", _t)
 	_targeting_target_gu = _clamp_gu_to_throw_range(cell, origin_gu)
+	_t = _split("aim: clamp", _t)
 	## He faces what he is about to throw at, and re-faces when the aim moves.
 	## `face_direction()` owns the reduction to D44's four facings, so an
 	## arbitrary GU delta is the right thing to hand it.
 	if room.agent.sprite != null and _targeting_target_gu != origin_gu:
 		room.agent.sprite.face_direction(_targeting_target_gu - origin_gu)
 	var target_pos: Vector2 = room.agent._cell_to_world(_targeting_target_gu)
+	_t = _split("aim: face", _t)
 
 	## E-BUBBLE: the dome. A fixed geometric shape, NOT the predicted footprint —
 	## see aim_bubble_overlay.gd's header for why the Director ruled that out.
@@ -576,12 +580,14 @@ func _set_targeting_target_body(cell: Vector2i) -> void:
 	if room._aim_bubble_overlay != null:
 		room._aim_bubble_overlay.show_dome(target_pos, aim_dome_radius_gu,
 			_targeting_target_gu, room._blast_wall_height_edges())
+	_t = _split("aim: dome", _t)
 
 	## The throw leaves the agent's HANDS, not their feet — the perimeter is a
 	## ground shape but the arc is not.
 	if room._throw_arc_overlay != null:
 		room._throw_arc_overlay.set_launch_height(room.agent.throw_launch_height())
 		room._throw_arc_overlay.show_arc(room.agent.throw_origin(), target_pos)
+	_t = _split("aim: arc", _t)
 
 	## ⚠️ PRE-PRODUCTION STARTS HERE NOW, not on the throw.
 	##
@@ -601,16 +607,19 @@ func _set_targeting_target_body(cell: Vector2i) -> void:
 	## too: the target can change between the select and the confirm, and a
 	## second call on an unchanged target is a cache hit rather than a re-run.
 	_begin_preproduction(_targeting_target_gu)
+	_t = _split("aim: preproduction", _t)
 
 	## The SAME wall-aware BFS the real blast floods with feeds both the rays and
 	## the highlighted footprint, so a cell the grenade cannot reach gets neither.
 	## Cheap enough to redo per hover: `max_ring` is 3, so this walks ~25 cells.
 	var gu_rings := _damaging_rings(BlastCalculatorClass.flood_gu_rings(
-		_targeting_target_gu, bomb_def, _blocked_edges_dict(), room._blocked_cells), bomb_def)
+		_targeting_target_gu, bomb_def, _aim_edges()[1], room._blocked_cells), bomb_def)
+	_t = _split("aim: flood", _t)
 
 	## T-FRAG: the shrapnel rays.
 	if room._shrapnel_preview_overlay != null:
 		room._shrapnel_preview_overlay.show_rays(_targeting_target_gu, gu_rings)
+	_t = _split("aim: rays", _t)
 
 	## T-FILL: the affected GUs, at the base of the dome — Director: "assim como
 	## no Phoenix Point, vamos realçar as GUs afetadas pela granada, para indicar
@@ -630,6 +639,15 @@ func _set_targeting_target_body(cell: Vector2i) -> void:
 		room._target_cursor_overlay.show_at(target_pos)
 	if room.selection_overlay != null:
 		room.selection_overlay.visible = false
+	_split("aim: footprint + cursor", _t)
+
+
+## FrameSplit attribution of one piece of the aim update; returns the new start time.
+func _split(label: String, since: int) -> int:
+	var now: int = Time.get_ticks_usec()
+	if FrameSplit.enabled:
+		FrameSplit.add(label, now - since)
+	return now
 
 
 ## Throw the grenade at the target the preview is showing.
@@ -744,7 +762,7 @@ func _damaging_rings(gu_rings: Dictionary, bomb_def) -> Dictionary:
 ## gap between two wall corners.
 func _clamp_gu_to_throw_range(target_gu: Vector2i, origin_gu: Vector2i) -> Vector2i:
 	var reach: float = effective_throw_range_gu()
-	var edges: Dictionary = room._movement_edge_set()
+	var edges: Dictionary = _aim_edges()[0]
 	## A grenade flies OVER a prop it clears (Director, 2026-09-29): the arc is the one the player is shown
 	## (`ThrowArcOverlay.height_at`), asked at the fractions of the way where the line crosses the prop, against the
 	## prop's real top (`Room.prop_top_px`). The arc's apex depends on how far the throw goes, so the answer is
@@ -1792,6 +1810,23 @@ func cancel_active() -> void:
 ## Director, 2026-09-07: a broken wall / gone pane *"continua sendo considerada"* —
 ## `_current_blocked_edges` is the compiled MAP, never updated by damage, and both
 ## the wireframe footprint and the real detonation flooded off it.
+## AIM-PERF (2026-10-09): the two map-wide edge sets the aim reads on EVERY move of the target — `room._movement_edge_set()`
+## for the throw clamp and `_blocked_edges_dict()` for the damage flood — each rebuilt from every wall edge of the map with a
+## string key per edge: ~70 % of an aim update (FrameSplit, desktop: clamp 0.9-1.1 of 1.2-1.6 ms/frame while the target
+## moves). Neither changes while the player aims; a blast that opens a passage or shatters a pane is a committed mutation and
+## bumps `room._world_revision`, which is what this cache is keyed on. Both consumers (`BlastCalculator.throw_line_clamp`,
+## `flood_gu_rings`) only read them. [movement edges, blocked edges].
+var _aim_edges_cache: Array = []
+var _aim_edges_revision: int = -1
+
+
+func _aim_edges() -> Array:
+	if _aim_edges_cache.is_empty() or _aim_edges_revision != room._world_revision:
+		_aim_edges_cache = [room._movement_edge_set(), _blocked_edges_dict()]
+		_aim_edges_revision = room._world_revision
+	return _aim_edges_cache
+
+
 func _blocked_edges_dict() -> Dictionary:
 	var blocked: Dictionary = {}
 	for e in room._current_blocked_edges:

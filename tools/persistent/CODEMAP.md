@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**280 scripts · 83580 lines total** (under `godot/scripts/`)
+**280 scripts · 83206 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1394,50 +1394,9 @@ extends `Node3D` · 2614 lines
 
 ### `aim_bubble_overlay.gd`
 
-`class_name AimBubbleOverlay` · extends `Node2D` · 824 lines
+`class_name AimBubbleOverlay` · extends `Node2D` · 410 lines
 
 `godot/scripts/overlays/aim_bubble_overlay.gd`
-
-**Constants / tuning**
-- `SEG_STRIDE` = `6`
-- `SEG_AXIS_X` = `0`
-- `SEG_POS` = `1`
-- `SEG_SPAN_MIN` = `2`
-- `SEG_SPAN_MAX` = `3`
-- `SEG_Z_MIN` = `4`
-- `SEG_Z_MAX` = `5`
-- `WorldCanvas3DRef` = `preload("res://godot/scripts/geometry/world_canvas3d.gd")`
-
-**Public vars**
-- `var dome_color: Color = Color(1.0, 0.66, 0.30, 1.0)`
-- `var fill_alpha: float = 0.13`
-- `var floor_fill_alpha: float = 0.20`
-- `var floor_line_alpha: float = 0.55`
-- `var rim_alpha: float = 0.90`
-- `var line_width: float = 3.5`
-- `var grid_alpha: float = 0.45`
-- `var grid_line_width: float = 2.4`
-- `var lat_ring_count: int = 5`
-- `var long_meridian_count: int = 12`
-- `var grid_meridian_steps: int = 16`
-- `var grid_ring_steps: int = 48`
-- `var wall_fill_alpha: float = 0.24`
-- `var wall_line_alpha: float = 0.85`
-- `var wall_grid_alpha: float = 0.60`
-- `var wall_grid_step_gu: float = 0.25`
-- `var wall_search_margin: float = 1.0`
-- `var silhouette_angles: int = 180`
-- `var silhouette_ellipse_steps: int = 720`
-- `var silhouette_phi_steps: int = 6`
-- `var floor_ring_steps: int = 720`
-- `var patch_edge_sample_px: float = 4.0`
-- `var edge_shadow_nudge_gu: float = 0.01`
-- `var patch_arc_steps: int = 48`
-- `var patch_visibility_samples: int = 12`
-
-**Public API**
-- `func set_board3d(board: Node3D) -> void:`
-- `func show_dome(center: Vector2, radius_gu: float, center_gu: Vector2i, wall_height_edges: Dictionary) -> void:`
 
 ---
 
@@ -5683,7 +5642,7 @@ extends `Node2D` · 63 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1801 lines
+`class_name TestZoneController` · 1836 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -5922,7 +5881,7 @@ extends `Node2D` · 63 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11334 lines
+extends `Node2D` · 11339 lines
 
 `godot/scripts/world/room.gd`
 

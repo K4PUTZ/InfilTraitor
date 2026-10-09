@@ -182,6 +182,38 @@ Below 30 the cost PER FRAME does not fall (GPU ~23-28 ms, worst frame unchanged)
 (the "animate in frames" rule): a cap under 30 is a slow-motion explosion, not a cheaper one. A 30 cap costs nothing on
 the floor device and saves power and heat on faster phones (the Galaxy throttled at 30 C); it is the Director's call.
 
+## 0d. The EXIT criterion of the performance phase (Director, 2026-10-09)
+
+The phase closes only when the engine is fully optimised for the gameplay load (`RETROSPECTIVE_2026-10.md` §10). **"Fully optimised" = the
+HEAVY `segment_spec` (§5) fits on the Moto g04s with:** TOTAL PSS <= 1.0 GiB at the peak, the load included; play frames <= 33.3 ms with
+the content in view, GPU included; the frag grenade's hit-stop <= 200 ms and 100 ms everywhere else; PSS / GL flat over the segment cycle
+(PB-4); the load time inside what Q5 decides. Held by PB-7. Fallback when it does not fit: a smaller segment, never lower quality.
+The per-frame GPU floor is not reached by the segment valve, so a GPU attribution on the Moto is part of the phase.
+
+## 0e. PB-3 first round (2026-10-09, Moto g04s, release APK, uncapped `MAX_FPS=0`, zoom 0.5 portrait, one boot per row)
+
+Tools: `gen_segment_map.py` (18×36 segments with explicit counts per kind), `pb3_study.py` (23 variants: BASE = the rooms and
+materials of TYPICAL only, one sweep per kind, the three specs; `--gpu-ablation` for the GPU rows). Tables:
+`docs/measurements/pb3_moto_2026-10-09.md` and `pb3_moto_gpu_ablation_2026-10-09.md` (logs `device_pb3_*.log`, git-ignored).
+
+**Against §0d:** LOW passes (PSS 895 MiB, idle GPU 30.2 ms, blast worst 111 ms); **TYPICAL fails (GPU 37.7, blast worst 297)**;
+**HEAVY fails (PSS 953 = 71 MiB margin, GPU 39.4, blast worst 332)**; loads 13.3 / 14.5 / 15.8 s.
+
+**Marginal costs:** props — the FIRST prop opens a 64 MiB allocator block (+75 MiB PSS), then ~0.3 MiB and ~+0.02 ms GPU each, and
+**from 30 props the blast's worst frame jumps ~100 -> 270-300 ms**; roofs ~+20 MiB each (claims +9 k); guards ~0 to 10, at 24 +3 ms
+GPU and +9 ms process; lights, glass (<= 12 GU of small panes) and materials (4 / 9) ~0.
+
+**The GPU floor is the board's geometry, not the content:** BASE (walls and floor only) reads **36 ms GPU**; hiding `Geometry`
+(the voxel chunks) takes it to **10 ms**; hiding everything outside the voxel renderer 33.1, the HUD 35.0, the fog / the 3D canvases /
+the contact shadow 36.0 (nothing). LOW passes only because 3 rooms put less wall in view. **The segment valve does not reach it**
+(§0d's note, now measured). **Control — a regression since 2026-10-04:** PLAYGROUND on this build reads idle GPU **26.3 ms at zoom
+0.75 and 27.6 at 0.5**, against 18.2-18.4 / 19.1-19.7 on 2026-10-04 (same handset, same map): ~+8 ms not yet bisected.
+
+**Next (PB-6, GPU):** (1) bisect the +8 ms on PLAYGROUND across 2026-10-04 -> now on the Moto (R3D-LOOK's soot bake, the dent bowl,
+SURFACES, the screen-free glass's two passes, the 3D aim dome are the candidates); (2) attribute the board shader's per-pixel cost
+inside `Geometry` (facade fetch, cell-plane light / soot fetches, `BoardLook.grade()`, the overlay stencil pass) by toggles; (3) the
+blast with >= 30 props (the prop-debris / Tier 4 path under the hit-stop).
+
 ## 1. The principle: ONE content, N profiles
 
 Every multi-device game ships quality tiers; the cost is acceptable when a tier is a DERIVATION (texture size, density, particle counts, LOD set at import / export / boot from the same authored content) and unacceptable when it is a second hand-authored version. Authoring rule that follows: content is authored once, at the fidelity of the pipeline already canon (facade 1024×512 grayscale, props through slots and their budgets, 16 texels per voxel), and every per-device reduction lives in a profile.

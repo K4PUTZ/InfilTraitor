@@ -1326,7 +1326,18 @@ func _collect() -> Dictionary:
 var _bullet_layer_count: int = 0
 
 
+## PB-6 (2026-10-09): the catalogue is the same for every map (it reads the shipped decal art only), so it is built ONCE per run and
+## shared by every board after it: 42 PNG loads + 42 CPU mipmap chains were 100-540 ms of each map load on the desktop, paid again on
+## every segment load.
+static var _decal_cache: Dictionary = {}
+
+
 func _build_decal_catalog() -> void:
+	if not _decal_cache.is_empty():
+		_decal_array = _decal_cache["array"]
+		_decal_layer = (_decal_cache["layers"] as Dictionary).duplicate()
+		_bullet_layer_count = int(_decal_cache["bullet"])
+		return
 	var images: Array[Image] = []
 	_bullet_layer_count = 0
 	for family: String in ["bullet", "dent", "crack"]:
@@ -1365,6 +1376,8 @@ func _build_decal_catalog() -> void:
 		push_error("[Board3DLive] decal Texture2DArray failed (%s) — no damage decals" % error_string(err))
 		_decal_layer.clear()
 		_decal_array = null
+		return
+	_decal_cache = {"array": _decal_array, "layers": _decal_layer.duplicate(), "bullet": _bullet_layer_count}
 
 
 ## This board's index for a material, registering it (and its shader material) on first use.

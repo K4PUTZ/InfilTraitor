@@ -160,7 +160,11 @@ func _ready() -> void:
 	_negative_layer.material = _negative_material
 	_negative_layer.draw.connect(_draw_negative)
 	add_child(_negative_layer)
-	## The flash resource goes cold when it is not drawn for a while (see warm()): keep it hot.
+	## The flash resource goes cold when it is not drawn for a while (see warm()): keep it hot. `FLASH_WARM=0` (PB-2) skips it, to
+	## measure what holding the screen copy costs in driver memory.
+	var flags: Node = get_node_or_null("/root/DevFlags")
+	if flags != null and str(flags.value("FLASH_WARM", "1")) == "0":
+		return
 	var keepalive := Timer.new()
 	keepalive.wait_time = KEEPALIVE_SECONDS
 	keepalive.timeout.connect(warm)

@@ -479,8 +479,10 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_geometry_root.add_child(_crack_mirror)
 	_crack_mirror.call("setup", room._voxel_board, _ground_level)
 	for i: int in range(_shader_materials.size()):
-		if _material_glass[i] and _shader_materials[i].shader.resource_path.ends_with("glass_pane3d.gdshader"):
+		if _material_glass[i] and _shader_materials[i].shader.resource_path.get_file().begins_with("glass_pane3d"):
 			_crack_mirror.pane_materials.append(_shader_materials[i])
+			if _shader_materials[i].next_pass is ShaderMaterial:  ## GLASS_BLEND's add pass is cut by the same openings
+				_crack_mirror.pane_materials.append(_shader_materials[i].next_pass)
 	_diag_step("c camera + crack mirror")
 	var quads: int = 0
 	var faces: int = 0
@@ -2534,11 +2536,22 @@ func _get_surface_macro_tex() -> ImageTexture:
 func _make_glass_material(material_id: String) -> ShaderMaterial:
 	var tint: Color = GlassMaterials.pane_tint(material_id)
 	var shader_material := ShaderMaterial.new()
-	shader_material.shader = load("res://godot/shaders/glass_pane3d.gdshader") as Shader
-	shader_material.set_shader_parameter("glass_tint", Vector3(tint.r, tint.g, tint.b))
+	## PB-2 (2026-10-08): `GLASS_BLEND=1` draws the pane with no screen read (multiply pass + add pass, `glass_pane3d_mul`),
+	## for the side-by-side with the original while the Director decides; the original costs ~250-295 MiB of driver memory on the
+	## Galaxy A16 just by existing.
+	var blend: bool = _room != null and str(_room.call("_dev_flag", "GLASS_BLEND", "0")) == "1"
+	shader_material.shader = load("res://godot/shaders/glass_pane3d_mul.gdshader" if blend else "res://godot/shaders/glass_pane3d.gdshader") as Shader
 	var frost: Texture2D = load("res://ASSETS/materials/glass/facade_glass.png") as Texture2D
-	if frost != null:
-		shader_material.set_shader_parameter("glass_frost_tex", frost)
+	var passes: Array[ShaderMaterial] = [shader_material]
+	if blend:
+		var add_pass := ShaderMaterial.new()
+		add_pass.shader = load("res://godot/shaders/glass_pane3d_add.gdshader") as Shader
+		shader_material.next_pass = add_pass
+		passes.append(add_pass)
+	for m: ShaderMaterial in passes:
+		m.set_shader_parameter("glass_tint", Vector3(tint.r, tint.g, tint.b))
+		if frost != null:
+			m.set_shader_parameter("glass_frost_tex", frost)
 	return shader_material
 
 
@@ -2584,14 +2597,18 @@ func set_view(direction: String) -> void:
 		if _material_glass[i]:
 			## The glass shader keeps its own tones: the x-facing face is `face_se` and the z-facing `face_sw`, so a view
 			## that turns them over swaps the two, and the sheen / frost flow along the turned ground axes.
-			m.set_shader_parameter("face_se", 0.966 if swap else 0.982)
-			m.set_shader_parameter("face_sw", 0.982 if swap else 0.966)
 			## Screen pixels per world unit along +x and +z, from the camera itself (flat ground, so its right/down axes).
 			var yaw: float = deg_to_rad(float(VIEW_YAW_DEG[_view]))
 			var gx := Vector2(cos(yaw), sin(yaw))
 			var gz := Vector2(-sin(yaw), cos(yaw))
-			m.set_shader_parameter("px_per_gu_x", Vector2(112.0 * (gx.x - gx.y), 64.0 * (gx.x + gx.y)))
-			m.set_shader_parameter("px_per_gu_z", Vector2(112.0 * (gz.x - gz.y), 64.0 * (gz.x + gz.y)))
+			## `GLASS_BLEND`'s add pass (next_pass) takes the same view terms.
+			var pane: ShaderMaterial = m
+			while pane != null:
+				pane.set_shader_parameter("face_se", 0.966 if swap else 0.982)
+				pane.set_shader_parameter("face_sw", 0.982 if swap else 0.966)
+				pane.set_shader_parameter("px_per_gu_x", Vector2(112.0 * (gx.x - gx.y), 64.0 * (gx.x + gx.y)))
+				pane.set_shader_parameter("px_per_gu_z", Vector2(112.0 * (gz.x - gz.y), 64.0 * (gz.x + gz.y)))
+				pane = pane.next_pass as ShaderMaterial
 		else:
 			m.set_shader_parameter("face_x_slot", slots.x)
 			m.set_shader_parameter("face_z_slot", slots.y)

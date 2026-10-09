@@ -1,18 +1,6 @@
-shader_type spatial;
-// RENDER3D R3D-6 item 2 — the 2D glass look (glass_shading.gdshaderinc) on the 3D board.
-// One pass that reads the scene BEHIND the pane, like the 2D board's BackBufferCopy container:
-// every overlapping face reads the same "behind", so the tint applies once (G-D2). MULTIPLY the
-// tint (with a faint self-body floor over dark backgrounds), then ADD the sheen.
-// THE MATHS RUNS IN sRGB, like the 2D shader's: the screen texture arrives linear and ALBEDO is
-// encoded on the way out, so doing it raw applied tint^(1/2.2) — measured 2026-09-19 as an
-// effective multiply of (0.81, 0.87, 0.96) where the parameters ask for (0.61, 0.72, 0.91).
-render_mode unshaded, cull_back, blend_mix, depth_draw_never;
-// Marks the pixels this pane covers (stencil 3; the screen-free glass ends at the same value) for the ground overlays drawn after it: they read it to draw softer where a pane is
-// in front of them. Glass cannot show them through its own tint (`glass_screen` is copied BEFORE the transparent pass, so an overlay
-// drawn earlier is covered by the pane), so the overlay is drawn after the glass and faded where this mark is set.
-stencil_mode write, compare_always, 3;
-
-uniform sampler2D glass_screen : hint_screen_texture, filter_linear;
+// PERFORMANCE_BUDGET PB-2 (2026-10-08): what the two passes of the screen-free glass share with each other (and, by copy, with
+// `glass_pane3d.gdshader`, the screen-reading original): uniforms, the frost/sheen world mapping, the CRACK-03/04 opening cut,
+// and the sRGB tint maths. See `glass_pane3d_mul.gdshader` for why there are two passes.
 uniform vec3 glass_tint = vec3(0.47, 0.63, 0.90);
 uniform float face_top : hint_range(0.0, 1.0) = 1.000;
 uniform float face_se : hint_range(0.0, 1.0) = 0.982;
@@ -60,7 +48,9 @@ void vertex() {
 	v_face = (abs(NORMAL.y) > 0.5 ? face_top : (abs(NORMAL.x) > 0.5 ? face_se : face_sw)) * COLOR.r;
 }
 
-void fragment() {
+
+// The opening cut (discard inside an applied opening) — the original's, verbatim.
+bool glass_cut_open() {
 	if (open_count > 0) {
 		vec3 p = v_world * 8.0;
 		vec3 pn = p - v_normal * 0.5;
@@ -77,18 +67,24 @@ void fragment() {
 			vec2 uv = vec2((dr + open_half) / (2.0 * open_half), (open_half - dl) / (2.0 * open_half));
 			if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0
 					&& texture(open_masks, vec3(uv, float(i))).r > 0.5) {
-				discard;
+				return true;
 			}
 		}
 	}
-	vec3 behind = to_srgb(texture(glass_screen, SCREEN_UV).rgb);
+	return false;
+}
+
+// The multiplier the original applies to the scene behind, in sRGB.
+vec3 glass_mul_srgb() {
 	float frost = texture(glass_frost_tex, v_glass_world * glass_frost_scale).r;
 	vec3 tinted = glass_tint * (0.82 + 0.30 * frost) * v_face;
 	float k = mix(0.12, 1.0, glass_mul_strength);
-	vec3 mul = clamp(mix(vec3(1.0), tinted, k), vec3(0.0), vec3(1.0));
-	vec3 out_rgb = max(behind * mul, glass_tint * glass_min_body * v_face);
+	return clamp(mix(vec3(1.0), tinted, k), vec3(0.0), vec3(1.0));
+}
+
+// The sheen the original adds, in sRGB.
+vec3 glass_sheen_srgb() {
 	float phase = (v_glass_world.x + v_glass_world.y) * glass_sheen_freq + glass_sheen_phase;
 	float sheen = smoothstep(mix(0.30, 0.92, glass_sheen_sharpness), 1.0, sin(phase) * 0.5 + 0.5);
-	out_rgb += mix(glass_tint, vec3(1.0), 0.5) * sheen * glass_add_strength * v_face;
-	ALBEDO = to_linear(clamp(out_rgb, vec3(0.0), vec3(1.0)));
+	return mix(glass_tint, vec3(1.0), 0.5) * sheen * glass_add_strength * v_face;
 }

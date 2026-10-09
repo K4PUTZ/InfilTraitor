@@ -6,7 +6,7 @@ shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, blend_mix;
 // Full strength everywhere EXCEPT behind a glass pane (stencil 1, written by `glass_pane3d.gdshader`): there the
 // `ground_overlay3d_behind_glass.gdshader` pass draws it softer.
-stencil_mode read, compare_not_equal, 1;
+stencil_mode read, compare_not_equal, 3;  // 3 = a glass pane is in front (glass_pane3d*)
 
 vec3 srgb_to_linear(vec3 c) {
 	return mix(pow((c + 0.055) / 1.055, vec3(2.4)), c / 12.92, lessThan(c, vec3(0.04045)));

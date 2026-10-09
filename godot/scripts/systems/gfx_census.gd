@@ -310,7 +310,18 @@ static func _print_shaders(nodes: Array[Node]) -> void:
 				var h: int = sh.code.hash()
 				by_code[h] = int(by_code.get(h, 0)) + (0 if by_rid.has(-sh.get_rid().get_id()) else 1)
 				by_rid[-sh.get_rid().get_id()] = true
-	print("[GFX-CENSUS] shaders: %d distinct Shader resources, %d distinct source texts" % [by_rid.size() / 2, by_code.size()])
+				if not by_rid.has(-1000000 - sh.get_rid().get_id()):
+					by_rid[-1000000 - sh.get_rid().get_id()] = true
+					var reads: String = ("screen " if sh.code.contains("hint_screen_texture") else "") + ("depth " if sh.code.contains("hint_depth_texture") else "")
+					print("[GFX-CENSUS] shader %s %s(first on %s)" % [sh.resource_path if sh.resource_path != "" else "<code %d>" % sh.code.hash(), "READS " + reads if reads != "" else "", node.name])
+			elif m is BaseMaterial3D:
+				var bm: BaseMaterial3D = m
+				## The features that make Godot read the screen or the depth buffer under a standard material.
+				if bm.refraction_enabled or bm.proximity_fade_enabled or bm.distance_fade_mode == BaseMaterial3D.DISTANCE_FADE_PIXEL_DITHER \
+						or bm.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS:
+					print("[GFX-CENSUS] standard material reads screen/depth: %s on %s (refraction %s, proximity fade %s, transparency %d)" % [
+						bm.resource_path, node.get_path(), bm.refraction_enabled, bm.proximity_fade_enabled, bm.transparency])
+	print("[GFX-CENSUS] shaders: %d distinct Shader resources, %d distinct source texts" % [by_code.size(), by_code.size()])
 
 
 ## What the GPU actually holds for a texture: the RenderingDevice format, size, mipmaps and layers. The CPU image can be

@@ -4,7 +4,7 @@
 // `ground_overlay3d.gdshader` (stencil not equal 1); `GroundCanvas3D` chains this one as its `next_pass`.
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, blend_mix;
-stencil_mode read, compare_equal, 1;
+stencil_mode read, compare_equal, 3;  // 3 = a glass pane is in front (glass_pane3d*)
 
 uniform float fade : hint_range(0.0, 1.0) = 0.3;
 

@@ -1,12 +1,23 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-10-07 · **Branch:** claude/r3d-actors-y5r8hs
+**Version:** 0.9.107 · **Updated:** 2026-10-09 · **Branch:** claude/r3d-actors-y5r8hs
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
 
 ---
+
+## Where the project stands — 2026-10-09 (the memory budget: floor device ratified, both handsets under the ceiling)
+
+Record: `PROMPTS/RESUMO_SESSAO_2026-10-08_PERF_BUDGET_PB2.md`; [`PERFORMANCE_BUDGET_MASTER_PLAN`](../../PROMPTS/PLANNING/PERFORMANCE_BUDGET_MASTER_PLAN.md) v0.3 §0b/§0c.
+- **Floor device = the Moto g04s (4 GB, Mali-G57 MP1), ceiling 1.0 GiB TOTAL PSS**; a segment's content is specified (`segment_spec`, conservative).
+- **PLAYGROUND portrait: Moto PSS 890-914 MiB, Galaxy A16 ~785 MiB** (was 1 198-1 257). Android's `Graphics` is allocator blocks + driver memory;
+  the glass pane's and the explosion flash's SCREEN READS were the Galaxy's ~280 MiB: the glass is now a screen-free two-pass shader (look
+  accepted by the Director), the flash inverts a one-time snapshot. Facades are L8; dead per-level plane textures are gone.
+- **30 fps by default**, 60 / uncapped in the new **Options** window (Escape menu; also the language). **Portrait is the default orientation.**
+- **The grenade aim dome is 3D geometry** and the aim update is cached: Moto, dragging the aim, 44.5 -> 34.5 ms/frame.
+- **Next:** PB-3 (marginal costs per content kind on segment-shaped maps) and PB-4 (the segment cycle); then the roadmap's A1b / A2.
 
 ## Where the project stands — 2026-10-04 (R3D closed; the engine finish is ordered)
 
@@ -446,6 +457,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-05_R3D_LOOK.md
 - RESUMO_SESSAO_2026-10-06_SURFACES.md
 - RESUMO_SESSAO_2026-10-07_PERF_REVIEW.md
+- RESUMO_SESSAO_2026-10-08_A1_ENGINE_TOOLS.md
+- RESUMO_SESSAO_2026-10-08_PERF_BUDGET_PB2.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -453,7 +466,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 199
+- GDScript modules: 202
 - Test scripts: 74
 - Known maps: 3
 - Shipped facade files: 0

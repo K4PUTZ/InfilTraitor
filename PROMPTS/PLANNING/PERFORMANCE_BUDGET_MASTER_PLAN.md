@@ -1,7 +1,9 @@
 # PERFORMANCE_BUDGET_MASTER_PLAN
-## One content, many phones: the memory and time budget a segment has to fit — v0.1 (PLANNED, NOT BUILT)
+## One content, many phones: the memory and time budget a segment has to fit — v0.3 (PB-0/1 ratified, PB-2 attributed and acted on)
 
-> **Status: 🟡 v0.2, 2026-10-08 — PB-0 ratified (§0b).** v0.1: Opened by the Director on the Galaxy A16 round of 2026-10-08 (PSS at the 1.2 GB ceiling with ONE map and little content, while the game is going to gain many more props, walls, roofs, guard AI, skills and accessories). **Nothing here is built; the steps are planned and the first (the estimate of what a segment holds) is the next session, done with the Director.**
+> **Status: 🟢 v0.3, 2026-10-09 (session record `PROMPTS/RESUMO_SESSAO_2026-10-08_PERF_BUDGET_PB2.md`).** **PB-0 ratified** (§0b: Android 4 GB / Mali-G57 MP1 = the Moto g04s, 1.0 GiB TOTAL PSS at the peak; iOS A12 / 3 GB provisional). **PB-1 ratified** (§5, `segment_spec`, conservative). **PB-2 attributed and acted on** (§0c items 1-12): Android `Graphics` counts the Vulkan allocator's BLOCKS (32/64/128/256 MiB) and driver memory, and the two owners of the Galaxy's ~280 MiB jump were the glass pane's and the explosion flash's SCREEN READS — both replaced (screen-free glass, snapshot flash), plus facades as L8, dead cell-plane textures deleted, one Shader per source text. **Result, PLAYGROUND portrait: Moto PSS peak 890-914 MiB, Galaxy GL mtrack ~490 -> ~205 MiB (PSS ~785)** — both under the ceiling. Also built: the 30 fps default cap + an Options window (§0c, frame-cap study), the 3D aim dome and the cached aim update (§0c 11-12). **Resume at PB-3** (the marginal-cost table, segment-shaped maps) and PB-4 (the segment cycle); open questions in §6.
+>
+> v0.2 (2026-10-08): PB-0 ratified. v0.1: Opened by the Director on the Galaxy A16 round of 2026-10-08 (PSS at the 1.2 GB ceiling with ONE map and little content, while the game is going to gain many more props, walls, roofs, guard AI, skills and accessories). **Nothing here is built; the steps are planned and the first (the estimate of what a segment holds) is the next session, done with the Director.**
 >
 > **Where this lives.** The Director asked for this to go into the performance plan and to "move it forward". `PERFORMANCE_MASTER_PLAN` (in `PROMPTS/DONE/`) was ARCHIVED on 2026-10-07 at the Director's own request (3 400 lines of 2D-board history, "nothing open is carried"); resurrecting it would bury this under dead text, so this is its successor and the old file carries a pointer. The handset rows and the budget table stay in `DEVICE_DIAGNOSTICS_MASTER_PLAN` (§0.5: 30 fps / 33.3 ms); this plan owns the question "does the CONTENT we are going to author fit?". Overrule the placement and it moves in one commit.
 >
@@ -57,7 +59,7 @@ is drawn, which is why every `MemStage` mark during the load prints 0).
 3. **Two cuts, no look change (`verify.py look` 0 px strict, commit `6b2a6608`):** facades stored as L8 (every sampler reads
    `.r`; ~16 MiB) and `CellPlaneStore`'s per-level `ImageTexture`s deleted (unread since R3D-END; ~1 MiB per level, ~32 MiB).
    Galaxy PLAYGROUND engine video **247 -> 193.5 MiB**; PSS 1 198-1 257 -> **1 118-1 164 MiB**.
-4. **⚠️ OPEN: GL mtrack did NOT fall with it** (~500-540 MiB). It jumps 69 -> 505 MiB inside ONE 4 s poll during the
+4. **(RESOLVED in items 7-10: the owners were the glass's and the flash's screen reads.) GL mtrack did NOT fall with it** (~500-540 MiB). It jumps 69 -> 505 MiB inside ONE 4 s poll during the
    load, and OCCLUSION_ROOM at the same engine video (190) reads GL 286: PLAYGROUND holds **~215 MiB of driver memory no
    engine counter sees**. Ruled out by measurement: the staging buffer (`max_size_mb` 16: no change, twice), the
    `framing` resize, render scale, duplicate shaders (20 vs 12 distinct). Next: bisect PLAYGROUND's content (glass,
@@ -197,25 +199,28 @@ floor device (RAM, GPU)  ->  app ceiling (what the OS leaves a foreground game)
 ```
 A rule of thumb used only to frame the Director's choice, NOT a measurement: a foreground app keeps roughly 40-50 % of the device RAM before the system reclaims it, so 1.2 GB reads as a ~3 GB floor device. The number that decides being killed is closer to RSS plus swap pressure than to PSS (RSS peaked at 982 MiB while PSS read 1 257): to be settled in PB-0.
 
-## 3. The steps (planned; none built)
+## 3. The steps (PB-0, PB-1 ratified; PB-2 done; PB-6 / PB-8 begun from PB-2's findings)
 
 | Step | What | Who / when | Output |
 |---|---|---|---|
 | **PB-0** ✅ | **Decide the floor device** (RAM, GPU class), **the ceiling's unit** (GiB or decimal GB; plans say "1.2 GB" without saying) and **which number is the ceiling** (PSS or RSS+swap). Recommendation: a Moto g04s class floor (about 4 GB), ceiling 1.0-1.2 GB with margin. | Director, next session | a signed line in this plan + `DEVICE_DIAGNOSTICS` §0.5 |
 | **PB-1** ✅ | **The estimate of a segment's content** — done TOGETHER with the Director, from the design docs: rooms, props by tier (1-4), guards by type, lights, glass panes, roofs, materials in use, destructible area, objectives; three specs: LOW / TYPICAL / HEAVY (the heavy one carries the frag grenade). Read first: `DESIGN_MASTER_PLAN` §14, §8.7, `MAP_MASTER_PLAN`, the dormitory in `PROP_PIPELINE_PLAN` §8, STRESS as the upper bound. Confirm the segment's size in GU (Q2). | **NEXT SESSION**, with the Director | `segment_spec` table (this plan, §5) |
-| **PB-2** 🟡 | **Attribute Graphics on the desktop**, per load stage: textures vs buffers vs render targets, by category (facades, decals, board meshes, cell planes, actors, props). `RenderingServer` info works on the desktop; the handset confirms only the total (`GL mtrack`). The `MEM_STAGES=1` markers exist (`mem_stage.gd`). | Claude, desktop | a table: who owns the +255 MiB and the 590 MiB plateau |
+| **PB-2** ✅ (2026-10-09, §0c) | **Attribute Graphics on the desktop**, per load stage: textures vs buffers vs render targets, by category (facades, decals, board meshes, cell planes, actors, props). `RenderingServer` info works on the desktop; the handset confirms only the total (`GL mtrack`). The `MEM_STAGES=1` markers exist (`mem_stage.gd`). | Claude, desktop | a table: who owns the +255 MiB and the 590 MiB plateau |
 | **PB-3** | **Marginal-cost table** on the Galaxy and the Moto: extend `scale_study.py` to read PSS / RSS / load time and vary ONE thing at a time on segment-shaped synthetic maps (18×36 footprint): props (0 / 30 / 60 / 120, per tier), guards (0 / 6 / 12 / 24), lights, materials in use, glass panes, roofs. | Claude, handsets | "+10 props = X MiB, Y ms load" per kind |
 | **PB-4** | **The segment cycle**: load and unload N segments in a row (scenario `reload` / `load_map`), PSS and RSS must stay FLAT, plus the load time and the transient native peak per segment on both handsets (the 6 s load above is the number to beat or hide). The game unloads and reloads segments for the whole run, so a leak or fragmentation that a single load never shows is a bug here. | Claude, handsets | a flat-or-not verdict + load seconds per device |
 | **PB-5** | **The verdict**: PB-1's specs × PB-3's marginal costs, against PB-0's ceiling and the fixed cost. Fits / fits with a profile / does not fit. | Claude with the Director | one table, one decision |
-| **PB-6** | **Levers, one at a time, each measured** (only if PB-5 says so), in order of saving per loss of quality: (1) texture size and mipmaps per device tier (facades, decals); (2) the cell planes (512×512 for an 18×36 segment + ring is 224×368 cells: check a non-square or smaller plane); (3) the load staging (the native peak of ~450 MiB); (4) instance sharing of props and actors; (5) mesh budgets per prop slot. `COSMETIC_DENSITY` is measured NOT to be one. | Claude | each lever: MiB saved, ms, look change (capture) |
+| **PB-6** 🟡 (begun 2026-10-08/09: facades L8, dead per-level plane textures, one Shader per source text, screen-free glass, snapshot flash, the aim's edge-set cache — §0c; NOT yet: the plane sized to the map, decal arrays, mesh budgets) | **Levers, one at a time, each measured** (only if PB-5 says so), in order of saving per loss of quality: (1) texture size and mipmaps per device tier (facades, decals); (2) the cell planes (512×512 for an 18×36 segment + ring is 224×368 cells: check a non-square or smaller plane); (3) the load staging (the native peak of ~450 MiB); (4) instance sharing of props and actors; (5) mesh budgets per prop slot. `COSMETIC_DENSITY` is measured NOT to be one. | Claude | each lever: MiB saved, ms, look change (capture) |
 | **PB-7** | **Enforcement**: a per-segment memory budget checked the way `apk_audit.py --max-mb` checks the package (and the prop slot budgets of `PropValidator`), so new content cannot silently exceed the ceiling; a tier of `verify.py` or a standalone gate. | Claude | the check + its place in `verify.py` |
-| **PB-8** | **The device-profile mechanism** (texture tier, density, particle caps from one setting at boot, default by device class). Built only if PB-5 needs it; `CosmeticDensity` is its first member. | Claude | `DeviceProfile` + the per-device defaults |
+| **PB-8** 🟡 (first members: `FrameRate` — 30 default / 60 / uncapped in Options; candidate value: 3D render scale 0.7-0.8 for weak devices, Director 2026-10-09) | **The device-profile mechanism** (texture tier, density, particle caps from one setting at boot, default by device class). Built only if PB-5 needs it; `CosmeticDensity` is its first member. | Claude | `DeviceProfile` + the per-device defaults |
 
 **Order and parallelism:** PB-0 and PB-1 first (the Director's input; nothing else makes sense without them). PB-2 and PB-3 need no Director input and can start the moment PB-1 names the content kinds. PB-4 is independent and cheap: it can run any time. PB-5 closes the study; PB-6 to PB-8 are conditional.
 
 ## 4. What NOT to do
 
-- Do not trim before PB-2 attributes the memory: the last +255 MiB step and the 590 MiB plateau have owners nobody has named, and cutting the wrong one costs look for nothing.
+- Do not trim before PB-2 attributes the memory (it did, 2026-10-09: §0c). The lesson stands for every new owner: measure first.
+- **Do not add a material that reads the screen or the depth buffer** (`hint_screen_texture`, `hint_depth_texture`, a `BaseMaterial3D` with refraction / proximity fade) without measuring GL mtrack on the Galaxy A16: the glass pane's and the flash's screen reads cost ~250-295 MiB of driver memory just by existing (§0c 8-10). The guard silhouette's depth read measured free; that is a measurement, not a rule.
+- **Do not read the engine's VRAM counters (`Performance` / `RenderingServer.get_rendering_info`) during a load**: they refresh once per drawn frame and read 0 before the first one. `MemStage` reads `RenderingDevice.get_memory_usage()` live.
+- **A runtime orientation change reopens the 256 MiB block on the Galaxy** (the screen buffers rebuild while the old ones live): portrait is the default (Director, 2026-10-09); landscape stays a dev / later-unlocked view.
 - Do not chase the `System` bucket of `dumpsys meminfo` (it grew 7 -> 300 MiB over the run while native fell and swap rose: the OS compressing the app's pages).
 - Do not author a second, lighter version of any content for phones.
 - Do not widen the content before PB-1 and PB-3 exist: that is how the estimate becomes a guess again.
@@ -246,9 +251,11 @@ A rule of thumb used only to frame the Director's choice, NOT a measurement: a f
 3. **Q3** — a typical versus a heavy segment: is the heavy one the only place the frag grenade appears?
 4. **Q4 (A1b)** — do the guards share the agent's rig and mesh (instancing), or are they separate models?
 5. **Q5** — is a load of a few seconds (about 6 s on the Galaxy at PLAYGROUND's size: stage `11` to `40`, 16:48:12 -> 16:48:18) acceptable between segments, or should the next segment be prepared while the player is still in the current one? (This changes PB-4's target and the transient peak.)
+6. **Q6 (new, 2026-10-09)** — the prediction restarts on every hovered cell while the aim is dragged (P-COOK's "hover" trigger, ~2 ms per move on the Moto): debounce it (start the cook only once the aim rests a few frames)? It moves WHEN the cook starts.
 
 ## 7. Evidence log
 
+- 2026-10-08/09 (this plan's PB-2): §0c holds every number with its instrument (`gfx_census`, `gpu_alloc`, `MemStage` live reads, `[MEM-TRACE]`, `BOARD_STEP_MS`, `HIDE_NODES` for 3D nodes, FrameSplit labels on the aim); device logs were in `/tmp` and are not kept. Captures (local, git-ignored or untracked): `Screenshots/lever_*.png`, `lever_sg_*.png`, `glass_cmp_*.png`, `glass_explosions_cmp.png`, `flash_cmp.png`, `aim_dome_cmp.png`; videos `videos/fpsL_*.mp4`, `videos/fps_z02_*.mp4`.
 - 2026-10-08 Galaxy A16: `docs/production/technical_debt.md` ("A1 Galaxy A16 round", "PSS against the 1.2 GB ceiling"); logs in `/tmp` are not kept: the numbers are in that file.
 - 2026-10-07 desktop scale study: `docs/measurements/scale_study_desktop_{dense,empty}_2026-10-07.md` (the 46 GU wall; content, not size, bends the cost).
 - Moto g04s, 2026-10-05 (C4): PSS peak 945-967 MiB (R3D-CLAIMS), `DEVICE_DIAGNOSTICS_MASTER_PLAN` top blocks.

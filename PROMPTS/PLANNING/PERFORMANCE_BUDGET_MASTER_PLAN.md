@@ -154,7 +154,13 @@ is drawn, which is why every `MemStage` mark during the load prints 0).
     cached for the aim by `room._world_revision`. **Galaxy A16, target moving every 3 frames, uncapped: aim update 1.55-2.87
     -> 0.42-0.82 ms/frame, dome 1.18-2.92 -> 0.09-0.22 ms/frame, frame 17.8-22.0 -> 17.0-18.1 ms; the dome's GPU ~+1.2 ms
     (the 2D one ~+1.6).** Desktop: aim update 1.24-1.63 -> 0.27-0.38 ms/frame (clamp 0.9-1.1 -> 0.02). `verify.py look`
-    0 px. Pre-existing, not from this: a throw scenario that quits 9 s after the throw reports 8 resources still in use at
+    0 px. **Moto g04s (the floor device), same scenario, uncapped, two boots per build (the old build = the three scripts
+    of `551e8470`, labels checked in the logs):** idle 28.9 / 28.9 ms, aim held still 29.6 / 29.8, **target moving 44.5-45.1
+    -> 34.4-34.5 ms/frame** (GPU 28.5 -> 29.1). Old: dome redraw 5.8-8.3 + aim update 5.0-7.0 ms per frame on average
+    (≈17-25 + 15-21 ms per move); new: aim update 1.5-1.9 ms per frame, of it prediction begin 0.66-0.74, dome 0.37-0.51,
+    clamp 0.07-0.10. What is left over the 33.3 ms budget while dragging is the GPU floor (~29 ms, the same at idle) plus the
+    prediction restarting on every hovered cell (P-COOK's "hover" trigger); a debounce there is the next lever, the
+    Director's call because it moves when the cook starts. Pre-existing, not from this: a throw scenario that quits 9 s after the throw reports 8 resources still in use at
     exit (same on the code before the change).
 
 **Frame-rate cap study (Director, 2026-10-08; Moto g04s, PLAYGROUND, zoom 0.2, grenade 0 centred; `MAX_FPS=<n>` flag;

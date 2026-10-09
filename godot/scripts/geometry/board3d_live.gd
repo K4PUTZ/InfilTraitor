@@ -2552,6 +2552,37 @@ func _make_glass_material(material_id: String) -> ShaderMaterial:
 	return shader_material
 
 
+## PERFORMANCE_BUDGET PB-6 (2026-10-09): ONE invisible depth-reading quad on the camera, so the Mobile renderer draws the
+## transparent pass in a render pass of its own instead of merged into the opaque one as a subpass. Measured on the Moto g04s
+## (Mali-G57 MP1, uncapped, idle): SEG_BASE 36.0 -> 27.8 ms of GPU per frame, PLAYGROUND 26.3 -> 18.3, no pixel moves. Any drawn
+## material that reads the screen or the depth buffer turns the merge off; the screen-reading glass pane did it by accident until
+## PB-2 replaced it (that is the +6.3 ms "regression" of 2026-10-09). The DEPTH read is the cheap trigger: a screen read costs
+## ~260 MiB of driver memory on the Galaxy A16 and read 29.8 ms here against the depth read's 27.8; the depth read measured free on
+## the Galaxy in PB-2 (GUARD_REVEAL). `PASS_SPLIT=0` removes it (the A/B). The quad sits inside the near plane's frustum, draws
+## nothing (alpha 0, no depth test or write) and is never culled.
+func _add_pass_split() -> void:
+	var room: Node = get_parent()
+	if room != null and room.has_method("_dev_flag") and str(room.call("_dev_flag", "PASS_SPLIT", "1")) == "0":
+		print("[BOARD3D] PASS_SPLIT=0 — transparent pass merged into the opaque one (the A/B control)")
+		return
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.01, 0.01)
+	var shader := Shader.new()
+	shader.code = "shader_type spatial;\nrender_mode unshaded, depth_draw_never, depth_test_disabled, cull_disabled;\n" \
+		+ "uniform sampler2D depth_tex : hint_depth_texture;\n" \
+		+ "void fragment() { ALBEDO = vec3(texture(depth_tex, SCREEN_UV).r); ALPHA = 0.0; }\n"
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	var split := MeshInstance3D.new()
+	split.name = "PassSplit"
+	split.mesh = quad
+	split.material_override = material
+	split.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	split.extra_cull_margin = 16384.0
+	split.position = Vector3(0.0, 0.0, -1.0)
+	_camera.add_child(split)
+
+
 func _make_camera() -> void:
 	_camera = Camera3D.new()
 	_camera.name = "Board3DCamera"
@@ -2563,6 +2594,7 @@ func _make_camera() -> void:
 	_camera.far = 500.0
 	add_child(_camera)
 	_camera.make_current()
+	_add_pass_split()
 	_measure_ground_map()
 
 

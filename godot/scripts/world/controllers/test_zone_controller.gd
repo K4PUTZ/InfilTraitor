@@ -1564,11 +1564,23 @@ func _run_hit_stop_queue(stage: Dictionary, budget_usec: int) -> bool:
 			left = budget_usec - (Time.get_ticks_usec() - t0)
 			if left <= 0:
 				return false
-		if bool(queue[0].call(left)):
+		var task_t0: int = Time.get_ticks_usec()
+		var finished: bool = bool(queue[0].call(left))
+		_report_slow_step("hit-stop queue task %d" % (5 - queue.size()), task_t0)
+		if finished:
 			queue.pop_front()
 		elif budget_usec > 0:
 			return false
 	return true
+
+
+## PB-6: one line per indivisible step that ran past `SLOW_STEP_MS` (the hit-stop queue's tasks, the prop debris job's phases),
+## so a handset log names what a long blast frame was made of.
+const SLOW_STEP_MS: float = 30.0
+static func _report_slow_step(label: String, since_usec: int) -> void:
+	var ms: float = float(Time.get_ticks_usec() - since_usec) / 1000.0
+	if ms > SLOW_STEP_MS:
+		print("[SLOW-STEP] %s %.1f ms" % [label, ms])
 
 
 ## The glass rain the world commit left out (stage 0), spawned with the glass flush.

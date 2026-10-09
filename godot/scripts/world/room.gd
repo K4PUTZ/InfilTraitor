@@ -2061,6 +2061,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## map's occlusion wireframe/reveal on screen until the next agent step or view change
 	## happened to trigger a recompute. Found and fixed 2026-09-27 (Director-reported bug).
 	_recompute_occlusion()
+	_warm_blast_resources()
 	MemStage.mark("40 map loaded — %s" % map_id)
 	if _dev_flag_on("MEM_CENSUS"):
 		_census_after_a_frame("AT LOAD — %s, nothing detonated yet" % map_id)
@@ -5092,6 +5093,7 @@ func apply_prop_proximity_effects(gu_rings: Dictionary, bomb_def) -> void:
 	var prop_debug: bool = OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1"
 	if prop_debug:
 		_print_prop_ring_map(gu_rings)
+	var broke_any: bool = false
 	for inst: MeshPropInstance in _voxel_board.mesh_props():
 		if inst.mesh_tier != 4 or inst.shattered:
 			continue
@@ -5110,9 +5112,13 @@ func apply_prop_proximity_effects(gu_rings: Dictionary, bomb_def) -> void:
 		inst.shattered = true
 		_base_shattered_props[inst.cell] = true
 		_pending_prop_breaks.append({"inst": inst, "weight": weight, "ring": ring, "source": _ring_source(gu_rings)})
-		_release_destroyed_prop_cells()
+		broke_any = true
 		if prop_debug:
 			print("[PROP-DEBUG] mesh prop %s BROKEN (weight=%.2f), its look waits for the flash to end" % [inst.id, weight])
+	## PB-6 (2026-10-09): ONCE for the whole blast. It walks every prop block's voxels and rebuilds the navigation's blocked set,
+	## and it ran once per broken prop: with dozens of props that was most of a 320 ms hit-stop stage on the Moto.
+	if broke_any:
+		_release_destroyed_prop_cells()
 
 
 ## Broken Tier 4 props whose look has not been swapped yet: {"inst", "weight", "ring", "source"}. Filled at the commit, emptied by
@@ -5304,6 +5310,26 @@ func begin_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 	return job
 
 
+const ShardField3DWarmRef = preload("res://godot/scripts/geometry/shard_field3d.gd")
+## How many debris flights one step of the job spawns (phase 6).
+var PROP_DEBRIS_RAIN_BATCH: int = 24
+
+
+## PB-6 (2026-10-09): what the first blast of a session used to build inside its own tail, built at map load instead. Every voxel
+## prop's debris-pile art (three texture loads per material: 50-62 ms on the desktop, one atomic step of the debris job, ~200+ ms on
+## the Moto), and the shard-shape atlas the glass and debris rain draw with (`GlassShardShapes.atlas_image()`, supersampled per pixel
+## in GDScript: the first `spawn_glass_rain()` of a session read 230-242 ms on the Moto).
+func _warm_blast_resources() -> void:
+	ShardField3DWarmRef.atlas_texture()
+	if _voxel_board == null:
+		return
+	var seen: Dictionary = {}
+	for block: PropBlock in _voxel_board.prop_blocks():
+		if not seen.has(block.material):
+			seen[block.material] = true
+			_voxel_board.warm_debris_pile(String(block.material))
+
+
 ## Phases: 0 scatter every material's shards and open ONE surface index for the union of their columns (the walk over the map's slabs
 ## is the expensive part: it used to run once per material); 5 warm each material's debris pile; 1 walk the index in slices; 2 per material, the landings off that index + the rain;
 ## 3 per material, the debris piles. Landings are the same rows `GlassFall.plan_landings()` returns for each material alone (a column's
@@ -5316,6 +5342,8 @@ func step_prop_debris_fall(job: Dictionary, budget_usec: int) -> bool:
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	while true:
 		var materials: Array = job["materials"]
+		var step_t0: int = Time.get_ticks_usec()
+		var step_phase: int = int(job.get("phase", 0))
 		match int(job.get("phase", 0)):
 			0:
 				var columns: Dictionary = {}
@@ -5356,15 +5384,14 @@ func step_prop_debris_fall(job: Dictionary, budget_usec: int) -> bool:
 						var reach: float = 1.0 if li % PROP_DEBRIS_FAR_EVERY == 0 else vfx_prop_debris_scatter
 						l["grid_pos"] = src + Vector2i((Vector2(far - src) * reach).round())
 					var tint: Color = _vfx_material_base_color(material_id)
-					var flight_tint: Color = tint
-					flight_tint.a = 0.85
-					spawn_glass_rain(landings, false, flight_tint)
 					var piles: Dictionary = GlassFall.pile_by_cell(landings)
 					job["piles"] = piles
 					job["pile_keys"] = piles.keys()
 					job["pile_i"] = 0
 					job["tint"] = tint
-					job["phase"] = 3
+					job["landings"] = landings
+					job["rain_i"] = 0
+					job["phase"] = 6
 					if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
 						var first: Vector3i = piles.keys()[0] if not piles.is_empty() else Vector3i.ZERO
 						print("[PROP-DEBUG] debris soot-tone histogram so far: %s (4 = clean)" % [_debris_tone_hist])
@@ -5372,6 +5399,19 @@ func step_prop_debris_fall(job: Dictionary, budget_usec: int) -> bool:
 						print("[PROP-DEBUG] debris %s: %d landing(s) -> %d pile cell(s), tint=%s, first cell=%s ground=%d, pile node: %s"
 							% [material_id, landings.size(), piles.size(), tint, first, _voxel_board.ground_plane_level(),
 							"NONE" if dbg_pile == null else "%d stored, %d mesh(es) attached" % [dbg_pile.pile_count(), dbg_pile._nodes.size()]])
+			6:
+				## PB-6 (2026-10-09): the material's flights in batches, so no single step spawns them all (68 ms on the desktop for 30
+				## props, ~4x on the Moto, which made one background step a 299 ms frame).
+				var landings: Array = job["landings"]
+				var r: int = int(job["rain_i"])
+				if r >= landings.size():
+					job["landings"] = []
+					job["phase"] = 3
+				else:
+					var flight_tint: Color = job["tint"]
+					flight_tint.a = 0.85
+					spawn_glass_rain(landings.slice(r, r + PROP_DEBRIS_RAIN_BATCH), false, flight_tint)
+					job["rain_i"] = r + PROP_DEBRIS_RAIN_BATCH
 			3:
 				var material_id = materials[int(job["m"])]
 				var keys: Array = job["pile_keys"]
@@ -5390,6 +5430,8 @@ func step_prop_debris_fall(job: Dictionary, budget_usec: int) -> bool:
 						_place_debris_piece("%s_%d_%d_%d_%d" % [material_id, k.x, k.y, k.z, j],
 							center + jitter, k.z, material_id, (i + j) % 3, job["tint"], randf_range(0.0, TAU))
 					job["pile_i"] = i + 1
+		if Time.get_ticks_usec() - step_t0 > 30000:  ## PB-6: see TestZoneController._report_slow_step
+			print("[SLOW-STEP] prop debris phase %d %.1f ms" % [step_phase, float(Time.get_ticks_usec() - step_t0) / 1000.0])
 		if deadline > 0 and Time.get_ticks_usec() >= deadline:
 			return bool(job["done"])
 	return false

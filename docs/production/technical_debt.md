@@ -596,7 +596,7 @@ Units: MiB (KB / 1024). **Peak TOTAL PSS 1 257 MiB** (1 318 MB decimal) at the s
 - **Levers if the ceiling must hold with margin** (each to be measured, none applied): facade / decal texture size and mipmaps on the Galaxy tier, the 512x512 cell planes (R3D-BUFFER's ring cost +~170 MiB on the Moto), the board's mesh upload staging at load. `COSMETIC_DENSITY` does NOT move it (measured: 1 206-1 216 MiB at low / mid / high).
 
 ## Open after the PB-2 round (2026-10-09)
-- **8 resources still in use at exit after a grenade throw** (desktop, `throw 0 11,12; wait 9; quit` on PLAYGROUND): `ObjectDB instances leaked` + `8 resources still in use`. Pre-existing — the same with the code before AIM-DOME-3D. A spawned task chip holds the reproduction; not investigated.
+- **8 resources still in use at exit after a grenade throw** (desktop, `throw 0 11,12; wait 9; quit` on PLAYGROUND): `ObjectDB instances leaked` + `8 resources still in use`. Pre-existing — the same with the code before AIM-DOME-3D. Not investigated; folded into `PERFORMANCE_BUDGET_MASTER_PLAN` PB-4 (the segment cycle), which holds the reproduction.
 - **The aim restarts the prediction on every hovered cell** (P-COOK's hover trigger): ~2 ms per move on the Moto while dragging, the largest CPU piece left in the aim update. A debounce is the Director's call (`PERFORMANCE_BUDGET` §6 Q6).
 - **A runtime orientation change reopens the Galaxy's 256 MiB allocator block** (screen buffers rebuilt while the old ones live). Portrait is the default (Director, 2026-10-09); a gameplay unlock of landscape would pay it.
 - **The cell plane is still 512×512 per level** (~1 MiB each on the GPU as RGBA8, 26 layers on PLAYGROUND): sizing it to the map is PB-6's next texture lever.

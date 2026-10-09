@@ -47,7 +47,7 @@ the intended GLASS change with the baseline retaken). The plan is now **v0.3**; 
 - Frame cap: on the Moto 60 and 30 are the same run (GPU ~23-29 ms); under 30 the blast stretches in wall time (effects age per frame).
 - The aim dome was the one real 2D remnant with a cost: ~4-9 ms per redraw on the Galaxy; the aim update's dominant cost was rebuilding the
   map's edge sets per move. **Moto, dragging the aim: 44.5-45.1 -> 34.4-34.5 ms/frame.**
-- Pre-existing, not from this session: a throw scenario ends with 8 resources still in use at exit (task chip spawned).
+- Pre-existing, not from this session: a throw scenario ends with 8 resources still in use at exit (folded into the plan's PB-4).
 
 ## Resume point
 1. **PB-3** — the marginal-cost table: segment-shaped synthetic maps (18×36), vary one content kind at a time per `segment_spec`, PSS / GL

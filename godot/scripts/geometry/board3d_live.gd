@@ -60,6 +60,8 @@ const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
 ## `RENDER3D_VSCALE`, read at `build()`. A Director look-call, not a code decision — see
 ## `RENDER3D_MASTER_PLAN` R3D-3 step 2.
 static var VERTICAL_SCALE: float = 1.0
+## PB-6: the load's chunk merge on the WorkerThreadPool (`build()`); `RENDER3D_LOAD_PARALLEL=0` is the serial A/B.
+static var LOAD_PARALLEL: bool = true
 ## Whether a floor top blends the soot tone of its four nearest cells (4 cell-plane fetches per fragment) or reads one cell.
 static var SOOT_SMOOTH: bool = true
 const VERTICAL_SCALE_MATCHED: float = 158.0 / 156.8
@@ -480,6 +482,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_ground_level = GeometryCoords.PLAYABLE_LEVEL
 	var t0: int = Time.get_ticks_usec()
 	CHUNK_VOXELS = int(str(room.call("_dev_flag", "RENDER3D_CHUNK", "16")))
+	LOAD_PARALLEL = str(room.call("_dev_flag", "RENDER3D_LOAD_PARALLEL", "1")) != "0"
 	VERTICAL_SCALE = _read_vertical_scale(room)
 	VSCALE_MARKER = str(room.call("_dev_flag", "RENDER3D_VSCALE_MARKER", "0")) != "0"
 	## Instruments (R3D-LOOK handset A/B, 2026-10-05): the floor's soot smoothing and the crater darkening, switchable on a release APK
@@ -512,13 +515,35 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	var faces: int = 0
 	var chunk_list: Array = _store_chunks() if _store != null else _by_chunk.keys()
 	var chunk_n: int = 0
-	for chunk: Vector2i in chunk_list:
-		var built: Vector2i = _build_chunk(chunk)
-		faces += built.x
-		quads += built.y
-		chunk_n += 1
-		if chunk_n % maxi(1, chunk_list.size() / 4) == 0:
-			_diag_step("d chunks %d/%d (%d materials so far)" % [chunk_n, chunk_list.size(), _shader_materials.size()])
+	if _store != null and _step_ms <= 0 and LOAD_PARALLEL:
+		## PB-6 (2026-10-09): the load's chunks are collected and merged on the WorkerThreadPool, all at once, then committed
+		## here in order. `_collect_and_merge_chunk()` only READS the store and this board's tables (the threaded remesh has
+		## always run it off the main thread); each task fills its own Dictionary, so no container is written by two threads.
+		## Desktop SEG_HEAVY: the serial merge was ~760 ms of the board's ~1.7 s; the Moto's eight cores take the same split.
+		var holders: Array = []
+		for i: int in range(chunk_list.size()):
+			holders.append({})
+		var group: int = WorkerThreadPool.add_group_task(
+			func(i: int) -> void: (holders[i] as Dictionary).merge(_collect_and_merge_chunk(chunk_list[i])),
+			chunk_list.size(), -1, true, "board3d load merge")
+		WorkerThreadPool.wait_for_group_task_completion(group)
+		for i: int in range(chunk_list.size()):
+			var collected: Dictionary = holders[i]
+			var t2c: int = Time.get_ticks_usec()
+			_commit_chunk_mesh(chunk_list[i], collected["surfaces"])
+			_t_collect += int(collected["collect_us"])
+			_t_merge += int(collected["merge_us"])
+			_t_commit += Time.get_ticks_usec() - t2c
+			faces += int(collected["faces"])
+			quads += int(collected["quads"])
+	else:
+		for chunk: Vector2i in chunk_list:
+			var built: Vector2i = _build_chunk(chunk)
+			faces += built.x
+			quads += built.y
+			chunk_n += 1
+			if chunk_n % maxi(1, chunk_list.size() / 4) == 0:
+				_diag_step("d chunks %d/%d (%d materials so far)" % [chunk_n, chunk_list.size(), _shader_materials.size()])
 	if VSCALE_MARKER:
 		_add_vscale_marker()
 	_build_mesh_props()

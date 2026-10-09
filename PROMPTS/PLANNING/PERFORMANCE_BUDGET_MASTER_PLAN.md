@@ -106,6 +106,18 @@ is drawn, which is why every `MemStage` mark during the load prints 0).
    **Lever captures on SURFACES_GALLERY** (local `Screenshots/lever_sg_*.png`): GL max 267 / 277 / 278 / 268 MiB for
    `SCALE_3D` 1.0 / 0.7 FSR / 0.7 bilinear / 0.5 FSR: the render scale buys nothing in memory.
 
+9. **Screen-free glass + the flash's warm (2026-10-09, Galaxy A16).** Director on the lever captures: 1.0 is clearly best;
+   **0.7 bilinear is a candidate for weaker devices, maybe 0.8** (a device-profile value, PB-8). Glass: `GLASS_BLEND=1` draws
+   the pane as a multiply pass + an add pass (`glass_pane3d_mul/_add`), each held to once per pixel by the stencil (mul: ref 1
+   > stored 0, add: ref 3 > stored 0/1; the glass mark the overlays read is now 3 for both versions). GLASS map: GL ~490 ->
+   ~205 MiB, PSS ~940 -> ~690. **PLAYGROUND has a SECOND owner: the explosion flash's 2 s warm** (a canvas
+   `hint_screen_texture` draw, `ExplosionFlashOverlay.warm()`, kept for the Galaxy's ~190 ms first-flash hitch, round 0b):
+   with `GLASS_BLEND=1` + `FLASH_WARM=0`, GL ~490 -> ~205 MiB and PSS ~1 070 -> ~785 (`GUARD_REVEAL`'s depth read did not
+   matter). Look differences of the new glass (captures `Screenshots/glass_cmp_*.png`, local): what stands behind a pane is
+   now tinted (the original showed actors drawn after its screen copy untinted), and a very dark subject behind it gets a light
+   veil (the add pass is calibrated for a background of sRGB 0.35, `glass_add_base`). **Open, for the Director:** adopt the
+   new glass; and the flash warm (≈ +260 MiB of driver memory on the Galaxy) against its first-flash hitch.
+
 **Frame-rate cap study (Director, 2026-10-08; Moto g04s, PLAYGROUND, zoom 0.2, grenade 0 centred; `MAX_FPS=<n>` flag;
 videos `videos/fps_z02_<n>.mp4`, local):**
 

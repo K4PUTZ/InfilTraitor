@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**280 scripts · 83385 lines total** (under `godot/scripts/`)
+**280 scripts · 83426 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -5392,7 +5392,7 @@ extends `SceneTree` · 428 lines
 
 ### `main_menu_panel.gd`
 
-`class_name MainMenuPanel` · extends `WindowBase` · 132 lines
+`class_name MainMenuPanel` · extends `WindowBase` · 154 lines
 
 `godot/scripts/ui/main_menu_panel.gd`
 
@@ -5403,6 +5403,9 @@ extends `SceneTree` · 428 lines
 - `signal settings_requested`
 - `signal controls_requested`
 - `signal showcase_requested`
+
+**Constants / tuning**
+- `SHORT_SCREEN_HEIGHT` = `560.0`
 
 **Public API**
 - `func open() -> void:`
@@ -5427,7 +5430,7 @@ extends `SceneTree` · 428 lines
 
 ### `options_panel.gd`
 
-`class_name OptionsPanel` · extends `WindowBase` · 135 lines
+`class_name OptionsPanel` · extends `WindowBase` · 154 lines
 
 `godot/scripts/ui/options_panel.gd`
 

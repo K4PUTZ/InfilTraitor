@@ -8,7 +8,7 @@ class_name OptionsPanel
 extends WindowBase
 
 @onready var _center_container := CenterContainer.new()
-@onready var _panel_bg := Panel.new()
+@onready var _panel_bg := PanelContainer.new()
 @onready var _margin := MarginContainer.new()
 @onready var _container := VBoxContainer.new()
 @onready var _lbl_title := Label.new()
@@ -34,7 +34,7 @@ func _ready() -> void:
 	add_child(_center_container)
 	_panel_bg.custom_minimum_size = Vector2(420, 400)
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0, 0, 0, 0.85)
+	style.bg_color = Color(0.04, 0.04, 0.04, 1.0)  ## opaque: it opens over the Main Menu, whose text would show through
 	style.corner_radius_top_left = 8
 	style.corner_radius_top_right = 8
 	style.corner_radius_bottom_left = 8
@@ -82,6 +82,25 @@ func _ready() -> void:
 	_btn_back.pressed.connect(request_close)
 	_container.add_child(_btn_back)
 	_apply_texts()
+	get_viewport().size_changed.connect(_fit_to_screen)
+	_fit_to_screen()
+
+
+## Compact on a short screen (a landscape phone, ~390 px tall in canvas units), the same threshold as the Main Menu.
+func _fit_to_screen() -> void:
+	var screen: Vector2 = get_viewport().get_visible_rect().size
+	var short: bool = screen.y < MainMenuPanel.SHORT_SCREEN_HEIGHT
+	## A portrait phone is ~390 px wide in canvas units: the box, its side margins and the choice buttons narrow to fit.
+	var narrow: bool = screen.x < 460.0
+	_panel_bg.custom_minimum_size = Vector2(minf(460.0, screen.x - 16.0), 0.0) if short or narrow else Vector2(420, 400)
+	for side in ["left", "right"]:
+		_margin.add_theme_constant_override("margin_" + side, 14 if narrow else 32)
+	for btn: Button in _fps_buttons.values() + _language_buttons.values():
+		btn.custom_minimum_size = Vector2(80 if narrow else 110, 44)
+	_container.add_theme_constant_override("separation", 6 if short else 14)
+	for side in ["top", "bottom"]:
+		_margin.add_theme_constant_override("margin_" + side, 14 if short else 32)
+	_lbl_title.add_theme_font_size_override("font_size", 20 if short else 24)
 
 
 ## The current choices are shown pressed every time the window opens (a flag or another path may have changed them).

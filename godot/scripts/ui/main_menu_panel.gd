@@ -7,13 +7,19 @@ signal settings_requested
 signal controls_requested
 signal showcase_requested
 
+## Below this canvas height the menu lays out for a landscape phone (OPTIONS-01).
+const SHORT_SCREEN_HEIGHT: float = 560.0
+
 @onready var _center_container := CenterContainer.new()
-@onready var _panel_bg := Panel.new()
+@onready var _panel_bg := PanelContainer.new()
 @onready var _margin := MarginContainer.new()
 @onready var _container := VBoxContainer.new()
 
 @onready var _lbl_title := Label.new()
 @onready var _sep := HSeparator.new()
+## OPTIONS-01: the buttons sit in a grid that goes to two columns on a short screen (a phone in landscape is ~390 px
+## tall in canvas units, and seven 44 px buttons in one column ran off it: Options and Quit could not be reached).
+@onready var _grid := GridContainer.new()
 @onready var _btn_resume := Button.new()
 @onready var _btn_new_game := Button.new()
 @onready var _btn_load := Button.new()
@@ -69,6 +75,10 @@ func _ready() -> void:
 	_container.add_child(_lbl_title)
 	
 	_container.add_child(_sep)
+	_grid.add_theme_constant_override("h_separation", 12)
+	_grid.add_theme_constant_override("v_separation", 10)
+	_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_container.add_child(_grid)
 	
 	# Buttons
 	_setup_button(_btn_resume, "ui.main_menu.resume", _on_resume_pressed)
@@ -80,10 +90,22 @@ func _ready() -> void:
 	_setup_button(_btn_quit, "ui.main_menu.quit", _on_quit_pressed)
 	
 	_btn_load.disabled = true
+	get_viewport().size_changed.connect(_fit_to_screen)
+	_fit_to_screen()
 	## OPTIONS-01: the language can change from Options while this menu is open beneath it.
 	var localization: Node = get_node_or_null("/root/Localization")
 	if localization != null:
 		localization.language_changed.connect(func(_locale: String) -> void: _apply_texts())
+
+
+## One column on a tall screen, two on a short one; the box shrinks to its content.
+func _fit_to_screen() -> void:
+	var short: bool = get_viewport().get_visible_rect().size.y < SHORT_SCREEN_HEIGHT
+	_grid.columns = 2 if short else 1
+	_panel_bg.custom_minimum_size = Vector2(560, 0) if short else Vector2(320, 480)
+	_container.add_theme_constant_override("separation", 8 if short else 16)
+	for side in ["top", "bottom"]:
+		_margin.add_theme_constant_override("margin_" + side, 16 if short else 32)
 
 
 func _apply_texts() -> void:
@@ -107,7 +129,7 @@ func _setup_button(btn: Button, text_key: String, callable: Callable) -> void:
 	btn.text = tr(text_key)
 	btn.custom_minimum_size = Vector2(200, 44)
 	btn.pressed.connect(callable)
-	_container.add_child(btn)
+	_grid.add_child(btn)
 
 func _on_resume_pressed() -> void:
 	request_close()

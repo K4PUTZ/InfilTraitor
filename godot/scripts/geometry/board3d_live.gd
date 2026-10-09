@@ -391,8 +391,9 @@ var _decal_array: Texture2DArray = null
 var _decal_material_index: int = -1
 ## R3D-SURFACES — one shared macro-modulation texture, lazily resolved and reused by every
 ## photographic-surface material (it is not per-material art, see the shader uniform's comment).
-var _surface_macro_tex: ImageTexture = null
-var _surface_macro_tried: bool = false
+## Q5 (2026-10-09): per RUN, like the facades and surfaces below (static): one file, the same for every map.
+static var _surface_macro_tex: ImageTexture = null
+static var _surface_macro_tried: bool = false
 var _material_index: Dictionary = {}
 ## PB-6: material index -> its SOLID twin's index (the same material without the cutaway, see `SOLID_SHADER`), -1 for glass, the
 ## decals and the twins themselves. The twin sits in `_material_ids` (id + `SOLID_SUFFIX`), `_material_glass` and `_shader_materials`
@@ -498,7 +499,9 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_step_ms = int(str(room.call("_dev_flag", "BOARD_STEP_MS", "0")))
 	_diag_step("a collected")
 	_read_look()
+	var tp0: int = Time.get_ticks_usec()
 	_build_plane()
+	var tp1: int = Time.get_ticks_usec()
 	_diag_step("b plane array")
 	_make_camera()
 	_crack_mirror = GlassCrackMirror3DClass.new()
@@ -515,6 +518,8 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	var faces: int = 0
 	var chunk_list: Array = _store_chunks() if _store != null else _by_chunk.keys()
 	var chunk_n: int = 0
+	var tp2: int = Time.get_ticks_usec()
+	var tp3: int = tp2
 	if _store != null and _step_ms <= 0 and LOAD_PARALLEL:
 		## PB-6 (2026-10-09): the load's chunks are collected and merged on the WorkerThreadPool, all at once, then committed
 		## here in order. `_collect_and_merge_chunk()` only READS the store and this board's tables (the threaded remesh has
@@ -527,6 +532,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 			func(i: int) -> void: (holders[i] as Dictionary).merge(_collect_and_merge_chunk(chunk_list[i])),
 			chunk_list.size(), -1, true, "board3d load merge")
 		WorkerThreadPool.wait_for_group_task_completion(group)
+		tp3 = Time.get_ticks_usec()
 		for i: int in range(chunk_list.size()):
 			var collected: Dictionary = holders[i]
 			var t2c: int = Time.get_ticks_usec()
@@ -544,10 +550,12 @@ func build(room: Node, cell_to_world: Callable) -> void:
 			chunk_n += 1
 			if chunk_n % maxi(1, chunk_list.size() / 4) == 0:
 				_diag_step("d chunks %d/%d (%d materials so far)" % [chunk_n, chunk_list.size(), _shader_materials.size()])
+	var tp4: int = Time.get_ticks_usec()
 	if VSCALE_MARKER:
 		_add_vscale_marker()
 	_build_mesh_props()
 	_diag_step("e mesh props")
+	var tp5: int = Time.get_ticks_usec()
 	_build_prop_shadows()
 	_diag_step("f prop shadows")
 	var t2: int = Time.get_ticks_usec()
@@ -567,6 +575,10 @@ func build(room: Node, cell_to_world: Callable) -> void:
 		"store" if _store != null else "objects"])
 	Telemetry.event("board3d.built", fields)
 	on_occlusion(_room._occlusion_set)
+	print("[LOAD-SPLIT] board3d.build: plane %.0f ms, camera+mirror %.0f, chunks parallel %.0f (worker collect %.0f + merge %.0f summed), commit %.0f, mesh props %.0f, prop shadows %.0f, occlusion %.0f"
+		% [float(tp1 - tp0) / 1000.0, float(tp2 - tp1) / 1000.0, float(tp3 - tp2) / 1000.0, float(_t_collect) / 1000.0,
+		float(_t_merge) / 1000.0, float(tp4 - tp3) / 1000.0, float(tp5 - tp4) / 1000.0, float(t2 - tp5) / 1000.0,
+		float(Time.get_ticks_usec() - t2) / 1000.0])
 
 
 ## RENDER3D R3D-4b — what an actor's billboard needs from the board, and nothing else. The 2D
@@ -1587,11 +1599,16 @@ func _build_prop_shadows() -> void:
 	if board == null:
 		return
 	var per: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
+	var ts0: int = Time.get_ticks_usec()
+	var t_vox: int = 0
+	var jobs: Array = []
 	for inst: MeshPropInstance in board.mesh_props():
 		if inst.shattered or not _mesh_prop_nodes.has(inst.id):
 			continue
 		var node: Node3D = _mesh_prop_nodes[inst.id]
+		var tv: int = Time.get_ticks_usec()
 		var vox: Dictionary = PropVoxelizer.for_model(inst.model_path, inst.model_rotation_deg, inst.mesh_size, inst.fragment_division)
+		t_vox += Time.get_ticks_usec() - tv
 		## The cells are on the fragment lattice (the board voxel divided by `division`): so is the offset, and so is the shadow's unit.
 		var division: int = int(vox["division"])
 		var ox: int = int(round(node.position.x * float(per * division)))
@@ -1599,8 +1616,12 @@ func _build_prop_shadows() -> void:
 		var cells: Array = []
 		for c: Vector3i in vox["cells"]:
 			cells.append(Vector3i(ox + c.x, c.y, oz + c.z))
-		_set_prop_shadow("mesh:" + inst.id, cells, node.position.y, float(vox["voxel"]))
+		jobs.append(["mesh:" + inst.id, cells, node.position.y, float(vox["voxel"])])
+	_set_prop_shadows(jobs)
+	var ts1: int = Time.get_ticks_usec()
 	refresh_prop_shadows(true)
+	print("[LOAD-SPLIT] prop shadows: mesh props %.0f ms (voxelize %.0f), voxel props %.0f" % [float(ts1 - ts0) / 1000.0,
+		float(t_vox) / 1000.0, float(Time.get_ticks_usec() - ts1) / 1000.0])
 
 
 ## The shadow of every GU of voxel prop, rebuilt where the number of standing voxels changed (or everywhere when `force`); `only_gus`
@@ -1628,6 +1649,7 @@ func refresh_prop_shadows(force: bool = false, only_gus: Dictionary = {}) -> voi
 				(entry["cells"] as Array).append(Vector3i(v.grid_pos.x, v.level, v.grid_pos.y))
 		entry["floor"] = mini(int(entry["floor"]), floor_level)
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var jobs: Array = []
 	for gu: Vector2i in by_gu:
 		var entry: Dictionary = by_gu[gu]
 		var key := "gu:%d:%d" % [gu.x, gu.y]
@@ -1638,7 +1660,8 @@ func refresh_prop_shadows(force: bool = false, only_gus: Dictionary = {}) -> voi
 		var cells: Array = []
 		for c: Vector3i in entry["cells"]:
 			cells.append(Vector3i(c.x, c.y - int(entry["floor"]), c.z))
-		_set_prop_shadow(key, cells, float(int(entry["floor"]) - _ground_level) * unit)
+		jobs.append([key, cells, float(int(entry["floor"]) - _ground_level) * unit, unit])
+	_set_prop_shadows(jobs)
 
 
 func _add_pile_shadow(pile_name: String, records: Array, y0: float, unit: float) -> void:
@@ -1649,10 +1672,28 @@ func _add_pile_shadow(pile_name: String, records: Array, y0: float, unit: float)
 	_set_prop_shadow("pile:" + String(pile_name), cells, y0, unit)
 
 
+## `_set_prop_shadow()` for many: `jobs` = [[key, cells, floor_y, unit], ...]. Q5 (2026-10-09): the images (`PropShadow.build_image()`,
+## pure) are built on the WorkerThreadPool, the nodes here in order — the map load builds every prop's shadow at once (Moto SEG_HEAVY:
+## ~850 ms serial).
+func _set_prop_shadows(jobs: Array) -> void:
+	var built: Array = []
+	built.resize(jobs.size())
+	if jobs.size() > 1:
+		var group: int = WorkerThreadPool.add_group_task(
+			func(i: int) -> void: built[i] = PropShadow.build_image((jobs[i] as Array)[1]),
+			jobs.size(), -1, true, "prop shadow images")
+		WorkerThreadPool.wait_for_group_task_completion(group)
+	for i: int in range(jobs.size()):
+		var job: Array = jobs[i]
+		_set_prop_shadow(String(job[0]), job[1], float(job[2]), float(job[3]), built[i] if built[i] != null else {})
+
+
 ## `unit`: the edge of one cell in world units (the board voxel, 1/8, unless the cells are a fragment lattice).
-func _set_prop_shadow(key: String, cells: Array, floor_y: float, unit: float = 0.125) -> void:
+func _set_prop_shadow(key: String, cells: Array, floor_y: float, unit: float = 0.125, built: Dictionary = {}) -> void:
 	_drop_prop_shadow(key)
-	var node: MeshInstance3D = PropShadow.make(cells, floor_y, unit)
+	if built.is_empty() and not cells.is_empty():
+		built = PropShadow.build_image(cells)
+	var node: MeshInstance3D = PropShadow.make(cells, floor_y, unit, built)
 	if node == null:
 		return
 	_geometry_root.add_child(node)
@@ -1941,13 +1982,18 @@ func _chunk_of(key: Vector3i) -> Vector2i:
 ## Reports `_collect()`'s counts from the claims' visible bits; `cells` counts each
 ## occupied cell once, by its owner.
 func _collect_store(store: VoxelStore) -> Dictionary:
+	var tm0: int = Time.get_ticks_usec()
 	_store_material.resize(store.material_ids.size())
 	for i in range(store.material_ids.size()):
 		_store_material[i] = _material(store.material_ids[i])
+	var tmd: int = Time.get_ticks_usec()
 	if _decal_array == null:
 		_build_decal_catalog()
+	print("[LOAD-SPLIT] board3d.materials: %d material(s) %.0f ms, decal catalogue %.0f" % [store.material_ids.size(),
+		float(tmd - tm0) / 1000.0, float(Time.get_ticks_usec() - tmd) / 1000.0])
 	if _decal_array != null:
 		_decal_material_index = _material(DECAL_MATERIAL_ID)
+	var tm: int = Time.get_ticks_usec()
 	var n: int = store.claims
 	var xyz: PackedInt32Array = store.xyz
 	var state: PackedByteArray = store.state
@@ -2021,6 +2067,8 @@ func _collect_store(store: VoxelStore) -> Dictionary:
 		var c: int = chunk_of_claim[claim]
 		_chunk_claims[fill[c]] = claim
 		fill[c] += 1
+	print("[LOAD-SPLIT] board3d.collect: materials + decals %.0f ms (texture resolve %.0f, build %.0f), claim walk %.0f" % [
+		float(tm - tm0) / 1000.0, float(_t_tex_resolve) / 1000.0, float(_t_tex_build) / 1000.0, float(Time.get_ticks_usec() - tm) / 1000.0])
 	return {"slices": by_kind[VoxelStore.KIND_SLICE], "slabs": by_kind[VoxelStore.KIND_SLAB],
 		"columns": by_kind[VoxelStore.KIND_COLUMN], "props": by_kind[VoxelStore.KIND_PROP],
 		"cells": cells, "chunks": used}
@@ -2611,7 +2659,12 @@ func _make_material(material_id: String) -> ShaderMaterial:
 
 ## A material's grayscale facade as a texture (mipmapped), built ONCE per board and shared by everything that draws that material:
 ## its walls, floors and roofs, the props made of it and their voxel fragments. Null when the material has none (a flat one).
-var _facade_textures: Dictionary = {}
+## Q5 (2026-10-09): built ONCE PER RUN and shared by every board after it (static), like the decal catalogue: a facade is the same
+## art for every map, and resolving + converting + mipmapping them was ~230 ms of every segment load on the Moto. A facade costs
+## ~0.67 MiB (L8 + mipmaps), so a run holds the facades of every material it has met.
+static var _facade_textures: Dictionary = {}
+var _t_tex_resolve: int = 0  ## Q5 load split: facade / surface resolve, then convert + mipmaps + upload
+var _t_tex_build: int = 0
 
 
 func material_facade_texture(material_id: String) -> Texture2D:
@@ -2622,7 +2675,10 @@ func material_facade_texture(material_id: String) -> Texture2D:
 	if _facade_textures.has(material_id):
 		return _facade_textures[material_id]
 	var tex: Texture2D = null
+	var tf0: int = Time.get_ticks_usec()
 	var resolved = TextureResolver.new().resolve("facade_%s" % material_id, material_id)
+	var tf1: int = Time.get_ticks_usec()
+	_t_tex_resolve += tf1 - tf0
 	if resolved != null and resolved.image != null:
 		var image: Image = (resolved.image as Image).duplicate()
 		## PERFORMANCE_BUDGET PB-6 (2026-10-08): a facade is grayscale (B2) and every shader that samples it reads `.r` only
@@ -2632,24 +2688,29 @@ func material_facade_texture(material_id: String) -> Texture2D:
 		image.convert(Image.FORMAT_L8)
 		image.generate_mipmaps()
 		tex = ImageTexture.create_from_image(image)
+	_t_tex_build += Time.get_ticks_usec() - tf1
 	_facade_textures[material_id] = tex
 	return tex
 
 
 ## A material's photographic surface plane (`slab_<id>`, mipmapped), built ONCE per board and shared by the material's own faces and by
 ## the ground transitions that borrow it (R3D-SURFACES): one VRAM copy per photo. Null when it does not resolve.
-var _surface_textures: Dictionary = {}
+static var _surface_textures: Dictionary = {}  ## per run (Q5), as `_facade_textures`
 
 
 func material_surface_texture(material_id: String) -> Texture2D:
 	if _surface_textures.has(material_id):
 		return _surface_textures[material_id]
 	var tex: Texture2D = null
+	var tf0: int = Time.get_ticks_usec()
 	var resolved = TextureResolver.new().resolve("slab_%s" % material_id, material_id)
+	var tf1: int = Time.get_ticks_usec()
+	_t_tex_resolve += tf1 - tf0
 	if resolved != null and resolved.image != null:
 		var image: Image = (resolved.image as Image).duplicate()
 		image.generate_mipmaps()
 		tex = ImageTexture.create_from_image(image)
+	_t_tex_build += Time.get_ticks_usec() - tf1
 	_surface_textures[material_id] = tex
 	return tex
 

@@ -61,11 +61,21 @@ func rebuild() -> void:
 ## map lights, rebuilds tile semantics, re-feeds the shadow projector, re-projects shadows/exposure.
 ## Use this when the underlying cells change (perspective switch); rebuild() only re-projects.
 func rebuild_all() -> void:
+	## Q5 (2026-10-09): the load's split of this stage, one line per call (the map load runs it once).
+	var t0: int = Time.get_ticks_usec()
 	_setup_lights_from_layout()
+	var t1: int = Time.get_ticks_usec()
 	_setup_tile_semantics()
+	var t2: int = Time.get_ticks_usec()
 	_refresh_shadow_projector_inputs()
+	var t3: int = Time.get_ticks_usec()
 	_rebuild_all_shadows_and_exposure()
+	var t4: int = Time.get_ticks_usec()
 	lighting_rebuilt.emit()
+	var t5: int = Time.get_ticks_usec()
+	print("[LOAD-SPLIT] lighting.rebuild_all: lights %.0f ms, semantics %.0f, projector %.0f, shadows+exposure %.0f, listeners %.0f"
+		% [float(t1 - t0) / 1000.0, float(t2 - t1) / 1000.0, float(t3 - t2) / 1000.0, float(t4 - t3) / 1000.0,
+		float(t5 - t4) / 1000.0])
 
 
 func _init_systems() -> void:

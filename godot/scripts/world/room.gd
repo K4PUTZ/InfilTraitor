@@ -2000,6 +2000,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	
 	_spawn_guards(view_layout.get("enemy_defs", []))
 	MemStage.mark("20 agent + guards spawned")
+	var t_split0: int = Time.get_ticks_usec()
 	enemies_root.z_index = 10
 	
 	## Sync game state to TurnController
@@ -2008,6 +2009,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	
 	_fow_controller.initialize_fog(VISUAL_GRID_OFFSET, room_size)
 	_fow_controller.reveal_around(agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
+	var t_split1: int = Time.get_ticks_usec()
 	## HEAT-Z-01 sweep (Director, 2026-07-28): the dev cell-number overlay was the
 	## other casualty of D17's voxel earth floor reaching z=0 — it is a plain
 	## Node2D in room.tscn, so it kept the default z_index 0 and, being a scene
@@ -2034,7 +2036,11 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		_hud_controller.hide_enemy_banner()
 
 	tile_labels_overlay.queue_redraw()
+	var t_split2: int = Time.get_ticks_usec()
 	_lighting_controller.rebuild_all()
+	print("[LOAD-SPLIT] stage 20->25: turn state + fog %.0f ms, hud %.0f, lighting %.0f"
+		% [float(t_split1 - t_split0) / 1000.0, float(t_split2 - t_split1) / 1000.0,
+		float(Time.get_ticks_usec() - t_split2) / 1000.0])
 	MemStage.mark("25 lighting rebuilt")
 	if _ceiling_overlay != null:
 		_ceiling_overlay.set_lights(_current_light_sources)
@@ -3069,12 +3075,17 @@ func _start_board3d_live() -> void:
 	live.build(self, func(cell: Vector2i) -> Vector2:
 		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
 	live.call("_diag_step", "g built")
+	var ta0: int = Time.get_ticks_usec()
 	_attach_actor_billboards(live)
 	live.call("_diag_step", "h actors attached")
+	var ta1: int = Time.get_ticks_usec()
 	_attach_vfx_to_board(live)
 	live.call("_diag_step", "i vfx attached")
+	var ta2: int = Time.get_ticks_usec()
 	_attach_ground_overlays(live)
 	live.call("_diag_step", "j ground overlays attached")
+	print("[LOAD-SPLIT] board attach: actors %.0f ms, vfx %.0f, ground overlays %.0f" % [float(ta1 - ta0) / 1000.0,
+		float(ta2 - ta1) / 1000.0, float(Time.get_ticks_usec() - ta2) / 1000.0])
 	if _dev_flag("PICK_CHECK", "0") == "1":
 		_pick_check.call_deferred()
 	if _dev_flag("SEED_GRENADES", "0") == "1":
@@ -5824,6 +5835,7 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 	## this function. §0's routes are chosen from WHERE the repaint's time goes,
 	## and the only figures on record are from the retired bench in August.
 	var _prof: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1" or _dev_flag_on("REPAINT_PROFILE")
+	VoxelBoard.LOAD_PROFILE = _prof
 	var _t0: int = Time.get_ticks_usec()
 	var live_changes: Array[Vector3i] = []
 	var occupancy: Dictionary = _voxel_board.build_occupancy_live(live_changes)
@@ -5852,13 +5864,18 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 	## scorch. A geometry_only repaint touches neither.
 	if not geometry_only:
 		_voxel_board.reset_cell_planes()
+	var _t4: int = Time.get_ticks_usec()
 	if stale_driven and _voxel_light_field.has_stale_subset():
 		_voxel_board.apply_light_field_cells(_voxel_light_field,
 			_voxel_light_field.stale_cells())
 	else:
 		_voxel_board.apply_light_field(_voxel_light_field)
+	var _t5: int = Time.get_ticks_usec()
 	if not geometry_only:
 		project_soot_store()
+	if _prof:
+		print("[LOAD-SPLIT] repaint: reset planes %.0f ms, apply %.0f, soot projection %.0f" % [float(_t4 - _t3) / 1000.0,
+			float(_t5 - _t4) / 1000.0, float(Time.get_ticks_usec() - _t5) / 1000.0])
 	if _prof:
 		print("[REPAINT-PROF] occupancy %.1f · field.build %.1f · apply %.1f ms (geometry_only=%s)"
 			% [float(_t1 - _t0) / 1000.0, float(_t3 - _t1) / 1000.0,

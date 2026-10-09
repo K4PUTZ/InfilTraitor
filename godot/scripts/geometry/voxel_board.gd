@@ -546,6 +546,10 @@ var _apply_cells_seen: int = 0
 var _apply_cells_written: int = 0
 
 
+## Q5 (2026-10-09): prints the light apply's split (`REPAINT_PROFILE=1`, set by `Room`).
+static var LOAD_PROFILE: bool = false
+
+
 func apply_light_field(field) -> void:
 	if LIGHT_DISABLED:
 		return
@@ -566,34 +570,76 @@ func _apply_light_field_pass_store(field) -> void:
 	if VoxelStore.active == null:
 		push_error("[VoxelBoard] _apply_light_field_pass_store: no VoxelStore.active — planes not written")
 		return
+	var tq0: int = Time.get_ticks_usec()
 	var occ: Dictionary = VoxelStore.active.occupancy_dict()
+	var t_occ: int = Time.get_ticks_usec() - tq0
+	var t_index: int = 0
+	var t_buckets: int = 0
+	var t_write: int = 0
 	## PB-6 (2026-10-09): one level at a time, in bulk — the buckets from `VoxelLightField.buckets_for_level()` (byte-map occupancy,
 	## no per-cell caches), written straight into the plane's bytes. `LIGHT_BULK=0` is the per-cell path (the A/B and the reference:
 	## `LIGHT_BULK_CHECK=1` runs both and reports every cell whose bucket differs). The journal keeps the per-cell path.
 	var bulk: bool = not _bucket_journal_on and field.has_method("buckets_for_level") and LIGHT_BULK
 	var check: bool = bulk and LIGHT_BULK_CHECK
+	var tqm: int = Time.get_ticks_usec()
 	var occ_maps: Dictionary = field.occupancy_byte_maps() if bulk else {}
+	var t_maps: int = Time.get_ticks_usec() - tqm
 	var differ: int = 0
-	for level: Variant in occ.keys():
-		var level_i: int = int(level)
-		var cells: Array = (occ[level] as Dictionary).keys()
-		_apply_cells_seen += cells.size()
-		_index_placed_level(level_i, cells)
+	var levels: Array = occ.keys()
+	var level_cells: Array = []
+	for level: Variant in levels:
+		level_cells.append((occ[level] as Dictionary).keys())
+	## Q5 (2026-10-09): every level's buckets on the WorkerThreadPool at once (`buckets_for_level()` only reads the field and the
+	## byte maps; each task writes its own slot), then indexed and written here in order.
+	var level_buckets: Array = []
+	var level_index: Array = []
+	level_buckets.resize(levels.size())
+	level_index.resize(levels.size())
+	var tqb: int = Time.get_ticks_usec()
+	var maps: Dictionary = occ_maps.get("maps", {})
+	var origin: Vector2i = occ_maps.get("origin", Vector2i.ZERO)
+	var mw: int = int(occ_maps.get("width", 1))
+	var mh: int = int(occ_maps.get("height", 1))
+	var p_size: Vector2i = plane_size()
+	var p_origin: Vector2i = plane_origin()
+	## `_placed_index` was cleared above, so every level's marks start empty.
+	var task := func(i: int) -> void:
+		level_index[i] = _index_level_data(int(levels[i]), level_cells[i], PackedByteArray(), p_size, p_origin)
 		if bulk:
-			var buckets: PackedByteArray = field.buckets_for_level(level_i, cells, occ_maps["maps"], occ_maps["origin"],
-				int(occ_maps["width"]), int(occ_maps["height"]))
+			level_buckets[i] = field.buckets_for_level(int(levels[i]), level_cells[i], maps, origin, mw, mh)
+	var group: int = WorkerThreadPool.add_group_task(task, levels.size(), -1, true, "light buckets")
+	WorkerThreadPool.wait_for_group_task_completion(group)
+	t_buckets = Time.get_ticks_usec() - tqb
+	for li: int in range(levels.size()):
+		var level_i: int = int(levels[li])
+		var cells: Array = level_cells[li]
+		_apply_cells_seen += cells.size()
+		var tq1: int = Time.get_ticks_usec()
+		_merge_placed_level(level_i, level_index[li])
+		var tq2: int = Time.get_ticks_usec()
+		t_index += tq2 - tq1
+		if bulk:
 			if check:
+				var buckets: PackedByteArray = level_buckets[li]
 				for i: int in range(cells.size()):
 					if int(buckets[i]) != field.bucket_for(cells[i], level_i):
 						differ += 1
-			_cell_planes.write_buckets_level(level_i, cells, buckets)
 		else:
 			for cell: Vector2i in cells:
 				_write_cell_bucket(level_i, cell, field.bucket_for(cell, level_i))
 		_apply_cells_written += cells.size()
+	if bulk:
+		var tq3: int = Time.get_ticks_usec()
+		_cell_planes.write_buckets_levels(levels, level_cells, level_buckets)
+		t_write = Time.get_ticks_usec() - tq3
 	if check:
 		print("[LIGHT-BULK-CHECK] %d of %d cell(s) differ from the per-cell path" % [differ, _apply_cells_seen])
+	var tq4: int = Time.get_ticks_usec()
 	flush_cell_soot()
+	if LOAD_PROFILE:
+		print("[LOAD-SPLIT] light apply: occupancy_dict %.0f ms, byte maps %.0f, index merge %.0f, index + buckets (workers) %.0f, write %.0f, flush %.0f (%d levels)"
+			% [float(t_occ) / 1000.0, float(t_maps) / 1000.0, float(t_index) / 1000.0, float(t_buckets) / 1000.0, float(t_write) / 1000.0,
+			float(Time.get_ticks_usec() - tq4) / 1000.0, occ.size()])
 	if field.has_method("clear_stale_accum"):
 		field.clear_stale_accum()
 	_externally_written.clear()
@@ -633,9 +679,13 @@ func _index_placed(level: int, cell: Vector2i) -> void:
 
 ## PB-6: `_index_placed()` for a level's cells in one pass (the map-wide apply), the GU lists grown in place.
 func _index_placed_level(level: int, cells: Array) -> void:
-	var size: Vector2i = plane_size()
-	var origin: Vector2i = plane_origin()
-	var marks: PackedByteArray = _placed_index.get(level, PackedByteArray())
+	_merge_placed_level(level, _index_level_data(level, cells, _placed_index.get(level, PackedByteArray()),
+		plane_size(), plane_origin()))
+
+
+## `_index_placed_level()`'s walk as data, touching no member: [marks, by_gu]. Q5 (2026-10-09): safe off the main thread, so the map-wide
+## pass runs one level per task and merges here in level order (`_merge_placed_level()`), the same lists the serial walk built.
+static func _index_level_data(level: int, cells: Array, marks: PackedByteArray, size: Vector2i, origin: Vector2i) -> Array:
 	if marks.is_empty():
 		marks.resize(size.x * size.y)
 	var by_gu: Dictionary = {}
@@ -655,7 +705,12 @@ func _index_placed_level(level: int, cells: Array) -> void:
 		l.append(cell.x)
 		l.append(cell.y)
 		by_gu[gu] = l
-	_placed_index[level] = marks
+	return [marks, by_gu]
+
+
+func _merge_placed_level(level: int, data: Array) -> void:
+	_placed_index[level] = data[0]
+	var by_gu: Dictionary = data[1]
 	for gu: Vector2i in by_gu:
 		var list: PackedInt32Array = _placed_by_gu.get(gu, PackedInt32Array())
 		list.append_array(by_gu[gu])

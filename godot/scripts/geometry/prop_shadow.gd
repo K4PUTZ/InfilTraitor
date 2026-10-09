@@ -28,8 +28,10 @@ static func shift_per_voxel() -> Vector2:
 
 ## `cells`: Array of Vector3i (x, y = UP level above the floor, z) in absolute voxels of `unit` world units (the board's 1/8, or a finer
 ## fragment lattice); `floor_y` the floor's world height. Returns a MeshInstance3D holding the quad, or null when there is nothing to shade.
-static func make(cells: Array, floor_y: float, unit: float = -1.0) -> MeshInstance3D:
-	var built: Dictionary = build_image(cells)
+## `built`: `build_image(cells)` already computed (it is pure, so a caller may run it off the main thread); empty = build it here.
+static func make(cells: Array, floor_y: float, unit: float = -1.0, built: Dictionary = {}) -> MeshInstance3D:
+	if built.is_empty():
+		built = build_image(cells)
 	if built.is_empty():
 		return null
 	var image: Image = built["image"]

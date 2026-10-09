@@ -156,6 +156,56 @@ func write_buckets_level(level: int, cells: Array, buckets: PackedByteArray) -> 
 		_dirty[level] = true
 
 
+## `write_buckets_level()` for many levels at once (`levels[i]`, `cells[i]`, `buckets[i]`). Q5 (2026-10-09): the images are made and
+## read here, the bytes patched on the WorkerThreadPool (one level per task, each its own array), and written back here in order —
+## the same bytes the serial loop writes.
+func write_buckets_levels(levels: Array, cells: Array, buckets: Array) -> void:
+	var datas: Array = []
+	var widths := PackedInt32Array()
+	for level: Variant in levels:
+		var img := _image_for(int(level))
+		datas.append(img.get_data())
+		widths.append(img.get_width())
+	var changed: Array = []
+	changed.resize(levels.size())
+	var outside: Array = []
+	outside.resize(levels.size())
+	var origin: Vector2i = plane_origin
+	var max_bucket: int = _max_bucket
+	var task := func(li: int) -> void:
+		var data: PackedByteArray = datas[li]
+		var level_cells: Array = cells[li]
+		var level_buckets: PackedByteArray = buckets[li]
+		var w: int = widths[li]
+		var any: bool = false
+		var first_outside: Variant = null
+		for i: int in range(level_cells.size()):
+			var p: Vector2i = (level_cells[i] as Vector2i) + origin
+			if _outside(p):
+				if first_outside == null:
+					first_outside = level_cells[i]
+				continue
+			var at: int = (p.y * w + p.x) * 3 + 1
+			var b: int = mini(int(level_buckets[i]), max_bucket)
+			if data[at] != b:
+				data[at] = b
+				any = true
+		datas[li] = data
+		changed[li] = any
+		outside[li] = first_outside
+	var group: int = WorkerThreadPool.add_group_task(task, levels.size(), -1, true, "cell plane buckets")
+	WorkerThreadPool.wait_for_group_task_completion(group)
+	for li: int in range(levels.size()):
+		if outside[li] != null and not _out_of_range_reported:
+			_out_of_range_reported = true
+			push_error("[CellPlaneStore] PERF-P3: cell %s is outside the %dx%d cell plane — widen PLANE_MARGIN" % [outside[li], plane_size.x, plane_size.y])
+		if changed[li]:
+			var level: int = int(levels[li])
+			var img: Image = _images[level]
+			img.set_data(img.get_width(), img.get_height(), false, Image.FORMAT_RGB8, datas[li])
+			_dirty[level] = true
+
+
 ## What the plane currently says about one cell's light bucket — the counterpart
 ## of `soot_at()`, and the record P3 leaves in place of the alternative id.
 func bucket_at(level: int, cell: Vector2i) -> int:

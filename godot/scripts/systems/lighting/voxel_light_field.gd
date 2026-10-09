@@ -402,7 +402,9 @@ func buckets_for_level(level: int, cells: Array, maps: Dictionary, origin: Vecto
 		var li: int = (gy - gu_origin.y) * gu_w + (gx - gu_origin.x)
 		var intensity: float = lamp[li]
 		if intensity < 0.0:
-			intensity = _lamp_intensity(Vector2i(gx, gy), level, top_bucket)
+			## `_lamp_term()`, not `_lamp_intensity()`: this runs on the WorkerThreadPool, one level per task (Q5), and the cache is a
+			## shared Dictionary; `lamp` already memoises the term per GU of this level.
+			intensity = _lamp_term(Vector2i(gx, gy), level, top_bucket)
 			lamp[li] = intensity
 		var factor: float = 1.0
 		if not empty_occ:
@@ -463,25 +465,42 @@ static func _occ_at(map: PackedByteArray, x: int, y: int, width: int, height: in
 
 ## PB-6 — the occupancy as one byte map per level over the bounding box of every occupied cell (plus one cell around it), for
 ## `buckets_for_level()`. Returns {"maps": {level: PackedByteArray}, "origin": Vector2i, "width": int, "height": int}.
+## Q5 (2026-10-09): the box is the active store's (every occupied cell is one of its claims, so it holds them all) instead of a walk
+## over every cell for the bounds, and the levels are filled on the WorkerThreadPool, one task per level (each writes only its own
+## array). A larger box changes no bucket: `buckets_for_level()` reads a cell and its +-1 / +2 neighbours by offset.
 func occupancy_byte_maps() -> Dictionary:
 	var lo := Vector2i(2147483647, 2147483647)
 	var hi := Vector2i(-2147483647, -2147483647)
-	for level: Variant in _occupancy:
-		for cell: Vector2i in (_occupancy[level] as Dictionary):
-			lo = Vector2i(mini(lo.x, cell.x), mini(lo.y, cell.y))
-			hi = Vector2i(maxi(hi.x, cell.x), maxi(hi.y, cell.y))
-	if lo.x > hi.x:
+	var store: VoxelStore = VoxelStore.active
+	if store != null:
+		lo = Vector2i(store.x0, store.y0)
+		hi = Vector2i(store.x0 + store.w - 1, store.y0 + store.h - 1)
+	else:
+		for level: Variant in _occupancy:
+			for cell: Vector2i in (_occupancy[level] as Dictionary):
+				lo = Vector2i(mini(lo.x, cell.x), mini(lo.y, cell.y))
+				hi = Vector2i(maxi(hi.x, cell.x), maxi(hi.y, cell.y))
+	if lo.x > hi.x or _occupancy.is_empty():
 		return {"maps": {}, "origin": Vector2i.ZERO, "width": 1, "height": 1}
 	var origin: Vector2i = lo - Vector2i(2, 2)
 	var width: int = hi.x - origin.x + 3
 	var height: int = hi.y - origin.y + 3
-	var maps: Dictionary = {}
-	for level: Variant in _occupancy:
+	var levels: Array = _occupancy.keys()
+	var out: Array = []
+	out.resize(levels.size())
+	for i: int in range(levels.size()):
+		out[i] = PackedByteArray()
+	var fill := func(i: int) -> void:
 		var m := PackedByteArray()
 		m.resize(width * height)
-		for cell: Vector2i in (_occupancy[level] as Dictionary):
+		for cell: Vector2i in (_occupancy[levels[i]] as Dictionary):
 			m[(cell.y - origin.y) * width + (cell.x - origin.x)] = 1
-		maps[int(level)] = m
+		out[i] = m
+	var group: int = WorkerThreadPool.add_group_task(fill, levels.size(), -1, true, "light occupancy maps")
+	WorkerThreadPool.wait_for_group_task_completion(group)
+	var maps: Dictionary = {}
+	for i: int in range(levels.size()):
+		maps[int(levels[i])] = out[i]
 	return {"maps": maps, "origin": origin, "width": width, "height": height}
 
 
@@ -552,6 +571,13 @@ func _lamp_intensity(gu: Vector2i, level: int, top_bucket: int) -> float:
 	var key := Vector3i(gu.x, gu.y, level)
 	if _lamp_cache.has(key):
 		return _lamp_cache[key]
+	var intensity: float = _lamp_term(gu, level, top_bucket)
+	_lamp_cache[key] = intensity
+	return intensity
+
+
+## `_lamp_intensity()` without its cache: reads only, so safe off the main thread (`buckets_for_level()`).
+func _lamp_term(gu: Vector2i, level: int, top_bucket: int) -> float:
 	## A map with no lights reads as fully lit rather than pitch black, but still
 	## takes the surface shading in the caller — that gives an unlit test map its
 	## geometry read.
@@ -576,7 +602,6 @@ func _lamp_intensity(gu: Vector2i, level: int, top_bucket: int) -> float:
 			## VL-03: energy_multiplier carries the temporal state (flicker/pulse).
 			var lamp_energy := float(light.visual_energy) * float(light.energy_multiplier)
 			intensity = maxf(intensity, lamp_energy * _falloff(d, radius))
-	_lamp_cache[key] = intensity
 	return intensity
 
 

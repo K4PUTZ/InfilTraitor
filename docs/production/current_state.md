@@ -459,6 +459,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-07_PERF_REVIEW.md
 - RESUMO_SESSAO_2026-10-08_A1_ENGINE_TOOLS.md
 - RESUMO_SESSAO_2026-10-08_PERF_BUDGET_PB2.md
+- RESUMO_SESSAO_2026-10-09_PROJECT_EVALUATION.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

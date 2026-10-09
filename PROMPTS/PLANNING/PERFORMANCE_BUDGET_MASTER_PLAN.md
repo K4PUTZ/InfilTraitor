@@ -244,6 +244,19 @@ Worst frame outside the flash: P30 71, TYPICAL 74, HEAVY 81 ms (SOOT FADE / LIGH
 on the Moto: settled PSS 691 -> 729-738 MiB after the first cycle and flat after it, native heap flat at ~379 MiB, every blast's worst frame
 137-139 ms, the reload peak ~780 MiB, a reload ~7 s. **Flat: PASS.**
 
+## 0g. Q5 load round (2026-10-09, Moto g04s, SEG_HEAVY, release APK; commit `a38a8ef5`)
+
+Director: ~12 s is acceptable, cut it where possible. Every map load now prints `[LOAD-SPLIT]` lines per phase (lighting, light
+apply with `REPAINT_PROFILE=1`, board materials / collect / build, prop shadows, board attach). Levers 1 (parallel board) and 2
+(lighting) applied: the light index, buckets and plane writes run one level per WorkerThreadPool task (`LIGHT_BULK_CHECK` 0 cells
+differ on SEG_HEAVY / PLAYGROUND / GLASS), prop-shadow images are built in parallel, facades / surfaces are cached per run like the
+decal catalogue. **Cold load 10.4 -> 8.2 s, reload (stage 11 -> 40) ~6.5 -> 5.2 s**; pixel gate 0 px.
+
+What a reload still costs on the Moto: store build ~1.3 s, light apply ~1.2 s (two occupancy builds of ~250 ms each + workers 0.6 s),
+board claim walk ~0.5 s and chunk merge ~0.55 s, agent + guards 0.4 s, prop shadows 0.28 s. Cold only: decal catalogue 0.31 s,
+facades 0.25 s, shader setup ~0.2 s. Next candidates, not built: one occupancy walk instead of two, the claim walk in parallel, a
+cooked segment (store + light bytes written at export, Director decision).
+
 ## 1. The principle: ONE content, N profiles
 
 Every multi-device game ships quality tiers; the cost is acceptable when a tier is a DERIVATION (texture size, density, particle counts, LOD set at import / export / boot from the same authored content) and unacceptable when it is a second hand-authored version. Authoring rule that follows: content is authored once, at the fidelity of the pipeline already canon (facade 1024×512 grayscale, props through slots and their budgets, 16 texels per voxel), and every per-device reduction lives in a profile.

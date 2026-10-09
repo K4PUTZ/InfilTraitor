@@ -571,7 +571,8 @@ func _apply_light_field_pass_store(field) -> void:
 		push_error("[VoxelBoard] _apply_light_field_pass_store: no VoxelStore.active — planes not written")
 		return
 	var tq0: int = Time.get_ticks_usec()
-	var occ: Dictionary = VoxelStore.active.occupancy_dict()
+	var live: Variant = field.live_occupancy_or_null() if field.has_method("live_occupancy_or_null") else null
+	var occ: Dictionary = live if live != null else VoxelStore.active.occupancy_dict()
 	var t_occ: int = Time.get_ticks_usec() - tq0
 	var t_index: int = 0
 	var t_buckets: int = 0

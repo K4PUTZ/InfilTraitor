@@ -463,6 +463,13 @@ static func _occ_at(map: PackedByteArray, x: int, y: int, width: int, height: in
 	return 1 if map[y * width + x] != 0 else 0
 
 
+## Q5 (2026-10-09): the occupancy this field was built from when it is the store's LIVE one (`VoxelStore.occupancy_live()`), else
+## null (a predicted copy, or a field built with no tracking). The map-wide apply walks it instead of building `occupancy_dict()` again:
+## the live dictionary IS that answer with no prediction, and nothing writes it between the build and the apply.
+func live_occupancy_or_null() -> Variant:
+	return _occupancy if _tracked == TRACKED_LIVE else null
+
+
 ## PB-6 — the occupancy as one byte map per level over the bounding box of every occupied cell (plus one cell around it), for
 ## `buckets_for_level()`. Returns {"maps": {level: PackedByteArray}, "origin": Vector2i, "width": int, "height": int}.
 ## Q5 (2026-10-09): the box is the active store's (every occupied cell is one of its claims, so it holds them all) instead of a walk

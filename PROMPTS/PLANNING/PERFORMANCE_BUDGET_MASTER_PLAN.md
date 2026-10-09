@@ -254,8 +254,20 @@ decal catalogue. **Cold load 10.4 -> 8.2 s, reload (stage 11 -> 40) ~6.5 -> 5.2 
 
 What a reload still costs on the Moto: store build ~1.3 s, light apply ~1.2 s (two occupancy builds of ~250 ms each + workers 0.6 s),
 board claim walk ~0.5 s and chunk merge ~0.55 s, agent + guards 0.4 s, prop shadows 0.28 s. Cold only: decal catalogue 0.31 s,
-facades 0.25 s, shader setup ~0.2 s. Next candidates, not built: one occupancy walk instead of two, the claim walk in parallel, a
-cooked segment (store + light bytes written at export, Director decision).
+facades 0.25 s, shader setup ~0.2 s.
+
+**Second round (same day):** the light apply walks the field's LIVE occupancy instead of building `occupancy_dict()` again
+(`VoxelLightField.live_occupancy_or_null()`), and the board's claim walk runs on the WorkerThreadPool (490 -> ~220 ms). **Cold load
+8.2 -> 7.6 s, reload 5.2 -> 4.65 s**; same face / quad counts, `LIGHT_BULK_CHECK` 0, pixel gate 0 px.
+
+**Option 3 (a cooked segment: the store and the light bytes written ahead) — evaluated, NOT built.** What it could remove from a
+4.65 s reload: the store build (~0.8 s; the ~0.5 s of containers before it stay, the game needs them) and the light apply (~1.1 s),
+so ~1.9 s (reload ~2.8 s, cold ~5.7 s). Costs: a second authority for the same state (stale bytes after a change to a map, a material,
+the light constants or the code fail silently unless every input is hashed); APK size (~16 MB of store per HEAVY segment before
+compression); and segments are built from a spec WITH parameters (`MapCatalog.get_spec(map_id, {connections, segment_grid_pos,
+seed})`), so an export-time cook only covers fixed maps. Gameplay is not touched (checkpoint state is laid over the base either way).
+Recommendation: park it until `LevelGraph` decides how segments are generated; the variant that fits procedural segments is preparing
+the NEXT segment's store + light on a worker while the current one is played (data only, ~20-40 MB, not the GPU), not a cook.
 
 ## 1. The principle: ONE content, N profiles
 

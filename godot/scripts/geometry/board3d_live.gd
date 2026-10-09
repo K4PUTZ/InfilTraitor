@@ -2001,58 +2001,127 @@ func _collect_store(store: VoxelStore) -> Dictionary:
 	_chunk_y0 = floori(float(store.y0) / float(CHUNK_VOXELS))
 	_chunk_cols = floori(float(store.x0 + store.w - 1) / float(CHUNK_VOXELS)) - _chunk_x0 + 1
 	_chunk_rows = floori(float(store.y0 + store.h - 1) / float(CHUNK_VOXELS)) - _chunk_y0 + 1
-	var chunk_of_claim := PackedInt32Array()
-	chunk_of_claim.resize(n)
 	_chunk_start.resize(_chunk_cols * _chunk_rows + 1)
 	_chunk_start.fill(0)
-	## Per-kind visible claims, then occupied cells: plain ints, no Dictionary write per claim.
-	## R3D-PROPS: a 4th slot for KIND_PROP — indexing `by_kind[kind]` below with only 3 slots
-	## would go out of bounds the instant a prop container held any visible claim.
-	var by_kind := PackedInt32Array([0, 0, 0, 0])
-	var cells: int = 0
 	var owner: PackedInt32Array = store.owner
 	var x0: int = store.x0
 	var y0: int = store.y0
 	var l0: int = store.l0
 	var w: int = store.w
 	var h: int = store.h
-	var lo: int = 1 << 30
-	var hi: int = -(1 << 30)
 	## The highest solid non-glass cell of every OCC_BLOCK x OCC_BLOCK block of columns (by the cell's owner, the very claim
 	## `_occ_hidden` reads). Only ever an upper bound after a blast: destruction removes cells, never adds one.
 	_solid_top_bw = (w + OCC_BLOCK - 1) / OCC_BLOCK
-	_solid_top.resize(_solid_top_bw * ((h + OCC_BLOCK - 1) / OCC_BLOCK))
-	_solid_top.fill(-1)
+	var solid_n: int = _solid_top_bw * ((h + OCC_BLOCK - 1) / OCC_BLOCK)
 	var s_mat: PackedByteArray = store.mat
-	for ci in range(store.container_count()):
-		var span: Vector2i = store.container_claims(ci)
-		var kind: int = store.container_kinds[ci]
-		var visible_here: int = 0
-		for claim in range(span.x, span.x + span.y):
-			var k: int = claim * 3
-			var x: int = xyz[k]
-			var y: int = xyz[k + 1]
-			## `_chunk_of()`'s own division: a hard-coded `>> 5` (32) here outlived the 16-voxel
-			## chunk (R3D-3 step 3), so a blast's dirty-chunk keys named the wrong chunks.
-			var c: int = (floori(float(y) / float(CHUNK_VOXELS)) - _chunk_y0) * _chunk_cols \
-				+ (floori(float(x) / float(CHUNK_VOXELS)) - _chunk_x0)
-			chunk_of_claim[claim] = c
-			_chunk_start[c + 1] += 1
-			if not (state[claim] & 1):
-				continue
-			visible_here += 1
-			var level: int = xyz[k + 2]
-			if owner[((level - l0) * h + (y - y0)) * w + (x - x0)] == claim:
-				cells += 1
-				if not _material_glass[_store_material[s_mat[claim]]]:
-					var block: int = ((y - y0) / OCC_BLOCK) * _solid_top_bw + (x - x0) / OCC_BLOCK
-					if level > _solid_top[block]:
-						_solid_top[block] = level
-			if level < lo:
-				lo = level
-			if level > hi:
-				hi = level
-		by_kind[kind] += visible_here
+	var chunk_count: int = _chunk_cols * _chunk_rows
+	var cx0: int = _chunk_x0
+	var cy0: int = _chunk_y0
+	var ccols: int = _chunk_cols
+	var store_material: PackedInt32Array = _store_material
+	var material_glass: Array = _material_glass
+	## Q5 (2026-10-09): the walk over every claim on the WorkerThreadPool, in contiguous ranges of CONTAINERS (each task keeps its own
+	## counters and its claims' chunk ids; nothing is written by two tasks), merged here. Same counts, same chunk lists, same order:
+	## the scatter below still runs claim by claim. Moto SEG_HEAVY: ~490 ms serial.
+	var containers: int = store.container_count()
+	var tasks: int = clampi(OS.get_processor_count(), 1, 16) if LOAD_PARALLEL else 1
+	var per_task: int = int(ceil(float(containers) / float(tasks)))
+	var parts: Array = []
+	parts.resize(tasks)
+	var walk := func(t: int) -> void:
+		var counts := PackedInt32Array()
+		counts.resize(chunk_count)
+		var claim_ids := PackedInt32Array()
+		var claim_chunks := PackedInt32Array()
+		var kinds := PackedInt32Array([0, 0, 0, 0])
+		var top := PackedInt32Array()
+		top.resize(solid_n)
+		top.fill(-1)
+		var t_cells: int = 0
+		var t_lo: int = 1 << 30
+		var t_hi: int = -(1 << 30)
+		for ci in range(t * per_task, mini((t + 1) * per_task, containers)):
+			var span: Vector2i = store.container_claims(ci)
+			var kind: int = store.container_kinds[ci]
+			var visible_here: int = 0
+			for claim in range(span.x, span.x + span.y):
+				var k: int = claim * 3
+				var x: int = xyz[k]
+				var y: int = xyz[k + 1]
+				## `_chunk_of()`'s own division: a hard-coded `>> 5` (32) here outlived the 16-voxel
+				## chunk (R3D-3 step 3), so a blast's dirty-chunk keys named the wrong chunks.
+				var c: int = (floori(float(y) / float(CHUNK_VOXELS)) - cy0) * ccols \
+					+ (floori(float(x) / float(CHUNK_VOXELS)) - cx0)
+				claim_ids.append(claim)
+				claim_chunks.append(c)
+				counts[c] += 1
+				if not (state[claim] & 1):
+					continue
+				visible_here += 1
+				var level: int = xyz[k + 2]
+				if owner[((level - l0) * h + (y - y0)) * w + (x - x0)] == claim:
+					t_cells += 1
+					if not material_glass[store_material[s_mat[claim]]]:
+						var block: int = ((y - y0) / OCC_BLOCK) * _solid_top_bw + (x - x0) / OCC_BLOCK
+						if level > top[block]:
+							top[block] = level
+				if level < t_lo:
+					t_lo = level
+				if level > t_hi:
+					t_hi = level
+			kinds[kind] += visible_here
+		parts[t] = {"counts": counts, "ids": claim_ids, "chunks": claim_chunks, "kinds": kinds, "top": top, "cells": t_cells,
+			"lo": t_lo, "hi": t_hi}
+	if tasks > 1:
+		var group: int = WorkerThreadPool.add_group_task(walk, tasks, -1, true, "board3d claim walk")
+		WorkerThreadPool.wait_for_group_task_completion(group)
+	else:
+		walk.call(0)
+	## Per-kind visible claims, then occupied cells: plain ints, no Dictionary write per claim.
+	## R3D-PROPS: a 4th slot for KIND_PROP.
+	var by_kind := PackedInt32Array([0, 0, 0, 0])
+	var cells: int = 0
+	var lo: int = 1 << 30
+	var hi: int = -(1 << 30)
+	_solid_top.resize(solid_n)
+	_solid_top.fill(-1)
+	## The containers' spans tile the claims in order on every map seen so far; then the chunk ids are the parts end to end. Otherwise
+	## (a store whose spans are not in claim order) each id is placed where it belongs.
+	var in_order: bool = true
+	var expect: int = 0
+	for part: Dictionary in parts:
+		var ids: PackedInt32Array = part["ids"]
+		if ids.is_empty():
+			continue
+		if ids[0] != expect or ids[ids.size() - 1] != expect + ids.size() - 1:
+			in_order = false
+			break
+		expect += ids.size()
+	in_order = in_order and expect == n
+	var chunk_of_claim := PackedInt32Array()
+	if not in_order:
+		chunk_of_claim.resize(n)
+	for part: Dictionary in parts:
+		var counts: PackedInt32Array = part["counts"]
+		for c in range(chunk_count):
+			_chunk_start[c + 1] += counts[c]
+		var kinds: PackedInt32Array = part["kinds"]
+		for k in range(4):
+			by_kind[k] += kinds[k]
+		var top: PackedInt32Array = part["top"]
+		for b in range(solid_n):
+			if top[b] > _solid_top[b]:
+				_solid_top[b] = top[b]
+		cells += int(part["cells"])
+		lo = mini(lo, int(part["lo"]))
+		hi = maxi(hi, int(part["hi"]))
+		var chunks: PackedInt32Array = part["chunks"]
+		if in_order:
+			chunk_of_claim.append_array(chunks)
+		else:
+			var ids: PackedInt32Array = part["ids"]
+			for i in range(ids.size()):
+				chunk_of_claim[ids[i]] = chunks[i]
 	if hi >= lo:
 		_level_min = lo
 		_level_max = hi

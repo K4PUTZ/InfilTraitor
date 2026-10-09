@@ -365,6 +365,126 @@ func gus_in_light_range(light) -> Array:
 
 
 ## Bucket for one voxel cell at one layer level. 0 = darkest … N-1 = full lit.
+## PB-6 (2026-10-09) — `bucket_for()` for EVERY cell of one level in one call, the map-wide pass's hot loop: the same maths as
+## `_compute_bucket()` (lamp x surface x under-structure, rounded, jittered, clamped; operations in the same order, so the result is
+## identical), with the occupancy read from per-level BYTE MAPS instead of `Dictionary.has()` and none of the per-cell caches
+## filled (they memoise one call at a time; the next `bucket_for()` recomputes what it needs). On the desktop the per-cell path was
+## 953 ms of the 1.4 s map-load apply on SEG_HEAVY (230 921 cells) and its two caches held a `Vector3i` entry per cell.
+## `maps` / `origin` / `width` are from `occupancy_byte_maps()`; `cells` is the level's occupied cells. Returns one byte per cell.
+func buckets_for_level(level: int, cells: Array, maps: Dictionary, origin: Vector2i, width: int, height: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(cells.size())
+	var top_bucket: int = VoxelBoard.LIGHT_BUCKET_COUNT - 1
+	var empty_occ: bool = _occupancy.is_empty()
+	var here: PackedByteArray = maps.get(level, PackedByteArray())
+	var above: PackedByteArray = maps.get(level + 1, PackedByteArray())
+	var above2: PackedByteArray = maps.get(level + 2, PackedByteArray())
+	var below: PackedByteArray = maps.get(level - 1, PackedByteArray())
+	var has_here: bool = not here.is_empty()
+	var has_above: bool = not above.is_empty()
+	var has_above2: bool = not above2.is_empty()
+	var has_below: bool = not below.is_empty()
+	var under: bool = level < GeometryCoords.PLAYABLE_LEVEL and not _under_structure.is_empty()
+	var jitter: bool = micro_jitter_buckets > 0
+	## The lamp term per GU of the box, filled on first use (-1 = not yet): `_lamp_intensity()`'s own cache, without a Vector3i key
+	## per cell. The box has a two-cell margin (`occupancy_byte_maps()`), so every +-1 / +2 neighbour index below is inside it.
+	var gu_origin := Vector2i(origin.x >> 3, origin.y >> 3)
+	var gu_w: int = ((origin.x + width - 1) >> 3) - gu_origin.x + 1
+	var gu_h: int = ((origin.y + height - 1) >> 3) - gu_origin.y + 1
+	var lamp := PackedFloat64Array()  ## 64-bit: a float32 copy of the lamp term moved 96 PLAYGROUND cells across a rounding edge
+	lamp.resize(gu_w * gu_h)
+	lamp.fill(-1.0)
+	var top_f: float = float(top_bucket)
+	var i: int = 0
+	for cell: Vector2i in cells:
+		var gx: int = cell.x >> 3
+		var gy: int = cell.y >> 3
+		var li: int = (gy - gu_origin.y) * gu_w + (gx - gu_origin.x)
+		var intensity: float = lamp[li]
+		if intensity < 0.0:
+			intensity = _lamp_intensity(Vector2i(gx, gy), level, top_bucket)
+			lamp[li] = intensity
+		var factor: float = 1.0
+		if not empty_occ:
+			var at: int = (cell.y - origin.y) * width + (cell.x - origin.x)
+			var exposed_top: bool = not has_above or above[at] == 0
+			var exposed_se: bool = not has_here or here[at + 1] == 0
+			var exposed_sw: bool = not has_here or here[at + width] == 0
+			factor = face_enclosed_factor
+			var best_face: int = -1
+			if exposed_top and face_top_factor >= factor:
+				factor = face_top_factor
+				best_face = 0
+			if exposed_se and face_se_factor >= factor:
+				factor = face_se_factor
+				best_face = 1
+			if exposed_sw and face_sw_factor >= factor:
+				factor = face_sw_factor
+				best_face = 2
+			if best_face >= 0:
+				## `_face_occlusion()`, unrolled per face
+				var blocked: int = 0
+				var total: int = 4
+				if best_face == 0:
+					## hemisphere = the level above: its ring of 4, its far side (+1, +1), and the cell two levels up
+					total = 6
+					if has_above:
+						blocked += int(above[at + 1] != 0) + int(above[at - 1] != 0) + int(above[at + width] != 0) \
+							+ int(above[at - width] != 0) + int(above[at + width + 1] != 0)
+					if has_above2:
+						blocked += int(above2[at] != 0)
+				else:
+					var o: int = at + (1 if best_face == 1 else width)
+					var side: int = width if best_face == 1 else 1
+					if has_here:
+						blocked += int(here[o + side] != 0) + int(here[o - side] != 0)
+					if has_above:
+						blocked += int(above[o] != 0)
+					if has_below:
+						blocked += int(below[o] != 0)
+				factor = factor * (1.0 - ao_strength * (float(blocked) / float(total)))
+		## `_static_factor()` applies it to `surface_factor()`'s answer, the empty-occupancy 1.0 included
+		if under and _under_structure.has(cell):
+			factor *= under_structure_factor
+		intensity *= factor
+		var bucket: int = roundi(intensity * top_f)
+		if jitter:
+			bucket += micro_jitter_offset(cell, level)
+		out[i] = clampi(bucket, 0, top_bucket)
+		i += 1
+	return out
+
+
+static func _occ_at(map: PackedByteArray, x: int, y: int, width: int, height: int) -> int:
+	if x < 0 or y < 0 or x >= width or y >= height:
+		return 0
+	return 1 if map[y * width + x] != 0 else 0
+
+
+## PB-6 — the occupancy as one byte map per level over the bounding box of every occupied cell (plus one cell around it), for
+## `buckets_for_level()`. Returns {"maps": {level: PackedByteArray}, "origin": Vector2i, "width": int, "height": int}.
+func occupancy_byte_maps() -> Dictionary:
+	var lo := Vector2i(2147483647, 2147483647)
+	var hi := Vector2i(-2147483647, -2147483647)
+	for level: Variant in _occupancy:
+		for cell: Vector2i in (_occupancy[level] as Dictionary):
+			lo = Vector2i(mini(lo.x, cell.x), mini(lo.y, cell.y))
+			hi = Vector2i(maxi(hi.x, cell.x), maxi(hi.y, cell.y))
+	if lo.x > hi.x:
+		return {"maps": {}, "origin": Vector2i.ZERO, "width": 1, "height": 1}
+	var origin: Vector2i = lo - Vector2i(2, 2)
+	var width: int = hi.x - origin.x + 3
+	var height: int = hi.y - origin.y + 3
+	var maps: Dictionary = {}
+	for level: Variant in _occupancy:
+		var m := PackedByteArray()
+		m.resize(width * height)
+		for cell: Vector2i in (_occupancy[level] as Dictionary):
+			m[(cell.y - origin.y) * width + (cell.x - origin.x)] = 1
+		maps[int(level)] = m
+	return {"maps": maps, "origin": origin, "width": width, "height": height}
+
+
 func bucket_for(cell: Vector2i, level: int) -> int:
 	var key := Vector3i(cell.x, cell.y, level)
 	if _bucket_cache.has(key):

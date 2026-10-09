@@ -123,6 +123,54 @@ class DumpError(Exception):
 
 # ── reading ──────────────────────────────────────────────────────────────────
 
+def _plane_fill(w, h, bpp, data):
+    counts = {}
+    step = max(1, (w * h) // 4096)
+    for i in range(0, w * h, step):
+        px = bytes(data[i * bpp:(i + 1) * bpp])
+        counts[px] = counts.get(px, 0) + 1
+    return max(counts, key=counts.get)
+
+
+def _compare_planes_by_cell(level, pa, pb, bpp, vis_a, vis_b, occupied_only, by_channel, plane_by_level, plane_examples, first):
+    """Two planes of one level whose size / origin differ, compared cell by cell (see the caller). Returns (diffs, compared)."""
+    wa, ha, _fa, oxa, oya, da = pa
+    wb, hb, _fb, oxb, oyb, db = pb
+    fill_a, fill_b = _plane_fill(wa, ha, bpp, da), _plane_fill(wb, hb, bpp, db)
+    names = PLANE_CHANNELS.get(bpp, ["ch%d" % c for c in range(bpp)])
+    lo_x, lo_y = min(-oxa, -oxb), min(-oya, -oyb)
+    hi_x, hi_y = max(wa - oxa, wb - oxb), max(ha - oya, hb - oyb)
+    diffs = compared = 0
+    for cy in range(lo_y, hi_y):
+        ya, yb = cy + oya, cy + oyb
+        in_ya, in_yb = 0 <= ya < ha, 0 <= yb < hb
+        if not in_ya and not in_yb:
+            continue
+        for cx in range(lo_x, hi_x):
+            xa, xb = cx + oxa, cx + oxb
+            in_a = in_ya and 0 <= xa < wa
+            in_b = in_yb and 0 <= xb < wb
+            if not in_a and not in_b:
+                continue
+            va = bytes(da[(ya * wa + xa) * bpp:(ya * wa + xa + 1) * bpp]) if in_a else fill_b
+            vb = bytes(db[(yb * wb + xb) * bpp:(yb * wb + xb + 1) * bpp]) if in_b else fill_a
+            if in_a and in_b:
+                compared += 1
+            if va == vb:
+                continue
+            if occupied_only and (cx, cy) not in vis_a.get(level, ()) and (cx, cy) not in vis_b.get(level, ()):
+                continue
+            for c in range(bpp):
+                if va[c] != vb[c]:
+                    diffs += 1
+                    _count(by_channel, names[c])
+                    _count(plane_by_level, level)
+                    if len(plane_examples) < first:
+                        plane_examples.append("plane L%d cell (%d,%d) %s: %d→%d%s" % (
+                            level, cx, cy, names[c], va[c], vb[c], "" if (in_a and in_b) else " (one side's fill)"))
+    return diffs, compared
+
+
 def load(path):
     dump = {"path": str(path), "label": None, "meta": {}, "materials": {},
             "containers": {}, "planes": {}, "end": None, "duplicates": []}
@@ -301,7 +349,18 @@ def diff(a, b, first=20, out=print, occupied_only=False):
         wa, ha, fa, oxa, oya, da = a["planes"][level]
         wb, hb, fb, oxb, oyb, db = b["planes"][level]
         if (wa, ha, fa, oxa, oya, len(da)) != (wb, hb, fb, oxb, oyb, len(db)):
-            plane_shape.append(level)
+            ## PB-6 (2026-10-09): the plane is sized per map, so two dumps of the same board from before and after that change
+            ## differ in size and origin. Same format and bytes per texel: align by CELL (texel - origin), compare the overlap, and
+            ## hold every texel only one side covers to that side's fill (its most common texel, the clean / unwritten value).
+            bpa, bpb = len(da) // (wa * ha), len(db) // (wb * hb)
+            if fa != fb or bpa != bpb:
+                plane_shape.append(level)
+                continue
+            aligned_diffs, aligned_compared = _compare_planes_by_cell(level, a["planes"][level], b["planes"][level], bpa,
+                                                                     vis_a, vis_b, occupied_only, by_channel, plane_by_level,
+                                                                     plane_examples, first)
+            texel_diffs += aligned_diffs
+            texels_compared += aligned_compared
             continue
         bpp = len(da) // (wa * ha)
         texels_compared += wa * ha

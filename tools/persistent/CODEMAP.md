@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**280 scripts · 83396 lines total** (under `godot/scripts/`)
+**280 scripts · 83649 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1219,7 +1219,7 @@ extends `Node3D` · 2750 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2460 lines
+`class_name VoxelBoard` · extends `Node2D` · 2536 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1232,31 +1232,16 @@ extends `Node3D` · 2750 lines
 - `GlassOpening` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
 - `IMPACT_DECAL_MATERIALS` = `["concrete", "metal", "stone", "wood", "brick"]`
 - `IMPACT_DECAL_VARIANTS` = `3`
-- `GlassCrackParamsClass` = `preload("res://godot/scripts/systems/destruction/glass_crack_params.gd")`
-- `CRAZE_MASK_TEXELS_PER_VOXEL` = `6`
-- `FloorPile3DRef` = `preload("res://godot/scripts/geometry/floor_pile3d.gd")`
 - `PropMesh3DRef` = `preload("res://godot/scripts/geometry/prop_mesh3d.gd")`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
-- `var render_frame_budget_ms: float = 200.0`
 
 **Public API**
 - `func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:`
 - `func build_occupancy_live(changes: Array[Vector3i]) -> Dictionary:`
 - `func build_occupancy_live_erasing(predict: Dictionary, changes: Array[Vector3i], erased: Array[Vector3i]) -> Dictionary:`
 - `func columns_with_structure() -> Dictionary:`
-- `func note_external_write(level: int, cell: Vector2i) -> void:`
-- `func apply_light_field(field) -> void:`
-- `func apply_light_field_cells(field, cells: Dictionary) -> void:`
-- `func apply_light_field_gus(field, gus: Array) -> void:`
-- `func process_dirty(registry: EdgeRegistry) -> void:`
-- `func process_dirty_slabs(registry: SlabRegistry) -> void:`
-- `func process_dirty_async(registry: EdgeRegistry, states: Array = []) -> void:`
-- `func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> void:`
-- `func glass_crack_covering(pane_id: String, run: int, level: int) -> int:`
-- `func spawn_glass_crack(spec: Dictionary) -> int:`
-- `func spawn_glass_craze(spec: Dictionary) -> int:`
 - `func spawn_floor_shard_pile(level: int, cell: Vector2i, count: int, variant: int) -> bool:`
 - `func set_pile_board3d(board: Node3D) -> void:`
 - `func place_debris_piece(id, center: Vector2, level: int, material_id: String, variant: int, tint: Color, rot: float = 0.0) -> void:`
@@ -2190,7 +2175,7 @@ extends `Node2D` · 68 lines
 
 ### `cell_plane_store.gd`
 
-`class_name CellPlaneStore` · extends `RefCounted` · 179 lines
+`class_name CellPlaneStore` · extends `RefCounted` · 229 lines
 
 `godot/scripts/systems/cell_plane_store.gd`
 
@@ -2198,14 +2183,6 @@ extends `Node2D` · 68 lines
 
 **Constants / tuning**
 - `BUCKET_UNWRITTEN` = `255`
-- `SOOT_PLANE_ORIGIN` = `Vector2i(64, 64)`
-- `SOOT_TEX_SIZE` = `512`
-
-**Public API**
-- `func write_soot(level: int, cell: Vector2i, code: int) -> void:`
-- `func flush(_skip_writes: bool) -> int:`
-- `func ensure_level(level: int) -> void:`
-- `func reset_all() -> void:`
 
 ---
 
@@ -2914,7 +2891,7 @@ extends `Node` · 236 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 617 lines
+`class_name VoxelLightField` · extends `RefCounted` · 737 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -5881,7 +5858,7 @@ extends `Node2D` · 63 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11381 lines
+extends `Node2D` · 11388 lines
 
 `godot/scripts/world/room.gd`
 

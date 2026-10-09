@@ -503,10 +503,13 @@ func columns_with_structure() -> Dictionary:
 ## (source_id -1, checked in the incremental path below) — they never add cells
 ## the index wouldn't already know about; any geometry change is followed by a
 ## full repaint anyway, which rebuilds this index from scratch.
+## PB-6 (2026-10-09): GU -> PackedInt32Array of (level, x, y) triples. It was an Array of one `Dictionary` per cell (~230 000 on a
+## heavy segment, most of the map-load apply's native heap on the Moto).
 var _placed_by_gu: Dictionary = {}
 ## PERF-10 §10.2 — O(1) membership for the index above, so a cell can be added
 ## incrementally without scanning its GU's list. Cleared and rebuilt with it.
-var _placed_index: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) -> true
+## PB-6: one byte per plane cell per level (`level -> PackedByteArray`, the plane's own layout), was a `Vector3i` key per cell.
+var _placed_index: Dictionary = {}
 
 ## R3D-PROPS Tier 1/2 — one `PropBlock` per footprint GU cell `register_prop()` places, fresh
 ## every `clear()` + `register_geometry()` cycle (same lifetime as `_edge_registry` etc. in
@@ -564,13 +567,32 @@ func _apply_light_field_pass_store(field) -> void:
 		push_error("[VoxelBoard] _apply_light_field_pass_store: no VoxelStore.active — planes not written")
 		return
 	var occ: Dictionary = VoxelStore.active.occupancy_dict()
+	## PB-6 (2026-10-09): one level at a time, in bulk — the buckets from `VoxelLightField.buckets_for_level()` (byte-map occupancy,
+	## no per-cell caches), written straight into the plane's bytes. `LIGHT_BULK=0` is the per-cell path (the A/B and the reference:
+	## `LIGHT_BULK_CHECK=1` runs both and reports every cell whose bucket differs). The journal keeps the per-cell path.
+	var bulk: bool = not _bucket_journal_on and field.has_method("buckets_for_level") and LIGHT_BULK
+	var check: bool = bulk and LIGHT_BULK_CHECK
+	var occ_maps: Dictionary = field.occupancy_byte_maps() if bulk else {}
+	var differ: int = 0
 	for level: Variant in occ.keys():
 		var level_i: int = int(level)
-		for cell: Vector2i in (occ[level] as Dictionary).keys():
-			_apply_cells_seen += 1
-			_index_placed(level_i, cell)
-			_write_cell_bucket(level_i, cell, field.bucket_for(cell, level_i))
-			_apply_cells_written += 1
+		var cells: Array = (occ[level] as Dictionary).keys()
+		_apply_cells_seen += cells.size()
+		_index_placed_level(level_i, cells)
+		if bulk:
+			var buckets: PackedByteArray = field.buckets_for_level(level_i, cells, occ_maps["maps"], occ_maps["origin"],
+				int(occ_maps["width"]), int(occ_maps["height"]))
+			if check:
+				for i: int in range(cells.size()):
+					if int(buckets[i]) != field.bucket_for(cells[i], level_i):
+						differ += 1
+			_cell_planes.write_buckets_level(level_i, cells, buckets)
+		else:
+			for cell: Vector2i in cells:
+				_write_cell_bucket(level_i, cell, field.bucket_for(cell, level_i))
+		_apply_cells_written += cells.size()
+	if check:
+		print("[LIGHT-BULK-CHECK] %d of %d cell(s) differ from the per-cell path" % [differ, _apply_cells_seen])
 	flush_cell_soot()
 	if field.has_method("clear_stale_accum"):
 		field.clear_stale_accum()
@@ -587,14 +609,57 @@ func _apply_light_field_pass_store(field) -> void:
 ## visited is what stops that class existing, and the membership set is what makes
 ## an incremental add cheap enough to do unconditionally.
 func _index_placed(level: int, cell: Vector2i) -> void:
-	var key := Vector3i(cell.x, cell.y, level)
-	if _placed_index.has(key):
+	var p: Vector2i = cell + plane_origin()
+	var size: Vector2i = plane_size()
+	if p.x < 0 or p.y < 0 or p.x >= size.x or p.y >= size.y:
 		return
-	_placed_index[key] = true
+	if not _placed_index.has(level):
+		var m := PackedByteArray()
+		m.resize(size.x * size.y)
+		_placed_index[level] = m
+	var marks: PackedByteArray = _placed_index[level]
+	var at: int = p.y * size.x + p.x
+	if marks[at] != 0:
+		return
+	marks[at] = 1
+	_placed_index[level] = marks
 	var gu := Vector2i(cell.x >> 3, cell.y >> 3)
-	if not _placed_by_gu.has(gu):
-		_placed_by_gu[gu] = []
-	_placed_by_gu[gu].append({"level": level, "cell": cell})
+	var list: PackedInt32Array = _placed_by_gu.get(gu, PackedInt32Array())
+	list.append(level)
+	list.append(cell.x)
+	list.append(cell.y)
+	_placed_by_gu[gu] = list
+
+
+## PB-6: `_index_placed()` for a level's cells in one pass (the map-wide apply), the GU lists grown in place.
+func _index_placed_level(level: int, cells: Array) -> void:
+	var size: Vector2i = plane_size()
+	var origin: Vector2i = plane_origin()
+	var marks: PackedByteArray = _placed_index.get(level, PackedByteArray())
+	if marks.is_empty():
+		marks.resize(size.x * size.y)
+	var by_gu: Dictionary = {}
+	for cell: Vector2i in cells:
+		var p: Vector2i = cell + origin
+		if p.x < 0 or p.y < 0 or p.x >= size.x or p.y >= size.y:
+			continue
+		var at: int = p.y * size.x + p.x
+		if marks[at] != 0:
+			continue
+		marks[at] = 1
+		var gu := Vector2i(cell.x >> 3, cell.y >> 3)
+		if not by_gu.has(gu):
+			by_gu[gu] = PackedInt32Array()
+		var l: PackedInt32Array = by_gu[gu]
+		l.append(level)
+		l.append(cell.x)
+		l.append(cell.y)
+		by_gu[gu] = l
+	_placed_index[level] = marks
+	for gu: Vector2i in by_gu:
+		var list: PackedInt32Array = _placed_by_gu.get(gu, PackedInt32Array())
+		list.append_array(by_gu[gu])
+		_placed_by_gu[gu] = list
 
 
 ## PERF-10 — THE APPLY, DRIVEN BY THE FIELD'S OWN STALE SET.
@@ -647,12 +712,10 @@ func apply_light_field_gus(field, gus: Array) -> void:
 	var gu_set: Dictionary = {}
 	for gu in gus:
 		gu_set[gu] = true
-		var placements = _placed_by_gu.get(gu)
-		if placements == null:
-			continue
-		for entry in placements:
-			var level: int = entry["level"]
-			var cell: Vector2i = entry["cell"]
+		var placements: PackedInt32Array = _placed_by_gu.get(gu, PackedInt32Array())
+		for j: int in range(0, placements.size(), 3):
+			var level: int = placements[j]
+			var cell := Vector2i(placements[j + 1], placements[j + 2])
 			## R3D-6: the planes only. No opaque tile exists to say whether the cell is still there, and without this
 			## the blast's consequence pass wrote NO soot and NO light into the planes.
 			_write_cell_bucket(level, cell, field.bucket_for(cell, level))
@@ -931,8 +994,21 @@ func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> vo
 ## as aliases so every existing caller keeps working unchanged.
 const _CellPlaneStoreScript: GDScript = preload("res://godot/scripts/systems/cell_plane_store.gd")
 const BUCKET_UNWRITTEN: int = _CellPlaneStoreScript.BUCKET_UNWRITTEN
-const SOOT_PLANE_ORIGIN: Vector2i = _CellPlaneStoreScript.SOOT_PLANE_ORIGIN
-const SOOT_TEX_SIZE: int = _CellPlaneStoreScript.SOOT_TEX_SIZE
+## PB-6 (2026-10-09): the map-wide light apply in bulk (`_apply_light_field_pass_store()`); set from the `LIGHT_BULK` /
+## `LIGHT_BULK_CHECK` dev flags by `Room.load_map()` (statics, so a headless selftest without the DevFlags autoload compiles).
+static var LIGHT_BULK: bool = true
+static var LIGHT_BULK_CHECK: bool = false
+
+
+## PB-6: the plane is sized per map now (`CellPlaneStore.configure_for_map()`); ask these, never a constant.
+static func plane_origin() -> Vector2i:
+	return _CellPlaneStoreScript.plane_origin
+
+
+static func plane_size() -> Vector2i:
+	return _CellPlaneStoreScript.plane_size
+
+
 static func _top_tone_bytes() -> PackedByteArray:
 	var out := PackedByteArray()
 	for tone: float in BoardLook.top_tone_table():

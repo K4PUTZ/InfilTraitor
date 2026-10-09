@@ -20,10 +20,27 @@ const BUCKET_UNWRITTEN: int = 255
 
 ## ⚠️ CELLS GO NEGATIVE — the map's BUFFER (Rule 7) puts real geometry at negative
 ## voxel coordinates, so the plane carries an ORIGIN: everything indexes
-## `cell + ORIGIN`, and the shader is passed the same offset.
-const SOOT_PLANE_ORIGIN: Vector2i = Vector2i(64, 64)
-## 512 covers a 64x64 GU board; PLAYGROUND is 46x24 with its buffer.
-const SOOT_TEX_SIZE: int = 512
+## `cell + plane_origin`, and the shader is passed the same offset.
+## PB-6 (2026-10-09): SIZED TO THE MAP at load (`configure_for_map()`), no longer a fixed 512x512 (64 GU). An 18x36 segment with its
+## ring is 224x368 voxels: the fixed plane was ~2.4x its area in memory (RGBA8 on the GPU, ~1 MiB per level) and in every light /
+## soot upload (the light ramp re-sent 20 levels, ~28 ms per step on the Moto), and it capped a map at ~46 GU per side. The
+## defaults are the old plane, for anything that runs before a map loads (selftests).
+static var plane_origin: Vector2i = Vector2i(64, 64)
+static var plane_size: Vector2i = Vector2i(512, 512)
+## Voxels kept around the map on every side (debris lands past the edge; a face's lookup steps half a voxel out).
+const PLANE_MARGIN: int = 16
+
+
+## The plane for a map of `map_voxels` (its whole extent, the buffer ring included), origin at the map's corner minus the margin.
+## Both axes rounded up to a multiple of 8, so the per-GU roof texture (`plane_size / 8`) covers it exactly.
+static func configure_for_map(map_voxels: Vector2i) -> void:
+	plane_origin = Vector2i(PLANE_MARGIN, PLANE_MARGIN)
+	var raw: Vector2i = map_voxels + Vector2i(2 * PLANE_MARGIN, 2 * PLANE_MARGIN)
+	plane_size = Vector2i(int(ceil(float(raw.x) / 8.0)) * 8, int(ceil(float(raw.y) / 8.0)) * 8)
+
+
+static func _outside(p: Vector2i) -> bool:
+	return p.x < 0 or p.y < 0 or p.x >= plane_size.x or p.y >= plane_size.y
 
 ## PERF-P3: FORMAT_RGB8 — R = the per-face soot code (0..215, base 6), G = the light
 ## bucket (0..11), B = the floor-top tone of R's ring (R3D-LOOK, derived from R in `write_soot`, never written alone). One texel per cell, one texture per level. Both writers do a
@@ -58,7 +75,7 @@ func _tone_byte(code: int) -> int:
 func _image_for(level: int) -> Image:
 	if _images.has(level):
 		return _images[level]
-	var img := Image.create(SOOT_TEX_SIZE, SOOT_TEX_SIZE, false, Image.FORMAT_RGB8)
+	var img := Image.create(plane_size.x, plane_size.y, false, Image.FORMAT_RGB8)
 	## R = CLEAN, not zero: zero soot is "ring 0 on all three faces", the darkest
 	## scorch there is, so an unvisited cell would come up black.
 	##
@@ -76,11 +93,11 @@ func _image_for(level: int) -> Image:
 ## Record one cell's soot code. Cheap and idempotent: an unchanged code does not
 ## dirty the level, so a repaint that only moves light uploads nothing.
 func write_soot(level: int, cell: Vector2i, code: int) -> void:
-	var p := cell + SOOT_PLANE_ORIGIN
-	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:
+	var p := cell + plane_origin
+	if _outside(p):
 		if not _out_of_range_reported:
 			_out_of_range_reported = true
-			push_error("[CellPlaneStore] PERF-P2: cell %s is outside the %dx%d soot plane — raise SOOT_TEX_SIZE" % [cell, SOOT_TEX_SIZE, SOOT_TEX_SIZE])
+			push_error("[CellPlaneStore] PERF-P2: cell %s is outside the %dx%d soot plane — widen PLANE_MARGIN" % [cell, plane_size.x, plane_size.y])
 		return
 	var img := _image_for(level)
 	var c: int = clampi(code, 0, _max_r)
@@ -98,11 +115,11 @@ func write_soot(level: int, cell: Vector2i, code: int) -> void:
 ## `write_soot()`, down to the idempotence (it returns the bucket the cell held BEFORE the write, `BUCKET_UNWRITTEN` out of range - R3D-LIGHT's journal): an unchanged bucket does not dirty
 ## the level, so a repaint that only moves soot uploads nothing.
 func write_bucket(level: int, cell: Vector2i, bucket: int) -> int:
-	var p := cell + SOOT_PLANE_ORIGIN
-	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:
+	var p := cell + plane_origin
+	if _outside(p):
 		if not _out_of_range_reported:
 			_out_of_range_reported = true
-			push_error("[CellPlaneStore] PERF-P3: cell %s is outside the %dx%d cell plane — raise SOOT_TEX_SIZE" % [cell, SOOT_TEX_SIZE, SOOT_TEX_SIZE])
+			push_error("[CellPlaneStore] PERF-P3: cell %s is outside the %dx%d cell plane — widen PLANE_MARGIN" % [cell, plane_size.x, plane_size.y])
 		return BUCKET_UNWRITTEN
 	var img := _image_for(level)
 	var b: int = clampi(bucket, 0, _max_bucket)
@@ -114,11 +131,36 @@ func write_bucket(level: int, cell: Vector2i, bucket: int) -> int:
 	return was.g8
 
 
+## PB-6 (2026-10-09) — `write_bucket()` for a whole level at once: `cells[i]` gets `buckets[i]`, written straight into the image's
+## bytes (one `get_data()` / `set_data()` instead of a `get_pixel()` / `set_pixel()` pair per cell). Same clamping and the same
+## out-of-plane report; the level is dirtied when anything changed. No journal (the caller uses the per-cell path when it keeps one).
+func write_buckets_level(level: int, cells: Array, buckets: PackedByteArray) -> void:
+	var img := _image_for(level)
+	var data: PackedByteArray = img.get_data()
+	var w: int = img.get_width()
+	var changed: bool = false
+	for i: int in range(cells.size()):
+		var p: Vector2i = (cells[i] as Vector2i) + plane_origin
+		if _outside(p):
+			if not _out_of_range_reported:
+				_out_of_range_reported = true
+				push_error("[CellPlaneStore] PERF-P3: cell %s is outside the %dx%d cell plane — widen PLANE_MARGIN" % [cells[i], plane_size.x, plane_size.y])
+			continue
+		var at: int = (p.y * w + p.x) * 3 + 1
+		var b: int = mini(int(buckets[i]), _max_bucket)
+		if data[at] != b:
+			data[at] = b
+			changed = true
+	if changed:
+		img.set_data(img.get_width(), img.get_height(), false, Image.FORMAT_RGB8, data)
+		_dirty[level] = true
+
+
 ## What the plane currently says about one cell's light bucket — the counterpart
 ## of `soot_at()`, and the record P3 leaves in place of the alternative id.
 func bucket_at(level: int, cell: Vector2i) -> int:
-	var p := cell + SOOT_PLANE_ORIGIN
-	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:
+	var p := cell + plane_origin
+	if _outside(p):
 		return BUCKET_UNWRITTEN
 	if not _images.has(level):
 		return BUCKET_UNWRITTEN
@@ -129,8 +171,8 @@ func bucket_at(level: int, cell: Vector2i) -> int:
 ## needs it to decide whether a blast changes a cell's scorch at all, now that
 ## the answer is no longer visible in the alternative id.
 func soot_at(level: int, cell: Vector2i) -> int:
-	var p := cell + SOOT_PLANE_ORIGIN
-	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:
+	var p := cell + plane_origin
+	if _outside(p):
 		return _clean_r
 	if not _images.has(level):
 		return _clean_r
@@ -174,6 +216,14 @@ func ensure_level(level: int) -> void:
 ## because a rotation or a map load reuses these images, and since 2026-09-22 no
 ## light apply writes soot, so nothing else would clear a stale view's scorch.
 func reset_all() -> void:
+	## PB-6: a plane sized for another map is dropped, not refilled (the next write makes one at the current size).
+	for level in _images.keys():
+		var img: Image = _images[level]
+		if img.get_width() != plane_size.x or img.get_height() != plane_size.y:
+			_images.clear()
+			_dirty.clear()
+			_out_of_range_reported = false
+			return
 	for level in _images:
 		(_images[level] as Image).fill(Color8(_clean_r, BUCKET_UNWRITTEN, _tone_byte(_clean_r), 255))
 		_dirty[level] = true

@@ -1857,6 +1857,12 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## as the old per-view re-layout made, so nothing downstream writes into `_base_layout`.
 	var view_layout: Dictionary = layout.duplicate(true)
 	_map_buffer = view_layout.get("buffer", 0)
+	## PB-6: the cell plane is sized to THIS map (its whole extent in voxels), and a plane left from another map is dropped.
+	CellPlaneStoreClass.configure_for_map(room_size * GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	VoxelBoard.LIGHT_BULK = _dev_flag("LIGHT_BULK", "1") != "0"
+	VoxelBoard.LIGHT_BULK_CHECK = _dev_flag_on("LIGHT_BULK_CHECK")
+	if _voxel_board != null:
+		_voxel_board.reset_cell_planes()
 	VoxelStore.active = null
 	_room_builder.build_from_layout(view_layout, room_size)
 	_rebuild_voxel_store("map load: %s" % new_map_id)
@@ -3010,7 +3016,7 @@ func scenario_board_probe(path: String, label: String) -> Dictionary:
 		"board3d": board3d() != null,
 	}
 	var summary: Dictionary = BoardProbeClass.write(path, label, _edge_registry, _slab_registry,
-		_junction_columns, planes, VoxelBoard.SOOT_PLANE_ORIGIN, meta, _voxel_board.prop_blocks())
+		_junction_columns, planes, VoxelBoard.plane_origin(), meta, _voxel_board.prop_blocks())
 	if summary.is_empty():
 		return {}
 	print("[BOARD-PROBE] %s — %d voxel(s) in %d container(s) (slice %d, column %d, slab %d), %d plane level(s), %d material(s), %.1f MB, %.0f ms → %s"
@@ -3335,7 +3341,7 @@ func scenario_board_probe_store(path: String, label: String) -> Dictionary:
 		"source": "store",
 	}
 	var summary: Dictionary = BoardProbeClass.write_store(path, label, store, planes,
-		VoxelBoard.SOOT_PLANE_ORIGIN, meta)
+		VoxelBoard.plane_origin(), meta)
 	if summary.is_empty():
 		return {}
 	var mismatches: int = store.grid_mismatches()
@@ -5310,6 +5316,7 @@ func begin_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 	return job
 
 
+const CellPlaneStoreClass = preload("res://godot/scripts/systems/cell_plane_store.gd")
 const ShardField3DWarmRef = preload("res://godot/scripts/geometry/shard_field3d.gd")
 ## How many debris flights one step of the job spawns (phase 6).
 var PROP_DEBRIS_RAIN_BATCH: int = 24

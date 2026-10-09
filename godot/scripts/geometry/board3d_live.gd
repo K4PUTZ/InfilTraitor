@@ -118,7 +118,7 @@ uniform int level_count = 1;
 uniform int mesh_ground_level = 80;
 uniform int rel_offset = -80;
 uniform ivec2 plane_origin = ivec2(64, 64);
-uniform int plane_size = 512;
+uniform ivec2 plane_size = ivec2(512, 512);
 uniform float bucket_lum[12];
 uniform vec4 soot_mult = vec4(0.38, 0.60, 0.76, 0.90);
 uniform vec2 soot_char_range = vec2(0.10, 0.30);
@@ -153,7 +153,7 @@ int cut_state(ivec3 v, vec2 frag) {
 		return 0;
 	}
 	ivec2 pc = ivec2(v.x, v.z) + plane_origin;
-	if (pc.x < 0 || pc.y < 0 || pc.x >= plane_size || pc.y >= plane_size) {
+	if (pc.x < 0 || pc.y < 0 || pc.x >= plane_size.x || pc.y >= plane_size.y) {
 		return 0;
 	}
 	vec4 t = texelFetch(occ_tex, pc, 0);
@@ -163,7 +163,7 @@ int cut_state(ivec3 v, vec2 frag) {
 			return 0;
 		}
 		ivec2 gc = ivec2(floor(vec2(float(v.x), float(v.z)) / 8.0)) + plane_origin / 8;
-		if (gc.x < 0 || gc.y < 0 || gc.x >= plane_size / 8 || gc.y >= plane_size / 8) {
+		if (gc.x < 0 || gc.y < 0 || gc.x >= plane_size.x / 8 || gc.y >= plane_size.y / 8) {
 			return 0;
 		}
 		t = texelFetch(roof_tex, gc, 0);
@@ -226,7 +226,7 @@ void fragment() {
 	float own_tone = 1.0;  // the plane's B: this cell's floor-top tone
 	bool in_plane = false;
 	if (layer >= 0 && layer < level_count && pc.x >= 0 && pc.y >= 0
-			&& pc.x < plane_size && pc.y < plane_size) {
+			&& pc.x < plane_size.x && pc.y < plane_size.y) {
 		vec4 t = texelFetch(cell_plane, ivec3(pc, layer), 0);
 		code = clamp(floor(t.r * 255.0 + 0.5), 0.0, 215.0);
 		bucket = int(floor(t.g * 255.0 + 0.5));
@@ -243,7 +243,7 @@ void fragment() {
 		// weight is 0.5 on each side, so the tone is continuous across it. (Two integer fetches of the neighbours' codes cost +3.6 ms
 		// on the Moto at idle, four cost +5.8 ms; the tone is baked into the plane at write time instead.)
 		if (in_plane) {
-			float blur = texture(cell_plane, vec3((v_world.xz * 8.0 + vec2(plane_origin)) / float(plane_size), float(layer))).b;
+			float blur = texture(cell_plane, vec3((v_world.xz * 8.0 + vec2(plane_origin)) / vec2(plane_size), float(layer))).b;
 			tone += blur - own_tone;
 		}
 	}
@@ -830,50 +830,50 @@ func on_occlusion(occ_set) -> void:
 	if occ_set == null or _geometry_root == null:
 		return
 	var oc0: int = Time.get_ticks_usec()
-	var size: int = VoxelBoard.SOOT_TEX_SIZE
-	if _occ_image == null:
-		_occ_image = Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var size: Vector2i = VoxelBoard.plane_size()
+	if _occ_image == null or _occ_image.get_width() != size.x or _occ_image.get_height() != size.y:
+		_occ_image = Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
 		_occ_texture = ImageTexture.create_from_image(_occ_image)
 	## Two textures (R3D-7): one texel per COLUMN for what needs column resolution (walls, junctions, a roof's border and
 	## their merges), one texel per GU for a revealed roof's core. Built as bytes and handed over once.
 	var columns: Dictionary = occ_set.get_column_entries()
 	var bytes := PackedByteArray()
-	bytes.resize(size * size * 4)
+	bytes.resize(size.x * size.y * 4)
 	var never_cut: int = _never_cut_below()
 	for column: Vector2i in columns:
 		var entry: Dictionary = columns[column]
 		if int(entry["min_level"]) < never_cut and not _warned_cut_below:
 			_warned_cut_below = true
 			push_warning("[Board3DLive] the cutaway ghosts level %d at column %s, below the solid-face line %d: those faces are on the SOLID twin and will not ghost (a wall standing below the ground plane?)" % [int(entry["min_level"]), column, never_cut])
-		var px: Vector2i = column + VoxelBoard.SOOT_PLANE_ORIGIN
-		if px.x < 0 or px.y < 0 or px.x >= size or px.y >= size:
+		var px: Vector2i = column + VoxelBoard.plane_origin()
+		if px.x < 0 or px.y < 0 or px.x >= size.x or px.y >= size.y:
 			continue
-		var at: int = (px.y * size + px.x) * 4
+		var at: int = (px.y * size.x + px.x) * 4
 		bytes[at] = clampi(int(entry["min_level"]), 0, 255)
 		bytes[at + 1] = clampi(int(entry["max_level"]), 0, 255)
 		bytes[at + 2] = clampi(int(entry["ring"]) + 1, 1, 255)
 		bytes[at + 3] = 255
-	_occ_image.set_data(size, size, false, Image.FORMAT_RGBA8, bytes)
+	_occ_image.set_data(size.x, size.y, false, Image.FORMAT_RGBA8, bytes)
 	_occ_texture.update(_occ_image)
-	var gu_size: int = size / 8
-	if _roof_image == null:
-		_roof_image = Image.create(gu_size, gu_size, false, Image.FORMAT_RGBA8)
+	var gu_size: Vector2i = size / 8
+	if _roof_image == null or _roof_image.get_width() != gu_size.x or _roof_image.get_height() != gu_size.y:
+		_roof_image = Image.create(gu_size.x, gu_size.y, false, Image.FORMAT_RGBA8)
 		_roof_texture = ImageTexture.create_from_image(_roof_image)
 	var roof_gus: Dictionary = occ_set.get_roof_gus()
 	var roof_bytes := PackedByteArray()
-	roof_bytes.resize(gu_size * gu_size * 4)
-	var gu_origin: Vector2i = VoxelBoard.SOOT_PLANE_ORIGIN / 8
+	roof_bytes.resize(gu_size.x * gu_size.y * 4)
+	var gu_origin: Vector2i = VoxelBoard.plane_origin() / 8
 	for gu: Vector2i in roof_gus:
 		var roof_entry: Dictionary = roof_gus[gu]
 		var gp: Vector2i = gu + gu_origin
-		if gp.x < 0 or gp.y < 0 or gp.x >= gu_size or gp.y >= gu_size:
+		if gp.x < 0 or gp.y < 0 or gp.x >= gu_size.x or gp.y >= gu_size.y:
 			continue
-		var gat: int = (gp.y * gu_size + gp.x) * 4
+		var gat: int = (gp.y * gu_size.x + gp.x) * 4
 		roof_bytes[gat] = clampi(int(roof_entry["min_level"]), 0, 255)
 		roof_bytes[gat + 1] = clampi(int(roof_entry["max_level"]), 0, 255)
 		roof_bytes[gat + 2] = clampi(int(roof_entry["ring"]) + 1, 1, 255)
 		roof_bytes[gat + 3] = 255
-	_roof_image.set_data(gu_size, gu_size, false, Image.FORMAT_RGBA8, roof_bytes)
+	_roof_image.set_data(gu_size.x, gu_size.y, false, Image.FORMAT_RGBA8, roof_bytes)
 	_roof_texture.update(_roof_image)
 	for i: int in range(_shader_materials.size()):
 		if _material_glass[i]:
@@ -1411,8 +1411,8 @@ func _build_plane() -> void:
 		m.set_shader_parameter("level_count", _level_max - _level_min + 1)
 		m.set_shader_parameter("mesh_ground_level", _ground_level)
 		m.set_shader_parameter("rel_offset", rel_offset)
-		m.set_shader_parameter("plane_origin", VoxelBoard.SOOT_PLANE_ORIGIN)
-		m.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
+		m.set_shader_parameter("plane_origin", VoxelBoard.plane_origin())
+		m.set_shader_parameter("plane_size", VoxelBoard.plane_size())
 		m.set_shader_parameter("bucket_lum", ladder)
 		m.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
 		m.set_shader_parameter("soot_char_range", Vector2(BoardLook.SOOT_CHAR_MIN, BoardLook.SOOT_CHAR_MAX))
@@ -1424,8 +1424,8 @@ func _build_plane() -> void:
 		pm.set_shader_parameter("level_base", _level_min)
 		pm.set_shader_parameter("level_count", _level_max - _level_min + 1)
 		pm.set_shader_parameter("mesh_ground_level", _ground_level)
-		pm.set_shader_parameter("plane_origin", VoxelBoard.SOOT_PLANE_ORIGIN)
-		pm.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
+		pm.set_shader_parameter("plane_origin", VoxelBoard.plane_origin())
+		pm.set_shader_parameter("plane_size", VoxelBoard.plane_size())
 		pm.set_shader_parameter("bucket_lum", ladder)
 		pm.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
 		pm.set_shader_parameter("soot_char_range", Vector2(BoardLook.SOOT_CHAR_MIN, BoardLook.SOOT_CHAR_MAX))
@@ -1445,8 +1445,8 @@ func register_prop_light_material(mat: ShaderMaterial) -> void:
 		mat.set_shader_parameter("level_base", _level_min)
 		mat.set_shader_parameter("level_count", _level_max - _level_min + 1)
 		mat.set_shader_parameter("mesh_ground_level", _ground_level)
-		mat.set_shader_parameter("plane_origin", VoxelBoard.SOOT_PLANE_ORIGIN)
-		mat.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
+		mat.set_shader_parameter("plane_origin", VoxelBoard.plane_origin())
+		mat.set_shader_parameter("plane_size", VoxelBoard.plane_size())
 		mat.set_shader_parameter("bucket_lum", PackedFloat32Array(_light_ladder))
 		mat.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
 		mat.set_shader_parameter("soot_char_range", Vector2(BoardLook.SOOT_CHAR_MIN, BoardLook.SOOT_CHAR_MAX))
@@ -1476,8 +1476,8 @@ func _apply_overlay_uniforms(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("level_count", _level_max - _level_min + 1)
 	mat.set_shader_parameter("mesh_ground_level", _ground_level)
 	mat.set_shader_parameter("rel_offset", (_room._voxel_board as VoxelBoard).relative_level(_ground_level) - _ground_level)
-	mat.set_shader_parameter("plane_origin", VoxelBoard.SOOT_PLANE_ORIGIN)
-	mat.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
+	mat.set_shader_parameter("plane_origin", VoxelBoard.plane_origin())
+	mat.set_shader_parameter("plane_size", VoxelBoard.plane_size())
 	mat.set_shader_parameter("bucket_lum", PackedFloat32Array(_light_ladder))
 	mat.set_shader_parameter("face_tone", Vector3(_tone[0], _tone[1], _tone[2]))
 	mat.set_shader_parameter("depth_dim", PackedFloat32Array(VoxelBoard.FLOOR_DEPTH_DIM))
@@ -1684,7 +1684,7 @@ func _plane_image(level: int) -> Image:
 	var image: Image = (_room._voxel_board as VoxelBoard).cell_plane_image(level)
 	if image != null:
 		return image
-	var blank := Image.create(VoxelBoard.SOOT_TEX_SIZE, VoxelBoard.SOOT_TEX_SIZE,
+	var blank := Image.create(VoxelBoard.plane_size().x, VoxelBoard.plane_size().y,
 		false, Image.FORMAT_RGB8)
 	blank.fill(Color8(VoxelBoard.FACE_SOOT_CODE_CLEAN, VoxelBoard.BUCKET_UNWRITTEN, 255, 255))
 	return blank

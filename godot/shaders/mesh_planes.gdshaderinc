@@ -12,7 +12,7 @@ uniform int level_base = 0;
 uniform int level_count = 1;
 uniform int mesh_ground_level = 80;
 uniform ivec2 plane_origin = ivec2(64, 64);
-uniform int plane_size = 512;
+uniform ivec2 plane_size = ivec2(512, 512);
 uniform float bucket_lum[12];
 uniform vec4 soot_mult = vec4(0.38, 0.60, 0.76, 0.90);
 uniform vec2 soot_char_range = vec2(0.10, 0.30);
@@ -34,7 +34,7 @@ vec4 plane_texel(vec3 world, out bool inside, out ivec3 cell) {
 	ivec2 pc = ivec2(floor(vec2(world.x, world.z) * 8.0)) + plane_origin;
 	int layer = (mesh_ground_level - 1) - level_base;
 	cell = ivec3(pc.x, layer, pc.y);
-	inside = layer >= 0 && layer < level_count && pc.x >= 0 && pc.y >= 0 && pc.x < plane_size && pc.y < plane_size;
+	inside = layer >= 0 && layer < level_count && pc.x >= 0 && pc.y >= 0 && pc.x < plane_size.x && pc.y < plane_size.y;
 	return inside ? texelFetch(cell_plane, ivec3(pc, layer), 0) : vec4(0.0);
 }
 

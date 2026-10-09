@@ -23,7 +23,7 @@ uniform int level_count = 1;
 uniform int mesh_ground_level = 80;
 uniform int rel_offset = -80;
 uniform ivec2 plane_origin = ivec2(64, 64);
-uniform int plane_size = 512;
+uniform ivec2 plane_size = ivec2(512, 512);
 uniform float bucket_lum[12];
 uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
 uniform float depth_dim[5];
@@ -68,7 +68,7 @@ void fragment() {
 	ivec3 v = ivec3(floor(v_world * 8.0 - vec3(0.0, 0.06, 0.0)));
 	int level = v.y + mesh_ground_level;
 	int layer = clamp(level - level_base, 0, level_count - 1);
-	vec2 plane_uv = (v_world.xz * 8.0 + vec2(plane_origin)) / float(plane_size);
+	vec2 plane_uv = (v_world.xz * 8.0 + vec2(plane_origin)) / vec2(plane_size);
 	float tone = texture(cell_plane, vec3(plane_uv, float(layer))).b;
 	int bucket = int(floor(texelFetch(cell_plane, ivec3(ivec2(v.x, v.z) + plane_origin, layer), 0).g * 255.0 + 0.5));
 	float f = face_tone.x * bucket_lum[clamp(bucket, 0, 11)] * tone;

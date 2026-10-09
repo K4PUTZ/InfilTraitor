@@ -189,3 +189,27 @@ a 4 GB phone at 30 fps with memory under a ratified ceiling. The performance wor
 weaknesses are a missing fixed reference, the unattributed GPU, and a hit-stop that is verified on only one of the two phones.
 
 The game is where it was in June. The next information that matters can only come from playing it.
+
+---
+
+## 10. The Director's ruling (2026-10-09, the same day)
+
+> *"Só vamos encerrar a fase de performance quando a engine estiver totalmente otimizada e preparada para a carga de gameplay. Ontem
+> fizemos uma boa estimativa do que o programa vai ter. O mecanismo de segmentos nos permite ter a segurança de que na pior das
+> hipóteses podemos simplesmente diminuir o tamanho de cada segmento, ao invés de piorar a qualidade do jogo. Além disso temos ainda
+> diferentes válvulas de escape que nos permitem gastar esforço prévio em troca de qualidade. O teste dos 5 minutos não importa nesse
+> momento, o gameplay é secundário diante da engine. Quando a gente tiver um mundo controlado pela nossa vontade vai ser simples criar
+> diversão e entretenimento."*
+
+- **Recommendation 1 (an exit, then a freeze): DECLINED.** The performance phase closes only when the engine is fully optimised and
+  ready for the gameplay load; that load is PB-1's `segment_spec`.
+- **Recommendation 2 (the five-minute test early in A2): DECLINED for now.** Gameplay is secondary to the engine; the Director's July
+  position stands, restated. The July question stays on the record for the next retrospective, unanswered.
+- **The fallback is the segment, not the quality:** if the HEAVY segment does not fit, the segment shrinks. The other valves trade
+  effort paid in advance for quality (pre-cook, hit-stop, caches).
+- Recommendations 3-5: not ruled.
+
+**Technical note (Claude), for the plan, not against the ruling:** the segment valve reaches what scales with the segment (memory, load
+time, content per segment). It does not reach the per-frame GPU cost, which scales with the screen's pixels and with what is in view:
+the Moto's idle GPU is ~18 ms on a near-empty board and ~25 ms with real content, whatever the segment's size. That cost needs a lever
+of its own, so the GPU attribution of §5 C belongs inside the continuing performance phase.

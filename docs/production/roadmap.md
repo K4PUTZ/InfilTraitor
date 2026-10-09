@@ -17,6 +17,8 @@
 > | **D** | Materials milestone: glass (G-S1, blocks, the COMMIT; target = the strongest grenade beside the largest shipped glass surface), the 8 library materials. |
 > | **E** | Content scale (PP2/PP3 `.iprop`, user-tier models, the dormitory), then Phase 4. |
 >
+> **2026-10-09 ruling (Director; `docs/production/RETROSPECTIVE_2026-10.md` §10):** the performance phase (A1c) closes only when the engine is fully optimised and ready for the gameplay load (PB-1's `segment_spec`); gameplay is secondary to the engine and the five-minute play test is not scheduled. The fallback when content does not fit is a SMALLER SEGMENT, never lower quality; the other valves trade effort paid in advance for quality.
+>
 > **Parked, no step:** SURFACES SM-1 (when a map asks for it); audio; iOS; crash reporting (optimisation milestone); the content-rating check (when the content exists). **Risk accepted with this order:** regressions found only at B (the 2026-09-28 prop flood regression surfaced a week late); mitigation: every A step keeps `verify.py` green and the desktop `FRAME_PROBE` / `EVENT_FRAMES` rows of the standard scenario as a proxy.
 
 > ⏭️ **2026-10-04 — THE ORDER OF THE NEXT ROUNDS (Director-ratified; this block is the single source, the other documents point here).**

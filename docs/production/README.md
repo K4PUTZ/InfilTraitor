@@ -11,6 +11,7 @@ Where the work stands and what gets built next.
 | **[METHODOLOGY.md](METHODOLOGY.md)** | Prompt IDs, domain enum, Director/Overlord/Operator split | Hand |
 | **[TILE_ANATOMY.md](TILE_ANATOMY.md)** | Tile geometry (history; its audit tool was retired 2026-09-26 with the atoms it measured) | Frozen |
 | **[RETROSPECTIVE_2026-07.md](RETROSPECTIVE_2026-07.md)** | The first eight weeks, with the numbers and the open disagreement | Frozen — it's a record |
+| **[RETROSPECTIVE_2026-10.md](RETROSPECTIVE_2026-10.md)** | Weeks 9-21: the engine phase and the performance work, then vs now, risks and proposals | Frozen — it's a record |
 
 ---
 

@@ -20,6 +20,7 @@ docs describing a team, a process, and systems that never existed.
 | **[Design Master Plan](DESIGN_MASTER_PLAN.md)** | **Every ratified mechanic in one place** — turn/detection/noise canon, and the confrontation, resistance, equipment, enemy and progression design that is decided but unbuilt. Read before designing anything gameplay-facing. |
 | **[Architecture](ARCHITECTURE.md)** | How the engine is put together. §0, §1, §15 and §16 were rewritten against the 3D board (2026-09-30) and its status table, perspective, picking and rotation text were refreshed on 2026-10-02 (R3D-ROT closed); §2-§14 are still the July reconciliation, and its header lists what it does not cover |
 | **[Retrospective, first eight weeks](production/RETROSPECTIVE_2026-07.md)** | Where we've been, with the numbers |
+| **[Retrospective, weeks 9-21](production/RETROSPECTIVE_2026-10.md)** | The engine phase and the performance work (2026-07-12 → 2026-10-09): the floor-device trajectory, what is weak, the July question still open |
 
 ---
 

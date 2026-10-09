@@ -2080,6 +2080,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 
 
 func _ready() -> void:
+	## The player's frame-rate cap (30 by default; 60 / uncapped by choice). `MAX_FPS` overrides it later, at the map load.
+	FrameRate.apply_saved()
 	## DIAG-01 — see `_dev_flag()`: this cannot be a member initialiser.
 	_frame_probe = _dev_flag_on("FRAME_PROBE")
 	## DIAG-19 — `LIGHT_SECONDS` reaches the APK too; the member initialiser reads the

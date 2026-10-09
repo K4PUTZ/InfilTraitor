@@ -433,6 +433,21 @@ var _remesh_queue: Dictionary = {}  ## chunk -> true, merged into the next task 
 var _remesh_queue_meta: Dictionary = {}
 
 
+## PB-2 (2026-10-08): `BOARD_STEP_MS=<ms>` holds the main thread that long after each phase of `build()`, so the host's
+## `dumpsys meminfo` polls (`device_run.py --mem-poll 1`) can tell WHICH phase the driver's memory (GL mtrack) grows in; the
+## engine's own allocator total is printed beside it. 0 (the default) is a no-op. Diagnostic only: it stalls the load.
+var _step_ms: int = 0
+
+
+func _diag_step(label: String) -> void:
+	if _step_ms <= 0:
+		return
+	var rd: RenderingDevice = RenderingServer.get_rendering_device()
+	print("[BOARD-STEP] %s — engine vram %.1f MiB, %d node(s)" % [label,
+		float(rd.get_memory_usage(RenderingDevice.MEMORY_TOTAL)) / 1048576.0 if rd != null else -1.0, get_tree().get_node_count()])
+	OS.delay_msec(_step_ms)
+
+
 ## Build the whole board. `cell_to_world` is Room's own GU-centre → 2D world point
 ## (it carries VISUAL_GRID_OFFSET, which this file must never know).
 func build(room: Node, cell_to_world: Callable) -> void:
@@ -453,8 +468,11 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_store = VoxelStore.active
 	var counts: Dictionary = _collect_store(_store) if _store != null else _collect()
 	var t1: int = Time.get_ticks_usec()
+	_step_ms = int(str(room.call("_dev_flag", "BOARD_STEP_MS", "0")))
+	_diag_step("a collected")
 	_read_look()
 	_build_plane()
+	_diag_step("b plane array")
 	_make_camera()
 	_crack_mirror = GlassCrackMirror3DClass.new()
 	_crack_mirror.name = "GlassCracks"
@@ -463,16 +481,24 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	for i: int in range(_shader_materials.size()):
 		if _material_glass[i] and _shader_materials[i].shader.resource_path.ends_with("glass_pane3d.gdshader"):
 			_crack_mirror.pane_materials.append(_shader_materials[i])
+	_diag_step("c camera + crack mirror")
 	var quads: int = 0
 	var faces: int = 0
-	for chunk: Vector2i in (_store_chunks() if _store != null else _by_chunk.keys()):
+	var chunk_list: Array = _store_chunks() if _store != null else _by_chunk.keys()
+	var chunk_n: int = 0
+	for chunk: Vector2i in chunk_list:
 		var built: Vector2i = _build_chunk(chunk)
 		faces += built.x
 		quads += built.y
+		chunk_n += 1
+		if chunk_n % maxi(1, chunk_list.size() / 4) == 0:
+			_diag_step("d chunks %d/%d (%d materials so far)" % [chunk_n, chunk_list.size(), _shader_materials.size()])
 	if VSCALE_MARKER:
 		_add_vscale_marker()
 	_build_mesh_props()
+	_diag_step("e mesh props")
 	_build_prop_shadows()
+	_diag_step("f prop shadows")
 	var t2: int = Time.get_ticks_usec()
 	var fields: Dictionary = {
 		"voxels": int(counts.get("cells", _occ.size())), "slice_voxels": counts["slices"],

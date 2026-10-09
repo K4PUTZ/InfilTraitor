@@ -91,6 +91,21 @@ is drawn, which is why every `MemStage` mark during the load prints 0).
    it.** Next: what the driver allocates while the board is built (pipelines per material variant, the meshes' upload
    path), bisecting `_start_board3d_live()` with live GL reads.
 
+8. **THE OWNER OF THE GALAXY'S DRIVER GAP: glass's screen read (2026-10-08, night, Galaxy A16).** Bisection:
+   `BOARD_STEP_MS` (the main thread held after each phase of `build()`) shows the whole board build moving GL mtrack
+   200 -> 201 MiB; the jump to ~500 comes with the FIRST DRAWN FRAMES. `HIDE_NODES` (now hides 3D nodes too) on actors,
+   `Geometry` and the world canvases: no change. By map, same engine total, different driver total: SURFACES_GALLERY
+   engine 190.8 / GL 267, DORM 151.5 / 208-214, GLASS 185.4 / ~500, PLAYGROUND 193.5 / ~500: only the maps WITH GLASS.
+   **Ablation (GLASS map, the pane shader with its `hint_screen_texture` hint removed, nothing else): engine 185.4 ->
+   150.0 MiB, GL mtrack ~500 -> ~208 MiB (-295).** A material that reads the screen in 3D costs ~35 MiB of engine
+   buffers and ~250-295 MiB of driver memory on the Galaxy, even when no pane is drawn (the material existing is enough;
+   hiding `Geometry` changed nothing). The Moto, whose 256 MiB block never opened, does not show it.
+   The shader's maths (`max(behind × mul, body) + sheen`, in sRGB) can be approached WITHOUT the screen read by blending
+   (a multiply pass, then an add pass), but not exactly: the `max(…, body)` floor over dark backgrounds is lost and two
+   overlapping glass faces multiply twice (G-D2 wants the tint once). A look decision for the Director.
+   **Lever captures on SURFACES_GALLERY** (local `Screenshots/lever_sg_*.png`): GL max 267 / 277 / 278 / 268 MiB for
+   `SCALE_3D` 1.0 / 0.7 FSR / 0.7 bilinear / 0.5 FSR: the render scale buys nothing in memory.
+
 **Frame-rate cap study (Director, 2026-10-08; Moto g04s, PLAYGROUND, zoom 0.2, grenade 0 centred; `MAX_FPS=<n>` flag;
 videos `videos/fps_z02_<n>.mp4`, local):**
 

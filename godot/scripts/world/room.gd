@@ -3061,9 +3061,13 @@ func _start_board3d_live() -> void:
 	add_child(live)
 	live.build(self, func(cell: Vector2i) -> Vector2:
 		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
+	live.call("_diag_step", "g built")
 	_attach_actor_billboards(live)
+	live.call("_diag_step", "h actors attached")
 	_attach_vfx_to_board(live)
+	live.call("_diag_step", "i vfx attached")
 	_attach_ground_overlays(live)
+	live.call("_diag_step", "j ground overlays attached")
 	if _dev_flag("PICK_CHECK", "0") == "1":
 		_pick_check.call_deferred()
 	if _dev_flag("SEED_GRENADES", "0") == "1":
@@ -11042,6 +11046,9 @@ func _apply_perf_ablations() -> void:
 				hits += 1
 			elif n is CanvasLayer:
 				(n as CanvasLayer).visible = false
+				hits += 1
+			elif n is Node3D:  ## PB-2: the 3D board's nodes too (actors, geometry, world canvases)
+				(n as Node3D).visible = false
 				hits += 1
 		print("[PERF-DEV] HIDE_NODES — '%s' hid %d node(s)" % [pattern.strip_edges(), hits])
 	if _dev_flag_on("NODE_CENSUS"):

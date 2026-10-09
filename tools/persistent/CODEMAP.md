@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**280 scripts · 83534 lines total** (under `godot/scripts/`)
+**280 scripts · 83580 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1394,7 +1394,7 @@ extends `Node3D` · 2614 lines
 
 ### `aim_bubble_overlay.gd`
 
-`class_name AimBubbleOverlay` · extends `Node2D` · 816 lines
+`class_name AimBubbleOverlay` · extends `Node2D` · 824 lines
 
 `godot/scripts/overlays/aim_bubble_overlay.gd`
 
@@ -1980,7 +1980,7 @@ extends `Node2D` · 115 lines
 
 ### `shrapnel_preview_overlay.gd`
 
-`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 264 lines
+`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 272 lines
 
 `godot/scripts/overlays/shrapnel_preview_overlay.gd`
 
@@ -2701,7 +2701,7 @@ extends `Node` · 236 lines
 
 ### `gfx_census.gd`
 
-`class_name GfxCensus` · extends `RefCounted` · 337 lines
+`class_name GfxCensus` · extends `RefCounted` · 359 lines
 
 `godot/scripts/systems/gfx_census.gd`
 
@@ -5683,7 +5683,7 @@ extends `Node2D` · 63 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1793 lines
+`class_name TestZoneController` · 1801 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

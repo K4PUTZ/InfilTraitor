@@ -89,6 +89,7 @@ static func report(root: Node, label: String) -> void:
 		print("[GFX-CENSUS] top %2d %7.2f MiB %s" % [i + 1, float(top[i][0]) / MIB, top[i][1]])
 	_print_cached_textures()
 	_print_shaders(nodes)
+	_print_frame_work(nodes)
 	## Pipelines compiled so far, by source: a pipeline costs driver memory (the shader binary) that no counter above sees.
 	print("[GFX-CENSUS] pipelines compiled: canvas %d · mesh %d · surface %d · draw %d · specialization %d" % [
 		int(Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_CANVAS)),
@@ -335,3 +336,24 @@ static func _gpu_desc(tex: Texture) -> String:
 		return "?"
 	var f: RDTextureFormat = rd.texture_get_format(rd_rid)
 	return "fmt %d %dx%d mips %d layers %d" % [f.format, f.width, f.height, f.mipmaps, f.array_layers]
+
+
+## PB-2 / 2D audit (2026-10-09): what still runs or draws EVERY frame — nodes with `_process` / `_physics_process` on,
+## and CanvasItems visible in the tree (the root viewport draws those on top of the 3D board) — grouped by script.
+static func _print_frame_work(nodes: Array[Node]) -> void:
+	var proc: Dictionary = {}
+	var canvas: Dictionary = {}
+	for n: Node in nodes:
+		var key: String = (n.get_script() as Script).resource_path.get_file() if n.get_script() != null else n.get_class()
+		if n.is_processing() or n.is_physics_processing():
+			proc[key] = int(proc.get(key, 0)) + 1
+		if n is CanvasItem and (n as CanvasItem).is_visible_in_tree():
+			canvas[key] = int(canvas.get(key, 0)) + 1
+	for pair: Array in [["processing", proc], ["visible canvas", canvas]]:
+		var d: Dictionary = pair[1]
+		var keys: Array = d.keys()
+		keys.sort_custom(func(a, b) -> bool: return int(d[a]) > int(d[b]))
+		var parts: PackedStringArray = []
+		for k in keys:
+			parts.append("%s×%d" % [k, int(d[k])])
+		print("[GFX-CENSUS] %s (%d): %s" % [pair[0], keys.size(), ", ".join(parts)])

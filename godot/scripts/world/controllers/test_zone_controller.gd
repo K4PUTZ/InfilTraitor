@@ -515,6 +515,14 @@ func handle_targeting_click(cell: Vector2i) -> bool:
 ## Aim at a cell (clamped to range) and rebuild every aiming overlay —
 ## perimeter, dome, arc, shrapnel rays, affected GUs and the virtual grenade.
 func _set_targeting_target(cell: Vector2i) -> void:
+	## FRAME-PROBE attribution (2D-remnant audit, 2026-10-09).
+	var _fs0: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
+	_set_targeting_target_body(cell)
+	if FrameSplit.enabled:
+		FrameSplit.add("aim target update", Time.get_ticks_usec() - _fs0)
+
+
+func _set_targeting_target_body(cell: Vector2i) -> void:
 	if not _targeting_mode or _targeting_grenade_index < 0:
 		return
 

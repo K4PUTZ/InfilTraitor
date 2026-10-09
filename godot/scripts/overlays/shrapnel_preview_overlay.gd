@@ -205,6 +205,14 @@ func _build_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:
 
 
 func _draw() -> void:
+	## FRAME-PROBE attribution (2D-remnant audit, 2026-10-09).
+	var _fs0: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
+	_draw_body()
+	if FrameSplit.enabled:
+		FrameSplit.add("shrapnel preview draw", Time.get_ticks_usec() - _fs0)
+
+
+func _draw_body() -> void:
 	if _world != null:
 		if _ray_froms.is_empty():
 			_world.clear()

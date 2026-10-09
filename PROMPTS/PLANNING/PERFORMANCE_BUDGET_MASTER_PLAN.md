@@ -131,6 +131,17 @@ is drawn, which is why every `MemStage` mark during the load prints 0).
    the 256 MiB block on the Galaxy (GL 205 -> ~466): the screen buffers are rebuilt at the new size while the old ones still
    exist. Portrait play is unaffected; a game that lets the player rotate would pay it.
 
+    **Orientation (Director, 2026-10-09): the game is PORTRAIT by default; landscape is an extra / dev view that gameplay
+    may unlock later.** So the rebuild-on-rotation block does not reach a new player.
+11. **2D-remnant audit (2026-10-09, Galaxy, uncapped, `FRAME_PROBE` + new FrameSplit labels).** Per-frame script work at
+    idle is ~0.2 ms (vision fog, temporal lights, guard attention, enemy visibility); the processing dev overlays only redraw
+    when visible. **The cost is the GRENADE AIM DOME** (`AimBubbleOverlay`, R3D-WORLD kept it as a 2D drawing tessellated on
+    the CPU and placed on the camera plane by `WorldCanvas3D`): idle 12.7-14.3 ms/frame, aim held still 15.7-16.7, target
+    moving every 3 frames 17.8-22.0; **one dome redraw ~4-9 ms and one target update (`_set_targeting_target`: rays +
+    prediction) ~5-9 ms on the Galaxy** (≈15-35 ms each on the Moto). Proposed: a real 3D dome (one hemisphere mesh built
+    once, the lat/long grid and the wall section in its shader from the nearby wall segments as uniforms, the wall patches as
+    a few quads), so moving the target sets uniforms instead of re-tessellating.
+
 **Frame-rate cap study (Director, 2026-10-08; Moto g04s, PLAYGROUND, zoom 0.2, grenade 0 centred; `MAX_FPS=<n>` flag;
 videos `videos/fps_z02_<n>.mp4`, local):**
 

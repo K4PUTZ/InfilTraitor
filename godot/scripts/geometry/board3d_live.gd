@@ -2399,15 +2399,12 @@ func _emit_quad(dir: int, plane: int, start: Vector2i, w: int, h: int, material:
 func _make_material(material_id: String) -> ShaderMaterial:
 	if material_id == DECAL_MATERIAL_ID:
 		var decal_material := ShaderMaterial.new()
-		var decal_shader := Shader.new()
-		decal_shader.code = BoardLook.apply_grade(DECAL_SHADER)
-		decal_material.shader = decal_shader
+		decal_material.shader = BoardLook.shared_shader(DECAL_SHADER)
 		decal_material.set_shader_parameter("decals", _decal_array)
 		decal_material.set_shader_parameter("bullet_layers", float(_bullet_layer_count))
 		decal_material.set_shader_parameter("bullet_alpha_gain", BULLET_DECAL_ALPHA_GAIN)
 		decal_material.set_shader_parameter("bullet_darken", BULLET_DECAL_DARKEN)
 		return decal_material
-	var shader := Shader.new()
 	var shader_material := ShaderMaterial.new()
 	var definition = Registries.get_material_registry().get_material(material_id)
 	var colour: Color = definition.base_color if definition != null else Color(0.6, 0.6, 0.6)
@@ -2417,8 +2414,7 @@ func _make_material(material_id: String) -> ShaderMaterial:
 		colour = definition.base_color_for_albedo(tints[material_id])
 	if GlassMaterials.is_glass(material_id):
 		return _make_glass_material(material_id)
-	shader.code = BoardLook.apply_grade(OPAQUE_SHADER)
-	shader_material.shader = shader
+	shader_material.shader = BoardLook.shared_shader(OPAQUE_SHADER)
 	shader_material.set_shader_parameter("base_color", Vector3(colour.r, colour.g, colour.b))
 	var facade_tex: Texture2D = material_facade_texture(material_id)
 	if facade_tex != null:

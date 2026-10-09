@@ -96,6 +96,22 @@ static func apply_grade(code: String) -> String:
 
 
 ## A shader FILE with the grade applied, cached (one `Shader` per path).
+## PB-2 (2026-10-08): ONE Shader per distinct source text, shared by every material that uses it. Each `Shader` resource is
+## compiled on its own (its pipelines and the driver's binaries), even when its code is identical to another's; the board
+## made one per MATERIAL from the same opaque code, and on the Galaxy A16 the board build is where the driver's memory jumps.
+static var _code_cache: Dictionary = {}
+
+
+static func shared_shader(code: String) -> Shader:
+	var graded: String = apply_grade(code)
+	if _code_cache.has(graded):
+		return _code_cache[graded]
+	var out := Shader.new()
+	out.code = graded
+	_code_cache[graded] = out
+	return out
+
+
 static func graded_shader(path: String) -> Shader:
 	if _shader_cache.has(path):
 		return _shader_cache[path]

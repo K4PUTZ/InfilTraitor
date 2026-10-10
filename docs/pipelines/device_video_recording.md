@@ -2,6 +2,12 @@
 
 *Built 2026-09-21. One command, one file, trimmed to the scenario. Recordings live in `videos/` at the repo root, which is git-ignored.*
 
+> **2026-10-10 — this is the `perf` capture profile** (`CAPTURE_RAILS_MASTER_PLAN` §5): a handset video is for judging the game
+> as it runs on the phone (timing, stalls, the real frame rate). **To judge a LOOK, capture on the desktop** (1920×1080, HUD hidden,
+> framed on the scene that matters); once CAPTURE_RAILS CR-3 lands that is `capture.py --take <id>`, and CR-5 gives this tool
+> `--take` so the handset reads the same anchors. Until then: never frame a take by a GU typed by hand, and check a contact sheet
+> before sending (on 2026-10-10 `detonate 0` on GLASS flew the camera to dev grenade 0 in another corner).
+
 ## Why
 A still cannot show the FLOW of an effect (the order of the blast, the smoke against the scorch, a fade). The Director reviews those on a video
 recorded on the Moto g04s. The soot-after-crater timing of 2026-09-21 was decided from one.

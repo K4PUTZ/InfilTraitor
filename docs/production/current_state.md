@@ -1,12 +1,25 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-10-09 · **Branch:** claude/r3d-actors-y5r8hs
+**Version:** 0.9.107 · **Updated:** 2026-10-10 · **Branch:** claude/r3d-actors-y5r8hs
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
 
 ---
+
+## Where the project stands — 2026-10-10 (the segment fits; glass collapse; the capture system planned)
+
+Records: `PROMPTS/RESUMO_SESSAO_2026-10-10_LOAD_GLASS_COLLAPSE.md`, `PROMPTS/RESUMO_SESSAO_2026-10-10_CAPTURE_RAILS.md`.
+- **PB-5: the HEAVY segment fits on both handsets with no device profile** (Moto PSS 757 MiB, Galaxy A16 741; segment cycle flat);
+  **PB-7** holds every segment map to HEAVY's counts in `verify.py quick`; load 7.6 s cold / 4.65 s reload on the Moto.
+- **Glass:** one premultiplied pane pass (the white look), jagged hole rims (G-D54), and **G-S1: unsupported panes collapse in three
+  overlapping waves** (0.12 s apart since 2026-10-10); the crack decal spills 0.4 voxel past the hole. Open: glass and other roofs
+  (G-D53), the glass COMMIT frame (~610 ms on the Moto, `technical_debt.md`).
+- **Planned, nothing built:** [`CAPTURE_RAILS_MASTER_PLAN`](../../PROMPTS/PLANNING/CAPTURE_RAILS_MASTER_PLAN.md) v0.3 — map anchors
+  in GU (`layout` section), desktop captures framed by computation, rails and takes, Movie Maker video. **Next: CR-1.**
+- **Interface direction (Director):** the desktop is a way to play in landscape; the HUD is ONE orientation-neutral 3×3 mechanism plus a
+  board layer in GU (`INTERFACE_MASTER_PLAN` Part 7).
 
 ## Where the project stands — 2026-10-09 (the memory budget: floor device ratified, both handsets under the ceiling)
 
@@ -460,6 +473,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-08_A1_ENGINE_TOOLS.md
 - RESUMO_SESSAO_2026-10-08_PERF_BUDGET_PB2.md
 - RESUMO_SESSAO_2026-10-09_PROJECT_EVALUATION.md
+- RESUMO_SESSAO_2026-10-10_LOAD_GLASS_COLLAPSE.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -467,7 +481,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 202
+- GDScript modules: 203
 - Test scripts: 74
 - Known maps: 3
 - Shipped facade files: 0

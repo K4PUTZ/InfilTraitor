@@ -39,7 +39,10 @@ copied from another document.
 **Genre:** turn-based tactical stealth with RPG progression — a game with no
 ending.
 **Platform:** mobile-first (iOS / Android), HTML5 supported. Portrait, camera
-follows the agent.
+follows the agent. **2026-10-10 (Director):** the desktop is a way to play too,
+in a landscape window; handsets stay portrait-locked. The HUD is ONE
+orientation-neutral mechanism, a 3×3 grid of screen regions in both shapes plus
+an interface layer on the board in GU (`INTERFACE_MASTER_PLAN` Part 7).
 **Engine:** Godot 4.6, GDScript, isometric 2.5D, dimetric projection (45°
 horizontal / 26.57° elevation).
 **Pitch:** *"The only turn-based stealth tactics game that works on mobile —
@@ -902,7 +905,9 @@ action). **A purely visual swap — TileMap and game logic do not change.**
 **Palette and visual language.** Dark, restrained backgrounds (concrete,
 steel) with high-contrast colour reserved for the agent and threats.
 Isometric 2.5D dimetric, portrait. **Minimal UI:** alert meter (top), AP
-indicator (top), contextual menu (tap), portrait panel (side).
+indicator (top), contextual menu (tap), portrait panel (side). *(2026-10-10: the
+positions become regions of the 3×3 grid — controls where the thumbs are,
+indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 
 ---
 

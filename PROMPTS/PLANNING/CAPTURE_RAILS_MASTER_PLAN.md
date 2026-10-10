@@ -1,8 +1,11 @@
 # CAPTURE_RAILS_MASTER_PLAN
-## The map's spatial anchors in GU, and a capture system that frames them by itself — v0.2 (planning, nothing built)
+## The map's spatial anchors in GU, and a capture system that frames them by itself — v0.3 (planning, nothing built)
 
-> **Status: 🟡 v0.2, 2026-10-10 — the five questions of v0.1 RULED (§1, R6-R10); the mechanism of every element detailed
-> (§3-§8). NOTHING is built.** Next: CR-1 (§10) on the Director's go.
+> **Status: 🟡 v0.3, 2026-10-10 — R11 recorded: the HUD is a 3×3 grid of screen regions in both shapes plus an interface layer on
+> the board in GU (§1, §9b; the design itself belongs to `INTERFACE_MASTER_PLAN` Part 7). NOTHING is built.** Next: CR-1 (§10) on
+> the Director's go.
+>
+> v0.2, 2026-10-10: the five questions of v0.1 RULED (R6-R10); the mechanism of every element detailed (§3-§8).
 >
 > v0.1, 2026-10-10: opened by the Director.
 >
@@ -30,14 +33,17 @@
 | R5 | **HUD hidden for engine work, shown for interface work.** | §5.3 |
 | R6 (Q-CR1) | **The `engine` profile renders 1920 × 1080.** | §5.1 |
 | R7 (Q-CR2) | **`ui` captures the portrait canvas — and the HUD must be BIVALENT.** *"Modo desktop também significa jogar na tela horizontal (ainda não temos interface, apenas mockups)."* Then, the same day: *"Na prática vamos evitar layouts que só funcionem na orientação A ou B. Queremos um mecanismo neutro, próximo do quadrado, aproveitando os 4 cantos disponíveis."* | §5.1; recorded in `INTERFACE_MASTER_PLAN` Part 7 |
+| R11 | **The screen is 9 regions (3 × 3) in BOTH shapes, plus an interface layer ON THE BOARD, placed in GU.** *"Vamos ter painéis com skills, gadgets, e outros indicadores visuais em cada região. A gente faz um design líquido ocupando essas zonas, priorizando os painéis de controle na posição mais confortável para os dedos, e indicadores nas demais. Enfim, só pra ir adiantando."* A direction, not yet a design. | §5.1, §9b; `INTERFACE_MASTER_PLAN` Part 7 |
 | R8 (Q-CR3) | **Envelope: reserve 24 × 48 GU, ≤ 3 compose storeys, as warnings.** | §3.3 |
 | R9 (Q-CR4) | **A change of view inside a rail is a CUT by default; during development the rails ORBIT smoothly.** | §7.4 |
 | R10 (Q-CR5) | **Access points: only the plumbing now, plus a warning in the maps plan.** | §4.5; `MAP_MASTER_PLAN` top note |
 
-**R7 in full:** "desktop" is a way to PLAY — on a computer, in a landscape window — not only a dev view. The HUD is **ONE
-orientation-neutral layout, not two**: its widgets anchor to the **four corners** of the screen, the composition is close to a
-square, and nothing may depend on the screen being tall or wide (no full-width bar, no side column that only fits one shape). The
-same layout serves the phone (portrait, default, locked on handhelds) and the desktop (landscape). Handsets stay portrait-locked: a
+**R7 + R11 in full:** "desktop" is a way to PLAY — on a computer, in a landscape window — not only a dev view. The HUD is **ONE
+orientation-neutral mechanism, not two layouts**: the screen is a **3 × 3 grid of regions** in both shapes; panels (skills,
+gadgets) and indicators fill the regions in a liquid design, the CONTROL panels in the regions most comfortable for the thumbs and
+the indicators in the others; nothing may depend on the screen being tall or wide (no full-width bar, no side column that only fits
+one shape). A second layer of interface lives ON THE BOARD, placed in GU (§9b). The same mechanism serves the phone (portrait,
+default, locked on handhelds) and the desktop (landscape). Handsets stay portrait-locked: a
 runtime orientation change on the Galaxy A16 reopens the 256 MiB allocator block (`PERFORMANCE_BUDGET` §4). This amends the canon
 line "mobile-first, portrait" for the desktop only; `INTERFACE_MASTER_PLAN` Part 7 said such a ruling was needed and records it.
 
@@ -216,9 +222,10 @@ the FPS must be on the command line before the boot).
 | **`perf`** | handset | the screen | portrait 390 × 844, as shipped | as the player sees it | off | real time | cut |
 
 - **`ui` renders BOTH shapes by default (R7):** every interface capture produces a portrait and a landscape version of the same
-  take — the check that the ONE neutral, corner-anchored layout holds in both shapes. `--shape portrait|landscape` restricts it.
-  A later, cheap gate (interface work, not this plan): every HUD widget's rect lies inside its corner's quadrant in both canvases
-  and no two widgets overlap.
+  take — the check that the ONE neutral 3 × 3 mechanism holds in both shapes. `--shape portrait|landscape` restricts it.
+  A later, cheap gate (interface work, not this plan): every HUD panel's rect lies inside its region in both canvases and no two
+  panels overlap. `still … --hud-grid` (CR-2) draws the 3 × 3 region lines over a `ui` capture, so a capture shows which region a
+  panel sits in.
 - **`perf` is the handset path** that exists today (`device_record.py`); CR-5 gives it `--take` (§9).
 
 ### 5.2 Window, canvas and the real frame size
@@ -419,6 +426,19 @@ corners and the side names, the agent's start, the exits with their derived side
 + its id), and a chosen rail's path (each key's ground centre and its framed rectangle). It is how the Director checks that
 `big_pane` is where its name says, and it is the editor's viewport layer.
 
+## 9b. The interface layer on the board (R11) — what this plan provides, not its design
+
+The board's own interface (markers over guards, objective and exit markers, a skill's target area, contextual menus on a cell) is
+placed in GU and drawn in world space. Its design belongs to `INTERFACE_MASTER_PLAN`; this plan only guarantees the ground it stands
+on:
+- **one conversion** (`MapLayout.to_world`, §3.1) and the anchors themselves: an objective marker reads `layout.objectives`, an exit
+  marker `MapLayout.exits()` — no second list of where things are;
+- **base coordinates**: a board marker never moves with a rotation (camera-only);
+- **the cost rule of §2**: every board-interface element is a world-space overlay and is measured on the Moto uncapped before it is
+  kept (the GPU headroom is ~9 ms);
+- in captures, the board layer belongs to the HUD switch: hidden by the `engine` profile with the screen HUD, shown by `ui`
+  (`set_capture_hidden()` covers both, through the facade).
+
 ---
 
 ## 10. The stages
@@ -429,7 +449,7 @@ Each stage closes with `verify.py` at its tier, a commit on `main`, and pasted e
 |---|---|---|
 | **CR-0** ✅ | this plan, the rulings (§1) | ruled 2026-10-10 |
 | **CR-1 — the anchors** | `maps/_spec/segment_envelope.json` + its three readers (§3.3); `MapCompass`, `MapEnvelope`; the `layout` owner v1 (envelope, poi, regions, objectives; `exits` reserved); `MapCompiler` shift; `MapLayout` (read API, `resolve()` incl. reserved and LIVE names, `to_world*`, mutation API, `to_section`); `room.map_layout` replaced per load; `layout_lint` in `verify.py quick`; data for **GLASS** and **PLAYGROUND**; `gen_segment_map.py` writes a `layout`; the `MAP_MASTER_PLAN` warning (R10) | `map_lint` golden round-trip green with the section; `layout_lint` self-test red-then-green; `MapLayout` selftest (round-trip, reload swaps the instance, `resolve` of every reserved name); `segment_budget.py` reads the JSON with the same verdicts |
-| **CR-2 — framing and profiles** | `capture/profiles.json`; `CaptureFramer` + selftest; capture mode on the camera (§5.4); `HudController.set_capture_hidden()`; ops `profile`, `hud`, `frame`, `frame_check`, `still`, `shake`; `capture.py --still`; the 1920 × 1080 window check (§5.2) | `frame_check` reads `inside=yes` for every GLASS and PLAYGROUND region in all four views (real boot); stills of `@map` wide and `@big_pane` detail with the HUD hidden, shown to the Director |
+| **CR-2 — framing and profiles** | `capture/profiles.json`; `CaptureFramer` + selftest; capture mode on the camera (§5.4); `HudController.set_capture_hidden()`; ops `profile`, `hud`, `frame`, `frame_check`, `still`, `shake`; `capture.py --still` (and `--hud-grid`, the 3 × 3 region lines over a `ui` capture, R11); the 1920 × 1080 window check (§5.2) | `frame_check` reads `inside=yes` for every GLASS and PLAYGROUND region in all four views (real boot); stills of `@map` wide and `@big_pane` detail with the HUD hidden, shown to the Director |
 | **CR-3 — rails, takes, video** | the `capture` owner v1; `CaptureRail` (cut and orbit, `follow`); `@id` substitution in steps; ops `rail`, `take`; default takes (§7.5); `capture.py --take` with Movie Maker, `--sheet`; the `glass_blast` take | the `glass_blast` video shown; two runs of the same take compared frame by frame (equal, or the difference explained) |
 | **CR-4 — the layout overlay** | §9 | a GLASS still with the overlay, shown |
 | **CR-5 — the tools onto takes** | `build_filmstrip.py` → a take + `--sheet` of every frame; `device_record.py --take` (profile `perf`, portrait framing by the same framer); CLAUDE.md's capture section rewritten around profiles and takes. **Then** the 22 `INFILTRAITOR_CAPTURE_*` env vars and `room.gd`'s capture actions are listed with every reader and every side effect (memory: deleted function side effects) and retired **only with the Director's OK** | the old tools' evidence reproduced through takes |
@@ -453,4 +473,5 @@ overlay is the editor's viewport layer. The editor's own plan decides placement 
 
 ## 12. Open questions
 
-None blocking CR-1. To confirm in passing: the reading of R7 (§1) — desktop is a way to play, handsets stay portrait-locked.
+None blocking CR-1. The HUD's 3 × 3 design (which panel in which region, per shape, handedness) is `INTERFACE_MASTER_PLAN`'s, to be
+designed with the Director when the interface work starts.

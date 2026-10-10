@@ -320,13 +320,30 @@ the engine never holds a Button).
 
 ### Part 7 — Orientation drives M/D (ORIENT-01) — *added 2026-09-12, Director-requested*
 
-> ⏭️ **2026-10-10 — RULED (Director, `CAPTURE_RAILS_MASTER_PLAN` R7): desktop is a way to PLAY, in landscape; the HUD is ONE
-> orientation-neutral layout.** *"Modo desktop também significa jogar na tela horizontal (ainda não temos interface, apenas
-> mockups)."* and *"Na prática vamos evitar layouts que só funcionem na orientação A ou B. Queremos um mecanismo neutro, próximo
-> do quadrado, aproveitando os 4 cantos disponíveis."* So the "HUD reflowing at 844×390 — a genuinely different shape" below is
-> superseded: no second layout; widgets anchor to the four corners, the composition stays close to a square, nothing depends on the
-> screen being tall or wide. Handsets stay portrait-locked by default (an orientation change reopens the 256 MiB block on the
-> Galaxy, `PERFORMANCE_BUDGET` §4). Interface captures render both shapes (`CAPTURE_RAILS` profile `ui`) as the check.
+> ⏭️ **2026-10-10 — RULED (Director, `CAPTURE_RAILS_MASTER_PLAN` R7 + R11): desktop is a way to PLAY, in landscape; the HUD is
+> ONE orientation-neutral mechanism: a 3 × 3 grid of screen regions in both shapes, plus an interface layer on the board in GU.**
+> *"Modo desktop também significa jogar na tela horizontal (ainda não temos interface, apenas mockups)."* — *"Na prática vamos
+> evitar layouts que só funcionem na orientação A ou B. Queremos um mecanismo neutro, próximo do quadrado, aproveitando os 4 cantos
+> disponíveis."* — *"Na verdade seriam 9 regiões na tela (3x3), em ambos os formatos. + o layer de interface no tabuleiro, via GU.
+> Vamos ter painéis com skills, gadgets, e outros indicadores visuais em cada região. A gente faz um design líquido ocupando essas
+> zonas, priorizando os painéis de controle na posição mais confortável para os dedos, e indicadores nas demais. Enfim, só pra ir
+> adiantando."*
+>
+> What follows from it (a DIRECTION, not yet a design — the panel-by-region table is designed with the Director when the interface
+> work starts):
+> - **The "HUD reflowing at 844×390 — a genuinely different shape" below is SUPERSEDED**: no second layout. Nothing depends on the
+>   screen being tall or wide (no full-width bar, no side column that fits only one shape).
+> - **3 × 3 regions** (top / middle / bottom × left / centre / right) on the canvas of either shape; a **liquid** design: a panel
+>   fills its region and reflows inside it, the regions themselves never move.
+> - **Controls (skills, gadgets, actions) in the regions most comfortable for the thumbs; indicators (alert, AP, turn, the actors'
+>   panel) in the others.** Which regions those are differs by shape (a phone held upright vs. a landscape screen held with two
+>   hands); handedness (a mirror) is an open point.
+> - **The interface layer ON THE BOARD** (markers, target areas, cell menus) is placed in GU and drawn in world space; it reads the
+>   map's anchors (`layout` section, `CAPTURE_RAILS` §9b) and every element of it is measured on the Moto before it is kept.
+> - Handsets stay portrait-locked by default (an orientation change reopens the 256 MiB block on the Galaxy, `PERFORMANCE_BUDGET`
+>   §4). Interface captures render both shapes (`CAPTURE_RAILS` profile `ui`, `--hud-grid` draws the 3 × 3 lines) as the check.
+> - The engine side is unchanged: rule 11 / L3 (the HUD seam) holds; a region is a container the facade resolves, never a node the
+>   engine names.
 
 **Why:** Director, from the same handset session: *"precisamos atualizar o
 formato da tela conforme a orientação do acelerômetro do aparelho usando retrato

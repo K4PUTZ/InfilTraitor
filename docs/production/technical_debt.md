@@ -17,6 +17,21 @@
 
 ---
 
+## Capture, glass and AI debt (2026-10-10)
+
+Record: `PROMPTS/RESUMO_SESSAO_2026-10-10_CAPTURE_RAILS.md`; [`CAPTURE_RAILS_MASTER_PLAN`](../../PROMPTS/PLANNING/CAPTURE_RAILS_MASTER_PLAN.md) §2.
+- **The glass COMMIT frame, ~610-620 ms on the Moto on GLASS** — 3× the frag grenade's 200 ms hit-stop (`PERFORMANCE_BUDGET` §0d). It
+  stays inside the budget only because a segment carries ≤ 12 GU of small panes (PB-1). A map with big panes reopens it. Owner: the
+  materials milestone (`GLASS_MASTER_PLAN`, the COMMIT item).
+- **Two capture paths.** `room.gd` reads 22 `INFILTRAITOR_CAPTURE_*` env vars for its own capture actions (`build_filmstrip.py`,
+  `build_material_matrix.py`, the auto-screenshot), beside the scenario runner. `CAPTURE_RAILS` CR-5 moves the tools onto takes and
+  then lists every reader and side effect before anything is retired, with the Director's OK.
+- **Guard AI has no CPU budget yet.** Measured: 24 guards +9 ms `process` on the Moto (PB-3), no AI logic in it. Set a per-frame budget
+  when AI-02 / AI-03 are built (proposal: ≤ 4 ms per frame on the Moto, the enemy turn spread over frames).
+- **Every new world-space overlay is measured on the Moto uncapped (`MAX_FPS=0`) before it is kept**: the GPU headroom of the HEAVY
+  segment is ~9 ms (idle 24.4 of 33.3 ms), and the vision cones, the VISUAL SOUND interface and the board's interface layer
+  (`INTERFACE_MASTER_PLAN` Part 7) are all transparent world-space layers on a Mali-G57 MP1.
+
 ## 🔎 Code audit (2026-10-07)
 
 Targeted scans over `godot/scripts/` (271 files, ~82 k lines) and `tools/`: content loading from `user://`, release-build switches,

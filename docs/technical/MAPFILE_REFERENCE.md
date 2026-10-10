@@ -78,6 +78,11 @@ Coordinates are **internal** throughout; the buffer is applied only in
 
 ### Reserved, not yet registered
 
+**Planned 2026-10-10 (`CAPTURE_RAILS_MASTER_PLAN` CR-1 / CR-3, not registered yet):** `layout` — the map's anchors in inner GU
+(`envelope`, `poi`, `regions`, `objectives`; points `[x, y, z]` with `z` in storeys above the playable ground, on the 1/8 lattice;
+the key `exits` reserved until the access points move there, CR-7) — and `capture` (dev only: camera `rails` and named `takes`).
+Until their owners exist, a file carrying them round-trips verbatim as unknown sections (M3).
+
 `procedural` (`{generator, seed, params}`) and `patches` (ordered ops:
 `set_wall_material`, `add_prop`, `remove_edge`, …) are schema-reserved from
 plan §3.3 but have **no registered section owner yet** — files carrying them

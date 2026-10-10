@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**285 scripts · 85433 lines total** (under `godot/scripts/`)
+**290 scripts · 86541 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,11 +17,11 @@
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
 - **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
-- **systems/** — board_probe.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, circle_field_octagon_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
+- **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, layout_overlay3d.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
+- **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
+- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, capture_framer_selftest.gd, circle_field_octagon_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, options_panel.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
-- **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compass.gd, map_compiler.gd, map_envelope.gd, map_geometry.gd, map_layout.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
+- **world/** — room_builder.gd, agent_shot_controller.gd, capture_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compass.gd, map_compiler.gd, map_envelope.gd, map_geometry.gd, map_layout.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -208,7 +208,7 @@
 
 ### `camera_controller.gd`
 
-extends `Node` · 255 lines
+extends `Node` · 274 lines
 
 `godot/scripts/controllers/camera_controller.gd`
 
@@ -220,20 +220,6 @@ extends `Node` · 255 lines
 - `CAMERA_MAX_BORDER_TILES` = `4`
 - `CAMERA_SOFT_ZONE_TILES` = `2`
 - `WORLD_TILE_PX` = `128.0`
-
-**Public vars**
-- `var shake_phase: float = 0.0`
-- `var shake_frequency_x: float = 31.0`
-- `var shake_frequency_y: float = 23.0`
-- `var shake_decay_power: float = 2.0`
-
-**Public API**
-- `func setup(camera_ref: Camera2D, room_ref: Node2D) -> void:`
-- `func handle_input(event: InputEvent) -> bool:`
-- `func focus_on(world_pos: Vector2) -> void:`
-- `func shake(duration: float, amplitude: float) -> void:`
-- `func stop_shake() -> void:`
-- `func set_zoom_for_capture(new_z: float) -> void:`
 
 ---
 
@@ -275,7 +261,7 @@ extends `Node` · 108 lines
 
 ### `hud_controller.gd`
 
-extends `Node` · 285 lines
+extends `Node` · 306 lines
 
 `godot/scripts/controllers/hud_controller.gd`
 
@@ -466,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3163 lines
+extends `Node3D` · 3170 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1765,6 +1751,33 @@ extends `Node2D` · 282 lines
 
 ---
 
+### `layout_overlay3d.gd`
+
+extends `Node3D` · 147 lines
+
+`godot/scripts/overlays/layout_overlay3d.gd`
+
+> LayoutOverlay3D — the map's anchors drawn ON the board (CAPTURE_RAILS_MASTER_PLAN §9, CR-4): bounds, buffer ring, envelope reserve, compass corners and side names, the agent's start, the exits, every POI (a pin + its id) and region (a wire box + its id), and one rail's path. A dev overlay (English labels), world space and depth-tested like every new VFX (RENDER3D rule: world-space state, never screen pixels). Built when switched on, freed when switched off: zero cost otherwise. The future editor's viewport layer.
+
+**Constants / tuning**
+- `MapLayoutRef` = `preload("res://godot/scripts/world/maps/map_layout.gd")`
+- `MapCompassRef` = `preload("res://godot/scripts/world/maps/map_compass.gd")`
+- `MapEnvelopeRef` = `preload("res://godot/scripts/world/maps/map_envelope.gd")`
+- `COL_BOUNDS` = `Color(1.0, 1.0, 1.0, 0.9)`
+- `COL_RING` = `Color(0.6, 0.6, 0.6, 0.6)`
+- `COL_RESERVE` = `Color(1.0, 0.75, 0.2, 0.8)`
+- `COL_REGION` = `Color(0.3, 0.9, 1.0, 0.95)`
+- `COL_POI` = `Color(1.0, 0.3, 0.8, 1.0)`
+- `COL_AGENT` = `Color(0.3, 1.0, 0.4, 1.0)`
+- `COL_EXIT` = `Color(0.7, 0.4, 1.0, 1.0)`
+- `COL_RAIL` = `Color(1.0, 1.0, 0.2, 1.0)`
+- `LIFT` = `0.02`
+
+**Public API**
+- `func build(ml: RefCounted, rail_id: String = "") -> void:`
+
+---
+
 ### `light_overlay.gd`
 
 extends `Node2D` · 140 lines
@@ -2183,6 +2196,38 @@ extends `Node2D` · 68 lines
 - `KIND_COLUMN` = `"column"`
 - `KIND_SLAB` = `"slab"`
 - `KIND_PROP` = `"prop"`
+
+---
+
+### `capture_framer.gd`
+
+extends `RefCounted` · 74 lines
+
+`godot/scripts/systems/capture/capture_framer.gd`
+
+> CaptureFramer — framing that is COMPUTED, never typed (CAPTURE_RAILS_MASTER_PLAN §6.3). Pure: no nodes, no state. The board's camera (`Board3DLive._make_camera()` / `_process()`): orthographic, KEEP_HEIGHT, pitch -30°, yaw 45° + the view's yaw, looking at a GROUND point (y = 0) with `size = canvas_height / zoom / px_per_unit`. So a set of world points fits when their extents along the camera's right and up axes fit `size × aspect` by `size`; the centre of those extents is the screen centre, and the ground point that projects there is a 2 × 2 solve (always solvable: the pitch is not zero). Depth never matters (orthographic). Input boxes are WORLD AABBs (`MapLayout.to_world_box()`); output `ground_centre` is the world (x, z) the camera must look at.
+
+**Constants / tuning**
+- `PITCH_DEG` = `-30.0`
+- `BASE_YAW_DEG` = `45.0`
+- `VIEW_YAW` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": 270.0}`
+- `MARGIN` = `{"wide": 0.10, "detail": 0.05, "fit": 0.08}`
+- `ZOOM_MIN` = `0.08`
+- `ZOOM_MAX` = `2.0`
+- `DETAIL_MIN_BOX` = `Vector3(3.0, 1.0, 3.0)`
+
+---
+
+### `capture_profiles.gd`
+
+extends `RefCounted` · 37 lines
+
+`godot/scripts/systems/capture/capture_profiles.gd`
+
+> CaptureProfiles — the capture profiles of `capture/profiles.json` (CAPTURE_RAILS_MASTER_PLAN §5), the one file the game and `tools/persistent/capture.py` both read. A profile says the machine, whether the HUD shows (R5), the turn default of a rail (R9) and, per SHAPE (portrait / landscape), the framing and the window.
+
+**Constants / tuning**
+- `PATH` = `"res://capture/profiles.json"`
 
 ---
 
@@ -3359,16 +3404,19 @@ extends `Node` · 143 lines
 
 ### `scenario_runner.gd`
 
-extends `Node` · 570 lines
+extends `Node` · 717 lines
 
 `godot/scripts/systems/scenario_runner.gd`
 
 > ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) throw <index> <x,y>                  RETIRE-2: dev grenade #index THROWN to the GU x,y through the real throw (the agent's release, the arc, the landing hop, the roll, the fuse, the blast); returns at once, so follow it with `frames`/`capture_at` aim <x,y>                            RETIRE-2D: the grenade targeting preview on a GU (the perimeter, the dome, the arc, the shrapnel rays, the footprint and the virtual grenade), as a player aiming; stays open canvas_check <name>                  RETIRE-2D: prints `[CANVAS-CHECK] <name> examined=N canvas=M <names>`: how many overlays that have a 3D target there are, and which of them are painting the 2D canvas instead capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read container_stats <name>               R3D-CLAIMS C2: prints how many released containers were converted back to full `Voxel` objects and how many single handles were made (`VoxelContainer.Stats`) probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points needs that guard to exist (GLASS has none: the step aborts the scenario) reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` view_mode dev|light|heat|numbers|ruler   flips one analysis aid, through the same toggles the HUD and the F-keys reach (the dev overlays under a camera yaw need a scenario to switch them on; call it again to flip it back) pick_check <name>                    touch picking in the CURRENT view: the centre of every on-screen cell goes through the real pick (`_screen_to_tile`) and must come back as that cell (or the standing prop that covers it); prints `[PICK-CHECK]` (tools/persistent/pick_gate.py reads it) world_check <name>                   the maths the air overlays (tracer, throw arc, aim dome, lamps) stand on, in the CURRENT view: where `WorldCanvas3D.lift()` puts fixed points (world state, must not move with the view) and whether `screen_axes()` is what the camera really does to a grid step; prints `[WORLD-CHECK]` (tools/persistent/world_gate.py) relight                              R3D-13: the map-wide light repaint on the CURRENT world, in place — what a rotation or a restore runs, without either (a probe before and after names what the incremental light left different from a full relight) passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
 
 **Constants / tuning**
-- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1, "container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "decal_wall": 2, }`
+- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1, "container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "decal_wall": 2, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1, }`
+- `CELL_TOKENS` = `{"throw": [2], "aim": [1], "centre": [1], "place_guard": [2], "decal_wall": [2], "occ_bench": [1, 2]}`
+- `FRAME_MODES` = `["wide", "detail", "fit"]`
+- `VIEWS` = `["N", "E", "S", "W"]`
 - `ScenarioDrawRef` = `preload("res://godot/scripts/systems/scenario_draw.gd")`
-- `VIEW_MODES` = `["dev", "light", "heat", "numbers", "ruler"]`
+- `VIEW_MODES` = `["dev", "light", "heat", "numbers", "ruler", "layout"]`
 - `FRAMINGS` = `["portrait", "landscape", "desktop"]`
 - `ALLOC_KINDS` = `["objects", "packed", "bytes"]`
 - `BEAT_TOKEN_PATTERN` = `"^[A-Za-z0-9_]+$"`
@@ -3845,6 +3893,22 @@ extends `SceneTree` · 203 lines
 - `func test_banded_material_per_voxel(dump_a: String) -> void:`
 - `func test_plane_texel_moves_its_line(fixture: Dictionary, dump_c: String) -> void:`
 - `func test_out_of_range_aborts(fixture: Dictionary) -> void:`
+
+---
+
+### `capture_framer_selftest.gd`
+
+extends `SceneTree` · 61 lines
+
+`godot/scripts/tools/capture_framer_selftest.gd`
+
+> CAPTURE_RAILS CR-2 — `CaptureFramer`: for the four views and the shapes a capture frames (a box, a point grown to the detail box, a whole 18 x 36 segment, PLAYGROUND's 44 x 22 with its ring), every corner lands on the canvas with the requested margin, the target fills the frame on its tighter axis, and the zoom a segment needs is below the gameplay floor (0.20) — the measurement that made the capture range necessary (§6.2). The REAL camera's agreement is `frame_check` in a boot, not this test.
+
+**Constants / tuning**
+- `F` = `preload("res://godot/scripts/systems/capture/capture_framer.gd")`
+- `PROFILES` = `preload("res://godot/scripts/systems/capture/capture_profiles.gd")`
+- `CANVAS` = `Vector2(1280, 720)`
+- `PX` = `181.019`
 
 ---
 
@@ -4349,7 +4413,7 @@ extends `SceneTree` · 310 lines
 
 ### `hud_seam_selftest.gd`
 
-extends `Node` · 202 lines
+extends `Node` · 213 lines
 
 `godot/scripts/tools/hud_seam_selftest.gd`
 
@@ -4418,7 +4482,7 @@ extends `SceneTree` · 445 lines
 
 ### `map_layout_selftest.gd`
 
-extends `SceneTree` · 187 lines
+extends `SceneTree` · 225 lines
 
 `godot/scripts/tools/map_layout_selftest.gd`
 
@@ -5592,6 +5656,41 @@ extends `Node2D` · 63 lines
 
 ---
 
+### `capture_controller.gd`
+
+extends `Node` · 252 lines
+
+`godot/scripts/world/controllers/capture_controller.gd`
+
+> CaptureController — the camera and the screen while a CAPTURE drives them (CAPTURE_RAILS_MASTER_PLAN §5-§6). Dev tooling: created on first use by `Room.capture()` (a scenario op), never in play. - `apply_profile()`: the framing, the window, the HUD (through the facade, R5), and CAPTURE MODE — gameplay may no longer move the camera (`CameraController.capture_locked`: focus_on, the enemy-phase tween, a re-centre, the player's drag / pinch are refused, logged once each). The shake stays unless `set_shake(false)`. - `frame()`: anchors -> world boxes (`MapLayout`) -> a pose (`CaptureFramer`) -> the camera (`Room.set_capture_view()`). - `frame_check()`: the last framed boxes through the REAL camera (`Board3DLive.screen_of_world()`), so the framer is checked against the board, not against itself.
+
+**Constants / tuning**
+- `CaptureFramerRef` = `preload("res://godot/scripts/systems/capture/capture_framer.gd")`
+- `CaptureProfilesRef` = `preload("res://godot/scripts/systems/capture/capture_profiles.gd")`
+- `MapLayoutRef` = `preload("res://godot/scripts/world/maps/map_layout.gd")`
+- `TITLE_BAR_PX` = `28`
+- `EASE_FN` = `{"linear": 0, "in_out": 1, "out": 2}`
+
+**Public vars**
+- `var room: Node = null`
+- `var profile: Dictionary = {}`
+- `var active: bool = false`
+- `var last_frame: Dictionary = {}`
+- `var holds_started: Array = []`
+- `var rail_frame: int = 0`
+- `var rail_done: bool = true`
+
+**Public API**
+- `func setup(p_room: Node) -> void:`
+- `func apply_profile(name: String, shape: String = "") -> String:`
+- `func set_hud(on: bool) -> void:`
+- `func set_shake(on: bool) -> void:`
+- `func frame(targets: Array, mode: String, view: String = "") -> String:`
+- `func frame_check(name: String) -> Dictionary:`
+- `func play_rail(rail: Dictionary) -> String:`
+
+---
+
 ### `debug_tools_controller.gd`
 
 `class_name DebugToolsController` · 151 lines
@@ -5699,7 +5798,7 @@ extends `Node2D` · 63 lines
 
 ### `turn_controller.gd`
 
-`class_name TurnController` · 379 lines
+`class_name TurnController` · 385 lines
 
 `godot/scripts/world/controllers/turn_controller.gd`
 
@@ -5801,7 +5900,7 @@ extends `Node2D` · 63 lines
 
 ### `file_map_source.gd`
 
-`class_name FileMapSource` · extends `RefCounted` · 206 lines
+`class_name FileMapSource` · extends `RefCounted` · 209 lines
 
 `godot/scripts/world/maps/file_map_source.gd`
 
@@ -5849,7 +5948,7 @@ extends `Node2D` · 63 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 611 lines
+`class_name MapCompiler` · extends `RefCounted` · 626 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -5886,7 +5985,7 @@ extends `Node2D` · 63 lines
 
 ### `map_layout.gd`
 
-`class_name MapLayout` · extends `RefCounted` · 436 lines
+`class_name MapLayout` · extends `RefCounted` · 628 lines
 
 `godot/scripts/world/maps/map_layout.gd`
 
@@ -5901,7 +6000,7 @@ extends `Node2D` · 63 lines
 
 ### `map_file_service.gd`
 
-`class_name MapFileService` · extends `RefCounted` · 146 lines
+`class_name MapFileService` · extends `RefCounted` · 154 lines
 
 `godot/scripts/world/maps/persistence/map_file_service.gd`
 
@@ -5940,7 +6039,7 @@ extends `Node2D` · 63 lines
 
 ### `map_sections_v1.gd`
 
-`class_name MapSectionsV1` · extends `RefCounted` · 379 lines
+`class_name MapSectionsV1` · extends `RefCounted` · 395 lines
 
 `godot/scripts/world/maps/persistence/map_sections_v1.gd`
 
@@ -5950,7 +6049,7 @@ extends `Node2D` · 63 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11563 lines
+extends `Node2D` · 11617 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5967,6 +6066,8 @@ extends `Node2D` · 11563 lines
 - `GlassRainOverlay` = `preload("res://godot/scripts/overlays/glass_rain_overlay.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `MapLayoutClass` = `preload("res://godot/scripts/world/maps/map_layout.gd")`
+- `CaptureControllerClass` = `preload("res://godot/scripts/world/controllers/capture_controller.gd")`
+- `LayoutOverlay3DClass` = `preload("res://godot/scripts/overlays/layout_overlay3d.gd")`
 - `LevelGraphClass` = `preload("res://godot/scripts/world/level_graph.gd")`
 - `GuardEnemyClass` = `preload("res://godot/scripts/agents/guard_enemy.gd")`
 - `CeilingPropOverlayClass` = `preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")`

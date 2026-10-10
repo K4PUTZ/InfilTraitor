@@ -55,8 +55,19 @@ func _ready() -> void:
 	_test_widgets_resolved()
 	_test_intents_are_signals()
 	_test_engine_can_drive_presentation()
+	_test_capture_hidden()
 
 	_finish()
+
+
+## CAPTURE_RAILS R5 — a capture of engine work hides the whole HUD through the facade, and showing it again restores what was there.
+func _test_capture_hidden() -> void:
+	_check(_hud.visible, "the HUD starts visible")
+	_hud_controller.set_capture_hidden(true)
+	_check(not _hud.visible and _hud_controller.is_capture_hidden(), "set_capture_hidden(true) hides the HUD layer")
+	_hud_controller.set_capture_hidden(true)
+	_hud_controller.set_capture_hidden(false)
+	_check(_hud.visible and not _hud_controller.is_capture_hidden(), "hiding twice then showing once restores the HUD")
 
 
 ## TEST 1 — every widget the engine depends on was found in the real scene.

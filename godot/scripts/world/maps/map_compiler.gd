@@ -388,7 +388,8 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"damage_materials":  damage_materials,  ## D13: map's declared damage-atom-bake material list
 		"floor_opening_instances": floor_opening_instances,  ## R3D-SURFACES SM-6b: real openings through the floor (raw GU), carved by SlabGenerator
 		"ground_vent_instances": ground_vent_instances,  ## R3D-SURFACES SM-6: floor vents (raw GU), a cosmetic plume each
-		"layout":           _compile_layout(spec, offset),  ## CAPTURE_RAILS CR-1: the map's anchors (raw GU), read by `MapLayout.from_compiled()`
+		"layout":           _compile_layout(spec, offset),  ## CAPTURE_RAILS CR-1: the map's anchors (raw GU), read by `MapLayout.load_compiled()`
+		"capture":          _compile_capture(spec, offset),  ## CAPTURE_RAILS CR-3: rails and takes (dev only); explicit centres shifted
 		"ground_scatter_items": ground_scatter_items,  ## R3D-SURFACES SM-2: scatter zones (raw GU), expanded by GroundScatter at attach
 		"material_tints":   material_tints,    ## R3D-SURFACES: material id -> Color, the colour it reads as in this map (cosmetic)
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
@@ -454,7 +455,10 @@ static func _compile_layout(spec: Dictionary, offset: Vector2i) -> Dictionary:
 		"poi": [], "regions": [], "objectives": [],
 	}
 	for p in section.get("poi", []):
-		(out["poi"] as Array).append({"id": str(p["id"]), "at": _layout_point(p["at"]) + shift, "tags": p.get("tags", []).duplicate()})
+		var prow: Dictionary = {"id": str(p["id"]), "at": _layout_point(p["at"]) + shift, "tags": p.get("tags", []).duplicate()}
+		if p.has("extent"):
+			prow["extent"] = _layout_point(p["extent"])   ## a SIZE: never shifted
+		(out["poi"] as Array).append(prow)
 	for r in section.get("regions", []):
 		(out["regions"] as Array).append({"id": str(r["id"]), "min": _layout_point(r["box"]["min"]) + shift,
 			"max": _layout_point(r["box"]["max"]) + shift, "tags": r.get("tags", []).duplicate()})
@@ -478,6 +482,17 @@ static func tallest_storeys_of(blocks: Array, panels: Array, roofs: Array) -> fl
 	for r in roofs:
 		top = maxf(top, float(r.get("storeys", 1)))
 	return top
+
+
+## CAPTURE_RAILS CR-3 — the `capture` section as authored, an `explicit` key's `centre` (inner GU) shifted by the buffer like every
+## other coordinate (rule 7). Anchors are named by id, so nothing else moves.
+static func _compile_capture(spec: Dictionary, offset: Vector2i) -> Dictionary:
+	var out: Dictionary = (spec.get("capture", {}) as Dictionary).duplicate(true)
+	for r in out.get("rails", []):
+		for k in r.get("keys", []):
+			if k.has("centre") and k["centre"] is Array and (k["centre"] as Array).size() == 2:
+				k["centre"] = [float(k["centre"][0]) + offset.x, float(k["centre"][1]) + offset.y]
+	return out
 
 
 static func _layout_point(v: Array) -> Vector3:

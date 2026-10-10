@@ -32,6 +32,7 @@ func _init() -> void:
 	_shipped_maps_load()
 	_glass_compiled()
 	_mutation_and_round_trip()
+	_capture_section()
 	print("\n%s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(0 if _failures == 0 else 1)
 
@@ -185,3 +186,40 @@ func _normal(section: Dictionary) -> String:
 
 func _p(v: Array) -> Array:
 	return [float(v[0]), float(v[1]), float(v[2]) if v.size() == 3 else 0.0]
+
+
+func _capture_section() -> void:
+	print("[7] the capture section (CR-3): validation, default rails, rename follows the @ids")
+	var lay: Dictionary = {"poi": [{"id": "p", "at": [1, 1]}], "regions": [{"id": "r", "box": {"min": [0, 0, 0], "max": [4, 4, 2]}}]}
+	var good: Dictionary = {"v": 1, "rails": [{"id": "rl", "keys": [{"frame": "wide", "target": "@r", "view": "N", "hold": 10},
+		{"frame": "detail", "target": "@p", "move": 20, "turn": "orbit", "view": "E"}]}],
+		"takes": [{"id": "tk", "profile": "engine", "rail": "rl", "steps": ["throw 0 @p"], "at_key": 1, "length": 100, "seed": 1}]}
+	var e: Array = []
+	MapLayoutClass.validate_capture(good, lay, e)
+	_check(e.is_empty(), "a good capture section has no error (%s)" % str(e))
+	var bad: Array = [
+		[{"rails": [{"id": "p", "keys": [{"target": "@r"}]}]}, "a rail id that is a layout id"],
+		[{"rails": [{"id": "x", "keys": []}]}, "a rail with no key"],
+		[{"rails": [{"id": "x", "keys": [{"target": "@nowhere"}]}]}, "a key naming no anchor"],
+		[{"rails": [{"id": "x", "keys": [{"target": "@r", "view": "NE"}]}]}, "a view that is not N/E/S/W"],
+		[{"rails": [{"id": "x", "keys": [{"target": "@r", "turn": "spin"}]}]}, "an unknown turn"],
+		[{"rails": [{"id": "x", "keys": [{"target": "@r", "hold": 1.5}]}]}, "a fractional hold"],
+		[{"takes": [{"id": "t", "rail": "nope"}]}, "a take on no rail"],
+		[{"takes": [{"id": "t", "rail": "overview", "steps": ["throw 0 @ghost"]}]}, "a take step naming no anchor"],
+		[{"takes": [{"id": "t", "rail": "overview", "speed": 2}]}, "an unknown take field"],
+	]
+	for row: Array in bad:
+		var er: Array = []
+		MapLayoutClass.validate_capture(row[0], lay, er)
+		_check(not er.is_empty(), "RED: %s is an error (%s)" % [row[1], er[0] if not er.is_empty() else "none"])
+	var spec: Dictionary = FileMapSourceClass.new().get_runtime_spec("GLASS")
+	var ml = MapLayoutClass.new().load_compiled(MapCompilerClass.compile(spec))
+	_check(ml.take("glass_blast").get("rail", "") == "glass_collapse_rail", "GLASS's authored take glass_blast is read")
+	_check((ml.rail("overview")["keys"] as Array).size() == 4, "every map has an `overview` rail: @map from N, E, S, W")
+	var reg: Dictionary = ml.rail("region:glass_wing")
+	_check((reg["keys"] as Array).size() >= 2, "region:<id> frames the region, then every detail POI inside it (%d keys)" % (reg["keys"] as Array).size())
+	_check(ml.take("poi:big_pane")["length"] > 0 and ml.take("nowhere").is_empty(), "a default rail is a take; an unknown id is not")
+	ml.rename("throw_front", "throw_spot")
+	_check(str(ml.take("glass_blast")["steps"][0]) == "throw 0 @throw_spot", "rename rewrites a take's step @ids")
+	ml.rename("big_pane_zone", "pane_zone")
+	_check(str(ml.rail("glass_collapse_rail")["keys"][1]["target"]) == "@pane_zone", "rename rewrites a rail key's target")

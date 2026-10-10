@@ -128,7 +128,7 @@ func _test_each_argument_check() -> bool:
 		"shoot -1": "shoot takes a guard index >= 0",
 		"reload now": "'reload' takes 0 argument(s), got 1",
 		"perspective up": "perspective takes N, E, S or W",
-		"view_mode fog": "view_mode takes dev, light, heat, numbers or ruler",
+		"view_mode fog": "view_mode takes dev, light, heat, numbers, ruler or layout",
 		"relight now": "'relight' takes 0 argument(s), got 1",
 		"passages a.b": "passages takes a file name (letters, digits, _ or -)",
 		"glass_compare g_0": "unknown step 'glass_compare'",

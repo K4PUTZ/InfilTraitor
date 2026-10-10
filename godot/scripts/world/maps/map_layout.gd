@@ -49,6 +49,10 @@ var poi: Dictionary = {}
 var regions: Dictionary = {}
 ## id -> {id, kind, at: Vector3 (raw) | region: String, tags}
 var objectives: Dictionary = {}
+## CAPTURE_RAILS CR-3 — the `capture` section (dev only): id -> rail `{id, keys: Array}`, id -> take `{id, profile, rail, steps, at_key,
+## after_hold, length, seed}`. A rail key's explicit `centre` is raw GU (shifted by MapCompiler).
+var rails: Dictionary = {}
+var takes: Dictionary = {}
 ## Insertion order per kind, so `to_section()` writes the file back in the order it was read (a stable diff for the editor).
 var _order: Dictionary = {"poi": [], "regions": [], "objectives": []}
 
@@ -75,7 +79,56 @@ func load_compiled(compiled: Dictionary) -> RefCounted:
 		ml._put("regions", r.duplicate(true))
 	for o: Dictionary in raw.get("objectives", []):
 		ml._put("objectives", o.duplicate(true))
+	var cap: Dictionary = compiled.get("capture", {})
+	for r: Dictionary in cap.get("rails", []):
+		ml.rails[str(r["id"])] = r.duplicate(true)
+	for t: Dictionary in cap.get("takes", []):
+		ml.takes[str(t["id"])] = t.duplicate(true)
 	return ml
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------
+# Capture: rails and takes, authored or DEFAULT (§7.5: any map has framed captures with no authored data)
+
+const DEFAULT_HOLD: int = 60
+const DEFAULT_MOVE: int = 45
+
+
+## A rail by id; `overview`, `region:<id>` and `poi:<id>` exist on every map (built on the fly, never stored). {} when unknown.
+func rail(id: String) -> Dictionary:
+	if rails.has(id):
+		return rails[id]
+	if id == "overview":
+		var keys: Array = []
+		for v: String in ["N", "E", "S", "W"]:
+			keys.append({"frame": "wide", "target": "@map", "view": v, "move": 0 if keys.is_empty() else DEFAULT_MOVE * 2,
+				"hold": DEFAULT_HOLD})
+		return {"id": id, "keys": keys}
+	if id.begins_with("region:") and regions.has(id.trim_prefix("region:")):
+		var rid: String = id.trim_prefix("region:")
+		var keys2: Array = [{"frame": "wide", "target": "@" + rid, "hold": DEFAULT_HOLD}]
+		var box: AABB = resolve(rid)["box"]
+		for pid in _order["poi"]:
+			var at: Vector3 = poi[pid]["at"]
+			if ("detail" in (poi[pid].get("tags", []) as Array)) and box.grow(0.01).has_point(Vector3(at.x, at.z, at.y)):
+				keys2.append({"frame": "detail", "target": "@" + str(pid), "move": DEFAULT_MOVE, "hold": DEFAULT_HOLD})
+		return {"id": id, "keys": keys2}
+	if id.begins_with("poi:") and poi.has(id.trim_prefix("poi:")):
+		return {"id": id, "keys": [{"frame": "detail", "target": "@" + id.trim_prefix("poi:"), "hold": DEFAULT_HOLD}]}
+	return {}
+
+
+## A take by id; a rail id that resolves (authored or default) is also a take with no event, the length of its keys.
+func take(id: String) -> Dictionary:
+	if takes.has(id):
+		return takes[id]
+	var r: Dictionary = rail(id)
+	if r.is_empty():
+		return {}
+	var length: int = 0
+	for k: Dictionary in r["keys"]:
+		length += int(k.get("move", 0)) + int(k.get("hold", 0))
+	return {"id": id, "profile": "engine", "rail": id, "steps": [], "at_key": 0, "after_hold": 0, "length": length + 2, "seed": 1}
 
 
 func _put(kind: String, entry: Dictionary) -> void:
@@ -132,6 +185,12 @@ func resolve(ref: String, room: Object = null) -> Dictionary:
 	var name: String = ref.trim_prefix("@")
 	if poi.has(name):
 		var at: Vector3 = poi[name]["at"]
+		if poi[name].has("extent"):
+			var ext: Vector3 = poi[name]["extent"]
+			var half := Vector3(ext.x, ext.y, ext.z) * 0.5
+			var r0: Dictionary = _box_result(at - half, at + half, "poi")
+			r0["point"] = at
+			return r0
 		return _point_result(at, "poi")
 	if regions.has(name):
 		var r: Dictionary = regions[name]
@@ -274,9 +333,30 @@ func rename(old_id: String, new_id: String) -> bool:
 			for o: Dictionary in objectives.values():
 				if str(o.get("region", "")) == old_id:
 					o["region"] = new_id
+			## CR-3: every `@old` of the capture section follows (rail targets, take steps).
+			for r: Dictionary in rails.values():
+				for k: Dictionary in r.get("keys", []):
+					var tg: Variant = k.get("target", "")
+					if tg is Array:
+						k["target"] = (tg as Array).map(func(x): return "@" + new_id if str(x).trim_prefix("@") == old_id else x)
+					elif str(tg).trim_prefix("@") == old_id:
+						k["target"] = "@" + new_id
+			for t: Dictionary in takes.values():
+				var steps: Array = []
+				for st in t.get("steps", []):
+					steps.append(_rename_token(str(st), old_id, new_id))
+				t["steps"] = steps
 			return true
 	push_error("[MapLayout] rename: no anchor '%s'" % old_id)
 	return false
+
+
+static func _rename_token(step: String, old_id: String, new_id: String) -> String:
+	var tokens: PackedStringArray = step.split(" ")
+	for i: int in range(tokens.size()):
+		if tokens[i] == "@" + old_id:
+			tokens[i] = "@" + new_id
+	return " ".join(tokens)
 
 
 func _free_id(id: String) -> bool:
@@ -297,7 +377,11 @@ func to_section() -> Dictionary:
 	var poi_out: Array = []
 	for id in _order["poi"]:
 		var p: Dictionary = poi[id]
-		poi_out.append({"id": id, "at": _point_to_file(p["at"]), "tags": (p.get("tags", []) as Array).duplicate()})
+		var prow: Dictionary = {"id": id, "at": _point_to_file(p["at"]), "tags": (p.get("tags", []) as Array).duplicate()}
+		if p.has("extent"):
+			var e: Vector3 = p["extent"]
+			prow["extent"] = [e.x, e.y, e.z]
+		poi_out.append(prow)
 	var reg_out: Array = []
 	for id in _order["regions"]:
 		var r: Dictionary = regions[id]
@@ -347,6 +431,10 @@ static func validate_section(section: Dictionary, sections: Dictionary, errors: 
 		var id: String = str(p.get("id", ""))
 		_check_id(id, ids, errors)
 		_check_point(p.get("at", null), "layout.poi '%s'.at" % id, lo, hi, errors)
+		if p.has("extent"):
+			var ext: Variant = _check_point(p["extent"], "layout.poi '%s'.extent" % id, Vector2(0, 0), Vector2(hi.x - lo.x, hi.y - lo.y), errors)
+			if ext is Vector3 and (ext.x <= 0.0 or ext.y <= 0.0 or (p["extent"] as Array).size() != 3 or ext.z <= 0.0):
+				errors.append("layout.poi '%s'.extent must be [x, y, z], each > 0 (the size of the thing around `at`)" % id)
 		_check_tags(p, "layout.poi '%s'" % id, errors)
 	var region_ids: Dictionary = {}
 	for r in section.get("regions", []):
@@ -434,3 +522,107 @@ static func _check_tags(row: Dictionary, what: String, errors: Array) -> void:
 	for t in tags:
 		if not (t is String):
 			errors.append("%s: tag %s is not a string" % [what, str(t)])
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------
+# Validation of the `capture` section (CR-3), against the `layout` it names. Structure only: a take's steps are parsed by
+# `ScenarioRunner` when the take runs (one parser; headless map tools cannot load it).
+
+const KEY_FIELDS: Array[String] = ["frame", "target", "view", "move", "hold", "ease", "turn", "follow", "centre", "zoom"]
+const TAKE_FIELDS: Array[String] = ["id", "profile", "rail", "steps", "at_key", "after_hold", "length", "seed", "note"]
+const FRAME_MODES: Array[String] = ["wide", "detail", "fit", "explicit"]
+const EASES: Array[String] = ["linear", "in_out", "out"]
+const TURNS: Array[String] = ["cut", "orbit"]
+const VIEWS: Array[String] = ["N", "E", "S", "W"]
+
+
+static func validate_capture(section: Dictionary, layout_section: Dictionary, errors: Array) -> void:
+	var anchors: Dictionary = {}
+	for kind: String in ["poi", "regions", "objectives"]:
+		for row in layout_section.get(kind, []):
+			if row is Dictionary:
+				anchors[str(row.get("id", ""))] = true
+	for key in section.keys():
+		if not ["v", "rails", "takes"].has(str(key)):
+			errors.append("capture: unknown key '%s' (v, rails, takes)" % key)
+	var rail_ids: Dictionary = {}
+	var seen: Dictionary = {}
+	for r in section.get("rails", []):
+		if not (r is Dictionary):
+			errors.append("capture.rails: %s is not an object" % str(r))
+			continue
+		var id: String = str(r.get("id", ""))
+		_check_capture_id(id, anchors, seen, errors)
+		rail_ids[id] = true
+		var keys: Variant = r.get("keys", [])
+		if not (keys is Array) or (keys as Array).is_empty():
+			errors.append("capture.rails '%s' needs a non-empty keys array" % id)
+			continue
+		for i: int in range((keys as Array).size()):
+			_check_key(keys[i], "capture.rails '%s' key %d" % [id, i], anchors, errors)
+	for t in section.get("takes", []):
+		if not (t is Dictionary):
+			errors.append("capture.takes: %s is not an object" % str(t))
+			continue
+		var id: String = str(t.get("id", ""))
+		_check_capture_id(id, anchors, seen, errors)
+		for f in t.keys():
+			if not TAKE_FIELDS.has(str(f)):
+				errors.append("capture.takes '%s': unknown field '%s'" % [id, f])
+		var rid: String = str(t.get("rail", ""))
+		if not rail_ids.has(rid) and not (rid == "overview" or rid.begins_with("region:") or rid.begins_with("poi:")):
+			errors.append("capture.takes '%s': rail '%s' is not a rail of this map (nor overview / region:<id> / poi:<id>)" % [id, rid])
+		for f: String in ["at_key", "after_hold", "length", "seed"]:
+			if t.has(f) and (not (t[f] is float or t[f] is int) or int(t[f]) < 0):
+				errors.append("capture.takes '%s'.%s must be a whole number >= 0" % [id, f])
+		if not (t.get("steps", []) is Array):
+			errors.append("capture.takes '%s'.steps must be an array of scenario steps" % id)
+		else:
+			for st in t.get("steps", []):
+				for tok: String in str(st).split(" ", false):
+					if tok.begins_with("@") and not anchors.has(tok.trim_prefix("@")) and not _is_reserved_ref(tok.trim_prefix("@")):
+						errors.append("capture.takes '%s': step '%s' names %s, which is no anchor of this map" % [id, st, tok])
+
+
+static func _check_capture_id(id: String, anchors: Dictionary, seen: Dictionary, errors: Array) -> void:
+	var re := RegEx.create_from_string("^[a-z0-9_]+$")
+	if id.is_empty() or re.search(id) == null:
+		errors.append("capture: id '%s' must match [a-z0-9_]+" % id)
+	elif anchors.has(id) or seen.has(id) or RESERVED_NAMES.has(id) or id == "overview":
+		errors.append("capture: id '%s' is already used (ids are unique across layout and capture)" % id)
+	seen[id] = true
+
+
+static func _is_reserved_ref(name: String) -> bool:
+	return RESERVED_NAMES.has(name) or (name.begins_with("guard_") and name.trim_prefix("guard_").is_valid_int()) \
+		or name.begins_with("corner_") or name.begins_with("side_")
+
+
+static func _check_key(k: Variant, what: String, anchors: Dictionary, errors: Array) -> void:
+	if not (k is Dictionary):
+		errors.append("%s is not an object" % what)
+		return
+	for f in k.keys():
+		if not KEY_FIELDS.has(str(f)):
+			errors.append("%s: unknown field '%s'" % [what, f])
+	var mode: String = str(k.get("frame", "wide"))
+	if not FRAME_MODES.has(mode):
+		errors.append("%s: frame '%s' is not one of %s" % [what, mode, ", ".join(FRAME_MODES)])
+	if mode == "explicit":
+		if not (k.get("centre", null) is Array) or not (k.get("zoom", null) is float or k.get("zoom", null) is int):
+			errors.append("%s: explicit needs centre [x, y] and zoom" % what)
+	else:
+		var targets: Array = k["target"] if k.get("target", null) is Array else [k.get("target", "@map")]
+		for tg in targets:
+			var name: String = str(tg).trim_prefix("@")
+			if not anchors.has(name) and not _is_reserved_ref(name):
+				errors.append("%s: target '%s' is no anchor of this map" % [what, tg])
+	if k.has("view") and not VIEWS.has(str(k["view"])):
+		errors.append("%s: view '%s' is not N/E/S/W" % [what, k["view"]])
+	if k.has("ease") and not EASES.has(str(k["ease"])):
+		errors.append("%s: ease '%s' is not one of %s" % [what, k["ease"], ", ".join(EASES)])
+	if k.has("turn") and not TURNS.has(str(k["turn"])):
+		errors.append("%s: turn '%s' is not cut or orbit" % [what, k["turn"]])
+	for f: String in ["move", "hold"]:
+		if k.has(f) and (not (k[f] is float or k[f] is int) or int(k[f]) < 0 or not is_equal_approx(float(k[f]), roundf(float(k[f])))):
+			errors.append("%s: %s must be a whole number of frames >= 0" % [what, f])

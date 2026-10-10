@@ -21,6 +21,8 @@
 ##   blast    the dev grenade 0 on PLAYGROUND, camera zoomed OUT to 0.5 and centred on the grenade from the start (no pan, no zoom
 ##            change during the take), fuse, blast, smoke, scorch. This is the take the Director reviews the blast flow on.
 ##   blast100 the same at zoom 1.0 (the close view).
+## Or `--take <id>` (CAPTURE_RAILS CR-5): a take of the map's `capture` section (or overview / region:<id> / poi:<id>) under the `perf`
+## profile, framed from the map's anchors exactly as `capture.py` frames it on the desktop (the APK must carry the map and the code).
 ## Or `--scenario "<steps>"` for anything else (see `scenario_runner.gd` for the steps; end it with `quit`; put a `mark rec` step
 ## where the video should begin).
 ##
@@ -61,6 +63,8 @@ def main() -> int:
     ap.add_argument("--out", required=True, help="local .mp4 path (use videos/, which is git-ignored)")
     ap.add_argument("--preset", choices=sorted(PRESETS), help="a ready scenario")
     ap.add_argument("--scenario", help="SCENARIO steps, ';' separated (instead of a preset)")
+    ap.add_argument("--take", help="CAPTURE_RAILS CR-5: a take of the map (authored, or overview / region:<id> / poi:<id>), played "
+                    "under the `perf` profile: the same anchors and rail as the desktop take, portrait, framed by the same framer")
     ap.add_argument("--map", default="PLAYGROUND")
     ap.add_argument("--from", dest="from_step", default="mark rec",
                     help="the video starts at the first `[SCENARIO]` line containing this text (default `mark rec`, else step 1)")
@@ -71,8 +75,11 @@ def main() -> int:
     ap.add_argument("--flag", action="append", default=[], help="an extra KEY=VALUE for dev_flags.cfg (repeatable)")
     args = ap.parse_args()
     scenario = args.scenario or (PRESETS[args.preset] if args.preset else None)
+    if args.take:
+        scenario = "mark rec; take %s; quit" % args.take
+        args.flag.append("CAPTURE_PROFILE=perf")
     if not scenario:
-        ap.error("give --preset or --scenario")
+        ap.error("give --preset, --scenario or --take")
 
     def adb(*a, text=True):
         return subprocess.run([ADB, "-s", args.device, *a], capture_output=True, text=text)

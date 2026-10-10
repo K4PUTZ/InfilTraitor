@@ -320,6 +320,9 @@ func _hold_actor_end_pause() -> void:
 func _focus_camera_for_enemy_phase(target_cell: Vector2i, duration: float = ENEMY_CAMERA_TWEEN_DURATION) -> void:
 	if target_cell == Vector2i(-1, -1) or camera == null:
 		return
+	var cc: Object = room.get("_camera_controller")
+	if cc != null and bool(cc.call("capture_refuses", "enemy-phase camera")):
+		return
 	
 	var target_world := _world_center_for_cell(target_cell)
 	var target_zoom := camera.zoom.x
@@ -341,6 +344,9 @@ func _world_center_for_cell(cell: Vector2i) -> Vector2:
 
 func _center_camera(cell: Vector2i) -> void:
 	if camera == null:
+		return
+	var cc: Object = room.get("_camera_controller")
+	if cc != null and bool(cc.call("capture_refuses", "turn re-centre")):
 		return
 	var target_pos := _world_center_for_cell(cell)
 	camera.global_position = target_pos

@@ -141,6 +141,14 @@ func _validate(spec: Dictionary) -> Dictionary:
 	if not layout_section.is_empty():
 		var warnings: Array = []
 		MapLayoutRef.validate_section(layout_section, sections, errors, warnings)
+		## The envelope is the SEGMENT's: a game segment (`meta.segment`) gets a warning, a dev / test map an info line (§4.6).
+		var is_segment: bool = bool((spec.get("meta", {}) as Dictionary).get("segment", false))
 		for w in warnings:
-			push_warning("[MapFileService] %s: %s" % [spec.get("id", "?"), w])
+			if is_segment:
+				push_warning("[MapFileService] %s: %s" % [spec.get("id", "?"), w])
+			else:
+				print_debug("[MapFileService] %s (not a segment, info only): %s" % [spec.get("id", "?"), w])
+	var capture_section: Dictionary = sections.get("capture", {})
+	if not capture_section.is_empty():
+		MapLayoutRef.validate_capture(capture_section, layout_section, errors)
 	return {"ok": errors.is_empty(), "errors": errors}

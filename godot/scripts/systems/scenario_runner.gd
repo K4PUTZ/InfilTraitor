@@ -97,9 +97,16 @@ const ARITY: Dictionary = {
 	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
 	"container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "decal_wall": 2,
+	"profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1,
 }
+## CAPTURE_RAILS §7.5 — the cell arguments an `@id` may name, by op and token index (0 = the op). `substitute_anchors()` turns each
+## into the anchor's raw ground cell BEFORE parsing, so the event and the camera read the same anchor.
+const CELL_TOKENS: Dictionary = {"throw": [2], "aim": [1], "centre": [1], "place_guard": [2], "decal_wall": [2], "occ_bench": [1, 2]}
+## CAPTURE_RAILS (§8.1): framing modes and views of `frame` / `still`.
+const FRAME_MODES: PackedStringArray = ["wide", "detail", "fit"]
+const VIEWS: PackedStringArray = ["N", "E", "S", "W"]
 const ScenarioDrawRef = preload("res://godot/scripts/systems/scenario_draw.gd")  ## waits for a drawn frame, never forever (an occluded harness window draws nothing)
-const VIEW_MODES: PackedStringArray = ["dev", "light", "heat", "numbers", "ruler"]
+const VIEW_MODES: PackedStringArray = ["dev", "light", "heat", "numbers", "ruler", "layout"]
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
 const BEAT_TOKEN_PATTERN: String = "^[A-Za-z0-9_]+$"
@@ -154,6 +161,27 @@ func run(room: Node, steps: Array) -> void:
 	Telemetry.event("scenario.end")
 
 
+## `{text, error}`: every `@id` in a cell argument (CELL_TOKENS) becomes "x,y", the anchor's raw ground cell (`MapLayout.ground_cell`).
+## Other `@` tokens (the targets of `frame` / `still`) are left for the op itself.
+static func substitute_anchors(text: String, layout: RefCounted, room: Object = null) -> Dictionary:
+	var out: PackedStringArray = []
+	for chunk in text.replace("\n", ";").split(";", false):
+		var tokens: PackedStringArray = chunk.strip_edges().split(" ", false)
+		if tokens.is_empty():
+			continue
+		var op: String = tokens[0].to_lower()
+		for idx in CELL_TOKENS.get(op, []):
+			if int(idx) < tokens.size() and tokens[int(idx)].begins_with("@"):
+				if layout == null:
+					return {"text": "", "error": "'%s' names %s but the map has no layout" % [chunk.strip_edges(), tokens[int(idx)]]}
+				var gc: Dictionary = layout.call("ground_cell", tokens[int(idx)], room)
+				if not gc["ok"]:
+					return {"text": "", "error": "'%s': %s" % [chunk.strip_edges(), gc["error"]]}
+				tokens[int(idx)] = "%d,%d" % [gc["cell"].x, gc["cell"].y]
+		out.append(" ".join(tokens))
+	return {"text": "; ".join(out), "error": ""}
+
+
 static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 		step: Dictionary) -> String:
 	match op:
@@ -195,7 +223,39 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 					or int(size[0]) <= 0 or int(size[1]) <= 0:
 				return "window takes WxH in pixels"
 			step["size"] = Vector2i(int(size[0]), int(size[1]))
-		"capture", "probe", "probe_store", "container_stats", "gfx_census", "passages", "mirror_check", "ground_check", "pick_check", "world_check", "canvas_check":
+		"profile":
+			if tokens.size() < 2 or tokens.size() > 3:
+				return "profile takes a profile name and an optional shape (portrait / landscape)"
+			step["profile"] = arg
+			step["shape"] = tokens[2] if tokens.size() == 3 else ""
+		"rail", "take":
+			if arg.is_empty():
+				return "%s takes an id (authored, or overview / region:<id> / poi:<id>)" % op
+			step["id"] = arg
+		"hud", "shake":
+			if not (arg == "on" or arg == "off"):
+				return "%s takes on or off" % op
+			step["on"] = arg == "on"
+		"frame", "still":
+			var rest: PackedStringArray = tokens.slice(1)
+			if op == "still":
+				if rest.size() < 1 or not rest[0].is_valid_filename() or rest[0].contains("."):
+					return "still takes a file name, a mode, target(s) and an optional view (N/E/S/W/all)"
+				step["name"] = rest[0]
+				rest = rest.slice(1)
+			if rest.size() < 2 or not FRAME_MODES.has(rest[0]):
+				return "%s takes a mode (wide, detail, fit) and at least one target (@id, a region, @map)" % op
+			step["mode"] = rest[0]
+			rest = rest.slice(1)
+			step["view"] = ""
+			var last: String = rest[rest.size() - 1].to_upper()
+			if rest.size() > 1 and (VIEWS.has(last) or (op == "still" and last == "ALL")):
+				step["view"] = last
+				rest = rest.slice(0, rest.size() - 1)
+			step["targets"] = Array(rest)
+			if step["mode"] != "fit" and rest.size() != 1:
+				return "%s %s takes one target (fit takes several)" % [op, step["mode"]]
+		"capture", "probe", "probe_store", "container_stats", "gfx_census", "passages", "mirror_check", "ground_check", "pick_check", "world_check", "canvas_check", "frame_check":
 			if not arg.is_valid_filename() or arg.contains("."):
 				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
@@ -259,7 +319,7 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			step["index"] = int(arg)
 		"view_mode":
 			if not VIEW_MODES.has(arg.to_lower()):
-				return "view_mode takes dev, light, heat, numbers or ruler"
+				return "view_mode takes dev, light, heat, numbers, ruler or layout"
 			step["mode"] = arg.to_lower()
 		"perspective":
 			if not ["N", "E", "S", "W"].has(arg.to_upper()):
@@ -319,6 +379,45 @@ func _execute(room: Node, step: Dictionary) -> bool:
 			else:
 				DisplayServer.window_set_size(step["size"])
 				await room.get_tree().process_frame
+		"profile":
+			var perr: String = room.call("capture").call("apply_profile", step["profile"], step["shape"])
+			if not perr.is_empty():
+				return _fail(step, perr)
+			for _f in range(3):
+				await room.get_tree().process_frame
+		"hud":
+			room.call("capture").call("set_hud", step["on"])
+		"rail":
+			var ml_r: RefCounted = room.get("map_layout")
+			var rerr: String = await room.call("capture").call("play_rail", ml_r.call("rail", step["id"]) if ml_r != null else {})
+			if not rerr.is_empty():
+				return _fail(step, rerr)
+		"take":
+			return await _run_take(room, step)
+		"shake":
+			room.call("capture").call("set_shake", step["on"])
+		"frame":
+			var ferr: String = room.call("capture").call("frame", step["targets"], step["mode"], step["view"])
+			if not ferr.is_empty():
+				return _fail(step, ferr)
+			await ScenarioDrawRef.next_drawn_frame(get_tree())
+		"frame_check":
+			await ScenarioDrawRef.next_drawn_frame(get_tree())
+			var fc: Dictionary = room.call("capture").call("frame_check", step["name"])
+			if not fc["ok"]:
+				return _fail(step, str(fc["error"]))
+		"still":
+			var views: Array = VIEWS if step["view"] == "ALL" else [step["view"]]
+			for v: String in views:
+				var serr: String = room.call("capture").call("frame", step["targets"], step["mode"], v)
+				if not serr.is_empty():
+					return _fail(step, serr)
+				for _f in range(2):
+					await ScenarioDrawRef.next_drawn_frame(get_tree())
+				room.call("capture").call("frame_check", "%s%s" % [step["name"], "_" + v if step["view"] == "ALL" else ""])
+				var cap_err: String = _save_capture(room, "%s%s" % [step["name"], "_" + v if step["view"] == "ALL" else ""])
+				if not cap_err.is_empty():
+					return _fail(step, cap_err)
 		"capture":
 			await ScenarioDrawRef.next_drawn_frame(get_tree())
 			var problem: String = _save_capture(room, str(step["name"]))
@@ -568,3 +667,51 @@ func _alloc(step: Dictionary) -> void:
 	print("[SCENARIO] alloc %s %d — %.0f ms, %s" % [step["kind"], count, ms, delta_text])
 	Telemetry.event("scenario.alloc",
 		{"kind": step["kind"], "count": count, "ms": ms, "static_delta": delta})
+
+
+## CAPTURE_RAILS §7.5 — a whole take: its profile, its seed, its rail, and its steps fired when key `at_key` starts holding (+
+## `after_hold` frames); returns once `length` frames have passed since the take began. The steps' `@id`s are the anchors' cells.
+func _run_take(room: Node, step: Dictionary) -> bool:
+	var ml: RefCounted = room.get("map_layout")
+	var take: Dictionary = ml.call("take", step["id"]) if ml != null else {}
+	if take.is_empty():
+		return _fail(step, "no take '%s' on this map (authored, or overview / region:<id> / poi:<id>)" % step["id"])
+	var cap: Node = room.call("capture")
+	var shape: String = DevFlags.value("CAPTURE_SHAPE", "")
+	## `CAPTURE_PROFILE` overrides the take's own (device_record.py --take plays a desktop take under `perf` on a handset).
+	var perr: String = cap.call("apply_profile", DevFlags.value("CAPTURE_PROFILE", str(take.get("profile", "engine"))), shape)
+	if not perr.is_empty():
+		return _fail(step, perr)
+	seed(int(take.get("seed", 1)))
+	var sub: Dictionary = substitute_anchors("; ".join(PackedStringArray(take.get("steps", []))), ml, room)
+	if not str(sub["error"]).is_empty():
+		return _fail(step, sub["error"])
+	var parsed: Dictionary = {"steps": [], "error": ""}
+	if not str(sub["text"]).strip_edges().is_empty():
+		parsed = parse(sub["text"])
+		if not str(parsed["error"]).is_empty():
+			return _fail(step, "take '%s': %s" % [step["id"], parsed["error"]])
+	var tree: SceneTree = room.get_tree()
+	for _f in range(3):
+		await tree.process_frame
+	var start: int = Engine.get_process_frames()
+	print("[TAKE] %s: profile %s, rail %s, %d step(s) at key %d + %d frames, length %d frames, seed %d" % [step["id"], take.get("profile", "engine"),
+		take.get("rail", ""), (parsed["steps"] as Array).size(), int(take.get("at_key", 0)), int(take.get("after_hold", 0)),
+		int(take.get("length", 0)), int(take.get("seed", 1))])
+	cap.call("play_rail", ml.call("rail", str(take.get("rail", ""))))
+	if not (parsed["steps"] as Array).is_empty():
+		while not (cap.get("holds_started") as Array).has(int(take.get("at_key", 0))):
+			if bool(cap.get("rail_done")):
+				return _fail(step, "take '%s': the rail ended before key %d" % [step["id"], int(take.get("at_key", 0))])
+			await tree.process_frame
+		for _f in range(int(take.get("after_hold", 0))):
+			await tree.process_frame
+		print("[TAKE] %s: steps fire at take frame %d" % [step["id"], Engine.get_process_frames() - start])
+		for st: Dictionary in parsed["steps"]:
+			print("[TAKE]   %s" % st["text"])
+			if not await _execute(room, st):
+				return false
+	while Engine.get_process_frames() - start < int(take.get("length", 0)):
+		await tree.process_frame
+	print("[TAKE] %s: done at take frame %d" % [step["id"], Engine.get_process_frames() - start])
+	return true

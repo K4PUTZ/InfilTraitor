@@ -181,6 +181,11 @@ still undecided. Nothing below changed except that the folder is empty:
   particle effects age several times too fast per frame while the frame-driven
   destruction and strobe stay exact, so the sheet lies about exactly what it is
   being used to judge.
+- **Captures go through CAPTURE_RAILS (built 2026-10-10):** `python3 tools/persistent/capture.py --map <MAP> --take <id>` (video,
+  frame by frame, `--sheet N` for a contact sheet) or `--still <anchor> --mode wide|detail --view N|all`. Frame by the map's anchors
+  (`layout` section; `overview`, `region:<id>`, `poi:<id>` exist on every map), never by a typed GU; profile `engine` (desktop, HUD
+  hidden) by default, `ui` for interface work (portrait + landscape), the handset (`device_record.py --take`) only for perf. A new
+  scene that matters gets a POI / region in its map, not a guessed `centre`.
 - When a capture exists for a claim, point at the actual file instead of
   describing what the code should produce.
 - **Show every capture in the conversation (Director, 2026-09-30).** Whenever a

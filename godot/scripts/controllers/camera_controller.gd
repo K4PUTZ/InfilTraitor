@@ -23,6 +23,21 @@ var _drag_started: bool = false
 var _drag_start_mouse: Vector2 = Vector2.ZERO
 var _drag_start_cam: Vector2 = Vector2.ZERO
 var _touches: Dictionary = {}  ## finger_index → screen position
+## CAPTURE_RAILS §5.4 — while a capture drives the camera, gameplay may not move it (focus, the enemy-phase tween, a re-centre, the
+## player's drag / pinch / wheel). Each refused caller is logged once. `capture_shake` false also mutes the blast shake.
+var capture_locked: bool = false
+var capture_shake: bool = true
+var _capture_refused: Dictionary = {}
+
+
+## True (and logged once per `who`) when a capture holds the camera.
+func capture_refuses(who: String) -> bool:
+	if not capture_locked:
+		return false
+	if not _capture_refused.has(who):
+		_capture_refused[who] = true
+		print("[CAPTURE] camera move from %s suppressed (capture mode)" % who)
+	return true
 var _pinch_last_dist: float = 0.0
 
 # UI buttons for perspective
@@ -48,6 +63,8 @@ func _cache_vision_controller() -> void:
 func handle_input(event: InputEvent) -> bool:
 	## Processes camera events. Returns true if the event was consumed.
 	## room.gd calls this before processing any other input.
+	if capture_locked:
+		return false
 	
 	## ── Touch: track fingers for pinch-zoom ─────────────────────────────
 	if event is InputEventScreenTouch:
@@ -139,6 +156,8 @@ func handle_input(event: InputEvent) -> bool:
 
 
 func focus_on(world_pos: Vector2) -> void:
+	if capture_refuses("focus_on"):
+		return
 	if _camera:
 		_camera.position = world_pos
 
@@ -175,7 +194,7 @@ var shake_decay_power: float = 2.0        ## >1 = falls off fast, long soft tail
 
 
 func shake(duration: float, amplitude: float) -> void:
-	if _camera == null or duration <= 0.0 or amplitude <= 0.0:
+	if _camera == null or duration <= 0.0 or amplitude <= 0.0 or (capture_locked and not capture_shake):
 		return
 	## A shake already running is REPLACED, not stacked: two overlapping blasts
 	## should not sum into a displacement neither one asked for.

@@ -731,6 +731,11 @@
       10.0,
       1.5
      ],
+     "extent": [
+      6.0,
+      0.25,
+      3.0
+     ],
      "tags": [
       "glass",
       "detail"
@@ -865,6 +870,52 @@
     }
    ],
    "objectives": []
+  },
+  "capture": {
+   "v": 1,
+   "rails": [
+    {
+     "id": "glass_collapse_rail",
+     "keys": [
+      {
+       "frame": "wide",
+       "target": "@glass_wing",
+       "view": "N",
+       "hold": 40
+      },
+      {
+       "frame": "wide",
+       "target": "@big_pane_zone",
+       "view": "N",
+       "move": 40,
+       "hold": 600
+      },
+      {
+       "frame": "wide",
+       "target": "@big_pane_zone",
+       "view": "E",
+       "move": 90,
+       "hold": 120,
+       "turn": "orbit"
+      }
+     ]
+    }
+   ],
+   "takes": [
+    {
+     "id": "glass_blast",
+     "profile": "engine",
+     "rail": "glass_collapse_rail",
+     "steps": [
+      "throw 0 @throw_front"
+     ],
+     "at_key": 1,
+     "after_hold": 0,
+     "length": 900,
+     "seed": 1,
+     "note": "CAPTURE_RAILS proof take: a grenade in front of the big pane, the blast, then G-S1's three overlapping collapse waves (2.5 s after the blast), then an orbit to E"
+    }
+   ]
   }
  }
 }

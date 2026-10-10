@@ -20,6 +20,7 @@ static func register_all(registry) -> void:
 	register_actors(registry)
 	register_legacy_compiler(registry)
 	register_layout(registry)
+	register_capture(registry)
 
 static func register_board(registry) -> void:
 	var SectionOwner = registry.SectionOwner
@@ -371,6 +372,21 @@ static func register_layout(registry) -> void:
 	var SectionOwner = registry.SectionOwner
 	registry.register(SectionOwner.new(
 		"layout",
+		1,
+		func(fragment: Dictionary) -> Dictionary: return fragment.duplicate(true),
+		func(raw: Dictionary) -> Dictionary: return raw.duplicate(true),
+		{},
+		func() -> Dictionary: return {}
+	))
+
+
+## capture (CAPTURE_RAILS_MASTER_PLAN CR-3, 2026-10-10): DEV ONLY — camera `rails` (keys that frame anchors of `layout`) and named
+## `takes` (a profile, a rail, the scenario steps of the event, when they fire, the length in frames). Round-trips as authored;
+## `MapLayout.validate_capture()` (run by `MapFileService`) fails a bad one loudly. Gameplay never reads it.
+static func register_capture(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	registry.register(SectionOwner.new(
+		"capture",
 		1,
 		func(fragment: Dictionary) -> Dictionary: return fragment.duplicate(true),
 		func(raw: Dictionary) -> Dictionary: return raw.duplicate(true),

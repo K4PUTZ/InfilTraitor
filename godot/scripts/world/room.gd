@@ -15,6 +15,8 @@ const GlassShardShapes = preload("res://godot/scripts/systems/destruction/glass_
 const GlassRainOverlay = preload("res://godot/scripts/overlays/glass_rain_overlay.gd")
 const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const MapLayoutClass     = preload("res://godot/scripts/world/maps/map_layout.gd")
+const CaptureControllerClass = preload("res://godot/scripts/world/controllers/capture_controller.gd")
+const LayoutOverlay3DClass = preload("res://godot/scripts/overlays/layout_overlay3d.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 const CeilingPropOverlayClass = preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")
@@ -2845,6 +2847,8 @@ func _update_perspective_button_state() -> void:
 
 
 func _center_camera(focus_cell: Vector2i) -> void:
+	if _camera_controller != null and _camera_controller.capture_refuses("Room._center_camera"):
+		return
 	var centre_world := GroundGridRef.map_to_local(focus_cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 	camera.global_position = centre_world
 
@@ -2960,6 +2964,8 @@ func set_framing(framing: String, via: String = "code") -> void:
 	_apply_world_render_scale()
 	if _is_handheld():
 		DisplayServer.screen_set_orientation(orientation)
+	elif DevFlags.on("CAPTURE_WINDOW_FIXED"):
+		pass   ## CAPTURE_RAILS: the capture harness owns the window (Movie Maker records one size for the whole file)
 	else:
 		## Exit fullscreen first — can't resize while in fullscreen.
 		if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
@@ -3019,6 +3025,47 @@ func _world_render_scale_value() -> float:
 ## DIAG-21 step 2 — the live 3D board, or null when `RENDER3D` did not build one.
 func board3d() -> Node:
 	return get_node_or_null("Board3DLive")
+
+
+## CAPTURE_RAILS CR-4 — the layout overlay (the map's anchors on the board; `LAYOUT_RAIL=<id>` also draws a rail's path). Built on,
+## freed off: nothing exists while it is off. It lives under the 3D board, so a map load (which replaces the board) drops it.
+func toggle_layout_overlay(rail_id: String = "") -> void:
+	var live: Node = board3d()
+	if live == null or map_layout == null:
+		push_error("[Room] toggle_layout_overlay: needs the 3D board and the map layout")
+		return
+	var existing: Node = live.get_node_or_null("LayoutOverlay3D")
+	if existing != null:
+		existing.queue_free()
+		return
+	var ov: Node3D = LayoutOverlay3DClass.new()
+	ov.name = "LayoutOverlay3D"
+	live.add_child(ov)
+	ov.call("build", map_layout, rail_id)
+
+
+## CAPTURE_RAILS — the capture controller (dev tooling), created on first use by a scenario op.
+func capture() -> Node:
+	var c: Node = get_node_or_null("CaptureController")
+	if c == null:
+		c = CaptureControllerClass.new()
+		c.name = "CaptureController"
+		add_child(c)
+		c.call("setup", self)
+	return c
+
+
+## CAPTURE_RAILS §6.3 — a computed pose: the 3D camera looks at the world ground point `ground_centre` (x, z) at `zoom`, with no
+## gameplay clamp (the capture range is CaptureFramer's). The Camera2D carries it, as for every other camera move: the board maps
+## its screen centre to the ground (`Board3DLive._process()`), and `particle_pair()` is that map's inverse.
+func set_capture_view(ground_centre: Vector2, zoom: float) -> void:
+	var live: Node = board3d()
+	if live == null:
+		push_error("[Room] set_capture_view: no 3D board")
+		return
+	var pair: Array = live.call("particle_pair", Vector3(ground_centre.x, 0.0, ground_centre.y))
+	camera.global_position = pair[1]
+	camera.zoom = Vector2(zoom, zoom)
 
 
 ## R3D-11 — the `ground_check` scenario step: what gameplay reads of the ground, as digests, plus an in-process
@@ -3772,8 +3819,10 @@ func scenario_view_mode(mode: String) -> bool:
 			_debug_tools_controller.toggle_voxel_ruler_overlay()
 		"dev", "light", "heat":
 			_set_view_mode(mode)
+		"layout":
+			toggle_layout_overlay(_dev_flag("LAYOUT_RAIL", ""))
 		_:
-			push_error("[Room] scenario_view_mode: '%s' is not dev, light, heat, numbers or ruler" % mode)
+			push_error("[Room] scenario_view_mode: '%s' is not dev, light, heat, numbers, ruler or layout" % mode)
 			return false
 	for _f in range(10):
 		await get_tree().process_frame
@@ -11112,7 +11161,12 @@ var _scenario_started: bool = false
 ## that does not parse is reported and never started: a ladder that stops halfway
 ## is a table that looks complete.
 func _start_scenario_deferred() -> void:
-	var parsed: Dictionary = ScenarioRunnerClass.parse(_dev_flag("SCENARIO", ""))
+	## CAPTURE_RAILS: `@id` cell arguments become the map's anchors' cells first (the map is loaded by now).
+	var sub: Dictionary = ScenarioRunnerClass.substitute_anchors(_dev_flag("SCENARIO", ""), map_layout, self)
+	if not str(sub["error"]).is_empty():
+		push_error("[Room] SCENARIO rejected — %s" % sub["error"])
+		return
+	var parsed: Dictionary = ScenarioRunnerClass.parse(sub["text"])
 	if not str(parsed["error"]).is_empty():
 		push_error("[Room] SCENARIO rejected — %s" % parsed["error"])
 		return

@@ -154,6 +154,9 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 	var layout_section = sections.get("layout", {})
 	if not (layout_section as Dictionary).is_empty():
 		runtime["layout"] = (layout_section as Dictionary).duplicate(true)
+	var capture_section = sections.get("capture", {})
+	if not (capture_section as Dictionary).is_empty():
+		runtime["capture"] = (capture_section as Dictionary).duplicate(true)
 
 	# --- Damage materials section (D13): flat declared-material list ---------
 	var damage_materials_section = sections.get("damage_materials", {})

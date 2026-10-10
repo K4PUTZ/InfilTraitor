@@ -439,6 +439,9 @@ var _mesh_prop_nodes: Dictionary = {}
 var _fragment_nodes: Array = []   ## PropFragments3D: the voxel fragments / piles of broken Tier 4 props
 var _tone: Array[float] = []
 var _px_per_unit: float = 1.0
+## CAPTURE_RAILS §7.4 — a rail's ORBIT turns the camera through yaws the game never has. NAN = off (the view's own yaw). Camera only:
+## the face slots, the cutaway and the actors' light follow the LOGICAL view, which the rail switches at each half quarter-turn.
+var capture_yaw: float = NAN
 ## R3D-ROT-2 — the view the board is turned to (the camera's yaw; the mesh does not depend on it).
 var _view: String = "N"
 var _origin_2d: Vector2 = Vector2.ZERO
@@ -829,6 +832,8 @@ func _process(_delta: float) -> void:
 	var gu: Vector2 = _to_gu * (centre - _origin_2d)
 	var target := Vector3(gu.x + 0.5, 0.0, gu.y + 0.5)
 	_camera.size = get_viewport().get_visible_rect().size.y / cam2d.zoom.y / _px_per_unit
+	if not is_nan(capture_yaw):
+		_camera.rotation_degrees = Vector3(-30.0, 45.0 + capture_yaw, 0.0)
 	_camera.position = target + _camera.basis.z * 200.0
 
 
@@ -3136,6 +3141,8 @@ func set_view(direction: String) -> void:
 	_view = direction
 	if _camera != null:
 		_camera.rotation_degrees = Vector3(-30.0, 45.0 + float(VIEW_YAW_DEG[_view]), 0.0)
+		if not is_nan(capture_yaw):
+			_camera.rotation_degrees.y = 45.0 + capture_yaw   ## a rail's orbit switched the logical view mid-turn: keep its yaw
 	var slots: Vector2i = VIEW_FACE_SLOTS[direction]
 	var swap: bool = slots.x == 2
 	for i: int in range(_shader_materials.size()):

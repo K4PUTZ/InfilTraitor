@@ -57,6 +57,9 @@ var _ap_max: int = 0
 var _ap_is_enemy: bool = false
 var _alert_pct: float = 0.0
 var _busted_visible: bool = false
+var _hud_root: Node = null
+var _capture_hidden: bool = false
+var _visible_before_capture: bool = true
 var _busted_key: String = "ui.banner.busted"
 
 
@@ -70,6 +73,7 @@ func setup(hud_root: Node) -> void:
 	if hud_root == null:
 		push_error("[HudController] setup: hud_root is null — the HUD scene is missing from room.tscn")
 		return
+	_hud_root = hud_root
 	_btn_end_turn = hud_root.get_node_or_null("TopBar/Row/BtnEndTurn")
 	_btn_reset = hud_root.get_node_or_null("TopBar/Row/BtnReset")
 	_btn_fullscreen = hud_root.get_node_or_null("TopBar/Row/BtnFullscreen")
@@ -231,6 +235,23 @@ func set_view_mode_active(which: String, enabled: bool) -> void:
 
 ## ROTATE-KILL-01: the perspective pad is a dev/QA tool, shown only with dev
 ## vision on. vision_controller drives this; it used to set .visible itself.
+## CAPTURE_RAILS R5 — the whole HUD out of a capture of ENGINE work (and back for interface work). Remembers the state it found, so
+## hiding twice and showing once restores exactly what was there; the engine never names the HUD's nodes (rule 11 / L3).
+func set_capture_hidden(hidden: bool) -> void:
+	if not (_hud_root is CanvasItem or _hud_root is CanvasLayer):
+		return
+	if hidden and not _capture_hidden:
+		_visible_before_capture = _hud_root.visible
+		_hud_root.visible = false
+	elif not hidden and _capture_hidden:
+		_hud_root.visible = _visible_before_capture
+	_capture_hidden = hidden
+
+
+func is_capture_hidden() -> bool:
+	return _capture_hidden
+
+
 func set_perspective_pad_visible(is_visible: bool) -> void:
 	if _perspective_pad:
 		_perspective_pad.visible = is_visible

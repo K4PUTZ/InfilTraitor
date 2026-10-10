@@ -25,6 +25,10 @@ uniform vec3 crack_color = vec3(0.90, 0.94, 1.0);
 uniform float crack_strength : hint_range(0.0, 2.0) = 1.0;
 uniform float crack_opacity : hint_range(0.0, 1.0) = 0.80;
 uniform float crack_edge_feather : hint_range(0.0, 0.5) = 0.12;
+// G-D54 (Director, 2026-10-09): the ink SPILLS past a hole's edge by up to this many voxels, a jagged reach per half-voxel, so it runs
+// over the rim's thickness seen beside the face (the 2D board's accident that read as a torn edge). Visual chaos on purpose: it need
+// not match the rim's geometry. 0 = the exact occupancy cut.
+uniform float crack_edge_spill : hint_range(0.0, 3.0) = 0.7;
 
 vec3 to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
@@ -42,7 +46,20 @@ void fragment() {
 	float ink = texture(crack_sheet, sheet_uv).r;
 	vec2 occ_uv = (vec2(off.x - crack_occ_origin.x, crack_occ_origin.y - off.y)
 			+ vec2(0.5)) / max(crack_occ_size, vec2(1.0));
-	ink *= mix(1.0, texture(crack_occupancy, occ_uv).r, crack_hole_cut);
+	float occ = texture(crack_occupancy, occ_uv).r;
+	if (occ < 0.5 && crack_edge_spill > 0.0) {
+		vec2 cellv = floor(off * 2.0);
+		float h = fract(sin(dot(cellv, vec2(12.9898, 78.233))) * 43758.5453);
+		float reach = crack_edge_spill * mix(0.25, 1.0, h);
+		vec2 step_uv = vec2(reach) / max(crack_occ_size, vec2(1.0));
+		float o = 0.0;
+		for (int i = 0; i < 8; i++) {
+			float a = float(i) * 0.7853982 + h * 0.6;
+			o = max(o, texture(crack_occupancy, occ_uv + vec2(cos(a), sin(a)) * step_uv).r);
+		}
+		occ = o;
+	}
+	ink *= mix(1.0, occ, crack_hole_cut);
 	vec2 op_uv = vec2(off.x - crack_opening_origin.x, crack_opening_origin.y - off.y)
 			/ max(crack_opening_size, vec2(0.0001));
 	if (op_uv.x >= 0.0 && op_uv.x <= 1.0 && op_uv.y >= 0.0 && op_uv.y <= 1.0) {

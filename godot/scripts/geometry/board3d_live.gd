@@ -362,6 +362,24 @@ class SurfaceData:
 		for offset: int in [0, 1, 2, 0, 2, 3]:
 			indices.append(base_index + offset)
 
+	## One triangle, wound so its front faces `normal` (a `cull_back` material draws only that side). G-D54's rim prisms.
+	func add_tri(corners: Array, unit: float, normal: Vector3, dim: float = -1.0) -> void:
+		var a: Vector3 = corners[0]
+		var b: Vector3 = corners[1]
+		var c: Vector3 = corners[2]
+		if (b - a).cross(c - a).dot(normal) > 0.0:   ## the quads' convention (`_dent_quad`): flip a triangle that faces +normal this way
+			var swap: Vector3 = b
+			b = c
+			c = swap
+		var base_index: int = vertices.size()
+		for p: Vector3 in [a, b, c]:
+			vertices.append(p * unit)
+			normals.append(normal)
+			uvs.append(Vector2.ZERO)
+			if dim >= 0.0:
+				colors.append(Color(dim, 1.0, 1.0, 1.0))
+		indices.append_array([base_index, base_index + 1, base_index + 2])
+
 
 var _room: Node = null
 var _cell_to_world: Callable
@@ -484,6 +502,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	var t0: int = Time.get_ticks_usec()
 	CHUNK_VOXELS = int(str(room.call("_dev_flag", "RENDER3D_CHUNK", "16")))
 	LOAD_PARALLEL = str(room.call("_dev_flag", "RENDER3D_LOAD_PARALLEL", "1")) != "0"
+	GLASS_RIM_ON = str(room.call("_dev_flag", "GLASS_RIM", "1")) != "0"   ## G-D54's A/B
 	VERTICAL_SCALE = _read_vertical_scale(room)
 	VSCALE_MARKER = str(room.call("_dev_flag", "RENDER3D_VSCALE_MARKER", "0")) != "0"
 	## Instruments (R3D-LOOK handset A/B, 2026-10-05): the floor's soot smoothing and the crater darkening, switchable on a release APK
@@ -2238,8 +2257,9 @@ func _collect_and_merge_chunk(chunk: Vector2i) -> Dictionary:
 	var faces: int = 0
 	var dents: Array = []  ## [dir, x, y, level, material] — faces emitted as a recess, unmerged
 	var decals: Array = []  ## [dir, x, y, level, layer, on_recess] — damage marks, unmerged
+	var rims: Array = []  ## G-D54: glass voxels on the rim of a hole, emitted as jagged prisms (`_emit_glass_rim`), unmerged
 	if _store != null:
-		faces = _collect_chunk_faces_store(chunk, planes, dents, decals)
+		faces = _collect_chunk_faces_store(chunk, planes, dents, decals, rims)
 	for key: Vector3i in ({} if _store != null else (_by_chunk.get(chunk, {}) as Dictionary)):
 		var material: int = _occ[key]
 		var glass: bool = _material_glass[material]
@@ -2274,6 +2294,8 @@ func _collect_and_merge_chunk(chunk: Vector2i) -> Dictionary:
 		_emit_decal(int(d[0]), int(d[1]), int(d[2]), int(d[3]), int(d[4]), bool(d[5]), surfaces)
 	for d: Array in dents:
 		quads += _emit_dent(int(d[0]), int(d[1]), int(d[2]), int(d[3]), int(d[4]), surfaces)
+	for r: Array in rims:
+		quads += _emit_glass_rim(r, surfaces)
 	var t2: int = Time.get_ticks_usec()
 	return {"surfaces": surfaces, "faces": faces, "quads": quads,
 		"collect_us": t1 - t0, "merge_us": t2 - t1}
@@ -2403,7 +2425,7 @@ func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 ## glass and this is not), and materials map through `_store_material`. Returns the faces
 ## added to `planes`, in `_build_chunk()`'s (dir, plane) → {uv: material} shape.
 func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Array = [],
-		decals: Array = []) -> int:
+		decals: Array = [], rims: Array = []) -> int:
 	var dirs: Array = ALL_DIRS
 	var cidx: int = (chunk.y - _chunk_y0) * _chunk_cols + (chunk.x - _chunk_x0)
 	if chunk.x < _chunk_x0 or chunk.y < _chunk_y0 or chunk.x - _chunk_x0 >= _chunk_cols \
@@ -2431,6 +2453,12 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 			continue
 		var material: int = _store_material[mat[claim]]
 		var glass: bool = _material_glass[material]
+		if glass and GLASS_RIM_ON and pane_of[claim] != 0:
+			var rim: Array = _glass_rim_record(store, claim, cell, x, y, level, material, int(pane_of[claim]) - 1)
+			if not rim.is_empty():
+				rims.append(rim)
+				faces += 1
+				continue
 		## R3D-6 item 4 — a DENTED voxel's carved side is a real recess, not a flat face.
 		var dent_dir: int = -1
 		if not glass and ((state[claim] >> 1) & 3) == Voxel.DamageState.DENTED:
@@ -2484,6 +2512,139 @@ static func _is_pane_edge(dir: int, face: int) -> bool:
 		return true
 	var x_normal: bool = face == 0 or face == 2
 	return x_normal != (dir == Dir.SE or dir == Dir.NW)
+
+
+## G-D54 (Director, 2026-10-09): a glass voxel on the rim of a hole is drawn as a JAGGED PRISM, not a cube. `GLASS_RIM_ON = false`
+## is the A/B (the cube, as before).
+static var GLASS_RIM_ON: bool = true
+## How deep a point bites into the voxel (fraction of the voxel), how many points an exposed side gets, how far the back outline is
+## skewed from the front one ("a ponta torta na espessura") and how far an exposed corner is pulled in.
+const RIM_DEEP: Vector2 = Vector2(0.12, 0.46)
+const RIM_SHALLOW: Vector2 = Vector2(0.0, 0.08)
+const RIM_POINTS: Vector2i = Vector2i(1, 2)
+const RIM_SKEW_S: float = 0.06
+const RIM_SKEW_D: float = 0.12
+const RIM_CORNER: Vector2 = Vector2(0.45, 0.85)
+
+
+## The rim record of a glass PANE voxel, or [] when it is not on a rim. A side of the pane's plane is EXPOSED when the cell beside it
+## held a pane voxel that is gone (a destroyed glass claim still owns its cell: `occ` 0, `owner` set): a pane's natural end, next to
+## air or a frame, stays straight. Record: [x, y, level, material, x_normal, exposed (4 bits), wall (4 bits), front, back], sides in
+## the order r-min, l-max, r-max, l-min (r = the pane's run axis, l = the level).
+func _glass_rim_record(store: VoxelStore, claim: int, cell: int, x: int, y: int, level: int, material: int, face: int) -> Array:
+	var x_normal: bool = face == 0 or face == 2
+	var r_step: int = store.w if x_normal else 1
+	var t_step: int = 1 if x_normal else store.w
+	var side_steps: PackedInt32Array = [-r_step, store.plane, r_step, -store.plane]
+	var exposed: int = 0
+	var wall: int = 0
+	for side: int in range(4):
+		var n: int = cell + side_steps[side]
+		if n < 0 or n >= store.occ.size():
+			continue
+		if store.occ[n] != 0:
+			continue
+		var o: int = store.owner[n]
+		if o >= 0 and store.pane[o] != 0 and (store.state[o] & 1) == 0:
+			exposed |= 1 << side
+			wall |= 1 << side
+		elif side != 3:   ## a bare side draws its wall as the cube did (the cube never drew a bottom)
+			wall |= 1 << side
+	if exposed == 0:
+		return []
+	var front: bool = cell + t_step < store.occ.size() and store.occ[cell + t_step] == 0
+	var back: bool = cell - t_step >= 0 and store.occ[cell - t_step] == 0
+	return [x, y, level, material, x_normal, exposed, wall, front, back]
+
+
+## One rim voxel as geometry: the jagged outline (front at the pane's +normal face, back at its -normal face, the back skewed), the two
+## faces triangulated, and a wall along every side the record says to draw (on the material's edge twin). Returns the triangles / 2.
+func _emit_glass_rim(rec: Array, surfaces: Dictionary) -> int:
+	var x: int = rec[0]
+	var y: int = rec[1]
+	var level: int = rec[2]
+	var material: int = rec[3]
+	var x_normal: bool = rec[4]
+	var exposed: int = rec[5]
+	var wall: int = rec[6]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = FacadeSampler._fnv1a_hash("GLASSRIM:%d,%d,%d" % [x, y, level])
+	## The square, counter-clockwise in (r, l): corners c0 (0,0) c1 (1,0) c2 (1,1) c3 (0,1); the segment after each corner runs along
+	## side bottom (3), right (2), top (1), left (0).
+	var corners: Array[Vector2] = [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
+	var corner_sides: Array = [[0, 3], [3, 2], [2, 1], [1, 0]]   ## the two sides that meet at each corner
+	var run_side: PackedInt32Array = [3, 2, 1, 0]               ## the side the segment after corner i runs along
+	var inward: Array[Vector2] = [Vector2(0, 1), Vector2(-1, 0), Vector2(0, -1), Vector2(1, 0)]   ## per corner i's segment
+	var front := PackedVector2Array()
+	var back := PackedVector2Array()
+	var seg_side := PackedInt32Array()
+	for i: int in range(4):
+		var c: Vector2 = corners[i]
+		var cf: Vector2 = c
+		var cb: Vector2 = c
+		if (exposed >> int(corner_sides[i][0])) & 1 and (exposed >> int(corner_sides[i][1])) & 1:
+			var pull: float = rng.randf_range(RIM_CORNER.x, RIM_CORNER.y)
+			cf = c + (Vector2(0.5, 0.5) - c) * pull
+			cb = c + (Vector2(0.5, 0.5) - c) * clampf(pull + rng.randf_range(-0.15, 0.15), 0.0, 0.9)
+		front.append(cf)
+		back.append(cb)
+		var side: int = run_side[i]
+		seg_side.append(side)
+		if not ((exposed >> side) & 1):
+			continue
+		var a: Vector2 = c
+		var b: Vector2 = corners[(i + 1) % 4]
+		var k: int = rng.randi_range(RIM_POINTS.x, RIM_POINTS.y)
+		for j: int in range(k):
+			var s: float = clampf((float(j) + 0.5 + rng.randf_range(-0.3, 0.3)) / float(k), 0.08, 0.92)
+			var limit: float = minf(s, 1.0 - s) * 0.95
+			var range_d: Vector2 = RIM_DEEP if j % 2 == 0 else RIM_SHALLOW
+			var d: float = minf(rng.randf_range(range_d.x, range_d.y), limit)
+			var sb: float = clampf(s + rng.randf_range(-RIM_SKEW_S, RIM_SKEW_S), 0.05, 0.95)
+			var db: float = clampf(d + rng.randf_range(-RIM_SKEW_D, RIM_SKEW_D), 0.0, minf(sb, 1.0 - sb) * 0.95)
+			front.append(a.lerp(b, s) + inward[i] * d)
+			back.append(a.lerp(b, sb) + inward[i] * db)
+			seg_side.append(side)
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var origin := Vector3(float(x), float(level) - float(_ground_level), float(y))
+	var axis_t: Vector3 = Vector3(1, 0, 0) if x_normal else Vector3(0, 0, 1)
+	var axis_r: Vector3 = Vector3(0, 0, 1) if x_normal else Vector3(1, 0, 0)
+	var to3 := func(p: Vector2, t: float) -> Vector3: return origin + axis_r * p.x + Vector3(0, p.y, 0) + axis_t * t
+	if not surfaces.has(material):
+		surfaces[material] = SurfaceData.new()
+	var body: SurfaceData = surfaces[material]
+	var tris: int = 0
+	for pass_i: int in range(2):
+		var on_front: bool = pass_i == 0
+		if not (rec[7] if on_front else rec[8]):
+			continue
+		var poly: PackedVector2Array = front if on_front else back
+		var t: float = 1.0 if on_front else 0.0
+		var normal: Vector3 = axis_t if on_front else -axis_t
+		var idx: PackedInt32Array = Geometry2D.triangulate_polygon(poly)
+		if idx.is_empty():   ## never expected (the outline is simple by construction); a fan keeps the voxel drawn
+			for j: int in range(1, poly.size() - 1):
+				idx.append_array([0, j, j + 1])
+		for j: int in range(0, idx.size(), 3):
+			body.add_tri([to3.call(poly[idx[j]], t), to3.call(poly[idx[j + 1]], t), to3.call(poly[idx[j + 2]], t)], unit, normal, 1.0)
+			tris += 1
+	var edge_material: int = _glass_edge_twin[material] if material < _glass_edge_twin.size() and _glass_edge_twin[material] >= 0 \
+		else material
+	if not surfaces.has(edge_material):
+		surfaces[edge_material] = SurfaceData.new()
+	var edge: SurfaceData = surfaces[edge_material]
+	var n: int = front.size()
+	for j: int in range(n):
+		if not ((wall >> seg_side[j]) & 1):
+			continue
+		var j2: int = (j + 1) % n
+		var dir2: Vector2 = front[j2] - front[j]
+		var out2 := Vector2(dir2.y, -dir2.x).normalized()   ## right of a counter-clockwise outline = outward
+		var normal: Vector3 = axis_r * out2.x + Vector3(0, out2.y, 0)
+		edge.add_tri([to3.call(front[j], 1.0), to3.call(front[j2], 1.0), to3.call(back[j2], 0.0)], unit, normal, 1.0)
+		edge.add_tri([to3.call(front[j], 1.0), to3.call(back[j2], 0.0), to3.call(back[j], 0.0)], unit, normal, 1.0)
+		tris += 2
+	return int(ceil(float(tris) / 2.0))
 
 
 ## Greedy rectangles over one plane's faces: grow along u, then along v, while every

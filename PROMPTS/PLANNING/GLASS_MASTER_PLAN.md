@@ -2498,7 +2498,7 @@ is on screen; the cook names the shape of the hole it opens.
 | `GlassCrack.sheet_id_for()` | the single answer to "which sheet" — opening › armoured core › the smallest member's page |
 | `GlassCrack.ARMORED_SHEET` + `plan["armored"]` | read off the pane's material/class in `plan_pane_crack()` |
 | `gen_fracture_sheet.py --only armored` | 3 sheets, an opaque crushed core, a 24 × 12 voxel page |
-| `INFILTRAITOR_CAPTURE_ACTION=glass_blast_demo` | one grenade in front of a chosen pane, on the real map |
+| ~~`INFILTRAITOR_CAPTURE_ACTION=glass_blast_demo`~~ **deleted 2026-10-10** (CAPTURE_RAILS CR-5): `python3 tools/persistent/capture.py --map GLASS --take glass_blast` | one grenade in front of a chosen pane, on the real map |
 | `INFILTRAITOR_CRACK_DEMO_MATERIAL` | the crack demo, aimed at one member of the family |
 
 ### 15.2 ⚠️ THE COOK'S CLAIM IS CORRECT AND CURRENTLY LATENT, AND THAT IS A

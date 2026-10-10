@@ -766,7 +766,7 @@ predictions go stale (`PREDICTION_MASTER_PLAN` §5.2).
 
 ### ✅ M3-1 — MEASURED 2026-08-21, and the claim is half right
 
-`INFILTRAITOR_CAPTURE_ACTION=light_burn_probe` (`room.gd::_capture_light_burn_probe`),
+`INFILTRAITOR_CAPTURE_ACTION=light_burn_probe` (`room.gd::_capture_light_burn_probe`; **deleted 2026-10-10**, CAPTURE_RAILS CR-5 — last in `9d577d29`),
 four passes in ONE boot on PLAYGROUND's fabric block:
 
 ```

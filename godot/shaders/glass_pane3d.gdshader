@@ -1,0 +1,46 @@
+shader_type spatial;
+// The glass pane in ONE pass, premultiplied alpha (2026-10-09, Director): out = behind x (1 - ALPHA) + ALBEDO.
+// It replaces PB-2's two passes (`glass_pane3d_mul` + `glass_pane3d_add`), which had no defined order between them: both sat at the
+// same depth and the transparent sort is not stable, so per chunk the add ran first (a frosted white pane) or second (a blue one)
+// depending on the boot — the pixel gate's intermittent GLASS g1. The Director chose the white; this draws it every time, with a
+// small cover over what is behind (`glass_cover`) and the reflection read from a texture (`glass_sheen_tex`, see
+// tools/persistent/gen_glass_sheen.py). One pass, one fetch: cheaper than the two it replaces.
+render_mode unshaded, cull_back, blend_premul_alpha, depth_draw_never;
+// Once per pixel (G-D2: a second glass face over the same pixel fails): passes on a pixel below 3, writes 3, the glass mark the
+// ground overlays read (`ground_overlay3d*`).
+stencil_mode read, write, compare_greater, 3;
+
+#include "res://godot/shaders/glass_pane3d_common.gdshaderinc"
+
+// The reflection (L) and the cover multiplier (A), grayscale + alpha, tileable; one tile = one period of the sheen.
+uniform sampler2D glass_sheen_tex : filter_linear, repeat_enable, hint_default_black;
+// How much the pane darkens what is behind it (0 = not at all, as the white pane did).
+uniform float glass_cover : hint_range(0.0, 1.0) = 0.12;
+// The pane's EDGE faces (its thickness and its top, `Board3DLive` routes them to an edge twin of the material): a darker,
+// denser face so the slice reads apart from the pane's broad faces.
+uniform float glass_edge = 0.0;
+uniform float glass_edge_light : hint_range(0.0, 1.0) = 0.25;
+uniform float glass_edge_cover : hint_range(0.0, 1.0) = 0.55;
+// The sRGB brightness of the background the reflection is calibrated for (the two-pass pane's `glass_add_base`).
+uniform float glass_add_base : hint_range(0.0, 1.0) = 0.35;
+
+void fragment() {
+	if (glass_cut_open()) {
+		discard;
+	}
+	// The white pane's light, as the two-pass add computed it, with the sheen band read from the texture instead of a sine.
+	vec2 uv = v_glass_world * glass_sheen_freq / 6.2831853 + vec2(glass_sheen_phase / 6.2831853, 0.0);
+	vec4 tex = texture(glass_sheen_tex, uv);
+	vec3 base = vec3(glass_add_base) * clamp(mix(vec3(1.0), glass_tint * 0.97 * v_face, mix(0.12, 1.0, glass_mul_strength)),
+		vec3(0.0), vec3(1.0));
+	vec3 sheen = mix(glass_tint, vec3(1.0), 0.5) * tex.r * glass_add_strength * v_face;
+	vec3 add = glass_tint * glass_min_body * v_face + sheen;
+	vec3 light = max(to_linear(clamp(base + add, vec3(0.0), vec3(1.0))) - to_linear(base), vec3(0.0));
+	float cover = glass_cover * tex.a;
+	if (glass_edge > 0.5) {
+		light *= glass_edge_light;
+		cover = max(cover, glass_edge_cover);
+	}
+	ALBEDO = light;
+	ALPHA = cover;
+}

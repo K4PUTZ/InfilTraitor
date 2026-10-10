@@ -1392,6 +1392,11 @@ func _build_decal_catalog() -> void:
 	_decal_cache = {"array": _decal_array, "layers": _decal_layer.duplicate(), "bullet": _bullet_layer_count}
 
 
+## Per material index: its glass EDGE twin's index, or -1 (not a pane material, or a twin itself).
+var _glass_edge_twin := PackedInt32Array()
+const GLASS_EDGE_SUFFIX: String = "#glass_edge"
+
+
 ## This board's index for a material, registering it (and its shader material) on first use.
 func _material(material_id: String) -> int:
 	if not _material_index.has(material_id):
@@ -1401,6 +1406,17 @@ func _material(material_id: String) -> int:
 		_shader_materials.append(_make_material(material_id))
 		_solid_twin.append(-1)
 		var index: int = _shader_materials.size() - 1
+		_glass_edge_twin.append(-1)
+		if _material_glass[index] and _shader_materials[index].shader.resource_path.get_file().begins_with("glass_pane3d"):
+			## 2026-10-09: the pane's EDGE faces (its thickness, its top) draw with this twin, darker and denser (`glass_edge`).
+			var edge := _shader_materials[index].duplicate() as ShaderMaterial
+			edge.set_shader_parameter("glass_edge", 1.0)
+			_material_ids.append(material_id + GLASS_EDGE_SUFFIX)
+			_material_glass.append(true)
+			_shader_materials.append(edge)
+			_solid_twin.append(-1)
+			_glass_edge_twin.append(-1)
+			_glass_edge_twin[index] = _shader_materials.size() - 1
 		if not _material_glass[index] and material_id != DECAL_MATERIAL_ID:
 			var twin := _shader_materials[index].duplicate() as ShaderMaterial
 			twin.shader = BoardLook.shared_shader(SOLID_SHADER)
@@ -1408,6 +1424,7 @@ func _material(material_id: String) -> int:
 			_material_glass.append(false)
 			_shader_materials.append(twin)
 			_solid_twin.append(-1)
+			_glass_edge_twin.append(-1)
 			_solid_twin[index] = _shader_materials.size() - 1
 	return int(_material_index[material_id])
 
@@ -2348,6 +2365,7 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 	var occ: PackedByteArray = store.occ
 	var owner: PackedInt32Array = store.owner
 	var mat: PackedByteArray = store.mat
+	var pane_of: PackedByteArray = store.pane
 	var steps: PackedInt32Array = [store.plane, 1, store.w, -1, -store.w]
 	var faces: int = 0
 	for i in range(_chunk_start[cidx], _chunk_start[cidx + 1]):
@@ -2400,9 +2418,22 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 				uv = Vector2i(x, level)
 			if not planes.has(plane_key):
 				planes[plane_key] = {}
-			(planes[plane_key] as Dictionary)[uv] = material
+			var face_material: int = material
+			if glass and pane_of[claim] != 0 and material < _glass_edge_twin.size() and _glass_edge_twin[material] >= 0 \
+					and _is_pane_edge(dir, pane_of[claim] - 1):
+				face_material = _glass_edge_twin[material]
+			(planes[plane_key] as Dictionary)[uv] = face_material
 			faces += 1
 	return faces
+
+
+## A pane voxel's face is an EDGE (the pane's thickness or its top) unless it faces along the pane's own normal: a pane on face
+## NW / SE (`VoxelStore.pane`, Face NW 0, NE 1, SE 2, SW 3) shows its broad faces to Dir.NW / Dir.SE, one on NE / SW to Dir.NE / Dir.SW.
+static func _is_pane_edge(dir: int, face: int) -> bool:
+	if dir == Dir.TOP:
+		return true
+	var x_normal: bool = face == 0 or face == 2
+	return x_normal != (dir == Dir.SE or dir == Dir.NW)
 
 
 ## Greedy rectangles over one plane's faces: grow along u, then along v, while every
@@ -2804,23 +2835,26 @@ func _get_surface_macro_tex() -> ImageTexture:
 	return _surface_macro_tex
 
 
-## R3D-6 item 2 — the 2D glass look, one pass that reads the scene behind the pane.
+const GLASS_SHEEN_PATH: String = "res://ASSETS/materials/glass/glass_sheen.png"
+
+
+## R3D-6 item 2 — the glass look (one pass since 2026-10-09; see `glass_pane3d.gdshader`).
 func _make_glass_material(material_id: String) -> ShaderMaterial:
 	var tint: Color = GlassMaterials.pane_tint(material_id)
 	var shader_material := ShaderMaterial.new()
 	## PB-2 (Director, 2026-10-09): the pane is drawn WITHOUT a screen read, a multiply pass and an add pass
 	## (`glass_pane3d_mul` + its next_pass `glass_pane3d_add`). The screen-reading original cost ~250-295 MiB of driver memory on
 	## the Galaxy A16 just by existing; the Director judged it the better look and adopted this one for the memory.
-	shader_material.shader = load("res://godot/shaders/glass_pane3d_mul.gdshader") as Shader
-	var frost: Texture2D = load("res://ASSETS/materials/glass/facade_glass.png") as Texture2D
-	var add_pass := ShaderMaterial.new()
-	add_pass.shader = load("res://godot/shaders/glass_pane3d_add.gdshader") as Shader
-	shader_material.next_pass = add_pass
-	var passes: Array[ShaderMaterial] = [shader_material, add_pass]
-	for m: ShaderMaterial in passes:
-		m.set_shader_parameter("glass_tint", Vector3(tint.r, tint.g, tint.b))
-		if frost != null:
-			m.set_shader_parameter("glass_frost_tex", frost)
+	## 2026-10-09 (Director): ONE premultiplied-alpha pass (`glass_pane3d`), the frosted white with a light cover over what is
+	## behind and the reflection from `glass_sheen.png`. PB-2's two passes (multiply + add as its next_pass) had no order between
+	## them and drew a pane blue or white per chunk and per boot.
+	shader_material.shader = load("res://godot/shaders/glass_pane3d.gdshader") as Shader
+	shader_material.set_shader_parameter("glass_tint", Vector3(tint.r, tint.g, tint.b))
+	var sheen: Texture2D = load(GLASS_SHEEN_PATH) as Texture2D if ResourceLoader.exists(GLASS_SHEEN_PATH) else null
+	if sheen == null:
+		push_error("[Board3DLive] %s did not load (run tools/persistent/gen_glass_sheen.py and import it): panes draw with no reflection" % GLASS_SHEEN_PATH)
+	else:
+		shader_material.set_shader_parameter("glass_sheen_tex", sheen)
 	return shader_material
 
 

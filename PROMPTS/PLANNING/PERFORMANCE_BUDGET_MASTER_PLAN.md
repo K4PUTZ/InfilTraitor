@@ -1,7 +1,7 @@
 # PERFORMANCE_BUDGET_MASTER_PLAN
 ## One content, many phones: the memory and time budget a segment has to fit — v0.3 (PB-0/1 ratified, PB-2 attributed and acted on)
 
-> **Status: 🟢 v0.5, 2026-10-09 — PB-5 VERDICT: THE SEGMENT FITS ON BOTH HANDSETS; PB-7 BUILT.** HEAVY on the Moto g04s: PSS 757 MiB, idle GPU 24.4 ms, hit-stop worst stage 152 ms, load 7.6 s cold / 4.65 s reload (§0f, §0g); on the Galaxy A16: PSS 741 MiB, idle GPU 20.7 ms, blast worst 73 ms, load 3.4 s, reload ~1.6 s, segment cycle flat at 715-765 MiB (§0h). PB-7: `segment_budget.py` holds every segment map (`meta.segment: true`) to the HEAVY counts in `verify.py quick`; `pb3_study.py --max-pss-mib 1024` is the handset half. PB-8 (device profiles ultra / high / medium / low that switch features) moves to the last milestone (M7.0, Director). Open: GLASS g1's intermittent pixel-gate difference (0 px in every run of 2026-10-09 after `79febbcf`), the cooked segment (parked, M7.0 note).
+> **Status: 🟢 v0.5, 2026-10-09 — PB-5 VERDICT: THE SEGMENT FITS ON BOTH HANDSETS; PB-7 BUILT.** HEAVY on the Moto g04s: PSS 757 MiB, idle GPU 24.4 ms, hit-stop worst stage 152 ms, load 7.6 s cold / 4.65 s reload (§0f, §0g); on the Galaxy A16: PSS 741 MiB, idle GPU 20.7 ms, blast worst 73 ms, load 3.4 s, reload ~1.6 s, segment cycle flat at 715-765 MiB (§0h). PB-7: `segment_budget.py` holds every segment map (`meta.segment: true`) to the HEAVY counts in `verify.py quick`; `pb3_study.py --max-pss-mib 1024` is the handset half. PB-8 (device profiles ultra / high / medium / low that switch features) moves to the last milestone (M7.0, Director). GLASS g1's intermittent pixel-gate difference: FOUND and fixed (§0h, the glass pane's two passes had no order). Open: the cooked segment (parked, M7.0 note).
 >
 > v0.4, 2026-10-09: PB-3, PB-4 and the PB-6 levers (§0e, §0f).
 >
@@ -292,6 +292,16 @@ features exist.
 the gate runs its own self-test first (HEAVY passes, HEAVY + 1 of each kind and a wider footprint fail). It is valid because HEAVY was
 measured to fit; a change of COST (a heavier model, a new shader, a new kind) is re-measured with
 `pb3_study.py --device <serial> --only HEAVY --max-pss-mib 1024` (exit 1 above the ceiling).
+
+**GLASS g1 intermittent (closed 2026-10-09):** reproduced 1 in 8 boots (5 170 px); cause: PB-2's glass pane was a multiply pass
+plus an add pass (`next_pass`) at the SAME depth, and the transparent sort is unstable, so per chunk and per boot the add ran first
+(frosted white: the multiply then fails the stencil) or second (blue). Fixing the chunk order alone left 3 of 16 boots failing (the
+tie is inside the pane). The Director chose the white look; the pane is now ONE premultiplied-alpha pass
+(`glass_pane3d.gdshader`): the reflection from a grayscale + alpha texture (`ASSETS/materials/glass/glass_sheen.png`, written by
+`tools/persistent/gen_glass_sheen.py`; tint by `glass_tint`, B2), a small cover over what is behind (`glass_cover` 0.12), and the
+pane's EDGE faces (thickness, top) on a darker twin material (`glass_edge`, routed by the mesher from `VoxelStore.pane`). Openings
+and cracks unchanged (`glass_crack_selftest` green, g1 shows the holes and shards). 8 boots: 0 px above noise. Moto GLASS idle GPU
+17.8 -> 16.0 ms (two boots each); blast worst unchanged (~610-620 ms, the known glass COMMIT frame). New pixel baseline taken.
 
 ## 1. The principle: ONE content, N profiles
 

@@ -19,6 +19,10 @@
 ## boots of the same code (its source was not found). The strict count is still printed. It also means an old-vs-new
 ## comparison of GLASS cannot claim better than "<= 8/255" — the pile comparison of R3D-9 step 3 (158 px, <= 3/255)
 ## is inside this noise.
+## ✅ FOUND 2026-10-09: GLASS's intermittent difference (g1: 0 / 4 332 / 5 170 / 19 909 px between boots of one build) was the
+## pane's two passes (PB-2's multiply + add as its next_pass) drawing in either order: same depth, unstable transparent sort, so a
+## pane came out blue or white per chunk per boot. The pane is one premultiplied pass now (`glass_pane3d.gdshader`); 8 boots in a
+## row read 0 px above noise (1 px strict once).
 ##
 ## ⚠️ RUN IT WITH NO OTHER GODOT ALIVE. A FAIL on 2026-09-24 coincided with an orphaned Godot from an abandoned worktree
 ## still running; the same code passed once it was gone. Concurrent load moves the frame timing the gate depends on.

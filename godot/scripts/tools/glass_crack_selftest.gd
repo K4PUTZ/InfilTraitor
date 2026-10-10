@@ -23,7 +23,7 @@
 ##   [2] a crack DECAL FAMILY appearing for glass — in data, in the wiring lists,
 ##       or on disk.
 ##   [3] the fracture SHEETS (the real CRACKED art) going missing or unimported.
-##   [8] the crack coming back INSIDE the pane shader (glass_pane3d_mul / _add) — CRACK-02 / G-D27 took
+##   [8] the crack coming back INSIDE the pane shader (glass_pane3d) — CRACK-02 / G-D27 took
 ##       it out of the voxel because a crack drawn there inherits `dim`, `cover`
 ##       and the quad seams, and no tuning survives that; and a uniform the mirror feeds that
 ##       glass_crack3d.gdshader does not declare (dropped with no error).
@@ -441,8 +441,8 @@ func test_the_glass_shaders_split_the_crack_out() -> void:
 
 	## R3D-END (END-2): the 2D `glass_pane.gdshader` / `glass_crack.gdshader` went with the 2D board; the rule is the
 	## same on the shaders the 3D board draws with.
-	## PB-2 (2026-10-09): the pane is two passes now (`glass_pane3d_mul` + `glass_pane3d_add`); the rule holds on both.
-	for pane_path: String in ["res://godot/shaders/glass_pane3d_mul.gdshader", "res://godot/shaders/glass_pane3d_add.gdshader"]:
+	## 2026-10-09: the pane is one pass again (`glass_pane3d`, premultiplied alpha), after PB-2's two.
+	for pane_path: String in ["res://godot/shaders/glass_pane3d.gdshader"]:
 		_check_pane_shader_has_no_crack(pane_path)
 
 	var crack_shader := load("res://godot/shaders/glass_crack3d.gdshader") as Shader

@@ -1,304 +1,456 @@
 # CAPTURE_RAILS_MASTER_PLAN
-## The map's spatial anchors in GU, and a capture system that frames them by itself — v0.1 (planning, nothing built)
+## The map's spatial anchors in GU, and a capture system that frames them by itself — v0.2 (planning, nothing built)
 
-> **Status: 🟡 v0.1, 2026-10-10 — opened by the Director; NOTHING is built.** Three decisions were ruled when the plan was asked
-> for (§1); the open ones are in §11. Stages CR-1 to CR-7 (§9) wait for the Director's read of this file.
+> **Status: 🟡 v0.2, 2026-10-10 — the five questions of v0.1 RULED (§1, R6-R10); the mechanism of every element detailed
+> (§3-§8). NOTHING is built.** Next: CR-1 (§10) on the Director's go.
+>
+> v0.1, 2026-10-10: opened by the Director.
 >
 > **Why this exists (Director, 2026-10-10):** *"você sistematicamente executa testes com a tela muito apertada, em modo retrato,
 > que muitas vezes estão centralizados na parte de fora da cena que importa."* The same day's video proved it twice: the first
 > take (`detonate 0` on GLASS) flew the camera to dev grenade 0 in another corner of the map and recorded 17 s of a wall; the
 > second was framed by a GU typed by hand (`centre 12,10`, `zoom 0.5`) on a 390×844 portrait screen. **The cause is not
-> carelessness: no file says where the scene that matters IS.** Every capture today re-derives it from memory and guesses.
+> carelessness: no file says where the scene that matters IS.** Every capture re-derives it from memory and guesses.
 >
 > **Related:** `docs/technical/MAPFILE_REFERENCE.md` (the section contract this extends), `docs/systems/MAP_MASTER_PLAN.md`
-> (`MapSpec`, `LevelGraph`, access points, Rule 7), `docs/DESIGN_MASTER_PLAN.md` §14 (segment structure, mission structure),
-> `PERFORMANCE_BUDGET_MASTER_PLAN` (the segment's measured envelope, §5 / PB-7), `DEVICE_DIAGNOSTICS_MASTER_PLAN` (the handset
-> chain), `docs/DIRECTION_GLOSSARY.md` (the compass), `docs/pipelines/device_video_recording.md`.
+> (`MapSpec`, `LevelGraph`, access points, rule 7), `docs/DESIGN_MASTER_PLAN.md` §14 (segment and mission structure),
+> `PERFORMANCE_BUDGET_MASTER_PLAN` (the segment's measured envelope, §5 / PB-7), `INTERFACE_MASTER_PLAN` Part 7 (orientation),
+> `docs/DIRECTION_GLOSSARY.md` (the compass), `docs/pipelines/device_video_recording.md` (the handset video).
 
 ---
 
-## 1. What the Director ruled (2026-10-10)
+## 1. Rulings (Director, 2026-10-10)
 
-| # | Ruling | Consequence here |
+| # | Ruling | Where it lands |
 |---|---|---|
-| R1 | **The anchors live in the `.map.json`**, managed by the map systematically, so they save, load and round-trip — and a future scenario editor (to be planned) reads and writes them. | New registered sections (§4), loud-fail, versioned, unknown keys round-trip verbatim (the MAPFILE contract). Formal constants (§3) are written once and read by every consumer. |
-| R2 | **Video is frame by frame** (deterministic); **a real-time check is needed eventually.** | Godot's Movie Maker under a fixed FPS is the default path (§7); a real-time path is its own later stage (CR-6). |
-| R3 | **Rails from the first build**, standing on a formalised space: cardinal points, geometric bounds with some slack for future expansion (guides, never engine limits), the agent's start, the segment's objective / exit, points of interest. | The layout model (§3-§4) is CR-1, before the camera; the rails (§6) ship in CR-3, not "later". |
-| R4 | **Outside performance work, captures are DESKTOP**, zoomed well out for global events or centred for detail, as the need dictates. | Capture profiles (§5); portrait on a handset is the `perf` profile only. |
-| R5 | **The HUD is hidden in captures of engine work and shown in captures of interface work.** | A profile property, applied through the HUD facade (rule 11 / L3), never by reaching into a node. |
+| R1 | **The anchors live in the `.map.json`**, managed by the map systematically: saved, loaded, round-tripped, and read / written by a future scenario editor (to be planned). Formal constants are written once. | §3, §4 |
+| R2 | **Video frame by frame** (deterministic); **a real-time check eventually.** | §8; CR-6 |
+| R3 | **Rails from the first build**, standing on a formalised space: cardinal points, geometric bounds with slack for expansion (guides, never engine limits), the agent's start, the segment's objective / exit, points of interest. | §3-§7 |
+| R4 | **Outside performance work, captures are DESKTOP**, wide for global events, centred for detail. | §5 |
+| R5 | **HUD hidden for engine work, shown for interface work.** | §5.3 |
+| R6 (Q-CR1) | **The `engine` profile renders 1920 × 1080.** | §5.1 |
+| R7 (Q-CR2) | **`ui` captures the portrait canvas — and the HUD must be BIVALENT.** *"Modo desktop também significa jogar na tela horizontal (ainda não temos interface, apenas mockups)."* Then, the same day: *"Na prática vamos evitar layouts que só funcionem na orientação A ou B. Queremos um mecanismo neutro, próximo do quadrado, aproveitando os 4 cantos disponíveis."* | §5.1; recorded in `INTERFACE_MASTER_PLAN` Part 7 |
+| R8 (Q-CR3) | **Envelope: reserve 24 × 48 GU, ≤ 3 compose storeys, as warnings.** | §3.3 |
+| R9 (Q-CR4) | **A change of view inside a rail is a CUT by default; during development the rails ORBIT smoothly.** | §7.4 |
+| R10 (Q-CR5) | **Access points: only the plumbing now, plus a warning in the maps plan.** | §4.5; `MAP_MASTER_PLAN` top note |
+
+**R7 in full:** "desktop" is a way to PLAY — on a computer, in a landscape window — not only a dev view. The HUD is **ONE
+orientation-neutral layout, not two**: its widgets anchor to the **four corners** of the screen, the composition is close to a
+square, and nothing may depend on the screen being tall or wide (no full-width bar, no side column that only fits one shape). The
+same layout serves the phone (portrait, default, locked on handhelds) and the desktop (landscape). Handsets stay portrait-locked: a
+runtime orientation change on the Galaxy A16 reopens the 256 MiB allocator block (`PERFORMANCE_BUDGET` §4). This amends the canon
+line "mobile-first, portrait" for the desktop only; `INTERFACE_MASTER_PLAN` Part 7 said such a ruling was needed and records it.
 
 ---
 
-## 2. The performance check the Director asked for (R1: "confirm nothing is absurd")
+## 2. The performance check (R1: "confirm nothing is absurd")
 
-The question: before formalising the segment's bounds as constants, is anything in the measured budget unreasonable, given what is
-still coming (guard AI, the gameplay mechanics, items, clothes / accessories)? The numbers are `PERFORMANCE_BUDGET` §0f-§0h
-(Moto g04s = the floor device; HEAVY = the densest ratified segment).
+The numbers are `PERFORMANCE_BUDGET` §0f-§0h: the Moto g04s (the floor device), the HEAVY segment.
 
 | Budget (§0d) | HEAVY on the Moto | Headroom | What is still coming that spends it | Verdict |
 |---|---|---|---|---|
-| PSS ≤ 1.0 GiB at the peak | 757 MiB (Galaxy 741) | **~260 MiB** | guards ~0.8 MiB each (24 guards +9); clothes / accessories are palettes and shader uniforms (D34: only archetype × silhouette multiplies a mesh); items are props (~0.3 MiB each after the first block); a second guard rig (Q4) would be the largest single item | **Comfortable.** The one thing that could eat it in one step is a material that reads the screen or the depth buffer (~250-295 MiB of driver memory on the Galaxy, §0c 8-10) — already a written rule |
-| Play frame ≤ 33.3 ms, GPU included | idle GPU 24.4 ms | **~9 ms** | the GPU floor is the board's geometry, not content (§0e); guards +0.1 ms each; **the coming 3D overlays are the risk**: vision cones, the planned VISUAL SOUND interface, objective markers — fragment-heavy, transparent, full-screen-ish layers on a Mali-G57 MP1 | **Tightest margin, but not absurd.** Every new world-space overlay is measured on the Moto uncapped (`MAX_FPS=0`) before it is kept; a `discard` or a subpass-merged transparent pass costs ~8-10 ms there (memory note) |
-| Frag grenade hit-stop ≤ 200 ms, 100 ms elsewhere | worst stage 152 ms (Galaxy 73) | ~48 ms | more props near a blast (the 30-prop cliff was cut, §0f) | **OK.** ⚠️ **One known exception: the glass COMMIT frame, ~610-620 ms on the Moto on the GLASS map** — 3× the hit-stop budget. It is tolerated only because a segment carries ≤ 12 GU of small panes (PB-1); the G-S1 collapse added a ~900 ms worker walk (off-frame, fine). **"Glass is practically done" holds for the look and the mechanics, not for this frame**: a map with big panes would breach §0d. Recorded, not opened here |
-| Load | 7.6 s cold / 4.65 s reload | — | more content scales the store build and the light apply roughly linearly | Q5 accepted ~12 s; fine |
-| CPU, guard AI | **not measured** | — | A\*, vision rays per TIC, the alert meter (rule 5) | **Unknown, not alarming:** the game is turn-based, so AI runs on the enemy turn and can be spread across frames. A per-frame budget for it should be set when the AI is built (a proposal: ≤ 4 ms per frame on the Moto, spread) |
+| PSS ≤ 1.0 GiB at the peak | 757 MiB (Galaxy 741) | **~260 MiB** | guards ~0.8 MiB each; clothes and accessories are palettes and shader uniforms (D34: only archetype × silhouette multiplies a mesh); items are props (~0.3 MiB each after the first block); a second guard rig (Q4) is the largest single item | **Comfortable.** One step can eat it: a material that reads the screen or the depth (~250-295 MiB of driver memory on the Galaxy) — already a written rule |
+| Play frame ≤ 33.3 ms, GPU included | idle GPU 24.4 ms | **~9 ms** | the GPU floor is the board's geometry, not content (§0e); guards +0.1 ms each; **the coming world-space overlays** (vision cones, the VISUAL SOUND interface, objective markers) are fragment-heavy and transparent on a Mali-G57 MP1 | **Tightest, not absurd.** Every new world-space overlay is measured on the Moto uncapped (`MAX_FPS=0`) before it is kept |
+| Frag grenade hit-stop ≤ 200 ms, 100 ms elsewhere | worst stage 152 ms | ~48 ms | props near a blast (the 30-prop cliff was cut, §0f) | **OK, one exception: the glass COMMIT frame, ~610-620 ms on the Moto on GLASS** — 3× the budget. Tolerated because a segment carries ≤ 12 GU of small panes (PB-1). **Glass is done in look and mechanics, not in this frame**: a big-pane map breaches §0d. Recorded, not opened here |
+| Load | 7.6 s cold / 4.65 s reload | — | grows roughly with content | inside Q5's ~12 s |
+| CPU, guard AI | **not measured** | — | A\*, vision rays per TIC, the alert meter | **Unknown, not alarming**: turn-based, so the AI can spread over frames. Set its per-frame budget when it is built (proposal: ≤ 4 ms per frame on the Moto) |
 
-**Conclusion:** nothing in the measured envelope is absurd. Two items need a rule, not a redesign: (1) every new world-space
-overlay is measured on the Moto before it is kept; (2) the glass COMMIT frame is a standing debt that any big-pane map reopens.
-The segment bounds below can be formalised on the HEAVY measurement.
+**Conclusion:** nothing is absurd. Two rules, no redesign: a new world-space overlay is measured on the Moto before it is kept; the
+glass COMMIT frame is a standing debt that a big-pane map reopens. The capture system itself costs nothing in a release build:
+`layout` is a few hundred bytes of data, and everything under `capture` runs only in dev scenarios.
 
 ---
 
-## 3. The formal space (the constants, written once)
+## 3. The formal space
 
-### 3.1 Coordinates
+### 3.1 Units and the one conversion
 
-- **Map space = the internal GU grid** (`MapSpec`'s playable space; the buffer ring is applied only in `MapCompiler`, rule 7).
-- **A point is `[x, y, z]`**: `x`, `y` in GU, fractional allowed **on the voxel lattice (multiples of 1/8 GU)**, the same rule as
-  `ground_decals.at`; `z` in **storeys above the playable ground**, fractional allowed (1 storey = 8 levels). `z` is RELATIVE on
-  purpose: an absolute level in a file is the trap rule 9 exists for. The runtime converts with `board.ground_plane_level()` /
-  `GeometryCoords.storey_level_base()`, never a literal.
-- **A box is `{min: [x, y, z], max: [x, y, z]}`** in the same units, `min < max` on every axis.
-- **World conversion has ONE function** (`MapLayout.to_world(point) -> Vector3`, base coordinates, view-independent): GU `x` → world
-  `x`, GU `y` → world `z`, storeys → world `y` through the board's own storey height and `VERTICAL_SCALE`. Every consumer (framer,
-  overlay, editor) calls it; nobody re-derives the scale.
-
-### 3.2 The compass of a map (derived, never authored)
-
-From `DIRECTION_GLOSSARY` §2-§4, at view N (yaw 0): the map rectangle's corners are the compass vertices and its sides are the wall
-faces' names.
-
-| Name | What | In GU (inner `W × H`) |
-|---|---|---|
-| corner **N** | top vertex | `(0, 0)` |
-| corner **E** | right vertex | `(W, 0)` |
-| corner **S** | bottom vertex | `(W, H)` |
-| corner **W** | left vertex | `(0, H)` |
-| side **NE** | `y == 0` | the N-E edge |
-| side **SE** | `x == W` | the S-E edge |
-| side **SW** | `y == H` | the S-W edge |
-| side **NW** | `x == 0` | the N-W edge |
-
-These are BASE names: they do not change when the camera yaws (R3D-ROT: rotation is camera-only). An access point, an exit, the
-safe zone and a rail's camera direction are expressed with them. `MapCompass` (a small static helper) answers them; nothing types
-`"y == 0"` again.
-
-### 3.3 The bounds and the envelope
-
-| Constant | Value | Source | Kind |
+| Quantity | Unit | Lattice | Notes |
 |---|---|---|---|
-| Segment footprint | **18 × 36 GU** | Q2 (Director 2026-10-08), measured as HEAVY | guide, checked by PB-7 for segment maps |
-| Buffer ring | 5 GU | `board.buffer` | derived from the map |
-| Playable storeys | 1 | memory: upper storeys only compose height | design |
-| Compose height (guide) | ≤ 3 storeys above the playable one | GLASS's tallest pane | guide (Q-CR3) |
-| **Expansion reserve** | **proposal: 24 × 48 GU** (the footprint + one third per axis) | — | **warning only, never an error**: past it the map is outside what PB-3 measured; a map there must re-run `pb3_study.py --only HEAVY` |
-| Content counts | HEAVY row of `segment_spec` | `PERFORMANCE_BUDGET` §5 | gate (PB-7) |
+| `x`, `y` (plan) | GU, **inner** coordinates (`MapSpec`'s playable space) | 1/8 GU (one voxel), as `ground_decals.at` | GU cell `i` spans `[i, i+1)`: `12.5` is the middle of cell 12 |
+| `z` (height) | **storeys above the playable ground** | 1/8 storey (one level) | relative on purpose: an absolute level in a file is the trap rule 9 exists for |
+| a point | `[x, y, z]`, or `[x, y]` = on the ground (`z = 0`) | | |
+| a box | `{"min": [x, y, z], "max": [x, y, z]}` | | `min < max` on every axis |
+| a duration | **frames** at the take's fixed FPS | integer | never seconds (memory: animate in frames) |
 
-**One authority for these numbers (a finding, not a new rule):** today the segment spec's numbers live in Python
-(`gen_segment_map.SPECS`, read by `segment_budget.py`) and the prose table in §5 of the budget plan. A GDScript consumer (the
-layout validator, the future editor) would be a third copy. CR-1 moves them to ONE data file, `maps/_spec/segment_envelope.json`,
-read by the generator, the PB-7 gate and the runtime (`MapEnvelope`); the plan's §5 table points at it. Values unchanged.
+**Rule 7 holds:** the file and `MapLayout`'s public API speak inner coordinates; the buffer offset is added in ONE place,
+`MapCompiler`, which emits the compiled layout in raw coordinates (`compiled["layout"]`). The inverse (a picked raw cell back to
+inner, for the editor) is `MapCompiler.raw_to_inner()`, also the only one.
+
+**World space** (the 3D board): one GU = one world unit, raw GU `x` → world `x`, raw GU `y` → world `z`; one storey = one world
+`y` unit × `Board3DLive.VERTICAL_SCALE` (8 levels per storey, a level = 1/8). `MapLayout.to_world(point) -> Vector3` and
+`to_world_box(box) -> AABB` are the only conversions; the framer, the overlay and the editor call them and nobody re-derives the
+scale. Anchors are BASE coordinates: a rotation (camera-only since R3D-ROT) never touches them.
+
+### 3.2 The compass (derived, never authored)
+
+From `DIRECTION_GLOSSARY` §2-§4 (view N): the map rectangle's corners are the compass vertices, its sides carry the wall faces' names.
+
+| Name | What | Inner GU (`W × H`) | Outward step (glossary `edge_delta`) |
+|---|---|---|---|
+| corner `N` / `E` / `S` / `W` | the four vertices | `(0,0)` / `(W,0)` / `(W,H)` / `(0,H)` | — |
+| side `NW` | `x == 0` | column 0 | `(-1, 0)` |
+| side `NE` | `y == 0` | row 0 | `(0, -1)` |
+| side `SE` | `x == W-1` | last column | `(+1, 0)` |
+| side `SW` | `y == H-1` | last row | `(0, +1)` |
+
+`MapCompass` (static, no state) answers: `corner(name, size)`, `side_of(cell, size) -> String` (`""` inside), `side_cells(side,
+size)`, `outward(side)`, and `views_facing(side) -> Array[String]` — the views whose camera sees that side's outer face, read from
+`Board3DLive.VIEW_FACE_SLOTS` (the board's own table, never a second copy). Every anchor that names a direction uses these names;
+nobody writes `y == 0` again.
+
+### 3.3 Bounds and the envelope (R8)
+
+| Constant | Value | Kind |
+|---|---|---|
+| Segment footprint | **18 × 36 GU** (Q2, 2026-10-08; measured as HEAVY) | guide; PB-7 gates segment maps |
+| Buffer ring | 5 GU (`board.buffer`) | derived from the map |
+| Playable storeys | 1 | design (upper storeys compose height only) |
+| Compose storeys | **≤ 3 above the playable one** | **warning** |
+| Expansion reserve | **24 × 48 GU** (the footprint + one third per axis) | **warning**: past it the map is outside what PB-3 measured; re-run `pb3_study.py --only HEAVY` |
+| Content counts | the HEAVY row | gate (PB-7) |
+
+**One authority (CR-1):** these numbers and the three `segment_spec` rows move into ONE data file,
+**`maps/_spec/segment_envelope.json`** (`{"v": 1, "footprint", "buffer", "reserve", "playable_storeys", "compose_storeys",
+"specs": {"LOW", "TYPICAL", "HEAVY"}}`), read by `gen_segment_map.py` (today's `SPECS`), `segment_budget.py`, and the runtime's
+`MapEnvelope` through `JsonFile` (a bad row is loud, AUDIT 2026-10-07). `PERFORMANCE_BUDGET` §5 keeps its table as the ratified
+record with a pointer to the file. Values unchanged. A map may override `reserve` / `compose_storeys` in its own
+`layout.envelope` (a special map, GLASS's three storeys).
 
 ---
 
-## 4. The map sections (R1)
+## 4. The anchors: section `layout` (R1, R3)
 
-Two new section owners in `map_sections_v1.gd`, each `{"v": 1}`, loud-fail, both round-trip through `map_lint`'s golden check.
-They are SEPARATE because they have different readers: `layout` will be read by gameplay (objectives, exits, the safe zone), the
-editor and the camera; `capture` is dev tooling only and must never be read by gameplay.
+### 4.1 Common shape
 
-### 4.1 `layout` — the map's anchors
+Every element: `id` (`[a-z0-9_]+`, unique across the whole `layout` AND `capture`, stable: the editor's handle and the
+`@id` of a take), `tags` (array of short strings, optional), `note` (dev-only English free text, optional, never shown to a
+player). Geometry is a `point` (`at`) or a `box` (`box`); any reference ends as an AABB in world space.
+
+**Reserved names** (an `id` may not take them; `layout_lint` fails it): `map` (the inner rectangle, ground to the tallest
+storey), `map_ring` (the same with the buffer ring), `agent_start`, `agent` (LIVE: the agent where it is now), `guard_<i>`
+(LIVE), `corner_n|e|s|w`, `side_nw|ne|se|sw`.
 
 ```json
 "layout": {
   "v": 1,
-  "envelope": {"reserve": [24, 48], "compose_storeys": 3},
-  "poi": [
-    {"id": "big_pane",    "at": [12.5, 9.0, 1.5], "tags": ["glass", "detail"]},
-    {"id": "throw_front", "at": [12.0, 10.5, 0.0], "tags": ["event"]}
-  ],
-  "regions": [
-    {"id": "glass_wing", "box": {"min": [9, 7, 0], "max": [22, 12, 3]}, "tags": ["glass"]}
-  ],
-  "objectives": [
-    {"id": "obj_terminal", "kind": "reach_terminal", "at": [15.5, 4.5, 0.0]}
-  ],
-  "exits": [
-    {"id": "exit_main", "side": "SE", "cells": [[17, 30], [17, 31]], "role": "main"}
-  ]
+  "envelope":   {"reserve": [24, 48], "compose_storeys": 3},
+  "poi":        [{"id": "big_pane", "at": [12.5, 9.0, 1.5], "tags": ["glass", "detail"]},
+                 {"id": "throw_front", "at": [12.0, 10.5], "tags": ["event"]}],
+  "regions":    [{"id": "glass_wing", "box": {"min": [9, 7, 0], "max": [22, 12, 3]}, "tags": ["glass", "wide"]}],
+  "objectives": [{"id": "obj_terminal", "kind": "reach_terminal", "at": [15.5, 4.5], "tags": []}]
 }
 ```
 
-| Field | Content | Owner rule |
+### 4.2 The elements
+
+| Element | Fields | Meaning | Who reads it |
+|---|---|---|---|
+| **envelope** | `reserve [w, h]`, `compose_storeys` | this map's override of §3.3 | `layout_lint`, the overlay |
+| **poi** | `id`, `at`, `tags` | a point that matters. Tags the capture system understands: `detail` (frame it tight), `wide`, `event` (where an event is staged: a throw target, a shooter's cell) | the framer, takes, the overlay, later the editor and gameplay hints |
+| **regions** | `id`, `box`, `tags` | a named 3D volume (a wing, a room, the glass hall). The height matters: a 3-storey pane is framed whole | the framer, takes, the overlay; later rooms, triggers |
+| **objectives** | `id`, `kind`, `at` or `region` (an id), `tags` | where the segment's objective is. `kind` is one of `DESIGN` §14.2: `reach_terminal`, `neutralise`, `undetected`, `recover_item`, `escort`, `sabotage`, `survive` | **data only** until the mission system exists. No text (rule 6: logic ≠ narrative; a label is a `tr()` key that lives in the mission's text, never here) |
+| *exits* | — | **reserved key** (§4.5) | — |
+
+### 4.3 What is DERIVED, not stored (one authority each)
+
+| Anchor | Read from | `MapLayout` call |
 |---|---|---|
-| `envelope` | the per-map reserve and compose height, overriding §3.3's defaults (optional) | guide only |
-| `poi` | points of interest: `id`, `at`, `tags` (free strings; `detail` / `wide` / `event` are understood by the capture system) | new |
-| `regions` | named 3D boxes: `id`, `box`, `tags` | new |
-| `objectives` | `id`, `kind` (one of `DESIGN` §14.2's list: `reach_terminal`, `neutralise`, `undetected`, `recover_item`, `escort`, `sabotage`, `survive`), `at` or `region` | new; **data only** — no gameplay reads it until the mission system exists; no text (rule 6: logic ≠ narrative; any label is a `tr()` key elsewhere) |
-| `exits` | the segment's ways out: `side` (§3.2), `cells`, `role` (`main` / `secondary` / `secret`, `DESIGN` §14.1) | ⚠️ **see "two authorities" below** |
+| the agent's start | `actors.agent_start` | `agent_start()` |
+| bounds, ring, compass | `board.inner_size`, `board.buffer` | `bounds()`, `bounds_ring()`, via `MapCompass` |
+| access points | the compiled access cells (`legacy_compiler.access_points`, or `LevelGraph` for `access_from_graph`) | `exits()` → `{cell, side, role: "unknown"}` |
+| the 2-GU safe zone (`DESIGN` §14.1) | the entry side, when the level says which one it is | `safe_zone(entry_side)` → a box 2 GU deep along that side |
+| LIVE: the agent, a guard | the Room, at the frame it is asked | `resolve("@agent")`, `resolve("@guard_2")` |
 
-**Derived, NOT stored in `layout` (one authority each):**
-- **the agent's start** stays in `actors.agent_start`; `MapLayout.agent_start()` reads it there;
-- **the bounds and the compass** come from `board.inner_size` / `buffer`;
-- **the 2-GU safe zone** (`DESIGN` §14.1) is derived from the entry side;
-- **the access points** today live in `legacy_compiler.access_points` (and the runtime's `exit_cells`, and `LevelGraph`'s
-  connections for `access_from_graph` maps).
+### 4.4 Lifecycle
 
-⚠️ **Two authorities — remove one.** `exits` in `layout` would describe the same thing as `legacy_compiler.access_points`. CR-1
-does NOT add `exits`; it ships `poi`, `regions`, `objectives` and the read API, and `MapLayout.exits()` reads the legacy field.
-Moving access points to their native home (the legacy field migrated by a section migration, then removed — not mirrored) is
-CR-7, a `MAP_MASTER_PLAN` change that needs the Director's sign-off because `MapCompiler` and `LevelGraph` read it.
+1. **Load:** `MapFileService` deserialises the section through its owner (loud-fail, `{ok, spec, errors}`); `FileMapSource` puts it
+   in the runtime spec as `layout` (inner); `MapCompiler` shifts every point and box by the buffer into `compiled["layout"]`.
+2. **Build:** `Room.load_map()` builds `room.map_layout: MapLayout` from the compiled layout, the spec's `board` / `actors` and
+   the compiled access cells — **replaced on every load, F2 reload included** (memory: `load_map` once left the renderer's decal
+   records behind; a selftest pins that a reload swaps the instance).
+3. **Rotation:** nothing happens. Anchors are base coordinates.
+4. **Checkpoint save / restore:** nothing is saved: the layout is static map data. The progress of an objective, when the mission
+   system exists, is state keyed by the objective's `id` — that is why ids are stable.
+5. **Edit (the future editor):** `MapLayout` has a small mutation API (`add_poi`, `move`, `remove`, `rename` — rename rewrites every
+   `@id` in `capture`) and `to_section() -> Dictionary` (inner). The editor writes through the section owner, never by patching
+   JSON. A selftest pins `from_section(to_section(x)) == x` and `map_lint`'s golden round-trip covers the file.
+6. **Code-generated maps** (`PLAYGROUND`'s generator fallback, `PROCEDURAL`): no `layout` = the default value (empty lists); the
+   derived anchors (bounds, compass, agent start, exits) still exist, so `@map` and `@agent_start` frame ANY map.
 
-### 4.2 `capture` — rails and takes (dev only)
+### 4.5 Access points: the plumbing only (R10)
+
+- `MapLayout.exits()` reads the compiled access cells and derives each one's `side` with `MapCompass`; `role` is `"unknown"` (the
+  legacy field has no main / secondary / secret).
+- The `layout` owner **reserves** the key `exits`: a file that writes it fails loudly (`"layout.exits is reserved until the access
+  points move here (CAPTURE_RAILS CR-7, MAP_MASTER_PLAN)"`). Nobody can start a second authority by accident.
+- `MAP_MASTER_PLAN` carries the warning (top note, 2026-10-10): when the maps milestone touches access points, they move to
+  `layout.exits` (`{id, side, cells, role}`, `DESIGN` §14.1), `legacy_compiler.access_points` is migrated by a section migration
+  and REMOVED, and `MapCompiler` / `LevelGraph` read `MapLayout`.
+
+### 4.6 Validation: `layout_lint` (in `verify.py quick`, with its own self-test)
+
+| Check | Severity |
+|---|---|
+| `id` syntax, uniqueness across `layout` + `capture`, not a reserved name | error |
+| a coordinate off the 1/8 lattice; a box with `min >= max` on any axis | error |
+| a point or box outside `map_ring` (x, y), or below the ground (`z < 0`) | error |
+| an objective `kind` outside §4.2; an objective `region` that names no region | error |
+| the key `exits` present | error (reserved, §4.5) |
+| anything above `1 + compose_storeys` storeys; a map larger than `reserve` | warning |
+| a non-segment map larger than the footprint | info line |
+
+---
+
+## 5. Capture profiles (R4-R7)
+
+### 5.1 The table
+
+One data file, **`capture/profiles.json`**, read by the game (the scenario op `profile`) and by `capture.py` (the window size and
+the FPS must be on the command line before the boot).
+
+| Profile | Machine | Window | Canvas (`content_scale_size`) | HUD | Dev panels | FPS | Turn default |
+|---|---|---|---|---|---|---|---|
+| **`engine`** (default) | desktop | **1920 × 1080** | 1280 × 720 (`framing desktop`) | **hidden** | off | fixed 60 (Movie Maker) | orbit (R9, dev) |
+| **`ui`** | desktop | **two runs**: 390 × 844 ×2 = 780 × 1688 portrait, and 1920 × 1080 landscape | portrait 390 × 844 / landscape 1280 × 720 | **shown** | off | fixed 60 | cut |
+| **`perf`** | handset | the screen | portrait 390 × 844, as shipped | as the player sees it | off | real time | cut |
+
+- **`ui` renders BOTH shapes by default (R7):** every interface capture produces a portrait and a landscape version of the same
+  take — the check that the ONE neutral, corner-anchored layout holds in both shapes. `--shape portrait|landscape` restricts it.
+  A later, cheap gate (interface work, not this plan): every HUD widget's rect lies inside its corner's quadrant in both canvases
+  and no two widgets overlap.
+- **`perf` is the handset path** that exists today (`device_record.py`); CR-5 gives it `--take` (§9).
+
+### 5.2 Window, canvas and the real frame size
+
+The canvas decides the layout of the HUD and the 2D overlays; the window decides the pixels. Godot renders the 3D at the window
+resolution, so the `engine` profile gets 1920 × 1080 pixels of board with the dev canvas's 1280 × 720 layout. **To measure in
+CR-2:** a 1920 × 1080 window on a Mac whose screen is smaller is clamped by macOS; Movie Maker writes the viewport it gets. `capture.py`
+checks the first frame's size and fails loudly if it is not the profile's (never silently a smaller video).
+
+### 5.3 The HUD through the facade (rule 11 / L3)
+
+`HudController.set_capture_hidden(hidden: bool)`: hides the HUD's `CanvasLayer` and restores it, remembering the state it found.
+The scenario op `hud on|off` and the profiles call it. `hud_seam_selftest` gains a check against the real scene. Nothing outside
+`hud_controller.gd` names a HUD node. Dev panels already stay off unless `DEV_PANELS=1`.
+
+### 5.4 The camera in capture mode
+
+While a capture drives the camera, **gameplay may not move it**: `CameraController`'s input, its leash and its zoom clamp
+(`ZOOM_MIN` 0.20 .. `ZOOM_MAX` 1.20) are bypassed, and calls that move the camera for play (`focus_on`, the enemy-phase camera of
+M2.10, `detonate`'s "camera on the grenade") are suppressed and logged once (`[CAPTURE] camera move from <caller> suppressed`).
+**The screen shake stays** (it is part of the effect being judged; `shake off` removes it for a measurement of geometry).
+
+---
+
+## 6. Framing (computed, never typed)
+
+### 6.1 The camera as it is (read from the code)
+
+`Board3DLive._process()` takes the `Camera2D`'s screen centre, maps it through the ground map to a GU `g`, and puts the
+orthographic `Camera3D` at the ground point `(g.x + 0.5, 0, g.y + 0.5)` (the 2D centre of a cell is its middle) moved back along
+its basis; `size = canvas_height / zoom / px_per_unit` (`KEEP_HEIGHT`; `px_per_unit` ≈ 181); rotation `(-30°, 45° + view yaw, 0)`.
+
+### 6.2 Why "frame it" is impossible today
+
+1. **A whole segment does not fit at the gameplay zoom floor.** An 18 × 36 GU ground rectangle at yaw 45° projects to ~38.2 world
+   units wide and ~19.1 tall before any wall; the 1280 × 720 canvas at zoom 0.20 shows ~19.9 × 35.4. The width does not fit, and
+   a wall on top makes it worse: a `wide` segment needs ~0.15-0.17. The clamp is right for the player and wrong for a capture.
+2. **The scenario's `centre` takes a whole GU**, and a box's visual centre is never on the ground grid.
+
+### 6.3 `CaptureFramer` (pure, static, no nodes)
+
+Input: the yaw, the canvas size, the targets (AABBs), the mode, a margin. Output: `{ground_centre: Vector2 (raw GU), zoom: float,
+fits: bool, margin_px: float}`.
+
+1. The camera's right `r` and up `u` vectors for pitch −30° and yaw `45° + view` (the same numbers `_make_camera()` uses — read from
+   `Board3DLive`, never retyped).
+2. Project the 8 corners of every target: `a = P·r`, `b = P·u` (orthographic: the depth is irrelevant).
+3. Extents `w = Δa`, `h = Δb`; required camera size `S = max(h, w / aspect) × (1 + 2 × margin)`.
+4. The screen centre `(ā, b̄)` is the middle of the extents. The ground point `T = (tx, 0, tz)` with `T·r = ā` and `T·u = b̄` is a
+   2 × 2 linear solve, always solvable because the pitch is not zero.
+5. `zoom = canvas_height / (S × px_per_unit)`, clamped to the **capture range 0.08 .. 2.0** (`fits = false` if the clamp bit);
+   the Camera2D's GU centre is `(tx − 0.5, tz − 0.5)`.
+
+| Mode | Targets | Margin | Floor |
+|---|---|---|---|
+| `wide` | the target; `@map` = the map + ring to the tallest storey | 10 % | — |
+| `detail` | the target | 5 % | a point POI grows to a 3 × 3 × 1 GU box around it, so it still frames a scene |
+| `fit` | several targets together (`fit @a @b`) | 8 % | — |
+| `explicit` | a raw centre + zoom | — | logged as explicit (the escape hatch) |
+
+**`frame_check <name>`** projects the target's corners through the REAL `Camera3D` (`unproject_position`) after the frame is drawn
+and prints `[FRAME-CHECK] <name> target=<id> yaw=<v> inside=yes|no margin=<px>` — the framer checked against the camera, not against
+itself. The `CaptureFramer` selftest covers four yaws × (a box, a point, `@map` of an 18 × 36 and of a 44 × 22) and asserts every
+corner lands inside the canvas with the requested margin.
+
+---
+
+## 7. Rails and takes: section `capture` (R3, R9)
+
+### 7.1 Shape
 
 ```json
 "capture": {
   "v": 1,
   "rails": [
     {"id": "glass_overview_then_pane", "keys": [
-      {"frame": "wide",   "target": "glass_wing", "yaw": "N", "hold": 30},
-      {"frame": "detail", "target": "big_pane",   "yaw": "N", "move": 45, "hold": 120, "ease": "in_out"},
-      {"frame": "wide",   "target": "glass_wing", "yaw": "N", "move": 45, "hold": 60}
+      {"frame": "wide",   "target": "@glass_wing", "view": "N", "hold": 30},
+      {"frame": "detail", "target": "@big_pane",   "view": "N", "move": 45, "hold": 150, "ease": "in_out"},
+      {"frame": "wide",   "target": "@glass_wing", "view": "E", "move": 60, "hold": 90,  "turn": "orbit"}
     ]}
   ],
   "takes": [
     {"id": "glass_blast", "profile": "engine", "rail": "glass_overview_then_pane",
-     "event": "throw 0 @throw_front", "start_key": 0, "event_at_key": 1, "frames": 900}
+     "steps": ["throw 0 @throw_front"], "at_key": 1, "after_hold": 0, "length": 900, "seed": 1}
   ]
 }
 ```
 
-- **A rail key** = how to frame (`wide` / `detail` / `fit` / `explicit`), a `target` (a `poi` or `region` id, or a raw point / box),
-  a `yaw` (`N`/`E`/`S`/`W`, base names), `move` (frames to travel from the previous key), `hold` (frames to stay), `ease`. Durations
-  are in **frames**, not seconds: a take runs under a fixed FPS, and an effect fired alongside a stall must age in drawn frames
-  (memory: animate in frames).
-- **A take** = a profile + a rail + the event that happens (a scenario step whose GU arguments may name an anchor with `@id`) + when
-  it fires relative to the rail + the total length. A take is what a person or Claude asks for by name: "grava o `glass_blast`".
-- **The `@id` substitution** is the fix for both of today's mistakes: the event and the camera read the SAME anchor, so they cannot
-  point at different places.
+### 7.2 A rail key
+
+| Field | Meaning | Default |
+|---|---|---|
+| `frame` | `wide` / `detail` / `fit` / `explicit` | `wide` |
+| `target` | `@id`, a reserved name, or several for `fit`; `explicit` takes `centre` + `zoom` | `@map` |
+| `view` | `N` / `E` / `S` / `W` (base names) | the current view |
+| `move` | frames from the previous key's pose to this one | 0 (a cut) |
+| `hold` | frames the pose is held | 0 |
+| `ease` | `linear` / `in_out` / `out` | `in_out` |
+| `turn` | `cut` / `orbit`, when `view` differs from the previous key | the profile's turn default (R9) |
+| `follow` | re-resolve the target every frame (a LIVE target: `@agent`, `@guard_2`) | false: resolved once, at the key's start |
+
+### 7.3 How a rail plays (`CaptureRail`)
+
+1. At the start of each key, resolve the target(s) and run the framer for the key's view: a POSE `{centre, zoom, view}`.
+2. During `move`, interpolate **per drawn frame**: the centre linearly in GU, the zoom **in log space** (a zoom from 0.15 to 1.2
+   feels even only in log), both through the ease curve. With `follow`, the end pose is recomputed every frame.
+3. During `hold`, the pose stays (or tracks, with `follow`).
+4. Each key prints `[RAIL] <rail> key <i> frame <n> pose centre=<..> zoom=<..> view=<..>`, so a video's frame number always maps to
+   a key.
+
+### 7.4 Turning: cut and orbit (R9)
+
+- **`cut`** (the canonical default): at the key's first frame the view snaps through `Room._set_perspective()`, exactly as the
+  game's own rotation (camera-only, ~10 ms on the Moto). Exact: every frame shows a view the player can have.
+- **`orbit`** (the development default for now): the camera yaw turns continuously over `move` frames through a capture-only
+  override, `Board3DLive.set_capture_yaw(deg)` (camera rotation only; the glass's per-view pixel axes follow the yaw, they are a
+  formula). **The board's LOGICAL view** — the face shading slots (`face_x_slot` / `face_z_slot`), the occlusion cutaway, the
+  actors' light basis (`Room.view_yaw_deg()`) — **switches once, when the yaw crosses the half-way of each quarter turn** (45°;
+  a half turn crosses twice). The geometry has every face meshed for every view (R3D-ROT), so nothing is missing mid-turn.
+  **The orbit's honest look:** one visible snap per quarter turn in the face tones, the cutaway and the actors' light, at the
+  half-way frame; the log prints `[RAIL] orbit view switch at frame <n>`. That is the price of showing a camera the player never
+  has, and the reason `cut` stays the canonical default. Flipping the default back is one value in `capture/profiles.json`.
+
+### 7.5 Takes
+
+A take is what is asked for by name ("grava o `glass_blast`"): a profile, a rail, the event steps, when they fire and how long the
+take runs.
+
+- **`steps`** are ordinary scenario steps; any GU argument may be an anchor: `throw 0 @throw_front`, `place_guard 0 @poi_x`,
+  `aim @big_pane`. The substitution resolves `@id` to the anchor's ground cell (a point's GU; a box's centre). **The event and the
+  camera read the SAME anchor, so they cannot point at different places** — the fix for both of the 2026-10-10 mistakes.
+- **`at_key` / `after_hold`**: the steps fire when key `at_key` starts holding, plus `after_hold` frames.
+- **`length`** in frames; **`seed`** goes to `INFILTRAITOR_RNG_SEED` (the effects use `randf_range()`).
+- **Default takes, for ANY map, with no authored data:** `overview` (`wide @map`, one key per view N/E/S/W with the profile's turn),
+  `region:<id>` (`wide` on a region, then `detail` on every `detail`-tagged POI inside it) and `poi:<id>` (`detail`). A map
+  without a `capture` section still has framed captures.
+
+### 7.6 Validation (`layout_lint` covers `capture` too)
+
+Every `@id` resolves; `view` is N/E/S/W; durations are non-negative integers; `at_key` exists; the rail exists; the profile exists;
+each step parses with `ScenarioRunner`'s own parser (one parser, never a copy in Python — `capture.py` asks Godot headless to
+`--check-take`).
 
 ---
 
-## 5. Capture profiles (R4, R5)
+## 8. Producing the capture
 
-| Profile | Machine | Canvas | HUD | Dev panels | FPS | Use |
-|---|---|---|---|---|---|---|
-| **`engine`** (default) | desktop | `framing desktop` 1280 × 720 (Q-CR1: 1920 × 1080 for video?) | **hidden** | off | fixed 60 | board, VFX, destruction, light, glass, props — anything that is not the interface |
-| **`ui`** | desktop | **`framing portrait` 390 × 844** (see note) | **shown** | off | fixed 60 | interface work |
-| **`perf`** | handset (Moto / Galaxy) | portrait, as shipped | as the player sees it | off | real time | measurements and the device video (`device_record.py`) only |
+### 8.1 Scenario ops (new)
 
-**Note on `ui` (licensed skepticism):** R4 says desktop outside performance work, and `ui` does run on the desktop — but the game
-is PORTRAIT by default (Director, 2026-10-09) and the HUD is laid out for it; a 1280 × 720 frame would show a HUD arrangement no
-player sees. Recommendation: the `ui` profile uses the desktop machine with the portrait canvas. Overrule it and it becomes
-`framing desktop` in one line (Q-CR2).
+| Op | What |
+|---|---|
+| `profile <name> [portrait|landscape]` | applies a profile (canvas, HUD, dev panels, turn default), enters capture mode (§5.4) |
+| `hud on|off` | through the facade |
+| `frame <mode> <targets…> [view]` | one framed pose, no motion |
+| `frame_check <name>` | §6.3 |
+| `still <name> <mode> <targets…> [view|all]` | frame + capture; `all` = the four views, four files |
+| `rail <id>` | plays a rail; returns when it ends |
+| `take <id>` | the whole take: profile, seed, rail, steps at their frame, `length`, quit |
+| `shake on|off` | §5.4 |
 
-**Hiding the HUD goes through the facade** (rule 11 / L3): `HudController.set_capture_hidden(bool)` hides the HUD's canvas layer(s)
-and remembers it; the scenario op `hud on|off` and the profile call it; `hud_seam_selftest` gains one check that the method exists
-and hides what it says. Nothing outside `hud_controller.gd` names a HUD node.
+### 8.2 Frame by frame (R2): Movie Maker
 
----
+`capture.py` boots the desktop Godot with **`--write-movie <tmp> --fixed-fps 60 --resolution <profile window>`** and
+`INFILTRAITOR_MAP`, `INFILTRAITOR_RNG_SEED` and `INFILTRAITOR_SCENARIO="take <id>"` (memory: a capture without the map opens the
+LAST map used). Movie Maker renders every frame with a fixed delta and writes it whatever the real frame time, so the particles,
+smoke and soot fades age exactly as in play. Output: MJPEG `.avi` or a PNG sequence (measured in CR-3: disk and time per second of
+video) → `ffmpeg` → **`videos/<map>_<take>.mp4`** (git-ignored); `--sheet <every N frames | 1s>` builds a contact sheet from the
+SAME frames into `Screenshots/takes/` (git-ignored). The filmstrip becomes a by-product of a take. The result is rendered in the
+conversation (CLAUDE.md).
 
-## 6. Framing that is computed, not typed
+```
+python3 tools/persistent/capture.py --map GLASS --take glass_blast
+python3 tools/persistent/capture.py --map GLASS --take glass_blast --sheet 1s
+python3 tools/persistent/capture.py --map GLASS --take overview
+python3 tools/persistent/capture.py --map GLASS --still big_pane --view all
+python3 tools/persistent/capture.py --map GLASS --take hud_check --profile ui           # portrait AND landscape
+```
 
-### 6.1 What the camera is today (read from the code)
+**Determinism is earned before it is trusted** (CLAUDE.md, pixel gates): CR-3 runs the same take twice and compares the frames;
+a difference is a finding about the harness (an unseeded RNG, a wall-clock read), never noise to ignore.
 
-- `CameraController` drives a `Camera2D` (zoom clamp `ZOOM_MIN` 0.20 .. `ZOOM_MAX` 1.20, a leash of 4 tiles outside the map);
-  `Board3DLive._process()` maps its screen centre to a GU ground point and puts the orthographic `Camera3D` there:
-  `size = viewport_height / zoom / px_per_unit`, pitch −30°, yaw 45° + the view's yaw. One GU = one world unit; `px_per_unit` ≈ 181.
-- The scenario's `centre` takes a **whole** GU (`Vector2i`) and `zoom` goes through the gameplay clamp.
+### 8.3 Real time (R2, later: CR-6)
 
-### 6.2 Two facts that make "frame it" impossible today
-
-1. **A whole segment does not fit at the gameplay zoom floor.** An 18 × 36 GU ground rectangle at yaw 45° projects to ~38.2 world
-   units wide and ~19.1 tall (before any wall height). At the desktop canvas (1280 × 720) and zoom 0.20 the camera shows ~19.9 tall
-   and ~35.4 wide: **the width does not fit**, and a wall height on top makes it worse. A `wide` take of a segment needs ~0.15-0.17.
-   The gameplay clamp is right for the player and wrong for a capture.
-2. **A whole-GU centre cannot centre a region** whose middle is a half GU (and a 3D box's visual centre is never on the ground grid).
-
-### 6.3 The fix
-
-- **`CaptureFramer`** (pure, a static class, no nodes): given the camera basis for a yaw, the viewport size and a set of world
-  points (the 8 corners of a box, or a point + radius), it returns the ground point the camera must look at and the zoom that fits
-  them with a margin. Orthographic maths: project the corners onto the camera's right / up axes; the extents give the size
-  (`max(h, w / aspect) × (1 + margin)`), the mid-point gives the centre, slid along the view direction to the ground plane.
-  - `wide` = the region (or the whole map + ring for `target: "map"`) with a 10 % margin;
-  - `detail` = the target tight, 5 % margin, never below a minimum box of 3 × 3 × 1 GU (so a point POI still frames a scene);
-  - `fit` = a list of targets together; `explicit` = a raw centre + zoom (escape hatch, logged).
-- **A capture camera API on `Room`**: `set_capture_view(centre_gu: Vector2, zoom: float, yaw: String)` — a fractional centre, a
-  **capture zoom range** (proposal 0.08 .. 2.0) that does not touch `ZOOM_MIN` / `ZOOM_MAX`, the leash released (as DEV_VISION
-  already releases it). Only the capture path calls it.
-- **`frame_check <name>`**: prints `[FRAME-CHECK] <name> target=<id> inside=yes margin=<px> yaw=<N>` by projecting the target's corners
-  through the REAL `Camera3D` after the frame is drawn — the framer checked against the camera, not against itself.
+A fixed-delta video cannot show a stall. Two instruments:
+- **the handset** (`device_record.py`, built; profile `perf`, gaining `--take` in CR-5);
+- **the desktop at real speed**: the same take without Movie Maker, the window recorded with `ffmpeg -f avfoundation` (needs macOS
+  Screen Recording permission for the terminal: the Director's action, once), plus a **frame stamp** in a corner (frame index,
+  frame ms, the slowest `FrameSplit` stage) and a per-frame CSV beside the video, so a hitch is visible AND attributable. The stamp
+  is a dev overlay, off unless the take asks for it.
 
 ---
 
-## 7. Video, frame by frame (R2)
+## 9. The layout overlay (for the eye, and the editor's first piece)
 
-- **Godot's Movie Maker** (`--write-movie <file> --fixed-fps 60`): the engine renders every frame with a fixed delta and writes it,
-  whatever the real frame time. The particles, the smoke and the soot fade age exactly as in play; the run is reproducible with
-  `INFILTRAITOR_RNG_SEED`. No project tool uses it today (`build_filmstrip.py` grabs the viewport per frame itself).
-- Output: a PNG sequence or MJPEG `.avi` (to be measured in CR-3: disk and time per second of video) → `ffmpeg` → `videos/<take>.mp4`
-  (git-ignored), optionally a contact sheet (one frame per N) from the SAME frames — the filmstrip becomes a by-product of a take.
-- **One command:**
-  ```
-  python3 tools/persistent/capture.py --map GLASS --take glass_blast            # the video
-  python3 tools/persistent/capture.py --map GLASS --take glass_blast --sheet 1s # + a contact sheet, one frame per second
-  python3 tools/persistent/capture.py --map GLASS --still big_pane --yaw E      # one framed still
-  ```
-  It boots the desktop Godot with the take compiled into a `SCENARIO` string, waits, transcodes, prints the path; the result is
-  rendered in the conversation (CLAUDE.md: every capture is shown).
-- **Real time (R2, later — CR-6):** a frame-by-frame video cannot show a stall (the fixed delta hides it). Two instruments: the
-  handset (`device_record.py`, already built, profile `perf`), and on the desktop the same take at real speed recorded from the
-  window (`ffmpeg -f avfoundation`; needs macOS Screen Recording permission for the terminal — the Director's action, once), with a
-  small frame-number + frame-ms stamp in a corner so a hitch is visible and attributable.
+`view_mode layout` (the existing dev-overlay toggle path; English labels): world-space, depth-tested like every new VFX (RENDER3D
+rule), off = zero cost. It draws the map bounds, the buffer ring, the envelope reserve (dashed), the compass letters on the
+corners and the side names, the agent's start, the exits with their derived side, every POI (a pin + its id) and region (a wire box
++ its id), and a chosen rail's path (each key's ground centre and its framed rectangle). It is how the Director checks that
+`big_pane` is where its name says, and it is the editor's viewport layer.
 
 ---
 
-## 8. A layout overlay (for the eye, and the editor's first piece)
+## 10. The stages
 
-`view_mode layout` (the existing dev-overlay toggle path, English labels): draws in world space, depth-tested like every new VFX
-(RENDER3D rule), the map bounds, the buffer ring, the envelope reserve (dashed), the compass letters on the corners, the side names,
-the agent's start, the exits, every POI (a pin + its id) and region (a wire box + its id), and a selected rail's path with its
-keys. It costs nothing when off. It is how the Director checks that `big_pane` is where its name says, and it is the first visible
-piece of the scenario editor (§10).
-
----
-
-## 9. The stages
-
-Each stage closes with `verify.py` at its tier, a commit on `main`, and its evidence pasted (CLAUDE.md).
+Each stage closes with `verify.py` at its tier, a commit on `main`, and pasted evidence (CLAUDE.md).
 
 | Stage | What | Closes when |
 |---|---|---|
-| **CR-0** | This plan; the Director's answers to §11 | ruled |
-| **CR-1 — layout data** | `maps/_spec/segment_envelope.json` (one authority, §3.3; generator + PB-7 read it); `layout` section owner v1 (`envelope`, `poi`, `regions`, `objectives`); `MapLayout` read API (`to_world`, `poi`, `region`, `agent_start` from `actors`, `exits` from the legacy field, compass, bounds, safe zone) and `MapCompass`; `layout_lint` in `verify.py quick` (unique ids, inside bounds + ring, `min < max`, lattice, objective kinds, envelope warnings); data for **GLASS** and **PLAYGROUND**; `gen_segment_map.py` writes a `layout` for the SEG maps | `map_lint` golden round-trip green with the new section; `layout_lint` self-test red-then-green on a bad file; `MapLayout` selftest |
-| **CR-2 — framing** | `CaptureFramer` + selftest (four yaws, box / point / map, margin honoured); `Room.set_capture_view()`; HUD facade `set_capture_hidden()`; scenario ops `profile`, `hud`, `frame <target> [wide|detail|fit] [yaw]`, `frame_check` | a `frame_check` on GLASS reads `inside=yes` for every region in all four yaws (real boot); a still of `glass_wing` wide and `big_pane` detail, HUD off, shown to the Director |
-| **CR-3 — rails, takes, video** | `capture` section owner v1; `CaptureRail` (per-frame interpolation of centre / zoom; a yaw change is a cut, not a tween, unless Q-CR4 says otherwise); scenario op `rail <id>`; `@id` substitution in events; `capture.py` (Movie Maker → mp4, `--sheet`, `--still`); the `glass_blast` take | the `glass_blast` video, shown; two runs of the same take differ by 0 frames' content under the seed (determinism earned before it is trusted — CLAUDE.md) |
-| **CR-4 — layout overlay** | §8 | a still of GLASS with the overlay, shown |
-| **CR-5 — tools onto takes** | `build_filmstrip.py` becomes a take + `--sheet` per frame; `device_record.py --take` (the `perf` profile, the same anchors, portrait framing computed by the framer); CLAUDE.md's capture section rewritten around profiles. **Then** the 22 `INFILTRAITOR_CAPTURE_*` env vars and `room.gd`'s capture actions are listed with every reader and every side effect (memory: deleted function side effects) and retired **only with the Director's OK** | the old tools produce the same evidence through takes |
-| **CR-6 — real time** | desktop real-time recording of a take + the frame stamp (§7) | a take recorded both ways, the stall visible only in the real-time one |
-| **CR-7 — access points native** (needs sign-off; `MAP_MASTER_PLAN`) | `layout.exits` becomes the owner; `legacy_compiler.access_points` migrated by a section migration and removed; `MapCompiler` / `LevelGraph` read `MapLayout` | one authority; `map_lint` + selftests green |
+| **CR-0** ✅ | this plan, the rulings (§1) | ruled 2026-10-10 |
+| **CR-1 — the anchors** | `maps/_spec/segment_envelope.json` + its three readers (§3.3); `MapCompass`, `MapEnvelope`; the `layout` owner v1 (envelope, poi, regions, objectives; `exits` reserved); `MapCompiler` shift; `MapLayout` (read API, `resolve()` incl. reserved and LIVE names, `to_world*`, mutation API, `to_section`); `room.map_layout` replaced per load; `layout_lint` in `verify.py quick`; data for **GLASS** and **PLAYGROUND**; `gen_segment_map.py` writes a `layout`; the `MAP_MASTER_PLAN` warning (R10) | `map_lint` golden round-trip green with the section; `layout_lint` self-test red-then-green; `MapLayout` selftest (round-trip, reload swaps the instance, `resolve` of every reserved name); `segment_budget.py` reads the JSON with the same verdicts |
+| **CR-2 — framing and profiles** | `capture/profiles.json`; `CaptureFramer` + selftest; capture mode on the camera (§5.4); `HudController.set_capture_hidden()`; ops `profile`, `hud`, `frame`, `frame_check`, `still`, `shake`; `capture.py --still`; the 1920 × 1080 window check (§5.2) | `frame_check` reads `inside=yes` for every GLASS and PLAYGROUND region in all four views (real boot); stills of `@map` wide and `@big_pane` detail with the HUD hidden, shown to the Director |
+| **CR-3 — rails, takes, video** | the `capture` owner v1; `CaptureRail` (cut and orbit, `follow`); `@id` substitution in steps; ops `rail`, `take`; default takes (§7.5); `capture.py --take` with Movie Maker, `--sheet`; the `glass_blast` take | the `glass_blast` video shown; two runs of the same take compared frame by frame (equal, or the difference explained) |
+| **CR-4 — the layout overlay** | §9 | a GLASS still with the overlay, shown |
+| **CR-5 — the tools onto takes** | `build_filmstrip.py` → a take + `--sheet` of every frame; `device_record.py --take` (profile `perf`, portrait framing by the same framer); CLAUDE.md's capture section rewritten around profiles and takes. **Then** the 22 `INFILTRAITOR_CAPTURE_*` env vars and `room.gd`'s capture actions are listed with every reader and every side effect (memory: deleted function side effects) and retired **only with the Director's OK** | the old tools' evidence reproduced through takes |
+| **CR-6 — real time** | §8.3 | one take recorded both ways; a stall visible only in the real-time one |
+| **CR-7 — access points native** (parked, R10) | §4.5's move, inside the maps milestone | one authority; `map_lint` + selftests green |
 
-**Size estimate:** CR-1 and CR-2 are the bulk of the value (they fix both of today's mistakes); CR-3 is the rails and the video.
-CR-4 to CR-7 can wait without blocking anything.
-
----
-
-## 10. The future scenario editor (to be planned — what this plan already gives it)
-
-Not designed here. What CR-1..CR-4 deliberately leave ready for it: every anchor has a stable `id`; every section has an owner with
-`serialize` / `deserialize`; the editor writes through those owners, never by patching JSON; `MapLayout.to_world()` and the
-inverse (a picked ground point back to GU on the voxel lattice) are the only conversions; the layout overlay (§8) is the editor's
-viewport layer. The editor's own plan decides placement UI, undo, and how it writes `actors` / `walls` / `props`.
+**Order:** CR-1 → CR-2 → CR-3 are one line (each needs the one before). CR-4 can follow CR-1 at any time. CR-5 and CR-6 after CR-3.
+CR-1 + CR-2 already fix both of the 2026-10-10 mistakes; CR-3 is the rails and the video.
 
 ---
 
-## 11. Open questions (the Director's)
+## 11. What this leaves ready for the scenario editor (to be planned)
 
-1. **Q-CR1 — resolution of the `engine` profile:** 1280 × 720 (today's `framing desktop`, light files) or 1920 × 1080 for video?
-2. **Q-CR2 — the `ui` profile's canvas:** portrait 390 × 844 on the desktop (recommended, §5) or the desktop canvas?
-3. **Q-CR3 — the envelope numbers:** reserve 24 × 48 GU and ≤ 3 compose storeys as WARNING thresholds (§3.3) — or other values?
-4. **Q-CR4 — yaw inside a rail:** a change of view is a cut (cheap, exact: the game's own rotation is a quarter-turn snap) or a
-   smooth orbit (prettier, shows a camera the player never has)?
-5. **Q-CR5 — CR-7:** move the access points into `layout` now that the editor is on the horizon, or leave the legacy field until the
-   mission system needs it?
+Not designed here. Ready for it after CR-1..CR-4: every anchor has a stable `id`; every section has an owner with `serialize` /
+`deserialize`; `MapLayout` has the mutation API and `to_section()`; the rename rewrites the `@id`s; `to_world` and
+`MapCompiler.raw_to_inner()` are the only conversions; `pick_ground()` already turns a screen point into a ground point; the layout
+overlay is the editor's viewport layer. The editor's own plan decides placement UI, undo, and how it writes `actors` / `walls` /
+`props`.
+
+---
+
+## 12. Open questions
+
+None blocking CR-1. To confirm in passing: the reading of R7 (§1) — desktop is a way to play, handsets stay portrait-locked.

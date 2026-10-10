@@ -320,6 +320,14 @@ the engine never holds a Button).
 
 ### Part 7 — Orientation drives M/D (ORIENT-01) — *added 2026-09-12, Director-requested*
 
+> ⏭️ **2026-10-10 — RULED (Director, `CAPTURE_RAILS_MASTER_PLAN` R7): desktop is a way to PLAY, in landscape; the HUD is ONE
+> orientation-neutral layout.** *"Modo desktop também significa jogar na tela horizontal (ainda não temos interface, apenas
+> mockups)."* and *"Na prática vamos evitar layouts que só funcionem na orientação A ou B. Queremos um mecanismo neutro, próximo
+> do quadrado, aproveitando os 4 cantos disponíveis."* So the "HUD reflowing at 844×390 — a genuinely different shape" below is
+> superseded: no second layout; widgets anchor to the four corners, the composition stays close to a square, nothing depends on the
+> screen being tall or wide. Handsets stay portrait-locked by default (an orientation change reopens the 256 MiB block on the
+> Galaxy, `PERFORMANCE_BUDGET` §4). Interface captures render both shapes (`CAPTURE_RAILS` profile `ui`) as the check.
+
 **Why:** Director, from the same handset session: *"precisamos atualizar o
 formato da tela conforme a orientação do acelerômetro do aparelho usando retrato
 ou paisagem (M/D) ... basicamente a mesma coisa que clicar no botão."*

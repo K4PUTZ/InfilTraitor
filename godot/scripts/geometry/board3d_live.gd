@@ -509,7 +509,8 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_geometry_root.add_child(_crack_mirror)
 	_crack_mirror.call("setup", room._voxel_board, _ground_level)
 	for i: int in range(_shader_materials.size()):
-		if _material_glass[i] and _shader_materials[i].shader.resource_path.get_file().begins_with("glass_pane3d"):
+		## The edge twins too (their shader is built at run time, so it has no path): an opening must cut a pane's edge faces.
+		if _material_glass[i] and (_is_glass_edge[i] or _shader_materials[i].shader.resource_path.get_file().begins_with("glass_pane3d")):
 			_crack_mirror.pane_materials.append(_shader_materials[i])
 			if _shader_materials[i].next_pass is ShaderMaterial:  ## the add pass is cut by the same openings
 				_crack_mirror.pane_materials.append(_shader_materials[i].next_pass)
@@ -1394,7 +1395,21 @@ func _build_decal_catalog() -> void:
 
 ## Per material index: its glass EDGE twin's index, or -1 (not a pane material, or a twin itself).
 var _glass_edge_twin := PackedInt32Array()
+## Per material index: true for a glass EDGE twin (its surfaces go to the chunk's edge instance).
+var _is_glass_edge: Array[bool] = []
+var _chunk_edge_nodes: Dictionary = {}  ## chunk -> MeshInstance3D holding that chunk's pane edge faces
 const GLASS_EDGE_SUFFIX: String = "#glass_edge"
+const GLASS_EDGE_SORT_OFFSET: float = 0.05  ## world units: far below the spacing of real depths, far above a tie
+## The edge twin's shader: the pane's own code with BOTH sides drawn, so the far edge of a pane (its back-facing end) shows
+## through the pane like the near one (Director, 2026-10-09). Built once from the pane's source text.
+static var _glass_edge_shader: Shader = null
+
+
+static func _edge_shader(pane: Shader) -> Shader:
+	if _glass_edge_shader == null:
+		_glass_edge_shader = Shader.new()
+		_glass_edge_shader.code = pane.code.replace("cull_back", "cull_disabled")
+	return _glass_edge_shader
 
 
 ## This board's index for a material, registering it (and its shader material) on first use.
@@ -1407,15 +1422,18 @@ func _material(material_id: String) -> int:
 		_solid_twin.append(-1)
 		var index: int = _shader_materials.size() - 1
 		_glass_edge_twin.append(-1)
+		_is_glass_edge.append(false)
 		if _material_glass[index] and _shader_materials[index].shader.resource_path.get_file().begins_with("glass_pane3d"):
 			## 2026-10-09: the pane's EDGE faces (its thickness, its top) draw with this twin, darker and denser (`glass_edge`).
 			var edge := _shader_materials[index].duplicate() as ShaderMaterial
+			edge.shader = _edge_shader(_shader_materials[index].shader)
 			edge.set_shader_parameter("glass_edge", 1.0)
 			_material_ids.append(material_id + GLASS_EDGE_SUFFIX)
 			_material_glass.append(true)
 			_shader_materials.append(edge)
 			_solid_twin.append(-1)
 			_glass_edge_twin.append(-1)
+			_is_glass_edge.append(true)
 			_glass_edge_twin[index] = _shader_materials.size() - 1
 		if not _material_glass[index] and material_id != DECAL_MATERIAL_ID:
 			var twin := _shader_materials[index].duplicate() as ShaderMaterial
@@ -1425,6 +1443,7 @@ func _material(material_id: String) -> int:
 			_shader_materials.append(twin)
 			_solid_twin.append(-1)
 			_glass_edge_twin.append(-1)
+			_is_glass_edge.append(false)
 			_solid_twin[index] = _shader_materials.size() - 1
 	return int(_material_index[material_id])
 
@@ -2317,6 +2336,7 @@ func _give_never_cut_faces_to_twins(planes: Dictionary) -> void:
 ## and swap it into `_geometry_root`.
 func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 	var mesh := ArrayMesh.new()
+	var edge_mesh: ArrayMesh = null
 	var surface_materials := PackedInt32Array()
 	for material: int in surfaces:
 		var surface: SurfaceData = surfaces[material]
@@ -2328,6 +2348,12 @@ func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 		if surface.colors.size() == surface.vertices.size():
 			arrays[Mesh.ARRAY_COLOR] = surface.colors
 		arrays[Mesh.ARRAY_INDEX] = surface.indices
+		if material < _is_glass_edge.size() and _is_glass_edge[material]:
+			if edge_mesh == null:
+				edge_mesh = ArrayMesh.new()
+			edge_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+			edge_mesh.surface_set_material(edge_mesh.get_surface_count() - 1, _shader_materials[material])
+			continue
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		mesh.surface_set_material(mesh.get_surface_count() - 1, _shader_materials[material])
 		surface_materials.append(material)
@@ -2335,6 +2361,21 @@ func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 	if previous != null:
 		previous.queue_free()
 		_chunk_nodes.erase(chunk)
+	var previous_edge: Node = _chunk_edge_nodes.get(chunk)
+	if previous_edge != null:
+		previous_edge.queue_free()
+		_chunk_edge_nodes.erase(chunk)
+	if edge_mesh != null:
+		## The pane's EDGE faces in an instance of their own, sorted as if a hair FARTHER than the chunk: drawn before the pane's
+		## broad faces, so where a far edge shows THROUGH its own pane the edge takes the stencil (once per pixel) every time,
+		## instead of an unstable tie between two surfaces of one mesh deciding it per boot (the GLASS g1 lesson, 2026-10-09).
+		var edge_instance := MeshInstance3D.new()
+		edge_instance.name = "ChunkGlassEdge_%d_%d" % [chunk.x, chunk.y]
+		edge_instance.mesh = edge_mesh
+		edge_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		edge_instance.sorting_offset = -GLASS_EDGE_SORT_OFFSET
+		_geometry_root.add_child(edge_instance)
+		_chunk_edge_nodes[chunk] = edge_instance
 	if mesh.get_surface_count() > 0:
 		var instance := MeshInstance3D.new()
 		instance.name = "Chunk_%d_%d" % [chunk.x, chunk.y]

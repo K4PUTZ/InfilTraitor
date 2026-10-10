@@ -11,9 +11,10 @@
 ## frame time, so particles, smoke and fades age exactly as in play and two runs of a seeded take are the same film. It cannot show
 ## a stall: that is the real-time check (CR-6) and the handset (`device_record.py`).
 ##
-## THE WINDOW. A profile asks for a size (engine: 1920 x 1080); a window cannot be larger than the screen's usable area, so the
-## largest window of the same aspect that fits is used and SAID (never a silently smaller file). The Godot run is told
-## `CAPTURE_WINDOW_FIXED=1` so the profile does not resize it mid-file.
+## THE WINDOW is OFF SCREEN (`--position 4000,4000`): nothing appears on the Director's display and no stray click can reach it, and
+## the frames are the profile's exact size (engine: 1920 x 1080). The size reaches Movie Maker through a marked, temporary
+## `override.cfg`; the run is told `CAPTURE_WINDOW_FIXED=1` so the profile does not resize it mid-file. Every output's size is
+## checked against the profile and a mismatch is said loudly.
 ##
 ##     python3 tools/persistent/capture.py --map GLASS --take glass_blast                 # videos/GLASS_glass_blast.mp4
 ##     python3 tools/persistent/capture.py --map GLASS --take glass_blast --sheet 30      # + a contact sheet, one frame in 30
@@ -34,37 +35,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
 PROFILES = json.loads((ROOT / "capture" / "profiles.json").read_text())
-TITLE_BAR_PX = 28
 USER_CAPTURES = Path.home() / "Library/Application Support/Godot/app_userdata/INFILTRAITOR/captures"
 STILLS = ROOT / "Screenshots" / "takes"
 VIDEOS = ROOT / "videos"
-
-
-def usable_screen():
-    """The main screen's usable area (menu bar and Dock excluded), via AppKit; None if it cannot be read."""
-    try:
-        out = subprocess.run(["osascript", "-l", "JavaScript", "-e",
-                              'ObjC.import("AppKit"); var f=$.NSScreen.mainScreen.visibleFrame; f.size.width+"x"+f.size.height'],
-                             capture_output=True, text=True, timeout=10).stdout.strip()
-        w, h = out.split("x")
-        return int(float(w)), int(float(h))
-    except Exception:  # noqa: BLE001 — a reading, with a stated fallback
-        return None
-
-
-def fit_window(want):
-    usable = usable_screen()
-    if usable is None:
-        print("[CAPTURE] could not read the screen size; asking for %dx%d as is" % tuple(want))
-        return want
-    uw, uh = usable[0], usable[1] - TITLE_BAR_PX
-    if want[0] <= uw and want[1] <= uh:
-        return want
-    k = min(uw / want[0], uh / want[1])
-    got = [int(want[0] * k) // 8 * 8, int(want[1] * k) // 8 * 8]
-    print("[CAPTURE] WARNING the profile wants %dx%d; the screen's usable area is %dx%d: using %dx%d (same aspect)"
-          % (want[0], want[1], uw, uh, got[0], got[1]))
-    return got
 
 
 def shapes_for(profile, shape):
@@ -82,7 +55,9 @@ OVERRIDE_MARK = "; written by tools/persistent/capture.py — deleted when the r
 def run_godot(map_id, scenario, window, shape, extra=(), seed=1, timeout=600):
     env = dict(os.environ, INFILTRAITOR_MAP=map_id, INFILTRAITOR_SCENARIO=scenario, INFILTRAITOR_RNG_SEED=str(seed),
                INFILTRAITOR_CAPTURE_WINDOW_FIXED="1", INFILTRAITOR_CAPTURE_SHAPE=shape)
-    cmd = [GODOT, "--path", str(ROOT), "--resolution", "%dx%d" % tuple(window), *extra]
+    ## OFF SCREEN (Director, 2026-10-10: the machine may be in use; a full-screen take could eat a stray click). Measured: a window
+    ## at 4000,4000 still draws, and Movie Maker writes the exact profile size (1920 x 1080) even on a 1920 x 1080 display.
+    cmd = [GODOT, "--path", str(ROOT), "--position", "4000,4000", "--resolution", "%dx%d" % tuple(window), *extra]
     ## Movie Maker records at the project's base window size (390 x 844), whatever `--resolution` says (measured 2026-10-10:
     ## "recording movie in 390×844"). Godot reads `override.cfg` at startup, so the size is given there for this run only.
     if OVERRIDE.exists() and OVERRIDE_MARK not in OVERRIDE.read_text():
@@ -151,21 +126,29 @@ def main() -> int:
     VIDEOS.mkdir(exist_ok=True)
     for shape in shapes_for(args.profile, args.shape):
         sh = PROFILES["profiles"][args.profile]["shapes"][shape]
-        window = fit_window(sh["window"])
+        window = sh["window"]
         suffix = "_" + shape if len(shapes_for(args.profile, args.shape)) > 1 else ""
         if args.still:
-            name = "%s_%s%s" % (args.map, args.still.replace(":", "_"), suffix)
+            ## A still is the last frame of a short Movie Maker run (the off-screen window itself is clamped by the OS; the movie is not).
             target = args.still if args.still.startswith("@") or args.still in ("map",) else "@" + args.still
-            run_godot(args.map, "profile %s %s; wait 1; still %s %s %s %s; quit" % (args.profile, shape, name, args.mode, target,
-                      args.view), window, shape, seed=args.seed)
-            views = ["N", "E", "S", "W"] if args.view == "all" else [None]
-            for v in views:
-                src = USER_CAPTURES / ("%s%s.png" % (name, "_" + v if v else ""))
-                dst = STILLS / src.name
-                shutil.copy(src, dst)
+            for v in (["N", "E", "S", "W"] if args.view == "all" else [args.view]):
+                with tempfile.TemporaryDirectory(prefix="still_") as tmp:
+                    run_godot(args.map, "profile %s %s; wait 1; frame %s %s %s; frame_check still; frames 4; quit"
+                              % (args.profile, shape, args.mode, target, v), window, shape,
+                              extra=("--write-movie", str(Path(tmp) / "f.png"), "--fixed-fps", "60"), seed=args.seed)
+                    pngs = sorted(Path(tmp).glob("f*.png"))
+                    if not pngs:
+                        sys.exit("[CAPTURE] Movie Maker wrote no frame")
+                    dst = STILLS / ("%s_%s%s%s.png" % (args.map, args.still.replace(":", "_").lstrip("@"),
+                                                      "_" + v if args.view == "all" else "", suffix))
+                    shutil.copy(pngs[-1], dst)
+                from PIL import Image
+                got = list(Image.open(dst).size)
+                if got != list(window):
+                    print("[CAPTURE] WARNING still is %dx%d, the profile asks %dx%d" % (got[0], got[1], window[0], window[1]))
                 if args.hud_grid:
                     hud_grid(dst)
-                print("[CAPTURE] still %s" % dst.relative_to(ROOT))
+                print("[CAPTURE] still %s (%dx%d)" % (dst.relative_to(ROOT), got[0], got[1]))
         else:
             with tempfile.TemporaryDirectory(prefix="take_") as tmp:
                 frames = Path(tmp) / "f.png"
@@ -177,6 +160,8 @@ def main() -> int:
                 from PIL import Image
                 size = Image.open(pngs[0]).size
                 print("[CAPTURE] %d frame(s) of %dx%d" % (len(pngs), size[0], size[1]))
+                if list(size) != list(window):
+                    print("[CAPTURE] WARNING frames are %dx%d, the profile asks %dx%d" % (size[0], size[1], window[0], window[1]))
                 if args.keep_frames:
                     keep = Path(args.keep_frames)
                     keep.mkdir(parents=True, exist_ok=True)

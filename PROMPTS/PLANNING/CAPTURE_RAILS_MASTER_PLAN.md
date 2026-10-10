@@ -6,8 +6,9 @@
 > → `videos/GLASS_glass_blast.mp4` (904 frames, 1672×936): wide on the glass wing, move onto the big pane, the grenade on
 > `@throw_front` (cell 18,16), the blast, G-S1's waves (25 / 109 / 42 voxels), an orbit to E. **Two runs: 904 of 904 frames
 > byte-identical** (seed 1). **Found while building:** (1) the screen is 1920×1080, so a 1920×1080 window cannot exist: the largest
-> same-aspect window that fits is used and printed (1672×936 here) — full screen would give the exact size but takes over the
-> display (Director's call); (2) Movie Maker records at the project's base size (390×844) whatever `--resolution` says:
+> same-aspect window that fits was used at first — **then (Director: the machine may be in use, a stray click) the window
+> goes OFF SCREEN (`--position 4000,4000`): it still draws and Movie Maker writes the exact 1920×1080; stills are the last frame of a
+> short Movie Maker run (the off-screen window itself is clamped by the OS)**; (2) Movie Maker records at the project's base size (390×844) whatever `--resolution` says:
 > `capture.py` writes a marked `override.cfg` for the run and deletes it; (3) a point POI cannot frame a 6-GU pane: POIs take an
 > optional `extent` [x, y, z].
 >

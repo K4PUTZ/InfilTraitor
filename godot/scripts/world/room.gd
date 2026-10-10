@@ -8419,23 +8419,20 @@ func _capture_detonation_filmstrip() -> void:
 ##   INFILTRAITOR_GLASS_BLAST_PANE=<id>    which pane            (default: biggest)
 ##   INFILTRAITOR_RAIN_FRAMES=<n>          frames to film        (default: span+20)
 const RAIN_TIMING_PRESETS: Dictionary = {
+	## 2026-10-10: the fall is gravity now (GlassRainOverlay: `gravity_gu_s2`, `drag_min`, `pop_max_gu_s`); the frame counts went.
 	"snappy": {
-		"fall_frames_min": 8, "fall_frames_max": 14, "stagger_frames": 6,
-		"bounce_frames": 5, "bounce_scale": 0.10, "hold_frames": 12,
-		"fade_frames": 10, "arc_px_min": 4.0, "arc_px_max": 14.0},
+		"gravity_gu_s2": 14.0, "drag_min": 0.8, "pop_max_gu_s": 0.6, "stagger_frames": 6,
+		"bounce_frames": 5, "bounce_scale": 0.10, "hold_frames": 12, "fade_frames": 10},
 	"default": {},   ## the shipped values, untouched
 	"floaty": {
-		"fall_frames_min": 24, "fall_frames_max": 42, "stagger_frames": 16,
-		"bounce_frames": 10, "bounce_scale": 0.22, "hold_frames": 30,
-		"fade_frames": 28, "arc_px_min": 12.0, "arc_px_max": 36.0},
+		"drag_min": 0.3, "pop_max_gu_s": 2.0, "stagger_frames": 16,
+		"bounce_frames": 10, "bounce_scale": 0.22, "hold_frames": 30, "fade_frames": 28},
 	"heavy": {
-		"fall_frames_min": 10, "fall_frames_max": 18, "stagger_frames": 8,
-		"bounce_frames": 4, "bounce_scale": 0.07, "hold_frames": 44,
-		"fade_frames": 14, "arc_px_min": 3.0, "arc_px_max": 10.0},
+		"gravity_gu_s2": 12.0, "drag_min": 0.9, "pop_max_gu_s": 0.4, "stagger_frames": 8,
+		"bounce_frames": 4, "bounce_scale": 0.07, "hold_frames": 44, "fade_frames": 14},
 	"raked": {
-		"fall_frames_min": 16, "fall_frames_max": 30, "stagger_frames": 22,
-		"bounce_frames": 8, "bounce_scale": 0.14, "hold_frames": 18,
-		"fade_frames": 24, "arc_px_min": 10.0, "arc_px_max": 30.0},
+		"drag_min": 0.45, "pop_max_gu_s": 2.5, "stagger_frames": 22,
+		"bounce_frames": 8, "bounce_scale": 0.14, "hold_frames": 18, "fade_frames": 24},
 }
 
 

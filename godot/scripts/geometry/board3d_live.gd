@@ -363,7 +363,8 @@ class SurfaceData:
 			indices.append(base_index + offset)
 
 	## One triangle, wound so its front faces `normal` (a `cull_back` material draws only that side). G-D54's rim prisms.
-	func add_tri(corners: Array, unit: float, normal: Vector3, dim: float = -1.0) -> void:
+	## `broken` (2026-10-10): a wall of a hole's RIM (COLOR.b = 0): the glass edge shader draws the crack's ink on it.
+	func add_tri(corners: Array, unit: float, normal: Vector3, dim: float = -1.0, broken: bool = false) -> void:
 		var a: Vector3 = corners[0]
 		var b: Vector3 = corners[1]
 		var c: Vector3 = corners[2]
@@ -377,7 +378,7 @@ class SurfaceData:
 			normals.append(normal)
 			uvs.append(Vector2.ZERO)
 			if dim >= 0.0:
-				colors.append(Color(dim, 1.0, 1.0, 1.0))
+				colors.append(Color(dim, 1.0, 0.0 if broken else 1.0, 1.0))
 		indices.append_array([base_index, base_index + 1, base_index + 2])
 
 
@@ -1457,6 +1458,12 @@ func _material(material_id: String) -> int:
 			var edge := _shader_materials[index].duplicate() as ShaderMaterial
 			edge.shader = _edge_shader(_shader_materials[index].shader)
 			edge.set_shader_parameter("glass_edge", 1.0)
+			## The ink a broken rim wall draws: the blast fracture sheet, sampled in world space (one tile per GU, as the decal's field).
+			var ink := load(GLASS_RIM_INK_PATH) as Texture2D
+			if ink == null:
+				push_error("[Board3DLive] %s failed to load: hole rims draw without the crack's ink" % GLASS_RIM_INK_PATH)
+			else:
+				edge.set_shader_parameter("glass_rim_ink_tex", ink)
 			_material_ids.append(material_id + GLASS_EDGE_SUFFIX)
 			_material_glass.append(true)
 			_shader_materials.append(edge)
@@ -2522,6 +2529,7 @@ static func _is_pane_edge(dir: int, face: int) -> bool:
 ## G-D54 (Director, 2026-10-09): a glass voxel on the rim of a hole is drawn as a JAGGED PRISM, not a cube. `GLASS_RIM_ON = false`
 ## is the A/B (the cube, as before).
 static var GLASS_RIM_ON: bool = true
+const GLASS_RIM_INK_PATH: String = "res://ASSETS/materials/glass/fracture_glass_blast_fine_0.png"
 ## How deep a point bites into the voxel (fraction of the voxel), how many points an exposed side gets, how far the back outline is
 ## skewed from the front one ("a ponta torta na espessura") and how far an exposed corner is pulled in.
 const RIM_DEEP: Vector2 = Vector2(0.12, 0.46)
@@ -2646,8 +2654,11 @@ func _emit_glass_rim(rec: Array, surfaces: Dictionary) -> int:
 		var dir2: Vector2 = front[j2] - front[j]
 		var out2 := Vector2(dir2.y, -dir2.x).normalized()   ## right of a counter-clockwise outline = outward
 		var normal: Vector3 = axis_r * out2.x + Vector3(0, out2.y, 0)
-		edge.add_tri([to3.call(front[j], 1.0), to3.call(front[j2], 1.0), to3.call(back[j2], 0.0)], unit, normal, 1.0)
-		edge.add_tri([to3.call(front[j], 1.0), to3.call(back[j2], 0.0), to3.call(back[j], 0.0)], unit, normal, 1.0)
+		## A wall along an EXPOSED side is the break itself: it carries the crack's ink (the shader's rim branch), so the decal
+		## needs no spill over the face beside it (Director, 2026-10-10). A wall along a bare side is the pane's own edge.
+		var broken: bool = ((exposed >> seg_side[j]) & 1) == 1
+		edge.add_tri([to3.call(front[j], 1.0), to3.call(front[j2], 1.0), to3.call(back[j2], 0.0)], unit, normal, 1.0, broken)
+		edge.add_tri([to3.call(front[j], 1.0), to3.call(back[j2], 0.0), to3.call(back[j], 0.0)], unit, normal, 1.0, broken)
 		tris += 2
 	return int(ceil(float(tris) / 2.0))
 

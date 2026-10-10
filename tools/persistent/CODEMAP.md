@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**290 scripts · 84980 lines total** (under `godot/scripts/`)
+**290 scripts · 85031 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3170 lines
+extends `Node3D` · 3181 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1048,7 +1048,7 @@ extends `Node3D` · 3170 lines
 
 ### `shard_field3d.gd`
 
-`class_name ShardField3D` · extends `RefCounted` · 134 lines
+`class_name ShardField3D` · extends `RefCounted` · 135 lines
 
 `godot/scripts/geometry/shard_field3d.gd`
 
@@ -1064,7 +1064,7 @@ extends `Node3D` · 3170 lines
 - `func attach(parent: Node3D, priority: int = 0) -> void:`
 - `func detach() -> void:`
 - `func begin_on_board(capacity: int) -> void:`
-- `func push(pos: Vector3, size_px: float, rot: float, shape_index: int, color: Color, flip: bool = false, flop: bool = false) -> void:`
+- `func push(pos: Vector3, size_px: float, rot: float, shape_index: int, color: Color, flip: bool = false, flop: bool = false, glint: float = 0.0) -> void:`
 - `func flush() -> void:`
 - `func live_count() -> int:`
 - `func clear() -> void:`
@@ -1623,7 +1623,7 @@ extends `Node2D` · 164 lines
 
 ### `glass_rain_overlay.gd`
 
-`class_name GlassRainOverlay` · extends `Node2D` · 276 lines
+`class_name GlassRainOverlay` · extends `Node2D` · 320 lines
 
 `godot/scripts/overlays/glass_rain_overlay.gd`
 
@@ -1634,8 +1634,10 @@ extends `Node2D` · 164 lines
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 
 **Public vars**
-- `var fall_frames_min: int = 14`
-- `var fall_frames_max: int = 26`
+- `var gravity_gu_s2: float = 9.8`
+- `var drag_min: float = 0.55`
+- `var pop_max_gu_s: float = 1.2`
+- `var fall_frames_floor: int = 6`
 - `var stagger_frames: int = 10`
 - `var bounce_frames: int = 7`
 - `var bounce_scale: float = 0.16`
@@ -1643,12 +1645,16 @@ extends `Node2D` · 164 lines
 - `var fade_frames: int = 18`
 - `var arc_px_min: float = 6.0`
 - `var arc_px_max: float = 22.0`
-- `var spin_min: float = -0.16`
-- `var spin_max: float = 0.16`
-- `var tint: Color = Color(0.78, 0.92, 0.97, 0.55)`
-- `var air_alpha: float = 0.28`
-- `var alpha_var_min: float = 0.55`
-- `var pieces_low_bias: float = 1.6`
+- `var spin_min: float = -0.22`
+- `var spin_max: float = 0.22`
+- `var tint: Color = Color(0.80, 0.93, 1.0, 0.62)`
+- `var air_alpha: float = 1.35`
+- `var air_whiten: float = 0.55`
+- `var alpha_var_min: float = 0.70`
+- `var pieces_low_bias: float = 1.0`
+- `var glint_power: float = 10.0`
+- `var glint_strength: float = 0.9`
+- `var glint_landed: float = 0.25`
 - `var max_shards: int = 3000`
 
 **Public API**
@@ -2449,7 +2455,7 @@ extends `RefCounted` · 37 lines
 
 ### `glass_fall.gd`
 
-`class_name GlassFall` · 341 lines
+`class_name GlassFall` · 339 lines
 
 `godot/scripts/systems/destruction/glass_fall.gd`
 
@@ -6049,7 +6055,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10030 lines
+extends `Node2D` · 10027 lines
 
 `godot/scripts/world/room.gd`
 

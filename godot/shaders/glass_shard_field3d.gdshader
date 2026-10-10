@@ -9,6 +9,7 @@ uniform sampler2D atlas : filter_nearest;
 uniform float atlas_cells = 5.0;
 
 varying flat float inst_cell;
+varying flat float inst_glint;
 varying vec4 inst_color;
 
 vec3 srgb_to_linear(vec3 c) {
@@ -17,12 +18,15 @@ vec3 srgb_to_linear(vec3 c) {
 
 void vertex() {
 	inst_cell = INSTANCE_CUSTOM.x;
+	inst_glint = INSTANCE_CUSTOM.y;
 	inst_color = COLOR;
 }
 
 void fragment() {
 	vec2 uv = vec2((UV.x + inst_cell) / max(atlas_cells, 1.0), UV.y);
 	vec4 texel = texture(atlas, uv) * inst_color;
-	ALBEDO = srgb_to_linear(texel.rgb);
-	ALPHA = texel.a;
+	// 2026-10-10: the GLINT — light catching the face as the shard turns — pushes the silhouette toward white and opaque.
+	vec3 rgb = mix(texel.rgb, vec3(1.0), clamp(inst_glint, 0.0, 1.0));
+	ALBEDO = srgb_to_linear(rgb);
+	ALPHA = max(texel.a, texture(atlas, uv).a * clamp(inst_glint, 0.0, 1.0));
 }

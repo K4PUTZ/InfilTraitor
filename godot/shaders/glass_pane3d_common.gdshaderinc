@@ -30,6 +30,7 @@ varying vec2 v_glass_world;
 varying float v_face;
 varying vec3 v_world;
 varying vec3 v_normal;
+varying float v_rim;   // 1 on a broken rim wall (Board3DLive marks it COLOR.b = 0), 0 everywhere else
 
 // CRACK-03/04 on the 3D pane: each applied opening is a polygon mask (one layer of open_masks, in a
 // square frame of +-open_half voxels around its struck cell). A fragment inside one is discarded, so
@@ -45,6 +46,7 @@ void vertex() {
 	v_glass_world = px_per_gu_x * w.x + px_per_gu_z * w.z - vec2(0.0, px_per_level_y * w.y);
 	v_world = w;
 	v_normal = NORMAL;
+	v_rim = 1.0 - COLOR.b;
 	v_face = (abs(NORMAL.y) > 0.5 ? face_top : (abs(NORMAL.x) > 0.5 ? face_se : face_sw)) * COLOR.r;
 }
 

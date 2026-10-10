@@ -30,6 +30,14 @@ uniform float glass_edge_back_light : hint_range(0.0, 1.0) = 0.4;
 uniform float glass_edge_back_cover : hint_range(0.0, 1.0) = 0.3;
 // The sRGB brightness of the background the reflection is calibrated for (the two-pass pane's `glass_add_base`).
 uniform float glass_add_base : hint_range(0.0, 1.0) = 0.35;
+// 2026-10-10 (Director: "aplicar o decal na parede da espessura também, sem fazer gambiarra com as bordas"): a hole's RIM walls draw
+// the crack's ink themselves — the fracture sheet in world space, plus a pale base (a broken glass edge reads lighter) — so the face
+// decal needs no spill past the hole (`crack_edge_spill` 0). Intact edges are untouched: only walls the mesher marks broken.
+uniform sampler2D glass_rim_ink_tex : filter_linear, repeat_enable, hint_default_black;
+uniform float glass_rim_ink_scale = 1.0;      // sheet tiles per GU
+uniform vec3 glass_rim_ink_color = vec3(0.90, 0.94, 1.0);
+uniform float glass_rim_ink_opacity : hint_range(0.0, 1.0) = 0.85;
+uniform float glass_rim_base : hint_range(0.0, 1.0) = 0.35;
 
 void fragment() {
 	if (glass_cut_open()) {
@@ -55,6 +63,12 @@ void fragment() {
 			light *= glass_edge_light;
 			cover = max(cover, glass_edge_cover);
 		}
+	}
+	if (glass_edge > 0.5 && v_rim > 0.5) {
+		vec2 ink_uv = vec2(v_world.x + v_world.z, v_world.y * 1.7) * glass_rim_ink_scale;
+		float ink = max(texture(glass_rim_ink_tex, ink_uv).r, glass_rim_base) * glass_rim_ink_opacity;
+		light = light * (1.0 - ink) + to_linear(glass_rim_ink_color) * ink;
+		cover = max(cover, ink);
 	}
 	ALBEDO = light;
 	ALPHA = cover;

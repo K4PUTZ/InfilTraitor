@@ -92,11 +92,9 @@ static var SCATTER_WEIGHTS: Array[float] = [0.55, 0.30, 0.11, 0.04]
 ## (`build_filmstrip.py --glass-rain default --rain-gain N`, which prints the travel
 ## it ACTUALLY got off the landings) and 15 is his pick between 12 and 30.
 ##
-## ⚠️ THE FALL IS COUNTED IN FRAMES AND DOES NOT KNOW THE DISTANCE.
-## `GlassRainOverlay.fall_frames_min/max` are 14..26 whatever the shard has to
-## cross, so this constant sets horizontal SPEED, not flight time — raise it far
-## enough and a shard reads as a streak rather than a piece of glass. That coupling
-## is the thing to check on screen after any change here, not the landing pile.
+## ⏭️ 2026-10-10: the fall is GRAVITY now (`GlassRainOverlay.gravity_gu_s2`): its time comes from the height, so this constant
+## sets how far a shard lands, and its horizontal speed is that distance over a physical flight time. (Before, the fall was 14..26
+## frames whatever the height, and this constant was a horizontal SPEED: raised far enough, a shard read as a streak.)
 static var SCATTER_IMPULSE_GAIN: float = 15.0
 
 ## The least-pushed shard still moves this fraction of the full impulse; the rest

@@ -79,8 +79,9 @@ func begin_on_board(capacity: int) -> void:
 
 ## One shard at the world position `pos`. `size_px`, `rot`, `flip`, `flop` are the 2D field's own: the
 ## basis is the 2D rotation/flip of a `size_px` square, carried into the camera's plane.
+## `glint` (2026-10-10): a flash toward white, 0..1, the light catching the shard's face (custom data y; the shader adds it).
 func push(pos: Vector3, size_px: float, rot: float, shape_index: int, color: Color,
-		flip: bool = false, flop: bool = false) -> void:
+		flip: bool = false, flop: bool = false, glint: float = 0.0) -> void:
 	var sx: float = -size_px if flip else size_px
 	var sy: float = -size_px if flop else size_px
 	var c: float = cos(rot)
@@ -106,7 +107,7 @@ func push(pos: Vector3, size_px: float, rot: float, shape_index: int, color: Col
 	_buf[o + 14] = color.b
 	_buf[o + 15] = color.a
 	_buf[o + 16] = float(shape_index)
-	_buf[o + 17] = 0.0
+	_buf[o + 17] = glint
 	_buf[o + 18] = 0.0
 	_buf[o + 19] = 0.0
 	_count += 1

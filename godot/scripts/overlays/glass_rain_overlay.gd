@@ -51,17 +51,24 @@ const ShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard
 const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
 
 ## ── LOOK VALUES, ALL FRAMES, ALL `var` (Rule 1) ─────────────────────────────
-var fall_frames_min: int = 14        ## the drop itself
-var fall_frames_max: int = 26
+## ── GRAVITY (Director, 2026-10-10: *"caindo em velocidades diferentes, simulando a gravidade"*) ──────────────
+## The fall is a real one: y(t) = y0 + v0·t − ½·g·t², the time from the actual height (one GU ≈ 1 m, scale canon), and the
+## horizontal travel linear in t (constant horizontal speed, as a thrown body). Each shard has its own DRAG (a flat piece of glass
+## flutters: its effective g is a hashed fraction of g) and its own POP (a small upward speed from the break), so the pieces of one
+## pane land at different times. Counted in drawn frames at 60 per second, never in seconds (the commit-frame stall, below).
+var gravity_gu_s2: float = 9.8      ## g in GU / s² (1 GU ~ 1 m)
+var drag_min: float = 0.55           ## a shard's effective g is g × hash[drag_min, 1]
+var pop_max_gu_s: float = 1.2        ## upward launch speed, hash[0, this]
+var fall_frames_floor: int = 6       ## a shard born at the floor still takes this long
 var stagger_frames: int = 10         ## spread of launch times across the pane
 var bounce_frames: int = 7           ## the "leve bounce"
 var bounce_scale: float = 0.16       ## fraction of the fall's arc height
 var hold_frames: int = 26            ## settled, before it starts to go
 var fade_frames: int = 18            ## and the fade that reveals the pile
-var arc_px_min: float = 6.0          ## lift at the top of the fall's parabola
+var arc_px_min: float = 6.0          ## the 2D path only (no board): lift at the top of the fall's parabola
 var arc_px_max: float = 22.0
-var spin_min: float = -0.16          ## radians per frame while airborne
-var spin_max: float = 0.16
+var spin_min: float = -0.22          ## radians per frame while airborne
+var spin_max: float = 0.22
 
 ## ── OPACITY ────────────────────────────────────────────────────────────────
 ## Director, 2026-09-06: *"tira mais opacidade dos cacos, e ir aumentando durante
@@ -74,10 +81,19 @@ var spin_max: float = 0.16
 ##   2. a RAMP over the fall — a tumbling shard high in the air is barely there,
 ##      a shard about to land is the full tint. `alpha = lerp(air, 1, ease(t))`;
 ##   3. per-shard variance, so the crowd is not one flat wash.
-var tint: Color = Color(0.78, 0.92, 0.97, 0.55)
-var air_alpha: float = 0.28          ## a shard's opacity at the TOP of its fall (× tint.a)
-var alpha_var_min: float = 0.55      ## per-shard multiplier, hashed to [this, 1.0]
-var pieces_low_bias: float = 1.6     ## >1 skews the 1..max piece count toward the low end
+##
+## ⏭️ 2026-10-10 (Director): *"surgem muito apagados […] começarem com uma aparência mais brilhante e similar ao vidro real"*.
+## The ramp is now the other way: a shard leaves the pane BRIGHT (`air_alpha` > 1 of the landed tint, near white) and settles into
+## the pane's tint as it lands; a GLINT — the light catching a face as it turns — flashes on each shard with its spin
+## (`glint_*`: a sharp power of |sin(rotation)|, hashed phase), white over the shard, drawn by the field's shader.
+var tint: Color = Color(0.80, 0.93, 1.0, 0.62)
+var air_alpha: float = 1.35          ## a shard's opacity at the TOP of its fall (× tint.a), easing to 1 as it lands
+var air_whiten: float = 0.55         ## how far toward white a shard starts (0 = the tint)
+var alpha_var_min: float = 0.70      ## per-shard multiplier, hashed to [this, 1.0]
+var pieces_low_bias: float = 1.0     ## 1 = the 1..max piece count uniform (was 1.6, skewed low)
+var glint_power: float = 10.0        ## sharpness of the flash (higher = shorter)
+var glint_strength: float = 0.9      ## its peak, added toward white
+var glint_landed: float = 0.25       ## what is left of it once the shard rests
 
 ## ⚠️ A CAP, AND IT IS HONEST ABOUT WHAT IT IS FOR. Instance buffer writes are
 ## per-frame DURING FLIGHT, and under G-D43 the flight is the only cost there is —
@@ -96,6 +112,8 @@ func _apply_timing_overrides() -> void:
 	for k in timing_overrides:
 		if k in self:
 			set(k, timing_overrides[k])
+		else:
+			push_warning("[GlassRainOverlay] timing override '%s' names no look var: ignored" % k)
 
 ## RENDER3D R3D-4e-4 — the shards are drawn by a depth-tested `ShardField3D` (with no board nothing is drawn: the 2D `ShardField`
 ## was removed in RETIRE-2D; a selftest still drives `spawn()` and `_process()` without one). One rain event, one overlay: the 3D
@@ -156,8 +174,12 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 			var salt := "%d" % p
 			var target: float = lerpf(ShardShapes.TARGET_MIN, ShardShapes.TARGET_MAX,
 				_unit(base, "size" + salt))
-			var fall: int = int(lerpf(float(fall_frames_min), float(fall_frames_max),
-				_unit(base, "fall" + salt)))
+			## Gravity: g_eff per frame², the pop per frame, and the frames to fall the real height (the positive root of
+			## ½·g·f² − v0·f − h = 0). Without a board the height is unknown: the floor time stands in.
+			var g_f: float = gravity_gu_s2 * lerpf(drag_min, 1.0, _unit(base, "drag" + salt)) / 3600.0
+			var v0_f: float = pop_max_gu_s * _unit(base, "pop" + salt) / 60.0
+			var h: float = maxf(from3.y - to3.y, 0.0) / maxf(_board_vscale(), 0.001) if _board != null else 0.0
+			var fall: int = maxi(fall_frames_floor, int(ceil((v0_f + sqrt(v0_f * v0_f + 2.0 * g_f * h)) / maxf(g_f, 1e-6))))
 			var t0: int = int(_unit(base, "t0" + salt) * float(stagger_frames))
 			## The pieces of one voxel do not all land on the same pixel: a small
 			## sub-cell offset, hashed, so a pile reads as a scatter and not as a
@@ -182,6 +204,9 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 				"avar": lerpf(alpha_var_min, 1.0, _unit(base, "avar" + salt)),
 				"t0": t0,
 				"fall": maxi(fall, 1),
+				"g": g_f,
+				"v0": v0_f,
+				"glint_phase": _unit(base, "glint" + salt) * TAU,
 			})
 			_span = maxi(_span, t0 + fall + bounce_frames + hold_frames + fade_frames)
 	return _shards.size()
@@ -227,15 +252,20 @@ func _process(_delta: float) -> void:
 		var jitter3: Vector3 = Vector3.ZERO
 		if f3 != null:
 			jitter3 = ParticleMathRef.displace(s["jitter"], cam, ppu)
-		if f <= fall:
+		var landed: bool = f > fall
+		if not landed:
 			var t: float = float(f) / float(fall)
-			var e: float = 1.0 - (1.0 - t) * (1.0 - t)
-			pos = (s["from"] as Vector2).lerp(s["to"], e) - Vector2(0.0, float(s["arc"]) * sin(PI * t))
+			pos = (s["from"] as Vector2).lerp(s["to"], t * t) - Vector2(0.0, float(s["arc"]) * sin(PI * t))
 			if f3 != null:
-				base3 = (s["from3"] as Vector3).lerp((s["to3"] as Vector3) + jitter3, e)
-				lift_px = float(s["arc"]) * sin(PI * t)
+				## Horizontal: linear in time. Vertical: the ballistic curve from the pane down to the landing (world y).
+				var a3: Vector3 = s["from3"]
+				var b3: Vector3 = (s["to3"] as Vector3) + jitter3
+				base3 = a3.lerp(b3, t)
+				var vs: float = _board_vscale()
+				base3.y = a3.y + (float(s["v0"]) * float(f) - 0.5 * float(s["g"]) * float(f) * float(f)) * vs
+				base3.y = maxf(base3.y, b3.y)
 			rot += float(s["spin"]) * float(f)
-			alpha = lerpf(air_alpha, 1.0, e)
+			alpha = lerpf(air_alpha, 1.0, t * t)
 		else:
 			rot += float(s["spin"]) * float(fall)
 			pos = s["to"]
@@ -252,16 +282,30 @@ func _process(_delta: float) -> void:
 				if alpha <= 0.0:
 					continue
 		var c: Color = tint
-		c.a *= alpha * float(s["avar"])
+		## Bright when it leaves the pane, the tint once it lands (the whiten eases with the same curve as the alpha).
+		var air: float = 0.0 if landed else 1.0 - pow(float(f) / float(fall), 2.0)
+		c = c.lerp(Color(1, 1, 1, c.a), air_whiten * air)
+		c.a = clampf(c.a * alpha * float(s["avar"]), 0.0, 1.0)
+		var glint: float = glint_strength * pow(absf(sin(rot + float(s["glint_phase"]))), glint_power)
+		if landed:
+			glint *= glint_landed
 		if f3 != null:
 			f3.push(base3 + Vector3.UP * (lift_px / (ppu * ParticleMathRef.COS_ELEVATION)),
-				float(s["size"]), rot, int(s["shape"]), c, bool(s["flip"]), bool(s["flop"]))
+				float(s["size"]), rot, int(s["shape"]), c, bool(s["flip"]), bool(s["flop"]), glint)
 		live += 1
 	if f3 != null:
 		f3.flush()
 	_live = live
 	if _frame > _span and live == 0:
 		queue_free()
+
+
+## The board's vertical scale (a storey is one world y unit × this): heights in the world are divided by it to get GU.
+func _board_vscale() -> float:
+	if _board == null:
+		return 1.0
+	var v: Variant = _board.get("VERTICAL_SCALE")
+	return float(v) if v != null else 1.0
 
 
 func live_count() -> int:

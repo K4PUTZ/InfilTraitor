@@ -4,7 +4,7 @@
  "id": "GLASS",
  "meta": {
   "title": "Glass Physics Test Zone",
-  "description": "GLASS_MASTER_PLAN §12. Dedicated to glass physics — PLAYGROUND stays as it is. The agent starts at authored (13,13) looking north at a BIG pane (authored gu x=10..15, y=9, face SW, 3 storeys, 6 GUs wide) so G-D12's partial break has room to read; a guard patrols behind it at (13,6) for the shoot-through-glass path (G7) and the see-through roll (G-D7). A SMALL pane (gu 4,9, face SW, 1 storey) west of the agent is the binary all-or-nothing case. A WINDOWS.png bands wall (gu x=19..21, y=9, face SW, 3 storeys) carries a brick sill (levels 0-1) and head (levels 22-23) over a glass middle — the multi-material-slice case (G-D9); until G-D9 lands the `bands` key is ignored and it renders as plain glass. A 3-wide glass block (gu x=6..8, y=3) keeps block geometry a home. Floor is one concrete zone; three lights cover the play area. G-D17 (2026-09-01): a SECOND pane row (gu x=11..14, y=6, face SW, 3 storeys) stands behind the big one so a single round crosses TWO panes — the map had no such line, and the per-layer punch falloff cannot be verified on a map where every pane is on one row. G-D16/V-B (2026-09-01): a row of four VARIANT panels at authored gu x=5..8, y=9, 2 storeys — glass_armored (purple), then glass_screen_green/red/amber — west of the big pane with a gap at x=9 so the pane union cannot reach it. They exist to make the per-class tint visible in one frame; the variants share every pixel of glass's art and differ only by the tint index the atom carries in its BLUE channel. V-D (2026-09-01): the amber screen carries `glass_class: \"breakable\"` — G-D16's per-placement override (a TV rather than a control interface), so the map exercises both readings of glass_screen_*. ⚠️ GUARDS PARKED 2026-09-10 (Director: \"tira os guardas do GLASS por enquanto, estão só atrapalhando as medições\") — a patrolling guard MOVES between two boots, so every before/after pixel diff on this map was carrying his position as noise. The two routes are [[13,6],[12,6]] and [[20,5],[21,5]]; restore them when G7 (shoot through glass) or G-D7 (the see-through roll) is being worked on again."
+  "description": "GLASS_MASTER_PLAN \u00a712. Dedicated to glass physics \u2014 PLAYGROUND stays as it is. The agent starts at authored (13,13) looking north at a BIG pane (authored gu x=10..15, y=9, face SW, 3 storeys, 6 GUs wide) so G-D12's partial break has room to read; a guard patrols behind it at (13,6) for the shoot-through-glass path (G7) and the see-through roll (G-D7). A SMALL pane (gu 4,9, face SW, 1 storey) west of the agent is the binary all-or-nothing case. A WINDOWS.png bands wall (gu x=19..21, y=9, face SW, 3 storeys) carries a brick sill (levels 0-1) and head (levels 22-23) over a glass middle \u2014 the multi-material-slice case (G-D9); until G-D9 lands the `bands` key is ignored and it renders as plain glass. A 3-wide glass block (gu x=6..8, y=3) keeps block geometry a home. Floor is one concrete zone; three lights cover the play area. G-D17 (2026-09-01): a SECOND pane row (gu x=11..14, y=6, face SW, 3 storeys) stands behind the big one so a single round crosses TWO panes \u2014 the map had no such line, and the per-layer punch falloff cannot be verified on a map where every pane is on one row. G-D16/V-B (2026-09-01): a row of four VARIANT panels at authored gu x=5..8, y=9, 2 storeys \u2014 glass_armored (purple), then glass_screen_green/red/amber \u2014 west of the big pane with a gap at x=9 so the pane union cannot reach it. They exist to make the per-class tint visible in one frame; the variants share every pixel of glass's art and differ only by the tint index the atom carries in its BLUE channel. V-D (2026-09-01): the amber screen carries `glass_class: \"breakable\"` \u2014 G-D16's per-placement override (a TV rather than a control interface), so the map exercises both readings of glass_screen_*. \u26a0\ufe0f GUARDS PARKED 2026-09-10 (Director: \"tira os guardas do GLASS por enquanto, est\u00e3o s\u00f3 atrapalhando as medi\u00e7\u00f5es\") \u2014 a patrolling guard MOVES between two boots, so every before/after pixel diff on this map was carrying his position as noise. The two routes are [[13,6],[12,6]] and [[20,5],[21,5]]; restore them when G7 (shoot through glass) or G-D7 (the see-through roll) is being worked on again."
  },
  "sections": {
   "board": {
@@ -810,6 +810,23 @@
       "glass",
       "detail"
      ]
+    },
+    {
+     "id": "pane_hole",
+     "at": [
+      13.5,
+      10.0,
+      0.75
+     ],
+     "extent": [
+      3.0,
+      0.25,
+      1.5
+     ],
+     "tags": [
+      "glass",
+      "detail"
+     ]
     }
    ],
    "regions": [
@@ -899,6 +916,32 @@
        "turn": "orbit"
       }
      ]
+    },
+    {
+     "id": "glass_hole_rail",
+     "keys": [
+      {
+       "frame": "wide",
+       "target": "@big_pane_zone",
+       "view": "N",
+       "hold": 330
+      },
+      {
+       "frame": "detail",
+       "target": "@pane_hole",
+       "view": "N",
+       "move": 40,
+       "hold": 120
+      },
+      {
+       "frame": "detail",
+       "target": "@pane_hole",
+       "view": "E",
+       "move": 90,
+       "hold": 120,
+       "turn": "orbit"
+      }
+     ]
     }
    ],
    "takes": [
@@ -914,6 +957,19 @@
      "length": 900,
      "seed": 1,
      "note": "CAPTURE_RAILS proof take: a grenade in front of the big pane, the blast, then G-S1's three overlapping collapse waves (2.5 s after the blast), then an orbit to E"
+    },
+    {
+     "id": "glass_hole",
+     "profile": "engine",
+     "rail": "glass_hole_rail",
+     "steps": [
+      "throw 0 @throw_front"
+     ],
+     "at_key": 0,
+     "after_hold": 20,
+     "length": 720,
+     "seed": 1,
+     "note": "the hole's rim up close after the blast (the crack ink on the rim walls), then an orbit to E to see the thickness"
     }
    ]
   }

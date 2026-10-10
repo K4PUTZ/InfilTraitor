@@ -28,7 +28,8 @@ uniform float crack_edge_feather : hint_range(0.0, 0.5) = 0.12;
 // G-D54 (Director, 2026-10-09): the ink SPILLS past a hole's edge by up to this many voxels, a jagged reach per half-voxel, so it runs
 // over the rim's thickness seen beside the face (the 2D board's accident that read as a torn edge). Visual chaos on purpose: it need
 // not match the rim's geometry. 0 = the exact occupancy cut.
-uniform float crack_edge_spill : hint_range(0.0, 3.0) = 0.4;
+// 2026-10-10: 0 — the rim walls draw the ink themselves now (glass_pane3d's rim branch); the dial stays for an A/B.
+uniform float crack_edge_spill : hint_range(0.0, 3.0) = 0.0;
 
 vec3 to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));

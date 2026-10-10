@@ -1399,7 +1399,12 @@ var _glass_edge_twin := PackedInt32Array()
 var _is_glass_edge: Array[bool] = []
 var _chunk_edge_nodes: Dictionary = {}  ## chunk -> MeshInstance3D holding that chunk's pane edge faces
 const GLASS_EDGE_SUFFIX: String = "#glass_edge"
-const GLASS_EDGE_SORT_OFFSET: float = 0.05  ## world units: far below the spacing of real depths, far above a tie
+const GLASS_EDGE_SORT_OFFSET: float = 0.2  ## world units: below the spacing of real chunk depths, above the whole tie-break range
+const CHUNK_SORT_STEP: float = 1.0e-4
+
+
+func _chunk_rank(chunk: Vector2i) -> int:
+	return (chunk.y - _chunk_y0) * _chunk_cols + (chunk.x - _chunk_x0)
 ## The edge twin's shader: the pane's own code with BOTH sides drawn, so the far edge of a pane (its back-facing end) shows
 ## through the pane like the near one (Director, 2026-10-09). Built once from the pane's source text.
 static var _glass_edge_shader: Shader = null
@@ -2373,7 +2378,7 @@ func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 		edge_instance.name = "ChunkGlassEdge_%d_%d" % [chunk.x, chunk.y]
 		edge_instance.mesh = edge_mesh
 		edge_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		edge_instance.sorting_offset = -GLASS_EDGE_SORT_OFFSET
+		edge_instance.sorting_offset = -GLASS_EDGE_SORT_OFFSET - CHUNK_SORT_STEP * float(_chunk_rank(chunk))
 		_geometry_root.add_child(edge_instance)
 		_chunk_edge_nodes[chunk] = edge_instance
 	if mesh.get_surface_count() > 0:
@@ -2381,6 +2386,10 @@ func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 		instance.name = "Chunk_%d_%d" % [chunk.x, chunk.y]
 		instance.mesh = mesh
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		## A deterministic tie-break (2026-10-09): chunks on one iso diagonal sit at EXACTLY the same depth and the transparent sort
+		## is not stable, so two panes in two such chunks drew in either order per boot. A step of 1e-4 world units per chunk index
+		## (<= ~0.1 on a large map) orders the ties and never reorders chunks whose depths really differ (>= ~0.7 apart).
+		instance.sorting_offset = -CHUNK_SORT_STEP * float(_chunk_rank(chunk))
 		_geometry_root.add_child(instance)
 		_chunk_nodes[chunk] = instance
 		_chunk_surface_materials[chunk] = surface_materials

@@ -6,9 +6,10 @@ shader_type spatial;
 // small cover over what is behind (`glass_cover`) and the reflection read from a texture (`glass_sheen_tex`, see
 // tools/persistent/gen_glass_sheen.py). One pass, one fetch: cheaper than the two it replaces.
 render_mode unshaded, cull_back, blend_premul_alpha, depth_draw_never;
-// Once per pixel (G-D2: a second glass face over the same pixel fails): passes on a pixel below 3, writes 3, the glass mark the
-// ground overlays read (`ground_overlay3d*`).
-stencil_mode read, write, compare_greater, 3;
+// Writes 3, the glass mark the ground overlays read (`ground_overlay3d*`), on every pixel a pane covers. No longer once per pixel
+// (2026-10-09, Director: the glass is a real object of the world): a pane seen through another one is drawn too, back to front, so
+// two panes stack instead of the far one being cut out where the near one already drew (G-D2's "tint once" was the 2D board's rule).
+stencil_mode write, compare_always, 3;
 
 #include "res://godot/shaders/glass_pane3d_common.gdshaderinc"
 
@@ -19,8 +20,14 @@ uniform float glass_cover : hint_range(0.0, 1.0) = 0.12;
 // The pane's EDGE faces (its thickness and its top, `Board3DLive` routes them to an edge twin of the material): a darker,
 // denser face so the slice reads apart from the pane's broad faces.
 uniform float glass_edge = 0.0;
+// Each plane of the edge its own shade, so the panes read as solid slabs (Director, 2026-10-09): the TOP lighter, the SIDES (the
+// thickness facing the camera) darker, the FAR edge (back-facing, seen through the pane) between the two and lighter in cover.
+uniform float glass_edge_top_light : hint_range(0.0, 1.0) = 0.9;
+uniform float glass_edge_top_cover : hint_range(0.0, 1.0) = 0.35;
 uniform float glass_edge_light : hint_range(0.0, 1.0) = 0.25;
 uniform float glass_edge_cover : hint_range(0.0, 1.0) = 0.55;
+uniform float glass_edge_back_light : hint_range(0.0, 1.0) = 0.4;
+uniform float glass_edge_back_cover : hint_range(0.0, 1.0) = 0.3;
 // The sRGB brightness of the background the reflection is calibrated for (the two-pass pane's `glass_add_base`).
 uniform float glass_add_base : hint_range(0.0, 1.0) = 0.35;
 
@@ -38,8 +45,16 @@ void fragment() {
 	vec3 light = max(to_linear(clamp(base + add, vec3(0.0), vec3(1.0))) - to_linear(base), vec3(0.0));
 	float cover = glass_cover * tex.a;
 	if (glass_edge > 0.5) {
-		light *= glass_edge_light;
-		cover = max(cover, glass_edge_cover);
+		if (!FRONT_FACING) {
+			light *= glass_edge_back_light;
+			cover = max(cover, glass_edge_back_cover);
+		} else if (abs(v_normal.y) > 0.5) {
+			light *= glass_edge_top_light;
+			cover = max(cover, glass_edge_top_cover);
+		} else {
+			light *= glass_edge_light;
+			cover = max(cover, glass_edge_cover);
+		}
 	}
 	ALBEDO = light;
 	ALPHA = cover;

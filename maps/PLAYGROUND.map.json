@@ -683,7 +683,125 @@
           "comment": "the old block's glass roof"
         }
       ]
-    }
+    },
+   "layout": {
+    "v": 1,
+    "poi": [
+     {
+      "id": "throw_material_row",
+      "at": [
+       20.5,
+       5.5
+      ],
+      "tags": [
+       "event"
+      ]
+     },
+     {
+      "id": "pane_se",
+      "at": [
+       26.0,
+       8.5,
+       1.0
+      ],
+      "tags": [
+       "glass",
+       "detail"
+      ]
+     },
+     {
+      "id": "pane_sw",
+      "at": [
+       29.5,
+       9.0,
+       1.0
+      ],
+      "tags": [
+       "glass",
+       "detail"
+      ]
+     },
+     {
+      "id": "fabric_panel",
+      "at": [
+       34.0,
+       8.5,
+       0.5
+      ],
+      "tags": [
+       "detail"
+      ]
+     },
+     {
+      "id": "crate",
+      "at": [
+       20.5,
+       15.5,
+       0.5
+      ],
+      "tags": [
+       "detail"
+      ]
+     }
+    ],
+    "regions": [
+     {
+      "id": "material_row",
+      "box": {
+       "min": [
+        2,
+        2,
+        0
+       ],
+       "max": [
+        37,
+        3,
+        2
+       ]
+      },
+      "tags": [
+       "wide"
+      ]
+     },
+     {
+      "id": "glass_box",
+      "box": {
+       "min": [
+        38,
+        2,
+        0
+       ],
+       "max": [
+        41,
+        3,
+        2.5
+       ]
+      },
+      "tags": [
+       "glass"
+      ]
+     },
+     {
+      "id": "panel_row",
+      "box": {
+       "min": [
+        24,
+        7,
+        0
+       ],
+       "max": [
+        35,
+        10,
+        2
+       ]
+      },
+      "tags": [
+       "glass"
+      ]
+     }
+    ],
+    "objectives": []
+   }
   },
   "description": "One short wall per material for destruction testing. The four calibrated blocks (concrete/metal/stone/wood) sit at gu x=2/7/12/17 with one guard each at a different distance. 2026-08-21 (MAT-BLOCK-01): brick, cardboard, fabric, plywood and glass are now REAL BLOCKS at gu x=22/26/30/34/38, y=2, 3 wide, 2 storeys, each with a matching 3x3 floor zone at y=4 so the same facade is exercised on the SLAB path too (D34). They were reserved open floor until the Director delivered the five facades; the step is 4 rather than the reserved layout's 5 because a fifth material (plywood/madeirite) was added and five 3-wide blocks at step 5 would run past the 44-wide board. GLASS IS PLACED DELIBERATELY: ROOF_BAKE_LEAK_2026-08-17.md pulled it back to reserved after 520 roof voxels came up with no baked lookup entry, and the cause was that glass had no facade at all rather than a missing roof family — placing it now is the test of that diagnosis. Its DESTRUCTION rule (the non-local pane break) is still deferred. Weapon bench and floor grenades retired 2026-08-17: firing goes through the agent himself (WEAPON_MASTER_PLAN 6c, built 2026-08-19). 2026-08-19, Director: ONE GUARD PER MATERIAL WALL, each at a DIFFERENT distance from its own wall (concrete 2 GU, metal 4, stone 6, wood 9) - shooting each one tests a different impact angle and travel distance against a different material. Routes are deliberately 2 cells: they exist because _spawn_guards() skips anything shorter. Agent at (10,15) so all four are in front of him. Board enlarged and a light added over the guard's patrol area 2026-08-17. Rebuilt from scratch 2026-07-22, replaces the old District A-F showcase map."
 }

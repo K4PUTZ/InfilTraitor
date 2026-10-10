@@ -720,6 +720,151 @@
      "storeys": 3
     }
    ]
+  },
+  "layout": {
+   "v": 1,
+   "poi": [
+    {
+     "id": "big_pane",
+     "at": [
+      13.0,
+      10.0,
+      1.5
+     ],
+     "tags": [
+      "glass",
+      "detail"
+     ]
+    },
+    {
+     "id": "throw_front",
+     "at": [
+      13.5,
+      11.5
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "inner_pane",
+     "at": [
+      13.0,
+      7.0,
+      1.5
+     ],
+     "tags": [
+      "glass",
+      "detail"
+     ]
+    },
+    {
+     "id": "bands_wall",
+     "at": [
+      20.5,
+      10.0,
+      1.5
+     ],
+     "tags": [
+      "glass",
+      "detail"
+     ]
+    },
+    {
+     "id": "screens",
+     "at": [
+      7.0,
+      10.0,
+      1.0
+     ],
+     "tags": [
+      "glass",
+      "detail"
+     ]
+    },
+    {
+     "id": "glass_block",
+     "at": [
+      7.5,
+      3.5,
+      1.0
+     ],
+     "tags": [
+      "glass",
+      "detail"
+     ]
+    },
+    {
+     "id": "window_row",
+     "at": [
+      10.0,
+      15.0,
+      1.5
+     ],
+     "tags": [
+      "glass",
+      "detail"
+     ]
+    }
+   ],
+   "regions": [
+    {
+     "id": "glass_wing",
+     "box": {
+      "min": [
+       3,
+       3,
+       0
+      ],
+      "max": [
+       23,
+       16,
+       3
+      ]
+     },
+     "tags": [
+      "glass",
+      "wide"
+     ]
+    },
+    {
+     "id": "big_pane_zone",
+     "box": {
+      "min": [
+       9,
+       6,
+       0
+      ],
+      "max": [
+       17,
+       13,
+       3
+      ]
+     },
+     "tags": [
+      "glass"
+     ]
+    },
+    {
+     "id": "window_wall",
+     "box": {
+      "min": [
+       3,
+       13,
+       0
+      ],
+      "max": [
+       17,
+       16,
+       3
+      ]
+     },
+     "tags": [
+      "glass"
+     ]
+    }
+   ],
+   "objectives": []
   }
  }
 }

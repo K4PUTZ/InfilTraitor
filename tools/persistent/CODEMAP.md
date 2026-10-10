@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**281 scripts · 84556 lines total** (under `godot/scripts/`)
+**285 scripts · 85433 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,9 +19,9 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
 - **systems/** — board_probe.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, circle_field_octagon_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
+- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, circle_field_octagon_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, options_panel.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
-- **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
+- **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compass.gd, map_compiler.gd, map_envelope.gd, map_geometry.gd, map_layout.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -4416,6 +4416,26 @@ extends `SceneTree` · 445 lines
 
 ---
 
+### `map_layout_selftest.gd`
+
+extends `SceneTree` · 187 lines
+
+`godot/scripts/tools/map_layout_selftest.gd`
+
+> CAPTURE_RAILS CR-1 — the map's anchors: `MapCompass` (derived from the rectangle), the `layout` section's validation (red on every kind of bad file, green on the shipped maps), the compile path on the REAL GLASS map (inner -> raw by the buffer, in MapCompiler only), `MapLayout.resolve()` for authored, derived and reserved names, the world conversion, the editor's mutation API and the round trip back to the file (`to_section()` == the section as authored), and the envelope file's warnings.
+
+**Constants / tuning**
+- `MapCompassClass` = `preload("res://godot/scripts/world/maps/map_compass.gd")`
+- `MapLayoutClass` = `preload("res://godot/scripts/world/maps/map_layout.gd")`
+- `MapEnvelopeClass` = `preload("res://godot/scripts/world/maps/map_envelope.gd")`
+- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
+- `MapSectionRegistryClass` = `preload("res://godot/scripts/world/maps/persistence/map_section_registry.gd")`
+- `MapSectionsV1Class` = `preload("res://godot/scripts/world/maps/persistence/map_sections_v1.gd")`
+- `MapFileServiceClass` = `preload("res://godot/scripts/world/maps/persistence/map_file_service.gd")`
+
+---
+
 ### `map_lint.gd`
 
 extends `SceneTree` · 58 lines
@@ -5781,7 +5801,7 @@ extends `Node2D` · 63 lines
 
 ### `file_map_source.gd`
 
-`class_name FileMapSource` · extends `RefCounted` · 201 lines
+`class_name FileMapSource` · extends `RefCounted` · 206 lines
 
 `godot/scripts/world/maps/file_map_source.gd`
 
@@ -5812,9 +5832,24 @@ extends `Node2D` · 63 lines
 
 ---
 
+### `map_compass.gd`
+
+`class_name MapCompass` · extends `RefCounted` · 105 lines
+
+`godot/scripts/world/maps/map_compass.gd`
+
+> MapCompass — the compass of a map, DERIVED from its rectangle, never authored (CAPTURE_RAILS_MASTER_PLAN §3.2). `DIRECTION_GLOSSARY` §2-§4, at view N: the rectangle's corners are the compass VERTICES (N top, E right, S bottom, W left) and its sides carry the wall faces' names (NW = the x-min column, NE = the y-min row, SE = the x-max column, SW = the y-max row). These are BASE names: rotation is camera-only (R3D-ROT), so they never change with the view. Everything that names a direction of a map (an exit's side, the safe zone, a rail's framing) asks here; nobody writes `y == 0` again. Works on any `Rect2i` in any one space (the compiled `playable_rect` in raw GU is the usual one), so no buffer arithmetic lives here.
+
+**Constants / tuning**
+- `CORNERS` = `["N", "E", "S", "W"]`
+- `SIDES` = `["NW", "NE", "SE", "SW"]`
+- `OUTWARD` = `{"NW": Vector2i(-1, 0), "NE": Vector2i(0, -1), "SE": Vector2i(1, 0), "SW": Vector2i(0, 1)}`
+
+---
+
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 562 lines
+`class_name MapCompiler` · extends `RefCounted` · 611 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -5828,6 +5863,19 @@ extends `Node2D` · 63 lines
 
 ---
 
+### `map_envelope.gd`
+
+`class_name MapEnvelope` · extends `RefCounted` · 51 lines
+
+`godot/scripts/world/maps/map_envelope.gd`
+
+> MapEnvelope — the segment's measured envelope, read from THE one file `maps/_spec/segment_envelope.json` (CAPTURE_RAILS_MASTER_PLAN §3.3; the same file `gen_segment_map.py` and `segment_budget.py` read). Footprint and buffer are the canon; `reserve` and `compose_storeys` are WARNING thresholds — guides for an author and a future editor, never limits the engine enforces.
+
+**Constants / tuning**
+- `PATH` = `"res://maps/_spec/segment_envelope.json"`
+
+---
+
 ### `map_geometry.gd`
 
 `class_name MapGeometry` · extends `RefCounted` · 159 lines
@@ -5836,15 +5884,31 @@ extends `Node2D` · 63 lines
 
 ---
 
+### `map_layout.gd`
+
+`class_name MapLayout` · extends `RefCounted` · 436 lines
+
+`godot/scripts/world/maps/map_layout.gd`
+
+> MapLayout — a map's spatial anchors (CAPTURE_RAILS_MASTER_PLAN §3-§4): the `layout` section's points of interest, regions and objectives, plus everything DERIVED from the rest of the map (bounds, the buffer ring, the compass, the agent's start, the exits, the safe zone) — one object that answers "where is X" for the camera, the overlay, a take and the future scenario editor. COORDINATES. The file speaks INNER GU (rule 7); `MapCompiler` shifts every point and box by the buffer into the compiled `layout` (RAW GU), which is what this object holds. A point is `Vector3(x, y, z)`: `x`, `y` in GU on the 1/8 lattice (cell `i` spans `[i, i+1)`), `z` in STOREYS above the playable ground (relative, never an absolute level: rule 9). `to_world()` is the only conversion to the 3D board (one GU = one world unit, raw x -> world x, raw y -> world z, a storey = one world y unit x `Board3DLive.VERTICAL_SCALE`); `to_section()` goes back to the file through `MapCompiler.raw_to_inner()`, the only inverse. ONE AUTHORITY EACH. The agent's start stays in `actors`, the access points in `legacy_compiler` / `LevelGraph` (read here through the compiled `exit_cells`; the key `layout.exits` is RESERVED until they move, CR-7), the bounds in `board`. LIFECYCLE. Built by `Room.load_map()` from the compiled layout and REPLACED on every load (F2 included); nothing in it changes with a rotation (base coordinates); nothing of it is saved in a checkpoint (static map data — an objective's progress, when the mission system exists, is state keyed by the objective's `id`).
+
+**Constants / tuning**
+- `MapCompilerRef` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `MapCompassRef` = `preload("res://godot/scripts/world/maps/map_compass.gd")`
+- `MapEnvelopeRef` = `preload("res://godot/scripts/world/maps/map_envelope.gd")`
+
+---
+
 ### `map_file_service.gd`
 
-`class_name MapFileService` · extends `RefCounted` · 135 lines
+`class_name MapFileService` · extends `RefCounted` · 146 lines
 
 `godot/scripts/world/maps/persistence/map_file_service.gd`
 
 > MapFileService — Load/save .map.json files with migration and validation Core responsibilities: 1. Load .map.json from res://maps/ or user://maps/ (user wins on ID collision) 2. Apply per-section migrations (registry delegates the heavy lifting) 3. Deserialize each section via its owner 4. Validate the result before returning 5. Save via serialize + re-emit unknown sections verbatim (tolerant round-trip)
 
 **Constants / tuning**
+- `MapLayoutRef` = `preload("res://godot/scripts/world/maps/map_layout.gd")`
 - `FORMAT_TAG` = `"infiltraitor-map"`
 - `CURRENT_SCHEMA_VERSION` = `3`
 
@@ -5876,7 +5940,7 @@ extends `Node2D` · 63 lines
 
 ### `map_sections_v1.gd`
 
-`class_name MapSectionsV1` · extends `RefCounted` · 362 lines
+`class_name MapSectionsV1` · extends `RefCounted` · 379 lines
 
 `godot/scripts/world/maps/persistence/map_sections_v1.gd`
 
@@ -5886,7 +5950,7 @@ extends `Node2D` · 63 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11547 lines
+extends `Node2D` · 11563 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5902,6 +5966,7 @@ extends `Node2D` · 11547 lines
 - `GlassShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
 - `GlassRainOverlay` = `preload("res://godot/scripts/overlays/glass_rain_overlay.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `MapLayoutClass` = `preload("res://godot/scripts/world/maps/map_layout.gd")`
 - `LevelGraphClass` = `preload("res://godot/scripts/world/level_graph.gd")`
 - `GuardEnemyClass` = `preload("res://godot/scripts/agents/guard_enemy.gd")`
 - `CeilingPropOverlayClass` = `preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")`

@@ -14,6 +14,7 @@ const GroundTransitions3DRef = preload("res://godot/scripts/geometry/ground_tran
 const GlassShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 const GlassRainOverlay = preload("res://godot/scripts/overlays/glass_rain_overlay.gd")
 const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.gd")
+const MapLayoutClass     = preload("res://godot/scripts/world/maps/map_layout.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
 const CeilingPropOverlayClass = preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")
@@ -163,6 +164,9 @@ var _current_blocked_edges: Array[Dictionary] = []
 ## and correct on its own — re-deriving it later would be pure waste.
 var _wall_height_edges: Dictionary = {}
 var _guards: Array = []
+## CAPTURE_RAILS CR-1 — the map's anchors (POIs, regions, objectives + the derived bounds, compass, exits, agent start), raw GU.
+## REPLACED by every `load_map()` (F2 included); never touched by a rotation; never saved (static map data).
+var map_layout: RefCounted = null   ## a `map_layout.gd` (MapLayoutClass)
 
 var _shadow_tiles: Dictionary = {}     ## Vector2i → float (multiplicador)
 var _exit_cells: Array[Vector2i] = []  ## Segment exit tiles (doorOpen_*)
@@ -1986,6 +1990,11 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		push_error("[Room] Map compilation failed for map_id '%s' — room state unchanged" % new_map_id)
 		return
 	_base_layout = layout.duplicate(true)
+	MapLayoutClass.vertical_scale = Board3DLiveClass.VERTICAL_SCALE
+	map_layout = MapLayoutClass.new().load_compiled(_base_layout)
+	print_debug("[MAP-LAYOUT] %s: %d poi, %d region(s), %d objective(s), %d exit(s), map %s x %.2f storeys (instance %d)" % [map_id,
+		map_layout.poi.size(), map_layout.regions.size(), map_layout.objectives.size(), map_layout.exit_cells.size(),
+		map_layout.playable_rect.size, map_layout.tallest_storeys, map_layout.get_instance_id()])
 	## §5.2: a new map is the bluntest possible world change — every cached
 	## prediction points at Voxels that are about to be replaced wholesale.
 	bump_world_revision()
@@ -3873,6 +3882,13 @@ func set_camera_zoom(zoom_level: float, via: String = "code") -> void:
 		return
 	_camera_controller.set_zoom_for_capture(zoom_level)
 	Telemetry.event("camera.zoom_end", {"zoom": camera.zoom.x, "via": via})
+
+
+## CAPTURE_RAILS — where guard `index` stands now (raw GU), for the LIVE anchor `@guard_<i>`; null when there is no such guard.
+func guard_cell(index: int) -> Variant:
+	if index < 0 or index >= _guards.size() or not is_instance_valid(_guards[index]):
+		return null
+	return _guards[index].cell
 
 
 ## TEL-06a — the camera onto the agent (`"agent"`) or onto a GU.

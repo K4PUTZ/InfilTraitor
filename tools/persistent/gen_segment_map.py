@@ -25,19 +25,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "maps" / "PLAYGROUND.map.json"
-W, H = 18, 36
+ENVELOPE = json.loads((ROOT / "maps" / "_spec" / "segment_envelope.json").read_text())  ## the one authority (CAPTURE_RAILS §3.3)
+W, H = ENVELOPE["footprint"]
 DOOR = 2
 WALL_MATERIALS = ["brick", "concrete", "wood", "plywood", "stone", "metal", "cardboard", "fabric", "painted_metal"]
 PROPS = ["crate_full", "crate_plywood", "wood_table", "desk", "locker", "bookshelf", "bin", "chair"]
 
-## PB-1's `segment_spec` (PERFORMANCE_BUDGET_MASTER_PLAN §5); BASE is the floor every one-kind sweep starts from: the rooms and the
-## materials of TYPICAL, nothing else, so a sweep row minus the BASE row is that kind's cost.
-SPECS = {
-    "BASE":    {"rooms": 5, "materials": 6, "props": 0,  "guards": 0,  "lights": 0,  "glass": 0,  "roofs": 0},
-    "LOW":     {"rooms": 3, "materials": 4, "props": 15, "guards": 4,  "lights": 3,  "glass": 4,  "roofs": 1},
-    "TYPICAL": {"rooms": 5, "materials": 6, "props": 30, "guards": 6,  "lights": 6,  "glass": 8,  "roofs": 2},
-    "HEAVY":   {"rooms": 8, "materials": 9, "props": 60, "guards": 10, "lights": 10, "glass": 12, "roofs": 3},
-}
+## PB-1's `segment_spec` (PERFORMANCE_BUDGET_MASTER_PLAN §5), read from `maps/_spec/segment_envelope.json`; BASE is the floor every
+## one-kind sweep starts from (a tool row, not a spec): the rooms and the materials of TYPICAL, nothing else, so a sweep row minus the
+## BASE row is that kind's cost.
+SPECS = {"BASE": dict(ENVELOPE["specs"]["TYPICAL"], props=0, guards=0, lights=0, glass=0, roofs=0)}
+SPECS.update({name: dict(row) for name, row in ENVELOPE["specs"].items()})
 
 
 def room_grid(w: int, h: int, rooms: int) -> list:
@@ -163,6 +161,14 @@ def build(spec: dict, map_id: str, w: int = W, h: int = H) -> dict:
     sec["roofs"]["items"] = roofs
     sec["floor_zones"]["items"] = [{"gu": [0, 0], "size": [w, h], "material": "concrete"}]
     sec["legacy_compiler"]["lights"] = lights
+    ## CAPTURE_RAILS CR-1: the anchors of a generated segment — one region per room (2 storeys, the blocks' height) and its centre
+    ## as a POI; the first room's centre is where an event is staged. Never inherited from SRC (PLAYGROUND's anchors are elsewhere).
+    sec["layout"] = {"v": 1, "objectives": [],
+                     "regions": [{"id": "room_%d" % i, "box": {"min": [x0, y0, 0], "max": [x1, y1, 2]}, "tags": ["room"]}
+                                 for i, (x0, x1, y0, y1) in enumerate(rooms)],
+                     "poi": [{"id": "room_%d_centre" % i, "at": [(x0 + x1) / 2.0, (y0 + y1) / 2.0],
+                              "tags": ["event"] if i == 0 else ["detail"]}
+                             for i, (x0, x1, y0, y1) in enumerate(rooms)]}
     out["sections"] = sec
     return out
 

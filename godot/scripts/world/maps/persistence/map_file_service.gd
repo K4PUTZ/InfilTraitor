@@ -10,6 +10,8 @@
 class_name MapFileService
 extends RefCounted
 
+const MapLayoutRef = preload("res://godot/scripts/world/maps/map_layout.gd")
+
 const FORMAT_TAG := "infiltraitor-map"
 const CURRENT_SCHEMA_VERSION := 3
 
@@ -132,4 +134,13 @@ func _validate(spec: Dictionary) -> Dictionary:
 	# Baseline checks
 	if spec.get("id", "") == "":
 		errors.append("Map has no id")
+	## CAPTURE_RAILS CR-1: the anchors are checked against the board they live on (ids, lattice, bounds, objective kinds, the
+	## reserved `exits`); the envelope's thresholds are warnings, printed once, never a failed load.
+	var sections: Dictionary = spec.get("sections", {})
+	var layout_section: Dictionary = sections.get("layout", {})
+	if not layout_section.is_empty():
+		var warnings: Array = []
+		MapLayoutRef.validate_section(layout_section, sections, errors, warnings)
+		for w in warnings:
+			push_warning("[MapFileService] %s: %s" % [spec.get("id", "?"), w])
 	return {"ok": errors.is_empty(), "errors": errors}

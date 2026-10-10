@@ -1,0 +1,14 @@
+{
+ "v": 1,
+ "comment": "THE one authority for the segment's measured envelope (CAPTURE_RAILS_MASTER_PLAN §3.3, PERFORMANCE_BUDGET_MASTER_PLAN §5 / PB-1 / PB-7). Read by tools/persistent/gen_segment_map.py, tools/persistent/segment_budget.py and godot/scripts/world/maps/map_envelope.gd. footprint/buffer in GU; reserve and compose_storeys are WARNING thresholds (guides, never engine limits).",
+ "footprint": [18, 36],
+ "buffer": 5,
+ "reserve": [24, 48],
+ "playable_storeys": 1,
+ "compose_storeys": 3,
+ "specs": {
+  "LOW":     {"rooms": 3, "materials": 4, "props": 15, "guards": 4,  "lights": 3,  "glass": 4,  "roofs": 1},
+  "TYPICAL": {"rooms": 5, "materials": 6, "props": 30, "guards": 6,  "lights": 6,  "glass": 8,  "roofs": 2},
+  "HEAVY":   {"rooms": 8, "materials": 9, "props": 60, "guards": 10, "lights": 10, "glass": 12, "roofs": 3}
+ }
+}

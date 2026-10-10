@@ -19,6 +19,7 @@ static func register_all(registry) -> void:
 	register_props(registry)
 	register_actors(registry)
 	register_legacy_compiler(registry)
+	register_layout(registry)
 
 static func register_board(registry) -> void:
 	var SectionOwner = registry.SectionOwner
@@ -354,6 +355,22 @@ static func register_legacy_compiler(registry) -> void:
 	var SectionOwner = registry.SectionOwner
 	registry.register(SectionOwner.new(
 		"legacy_compiler",
+		1,
+		func(fragment: Dictionary) -> Dictionary: return fragment.duplicate(true),
+		func(raw: Dictionary) -> Dictionary: return raw.duplicate(true),
+		{},
+		func() -> Dictionary: return {}
+	))
+
+
+## layout (CAPTURE_RAILS_MASTER_PLAN CR-1, 2026-10-10): the map's anchors in INNER GU — `envelope`, `poi`, `regions`, `objectives`
+## (points `[x, y]` / `[x, y, z]`, z in storeys above the playable ground, on the 1/8 lattice). The whole dictionary round-trips as
+## authored (a reserved or unknown key included, so `MapLayout.validate_section()` — run by `MapFileService` — can fail it loudly
+## instead of the owner dropping it in silence). Absent = no anchors: the derived ones (`@map`, `@agent_start`, the compass) still exist.
+static func register_layout(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	registry.register(SectionOwner.new(
+		"layout",
 		1,
 		func(fragment: Dictionary) -> Dictionary: return fragment.duplicate(true),
 		func(raw: Dictionary) -> Dictionary: return raw.duplicate(true),

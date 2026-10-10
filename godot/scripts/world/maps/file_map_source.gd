@@ -150,6 +150,11 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 	if (material_tints_section.get("tints", {}) as Dictionary).size() > 0:
 		runtime["material_tints"] = material_tints_section["tints"]
 
+	# --- Layout section (CAPTURE_RAILS CR-1): the map's anchors, inner GU; MapCompiler shifts them --------------------------
+	var layout_section = sections.get("layout", {})
+	if not (layout_section as Dictionary).is_empty():
+		runtime["layout"] = (layout_section as Dictionary).duplicate(true)
+
 	# --- Damage materials section (D13): flat declared-material list ---------
 	var damage_materials_section = sections.get("damage_materials", {})
 	if damage_materials_section.get("materials", []).size() > 0:

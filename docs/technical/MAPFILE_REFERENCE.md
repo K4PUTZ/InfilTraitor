@@ -78,10 +78,12 @@ Coordinates are **internal** throughout; the buffer is applied only in
 
 ### Reserved, not yet registered
 
-**Planned 2026-10-10 (`CAPTURE_RAILS_MASTER_PLAN` CR-1 / CR-3, not registered yet):** `layout` — the map's anchors in inner GU
-(`envelope`, `poi`, `regions`, `objectives`; points `[x, y, z]` with `z` in storeys above the playable ground, on the 1/8 lattice;
-the key `exits` reserved until the access points move there, CR-7) — and `capture` (dev only: camera `rails` and named `takes`).
-Until their owners exist, a file carrying them round-trips verbatim as unknown sections (M3).
+**`layout` is REGISTERED (2026-10-10, `CAPTURE_RAILS_MASTER_PLAN` CR-1):** the map's anchors in inner GU (`envelope`, `poi`,
+`regions`, `objectives`; points `[x, y]` / `[x, y, z]` with `z` in storeys above the playable ground, on the 1/8 lattice; the key
+`exits` reserved until the access points move there, CR-7). Validated at load by `MapLayout.validate_section()` from
+`MapFileService._validate()` (errors fail the load; the envelope of `maps/_spec/segment_envelope.json` only warns); shifted to raw GU
+by `MapCompiler._compile_layout()`; read at runtime as `room.map_layout`. **Planned (CR-3):** `capture` (dev only: camera `rails` and
+named `takes`); until its owner exists a file carrying it round-trips verbatim as an unknown section (M3).
 
 `procedural` (`{generator, seed, params}`) and `patches` (ordered ops:
 `set_wall_material`, `add_prop`, `remove_edge`, …) are schema-reserved from

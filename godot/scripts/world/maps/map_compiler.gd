@@ -388,6 +388,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"damage_materials":  damage_materials,  ## D13: map's declared damage-atom-bake material list
 		"floor_opening_instances": floor_opening_instances,  ## R3D-SURFACES SM-6b: real openings through the floor (raw GU), carved by SlabGenerator
 		"ground_vent_instances": ground_vent_instances,  ## R3D-SURFACES SM-6: floor vents (raw GU), a cosmetic plume each
+		"layout":           _compile_layout(spec, offset),  ## CAPTURE_RAILS CR-1: the map's anchors (raw GU), read by `MapLayout.from_compiled()`
 		"ground_scatter_items": ground_scatter_items,  ## R3D-SURFACES SM-2: scatter zones (raw GU), expanded by GroundScatter at attach
 		"material_tints":   material_tints,    ## R3D-SURFACES: material id -> Color, the colour it reads as in this map (cosmetic)
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
@@ -438,6 +439,54 @@ static func _compile_panel_bands(bands) -> Dictionary:
 		for lvl in range(mini(lo, hi), maxi(lo, hi) + 1):
 			out[lvl] = mat
 	return out
+
+
+## CAPTURE_RAILS CR-1 — the `layout` section (inner GU, validated at load by `MapLayout.validate_section()`) shifted by the buffer
+## into raw GU: THE place rule 7 applies it. Points become `Vector3(x, y, z)` (z in storeys); a region's box becomes `min` / `max`.
+## `tallest_storeys` is `@map`'s height, from the geometry that is declared (blocks, panels, roofs).
+static func _compile_layout(spec: Dictionary, offset: Vector2i) -> Dictionary:
+	var section: Dictionary = spec.get("layout", {})
+	var shift := Vector3(offset.x, offset.y, 0.0)
+	var out: Dictionary = {
+		"envelope": (section.get("envelope", {}) as Dictionary).duplicate(true),
+		"tallest_storeys": tallest_storeys_of(spec.get("blocks", []), spec.get("panels", []),
+			spec.get("roofs", [])),
+		"poi": [], "regions": [], "objectives": [],
+	}
+	for p in section.get("poi", []):
+		(out["poi"] as Array).append({"id": str(p["id"]), "at": _layout_point(p["at"]) + shift, "tags": p.get("tags", []).duplicate()})
+	for r in section.get("regions", []):
+		(out["regions"] as Array).append({"id": str(r["id"]), "min": _layout_point(r["box"]["min"]) + shift,
+			"max": _layout_point(r["box"]["max"]) + shift, "tags": r.get("tags", []).duplicate()})
+	for o in section.get("objectives", []):
+		var row: Dictionary = {"id": str(o["id"]), "kind": str(o["kind"]), "tags": o.get("tags", []).duplicate()}
+		if o.has("region"):
+			row["region"] = str(o["region"])
+		else:
+			row["at"] = _layout_point(o["at"]) + shift
+		(out["objectives"] as Array).append(row)
+	return out
+
+
+## The tallest storey any geometry reaches (blocks, panels with their start storey, roofs) — `@map`'s height.
+static func tallest_storeys_of(blocks: Array, panels: Array, roofs: Array) -> float:
+	var top: float = 1.0
+	for b in blocks:
+		top = maxf(top, float(b.get("storeys", 1)))
+	for p in panels:
+		top = maxf(top, float(p.get("start_storey", 0)) + float(p.get("storeys", 1)))
+	for r in roofs:
+		top = maxf(top, float(r.get("storeys", 1)))
+	return top
+
+
+static func _layout_point(v: Array) -> Vector3:
+	return Vector3(float(v[0]), float(v[1]), float(v[2]) if v.size() == 3 else 0.0)
+
+
+## CAPTURE_RAILS CR-1 — the ONLY inverse of the buffer shift (rule 7): a raw GU point back to the file's inner GU (the editor's path).
+static func raw_to_inner(raw: Vector2, buffer: int) -> Vector2:
+	return raw - Vector2(buffer, buffer)
 
 
 static func _resolve_access_points(spec: Dictionary, context: Dictionary) -> Array[Dictionary]:

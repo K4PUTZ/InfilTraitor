@@ -716,6 +716,9 @@ func fire_at_active() -> void:
 	## fragment falls with it. `reap_orphaned_remnants()` base-records its own
 	## felled voxels, so it is safe here after the loop above.
 	var reaped_voxels: Array = room.reap_orphaned_remnants().get("voxels", [])
+	## G-S1 (G-D53: shots count) — glass this shot left standing on nothing comes down, staged. Not awaited.
+	if room.has_method("schedule_glass_collapse"):
+		room.schedule_glass_collapse(room.GLASS_COLLAPSE_SHOT_DELAY_S)
 	## R3D-PROPS: a crate this shot brought down stops blocking.
 	room._release_destroyed_prop_cells()
 

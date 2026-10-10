@@ -379,6 +379,9 @@ func commit(room = null, defer_rain: bool = false) -> void:
 		## delta broke with no glass of its own, so it is not gated on the glass
 		## fields above. Early-returns when nothing is stuck to a frame.
 		reaped_voxels = room.reap_orphaned_remnants().get("voxels", [])
+		## G-S1 (G-D50..G-D52) — and the glass this blast left standing on nothing comes down ~1 s after the explosion. Not awaited.
+		if room.has_method("schedule_glass_collapse"):   ## a selftest's room stub has no board to collapse
+			room.schedule_glass_collapse(-1.0)
 
 
 ## The rain `commit(room, true)` left out. Idempotent per call site: the caller runs it once.

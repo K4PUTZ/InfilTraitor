@@ -1017,6 +1017,146 @@ func reap_orphaned_remnants() -> Dictionary:
 	return {"reaped": orphan_keys.size(), "landed": landed, "voxels": fallen_voxels}
 
 
+## ── G-S1 / G-D50..G-D52 — GLASS THAT NO LONGER STANDS COMES DOWN, STAGED ──────
+##
+## (Director, 2026-10-09.) After a destruction event, `GlassSupport.unsupported()` names every pane voxel that is held by nothing or
+## hangs too far (about a GU) off its nearest held column. It falls ~1 s after the explosion ends, in three overlapping waves —
+## ~10-20 %, ~50-70 %, the rest — farthest from the support first, through the same path as a shatter: DESTROYED, base-recorded,
+## the shards' fall and their floor decals, the board's remesh and a scoped light repaint. Called once per event, after
+## `reap_orphaned_remnants()` (the cook's `WorldDelta.commit()` and the shot pipeline). `delay_s` is from the call.
+static var GLASS_COLLAPSE_BLAST_DELAY_S: float = 2.5
+static var GLASS_COLLAPSE_SHOT_DELAY_S: float = 0.8
+static var GLASS_COLLAPSE_WAVE_GAP_S: float = 0.35
+static var GLASS_COLLAPSE_WAVE1: Vector2 = Vector2(0.10, 0.20)
+static var GLASS_COLLAPSE_WAVE2: Vector2 = Vector2(0.50, 0.70)
+const GLASS_COLLAPSE_INDEX_BUDGET_US: int = 4000   ## main-thread time per frame the landing index may take during the delay
+const GlassSupportRef = preload("res://godot/scripts/systems/destruction/glass_support.gd")
+
+
+func schedule_glass_collapse(delay_s: float) -> void:
+	if delay_s < 0.0:
+		delay_s = GLASS_COLLAPSE_BLAST_DELAY_S
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		return
+	var tree: SceneTree = get_tree()
+	## The walk runs on the WorkerThreadPool over a snapshot taken now, while the explosion plays out; the fall starts `delay_s`
+	## after this call either way (the walk is ~100 ms on the desktop, several hundred on the Moto, never inside a frame).
+	var t0: int = Time.get_ticks_usec()
+	var snap = GlassSupportRef.snapshot(store)
+	var snap_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
+	var holder: Array = [[]]
+	var task: int = WorkerThreadPool.add_task(func() -> void: holder[0] = GlassSupportRef.unsupported(snap), false, "glass support")
+	var waited: float = 0.0   ## in PROCESS time (deterministic under --fixed-fps), never the wall clock
+	while not WorkerThreadPool.is_task_completed(task):
+		await tree.process_frame
+		waited += get_process_delta_time()
+	WorkerThreadPool.wait_for_task_completion(task)
+	var plan: Array = holder[0]
+	var ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
+	if not is_instance_valid(self) or VoxelStore.active != store:
+		return
+	if plan.is_empty():
+		print_debug("[GLASS-COLLAPSE] support checked in %.1f ms (snapshot %.1f ms, off the main thread): every pane voxel stands"
+			% [ms, snap_ms])
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = FacadeSampler._fnv1a_hash("GLASSCOLLAPSE:%d:%d" % [int(plan[0]["claim"]), plan.size()])
+	var n: int = plan.size()
+	var n1: int = clampi(int(ceil(float(n) * rng.randf_range(GLASS_COLLAPSE_WAVE1.x, GLASS_COLLAPSE_WAVE1.y))), 1, n)
+	var n2: int = clampi(int(ceil(float(n) * rng.randf_range(GLASS_COLLAPSE_WAVE2.x, GLASS_COLLAPSE_WAVE2.y))), 0, n - n1)
+	var waves: Array = [plan.slice(0, n1), plan.slice(n1, n1 + n2), plan.slice(n1 + n2)]
+	## Where every shard lands, worked out NOW and spread over frames (`GlassFall.index_step()` with a per-frame budget): the surface
+	## index walks every cell of every slab, ~200 ms on the Moto, and paid once per wave it was a 200 ms frame each time.
+	var columns: Dictionary = {}
+	var wave_scatter: Array = []
+	for wv: Array in waves:
+		var fallen_w: Array = []
+		for e: Dictionary in wv:
+			var k: int = int(e["claim"]) * 3
+			fallen_w.append({"grid_pos": Vector2i(snap.xyz[k], snap.xyz[k + 1]), "level": snap.xyz[k + 2]})
+		wave_scatter.append(GlassFall.scatter_all(fallen_w, {}, columns))
+	var index_state: Dictionary = GlassFall.index_begin(_slab_registry.all_slabs() if _slab_registry != null else [], columns)
+	while not GlassFall.index_step(index_state, Time.get_ticks_usec() + GLASS_COLLAPSE_INDEX_BUDGET_US):
+		await tree.process_frame
+		waited += get_process_delta_time()
+		if not is_instance_valid(self) or VoxelStore.active != store:
+			return
+	var surface_index: Dictionary = GlassFall.index_finish(index_state)
+	var wave_landings: Array = []
+	for sc: Array in wave_scatter:
+		wave_landings.append(GlassFall.landings_from_index(sc, surface_index))
+	print_debug("[GLASS-COLLAPSE] support checked in %.1f ms (snapshot %.1f ms, off the main thread): %d pane voxel(s) will fall in waves of %d / %d / %d after %.1f s"
+		% [ms, snap_ms, n, n1, n2, n - n1 - n2, delay_s])
+	if delay_s > waited:
+		await tree.create_timer(delay_s - waited, false).timeout
+	for i: int in range(waves.size()):
+		if not is_instance_valid(self) or VoxelStore.active != store:
+			return   ## a map load replaced the board mid-collapse: the plan names claims of a store that is gone
+		if not (waves[i] as Array).is_empty():
+			await _fell_glass_wave(waves[i], wave_landings[i], i + 1)
+		if i < waves.size() - 1:
+			await tree.create_timer(GLASS_COLLAPSE_WAVE_GAP_S, false).timeout
+
+
+## One wave: the claims still standing go DESTROYED and fall (their landings planned during the delay), the board is told. No light
+## repaint, as `reap_orphaned_remnants()` (G-D45): a glass voxel barely moves the light (G-D8), and the scoped repaint of the first
+## wave was ~200 ms on the Moto (it inherited the blast's own pending light changes).
+func _fell_glass_wave(entries: Array, landings: Array, wave: int) -> void:
+	var store: VoxelStore = VoxelStore.active
+	var voxels: Array = []
+	var fallen: Array = []
+	for e: Dictionary in entries:
+		var v: Voxel = store.voxel_of(int(e["claim"]))
+		if v == null or VoxelStore.damage_of(v) == Voxel.DamageState.DESTROYED:
+			continue
+		v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+		record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state, v.damage_is_blast, v.damage_carved_side,
+			v.damage_variant, v.damage_substrate, v)
+		var bkey := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+		if _base_remnants.has(bkey):   ## a remnant falling too: drop its record and its cut, as G-D45 does
+			_base_remnants.erase(bkey)
+			_voxel_board.erase_glass_cell(v.level, v.grid_pos)
+		voxels.append(v)
+		fallen.append({"grid_pos": v.grid_pos, "level": v.level})
+	if voxels.is_empty():
+		return
+	var tw0: int = Time.get_ticks_usec()
+	bump_world_revision()
+	## A shard whose voxel was already gone (another event took it during the delay) is dropped from the planned landings.
+	var gone: Dictionary = {}
+	for f: Dictionary in fallen:
+		gone[Vector3i(f["grid_pos"].x, f["grid_pos"].y, int(f["level"]))] = true
+	var kept: Array = []
+	for lg: Dictionary in landings:
+		if gone.has(Vector3i(lg["origin_pos"].x, lg["origin_pos"].y, int(lg["from_level"]))):
+			kept.append(lg)
+	var landed: int = kept.size()
+	record_glass_shards(GlassFall.pile_by_cell(kept))
+	spawn_glass_rain(kept)
+	while _destruction_render_busy:
+		await get_tree().process_frame
+		if not is_instance_valid(_voxel_board):
+			return
+	var tw1: int = Time.get_ticks_usec()
+	_destruction_render_busy = true
+	await _voxel_board.process_dirty_async(_edge_registry)
+	if not is_instance_valid(self) or not is_instance_valid(_voxel_board):
+		return
+	await _voxel_board.process_dirty_slabs_async(_slab_registry)
+	if not is_instance_valid(self) or not is_instance_valid(_voxel_board):
+		return
+	var tw2: int = Time.get_ticks_usec()
+	var tw3: int = tw2
+	var live: Node = board3d()
+	if live != null:
+		live.on_shot_commit(voxels)
+	_destruction_render_busy = false
+	print_debug("[GLASS-COLLAPSE] wave %d: %d voxel(s) fell, %d shard(s) landed · damage+fall %.1f ms, dirty pass %.1f ms (async, wall), board %.1f ms"
+		% [wave, voxels.size(), landed, float(tw1 - tw0) / 1000.0, float(tw2 - tw1) / 1000.0,
+		float(Time.get_ticks_usec() - tw3) / 1000.0])
+
+
 ## The glass SLICE holding one voxel in this view, or null. Shared by the craze
 ## claim and its rotation replay so the two cannot look a pane up differently.
 func _glass_slice_at(grid_pos: Vector2i, level: int):

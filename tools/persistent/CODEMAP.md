@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**290 scripts · 86541 lines total** (under `godot/scripts/`)
+**290 scripts · 86567 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3404,7 +3404,7 @@ extends `Node` · 143 lines
 
 ### `scenario_runner.gd`
 
-extends `Node` · 717 lines
+extends `Node` · 743 lines
 
 `godot/scripts/systems/scenario_runner.gd`
 

@@ -52,8 +52,8 @@ OVERRIDE = ROOT / "override.cfg"
 OVERRIDE_MARK = "; written by tools/persistent/capture.py — deleted when the run ends"
 
 
-def run_godot(map_id, scenario, window, shape, extra=(), seed=1, timeout=600):
-    env = dict(os.environ, INFILTRAITOR_MAP=map_id, INFILTRAITOR_SCENARIO=scenario, INFILTRAITOR_RNG_SEED=str(seed),
+def run_godot(map_id, scenario, window, shape, extra=(), seed=1, timeout=600, env_extra=None):
+    env = dict(os.environ, **(env_extra or {}), INFILTRAITOR_MAP=map_id, INFILTRAITOR_SCENARIO=scenario, INFILTRAITOR_RNG_SEED=str(seed),
                INFILTRAITOR_CAPTURE_WINDOW_FIXED="1", INFILTRAITOR_CAPTURE_SHAPE=shape)
     ## OFF SCREEN (Director, 2026-10-10: the machine may be in use; a full-screen take could eat a stray click). Measured: a window
     ## at 4000,4000 still draws, and Movie Maker writes the exact profile size (1920 x 1080) even on a 1920 x 1080 display.
@@ -105,6 +105,50 @@ def contact_sheet(frames_dir: Path, every: int, out: Path):
     print("[CAPTURE] sheet %s (%d frames, one in %d)" % (out.relative_to(ROOT), len(thumbs), every))
 
 
+def realtime(args, shape, suffix, window, frames_dir: Path, movie_log: str):
+    """CR-6: the same take at real speed (no Movie Maker) records each take frame's duration; the Movie Maker frames are then shown
+    for those durations, the ms stamped, so the real-time feel (and a stall) is visible from an off-screen run."""
+    import re
+    from PIL import Image, ImageDraw
+    m = re.search(r"\[TAKE\] %s: start at drawn frame (\d+)" % re.escape(args.take), movie_log)
+    if not m:
+        sys.exit("[CAPTURE] realtime: the movie run did not print its take start")
+    offset = int(m.group(1))
+    run_godot(args.map, "take %s; quit" % args.take, window, shape, seed=args.seed, timeout=1800, env_extra={"INFILTRAITOR_CAPTURE_TIMING": "1",
+              ## uncapped: the 30 fps default cap would make every frame >= 33 ms and hide the cost (PERFORMANCE_BUDGET: measure uncapped)
+              "INFILTRAITOR_MAX_FPS": "0"})
+    csv = USER_CAPTURES / ("%s_timing.csv" % args.take.replace(":", "_"))
+    if not csv.exists():
+        csv = USER_CAPTURES / ("%s_timing.csv" % args.take)
+    rows = [l.split(",") for l in csv.read_text().splitlines()[1:]]
+    ms = [float(r[1]) for r in rows]
+    pngs = sorted(frames_dir.glob("f*.png"))
+    out_dir = frames_dir / "rt"
+    out_dir.mkdir()
+    lines = []
+    slow = 0
+    for i, t in enumerate(ms):
+        k = offset + i
+        if k >= len(pngs):
+            break
+        im = Image.open(pngs[k]).convert("RGB")
+        d = ImageDraw.Draw(im)
+        bad = t > 33.4
+        slow += bad
+        d.rectangle([0, 0, 330, 44], fill=(160, 0, 0) if bad else (0, 0, 0))
+        d.text((10, 8), "take frame %4d   %6.1f ms" % (i + 1, t), fill=(255, 255, 255), font_size=24)
+        f = out_dir / ("r%05d.png" % i)
+        im.save(f)
+        lines.append("file '%s'\nduration %.4f" % (f, t / 1000.0))
+    (out_dir / "list.txt").write_text("\n".join(lines) + "\n")
+    out = VIDEOS / ("%s_%s%s_realtime.mp4" % (args.map, args.take.replace(":", "_"), suffix))
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(out_dir / "list.txt"),
+                    "-vsync", "vfr", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", str(out)], check=True)
+    shutil.copy(csv, VIDEOS / ("%s_%s_timing.csv" % (args.map, args.take.replace(":", "_"))))
+    print("[CAPTURE] realtime %s: %d frames, %.1f s real, worst %.1f ms, %d frame(s) over 33.3 ms"
+          % (out.relative_to(ROOT), len(ms), sum(ms) / 1000.0, max(ms), slow))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Framed stills and frame-by-frame takes of a map (see the header)")
     ap.add_argument("--map", required=True)
@@ -118,6 +162,8 @@ def main() -> int:
     ap.add_argument("--sheet", type=int, default=0, help="--take: a contact sheet of one frame in N")
     ap.add_argument("--hud-grid", action="store_true", help="draw the 3x3 HUD regions over the stills")
     ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--realtime", action="store_true", help="--take: also run it at real speed and build <take>_realtime.mp4, each "
+                    "frame held for its measured duration with the ms stamped (CR-6: a stall shows as a freeze)")
     ap.add_argument("--keep-frames", default="", help="--take: copy the raw PNG frames into this folder (determinism checks)")
     args = ap.parse_args()
     if args.profile not in PROFILES["profiles"]:
@@ -152,8 +198,8 @@ def main() -> int:
         else:
             with tempfile.TemporaryDirectory(prefix="take_") as tmp:
                 frames = Path(tmp) / "f.png"
-                run_godot(args.map, "take %s; quit" % args.take, window, shape,
-                          extra=("--write-movie", str(frames), "--fixed-fps", "60"), seed=args.seed, timeout=1800)
+                movie_log = run_godot(args.map, "take %s; quit" % args.take, window, shape,
+                                      extra=("--write-movie", str(frames), "--fixed-fps", "60"), seed=args.seed, timeout=1800)
                 pngs = sorted(Path(tmp).glob("f*.png"))
                 if not pngs:
                     sys.exit("[CAPTURE] Movie Maker wrote no frame")
@@ -171,6 +217,8 @@ def main() -> int:
                 subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-framerate", "60", "-i", str(Path(tmp) / "f%08d.png"),
                                 "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", str(out)], check=True)
                 print("[CAPTURE] video %s" % out.relative_to(ROOT))
+                if args.realtime:
+                    realtime(args, shape, suffix, window, Path(tmp), movie_log)
                 if args.sheet:
                     contact_sheet(Path(tmp), args.sheet, STILLS / ("%s_%s%s_sheet.png" % (args.map, args.take.replace(":", "_"), suffix)))
     return 0

@@ -309,6 +309,10 @@ def main():
     ap.add_argument("--focus", default="",
                     help="shot mode: 'x,y' GU the camera centres on "
                          "(default: midway between shooter and target)")
+    ap.add_argument("--take", metavar="ID",
+                    help="CAPTURE_RAILS CR-5: a take of --map (authored, or overview / region:<id> / poi:<id>) through "
+                         "capture.py, a sheet of EVERY frame (one in --every). Framed from the map's anchors; the preferred path")
+    ap.add_argument("--every", type=int, default=1, help="--take: one frame in N on the sheet")
     ap.add_argument("--video", action="store_true",
                     help="encode the frames to mp4 instead of tiling a sheet (P-VID)")
     ap.add_argument("--fps", type=int, default=60,
@@ -332,6 +336,10 @@ def main():
                          "3.0 = 0.375 of a floor tile). Repeat the flag to sweep, "
                          "one MP4 per value: --rain-gain 0 --rain-gain 3 --rain-gain 12")
     args = ap.parse_args()
+    if args.take:
+        import subprocess as _sp
+        return _sp.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "capture.py"), "--map", args.map, "--take", args.take,
+                        "--sheet", str(args.every)]).returncode
 
     if args.glass_rain:
         root = repo_root()

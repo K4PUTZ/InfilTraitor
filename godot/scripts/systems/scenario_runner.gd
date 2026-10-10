@@ -695,6 +695,12 @@ func _run_take(room: Node, step: Dictionary) -> bool:
 	for _f in range(3):
 		await tree.process_frame
 	var start: int = Engine.get_process_frames()
+	## CR-6: with `CAPTURE_TIMING=1` every take frame's real duration is recorded (a real-speed run; the take is counted in frames,
+	## so frame N here is frame N of the Movie Maker run of the same take) and written as CSV when the take ends.
+	var timing: PackedFloat64Array = []
+	if DevFlags.on("CAPTURE_TIMING"):
+		_time_take(tree, start, int(take.get("length", 0)), timing, str(step["id"]))
+	print("[TAKE] %s: start at drawn frame %d" % [step["id"], Engine.get_frames_drawn()])
 	print("[TAKE] %s: profile %s, rail %s, %d step(s) at key %d + %d frames, length %d frames, seed %d" % [step["id"], take.get("profile", "engine"),
 		take.get("rail", ""), (parsed["steps"] as Array).size(), int(take.get("at_key", 0)), int(take.get("after_hold", 0)),
 		int(take.get("length", 0)), int(take.get("seed", 1))])
@@ -715,3 +721,23 @@ func _run_take(room: Node, step: Dictionary) -> bool:
 		await tree.process_frame
 	print("[TAKE] %s: done at take frame %d" % [step["id"], Engine.get_process_frames() - start])
 	return true
+
+
+## CR-6 — one sample per take frame (ms since the previous frame), written to `captures/<take>_timing.csv` at the end.
+func _time_take(tree: SceneTree, start: int, length: int, timing: PackedFloat64Array, take_id: String) -> void:
+	var last: int = Time.get_ticks_usec()
+	while Engine.get_process_frames() - start < length:
+		await tree.process_frame
+		var now: int = Time.get_ticks_usec()
+		timing.append(float(now - last) / 1000.0)
+		last = now
+	var path: String = _output_path("captures", "%s_timing.csv" % take_id)
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_line("take_frame,ms")
+	for i: int in range(timing.size()):
+		f.store_line("%d,%.2f" % [i + 1, timing[i]])
+	f.close()
+	var worst: float = 0.0
+	for t: float in timing:
+		worst = maxf(worst, t)
+	print("[TAKE] %s: timing %d frames, worst %.1f ms -> %s" % [take_id, timing.size(), worst, path])

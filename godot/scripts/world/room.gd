@@ -1026,7 +1026,7 @@ func reap_orphaned_remnants() -> Dictionary:
 ## `reap_orphaned_remnants()` (the cook's `WorldDelta.commit()` and the shot pipeline). `delay_s` is from the call.
 static var GLASS_COLLAPSE_BLAST_DELAY_S: float = 2.5
 static var GLASS_COLLAPSE_SHOT_DELAY_S: float = 0.8
-static var GLASS_COLLAPSE_WAVE_GAP_S: float = 0.35
+static var GLASS_COLLAPSE_WAVE_GAP_S: float = 0.12
 static var GLASS_COLLAPSE_WAVE1: Vector2 = Vector2(0.10, 0.20)
 static var GLASS_COLLAPSE_WAVE2: Vector2 = Vector2(0.50, 0.70)
 const GLASS_COLLAPSE_INDEX_BUDGET_US: int = 4000   ## main-thread time per frame the landing index may take during the delay
@@ -1094,7 +1094,9 @@ func schedule_glass_collapse(delay_s: float) -> void:
 		if not is_instance_valid(self) or VoxelStore.active != store:
 			return   ## a map load replaced the board mid-collapse: the plan names claims of a store that is gone
 		if not (waves[i] as Array).is_empty():
-			await _fell_glass_wave(waves[i], wave_landings[i], i + 1)
+			## Not awaited (Director, 2026-10-10): the next wave starts while this one is still falling. The board work stays
+			## serialised by `_destruction_render_busy`; only the shards' fall overlaps.
+			_fell_glass_wave(waves[i], wave_landings[i], i + 1)
 		if i < waves.size() - 1:
 			await tree.create_timer(GLASS_COLLAPSE_WAVE_GAP_S, false).timeout
 

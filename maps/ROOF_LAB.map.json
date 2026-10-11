@@ -1,0 +1,657 @@
+{
+ "format": "infiltraitor-map",
+ "schema_version": 3,
+ "id": "ROOF_LAB",
+ "meta": {
+  "title": "Roof Lab",
+  "description": "ROOF_MASTER_PLAN RF-1 step 1 fixture (2026-10-11). Two 3x3 rooms of 2-storey concrete block rings, each with a door on its south side and its own lamp inside: room A (interior gu 7..9 x 6..8) under a GLASS roof, room B (interior gu 15..17 x 6..8) under a CONCRETE roof (the stages after glass). A larger lamp outside stands for the hall / outdoor light above the roofs (R-D1). The agent starts outside, south of the rooms, so the roofs stay drawn. Dev fixture, not a level."
+ },
+ "sections": {
+  "board": {
+   "v": 1,
+   "inner_size": [
+    24,
+    16
+   ],
+   "buffer": 5,
+   "floor_tile": "floor_SE"
+  },
+  "actors": {
+   "v": 1,
+   "agent_start": [
+    12,
+    13
+   ],
+   "guards": []
+  },
+  "legacy_compiler": {
+   "v": 1,
+   "wall_height": 1,
+   "access_points": [],
+   "dividers": [],
+   "lights": [
+    {
+     "x": 8,
+     "y": 7,
+     "height_class": 2,
+     "radius": 4,
+     "intensity": 0.9
+    },
+    {
+     "x": 16,
+     "y": 7,
+     "height_class": 2,
+     "radius": 4,
+     "intensity": 0.9
+    },
+    {
+     "x": 12,
+     "y": 7,
+     "height_class": 4,
+     "radius": 14,
+     "intensity": 1.1
+    }
+   ]
+  },
+  "blocks": {
+   "v": 2,
+   "items": [
+    {
+     "comment": "ring 6,5",
+     "gu": [
+      6,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 6,6",
+     "gu": [
+      6,
+      6
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 6,7",
+     "gu": [
+      6,
+      7
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 6,8",
+     "gu": [
+      6,
+      8
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 6,9",
+     "gu": [
+      6,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 7,5",
+     "gu": [
+      7,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 7,9",
+     "gu": [
+      7,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 8,5",
+     "gu": [
+      8,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 9,5",
+     "gu": [
+      9,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 9,9",
+     "gu": [
+      9,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 10,5",
+     "gu": [
+      10,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 10,6",
+     "gu": [
+      10,
+      6
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 10,7",
+     "gu": [
+      10,
+      7
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 10,8",
+     "gu": [
+      10,
+      8
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 10,9",
+     "gu": [
+      10,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 14,5",
+     "gu": [
+      14,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 14,6",
+     "gu": [
+      14,
+      6
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 14,7",
+     "gu": [
+      14,
+      7
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 14,8",
+     "gu": [
+      14,
+      8
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 14,9",
+     "gu": [
+      14,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 15,5",
+     "gu": [
+      15,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 15,9",
+     "gu": [
+      15,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 16,5",
+     "gu": [
+      16,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 17,5",
+     "gu": [
+      17,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 17,9",
+     "gu": [
+      17,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 18,5",
+     "gu": [
+      18,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 18,6",
+     "gu": [
+      18,
+      6
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 18,7",
+     "gu": [
+      18,
+      7
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 18,8",
+     "gu": [
+      18,
+      8
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 18,9",
+     "gu": [
+      18,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    }
+   ]
+  },
+  "floor_zones": {
+   "v": 2,
+   "items": [
+    {
+     "gu": [
+      0,
+      0
+     ],
+     "size": [
+      24,
+      16
+     ],
+     "material": "concrete"
+    }
+   ]
+  },
+  "damage_materials": {
+   "v": 1,
+   "materials": [
+    "concrete",
+    "glass"
+   ]
+  },
+  "roofs": {
+   "v": 1,
+   "items": [
+    {
+     "comment": "room A: the glass roof (RF-1)",
+     "gu": [
+      7,
+      6
+     ],
+     "size": [
+      3,
+      3
+     ],
+     "storeys": 2,
+     "material": "glass",
+     "kind": "flat"
+    },
+    {
+     "comment": "room B: the concrete roof (RF-2)",
+     "gu": [
+      15,
+      6
+     ],
+     "size": [
+      3,
+      3
+     ],
+     "storeys": 2,
+     "material": "concrete",
+     "kind": "flat"
+    }
+   ]
+  },
+  "layout": {
+   "v": 1,
+   "poi": [
+    {
+     "id": "glass_roof",
+     "at": [
+      8.5,
+      7.5,
+      2.0
+     ],
+     "extent": [
+      3.0,
+      3.0,
+      0.5
+     ],
+     "tags": [
+      "roof",
+      "glass",
+      "detail"
+     ]
+    },
+    {
+     "id": "concrete_roof",
+     "at": [
+      16.5,
+      7.5,
+      2.0
+     ],
+     "extent": [
+      3.0,
+      3.0,
+      0.5
+     ],
+     "tags": [
+      "roof",
+      "detail"
+     ]
+    },
+    {
+     "id": "room_a_inside",
+     "at": [
+      8.5,
+      7.5
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "room_b_inside",
+     "at": [
+      16.5,
+      7.5
+     ],
+     "tags": [
+      "event"
+     ]
+    }
+   ],
+   "regions": [
+    {
+     "id": "roof_lab",
+     "box": {
+      "min": [
+       4,
+       3,
+       0
+      ],
+      "max": [
+       21,
+       13,
+       2
+      ]
+     },
+     "tags": [
+      "roof",
+      "wide"
+     ]
+    },
+    {
+     "id": "room_a",
+     "box": {
+      "min": [
+       6,
+       5,
+       0
+      ],
+      "max": [
+       11,
+       10,
+       2
+      ]
+     },
+     "tags": [
+      "roof"
+     ]
+    },
+    {
+     "id": "room_b",
+     "box": {
+      "min": [
+       14,
+       5,
+       0
+      ],
+      "max": [
+       19,
+       10,
+       2
+      ]
+     },
+     "tags": [
+      "roof"
+     ]
+    }
+   ],
+   "objectives": []
+  },
+  "capture": {
+   "v": 1,
+   "rails": [
+    {
+     "id": "glass_roof_rail",
+     "keys": [
+      {
+       "frame": "wide",
+       "target": "@room_a",
+       "view": "N",
+       "hold": 600
+      }
+     ]
+    }
+   ],
+   "takes": [
+    {
+     "id": "glass_roof_blast",
+     "profile": "engine",
+     "rail": "glass_roof_rail",
+     "steps": [
+      "throw 0 @room_a_inside"
+     ],
+     "at_key": 0,
+     "after_hold": 20,
+     "length": 600,
+     "seed": 1,
+     "note": "ROOF RF-1: a grenade inside room A under the glass roof"
+    }
+   ]
+  }
+ }
+}

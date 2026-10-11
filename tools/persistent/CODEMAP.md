@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**291 scripts · 86218 lines total** (under `godot/scripts/`)
+**291 scripts · 86220 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -698,7 +698,7 @@ extends `Node3D` · 3268 lines
 
 ### `glass_voxel_fall3d.gd`
 
-`class_name GlassVoxelFall3D` · extends `Node3D` · 358 lines
+`class_name GlassVoxelFall3D` · extends `Node3D` · 360 lines
 
 `godot/scripts/geometry/glass_voxel_fall3d.gd`
 

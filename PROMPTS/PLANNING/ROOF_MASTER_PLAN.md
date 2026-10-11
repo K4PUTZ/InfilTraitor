@@ -32,6 +32,15 @@
 - **R-D2 — SHOTS REACH ROOFS (answers Q3).** *"Os tiros por natureza são horizontais atualmente […] Nós vamos querer porém ter o gameplay onde o agente deliberadamente atira no telhado para causar alguma mudança no cenário. […] na prática vai ser o mesmo comportamento do vidro vertical, mas com as consequências, chuva, pó, caindo pra baixo."* A shot aimed at a roof behaves as a shot on a vertical pane (the hole, the craze, the support rule, G-D49's re-damage), with the consequences falling DOWN (rain, dust). The aiming gesture (how the player targets a roof) is designed with the interface, not here; the engine takes a shot whose target is a roof cell.
 - **R-D3 — AN INTACT GLASS ROOF IS TRANSLUCENT (answers Q2).** *"O telhado de vidro intacto tem opacidade, de maneira que a luz passa, porém restrita. Quando o vidro é destruído ela fica acentuada (full)."* An intact glass roof lets a RESTRICTED share of the light above through (a per-material transmission factor); a broken cell lets it through in full.
 
+## 0c. PROPOSED — the light mechanism for R-D1 / R-D3 (awaiting the Director)
+
+Found while building step 1: **the light is 2D.** `VoxelLightField._lamp_term()` lights a (GU, level) by distance from each lamp (plus `ShadowProjector`'s HORIZONTAL GU shadows from walls); **no roof blocks a lamp**, so the hall's lamp already lights a closed room's floor through an intact concrete roof. "The light above comes in through the hole" therefore needs a VERTICAL term:
+- **Above / below.** A lamp is ABOVE a roof column when its anchor level (`_anchor_level`, from `height_class`) is at or above that roof's lowest level; a room's own lamp (below its roof) is untouched.
+- **Transmission, per voxel column, projected straight down.** A lamp above reaches a cell under a roof multiplied by the roof's transmission AT THAT VOXEL COLUMN: opaque material 0, intact glass a restricted share (R-D3, a per-material `light_transmission`, start ~0.35, calibrated on screen), a destroyed voxel 1. At voxel resolution (8×8 per GU) a hole draws a patch of light of its own shape on the floor under it.
+- **Outdoor light** (open scenes only): a map-level `outdoor_light` {class sun / moon / overcast / ambient, intensity} acting as a lamp above every column: full on open floor, through the roof's transmission under it. Built when an open map needs it; the fixture uses the hall lamp.
+- **Recompute** only the columns under a roof that changed (the consequence light already re-derives the changed cells after a blast).
+- ⚠️ **It changes the look of maps that exist:** a room under an intact opaque roof stops receiving an outside lamp's light (SEG_*, PLAYGROUND, STRESS, OCCLUSION_*): its interior reads darker unless it has a lamp of its own. That is the rule R-D1 states, but it is a visible change on every roofed map.
+
 ## 1. What exists today (inventory, 2026-10-11)
 
 - **A blast damages roof voxels:** `BlastCalculator` buckets every CEILING slab on a flooded GU (`hit_roofs`), `DetonationPlanBuilder._phase_roofs` runs the wall ring model on them (D14 falloff, `carved_side` always BOTTOM). The voxels vanish; WALK / SOOT / BURN see them.

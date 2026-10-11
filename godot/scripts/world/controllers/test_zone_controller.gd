@@ -1542,9 +1542,7 @@ func _hit_stop_queue(stage: Dictionary) -> Array:
 				_stage_props_begin(stage)
 				return true,
 			func(b: int) -> bool: return _stage_props_finish(stage, b),
-			func(_b: int) -> bool:
-				delta_rain(stage)
-				return true,
+			func(b: int) -> bool: return _stage_rain_step(stage, b),
 			func(b: int) -> bool: return _stage_persist_step(stage, b),
 			func(_b: int) -> bool:
 				_stage_census(stage)
@@ -1582,10 +1580,14 @@ static func _report_slow_step(label: String, since_usec: int) -> void:
 		print("[SLOW-STEP] %s %.1f ms" % [label, ms])
 
 
-## The glass rain the world commit left out (stage 0), spawned with the glass flush.
-func delta_rain(stage: Dictionary) -> void:
-	var delta: WorldDelta = stage["delta"]
-	delta.commit_glass_rain(room)
+## The glass rain the world commit left out (stage 0), laid with the glass flush as a resumable job (`Room.begin_glass_rain`): it
+## shows whole once laid, a frame or two later on a big pane, still under the flash's fade.
+func _stage_rain_step(stage: Dictionary, budget_usec: int) -> bool:
+	if not stage.has("rain"):
+		var delta: WorldDelta = stage["delta"]
+		stage["rain"] = room.begin_glass_rain(delta.glass_shard_flights)
+	var job: Dictionary = stage["rain"]
+	return job.is_empty() or room.step_glass_rain(job, budget_usec)
 
 
 func _hit_stop_enabled() -> bool:

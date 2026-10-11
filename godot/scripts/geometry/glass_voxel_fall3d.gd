@@ -5,8 +5,11 @@
 ## voxels mais perto e mais altos caem depois. Mas é apenas uma leve influência […] Deixa os voxels +aprox 1/4 de segundo parados antes
 ## de cair […] randomizado entre 1/3 e 1/5."*
 ##
-## THE MOTION IS CLOSED FORM, per voxel (B4: every number hashed off its base cell, never `randf`): it rests `wait` frames (1/5..1/3 s,
-## minus a slight lead for the far and low ones), then falls under its own g (a spread of g), with its own small push (up, out along
+## (2026-10-11: the rest moved off the voxels — the pane now stands on the board while its support is walked — and the swap became a
+## crossfade, `FADE_IN`.)
+##
+## THE MOTION IS CLOSED FORM, per voxel (B4: every number hashed off its base cell, never `randf`): it waits `FALL_FROM_FRAME` frames
+## (the far and low ones; the near and high up to `ORDER_LEAD_FRAMES` more: a slight lead), then falls under its own g (a spread of g), with its own small push (up, out along
 ## the pane's normal, sideways) and its own tumble (a hashed axis and speed); it stops at the first frame its lowest corner reaches the
 ## top of what stands under its column (the pane's base, a floor) — so the impact frame and the impact point are known at the start,
 ## and the shard rain for the whole event is ONE overlay whose flights start at those frames and points.

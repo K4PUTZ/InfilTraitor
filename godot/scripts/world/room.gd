@@ -752,56 +752,109 @@ var _last_glass_rain: Node = null
 
 
 func spawn_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = null, paused: bool = false) -> int:
+	var job: Dictionary = begin_glass_rain(flights, with_dust, tint, paused)
+	if job.is_empty():
+		return 0
+	step_glass_rain(job, 0)
+	return int(job["n"])
+
+
+## The rain as a resumable job (2026-10-11: one blast's rain, 858 flights -> 2192 shards, was a 134-183 ms indivisible task on the
+## Moto). The overlay is created PAUSED and laid `RAIN_STEP_FLIGHTS` flights at a time by `step_glass_rain()`, so nothing shows half
+## built; on the last step it is unpaused (unless `paused`), its dust puffs and it is named by `_last_glass_rain`. {} when there is
+## nothing to lay.
+const RAIN_STEP_FLIGHTS: int = 32
+func begin_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = null, paused: bool = false) -> Dictionary:
 	if _voxel_board == null or flights.is_empty():
-		return 0
-	var rows: Array = []
-	var top_level: int = -1
-	for f in flights:
-		var gp: Vector2i = f["grid_pos"]
-		var from_level: int = int(f["from_level"])
-		var land_level: int = int(f["landing_level"])
-		## G4-4 — the shard launches from its OWN column and lands at the SCATTERED
-		## one (`grid_pos`), so the fall is now diagonal. `origin_pos` is absent on
-		## the synthetic capture path, which drops everything straight down.
-		var origin_gp: Vector2i = f.get("origin_pos", gp)
-		var from: Vector2 = _voxel_board.voxel_world_position(origin_gp, from_level)
-		var to: Vector2 = _voxel_board.voxel_world_position(gp, land_level)
-		if from == Vector2.ZERO or to == Vector2.ZERO:
-			## Rule 9 — a level this view does not build has no layer, and
-			## `voxel_world_position()` answers ZERO. Skipped, and counted by the
-			## caller's own total rather than silently dropped.
-			continue
-		## ⚠️ B4 — the hash key is BASE-space even though nothing here is stored.
-		## It costs one call and it is what lets a filmstrip of this event be
-		## compared across runs at all; a view-space key would reshuffle every
-		## shard on a camera turn mid-flight. Keyed on the ORIGIN cell + level,
-		## which is unique per destroyed voxel — two shards scattering onto one
-		## landing cell must not collapse to one hash.
-		var base_xy := origin_gp
-		var ground: int = _voxel_board.ground_plane_level()
-		if f.has("from3"):   ## G-D55: a shard of a piece that hit the floor starts where the piece is, not at its old pane cell
-			var row3: Dictionary = {"from": from, "to": to, "key": Vector3i(base_xy.x, base_xy.y, from_level), "from3": f["from3"],
-				"pop": float(f.get("pop", 1.2)), "from_floor": _voxel_board.voxel_world_position(origin_gp, ground),
-				"to_floor": _voxel_board.voxel_world_position(gp, ground)}
-			if f.has("t0"):
-				row3["t0"] = int(f["t0"])
-			rows.append(row3)
-			top_level = maxi(top_level, land_level)
-			continue
-		rows.append({
-			"from": from, "to": to,
-			"key": Vector3i(base_xy.x, base_xy.y, from_level),
-			## R3D-4e-4 — the floor under each end, so the 3D rain can place both in the world.
-			"from_floor": _voxel_board.voxel_world_position(origin_gp, ground),
-			"to_floor": _voxel_board.voxel_world_position(gp, ground),
-		})
-		top_level = maxi(top_level, land_level)
-	if rows.is_empty():
-		return 0
+		return {}
 	var rain := GlassRainOverlay.new()
 	rain.name = "GlassRain"
 	if tint is Color:
 		rain.tint = tint
+	rain.paused = true
+	_voxel_board.add_child(rain)
+	rain.set_board3d(board3d())
+	return {"flights": flights, "i": 0, "rows": [], "top": -1, "rain": rain, "dust": with_dust, "paused": paused, "n": 0}
+
+
+## Lays the job's next flights for `budget_usec` (0 = to the end). True when the rain is laid (or there was nothing to lay).
+func step_glass_rain(job: Dictionary, budget_usec: int) -> bool:
+	var rain: GlassRainOverlay = job["rain"]
+	if not is_instance_valid(rain):
+		return true
+	var t0: int = Time.get_ticks_usec()
+	var flights: Array = job["flights"]
+	var rows: Array = job["rows"]
+	var i: int = int(job["i"])
+	while i < flights.size():
+		var chunk: Array = []
+		var stop: int = mini(i + RAIN_STEP_FLIGHTS, flights.size())
+		while i < stop:
+			var row: Dictionary = _glass_rain_row(flights[i], job)
+			if not row.is_empty():
+				chunk.append(row)
+			i += 1
+		rows.append_array(chunk)
+		if not chunk.is_empty():
+			job["n"] = rain.spawn(chunk)
+		if budget_usec > 0 and i < flights.size() and Time.get_ticks_usec() - t0 >= budget_usec:
+			job["i"] = i
+			return false
+	job["i"] = i
+	_finish_glass_rain(job)
+	return true
+
+
+## One flight as the overlay's row ({} when its level is not built here); widens the job's top landing level.
+func _glass_rain_row(f: Dictionary, job: Dictionary) -> Dictionary:
+	var gp: Vector2i = f["grid_pos"]
+	var from_level: int = int(f["from_level"])
+	var land_level: int = int(f["landing_level"])
+	## G4-4 — the shard launches from its OWN column and lands at the SCATTERED
+	## one (`grid_pos`), so the fall is now diagonal. `origin_pos` is absent on
+	## the synthetic capture path, which drops everything straight down.
+	var origin_gp: Vector2i = f.get("origin_pos", gp)
+	var from: Vector2 = _voxel_board.voxel_world_position(origin_gp, from_level)
+	var to: Vector2 = _voxel_board.voxel_world_position(gp, land_level)
+	if from == Vector2.ZERO or to == Vector2.ZERO:
+		## Rule 9 — a level this view does not build has no layer, and
+		## `voxel_world_position()` answers ZERO. Skipped, and counted by the
+		## caller's own total rather than silently dropped.
+		return {}
+	## ⚠️ B4 — the hash key is BASE-space even though nothing here is stored.
+	## It costs one call and it is what lets a filmstrip of this event be
+	## compared across runs at all; a view-space key would reshuffle every
+	## shard on a camera turn mid-flight. Keyed on the ORIGIN cell + level,
+	## which is unique per destroyed voxel — two shards scattering onto one
+	## landing cell must not collapse to one hash.
+	var base_xy := origin_gp
+	var ground: int = _voxel_board.ground_plane_level()
+	if f.has("from3"):   ## G-D55: a shard of a piece that hit the floor starts where the piece is, not at its old pane cell
+		var row3: Dictionary = {"from": from, "to": to, "key": Vector3i(base_xy.x, base_xy.y, from_level), "from3": f["from3"],
+			"pop": float(f.get("pop", 1.2)), "from_floor": _voxel_board.voxel_world_position(origin_gp, ground),
+			"to_floor": _voxel_board.voxel_world_position(gp, ground)}
+		if f.has("t0"):
+			row3["t0"] = int(f["t0"])
+		job["top"] = maxi(int(job["top"]), land_level)
+		return row3
+	job["top"] = maxi(int(job["top"]), land_level)
+	return {
+		"from": from, "to": to,
+		"key": Vector3i(base_xy.x, base_xy.y, from_level),
+		## R3D-4e-4 — the floor under each end, so the 3D rain can place both in the world.
+		"from_floor": _voxel_board.voxel_world_position(origin_gp, ground),
+		"to_floor": _voxel_board.voxel_world_position(gp, ground),
+	}
+
+
+func _finish_glass_rain(job: Dictionary) -> void:
+	var rain: GlassRainOverlay = job["rain"]
+	var rows: Array = job["rows"]
+	if rows.is_empty():
+		rain.queue_free()
+		return
+	var top_level: int = int(job["top"])
+	var with_dust: bool = bool(job["dust"])
 	## ⚠️ ONE z_index FOR THE WHOLE FIELD, and it is a real limitation of doing this
 	## in a single MultiMesh: a draw order cannot vary per instance. It sits just
 	## above the deepest landing plane's layer — the same band the pile decals take
@@ -810,11 +863,9 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = nu
 	## its upper shards drawn in the lower plane's band for the ~40 frames it lives;
 	## stated because it is a trade for the one draw call, not an oversight.
 	rain.z_index = _voxel_board.level_z_index(top_level) + 2
-	rain.paused = paused
+	rain.paused = bool(job["paused"])
 	_last_glass_rain = rain
-	_voxel_board.add_child(rain)
-	rain.set_board3d(board3d())
-	var n: int = rain.spawn(rows)
+	var n: int = int(job["n"])
 
 	## ── G6b-3 — THE DUST PUFF ──────────────────────────────────────────────
 	##
@@ -851,7 +902,6 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = nu
 
 	print_debug("[GLASS-RAIN] %d flight(s) -> %d shard(s), %d frame(s) to settle"
 		% [rows.size(), n, rain.span_frames()])
-	return n
 
 
 ## G-D55 (Director, 2026-10-10: "faz o pó sair no impacto de cada voxel") — the G6b-3 puff, small, where each falling voxel lands,
@@ -1099,15 +1149,14 @@ func reap_orphaned_remnants() -> Dictionary:
 ## variações internas de velocidade e ângulo".) After a destruction event, `GlassSupport.unsupported()` names every pane voxel that is
 ## held by nothing or hangs too far (about a GU) off its nearest held column (G-D50, G-D51), with a score (far from the support and low
 ## = high). They all leave the board together (DESTROYED, base-recorded, one commit, one remesh) and are drawn by ONE
-## `GlassVoxelFall3D`: each rests 1/5..1/3 s (the far and low ones slightly sooner), then falls on its own — its own g, push and
-## tumble — carrying its piece of the crack, until its lowest corner meets what stands under its column (the pane's base, a floor);
+## `GlassVoxelFall3D`: they crossfade in over the pane (a few frames) and fall on their own (the far and low ones slightly sooner) —
+## its own g, push and tumble — carrying its piece of the crack, until its lowest corner meets what stands under its column (the pane's base, a floor);
 ## there it becomes shards (one rain for the event, each flight starting at its voxel's impact frame and point, thrown up), and its
 ## pile is recorded. The fall shows only once the board's chunks no longer hold the voxels, so the glass is never drawn twice nor
 ## missing. Called once per event, after `reap_orphaned_remnants()` (the cook's `WorldDelta.commit()` and the shot pipeline). `delay_s`
-## is from the call: the time for the cracks to run (the support walk and the landing index set the real start on the Moto).
-## 2026-10-11 (Director: "fazer a troca bem antes, logo depois do flash […] deixar eles lá parados, até estarem disponíveis pra
-## efetivamente cair, 1/3 de segundo depois"): no wait — the swap happens as soon as the support walk and the landings are ready (on
-## the Moto the walk itself takes ~0.7-1 s), and the voxels then REST ~1/3 s on the board before they fall (`GlassVoxelFall3D`).
+## is the least time from the call to the swap; the support walk and the landing index can make it longer (Moto ~0.7 s).
+## 2026-10-11, after trying the walk in the cook and the swap under the flash (Director: "o repouso é nossa oportunidade de calcular a
+## sustentação sem pressa"): the pane stands on the board while its support is walked, then the voxels crossfade in and fall.
 ## 2026-10-11, last ruling (Director: "o repouso é nossa oportunidade de calcular a sustentação sem pressa […] se fizer o cálculo muito
 ## rápido, esperar 1/3 s"): the walk runs after the event while the pane still stands on the board; the swap waits for it, and for at
 ## least this long. The voxels then crossfade in and fall at once (`GlassVoxelFall3D.FADE_IN`), with no rest of their own.
@@ -1126,7 +1175,7 @@ func schedule_glass_collapse(delay_s: float) -> void:
 		return
 	var tree: SceneTree = get_tree()
 	## The walk runs on the WorkerThreadPool over a snapshot taken now (~100 ms on the desktop, several hundred on the Moto, never
-	## inside a frame). A blast's cook does it BEFORE the flash instead (`DetonationPrediction`, `start_glass_collapse()`).
+	## inside a frame), the pane still standing on the board meanwhile.
 	var t0: int = Time.get_ticks_usec()
 	var snap = GlassSupportRef.snapshot(store)
 	var holder: Array = [[]]
@@ -1144,11 +1193,8 @@ func schedule_glass_collapse(delay_s: float) -> void:
 	start_glass_collapse(holder[0])
 
 
-## G-D55 (2026-10-11, Director: "fazer a troca durante o flash" — "a gente tenha gordura pra incluir a sustentação no pré-cook"): the
-## collapse from a support plan already walked. Called by `WorldDelta.commit()` with the plan its cook walked BEFORE the flash on
-## the predicted world, so the glass swaps a few frames after the commit, still under the flash; and by `schedule_glass_collapse()`
-## for any other event (a shot). The landing index needs the floor the event left (its craters), so it is built HERE, while the
-## voxels rest after the swap, and the rain joins the fall when it is ready. Not awaited by its callers.
+## G-D55 — the collapse from a support plan already walked (`schedule_glass_collapse()`). The landing index needs the floor the event
+## left (its craters), so it is built HERE, before the swap (the voxels fall within a few frames of it), then the swap. Not awaited.
 func start_glass_collapse(plan: Array) -> void:
 	var store: VoxelStore = VoxelStore.active
 	if store == null or plan.is_empty():

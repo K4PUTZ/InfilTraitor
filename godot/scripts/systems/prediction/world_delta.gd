@@ -336,7 +336,7 @@ func state_of(voxel) -> int:
 ## path where performance is the standing priority. The requirement is that a
 ## committed mutation is followed by a bump, not that it performs one.
 ## `defer_rain` (A1, 2026-10-07): leave the glass rain (757 flights = 60 ms of the desktop's 128 ms glass commit, the single biggest
-## piece) for `commit_glass_rain()`, which the hit-stop runs a flash frame later. Nothing else reads the flights; everything the glass
+## piece) for the hit-stop, which lays it as a resumable job a flash frame later (`Room.begin_glass_rain`). Nothing else reads the flights; everything the glass
 ## flush and the remesh consume (openings, crazes, piles, remnants, rim shards, the reaped voxels) is still committed here.
 func commit(room = null, defer_rain: bool = false) -> void:
 	commit_split.clear()
@@ -407,11 +407,6 @@ func _split(label: String, since_usec: int) -> int:
 	commit_split[label] = float(now - since_usec) / 1000.0
 	return now
 
-
-## The rain `commit(room, true)` left out. Idempotent per call site: the caller runs it once.
-func commit_glass_rain(room) -> void:
-	if room != null and not glass_shard_flights.is_empty():
-		room.spawn_glass_rain(glass_shard_flights)
 
 
 func is_empty() -> bool:

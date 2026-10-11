@@ -24,9 +24,12 @@ the cook ~0.7-0.9 s longer (the support walk). Options and the epilepsy caution 
 ## Capture, glass and AI debt (2026-10-10)
 
 Record: `PROMPTS/RESUMO_SESSAO_2026-10-10_CAPTURE_RAILS.md`; [`CAPTURE_RAILS_MASTER_PLAN`](../../PROMPTS/PLANNING/CAPTURE_RAILS_MASTER_PLAN.md) §2.
-- **The glass COMMIT frame, ~610-620 ms on the Moto on GLASS** — 3× the frag grenade's 200 ms hit-stop (`PERFORMANCE_BUDGET` §0d). It
-  stays inside the budget only because a segment carries ≤ 12 GU of small panes (PB-1). A map with big panes reopens it. Owner: the
-  materials milestone (`GLASS_MASTER_PLAN`, the COMMIT item).
+- **The glass blast's heavy frames on the Moto (GLASS): ~157 ms COMMIT, worst frame ~225-245 ms** (2026-10-11, was 610-680 ms) —
+  still past the frag grenade's 200 ms hit-stop ceiling in one or two frames. Measured remainders: `damage` 66 ms and `crazes` 35 ms in
+  the commit, the presenter's commit frame ~110 ms, the glass tail 111-158 ms (17 opening regions while the whole pane stands), the
+  collapse's swap step ~175 ms (floors + fall setup 36, dirty pass 30, crack cut 13, board commit 11). The blast's rain is a budgeted
+  job since the session's last change, NOT yet measured on the Moto (it was a 134-183 ms task). The Galaxy is unmeasured. Owner: the
+  materials milestone (`GLASS_MASTER_PLAN` 1e-1g).
 - **Two capture paths.** `room.gd` reads 22 `INFILTRAITOR_CAPTURE_*` env vars for its own capture actions (`build_filmstrip.py`,
   `build_material_matrix.py`, the auto-screenshot), beside the scenario runner. `CAPTURE_RAILS` CR-5 moves the tools onto takes and
   then lists every reader and side effect before anything is retired, with the Director's OK.

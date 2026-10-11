@@ -8,6 +8,16 @@
 
 ---
 
+## Where the project stands — 2026-10-11, later (the glass blast optimised on the Moto; collapse after the blast, crossfaded)
+
+- **Moto, GLASS take, heavy frames 679 / 430 / 343 / 277 ms -> ~245 / 183 / 181 / 177 ms**, the commit 665 -> 157 ms (pane index,
+  per-pane anchor context, craze sheets prefetched on a thread, the rain packed and hashed once per flight, persistence budgeted).
+- **The collapse moved out of the cook (Director):** the pane stands on the board while its support is walked off the main thread (at
+  least 1/3 s), then the voxels CROSSFADE in over 3 frames (their thickness 25/50/75%) and fall from the second. New take
+  `glass_collapse_close` frames it. Records: `GLASS_MASTER_PLAN` 1e-1g, `PROMPTS/RESUMO_SESSAO_2026-10-11_GLASS_DEVICE_OPT.md`.
+- **Owed:** the Moto number of the last change (the rain as a budgeted job: the phone dropped off ADB), the Galaxy, and the
+  remainders listed in `technical_debt.md`.
+
 ## Where the project stands — 2026-10-11 (CAPTURE_RAILS built; glass collapse approved; device optimisation next)
 
 Record: `PROMPTS/RESUMO_SESSAO_2026-10-11_CAPTURE_RAILS_GLASS_COLLAPSE.md`.

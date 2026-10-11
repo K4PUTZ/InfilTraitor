@@ -121,7 +121,30 @@ func _apply_timing_overrides() -> void:
 var _live: int = 0                  ## the shards alive at the last `_process()`, board or not
 var _board: Node3D = null
 var _field3d: RefCounted = null
-var _shards: Array = []              ## [{from, to, arc, spin, size, shape, flip, flop, t0, fall}]
+## One shard = `_S` doubles at `i * _S` (the `_O_*` offsets), not a Dictionary: 2026-10-11, building 2192 seventeen-key dictionaries was
+## 60 ms of the Moto's flash frame. Doubles, so every value is exactly what the dictionaries held (a Vector2/Vector3 component is a
+## float, a hashed parameter a double).
+var _shards := PackedFloat64Array()
+var _count: int = 0
+const _S: int = 25
+const _O_FROM: int = 0       ## Vector2 (the 2D path)
+const _O_FROM3: int = 2      ## Vector3
+const _O_TO3: int = 5        ## Vector3
+const _O_JITTER: int = 8     ## Vector2
+const _O_TO: int = 10        ## Vector2, the landing plus its jitter (the 2D path)
+const _O_ARC: int = 12
+const _O_SPIN: int = 13
+const _O_SIZE: int = 14
+const _O_SHAPE: int = 15
+const _O_FLIP: int = 16      ## 0 / 1
+const _O_FLOP: int = 17      ## 0 / 1
+const _O_ROT0: int = 18
+const _O_AVAR: int = 19
+const _O_T0: int = 20
+const _O_FALL: int = 21
+const _O_G: int = 22
+const _O_V0: int = 23
+const _O_GLINT: int = 24
 var _frame: int = 0
 var _span: int = 0                   ## the last frame any shard is still visible
 
@@ -169,51 +192,67 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 		var to3: Vector3 = ParticleMathRef.anchor(_board, to_top, f.get("to_floor", ParticleMathRef.NO_FLOOR))
 		var n: int = 1 + int(pow(_unit(base, "count"), pieces_low_bias) \
 			* float(maxi(CosmeticDensity.scaled(pieces_per_voxel_max), 1)) * 0.999)
+		## Each field's name hashed ONCE per flight; a shard then adds only its digit (`_unit_p`). 2026-10-11: the 14 whole-name hashes per
+		## shard were most of the rain's 221 ms on the Moto (858 flights, 2192 shards, in one flash frame).
+		var pre := PackedInt64Array()
+		pre.resize(_FIELDS.size())
+		for i in range(_FIELDS.size()):
+			pre[i] = FacadeSamplerClass._fnv1a_continue(base, _FIELDS[i])
 		for p in range(n):
-			if _shards.size() >= CosmeticDensity.scaled(max_shards):
+			if _count >= CosmeticDensity.scaled(max_shards):
 				break
-			var salt := "%d" % p
+			assert(p < 10, "a shard's salt is one digit")
 			var target: float = lerpf(ShardShapes.TARGET_MIN, ShardShapes.TARGET_MAX,
-				_unit(base, "size" + salt))
+				_unit_p(pre[0], p))
 			## Gravity: g_eff per frame², the pop per frame, and the frames to fall the real height (the positive root of
 			## ½·g·f² − v0·f − h = 0). Without a board the height is unknown: the floor time stands in.
-			var g_f: float = gravity_gu_s2 * lerpf(drag_min, 1.0, _unit(base, "drag" + salt)) / 3600.0
+			var g_f: float = gravity_gu_s2 * lerpf(drag_min, 1.0, _unit_p(pre[1], p)) / 3600.0
 			## `pop` (G-D55): a piece that shatters on the floor throws its shards UP, harder than a pane breaking in place.
-			var v0_f: float = float(f.get("pop", pop_max_gu_s)) * lerpf(0.35, 1.0, _unit(base, "pop" + salt)) / 60.0
+			var v0_f: float = float(f.get("pop", pop_max_gu_s)) * lerpf(0.35, 1.0, _unit_p(pre[2], p)) / 60.0
 			var h: float = maxf(from3.y - to3.y, 0.0) / maxf(_board_vscale(), 0.001) if _board != null else 0.0
 			var fall: int = maxi(fall_frames_floor, int(ceil((v0_f + sqrt(v0_f * v0_f + 2.0 * g_f * h)) / maxf(g_f, 1e-6))))
 			## G-D55: a shard of a voxel that hit the floor starts at its impact frame (`t0` from the event's start), a frame or two apart.
-			var t0: int = int(f["t0"]) + int(_unit(base, "t0" + salt) * 2.99) if f.has("t0") \
-				else int(_unit(base, "t0" + salt) * float(stagger_frames))
+			var t0: int = int(f["t0"]) + int(_unit_p(pre[3], p) * 2.99) if f.has("t0") \
+				else int(_unit_p(pre[3], p) * float(stagger_frames))
 			## The pieces of one voxel do not all land on the same pixel: a small
 			## sub-cell offset, hashed, so a pile reads as a scatter and not as a
 			## stack. ⚠️ It moves only where the shard DRAWS, never the landing CELL
 			## the G6 pile was recorded at — that one is state.
 			var jitter := Vector2(
-				(_unit(base, "jx" + salt) - 0.5) * 22.0,
-				(_unit(base, "jy" + salt) - 0.5) * 11.0)
-			_shards.append({
-				"from": from,
-				"from3": from3,
-				"to3": to3,
-				"jitter": jitter,
-				"to": to + jitter,
-				"arc": lerpf(arc_px_min, arc_px_max, _unit(base, "arc" + salt)),
-				"spin": lerpf(spin_min, spin_max, _unit(base, "spin" + salt)),
-				"size": GeometryCoords.VOXEL_STEP_PX * target,
-				"shape": int(_unit(base, "shape" + salt) * float(ShardShapes.ids().size()) * 0.999),
-				"flip": _unit(base, "flip" + salt) < 0.5,
-				"flop": _unit(base, "flop" + salt) < 0.5,
-				"rot0": _unit(base, "rot" + salt) * TAU,
-				"avar": lerpf(alpha_var_min, 1.0, _unit(base, "avar" + salt)),
-				"t0": t0,
-				"fall": maxi(fall, 1),
-				"g": g_f,
-				"v0": v0_f,
-				"glint_phase": _unit(base, "glint" + salt) * TAU,
-			})
+				(_unit_p(pre[4], p) - 0.5) * 22.0,
+				(_unit_p(pre[5], p) - 0.5) * 11.0)
+			var b: int = _count * _S
+			if _shards.size() < b + _S:
+				_shards.resize(maxi(b + _S, _shards.size() * 2))
+			var to_j: Vector2 = to + jitter
+			_shards[b + _O_FROM] = from.x
+			_shards[b + _O_FROM + 1] = from.y
+			_shards[b + _O_FROM3] = from3.x
+			_shards[b + _O_FROM3 + 1] = from3.y
+			_shards[b + _O_FROM3 + 2] = from3.z
+			_shards[b + _O_TO3] = to3.x
+			_shards[b + _O_TO3 + 1] = to3.y
+			_shards[b + _O_TO3 + 2] = to3.z
+			_shards[b + _O_JITTER] = jitter.x
+			_shards[b + _O_JITTER + 1] = jitter.y
+			_shards[b + _O_TO] = to_j.x
+			_shards[b + _O_TO + 1] = to_j.y
+			_shards[b + _O_ARC] = lerpf(arc_px_min, arc_px_max, _unit_p(pre[6], p))
+			_shards[b + _O_SPIN] = lerpf(spin_min, spin_max, _unit_p(pre[7], p))
+			_shards[b + _O_SIZE] = GeometryCoords.VOXEL_STEP_PX * target
+			_shards[b + _O_SHAPE] = int(_unit_p(pre[8], p) * float(ShardShapes.ids().size()) * 0.999)
+			_shards[b + _O_FLIP] = 1.0 if _unit_p(pre[9], p) < 0.5 else 0.0
+			_shards[b + _O_FLOP] = 1.0 if _unit_p(pre[10], p) < 0.5 else 0.0
+			_shards[b + _O_ROT0] = _unit_p(pre[11], p) * TAU
+			_shards[b + _O_AVAR] = lerpf(alpha_var_min, 1.0, _unit_p(pre[12], p))
+			_shards[b + _O_T0] = t0
+			_shards[b + _O_FALL] = maxi(fall, 1)
+			_shards[b + _O_G] = g_f
+			_shards[b + _O_V0] = v0_f
+			_shards[b + _O_GLINT] = _unit_p(pre[13], p) * TAU
+			_count += 1
 			_span = maxi(_span, t0 + fall + bounce_frames + hold_frames + fade_frames)
-	return _shards.size()
+	return _count
 
 
 ## ⚠️ FNV-1a on the shard's BASE cell — B4's rule. `randf()` here would make the
@@ -228,6 +267,16 @@ func _hash_unit(key: Vector3i, what: String) -> float:
 ## `_hash_unit(key, what)` continued from the prefix state `base` (see `spawn()`): the same value, without re-hashing the prefix.
 func _unit(base: int, what: String) -> float:
 	return float(FacadeSamplerClass._fnv1a_continue(base, what) % 100000) / 100000.0
+
+
+## The per-shard fields, in the index order `spawn()` reads `pre` with. Their names are part of the hash: never rename one.
+const _FIELDS: PackedStringArray = ["size", "drag", "pop", "t0", "jx", "jy", "arc", "spin", "shape", "flip", "flop", "rot", "avar", "glint"]
+
+
+## `_unit(base, field + str(p))` for a one-digit `p`, given `field_state = _fnv1a_continue(base, field)`: FNV-1a is sequential, so the
+## digit is one more FNV step (its ASCII byte, then the prime, kept to 32 bits). Exactly the same value (B4).
+static func _unit_p(field_state: int, p: int) -> float:
+	return float((((field_state ^ (48 + p)) * 16777619) & 0xFFFFFFFF) % 100000) / 100000.0
 
 
 ## G-D55: a rain laid ahead of its fall waits here (no frame counted, nothing drawn) until the fall starts.
@@ -248,17 +297,19 @@ func _process(_delta: float) -> void:
 	var cam: Basis = Basis.IDENTITY
 	var ppu: float = 1.0
 	if f3 != null:
-		f3.begin_on_board(_shards.size())
+		f3.begin_on_board(_count)
 		cam = _board.call("lattice_basis")  ## R3D-WORLD: a 2D displacement is a world one through the BASE view
 		ppu = _board.call("px_per_unit")
 	var live: int = 0
-	for s in _shards:
-		var f: int = _frame - int(s["t0"])
+	var sh: PackedFloat64Array = _shards
+	for i in range(_count):
+		var b: int = i * _S
+		var f: int = _frame - int(sh[b + _O_T0])
 		if f < 0:
 			continue
-		var fall: int = int(s["fall"])
+		var fall: int = int(sh[b + _O_FALL])
 		var pos: Vector2
-		var rot: float = float(s["rot0"])
+		var rot: float = sh[b + _O_ROT0]
 		var alpha: float = 1.0
 		## The same fall, read two ways: `pos` is the 2D screen position; `base3` and `lift_px` are its
 		## world equivalent — the point on the way between the two 3D ends, plus the arc's height (a
@@ -267,32 +318,33 @@ func _process(_delta: float) -> void:
 		var lift_px: float = 0.0
 		var jitter3: Vector3 = Vector3.ZERO
 		if f3 != null:
-			jitter3 = ParticleMathRef.displace(s["jitter"], cam, ppu)
+			jitter3 = ParticleMathRef.displace(Vector2(sh[b + _O_JITTER], sh[b + _O_JITTER + 1]), cam, ppu)
 		var landed: bool = f > fall
 		if not landed:
 			var t: float = float(f) / float(fall)
-			pos = (s["from"] as Vector2).lerp(s["to"], t * t) - Vector2(0.0, float(s["arc"]) * sin(PI * t))
+			pos = Vector2(sh[b + _O_FROM], sh[b + _O_FROM + 1]).lerp(Vector2(sh[b + _O_TO], sh[b + _O_TO + 1]), t * t) \
+				- Vector2(0.0, sh[b + _O_ARC] * sin(PI * t))
 			if f3 != null:
 				## Horizontal: linear in time. Vertical: the ballistic curve from the pane down to the landing (world y).
-				var a3: Vector3 = s["from3"]
-				var b3: Vector3 = (s["to3"] as Vector3) + jitter3
+				var a3 := Vector3(sh[b + _O_FROM3], sh[b + _O_FROM3 + 1], sh[b + _O_FROM3 + 2])
+				var b3: Vector3 = Vector3(sh[b + _O_TO3], sh[b + _O_TO3 + 1], sh[b + _O_TO3 + 2]) + jitter3
 				base3 = a3.lerp(b3, t)
 				var vs: float = _board_vscale()
-				base3.y = a3.y + (float(s["v0"]) * float(f) - 0.5 * float(s["g"]) * float(f) * float(f)) * vs
+				base3.y = a3.y + (sh[b + _O_V0] * float(f) - 0.5 * sh[b + _O_G] * float(f) * float(f)) * vs
 				base3.y = maxf(base3.y, b3.y)
-			rot += float(s["spin"]) * float(f)
+			rot += sh[b + _O_SPIN] * float(f)
 			alpha = lerpf(air_alpha, 1.0, t * t)
 		else:
-			rot += float(s["spin"]) * float(fall)
-			pos = s["to"]
+			rot += sh[b + _O_SPIN] * float(fall)
+			pos = Vector2(sh[b + _O_TO], sh[b + _O_TO + 1])
 			if f3 != null:
-				base3 = (s["to3"] as Vector3) + jitter3
-			var b: int = f - fall
-			if b < bounce_frames:
-				var bt: float = float(b) / float(bounce_frames)
-				pos -= Vector2(0.0, float(s["arc"]) * bounce_scale * sin(PI * bt))
-				lift_px = float(s["arc"]) * bounce_scale * sin(PI * bt)
-			var age: int = b - bounce_frames - hold_frames
+				base3 = Vector3(sh[b + _O_TO3], sh[b + _O_TO3 + 1], sh[b + _O_TO3 + 2]) + jitter3
+			var bf: int = f - fall
+			if bf < bounce_frames:
+				var bt: float = float(bf) / float(bounce_frames)
+				pos -= Vector2(0.0, sh[b + _O_ARC] * bounce_scale * sin(PI * bt))
+				lift_px = sh[b + _O_ARC] * bounce_scale * sin(PI * bt)
+			var age: int = bf - bounce_frames - hold_frames
 			if age > 0:
 				alpha = clampf(1.0 - float(age) / float(maxi(fade_frames, 1)), 0.0, 1.0)
 				if alpha <= 0.0:
@@ -301,13 +353,13 @@ func _process(_delta: float) -> void:
 		## Bright when it leaves the pane, the tint once it lands (the whiten eases with the same curve as the alpha).
 		var air: float = 0.0 if landed else 1.0 - pow(float(f) / float(fall), 2.0)
 		c = c.lerp(Color(1, 1, 1, c.a), air_whiten * air)
-		c.a = clampf(c.a * alpha * float(s["avar"]), 0.0, 1.0)
-		var glint: float = glint_strength * pow(absf(sin(rot + float(s["glint_phase"]))), glint_power)
+		c.a = clampf(c.a * alpha * sh[b + _O_AVAR], 0.0, 1.0)
+		var glint: float = glint_strength * pow(absf(sin(rot + sh[b + _O_GLINT])), glint_power)
 		if landed:
 			glint *= glint_landed
 		if f3 != null:
 			f3.push(base3 + Vector3.UP * (lift_px / (ppu * ParticleMathRef.COS_ELEVATION)),
-				float(s["size"]), rot, int(s["shape"]), c, bool(s["flip"]), bool(s["flop"]), glint)
+				sh[b + _O_SIZE], rot, int(sh[b + _O_SHAPE]), c, sh[b + _O_FLIP] != 0.0, sh[b + _O_FLOP] != 0.0, glint)
 		live += 1
 	if f3 != null:
 		f3.flush()

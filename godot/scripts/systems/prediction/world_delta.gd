@@ -263,6 +263,10 @@ var light_field_usable: bool = false
 ## Voxel -> projected tuple. Only voxels this Delta actually changes appear.
 var _by_voxel: Dictionary = {}
 
+## The wall time of each part of the last `commit()`, label -> ms, in call order. Read by the caller's profile line
+## (`THROW_PROFILE`); a handful of clock reads, so it is always filled.
+var commit_split: Dictionary = {}
+
 
 ## Appends simulated entries and folds them into the projection immediately, so
 ## a producer can read the projection back mid-build (`DetonationPlanBuilder`
@@ -340,9 +344,13 @@ func state_of(voxel) -> int:
 ## piece) for `commit_glass_rain()`, which the hit-stop runs a flash frame later. Nothing else reads the flights; everything the glass
 ## flush and the remesh consume (openings, crazes, piles, remnants, rim shards, the reaped voxels) is still committed here.
 func commit(room = null, defer_rain: bool = false) -> void:
+	commit_split.clear()
+	var t: int = Time.get_ticks_usec()
 	BlastCalculatorClass.commit_damage(damage)
+	t = _split("damage", t)
 	if room != null and not scorch_writes.is_empty():
 		room.absorb_scorch(scorch_writes)
+	t = _split("scorch", t)
 	## CRACK-05 — the glass holes this blast opened take their SHAPE here.
 	##
 	## ⚠️ ORDER IS LOAD-BEARING AND IT IS THE ORDER OF THIS FUNCTION, NOT A
@@ -354,6 +362,7 @@ func commit(room = null, defer_rain: bool = false) -> void:
 	if room != null:
 		for c in glass_openings:
 			room.claim_glass_opening_for_hit(c["cell"], int(c["level"]), bool(c["wide"]))
+		t = _split("glass openings", t)
 		## G-D35 B-2 — and the craze FIELDS over the panes this blast did not take.
 		## Same split, same reason: spawning a sprite is a WRITE, and `build_plan()`
 		## runs on every cursor move. AFTER the openings, so a pane that both
@@ -361,35 +370,48 @@ func commit(room = null, defer_rain: bool = false) -> void:
 		## is walked.
 		for z in glass_crazes:
 			room.claim_glass_craze(z["cell"], int(z["level"]), float(z["intensity"]))
+		t = _split("glass crazes", t)
 		## G6 — and the glass that fell. AFTER the openings, so a floor cell that
 		## is about to be revealed by a crater is already the surface the pile is
 		## drawn on.
 		if not glass_shard_piles.is_empty():
 			room.record_glass_shards(glass_shard_piles)
+		t = _split("glass piles", t)
 		## G4-2 — and the glass that did NOT fall. LAST: a remnant swaps the atom
 		## on a cell that survived, so every erase and every rim cut around it has
 		## to have happened first or the opening walk would overwrite it.
 		if not glass_remnants.is_empty():
 			room.claim_glass_remnants(glass_remnants)
+		t = _split("glass remnants", t)
 		## CRACK-06 — and the shards clinging to the torn glass edge, after the
 		## frame remnants and after the opening walk, for the same ordering reason.
 		if not glass_rim_shards.is_empty():
 			room.claim_glass_rim_shards(glass_rim_shards)
+		t = _split("glass rim shards", t)
 		## G6b-2 — and the rain, LAST of all: the pile decals above are already on
 		## the floor, which is what makes the fall safe to interrupt (G-D43).
 		if not glass_shard_flights.is_empty() and not defer_rain:
 			room.spawn_glass_rain(glass_shard_flights)
+		t = _split("glass rain", t)
 		## G-D45 — a remnant this blast orphaned (its frame destroyed) falls with
 		## it. Unconditional: the frame that held an OLD remnant can be brick this
 		## delta broke with no glass of its own, so it is not gated on the glass
 		## fields above. Early-returns when nothing is stuck to a frame.
 		reaped_voxels = room.reap_orphaned_remnants().get("voxels", [])
+		t = _split("reap remnants", t)
 		## G-S1 / G-D55 — and the glass this blast left standing on nothing comes down: swapped for falling voxels a few frames from
 		## now, under the flash, when the cook already walked it; walked after the event otherwise. Not awaited.
 		if glass_collapse_ready and room.has_method("start_glass_collapse"):
 			room.start_glass_collapse(glass_collapse)
 		elif room.has_method("schedule_glass_collapse"):   ## a selftest's room stub has no board to collapse
 			room.schedule_glass_collapse(-1.0)
+		_split("glass collapse", t)
+
+
+func _split(label: String, since_usec: int) -> int:
+	var now: int = Time.get_ticks_usec()
+	commit_split[label] = float(now - since_usec) / 1000.0
+	return now
 
 
 ## The rain `commit(room, true)` left out. Idempotent per call site: the caller runs it once.

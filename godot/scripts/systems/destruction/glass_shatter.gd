@@ -880,12 +880,33 @@ static func anchor_mask_for(key: Vector2i, own_frame: Dictionary,
 ## that as the real answer it is, not as a lookup failure.
 static func remnant_anchor_mask(pane_slices: Array, face: int, all_slices: Array,
 		grid_pos: Vector2i, level: int) -> int:
+	return mask_in_context(remnant_anchor_context(pane_slices, face, all_slices), grid_pos, level)
+
+
+## The per-pane half of `remnant_anchor_mask` (the pane's frame keys and the anchors in its plane, both walks over whole slices), so a
+## caller asking for many cells of one pane walks it once. Valid while no NON-glass voxel of that plane changes: a remnant stamp
+## writes none and a reap destroys only glass, which is what lets `Room`'s claim loops reuse it per pane.
+static func remnant_anchor_context(pane_slices: Array, face: int, all_slices: Array) -> Array:
 	if pane_slices.is_empty():
-		return 0
+		return []
 	var run_is_x: bool = (face == Face.SW or face == Face.NE)
-	var key := Vector2i(grid_pos.x if run_is_x else grid_pos.y, level)
-	return anchor_mask_for(key, pane_frame_keys(pane_slices, run_is_x),
-		collect_anchor_positions(pane_slices, face, all_slices))
+	return [run_is_x, pane_frame_keys(pane_slices, run_is_x), collect_anchor_positions(pane_slices, face, all_slices)]
+
+
+## The per-pane half of `rim_shard_anchor_mask`: the pane's surviving glass. Valid while that pane's glass does not change.
+static func rim_shard_anchor_context(pane_slices: Array, face: int) -> Array:
+	if pane_slices.is_empty():
+		return []
+	var run_is_x: bool = (face == Face.SW or face == Face.NE)
+	return [run_is_x, pane_glass_keys(pane_slices, run_is_x), {}]
+
+
+## One cell's anchor mask from a context above (an empty context = no pane = 0).
+static func mask_in_context(ctx: Array, grid_pos: Vector2i, level: int) -> int:
+	if ctx.is_empty():
+		return 0
+	var run_is_x: bool = ctx[0]
+	return anchor_mask_for(Vector2i(grid_pos.x if run_is_x else grid_pos.y, level), ctx[1], ctx[2])
 
 
 ## CRACK-06 — a RIM shard's anchor: the pane's OWN surviving glass, the torn edge.
@@ -895,8 +916,4 @@ static func remnant_anchor_mask(pane_slices: Array, face: int, all_slices: Array
 ## later break through this edge drops the mask to 0.
 static func rim_shard_anchor_mask(pane_slices: Array, face: int,
 		grid_pos: Vector2i, level: int) -> int:
-	if pane_slices.is_empty():
-		return 0
-	var run_is_x: bool = (face == Face.SW or face == Face.NE)
-	var key := Vector2i(grid_pos.x if run_is_x else grid_pos.y, level)
-	return anchor_mask_for(key, pane_glass_keys(pane_slices, run_is_x), {})
+	return mask_in_context(rim_shard_anchor_context(pane_slices, face), grid_pos, level)

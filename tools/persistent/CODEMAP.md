@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**291 scripts · 85829 lines total** (under `godot/scripts/`)
+**291 scripts · 86058 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3258 lines
+extends `Node3D` · 3268 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1228,7 +1228,7 @@ extends `Node3D` · 3258 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2615 lines
+`class_name VoxelBoard` · extends `Node2D` · 2631 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1263,6 +1263,7 @@ extends `Node3D` · 3258 lines
 - `func process_dirty_slabs(registry: SlabRegistry) -> void:`
 - `func process_dirty_async(registry: EdgeRegistry, states: Array = []) -> void:`
 - `func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> void:`
+- `func prefetch_glass_crack_sheet(sheet_id: String, variant: int) -> void:`
 - `func glass_crack_covering(pane_id: String, run: int, level: int) -> int:`
 - `func spawn_glass_crack(spec: Dictionary) -> int:`
 - `func spawn_glass_craze(spec: Dictionary) -> int:`
@@ -1648,7 +1649,7 @@ extends `Node2D` · 164 lines
 
 ### `glass_rain_overlay.gd`
 
-`class_name GlassRainOverlay` · extends `Node2D` · 336 lines
+`class_name GlassRainOverlay` · extends `Node2D` · 388 lines
 
 `godot/scripts/overlays/glass_rain_overlay.gd`
 
@@ -1657,6 +1658,26 @@ extends `Node2D` · 164 lines
 - `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
 - `ShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
+- `_S` = `25`
+- `_O_FROM` = `0`
+- `_O_FROM3` = `2`
+- `_O_TO3` = `5`
+- `_O_JITTER` = `8`
+- `_O_TO` = `10`
+- `_O_ARC` = `12`
+- `_O_SPIN` = `13`
+- `_O_SIZE` = `14`
+- `_O_SHAPE` = `15`
+- `_O_FLIP` = `16`
+- `_O_FLOP` = `17`
+- `_O_ROT0` = `18`
+- `_O_AVAR` = `19`
+- `_O_T0` = `20`
+- `_O_FALL` = `21`
+- `_O_G` = `22`
+- `_O_V0` = `23`
+- `_O_GLINT` = `24`
+- `_FIELDS` = `["size", "drag", "pop", "t0", "jx", "jy", "arc", "spin", "shape", "flip", "flop", "rot", "avar", "glint"]`
 
 **Public vars**
 - `var gravity_gu_s2: float = 9.8`
@@ -2543,7 +2564,7 @@ extends `RefCounted` · 37 lines
 
 ### `glass_shatter.gd`
 
-`class_name GlassShatter` · 902 lines
+`class_name GlassShatter` · 919 lines
 
 `godot/scripts/systems/destruction/glass_shatter.gd`
 
@@ -3276,7 +3297,7 @@ extends `Node` · 236 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 402 lines
+`class_name WorldDelta` · extends `RefCounted` · 424 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -5802,7 +5823,7 @@ extends `Node` · 252 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1848 lines
+`class_name TestZoneController` · 1883 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -6085,7 +6106,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10136 lines
+extends `Node2D` · 10213 lines
 
 `godot/scripts/world/room.gd`
 

@@ -395,6 +395,7 @@ var _geometry_root: Node3D = null
 ## R3D-6 item 2 — one quad per live 2D crack sprite.
 const GlassCrackMirror3DClass = preload("res://godot/scripts/geometry/glass_crack_mirror3d.gd")
 const GlassVoxelFall3DRef = preload("res://godot/scripts/geometry/glass_voxel_fall3d.gd")
+const ShardField3DRef = preload("res://godot/scripts/geometry/shard_field3d.gd")
 var _crack_mirror: Node3D = null
 var _ground_level: int = 0
 ## Vector3i(grid x, level, grid y) → index into _material_ids.
@@ -1913,6 +1914,13 @@ func _warm_glass_fall() -> void:
 	var fake_crack: Dictionary = {"id": 0, "visible": true, "run_axis": 0, "face": Face.SW, "impact_cell": Vector2i(0, 0),
 		"impact_level": _ground_level - 8, "params": {"crack_span": Vector2(4, 4), "crack_pane_lo": Vector2(-1, -1),
 		"crack_pane_hi": Vector2(1, 1)}}
+	## And the glass rain's shard field (its procedural atlas, its shader, its pipeline): the first rain of a map paid them in its flash
+	## frame (22 ms of the Moto's 2026-10-11 GLASS blast; a later rain 0.5 ms). One shard under the floor for the same three frames.
+	var shards = ShardField3DRef.new()
+	shards.attach(self, 5)
+	shards.begin_on_board(1)
+	shards.push(_geometry_root.transform * voxel_centre_local(0, 0, _ground_level - 8), 8.0, 0.0, 0, Color(1, 1, 1, 1))
+	shards.flush()
 	var warm: Node3D = GlassVoxelFall3DRef.new()
 	_geometry_root.add_child(warm)
 	warm.call("setup", self, entries, [fake_crack], Callable())
@@ -1922,8 +1930,10 @@ func _warm_glass_fall() -> void:
 	for _f: int in range(3):
 		await get_tree().process_frame
 		if not is_instance_valid(warm):
+			shards.detach()
 			return
 	warm.queue_free()
+	shards.detach()
 
 
 ## The geometry root's transform (this board's space <- the meshes' space).

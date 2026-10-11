@@ -535,19 +535,66 @@ func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 		record: bool = true) -> int:
 	if _voxel_board == null or _edge_registry == null:
 		return 0
+	var plan: Dictionary = _craze_plan(grid_pos, level, intensity, true)
+	if plan.is_empty():
+		return 0
+	var anchor_cell: Vector2i = plan["anchor_cell"]
+	var anchor_level: int = int(plan["anchor_level"])
+	## The identity a rotation must not change, as one comparable string. Kept on
+	## the room so the demo can print a VERDICT instead of leaving two log lines to
+	## be eyeballed — which is how the flip difference that found this bug nearly
+	## went unnoticed.
+	_last_craze_identity = "anchor=%s level=%d variant=%d" % [
+		anchor_cell,
+		anchor_level, int(plan["variant"])]
+	if OS.get_environment("INFILTRAITOR_GLASS_DIAG") == "1":
+		## ⚠️ A NUMBER, NOT A PICTURE, AND IT HAS TO BE. A rotated pane is sheared
+		## on screen, so no two views of one craze can be diffed; the claim is that
+		## the anchor, the variant and the flip are IDENTICAL in every view, and
+		## these are them.
+		var ab := anchor_cell
+		print("[GLASS-CRAZE] lattice anchor base (%d,%d) level %d · variant %d · dir %s"
+			% [ab.x, ab.y, anchor_level, int(plan["variant"]),
+			plan["field_dir"]])
+	var id: int = _voxel_board.spawn_glass_craze(plan)
+	if record and id != 0:
+		var base_xy := grid_pos
+		_base_crazes.append({
+			"base": Vector3i(base_xy.x, base_xy.y, level), "intensity": intensity})
+	return id
+
+
+## The commit's crazes, asked for as soon as the cook's Delta is final: each one's fracture sheet starts loading on a thread
+## (`VoxelBoard.prefetch_glass_crack_sheet`), so the commit frame no longer reads PNGs (the GLASS blast's crazes were 94 ms of the
+## Moto's commit, almost all of it `load()`; 2026-10-11). Only the sheets this blast will draw, never the whole family (VRAM).
+func prefetch_glass_crazes(crazes: Array) -> void:
+	if _voxel_board == null or _edge_registry == null:
+		return
+	for z in crazes:
+		var plan: Dictionary = _craze_plan(z["cell"], int(z["level"]), float(z["intensity"]), false)
+		if not plan.is_empty():
+			_voxel_board.prefetch_glass_crack_sheet(String(plan.get("sheet", "")), int(plan["variant"]))
+
+
+## Everything a craze field is before it is spawned (the pane's field plan, its base-space anchor, sheet, variant and flip), with
+## `anchor_cell` / `anchor_level` added. Pure: no record, no node. Empty when there is no pane here or no field (reported only when
+## `report`, which the claim asks for and the prefetch does not).
+func _craze_plan(grid_pos: Vector2i, level: int, intensity: float, report: bool) -> Dictionary:
 	var host = _glass_slice_at(grid_pos, level)
 	if host == null:
+		if not report:
+			return {}
 		## ⚠️ REPORTED, NOT SWALLOWED — the discipline `_respawn_base_cracks()`
 		## already applies to its own misses. A craze whose anchor is not in this
 		## view is how a whole feature turns out to be healing on every rotation
 		## with nothing in any log to say so (§16.6 was exactly that).
 		print_debug("[GLASS-CRAZE] anchor %s level %d has no pane voxel — no field"
 			% [grid_pos, level])
-		return 0
+		return {}
 	var plan: Dictionary = GlassCrack.plan_pane_field(
 		_pane_by_id(host.pane_id), host.face, intensity)
 	if plan.is_empty():
-		return 0
+		return {}
 	## The VARIANT rides a BASE-space key, the same rule and the same reason as the
 	## opening's and the sheet's: a variant re-rolled on a perspective flip would
 	## redraw a standing craze every time the camera turned (G-D29's own rule).
@@ -599,14 +646,9 @@ func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 	## Resolved here rather than in the pure planner because only the room knows
 	## base space, the same split `glass_opening_for()` already lives by.
 	GlassCrack.resolve_craze_sheet(plan, pane_key)
-	## The identity a rotation must not change, as one comparable string. Kept on
-	## the room so the demo can print a VERDICT instead of leaving two log lines to
-	## be eyeballed — which is how the flip difference that found this bug nearly
-	## went unnoticed.
-	_last_craze_identity = "anchor=%s level=%d variant=%d" % [
-		anchor_cell,
-		anchor_level, GlassCrack.pick_variant(pane_key)]
 	plan["variant"] = GlassCrack.pick_variant(pane_key)
+	plan["anchor_cell"] = anchor_cell
+	plan["anchor_level"] = anchor_level
 	## G-D29's H/V flip, off the same hash — three patterns become twelve looks for
 	## no memory at all. A mirror IS a sign on this axis, so it multiplies into the
 	## same uniform as the rotation correction rather than needing its own.
@@ -616,21 +658,7 @@ func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 	plan["field_origin"] = Vector2(anchor_off, lo_off.y)
 	plan["field_dir"] = Vector2(
 		flip_x * (1.0 if run_grows_with_base else -1.0), flip_y)
-	if OS.get_environment("INFILTRAITOR_GLASS_DIAG") == "1":
-		## ⚠️ A NUMBER, NOT A PICTURE, AND IT HAS TO BE. A rotated pane is sheared
-		## on screen, so no two views of one craze can be diffed; the claim is that
-		## the anchor, the variant and the flip are IDENTICAL in every view, and
-		## these are them.
-		var ab := anchor_cell
-		print("[GLASS-CRAZE] lattice anchor base (%d,%d) level %d · variant %d · dir %s"
-			% [ab.x, ab.y, anchor_level, int(plan["variant"]),
-			plan["field_dir"]])
-	var id: int = _voxel_board.spawn_glass_craze(plan)
-	if record and id != 0:
-		var base_xy := grid_pos
-		_base_crazes.append({
-			"base": Vector3i(base_xy.x, base_xy.y, level), "intensity": intensity})
-	return id
+	return plan
 
 
 ## ── G6 — RECORD AND DRAW WHERE GLASS LANDED ─────────────────────────────────
@@ -857,12 +885,13 @@ func claim_glass_remnants(remnants: Array, record: bool = true) -> int:
 	if _voxel_board == null or remnants.is_empty():
 		return 0
 	var drawn: int = 0
+	var memo: Dictionary = {}
 	for r in remnants:
 		var cell: Vector2i = r["cell"]
 		var level: int = int(r["level"])
 		var base_xy := cell
 		var bkey := Vector3i(base_xy.x, base_xy.y, level)
-		if _draw_remnant(cell, level, bkey):
+		if _draw_remnant(cell, level, bkey, memo):
 			drawn += 1
 		if record:
 			_base_remnants[bkey] = true
@@ -877,12 +906,13 @@ func claim_glass_remnants(remnants: Array, record: bool = true) -> int:
 ## itself destroyed later, the fragment now hangs from nothing — and that is a
 ## real answer, reported and drawn as nothing rather than patched with a default
 ## placement that would put a shard in mid-air.
-func _draw_remnant(cell: Vector2i, level: int, base_key: Vector3i) -> bool:
+## `memo` (pane|face -> `GlassShatter.remnant_anchor_context`) lets a loop over many cells walk each pane once (a commit's
+## remnants: 109 ms on the Moto when every cell re-walked its pane and every slice of its plane); null = no reuse.
+func _draw_remnant(cell: Vector2i, level: int, base_key: Vector3i, memo = null) -> bool:
 	var host = _glass_slice_at(cell, level)
 	if host == null or _edge_registry == null:
 		return false
-	var mask: int = GlassShatter.remnant_anchor_mask(
-		_pane_by_id(host.pane_id), host.face, _edge_registry.all_slices(), cell, level)
+	var mask: int = GlassShatter.mask_in_context(_remnant_context(host, memo), cell, level)
 	if mask == 0:
 		return false
 	## ⚠️ B4 FNV-1a ON THE BASE KEY, the same rule as the pile's decal and the
@@ -904,10 +934,11 @@ func _respawn_base_remnants() -> void:
 		return
 	var drawn: int = 0
 	var lost: int = 0
+	var memo: Dictionary = {}
 	for bkey in _base_remnants:
 		var k: Vector3i = bkey
 		var vxy := Vector2i(k.x, k.y)
-		if _draw_remnant(vxy, k.z, k):
+		if _draw_remnant(vxy, k.z, k, memo):
 			drawn += 1
 		else:
 			lost += 1
@@ -931,12 +962,13 @@ func claim_glass_rim_shards(shards: Array, record: bool = true) -> int:
 	if _voxel_board == null or shards.is_empty():
 		return 0
 	var drawn: int = 0
+	var memo: Dictionary = {}
 	for s in shards:
 		var cell: Vector2i = s["cell"]
 		var level: int = int(s["level"])
 		var base_xy := cell
 		var bkey := Vector3i(base_xy.x, base_xy.y, level)
-		if _draw_rim_shard(cell, level, bkey):
+		if _draw_rim_shard(cell, level, bkey, memo):
 			drawn += 1
 		if record:
 			_base_rim_shards[bkey] = true
@@ -946,12 +978,20 @@ func claim_glass_rim_shards(shards: Array, record: bool = true) -> int:
 ## One rim shard onto one cell: ask the live pane for its torn-edge anchor, hash
 ## the base key for shape and flop, stamp the cut atom (the same one a frame
 ## remnant uses — `apply_glass_remnant_at` is anchor-agnostic).
-func _draw_rim_shard(cell: Vector2i, level: int, base_key: Vector3i) -> bool:
+## `memo`: as `_draw_remnant`'s, per pane|face (`GlassShatter.rim_shard_anchor_context`; 190 ms of the Moto's commit before it).
+func _draw_rim_shard(cell: Vector2i, level: int, base_key: Vector3i, memo = null) -> bool:
 	var host = _glass_slice_at(cell, level)
 	if host == null or _edge_registry == null:
 		return false
-	var mask: int = GlassShatter.rim_shard_anchor_mask(
-		_pane_by_id(host.pane_id), host.face, cell, level)
+	var ctx: Array
+	var mkey: String = "%s|%d" % [host.pane_id, host.face]
+	if memo != null and memo.has(mkey):
+		ctx = memo[mkey]
+	else:
+		ctx = GlassShatter.rim_shard_anchor_context(_pane_by_id(host.pane_id), host.face)
+		if memo != null:
+			memo[mkey] = ctx
+	var mask: int = GlassShatter.mask_in_context(ctx, cell, level)
 	if mask == 0:
 		return false   ## the glass edge this shard hung from is gone — it falls / heals
 	var salt := "rimshard|%d,%d,%d" % [base_key.x, base_key.y, base_key.z]
@@ -968,10 +1008,11 @@ func _respawn_base_rim_shards() -> void:
 		return
 	var drawn: int = 0
 	var lost: int = 0
+	var memo: Dictionary = {}
 	for bkey in _base_rim_shards:
 		var k: Vector3i = bkey
 		var vxy := Vector2i(k.x, k.y)
-		if _draw_rim_shard(vxy, k.z, k):
+		if _draw_rim_shard(vxy, k.z, k, memo):
 			drawn += 1
 		else:
 			lost += 1
@@ -1010,6 +1051,7 @@ func reap_orphaned_remnants() -> Dictionary:
 	var orphan_keys: Array = []
 	var fallen: Array = []
 	var fallen_voxels: Array = []
+	var memo: Dictionary = {}   ## reuse is sound here: the loop destroys only GLASS, and the remnant context reads non-glass voxels
 	for bkey in _base_remnants:
 		var k: Vector3i = bkey
 		var cell := Vector2i(k.x, k.y)
@@ -1020,8 +1062,7 @@ func reap_orphaned_remnants() -> Dictionary:
 			## to fell; just drop the stale record.
 			orphan_keys.append(bkey)
 			continue
-		var mask: int = GlassShatter.remnant_anchor_mask(
-			_pane_by_id(host.pane_id), host.face, _edge_registry.all_slices(), cell, level)
+		var mask: int = GlassShatter.mask_in_context(_remnant_context(host, memo), cell, level)
 		if mask != 0:
 			continue   ## still held — nothing to do
 		orphan_keys.append(bkey)
@@ -1275,13 +1316,52 @@ func _drop_glass_voxels(entries: Array, landings: Dictionary) -> void:
 ## The glass SLICE holding one voxel in this view, or null. Shared by the craze
 ## claim and its rotation replay so the two cannot look a pane up differently.
 func _glass_slice_at(grid_pos: Vector2i, level: int):
-	for sl in _edge_registry.all_slices():
+	_ensure_glass_index()
+	return _glass_slice_by_cell.get(Vector3i(grid_pos.x, grid_pos.y, level))
+
+
+## Cell -> pane slice and pane id -> slices, built once per edge registry. `_glass_slice_at` and `_pane_by_id` each walked every slice
+## (and every voxel) per call, and a commit calls them per remnant, rim shard and orphan: most of the Moto's ~575 ms of glass in the
+## GLASS blast's commit frame (2026-10-11). Sound because `GlassPaneGrouper.assign()` sets `pane_id` once, when the room is built, and
+## a slice's voxels never move; a new registry (map load) or a changed slice count rebuilds it.
+var _glass_index_registry_id: int = 0
+var _glass_index_slice_count: int = -1
+var _glass_slice_by_cell: Dictionary = {}   ## Vector3i(x, y, level) -> the first pane slice holding that cell (the old scan's order)
+var _glass_pane_slices: Dictionary = {}     ## pane_id -> Array of slices; SHARED, callers read it and never mutate it
+
+
+func _ensure_glass_index() -> void:
+	var slices: Array = _edge_registry.all_slices()
+	if _edge_registry.get_instance_id() == _glass_index_registry_id and slices.size() == _glass_index_slice_count:
+		return
+	_glass_index_registry_id = _edge_registry.get_instance_id()
+	_glass_index_slice_count = slices.size()
+	_glass_slice_by_cell.clear()
+	_glass_pane_slices.clear()
+	for sl in slices:
+		if not _glass_pane_slices.has(sl.pane_id):
+			_glass_pane_slices[sl.pane_id] = []
+		(_glass_pane_slices[sl.pane_id] as Array).append(sl)
 		if sl.pane_id == "" or sl.pane_id.begins_with("PANE_BLOCK_"):
 			continue
-		for v in sl.voxels:
-			if v.grid_pos == grid_pos and v.level == level:
-				return sl
-	return null
+		## The packed cells, never `sl.voxels`: that getter turns a released slice back into Voxel objects (the old scan did it to
+		## every pane on its first call).
+		var cells: PackedInt32Array = sl.cells_packed()
+		for o in range(0, cells.size(), 3):
+			var k := Vector3i(cells[o], cells[o + 1], cells[o + 2])
+			if not _glass_slice_by_cell.has(k):
+				_glass_slice_by_cell[k] = sl
+
+
+## `GlassShatter.remnant_anchor_context` for `host`'s pane, reused through `memo` (pane|face) when one is given.
+func _remnant_context(host, memo) -> Array:
+	var mkey: String = "%s|%d" % [host.pane_id, host.face]
+	if memo != null and memo.has(mkey):
+		return memo[mkey]
+	var ctx: Array = GlassShatter.remnant_anchor_context(_pane_by_id(host.pane_id), host.face, _edge_registry.all_slices())
+	if memo != null:
+		memo[mkey] = ctx
+	return ctx
 
 
 ## G-D35 B-2 — respawn every recorded craze field for the perspective just
@@ -8007,11 +8087,8 @@ func _framed_glass_pane() -> Array:
 ## One named pane's slices, for a capture that has to land on a SPECIFIC pane
 ## rather than the largest one. Empty when nothing on the map carries that id.
 func _pane_by_id(pane_id: String) -> Array:
-	var out: Array = []
-	for s in _edge_registry.all_slices():
-		if s.pane_id == pane_id:
-			out.append(s)
-	return out
+	_ensure_glass_index()
+	return _glass_pane_slices.get(pane_id, [])
 
 
 ## Give the dev-capture actions something to detonate. PLAYGROUND stopped

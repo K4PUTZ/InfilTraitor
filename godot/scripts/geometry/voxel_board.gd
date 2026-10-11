@@ -1191,6 +1191,7 @@ var _glass_craze_tile_cache: Texture2D = null
 var _glass_applied_openings: Array = []
 var _glass_crack_next_id: int = 0
 var _glass_crack_sheets: Dictionary = {}   ## width:String -> Texture2D
+var _glass_crack_sheet_requests: Dictionary = {}   ## path -> true while a threaded load started by the prefetch is not taken
 
 
 ## The fracture sheet for one width (G-D14's `tight` / `wide`), cached. Loaded
@@ -1207,7 +1208,11 @@ func _glass_crack_sheet(opening_id: String, variant: int) -> Texture2D:
 		return null
 	if _glass_crack_sheets.has(path):
 		return _glass_crack_sheets[path]
-	var tex := load(path) as Texture2D
+	var tex: Texture2D
+	if _glass_crack_sheet_requests.erase(path):
+		tex = ResourceLoader.load_threaded_get(path) as Texture2D   ## blocks only for what the thread has not finished
+	else:
+		tex = load(path) as Texture2D
 	if tex == null:
 		## B6 loud-fail: a missing sheet must not degrade to an invisible crack.
 		push_error("[VoxelBoard] CRACK-04: fracture sheet %s failed to load — the crack will not draw" % path)
@@ -1231,6 +1236,17 @@ func _glass_crack_sheet(opening_id: String, variant: int) -> Texture2D:
 ## in, every blast-crazed pane would answer "covered" for every cell, so the next
 ## round anywhere on it would destroy what it touched instead of cracking it — a
 ## silent gameplay change nothing would have failed on.
+## Starts loading the sheet `_glass_crack_sheet(sheet_id, variant)` will ask for, on a thread, so that call does not read a PNG in its
+## frame (`Room.prefetch_glass_crazes`). A sheet already held or already requested is left alone; an unknown id is ignored here and
+## reported by the claim, as before.
+func prefetch_glass_crack_sheet(sheet_id: String, variant: int) -> void:
+	var path: String = GlassCrack.sheet_path(sheet_id, variant)
+	if path == "" or _glass_crack_sheets.has(path) or _glass_crack_sheet_requests.has(path):
+		return
+	if ResourceLoader.load_threaded_request(path, "Texture2D") == OK:
+		_glass_crack_sheet_requests[path] = true
+
+
 func glass_crack_covering(pane_id: String, run: int, level: int) -> int:
 	for c in _glass_cracks:
 		if bool(c.get("field", false)):

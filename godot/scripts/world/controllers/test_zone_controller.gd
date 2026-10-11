@@ -1391,6 +1391,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## (`bump_world_revision()` can null `job.delta` out from under the beat); the Delta object stays alive as long as this ref
 	## does — `waves` alone used to carry it through, D-7 needs the whole Delta for `play_consequence_light()`.
 	var delta: WorldDelta = job.delta
+	room.prefetch_glass_crazes(delta.glass_crazes)   ## their sheets load on a thread over the frames before the commit
 	var waves: Dictionary = delta.waves
 	var hit_stop: bool = _hit_stop_enabled()
 	var stage := {"delta": delta, "gu": gu, "job": job, "debris": {"done": true}, "defer_rain": hit_stop}
@@ -1544,9 +1545,7 @@ func _hit_stop_queue(stage: Dictionary) -> Array:
 			func(_b: int) -> bool:
 				delta_rain(stage)
 				return true,
-			func(_b: int) -> bool:
-				_stage_persist(stage)
-				return true,
+			func(b: int) -> bool: return _stage_persist_step(stage, b),
 			func(_b: int) -> bool:
 				_stage_census(stage)
 				return true,
@@ -1623,6 +1622,10 @@ func _stage_commit(stage: Dictionary) -> void:
 	delta.commit(room, bool(stage.get("defer_rain", false)))
 	_prof("COMMIT — %.1f ms, %d voxel(s) written" % [
 		float(Time.get_ticks_usec() - commit_t0) / 1000.0, delta.touched_voxels.size()])
+	var parts: PackedStringArray = PackedStringArray()
+	for label in delta.commit_split:
+		parts.append("%s %.1f" % [label, float(delta.commit_split[label])])
+	_prof("COMMIT SPLIT — " + " · ".join(parts))
 
 
 ## R3D-PROPS Tier 4 (Director, 2026-09-28): the SAME wall-aware ring flood the footprint preview and the shrapnel rays already read,
@@ -1694,22 +1697,54 @@ func _stage_census(stage: Dictionary) -> void:
 ## rendering: `dirty` means somebody still has to render the voxel, and for a blast nobody does — measured 2026-08, a shot after a
 ## grenade re-emitted 498 `voxel_destroyed` for 5 real voxels) and the world revision moves (every cached prediction is stale now).
 func _stage_persist(stage: Dictionary) -> void:
+	_stage_persist_step(stage, 0)
+
+
+## The persistence as a resumable job for `budget_usec` (0 = to the end), answering true when finished: the hit-stop queue spreads it
+## over the frames after the flash instead of one block (2026-10-11: 204 ms of one Moto frame for the GLASS blast's 3890 voxels). Nothing
+## on screen reads these records (rotation is camera-only; they serve the checkpoint), and the dirty flags and the revision still move
+## only once every record is written, in the order they always did.
+const PERSIST_BUDGET_CHECK: int = 64   ## records between two clock reads
+func _stage_persist_step(stage: Dictionary, budget_usec: int) -> bool:
 	var delta: WorldDelta = stage["delta"]
-	var rec0: int = Time.get_ticks_usec()
-	for voxel in delta.touched_voxels:
+	if not stage.has("persist"):
+		stage["persist"] = {"i": 0, "j": 0, "usec": 0}
+	var job: Dictionary = stage["persist"]
+	var t0: int = Time.get_ticks_usec()
+	var touched: Array = delta.touched_voxels
+	var i: int = int(job["i"])
+	var j: int = int(job["j"])
+	var n: int = 0
+	while i < touched.size():
+		var voxel: Voxel = touched[i]
 		room.record_voxel_damage_to_base(voxel.grid_pos, voxel.level, voxel.damage_state,
 			voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
 			voxel.damage_substrate, voxel)
+		i += 1
+		n += 1
+		if budget_usec > 0 and n % PERSIST_BUDGET_CHECK == 0 and Time.get_ticks_usec() - t0 >= budget_usec:
+			break
 	## R3D-8 step 4: the other claims of a shared cell (box corner, junction column) that this blast also damaged.
-	for entry in delta.damage:
-		var claim_voxel: Voxel = entry["voxel"]
-		if claim_voxel != null:
-			room.record_claim_damage_to_base(claim_voxel)
+	if i >= touched.size():
+		while j < delta.damage.size():
+			var claim_voxel: Voxel = delta.damage[j]["voxel"]
+			if claim_voxel != null:
+				room.record_claim_damage_to_base(claim_voxel)
+			j += 1
+			n += 1
+			if budget_usec > 0 and n % PERSIST_BUDGET_CHECK == 0 and Time.get_ticks_usec() - t0 >= budget_usec:
+				break
+	job["i"] = i
+	job["j"] = j
+	job["usec"] = int(job["usec"]) + (Time.get_ticks_usec() - t0)
+	if i < touched.size() or j < delta.damage.size():
+		return false
 	_prof("PERSIST — record_voxel_damage_to_base x%d took %.2f ms" % [
-		delta.touched_voxels.size(), float(Time.get_ticks_usec() - rec0) / 1000.0])
-	for voxel in delta.touched_voxels:
+		touched.size(), float(job["usec"]) / 1000.0])
+	for voxel in touched:
 		voxel.clear_dirty()
 	room.bump_world_revision()
+	return true
 
 
 ## D-6 (2026-08-29) — `DetonationPresenter` is the only path now. The

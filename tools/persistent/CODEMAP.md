@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**290 scripts · 85031 lines total** (under `godot/scripts/`)
+**290 scripts · 85032 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3904,7 +3904,7 @@ extends `SceneTree` · 203 lines
 
 ### `capture_framer_selftest.gd`
 
-extends `SceneTree` · 61 lines
+extends `SceneTree` · 62 lines
 
 `godot/scripts/tools/capture_framer_selftest.gd`
 

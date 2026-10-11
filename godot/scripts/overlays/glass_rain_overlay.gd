@@ -234,6 +234,12 @@ func _unit(base: int, what: String) -> float:
 var paused: bool = false
 
 
+## G-D55: a rain laid AFTER its fall started catches up: its clock jumps to the fall's, so each flight still starts at its voxel's
+## impact frame (a flight whose frame has passed starts at once).
+func advance_to(frame: int) -> void:
+	_frame = maxi(_frame, frame)
+
+
 func _process(_delta: float) -> void:
 	if paused:
 		return

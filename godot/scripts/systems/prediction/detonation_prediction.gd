@@ -71,6 +71,21 @@ var warmed: bool = false
 
 var _state: Dictionary = {}
 var _cancelled: bool = false
+## G-D55 — the glass-support walk on the predicted world, on the WorkerThreadPool once the plan is built; `delta` is published when it
+## is done. -1 = none running.
+var _support_task: int = -1
+var _support_holder: Array = []
+var _pending: WorldDelta = null
+const GlassSupportRef = preload("res://godot/scripts/systems/destruction/glass_support.gd")
+## Walks of cancelled cooks, still running: reaped (waited, which is then instant) once they finish.
+static var _orphan_tasks: Array = []
+
+
+static func _reap_orphans() -> void:
+	for t: int in _orphan_tasks.duplicate():
+		if WorkerThreadPool.is_task_completed(t):
+			WorkerThreadPool.wait_for_task_completion(t)
+			_orphan_tasks.erase(t)
 
 
 ## Opens the build. Nothing is computed here.
@@ -78,6 +93,7 @@ func begin(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> void:
 	_state = DetonationPlanBuilderClass.begin(bomb_def, source_gu, ctx)
 	_cancelled = false
 	delta = null
+	_pending = null
 	steps = 0
 	worst_step_ms = 0.0
 	worst_step_phase = ""
@@ -94,6 +110,9 @@ func step(budget_ms: float) -> bool:
 		return true
 	if delta != null:
 		return true
+	_reap_orphans()
+	if _pending != null:
+		return _poll_support(budget_ms <= 0.0)
 	var entering: String = DetonationPlanBuilderClass.phase_name(_state)
 	var t0: int = Time.get_ticks_usec()
 	var done: bool = DetonationPlanBuilderClass.step(_state, int(budget_ms * 1000.0))
@@ -103,8 +122,44 @@ func step(budget_ms: float) -> bool:
 		worst_step_ms = elapsed_ms
 		worst_step_phase = entering
 	if done:
-		delta = _state["delta"]
-	return done
+		_pending = _state["delta"]
+		_start_support(_pending)
+		return _poll_support(budget_ms <= 0.0)
+	return false
+
+
+## G-D55 — walk the glass support on the world this plan predicts, off the main thread. The snapshot is the live store with every
+## claim the plan destroys marked gone (a few packed-array copies: cheap). Pure: nothing is written outside the snapshot.
+func _start_support(d: WorldDelta) -> void:
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		return
+	var snap = GlassSupportRef.snapshot(store)
+	var gone := PackedInt32Array()
+	var proj: Dictionary = d.projections()
+	for v in proj:
+		if int(proj[v][WorldDelta.P_STATE]) == Voxel.DamageState.DESTROYED:
+			var c: int = store.claim_of(v)
+			if c >= 0:
+				gone.append(c)
+	GlassSupportRef.apply_destroyed(snap, gone)
+	_support_holder = [[]]
+	var holder: Array = _support_holder
+	_support_task = WorkerThreadPool.add_task(func() -> void: holder[0] = GlassSupportRef.unsupported(snap), false, "glass support (cook)")
+
+
+## True once the walk is done (`wait` blocks for it: the one-shot path), publishing `delta` with its collapse plan.
+func _poll_support(wait: bool) -> bool:
+	if _support_task != -1:
+		if not wait and not WorkerThreadPool.is_task_completed(_support_task):
+			return false
+		WorkerThreadPool.wait_for_task_completion(_support_task)
+		_support_task = -1
+		_pending.glass_collapse = _support_holder[0]
+		_pending.glass_collapse_ready = true
+	delta = _pending
+	_pending = null
+	return true
 
 
 ## Runs to completion with no budget — the one-shot path, for a caller that has
@@ -120,6 +175,10 @@ func run(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> WorldDelta:
 ## twice. See the class doc for why this needs no rollback.
 func cancel() -> void:
 	_cancelled = true
+	if _support_task != -1:   ## a worker task cannot be stopped, and waiting here would stall the aim: it is reaped once finished
+		_orphan_tasks.append(_support_task)
+		_support_task = -1
+	_pending = null
 	PredictionReaper.retire(_state)
 	_state = {}
 	delta = null

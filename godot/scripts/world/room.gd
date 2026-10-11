@@ -1064,9 +1064,12 @@ func reap_orphaned_remnants() -> Dictionary:
 ## pile is recorded. The fall shows only once the board's chunks no longer hold the voxels, so the glass is never drawn twice nor
 ## missing. Called once per event, after `reap_orphaned_remnants()` (the cook's `WorldDelta.commit()` and the shot pipeline). `delay_s`
 ## is from the call: the time for the cracks to run (the support walk and the landing index set the real start on the Moto).
-static var GLASS_COLLAPSE_BLAST_DELAY_S: float = 0.5
-static var GLASS_COLLAPSE_SHOT_DELAY_S: float = 0.3
-const GLASS_COLLAPSE_INDEX_BUDGET_US: int = 4000   ## main-thread time per frame the landing index may take during the delay
+## 2026-10-11 (Director: "fazer a troca bem antes, logo depois do flash […] deixar eles lá parados, até estarem disponíveis pra
+## efetivamente cair, 1/3 de segundo depois"): no wait — the swap happens as soon as the support walk and the landings are ready (on
+## the Moto the walk itself takes ~0.7-1 s), and the voxels then REST ~1/3 s on the board before they fall (`GlassVoxelFall3D`).
+static var GLASS_COLLAPSE_BLAST_DELAY_S: float = 0.0
+static var GLASS_COLLAPSE_SHOT_DELAY_S: float = 0.0
+const GLASS_COLLAPSE_INDEX_BUDGET_US: int = 12000   ## main-thread time per frame the landing index may take (4 ms spread it over ~50 Moto frames: the swap came ~3 s after the blast)
 const GlassSupportRef = preload("res://godot/scripts/systems/destruction/glass_support.gd")
 const GlassVoxelFall3DClass = preload("res://godot/scripts/geometry/glass_voxel_fall3d.gd")
 
@@ -1079,10 +1082,9 @@ func schedule_glass_collapse(delay_s: float) -> void:
 		return
 	var tree: SceneTree = get_tree()
 	## The walk runs on the WorkerThreadPool over a snapshot taken now (~100 ms on the desktop, several hundred on the Moto, never
-	## inside a frame).
+	## inside a frame). A blast's cook does it BEFORE the flash instead (`DetonationPrediction`, `start_glass_collapse()`).
 	var t0: int = Time.get_ticks_usec()
 	var snap = GlassSupportRef.snapshot(store)
-	var snap_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
 	var holder: Array = [[]]
 	var task: int = WorkerThreadPool.add_task(func() -> void: holder[0] = GlassSupportRef.unsupported(snap), false, "glass support")
 	var waited: float = 0.0   ## in PROCESS time (deterministic under --fixed-fps), never the wall clock
@@ -1090,15 +1092,25 @@ func schedule_glass_collapse(delay_s: float) -> void:
 		await tree.process_frame
 		waited += get_process_delta_time()
 	WorkerThreadPool.wait_for_task_completion(task)
-	var plan: Array = holder[0]
-	var ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
 	if not is_instance_valid(self) or VoxelStore.active != store:
 		return
-	if plan.is_empty():
-		print_debug("[GLASS-COLLAPSE] support checked in %.1f ms (snapshot %.1f ms, off the main thread): every pane voxel stands"
-			% [ms, snap_ms])
+	print_debug("[GLASS-COLLAPSE] support checked in %.1f ms after the event (off the main thread)" % (float(Time.get_ticks_usec() - t0) / 1000.0))
+	if delay_s > waited:
+		await tree.create_timer(delay_s - waited, false).timeout
+	start_glass_collapse(holder[0])
+
+
+## G-D55 (2026-10-11, Director: "fazer a troca durante o flash" — "a gente tenha gordura pra incluir a sustentação no pré-cook"): the
+## collapse from a support plan already walked. Called by `WorldDelta.commit()` with the plan its cook walked BEFORE the flash on
+## the predicted world, so the glass swaps a few frames after the commit, still under the flash; and by `schedule_glass_collapse()`
+## for any other event (a shot). The landing index needs the floor the event left (its craters), so it is built HERE, while the
+## voxels rest after the swap, and the rain joins the fall when it is ready. Not awaited by its callers.
+func start_glass_collapse(plan: Array) -> void:
+	var store: VoxelStore = VoxelStore.active
+	if store == null or plan.is_empty():
+		if plan.is_empty():
+			print_debug("[GLASS-COLLAPSE] every pane voxel stands")
 		return
-	## The score normalised to 0..1 (1 = the farthest / lowest: falls first, by a little).
 	var smin: float = INF
 	var smax: float = -INF
 	for e: Dictionary in plan:
@@ -1108,33 +1120,36 @@ func schedule_glass_collapse(delay_s: float) -> void:
 	var entries: Array = []
 	for e: Dictionary in plan:
 		var k: int = int(e["claim"]) * 3
-		var c := Vector3i(snap.xyz[k], snap.xyz[k + 1], snap.xyz[k + 2])
+		var c := Vector3i(store.xyz[k], store.xyz[k + 1], store.xyz[k + 2])
 		fallen_all.append({"grid_pos": Vector2i(c.x, c.y), "level": c.z})
 		entries.append({"claim": int(e["claim"]), "cell": c,
 			"score": (float(e.get("score", 0.0)) - smin) / maxf(smax - smin, 0.001)})
-	## Where every shard lands, worked out NOW and spread over frames (`GlassFall.index_step()` with a per-frame budget).
+	## The landings, built alongside the swap (a per-frame budget), into `landings` ({"ready": bool, "of": Dictionary}).
+	var landings: Dictionary = {"ready": false, "of": {}}
+	_build_glass_landings(fallen_all, landings, store)
+	print_debug("[GLASS-COLLAPSE] %d pane voxel(s) will fall (plan %s)" % [entries.size(), "from the cook" if plan.size() > 0 else ""])
+	await _drop_glass_voxels(entries, landings)
+
+
+## Where every shard lands, spread over frames (`GlassFall.index_step()` with a per-frame budget); `out.ready` when done.
+func _build_glass_landings(fallen_all: Array, out: Dictionary, store: VoxelStore) -> void:
 	var columns: Dictionary = {}
 	var scatter: Array = GlassFall.scatter_all(fallen_all, {}, columns)
 	var index_state: Dictionary = GlassFall.index_begin(_slab_registry.all_slabs() if _slab_registry != null else [], columns)
 	while not GlassFall.index_step(index_state, Time.get_ticks_usec() + GLASS_COLLAPSE_INDEX_BUDGET_US):
-		await tree.process_frame
-		waited += get_process_delta_time()
+		await get_tree().process_frame
 		if not is_instance_valid(self) or VoxelStore.active != store:
 			return
 	var landing_of: Dictionary = {}   ## Vector3i(origin x, y, from_level) -> landing
 	for lg: Dictionary in GlassFall.landings_from_index(scatter, GlassFall.index_finish(index_state)):
 		landing_of[Vector3i(lg["origin_pos"].x, lg["origin_pos"].y, int(lg["from_level"]))] = lg
-	print_debug("[GLASS-COLLAPSE] support checked in %.1f ms (snapshot %.1f ms, off the main thread): %d pane voxel(s) will fall after %.1f s"
-		% [ms, snap_ms, entries.size(), delay_s])
-	if delay_s > waited:
-		await tree.create_timer(delay_s - waited, false).timeout
-	if not is_instance_valid(self) or VoxelStore.active != store:
-		return   ## a map load replaced the board mid-collapse: the plan names claims of a store that is gone
-	await _drop_glass_voxels(entries, landing_of)
+	out["of"] = landing_of
+	out["ready"] = true
+	print_debug("[GLASS-COLLAPSE] landing index ready at process frame %d" % Engine.get_process_frames())
 
 
 ## G-D55 — the voxels leave the board together (one commit, one remesh), then one `GlassVoxelFall3D` draws them falling.
-func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
+func _drop_glass_voxels(entries: Array, landings: Dictionary) -> void:
 	var store: VoxelStore = VoxelStore.active
 	var live: Node = board3d()
 	if live == null or store == null:
@@ -1158,7 +1173,7 @@ func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
 		var c: Vector3i = e["cell"]
 		fall_entries.append({"x": c.x, "y": c.y, "level": c.z, "score": e["score"],
 			"material": int(live.call("store_material_of", claim)), "face": int(store.pane[claim]) - 1,
-			"landing": landing_of.get(c, {})})
+			"landing": {}})
 	## SPREAD OVER FRAMES (2026-10-11, the Moto's release frame was 233-266 ms: destroy + record 10, floors 10, the fall's setup 29, the
 	## rain 38, the board's dirty pass 31, the rest the board and the GPU). Nothing on screen changes until the chunks swap, so the
 	## fall and its rain are prepared on the frames before the voxels are destroyed, one heavy piece per frame.
@@ -1180,20 +1195,11 @@ func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
 	## 2. The fall (its meshes at rest, every voxel's whole motion), hidden until the swap.
 	var fall: Node3D = GlassVoxelFall3DClass.new()
 	(live.call("geometry_root") as Node3D).add_child(fall)
-	var flights: Array = fall.call("setup", live, fall_entries, _voxel_board.glass_crack_records(),
+	fall.call("setup", live, fall_entries, _voxel_board.glass_crack_records(),
 		func(hits: Array) -> void:
 			record_glass_shards(GlassFall.pile_by_cell(hits))
 			_glass_impact_dust(hits))
 	var td1: int = Time.get_ticks_usec()
-	await get_tree().process_frame
-	if not is_instance_valid(self) or not is_instance_valid(fall) or VoxelStore.active != store:
-		return
-	## 3. The rain, laid PAUSED: it starts in the step the fall does, so its flights' frames are the fall's own. No dust with it (it
-	## would show before the shards land): each voxel puffs where it lands (`_glass_impact_dust`).
-	var td2: int = Time.get_ticks_usec()
-	var n: int = spawn_glass_rain(flights, false, null, true)
-	var rain: Node = _last_glass_rain
-	var td3: int = Time.get_ticks_usec()
 	await get_tree().process_frame
 	if not is_instance_valid(self) or not is_instance_valid(fall) or VoxelStore.active != store:
 		return
@@ -1222,8 +1228,8 @@ func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
 	var td6: int = Time.get_ticks_usec()
 	var dirty_frame: int = Engine.get_process_frames()
 	await _voxel_board.process_dirty_async(_edge_registry)
-	print_debug("[GLASS-COLLAPSE] spread: floors + fall setup %.1f ms | rain %.1f ms | destroy + record %.1f ms, dirty pass %.1f ms wall over %d frame(s)"
-		% [float(td1 - td0) / 1000.0, float(td3 - td2) / 1000.0, float(td5 - td4) / 1000.0, float(Time.get_ticks_usec() - td6) / 1000.0,
+	print_debug("[GLASS-COLLAPSE] spread: floors + fall setup %.1f ms | destroy + record %.1f ms, dirty pass %.1f ms wall over %d frame(s)"
+		% [float(td1 - td0) / 1000.0, float(td5 - td4) / 1000.0, float(Time.get_ticks_usec() - td6) / 1000.0,
 		Engine.get_process_frames() - dirty_frame])
 	if not is_instance_valid(self) or not is_instance_valid(_voxel_board):
 		return
@@ -1248,12 +1254,22 @@ func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
 	_voxel_board.release_glass_occ_hold()   ## the pane's crack is cut here, in the step the chunks swapped
 	var tr1: int = Time.get_ticks_usec()
 	fall.call("start")
-	if is_instance_valid(rain):
-		rain.set("paused", false)
 	print_debug("[GLASS-COLLAPSE] show step: crack cut %.1f ms, start %.1f ms" % [float(tr1 - tr0) / 1000.0,
 		float(Time.get_ticks_usec() - tr1) / 1000.0])
-	print_debug("[GLASS-COLLAPSE] %d voxel(s) leave the board and fall (setup %.1f ms at drawn frame %d, shown at %d; %.1f ms to build + commit, wall); %d shard flight(s), %d shard(s)"
-		% [voxels.size(), setup_ms, setup_frame, Engine.get_frames_drawn(), float(Time.get_ticks_usec() - tw0) / 1000.0, flights.size(), n])
+	print_debug("[GLASS-COLLAPSE] %d voxel(s) leave the board and rest (setup %.1f ms at drawn frame %d, shown at %d; %.1f ms to build + commit, wall)"
+		% [voxels.size(), setup_ms, setup_frame, Engine.get_frames_drawn(), float(Time.get_ticks_usec() - tw0) / 1000.0])
+	## 5. The rain joins when the landing index is ready (it needs the floor the event left), on the fall's own clock. No dust with it
+	## (it would show before the shards land): each voxel puffs where it lands (`_glass_impact_dust`).
+	while not bool(landings["ready"]):
+		await get_tree().process_frame
+		if not is_instance_valid(self) or not is_instance_valid(fall):
+			return
+	var flights: Array = fall.call("set_landings", landings["of"])
+	var n: int = spawn_glass_rain(flights, false)
+	if is_instance_valid(_last_glass_rain):
+		_last_glass_rain.call("advance_to", int(fall.call("elapsed")))
+	print_debug("[GLASS-COLLAPSE] rain joined %d frame(s) after the swap: %d shard flight(s), %d shard(s)" % [int(fall.call("elapsed")),
+		flights.size(), n])
 
 
 ## The glass SLICE holding one voxel in this view, or null. Shared by the craze

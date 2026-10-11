@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**291 scripts · 85703 lines total** (under `godot/scripts/`)
+**291 scripts · 85829 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -702,7 +702,7 @@ extends `Node3D` · 3258 lines
 
 ### `glass_voxel_fall3d.gd`
 
-`class_name GlassVoxelFall3D` · extends `Node3D` · 312 lines
+`class_name GlassVoxelFall3D` · extends `Node3D` · 337 lines
 
 `godot/scripts/geometry/glass_voxel_fall3d.gd`
 
@@ -712,6 +712,8 @@ extends `Node3D` · 3258 lines
 - `MAX_FALL_FRAMES` = `240`
 
 **Public API**
+- `func set_landings(landing_of: Dictionary) -> Array:`
+- `func elapsed() -> int:`
 - `func show_cracks() -> void:`
 - `func start() -> void:`
 
@@ -1646,7 +1648,7 @@ extends `Node2D` · 164 lines
 
 ### `glass_rain_overlay.gd`
 
-`class_name GlassRainOverlay` · extends `Node2D` · 330 lines
+`class_name GlassRainOverlay` · extends `Node2D` · 336 lines
 
 `godot/scripts/overlays/glass_rain_overlay.gd`
 
@@ -1684,6 +1686,7 @@ extends `Node2D` · 164 lines
 **Public API**
 - `func set_board3d(board: Node3D) -> void:`
 - `func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:`
+- `func advance_to(frame: int) -> void:`
 - `func live_count() -> int:`
 - `func span_frames() -> int:`
 
@@ -2556,7 +2559,7 @@ extends `RefCounted` · 37 lines
 
 ### `glass_support.gd`
 
-`class_name GlassSupport` · 178 lines
+`class_name GlassSupport` · 190 lines
 
 `godot/scripts/systems/destruction/glass_support.gd`
 
@@ -3192,7 +3195,7 @@ extends `Node` · 236 lines
 
 ### `detonation_prediction.gd`
 
-`class_name DetonationPrediction` · extends `RefCounted` · 165 lines
+`class_name DetonationPrediction` · extends `RefCounted` · 224 lines
 
 `godot/scripts/systems/prediction/detonation_prediction.gd`
 
@@ -3200,6 +3203,7 @@ extends `Node` · 236 lines
 
 **Constants / tuning**
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
+- `GlassSupportRef` = `preload("res://godot/scripts/systems/destruction/glass_support.gd")`
 
 **Public vars**
 - `var delta: WorldDelta = null`
@@ -3272,7 +3276,7 @@ extends `Node` · 236 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 394 lines
+`class_name WorldDelta` · extends `RefCounted` · 402 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -3295,6 +3299,8 @@ extends `Node` · 236 lines
 - `var touched: Array[Vector3i] = []`
 - `var touched_voxels: Array = []`
 - `var reaped_voxels: Array = []`
+- `var glass_collapse: Array = []`
+- `var glass_collapse_ready: bool = false`
 - `var cost_ms: float = 0.0`
 - `var scorch_writes: Dictionary = {}`
 - `var glass_openings: Array = []`
@@ -6079,7 +6085,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10120 lines
+extends `Node2D` · 10136 lines
 
 `godot/scripts/world/room.gd`
 

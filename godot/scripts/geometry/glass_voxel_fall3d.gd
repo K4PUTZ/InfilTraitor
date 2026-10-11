@@ -21,7 +21,7 @@
 class_name GlassVoxelFall3D
 extends Node3D
 
-static var WAIT_FRAMES: Vector2 = Vector2(12.0, 20.0)   ## 1/5 .. 1/3 s, hashed per voxel
+static var WAIT_FRAMES: Vector2 = Vector2(17.0, 23.0)   ## ~1/3 s, hashed per voxel (2026-10-11: the swap moved to right after the blast)
 static var ORDER_LEAD_FRAMES: float = 5.0               ## at most this much earlier for the farthest / lowest (a slight influence)
 static var GRAVITY: float = 9.8                          ## GU / s² (1 GU ~ 1 m)
 static var GRAVITY_SPREAD: float = 0.22                  ## a voxel's g is g × [1 - this, 1]
@@ -40,6 +40,7 @@ var _on_impact: Callable          ## (Array of landings that hit this frame) -> 
 var _started: bool = false
 var _body_nodes: Array = []    ## shown at `start()` (the frame the board's chunks drop the voxels)
 var _crack_nodes: Array = []   ## shown at `show_cracks()` (the step the board cuts them out of the pane's crack), or at `start()`
+var _root_xf: Transform3D = Transform3D.IDENTITY
 
 
 ## `entries`: {x, y, level, material, face, score (0..1, 1 = falls first), floor_y (geometry-root y of what stands under it),
@@ -52,6 +53,7 @@ func setup(live: Node, entries: Array, cracks: Array, on_impact: Callable) -> Ar
 	var groups: Dictionary = {}   ## Vector2i(material, x_normal) -> Array of voxel indices
 	var flights: Array = []
 	var root_xf: Transform3D = live.call("geometry_root_transform")
+	_root_xf = root_xf
 	for e: Dictionary in entries:
 		var vx: Dictionary = _motion(e)
 		vx["centre"] = live.call("voxel_centre_local", int(e["x"]), int(e["y"]), int(e["level"]))
@@ -266,6 +268,29 @@ func _add_crack(rec: Dictionary) -> void:
 		mm.set_instance_custom_data(k, Color(off.x, off.y, 0.0, 0.0))
 		((_voxels[members[k][0]] as Dictionary)["cracks"] as Array).append([mm, k])
 	_add_instance(mm, mat, 0.05, true)
+
+
+## The landings, known after the fall was built (2026-10-11: the swap now happens right after the blast, while the landing index —
+## which needs the floor the blast left — is still being built). Returns the shard flights, as `setup()` does, each `t0` counted
+## from the fall's start. Voxels already past their impact get no pile (the index came too late for them; never seen so far).
+func set_landings(landing_of: Dictionary) -> Array:
+	var flights: Array = []
+	for vx: Dictionary in _voxels:
+		var lg: Dictionary = landing_of.get(vx["cell"], {})
+		vx["landing"] = lg
+		if lg.is_empty():
+			continue
+		var row: Dictionary = lg.duplicate()
+		row["from3"] = _root_xf * (_transform_at(vx, int(vx["impact"])).origin)
+		row["t0"] = int(vx["start"]) + int(vx["impact"])
+		row["pop"] = 1.6
+		flights.append(row)
+	return flights
+
+
+## Frames since `start()`.
+func elapsed() -> int:
+	return _frame
 
 
 func show_cracks() -> void:

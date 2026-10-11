@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**291 scripts · 85547 lines total** (under `godot/scripts/`)
+**291 scripts · 85590 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -661,7 +661,7 @@ extends `Node3D` · 3230 lines
 
 ### `glass_crack_mirror3d.gd`
 
-`class_name GlassCrackMirror3D` · extends `Node3D` · 290 lines
+`class_name GlassCrackMirror3D` · extends `Node3D` · 333 lines
 
 `godot/scripts/geometry/glass_crack_mirror3d.gd`
 

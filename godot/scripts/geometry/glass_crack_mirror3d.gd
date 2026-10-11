@@ -96,12 +96,55 @@ func _make_twin(rec: Dictionary) -> Dictionary:
 	mesh.material_override = mat
 	mesh.transform = _placement(rec)
 	add_child(mesh)
+	## The back face: the same quad on the pane's other plane (same basis, so the same offsets: the lines meet through the
+	## thickness), each of the two drawn only from its own outward side — from any view one face of ink, never both through the glass.
+	var outward: Vector3 = _outward(rec)
+	var facing: float = signf(mesh.transform.basis.z.dot(outward))
+	mesh.set_instance_shader_parameter("crack_side", facing)
+	var back := MeshInstance3D.new()
+	back.name = "Back"
+	back.mesh = quad
+	back.material_override = mat
+	back.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mesh.add_child(back)
+	back.top_level = true
+	var thick: float = float(_pane_thickness(rec)) * _unit + 2.0 * FACE_LIFT_VOXELS * _unit
+	back.global_transform = (get_parent() as Node3D).global_transform * Transform3D(mesh.transform.basis, mesh.transform.origin - outward * thick)
+	back.set_instance_shader_parameter("crack_side", -facing)
 	var strips: MeshInstance3D = _make_strips(rec, mat)
 	if strips != null:
 		mesh.add_child(strips)
 		strips.top_level = true   ## placed in the geometry root's space, not the quad's
 		strips.global_transform = (get_parent() as Node3D).global_transform
 	return {"mesh": mesh, "mat": mat, "rec": rec}
+
+
+## The face's outward normal (the side its quad is lifted to, `_placement`).
+func _outward(rec: Dictionary) -> Vector3:
+	match int(rec.get("face", Face.SW)):
+		Face.SE:
+			return Vector3.RIGHT
+		Face.NE:
+			return Vector3.FORWARD
+		Face.NW:
+			return Vector3.LEFT
+	return Vector3.BACK
+
+
+## How many voxels thick the pane is at the impact (the store's pane cells across it); 1 when the store cannot say.
+func _pane_thickness(rec: Dictionary) -> int:
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		return 1
+	var run_is_x: bool = int(rec["run_axis"]) == 0
+	var cell: Vector2i = rec["impact_cell"]
+	var n: int = 0
+	for d: int in [-1, 0, 1]:
+		var cx: int = cell.x if run_is_x else cell.x + d
+		var cy: int = cell.y + d if run_is_x else cell.y
+		if store.has_glass_pane(cx, cy, int(rec["impact_level"])):
+			n += 1
+	return maxi(n, 1)
 
 
 ## 2026-10-10 (Director: "precisamos cobrir as laterais, topos e fundos dos outros painéis que racharam com os decals […] quando a

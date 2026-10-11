@@ -38,6 +38,9 @@ varying vec4 v_inst;
 // The edge strips' tone (2026-10-10, Director: the darker / lighter slivers get the same effect on the decal): COLOR.r scales the
 // ink as the pane's edge shades its own planes (top lighter, ends darker, bottom darkest). 1 on the face quad (no vertex colour).
 varying float v_tone;
+// One crack, two faces (Director, 2026-10-11: the crack must reach the pane's back face): the face quad and its twin on the back
+// plane share this material; each shows only from its own side (1 = when FRONT_FACING, -1 = when not, 0 = both: strips, voxels).
+instance uniform float crack_side = 0.0;
 
 void vertex() {
 	v_inst = INSTANCE_CUSTOM;
@@ -49,6 +52,9 @@ vec3 to_linear(vec3 c) {
 }
 
 void fragment() {
+	if ((crack_side > 0.5 && !FRONT_FACING) || (crack_side < -0.5 && FRONT_FACING)) {
+		discard;
+	}
 	vec2 off = crack_per_voxel ? v_inst.xy + vec2(UV.x - 0.5, 0.5 - UV.y)
 		: vec2((UV.x - 0.5) * crack_span.x, (0.5 - UV.y) * crack_span.y);
 	// The point of the WHOLE crack quad this is (its UV): what the sheet and the feather read.

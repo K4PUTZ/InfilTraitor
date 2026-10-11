@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**291 scripts · 85529 lines total** (under `godot/scripts/`)
+**291 scripts · 85547 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3226 lines
+extends `Node3D` · 3230 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -460,6 +460,7 @@ extends `Node3D` · 3226 lines
 
 **Signals**
 - `signal view_changed(direction: String)`
+- `signal remesh_committed()`
 
 **Constants / tuning**
 - `PickMathRef` = `preload("res://godot/scripts/geometry/pick_math.gd")`
@@ -660,7 +661,7 @@ extends `Node3D` · 3226 lines
 
 ### `glass_crack_mirror3d.gd`
 
-`class_name GlassCrackMirror3D` · extends `Node3D` · 278 lines
+`class_name GlassCrackMirror3D` · extends `Node3D` · 290 lines
 
 `godot/scripts/geometry/glass_crack_mirror3d.gd`
 
@@ -669,6 +670,9 @@ extends `Node3D` · 3226 lines
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/glass_crack3d.gdshader"`
 - `MIRRORED` = `[ "crack_sheet", "crack_span", "crack_pane_lo", "crack_pane_hi", "crack_field", "crack_tile_span", "crack_field_origin", "crack_field_dir", "crack_occupancy", "crack_occ_size", "crack_occ_origin", "crack_hole_cut", "crack_opening", "crack_opening_origin", "crack_opening_size", "crack_opacity", ]`
+- `STRIP_TONE_TOP` = `0.85`
+- `STRIP_TONE_END` = `0.5`
+- `STRIP_TONE_BOTTOM` = `0.4`
 - `FACE_LIFT_VOXELS` = `0.05`
 - `OPEN_MAX` = `16`
 - `OPEN_TEXELS_PER_VOXEL` = `12`
@@ -6072,7 +6076,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10074 lines
+extends `Node2D` · 10076 lines
 
 `godot/scripts/world/room.gd`
 

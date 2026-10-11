@@ -32,6 +32,9 @@ extends Node3D
 
 ## R3D-WORLD — the view turned (`set_view()`): what is drawn as a camera-facing ribbon (`WorldCanvas3D`) is rebuilt.
 signal view_changed(direction: String)
+## G-D55 — emitted right after a remesh's chunks are swapped in (in that same process step), so whatever replaces the removed voxels
+## (a glass fall) shows in the SAME drawn frame the board stops drawing them: no frame with neither.
+signal remesh_committed()
 
 ## RENDER3D R3D-3 step 3 — 16 vs 32, chosen by measurement on the Moto (DevFlags
 ## `RENDER3D_CHUNK`, read at `build()`, before any chunk math runs). 16 wins: initial
@@ -2084,6 +2087,7 @@ func _finish_remesh_task() -> void:
 		_remesh_queue_meta = {}
 		_start_remesh_task(next_chunks, str(next_meta.get("reason", "commit")),
 			int(next_meta.get("voxels", 0)), float(next_meta.get("fold_ms", 0.0)))
+	remesh_committed.emit()
 
 
 func _chunk_of(key: Vector3i) -> Vector2i:

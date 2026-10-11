@@ -35,9 +35,13 @@ uniform float crack_edge_spill : hint_range(0.0, 3.0) = 0.0;
 // ink is the pane's own. No occupancy, no opening: the voxel IS the glass.
 uniform bool crack_per_voxel = false;
 varying vec4 v_inst;
+// The edge strips' tone (2026-10-10, Director: the darker / lighter slivers get the same effect on the decal): COLOR.r scales the
+// ink as the pane's edge shades its own planes (top lighter, ends darker, bottom darkest). 1 on the face quad (no vertex colour).
+varying float v_tone;
 
 void vertex() {
 	v_inst = INSTANCE_CUSTOM;
+	v_tone = COLOR.r;
 }
 
 vec3 to_linear(vec3 c) {
@@ -82,6 +86,6 @@ void fragment() {
 		vec2 e = min(quad_uv, vec2(1.0) - quad_uv) / max(crack_edge_feather, 0.001);
 		ink *= clamp(min(e.x, e.y), 0.0, 1.0);
 	}
-	ALBEDO = to_linear(crack_color);
-	ALPHA = clamp(ink * crack_strength, 0.0, 1.0) * crack_opacity;
+	ALBEDO = to_linear(crack_color) * v_tone;
+	ALPHA = clamp(ink * crack_strength, 0.0, 1.0) * crack_opacity * mix(0.6, 1.0, v_tone);
 }

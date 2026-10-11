@@ -25,6 +25,11 @@ const MIRRORED: Array[String] = [
 	"crack_opening_origin", "crack_opening_size", "crack_opacity",
 ]
 
+## The strips' ink tone per edge plane, as the pane's own edges shade theirs (top lighter, ends darker, bottom darkest).
+const STRIP_TONE_TOP: float = 0.85
+const STRIP_TONE_END: float = 0.5
+const STRIP_TONE_BOTTOM: float = 0.4
+
 ## Lifts the quad off the glass so it never z-fights the pane, in voxels.
 const FACE_LIFT_VOXELS: float = 0.05
 
@@ -152,11 +157,15 @@ func _make_strips(rec: Dictionary, mat: ShaderMaterial) -> MeshInstance3D:
 	var depth: float = t1 - t0
 	var verts := PackedVector3Array()
 	var uvs := PackedVector2Array()
+	var cols := PackedColorArray()
 	var idx := PackedInt32Array()
+	var tone: Array = [STRIP_TONE_TOP]
 	var quad := func(a: Vector3, b: Vector3, c: Vector3, d: Vector3, ua: Vector2, ub: Vector2, uc: Vector2, ud: Vector2) -> void:
 		var base: int = verts.size()
 		verts.append_array([a, b, c, d])
 		uvs.append_array([ua, ub, uc, ud])
+		for _k: int in range(4):
+			cols.append(Color(float(tone[0]), 1, 1, 1))
 		idx.append_array([base, base + 1, base + 2, base, base + 2, base + 3])
 	## The DECAL itself on each edge, not a border line stretched (Director, 2026-10-10): the face's band just inside that border,
 	## as deep as the pane is thick, folded over the corner — so the edge shows the crack's real texture, continuous at the corner.
@@ -166,11 +175,13 @@ func _make_strips(rec: Dictionary, mat: ShaderMaterial) -> MeshInstance3D:
 	var fy1: float = hi.y - depth
 	quad.call(at.call(r0, h1 + lift, t1), at.call(r1, h1 + lift, t1), at.call(r1, h1 + lift, t0), at.call(r0, h1 + lift, t0),
 		uv.call(Vector2(lo.x, fy0)), uv.call(Vector2(hi.x, fy0)), uv.call(Vector2(hi.x, fy1)), uv.call(Vector2(lo.x, fy1)))
+	tone[0] = STRIP_TONE_BOTTOM
 	var by0: float = lo.y
 	var by1: float = lo.y + depth
 	quad.call(at.call(r0, h0 - lift, t1), at.call(r1, h0 - lift, t1), at.call(r1, h0 - lift, t0), at.call(r0, h0 - lift, t0),
 		uv.call(Vector2(lo.x, by0)), uv.call(Vector2(hi.x, by0)), uv.call(Vector2(hi.x, by1)), uv.call(Vector2(lo.x, by1)))
 	## The two ends: up the height; across the thickness the run goes inward from the end.
+	tone[0] = STRIP_TONE_END
 	var ex0: float = hi.x
 	var ex1: float = hi.x - depth
 	quad.call(at.call(r1 + lift, h1, t1), at.call(r1 + lift, h1, t0), at.call(r1 + lift, h0, t0), at.call(r1 + lift, h0, t1),
@@ -183,6 +194,7 @@ func _make_strips(rec: Dictionary, mat: ShaderMaterial) -> MeshInstance3D:
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_COLOR] = cols
 	arrays[Mesh.ARRAY_INDEX] = idx
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)

@@ -827,12 +827,12 @@ func _glass_impact_dust(landings: Array) -> void:
 		return
 	var puffs: int = 0
 	for lg: Dictionary in landings:
-		if puffs >= 6:
+		if puffs >= 10:
 			break
 		var to: Vector2 = _voxel_board.voxel_world_position(lg["grid_pos"], int(lg["landing_level"]))
 		if to == Vector2.ZERO:
 			continue
-		_debris_overlay.add_glass_dust(to, 14.0, Color(0.88, 0.93, 0.98))
+		_debris_overlay.add_glass_dust(to, 30.0, Color(0.92, 0.95, 1.0))   ## 14 read as nothing (Director, 2026-10-10)
 		puffs += 1
 
 
@@ -1197,9 +1197,11 @@ func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
 		return
 	live.on_shot_commit(voxels)
 	_destruction_render_busy = false
-	## The fall appears in the frame the board's chunks no longer hold the voxels; its rain starts with it.
+	## The fall appears in the frame the board's chunks no longer hold the voxels; its rain starts with it. Awaiting the board's own
+	## `remesh_committed` resumes HERE inside the step that swapped the chunks, so both changes reach the same drawn frame (a
+	## `process_frame` wait showed one frame with neither, 2026-10-10).
 	while is_instance_valid(live) and bool(live.call("remesh_pending")):
-		await get_tree().process_frame
+		await live.remesh_committed
 	if not is_instance_valid(live) or not is_instance_valid(fall):
 		return
 	fall.visible = true

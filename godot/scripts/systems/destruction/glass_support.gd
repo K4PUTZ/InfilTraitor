@@ -71,18 +71,6 @@ static func snapshot(store: VoxelStore) -> Snap:
 	return s
 
 
-## G-D55 — the snapshot as it WILL be: `claims` marked DESTROYED (invisible, their cell emptied when they own it). The cook walks the
-## support on the world its blast predicts, before the flash.
-static func apply_destroyed(s: Snap, claims: PackedInt32Array) -> void:
-	for c: int in claims:
-		if c < 0 or c >= s.claims:
-			continue
-		s.state[c] = Voxel.DamageState.DESTROYED << 1   ## bit 0 (visible) clear, bits 1-2 the damage
-		var cell: int = s.cell_index(s.xyz[c * 3], s.xyz[c * 3 + 1], s.xyz[c * 3 + 2])
-		if cell >= 0 and cell < s.occ.size() and s.owner[cell] == c:
-			s.occ[cell] = 0
-
-
 ## Every visible glass PANE voxel that no longer stands, as [{"claim": int, "score": float}], highest score first (fall first).
 ## Pure on the snapshot: safe off the main thread.
 static func unsupported(store: Snap) -> Array:

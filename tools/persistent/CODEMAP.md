@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**291 scripts · 86058 lines total** (under `godot/scripts/`)
+**291 scripts · 86022 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -702,20 +702,11 @@ extends `Node3D` · 3268 lines
 
 ### `glass_voxel_fall3d.gd`
 
-`class_name GlassVoxelFall3D` · extends `Node3D` · 337 lines
+`class_name GlassVoxelFall3D` · extends `Node3D` · 355 lines
 
 `godot/scripts/geometry/glass_voxel_fall3d.gd`
 
 > GlassVoxelFall3D — G-D55 as the Director refined it (2026-10-10): the glass that lost its support falls VOXEL BY VOXEL, each a small block of the pane carrying its own piece of the crack, and only becomes shards where it hits what is under it. *"Tudo acontecendo ao mesmo tempo, com variações internas de velocidade e ângulo […] voxels mais longes e mais baixos caem primeiro, voxels mais perto e mais altos caem depois. Mas é apenas uma leve influência […] Deixa os voxels +aprox 1/4 de segundo parados antes de cair […] randomizado entre 1/3 e 1/5."* THE MOTION IS CLOSED FORM, per voxel (B4: every number hashed off its base cell, never `randf`): it rests `wait` frames (1/5..1/3 s, minus a slight lead for the far and low ones), then falls under its own g (a spread of g), with its own small push (up, out along the pane's normal, sideways) and its own tumble (a hashed axis and speed); it stops at the first frame its lowest corner reaches the top of what stands under its column (the pane's base, a floor) — so the impact frame and the impact point are known at the start, and the shard rain for the whole event is ONE overlay whose flights start at those frames and points. DRAWING: a handful of MultiMeshes, never a node per voxel (the Mali pays per draw): per (material, pane orientation) the broad faces on the pane's material and the thickness on its edge twin (every edge marked broken: the rim ink), and per live crack one quad per voxel it covers, on the crack's own material in its per-voxel mode (`crack_per_voxel`: INSTANCE_CUSTOM.xy is the voxel's offset in the crack, so the ink is the pane's own). The body materials are copies with the opening cut off (a falling voxel is not in the pane any more) and the rim ink read in model space (it does not slide over a moving voxel). Aged in drawn frames, 60 per second, never seconds: a stalled frame must not swallow the fall.
-
-**Constants / tuning**
-- `MAX_FALL_FRAMES` = `240`
-
-**Public API**
-- `func set_landings(landing_of: Dictionary) -> Array:`
-- `func elapsed() -> int:`
-- `func show_cracks() -> void:`
-- `func start() -> void:`
 
 ---
 
@@ -2580,7 +2571,7 @@ extends `RefCounted` · 37 lines
 
 ### `glass_support.gd`
 
-`class_name GlassSupport` · 190 lines
+`class_name GlassSupport` · 178 lines
 
 `godot/scripts/systems/destruction/glass_support.gd`
 
@@ -3216,7 +3207,7 @@ extends `Node` · 236 lines
 
 ### `detonation_prediction.gd`
 
-`class_name DetonationPrediction` · extends `RefCounted` · 224 lines
+`class_name DetonationPrediction` · extends `RefCounted` · 165 lines
 
 `godot/scripts/systems/prediction/detonation_prediction.gd`
 
@@ -3224,7 +3215,6 @@ extends `Node` · 236 lines
 
 **Constants / tuning**
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
-- `GlassSupportRef` = `preload("res://godot/scripts/systems/destruction/glass_support.gd")`
 
 **Public vars**
 - `var delta: WorldDelta = null`
@@ -3297,7 +3287,7 @@ extends `Node` · 236 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 424 lines
+`class_name WorldDelta` · extends `RefCounted` · 418 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -3320,8 +3310,6 @@ extends `Node` · 236 lines
 - `var touched: Array[Vector3i] = []`
 - `var touched_voxels: Array = []`
 - `var reaped_voxels: Array = []`
-- `var glass_collapse: Array = []`
-- `var glass_collapse_ready: bool = false`
 - `var cost_ms: float = 0.0`
 - `var scorch_writes: Dictionary = {}`
 - `var glass_openings: Array = []`
@@ -5823,7 +5811,7 @@ extends `Node` · 252 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1883 lines
+`class_name TestZoneController` · 1885 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -6106,7 +6094,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10213 lines
+extends `Node2D` · 10234 lines
 
 `godot/scripts/world/room.gd`
 

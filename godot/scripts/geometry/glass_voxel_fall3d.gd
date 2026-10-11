@@ -21,8 +21,14 @@
 class_name GlassVoxelFall3D
 extends Node3D
 
-static var WAIT_FRAMES: Vector2 = Vector2(17.0, 23.0)   ## ~1/3 s, hashed per voxel (2026-10-11: the swap moved to right after the blast)
-static var ORDER_LEAD_FRAMES: float = 5.0               ## at most this much earlier for the farthest / lowest (a slight influence)
+## The swap is a CROSSFADE (Director, 2026-10-11): the pane and the voxels are drawn together for a few frames, the voxels' own look
+## (each cube's thickness with its rim ink) coming in at these opacities, one per drawn frame from the swap; the broad faces and the
+## crack are the pane's own in both, so they stay whole. The voxels start falling at `FALL_FROM_FRAME` (inside the fade), so the last
+## mixed frame is already a little lower. The rest that used to be here (~1/3 s) is now the pane standing on the board while the
+## support is walked (`Room.GLASS_COLLAPSE_BLAST_DELAY_S`).
+const FADE_IN: PackedFloat32Array = [0.0, 0.25, 0.5, 0.75, 1.0]
+const FALL_FROM_FRAME: int = 2
+static var ORDER_LEAD_FRAMES: float = 5.0               ## the farthest / lowest start up to this much earlier than the rest (a slight influence)
 static var GRAVITY: float = 9.8                          ## GU / s² (1 GU ~ 1 m)
 static var GRAVITY_SPREAD: float = 0.22                  ## a voxel's g is g × [1 - this, 1]
 static var POP_UP: Vector2 = Vector2(-0.4, 0.7)          ## GU / s, the vertical push at release
@@ -40,6 +46,7 @@ var _on_impact: Callable          ## (Array of landings that hit this frame) -> 
 var _started: bool = false
 var _body_nodes: Array = []    ## shown at `start()` (the frame the board's chunks drop the voxels)
 var _crack_nodes: Array = []   ## shown at `show_cracks()` (the step the board cuts them out of the pane's crack), or at `start()`
+var _edge_nodes: Array = []    ## the thickness instances: the voxels' own look, faded in over `FADE_IN`
 var _root_xf: Transform3D = Transform3D.IDENTITY
 
 
@@ -86,6 +93,7 @@ func setup(live: Node, entries: Array, cracks: Array, on_impact: Callable) -> Ar
 			(_voxels[members[k]] as Dictionary)["body"] = [broad, edge, k]
 		_add_instance(broad, mats[0], 0.0)
 		_add_instance(edge, mats[1], -0.05)
+		_edge_nodes.append(_body_nodes[_body_nodes.size() - 1])
 		_bodies.append(broad)
 		_bodies.append(edge)
 	## Cracks: per live crack, a quad on every voxel it covers.
@@ -108,7 +116,7 @@ func setup(live: Node, entries: Array, cracks: Array, on_impact: Callable) -> Ar
 func _motion(e: Dictionary) -> Dictionary:
 	var h: int = FacadeSampler._fnv1a_hash("GLASSVOXFALL:%d,%d,%d" % [int(e["x"]), int(e["y"]), int(e["level"])])
 	var u := func(salt: String) -> float: return float(FacadeSampler._fnv1a_continue(h, salt) % 100000) / 100000.0
-	var wait: float = lerpf(WAIT_FRAMES.x, WAIT_FRAMES.y, u.call("wait")) + ORDER_LEAD_FRAMES * (1.0 - float(e.get("score", 0.5)))
+	var wait: float = float(FALL_FROM_FRAME) + ORDER_LEAD_FRAMES * (1.0 - float(e.get("score", 0.5)))
 	var x_normal: bool = int(e["face"]) == 0 or int(e["face"]) == 2
 	var n: Vector3 = Vector3(1, 0, 0) if x_normal else Vector3(0, 0, 1)
 	var run: Vector3 = Vector3(0, 0, 1) if x_normal else Vector3(1, 0, 0)
@@ -303,12 +311,22 @@ func start() -> void:
 	show_cracks()
 	for n: Node3D in _body_nodes:
 		n.visible = true
+	_fade(0)
+
+
+## The voxels' own look at fade step `frame` (GeometryInstance3D.transparency per node: no shared material is touched).
+func _fade(frame: int) -> void:
+	var a: float = FADE_IN[mini(frame, FADE_IN.size() - 1)]
+	for n: GeometryInstance3D in _edge_nodes:
+		n.transparency = 1.0 - a
 
 
 func _process(_delta: float) -> void:
 	if not _started:
 		return
 	_frame += 1
+	if _frame < FADE_IN.size():
+		_fade(_frame)
 	_update(_frame)
 	if _frame > _last + 2:
 		queue_free()

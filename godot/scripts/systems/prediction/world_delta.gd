@@ -101,11 +101,6 @@ var touched_voxels: Array = []
 ## Glass voxels `reap_orphaned_remnants()` felled at commit (G-D45). NOT in `touched_voxels` on purpose: the light and base-record
 ## consumers of that set are unchanged; only the 3D board reads this, to remesh their chunks.
 var reaped_voxels: Array = []
-## G-D55 (2026-10-11) — the glass this blast leaves standing on nothing, walked by the cook on the predicted world BEFORE the flash
-## (`DetonationPrediction`): `GlassSupport.unsupported()`'s [{claim, score}]. `glass_collapse_ready` false = not walked (a selftest, a
-## one-shot path): the commit then walks it after the event, as before.
-var glass_collapse: Array = []
-var glass_collapse_ready: bool = false
 
 ## §3.4 / §5.4 — what computing this Delta cost, in milliseconds. Set by the
 ## producer; the budget in §4.4 is measured against it.
@@ -399,11 +394,10 @@ func commit(room = null, defer_rain: bool = false) -> void:
 		## fields above. Early-returns when nothing is stuck to a frame.
 		reaped_voxels = room.reap_orphaned_remnants().get("voxels", [])
 		t = _split("reap remnants", t)
-		## G-S1 / G-D55 — and the glass this blast left standing on nothing comes down: swapped for falling voxels a few frames from
-		## now, under the flash, when the cook already walked it; walked after the event otherwise. Not awaited.
-		if glass_collapse_ready and room.has_method("start_glass_collapse"):
-			room.start_glass_collapse(glass_collapse)
-		elif room.has_method("schedule_glass_collapse"):   ## a selftest's room stub has no board to collapse
+		## G-S1 / G-D55 — and the glass this blast left standing on nothing comes down: its support is walked off the main thread from
+		## here, while the pane still stands on the board (at least 1/3 s), then it crossfades into falling voxels. Not awaited.
+		## (2026-10-11, Director: the cook does only the blast; the walk under the flash was tried and moved out.)
+		if room.has_method("schedule_glass_collapse"):   ## a selftest's room stub has no board to collapse
 			room.schedule_glass_collapse(-1.0)
 		_split("glass collapse", t)
 

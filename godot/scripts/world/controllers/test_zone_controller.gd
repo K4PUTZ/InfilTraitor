@@ -1604,7 +1604,9 @@ func _hit_stop_fade_stage(n: int, stage: Dictionary, presenter: DetonationPresen
 			presenter.commit_under_flash(waves, room._voxel_board)
 		2:
 			presenter.run_hit_stop_tail(room._voxel_board)
-			_run_hit_stop_queue(stage, hit_stop_frame_budget_us)
+			## The budget is the FRAME's: what the glass tail spent is gone (2026-10-11, Moto GLASS: a 158 ms tail plus a 149 ms rain in
+			## one frame). At least 1 us, since 0 means "to the end"; a spent budget runs no task and leaves the queue for stage 3.
+			_run_hit_stop_queue(stage, maxi(1, hit_stop_frame_budget_us - (Time.get_ticks_usec() - t0)))
 		3:
 			_run_hit_stop_queue(stage, hit_stop_frame_budget_us)
 	var ms: float = float(Time.get_ticks_usec() - t0) / 1000.0

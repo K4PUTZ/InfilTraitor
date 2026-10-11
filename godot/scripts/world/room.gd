@@ -1108,8 +1108,11 @@ func reap_orphaned_remnants() -> Dictionary:
 ## 2026-10-11 (Director: "fazer a troca bem antes, logo depois do flash […] deixar eles lá parados, até estarem disponíveis pra
 ## efetivamente cair, 1/3 de segundo depois"): no wait — the swap happens as soon as the support walk and the landings are ready (on
 ## the Moto the walk itself takes ~0.7-1 s), and the voxels then REST ~1/3 s on the board before they fall (`GlassVoxelFall3D`).
-static var GLASS_COLLAPSE_BLAST_DELAY_S: float = 0.0
-static var GLASS_COLLAPSE_SHOT_DELAY_S: float = 0.0
+## 2026-10-11, last ruling (Director: "o repouso é nossa oportunidade de calcular a sustentação sem pressa […] se fizer o cálculo muito
+## rápido, esperar 1/3 s"): the walk runs after the event while the pane still stands on the board; the swap waits for it, and for at
+## least this long. The voxels then crossfade in and fall at once (`GlassVoxelFall3D.FADE_IN`), with no rest of their own.
+static var GLASS_COLLAPSE_BLAST_DELAY_S: float = 1.0 / 3.0
+static var GLASS_COLLAPSE_SHOT_DELAY_S: float = 1.0 / 3.0
 const GLASS_COLLAPSE_INDEX_BUDGET_US: int = 12000   ## main-thread time per frame the landing index may take (4 ms spread it over ~50 Moto frames: the swap came ~3 s after the blast)
 const GlassSupportRef = preload("res://godot/scripts/systems/destruction/glass_support.gd")
 const GlassVoxelFall3DClass = preload("res://godot/scripts/geometry/glass_voxel_fall3d.gd")
@@ -1166,9 +1169,13 @@ func start_glass_collapse(plan: Array) -> void:
 		entries.append({"claim": int(e["claim"]), "cell": c,
 			"score": (float(e.get("score", 0.0)) - smin) / maxf(smax - smin, 0.001)})
 	## The landings, built alongside the swap (a per-frame budget), into `landings` ({"ready": bool, "of": Dictionary}).
+	## Awaited BEFORE the swap (2026-10-11): the voxels no longer rest after it, so the first of them reach the floor a few frames
+	## later, and every one needs its landing by then. Still part of the pane's standing time on the board.
 	var landings: Dictionary = {"ready": false, "of": {}}
-	_build_glass_landings(fallen_all, landings, store)
-	print_debug("[GLASS-COLLAPSE] %d pane voxel(s) will fall (plan %s)" % [entries.size(), "from the cook" if plan.size() > 0 else ""])
+	print_debug("[GLASS-COLLAPSE] %d pane voxel(s) will fall" % entries.size())
+	await _build_glass_landings(fallen_all, landings, store)
+	if not is_instance_valid(self) or VoxelStore.active != store:
+		return
 	await _drop_glass_voxels(entries, landings)
 
 
@@ -1244,6 +1251,16 @@ func _drop_glass_voxels(entries: Array, landings: Dictionary) -> void:
 	await get_tree().process_frame
 	if not is_instance_valid(self) or not is_instance_valid(fall) or VoxelStore.active != store:
 		return
+	## 3. The rain, laid PAUSED on its own frame (its spawn is the heavy piece), unpaused in the step the fall shows. No dust with it (it
+	## would show before the shards land): each voxel puffs where it lands (`_glass_impact_dust`).
+	var rain: Node = null
+	var rain_n: int = 0
+	if bool(landings["ready"]):
+		rain_n = spawn_glass_rain(fall.call("set_landings", landings["of"]), false, null, true)
+		rain = _last_glass_rain if rain_n > 0 else null
+		await get_tree().process_frame
+		if not is_instance_valid(self) or not is_instance_valid(fall) or VoxelStore.active != store:
+			return
 	## 4. The claims go: DESTROYED, base-recorded, a remnant's record and cut dropped (as G-D45). The cracks keep counting their cells
 	## as glass until the chunks drop them (`VoxelBoard.glass_occ_hold`), so the ink is cut in the same step the fall shows.
 	var td4: int = Time.get_ticks_usec()
@@ -1295,12 +1312,16 @@ func _drop_glass_voxels(entries: Array, landings: Dictionary) -> void:
 	_voxel_board.release_glass_occ_hold()   ## the pane's crack is cut here, in the step the chunks swapped
 	var tr1: int = Time.get_ticks_usec()
 	fall.call("start")
+	if is_instance_valid(rain):
+		rain.set("paused", false)
 	print_debug("[GLASS-COLLAPSE] show step: crack cut %.1f ms, start %.1f ms" % [float(tr1 - tr0) / 1000.0,
 		float(Time.get_ticks_usec() - tr1) / 1000.0])
-	print_debug("[GLASS-COLLAPSE] %d voxel(s) leave the board and rest (setup %.1f ms at drawn frame %d, shown at %d; %.1f ms to build + commit, wall)"
+	print_debug("[GLASS-COLLAPSE] %d voxel(s) leave the board and crossfade (setup %.1f ms at drawn frame %d, shown at %d; %.1f ms to build + commit, wall)"
 		% [voxels.size(), setup_ms, setup_frame, Engine.get_frames_drawn(), float(Time.get_ticks_usec() - tw0) / 1000.0])
-	## 5. The rain joins when the landing index is ready (it needs the floor the event left), on the fall's own clock. No dust with it
-	## (it would show before the shards land): each voxel puffs where it lands (`_glass_impact_dust`).
+	if rain_n > 0 or bool(landings["ready"]):
+		print_debug("[GLASS-COLLAPSE] rain laid before the swap: %d shard(s)" % rain_n)
+		return
+	## 5. (Only when the index was not ready at the swap, which `start_glass_collapse` now awaits.) The rain joins on the fall's clock.
 	while not bool(landings["ready"]):
 		await get_tree().process_frame
 		if not is_instance_valid(self) or not is_instance_valid(fall):

@@ -1153,7 +1153,10 @@ func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
 		fall_entries.append({"x": c.x, "y": c.y, "level": c.z, "score": e["score"],
 			"material": int(live.call("store_material_of", claim)), "face": int(store.pane[claim]) - 1,
 			"landing": landing_of.get(c, {})})
-	## The claims go: DESTROYED, base-recorded, a remnant's record and cut dropped (as G-D45).
+	## The claims go: DESTROYED, base-recorded, a remnant's record and cut dropped (as G-D45). The cracks keep counting their cells
+	## as glass until the chunks drop them (`VoxelBoard.glass_occ_hold`), so the ink is cut in the same step the fall shows.
+	for v: Voxel in voxels:
+		_voxel_board.glass_occ_hold[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
 	for v: Voxel in voxels:
 		v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
 		record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state, v.damage_is_blast, v.damage_carved_side,
@@ -1176,7 +1179,6 @@ func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
 		fe["floor_y"] = top.y + unit * 0.5
 	var fall: Node3D = GlassVoxelFall3DClass.new()
 	(live.call("geometry_root") as Node3D).add_child(fall)
-	fall.visible = false
 	var ts0: int = Time.get_ticks_usec()
 	var flights: Array = fall.call("setup", live, fall_entries, _voxel_board.glass_crack_records(),
 		func(hits: Array) -> void:
@@ -1204,7 +1206,7 @@ func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
 		await live.remesh_committed
 	if not is_instance_valid(live) or not is_instance_valid(fall):
 		return
-	fall.visible = true
+	_voxel_board.release_glass_occ_hold()   ## the pane's crack is cut here, in the step the chunks swapped
 	fall.call("start")
 	## No dust with the rain (it would show before the shards land): each voxel puffs where it lands (`_glass_impact_dust`).
 	var n: int = spawn_glass_rain(flights, false)

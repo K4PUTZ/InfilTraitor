@@ -394,6 +394,7 @@ var _camera: Camera3D = null
 var _geometry_root: Node3D = null
 ## R3D-6 item 2 — one quad per live 2D crack sprite.
 const GlassCrackMirror3DClass = preload("res://godot/scripts/geometry/glass_crack_mirror3d.gd")
+const GlassVoxelFall3DRef = preload("res://godot/scripts/geometry/glass_voxel_fall3d.gd")
 var _crack_mirror: Node3D = null
 var _ground_level: int = 0
 ## Vector3i(grid x, level, grid y) → index into _material_ids.
@@ -541,6 +542,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 			if _shader_materials[i].next_pass is ShaderMaterial:  ## the add pass is cut by the same openings
 				_crack_mirror.pane_materials.append(_shader_materials[i].next_pass)
 	_diag_step("c camera + crack mirror")
+	_warm_glass_fall.call_deferred()
 	var quads: int = 0
 	var faces: int = 0
 	var chunk_list: Array = _store_chunks() if _store != null else _by_chunk.keys()
@@ -1896,6 +1898,32 @@ func glass_fall_materials(material: int) -> Array:
 		d.set_shader_parameter("glass_ink_local", true)
 		out.append(d)
 	return out
+
+
+## G-D55 — the falling glass's materials drawn ONCE at load, out of sight under the floor, so their pipelines exist before the first
+## collapse ("seria melhor já calcular antes", 2026-10-11). One voxel per glass material with one crack layer, shown three frames.
+func _warm_glass_fall() -> void:
+	var entries: Array = []
+	for i: int in range(_shader_materials.size()):
+		if i < _glass_edge_twin.size() and _glass_edge_twin[i] >= 0:
+			entries.append({"x": 0, "y": 0, "level": _ground_level - 8, "material": i, "face": 3, "score": 0.5, "floor_y": -1000.0,
+				"landing": {}})
+	if entries.is_empty() or not is_inside_tree():
+		return
+	var fake_crack: Dictionary = {"id": 0, "visible": true, "run_axis": 0, "face": Face.SW, "impact_cell": Vector2i(0, 0),
+		"impact_level": _ground_level - 8, "params": {"crack_span": Vector2(4, 4), "crack_pane_lo": Vector2(-1, -1),
+		"crack_pane_hi": Vector2(1, 1)}}
+	var warm: Node3D = GlassVoxelFall3DRef.new()
+	_geometry_root.add_child(warm)
+	warm.call("setup", self, entries, [fake_crack], Callable())
+	warm.call("show_cracks")
+	for n: Node in warm.get_children():
+		(n as Node3D).visible = true
+	for _f: int in range(3):
+		await get_tree().process_frame
+		if not is_instance_valid(warm):
+			return
+	warm.queue_free()
 
 
 ## The geometry root's transform (this board's space <- the meshes' space).

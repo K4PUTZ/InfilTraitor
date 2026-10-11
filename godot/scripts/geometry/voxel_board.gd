@@ -13,6 +13,18 @@ class_name VoxelBoard
 ## instead of the destruction system knowing about them — with no subscriber
 ## this costs nothing. Never implemented until Part 3; added now.
 signal voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String)
+## G-D55 — cells (Vector3i(x, y, level)) the cracks keep counting as glass while a glass fall waits for the board's remesh: the
+## crack is cut where they left in the SAME step the chunks drop them and the fall shows (`release_glass_occ_hold()`), never a frame
+## earlier (2026-10-11: one frame showed the glass still on the board with its ink already cut away).
+var glass_occ_hold: Dictionary = {}
+
+
+func release_glass_occ_hold() -> void:
+	if glass_occ_hold.is_empty():
+		return
+	glass_occ_hold = {}
+	_glass_crack_occ_dirty = true
+	refresh_glass_crack_occupancy()
 
 var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 ## G4-3 — preloaded rather than used by `class_name`: this file is parsed
@@ -2061,6 +2073,8 @@ func note_glass_erased_for_rim(level: int, cell: Vector2i) -> void:
 ## Is there still glass drawn at this (level, cell)? The live authority, the same
 ## one G-D30's occupancy reads.
 func _glass_cell_present(level: int, cell: Vector2i) -> bool:
+	if glass_occ_hold.has(Vector3i(cell.x, cell.y, level)):
+		return true
 	return VoxelStore.active != null and VoxelStore.active.has_glass_pane(cell.x, cell.y, level)
 
 

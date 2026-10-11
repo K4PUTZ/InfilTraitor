@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**291 scripts · 85590 lines total** (under `godot/scripts/`)
+**291 scripts · 85646 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3230 lines
+extends `Node3D` · 3258 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -702,7 +702,7 @@ extends `Node3D` · 3230 lines
 
 ### `glass_voxel_fall3d.gd`
 
-`class_name GlassVoxelFall3D` · extends `Node3D` · 300 lines
+`class_name GlassVoxelFall3D` · extends `Node3D` · 312 lines
 
 `godot/scripts/geometry/glass_voxel_fall3d.gd`
 
@@ -712,7 +712,7 @@ extends `Node3D` · 3230 lines
 - `MAX_FALL_FRAMES` = `240`
 
 **Public API**
-- `func setup(live: Node, entries: Array, cracks: Array, on_impact: Callable) -> Array:`
+- `func show_cracks() -> void:`
 - `func start() -> void:`
 
 ---
@@ -1226,7 +1226,7 @@ extends `Node3D` · 3230 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2592 lines
+`class_name VoxelBoard` · extends `Node2D` · 2606 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1245,10 +1245,12 @@ extends `Node3D` · 3230 lines
 - `PropMesh3DRef` = `preload("res://godot/scripts/geometry/prop_mesh3d.gd")`
 
 **Public vars**
+- `var glass_occ_hold: Dictionary = {}`
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
 - `var render_frame_budget_ms: float = 200.0`
 
 **Public API**
+- `func release_glass_occ_hold() -> void:`
 - `func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:`
 - `func build_occupancy_live(changes: Array[Vector3i]) -> Dictionary:`
 - `func build_occupancy_live_erasing(predict: Dictionary, changes: Array[Vector3i], erased: Array[Vector3i]) -> Dictionary:`
@@ -6076,7 +6078,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10076 lines
+extends `Node2D` · 10078 lines
 
 `godot/scripts/world/room.gd`
 

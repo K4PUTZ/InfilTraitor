@@ -38,6 +38,8 @@ var _frame: int = 0
 var _last: int = 0
 var _on_impact: Callable          ## (Array of landings that hit this frame) -> void
 var _started: bool = false
+var _body_nodes: Array = []    ## shown at `start()` (the frame the board's chunks drop the voxels)
+var _crack_nodes: Array = []   ## shown at `show_cracks()` (the step the board cuts them out of the pane's crack), or at `start()`
 
 
 ## `entries`: {x, y, level, material, face, score (0..1, 1 = falls first), floor_y (geometry-root y of what stands under it),
@@ -159,13 +161,15 @@ func _multimesh(mesh: Mesh, count: int) -> MultiMesh:
 	return mm
 
 
-func _add_instance(mm: MultiMesh, mat: Material, sort: float) -> void:
+func _add_instance(mm: MultiMesh, mat: Material, sort: float, crack: bool = false) -> void:
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	mmi.material_override = mat
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mmi.sorting_offset = sort
 	mmi.custom_aabb = AABB(Vector3(-1e4, -1e4, -1e4), Vector3(2e4, 2e4, 2e4))
+	mmi.visible = false
+	(_crack_nodes if crack else _body_nodes).append(mmi)
 	add_child(mmi)
 
 
@@ -261,11 +265,19 @@ func _add_crack(rec: Dictionary) -> void:
 		var off: Vector2 = members[k][1]
 		mm.set_instance_custom_data(k, Color(off.x, off.y, 0.0, 0.0))
 		((_voxels[members[k][0]] as Dictionary)["cracks"] as Array).append([mm, k])
-	_add_instance(mm, mat, 0.05)
+	_add_instance(mm, mat, 0.05, true)
+
+
+func show_cracks() -> void:
+	for n: Node3D in _crack_nodes:
+		n.visible = true
 
 
 func start() -> void:
 	_started = true
+	show_cracks()
+	for n: Node3D in _body_nodes:
+		n.visible = true
 
 
 func _process(_delta: float) -> void:

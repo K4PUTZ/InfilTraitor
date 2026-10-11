@@ -17,6 +17,10 @@
 
 ---
 
+## Glass explosion on the devices (2026-10-11) — the next session's work
+Moto g04s, GLASS: the blast's heavy frames 702 / 427 / 341 / 279 ms with the under-the-flash collapse swap (619 / 488 / 278 before it);
+the cook ~0.7-0.9 s longer (the support walk). Options and the epilepsy caution for a longer flash: the session summary §4.
+
 ## Capture, glass and AI debt (2026-10-10)
 
 Record: `PROMPTS/RESUMO_SESSAO_2026-10-10_CAPTURE_RAILS.md`; [`CAPTURE_RAILS_MASTER_PLAN`](../../PROMPTS/PLANNING/CAPTURE_RAILS_MASTER_PLAN.md) §2.

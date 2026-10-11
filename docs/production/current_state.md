@@ -8,6 +8,14 @@
 
 ---
 
+## Where the project stands — 2026-10-11 (CAPTURE_RAILS built; glass collapse approved; device optimisation next)
+
+Record: `PROMPTS/RESUMO_SESSAO_2026-10-11_CAPTURE_RAILS_GLASS_COLLAPSE.md`.
+- **CAPTURE_RAILS CR-1..CR-6 built**: map anchors in GU, computed framing, rails and takes, off-screen Movie Maker video (`capture.py`).
+- **Glass approved by the Director (tag `alpha/glass-3d-explosion`)**: G-D55 voxel-by-voxel collapse with cracks on every face,
+  gravity shards, dust; the support walked in the cook, the swap under the flash.
+- **Next:** optimise the glass explosion on the Moto / Galaxy (blast heavy frames 702 / 427 / 341 / 279 ms on GLASS).
+
 ## Where the project stands — 2026-10-10 (the segment fits; glass collapse; the capture system planned)
 
 Records: `PROMPTS/RESUMO_SESSAO_2026-10-10_LOAD_GLASS_COLLAPSE.md`, `PROMPTS/RESUMO_SESSAO_2026-10-10_CAPTURE_RAILS.md`.

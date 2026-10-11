@@ -1,14 +1,82 @@
 {
  "v": 1,
- "comment": "CAPTURE_RAILS_MASTER_PLAN §5: the capture profiles, read by the game (scenario op `profile`, CaptureProfiles) and by tools/persistent/capture.py (window size and FPS go on the command line). `turn` is the default when a rail changes view: `cut` is canonical, `orbit` is the development default for now (R9) — flip it here.",
+ "comment": "CAPTURE_RAILS_MASTER_PLAN \u00a75: the capture profiles, read by the game (scenario op `profile`, CaptureProfiles) and by tools/persistent/capture.py (window size and FPS go on the command line). `turn` is the default when a rail changes view: `cut` is canonical, `orbit` is the development default for now (R9) \u2014 flip it here. `engine` is the everyday size (1280 x 720: cheap to render and to store); `showcase` is the same at 1920 x 1080 for a video worth keeping (Director, 2026-10-10).",
  "default": "engine",
  "profiles": {
-  "engine": {"machine": "desktop", "hud": false, "dev_panels": false, "fixed_fps": 60, "turn": "orbit",
-             "shapes": {"landscape": {"framing": "desktop", "window": [1920, 1080]}}, "default_shape": "landscape"},
-  "ui":     {"machine": "desktop", "hud": true, "dev_panels": false, "fixed_fps": 60, "turn": "cut",
-             "shapes": {"portrait": {"framing": "portrait", "window": [449, 971]},
-                        "landscape": {"framing": "desktop", "window": [1920, 1080]}}, "default_shape": "both"},
-  "perf":   {"machine": "handset", "hud": true, "dev_panels": false, "fixed_fps": 0, "turn": "cut",
-             "shapes": {"portrait": {"framing": "portrait", "window": [0, 0]}}, "default_shape": "portrait"}
+  "engine": {
+   "machine": "desktop",
+   "hud": false,
+   "dev_panels": false,
+   "fixed_fps": 60,
+   "turn": "orbit",
+   "shapes": {
+    "landscape": {
+     "framing": "desktop",
+     "window": [
+      1280,
+      720
+     ]
+    }
+   },
+   "default_shape": "landscape"
+  },
+  "ui": {
+   "machine": "desktop",
+   "hud": true,
+   "dev_panels": false,
+   "fixed_fps": 60,
+   "turn": "cut",
+   "shapes": {
+    "portrait": {
+     "framing": "portrait",
+     "window": [
+      449,
+      971
+     ]
+    },
+    "landscape": {
+     "framing": "desktop",
+     "window": [
+      1280,
+      720
+     ]
+    }
+   },
+   "default_shape": "both"
+  },
+  "perf": {
+   "machine": "handset",
+   "hud": true,
+   "dev_panels": false,
+   "fixed_fps": 0,
+   "turn": "cut",
+   "shapes": {
+    "portrait": {
+     "framing": "portrait",
+     "window": [
+      0,
+      0
+     ]
+    }
+   },
+   "default_shape": "portrait"
+  },
+  "showcase": {
+   "machine": "desktop",
+   "hud": false,
+   "dev_panels": false,
+   "fixed_fps": 60,
+   "turn": "orbit",
+   "shapes": {
+    "landscape": {
+     "framing": "desktop",
+     "window": [
+      1920,
+      1080
+     ]
+    }
+   },
+   "default_shape": "landscape"
+  }
  }
 }

@@ -1,6 +1,8 @@
 # CAPTURE_RAILS_MASTER_PLAN
 ## The map's spatial anchors in GU, and a capture system that frames them by itself — v0.3 (planning, nothing built)
 
+> **2026-10-10, later (Director): everyday captures back to a small window** — `engine` renders 1280×720 (H.264 crf 24), the new `showcase` profile is the same at 1920×1080 (crf 18) for a video worth keeping (`capture.py --profile showcase`; an explicit `--profile` also overrides a take's own).
+>
 > **✅ CR-1 to CR-6 BUILT 2026-10-10 (the retirement of the old capture actions waits for the Director, CR-5; CR-7 parked).** §10's rows
 > have what changed against the plan. **Proof take:** `python3 tools/persistent/capture.py --map GLASS --take glass_blast --sheet 30`
 > → `videos/GLASS_glass_blast.mp4` (904 frames, 1672×936): wide on the glass wing, move onto the big pane, the grenade on

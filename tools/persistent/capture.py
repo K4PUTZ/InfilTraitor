@@ -12,11 +12,12 @@
 ## a stall: that is the real-time check (CR-6) and the handset (`device_record.py`).
 ##
 ## THE WINDOW is OFF SCREEN (`--position 4000,4000`): nothing appears on the Director's display and no stray click can reach it, and
-## the frames are the profile's exact size (engine: 1920 x 1080). The size reaches Movie Maker through a marked, temporary
+## the frames are the profile's exact size (engine: 1280 x 720 for every day; `--profile showcase`: 1920 x 1080). The size reaches Movie Maker through a marked, temporary
 ## `override.cfg`; the run is told `CAPTURE_WINDOW_FIXED=1` so the profile does not resize it mid-file. Every output's size is
 ## checked against the profile and a mismatch is said loudly.
 ##
-##     python3 tools/persistent/capture.py --map GLASS --take glass_blast                 # videos/GLASS_glass_blast.mp4
+##     python3 tools/persistent/capture.py --map GLASS --take glass_blast                 # videos/GLASS_glass_blast.mp4 (1280x720)
+##     python3 tools/persistent/capture.py --map GLASS --take glass_blast --profile showcase   # the same at 1920x1080
 ##     python3 tools/persistent/capture.py --map GLASS --take glass_blast --sheet 30      # + a contact sheet, one frame in 30
 ##     python3 tools/persistent/capture.py --map GLASS --take overview
 ##     python3 tools/persistent/capture.py --map GLASS --still big_pane --mode detail --view all
@@ -56,7 +57,7 @@ def run_godot(map_id, scenario, window, shape, extra=(), seed=1, timeout=600, en
     env = dict(os.environ, **(env_extra or {}), INFILTRAITOR_MAP=map_id, INFILTRAITOR_SCENARIO=scenario, INFILTRAITOR_RNG_SEED=str(seed),
                INFILTRAITOR_CAPTURE_WINDOW_FIXED="1", INFILTRAITOR_CAPTURE_SHAPE=shape)
     ## OFF SCREEN (Director, 2026-10-10: the machine may be in use; a full-screen take could eat a stray click). Measured: a window
-    ## at 4000,4000 still draws, and Movie Maker writes the exact profile size (1920 x 1080) even on a 1920 x 1080 display.
+    ## at 4000,4000 still draws, and Movie Maker writes the exact profile size (1920 x 1080 measured) even on a 1920 x 1080 display.
     cmd = [GODOT, "--path", str(ROOT), "--position", "4000,4000", "--resolution", "%dx%d" % tuple(window), *extra]
     ## Movie Maker records at the project's base window size (390 x 844), whatever `--resolution` says (measured 2026-10-10:
     ## "recording movie in 390×844"). Godot reads `override.cfg` at startup, so the size is given there for this run only.
@@ -157,7 +158,8 @@ def main() -> int:
     g.add_argument("--still", help="an anchor to frame (a POI, a region, map)")
     ap.add_argument("--mode", default="wide", choices=["wide", "detail"], help="--still framing")
     ap.add_argument("--view", default="N", choices=["N", "E", "S", "W", "all"], help="--still view")
-    ap.add_argument("--profile", default=PROFILES.get("default", "engine"))
+    ap.add_argument("--profile", default=None, help="the window's profile (default: the profiles file's default, engine 1280x720); "
+                    "given explicitly it also overrides a take's own profile in the game (`showcase` = engine at 1920x1080)")
     ap.add_argument("--shape", default="", help="portrait / landscape (default: the profile's)")
     ap.add_argument("--sheet", type=int, default=0, help="--take: a contact sheet of one frame in N")
     ap.add_argument("--hud-grid", action="store_true", help="draw the 3x3 HUD regions over the stills")
@@ -166,6 +168,10 @@ def main() -> int:
                     "frame held for its measured duration with the ms stamped (CR-6: a stall shows as a freeze)")
     ap.add_argument("--keep-frames", default="", help="--take: copy the raw PNG frames into this folder (determinism checks)")
     args = ap.parse_args()
+    explicit_profile = args.profile is not None
+    args.profile = args.profile or PROFILES.get("default", "engine")
+    if explicit_profile:
+        os.environ["INFILTRAITOR_CAPTURE_PROFILE"] = args.profile
     if args.profile not in PROFILES["profiles"]:
         sys.exit("[CAPTURE] unknown profile %s" % args.profile)
     STILLS.mkdir(parents=True, exist_ok=True)
@@ -215,7 +221,7 @@ def main() -> int:
                         shutil.copy(f, keep / f.name)
                 out = VIDEOS / ("%s_%s%s.mp4" % (args.map, args.take.replace(":", "_"), suffix))
                 subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-framerate", "60", "-i", str(Path(tmp) / "f%08d.png"),
-                                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", str(out)], check=True)
+                                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18" if args.profile == "showcase" else "24", str(out)], check=True)
                 print("[CAPTURE] video %s" % out.relative_to(ROOT))
                 if args.realtime:
                     realtime(args, shape, suffix, window, Path(tmp), movie_log)

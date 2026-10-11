@@ -36,8 +36,10 @@ uniform float glass_add_base : hint_range(0.0, 1.0) = 0.35;
 uniform sampler2D glass_rim_ink_tex : filter_linear, repeat_enable, hint_default_black;
 uniform float glass_rim_ink_scale = 1.0;      // sheet tiles per GU
 uniform vec3 glass_rim_ink_color = vec3(0.90, 0.94, 1.0);
-uniform float glass_rim_ink_opacity : hint_range(0.0, 1.0) = 0.85;
-uniform float glass_rim_base : hint_range(0.0, 1.0) = 0.35;
+uniform float glass_rim_ink_opacity : hint_range(0.0, 1.0) = 0.75;
+// The pale floor under the ink. 0.35 read as a white band (Director, 2026-10-10: "a base clara da espessura está meio forte […]
+// queremos que se confunda mesmo com a parte da frente"): low, so the rim is the front face's look, the ink's lines on the glass.
+uniform float glass_rim_base : hint_range(0.0, 1.0) = 0.08;
 
 void fragment() {
 	if (glass_cut_open()) {

@@ -51,8 +51,9 @@ func _init() -> void:
 	_check(centre_px.distance_to(CANVAS * 0.5) < 0.01, "the ground centre projects to the canvas centre")
 	print("[2] the profiles file")
 	var eng: Dictionary = PROFILES.resolve("engine")
-	_check(eng["ok"] and eng["window"] == Vector2i(1920, 1080) and not eng["hud"] and eng["framing"] == "desktop" and eng["turn"] == "orbit",
-		"engine: desktop 1920x1080, HUD hidden, orbit while developing (R6, R5, R9)")
+	_check(eng["ok"] and eng["window"] == Vector2i(1280, 720) and not eng["hud"] and eng["framing"] == "desktop" and eng["turn"] == "orbit",
+		"engine: desktop 1280x720 (everyday), HUD hidden, orbit while developing (R5, R9)")
+	_check(PROFILES.resolve("showcase")["window"] == Vector2i(1920, 1080), "showcase: the same at 1920x1080 (R6, for a video worth keeping)")
 	var ui_p: Dictionary = PROFILES.resolve("ui", "portrait")
 	var ui_l: Dictionary = PROFILES.resolve("ui", "landscape")
 	_check(ui_p["ok"] and ui_p["hud"] and ui_p["framing"] == "portrait" and ui_l["framing"] == "desktop", "ui: HUD shown, both shapes (R7)")

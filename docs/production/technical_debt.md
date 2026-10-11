@@ -26,8 +26,8 @@ the cook ~0.7-0.9 s longer (the support walk). Options and the epilepsy caution 
 Record: `PROMPTS/RESUMO_SESSAO_2026-10-10_CAPTURE_RAILS.md`; [`CAPTURE_RAILS_MASTER_PLAN`](../../PROMPTS/PLANNING/CAPTURE_RAILS_MASTER_PLAN.md) §2.
 - **The glass blast's heavy frames on the Moto (GLASS): ~157 ms COMMIT, worst frame ~180-200 ms** (2026-10-11 round 4, was 610-680 ms)
   — every remaining heavy frame is the BLAST's (take frames 202-206), the collapse left the top list. Measured remainders: `damage` 66
-  ms and `crazes` 35 ms in the commit, stage 1 ~106 ms, stage 2 (glass tail) 118-146 ms, stage 3 ~135 ms of which the blast rain's
-  queue task is 113-125 ms in one call (`[SLOW-STEP] hit-stop queue task 2`: a slice overshoots its budget). The Galaxy is unmeasured.
+  ms and `crazes` 35 ms in the commit, stage 1 ~106 ms, stages 2-3 ~110-135 ms, SIZED by `hit_stop_frame_budget_us` (110 ms; the queue fills
+  what the glass tail, now 70 ms, leaves), not by their work: lowering it flattens them and lays the rain later (Director's call). Round 5. The Galaxy is unmeasured.
   Owner: the materials milestone (`GLASS_MASTER_PLAN` 1e-1h).
 - **Two capture paths.** `room.gd` reads 22 `INFILTRAITOR_CAPTURE_*` env vars for its own capture actions (`build_filmstrip.py`,
   `build_material_matrix.py`, the auto-screenshot), beside the scenario runner. `CAPTURE_RAILS` CR-5 moves the tools onto takes and

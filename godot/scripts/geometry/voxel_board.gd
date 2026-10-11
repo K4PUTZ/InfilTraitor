@@ -22,6 +22,8 @@ var glass_occ_hold: Dictionary = {}
 func release_glass_occ_hold() -> void:
 	if glass_occ_hold.is_empty():
 		return
+	for key: Vector3i in glass_occ_hold:
+		_glass_occ_dirty_cells[key] = true
 	glass_occ_hold = {}
 	_glass_crack_occ_dirty = true
 	refresh_glass_crack_occupancy()
@@ -899,7 +901,7 @@ func _render3d_glass_gone(voxel: Voxel, material_id: String) -> void:
 	var first: bool = not _render3d_gone_glass.has(key)
 	_render3d_gone_glass[key] = true
 	note_external_write(voxel.level, voxel.grid_pos)
-	note_glass_erased()
+	note_glass_erased(voxel.level, voxel.grid_pos)
 	note_glass_erased_for_rim(voxel.level, voxel.grid_pos)
 	if first:
 		voxel_destroyed.emit(voxel.grid_pos, voxel.level, material_id)
@@ -1933,6 +1935,7 @@ func glass_craze_count() -> int:
 ## it; S-3 is what puts the cracks BACK from the room-side base-coord registry.
 func clear_glass_cracks() -> void:
 	_glass_cracks.clear()
+	_glass_occ_dirty_cells.clear()
 	## B-4b — the applied-opening log describes THIS view's geometry, which the
 	## rebuild is about to replace. `_respawn_base_openings()` refills it.
 	_glass_applied_openings.clear()
@@ -1964,6 +1967,9 @@ const GLASS_OCC_MAX_SIDE: int = 128
 ## has to be possible without an edit. The shipped default is stated here, once.
 var _glass_crack_hole_cut: float = _env_hole_cut()
 var _glass_crack_occ_dirty: bool = false
+## The cells (Vector3i(x, y, level)) erased since the last refresh: only a crack whose pane rectangle holds one is rebuilt (2026-10-11:
+## the GLASS blast rebuilt all of them, 25 ms of a Moto frame).
+var _glass_occ_dirty_cells: Dictionary = {}
 
 
 static func _env_hole_cut() -> float:
@@ -1987,9 +1993,10 @@ func glass_crack_hole_cut() -> float:
 ## Every glass erase seam calls this. Deliberately just a FLAG: the cook erases
 ## cell by cell, and rebuilding a pane's occupancy per cell would be quadratic in
 ## the size of the hole. The rebuild happens once at the batch's flush.
-func note_glass_erased() -> void:
+func note_glass_erased(level: int, cell: Vector2i) -> void:
 	if not _glass_cracks.is_empty():
 		_glass_crack_occ_dirty = true
+		_glass_occ_dirty_cells[Vector3i(cell.x, cell.y, level)] = true
 
 
 ## Rebuild the occupancy of every live crack, if any glass was erased since the
@@ -1999,12 +2006,35 @@ func refresh_glass_crack_occupancy() -> int:
 	if not _glass_crack_occ_dirty:
 		return 0
 	_glass_crack_occ_dirty = false
+	var cells: Dictionary = _glass_occ_dirty_cells
+	_glass_occ_dirty_cells = {}
+	var rebuilt: int = 0
 	for c in _glass_cracks:
-		_build_crack_occupancy(c)
-		## B-4b — a field's hole mask changes for exactly the same reason its
-		## occupancy does, so it is rebuilt on the same seam rather than on one of
-		## its own that could fall out of step.
-	return _glass_cracks.size()
+		if _crack_holds_any(c, cells):
+			_build_crack_occupancy(c)
+			rebuilt += 1
+	return rebuilt
+
+
+## Does this crack's pane rectangle (the one `_build_crack_occupancy()` walks) hold any of these cells?
+func _crack_holds_any(c: Dictionary, cells: Dictionary) -> bool:
+	var lo: Vector2 = c["pane_lo"]
+	var hi: Vector2 = c["pane_hi"]
+	var run0: int = int(c["impact_run"]) + int(roundf(lo.x))
+	var run1: int = run0 + mini(int(roundf(hi.x - lo.x)) + 1, GLASS_OCC_MAX_SIDE) - 1
+	var lvl1: int = int(c["impact_level"]) + int(roundf(hi.y))
+	var lvl0: int = lvl1 - mini(int(roundf(hi.y - lo.y)) + 1, GLASS_OCC_MAX_SIDE) + 1
+	var run_is_x: bool = int(c["run_axis"]) == 0
+	var cross: Vector2i = c["impact_cell"]
+	for key: Vector3i in cells:
+		if key.z < lvl0 or key.z > lvl1:
+			continue
+		if run_is_x:
+			if key.y == cross.y and key.x >= run0 and key.x <= run1:
+				return true
+		elif key.x == cross.x and key.y >= run0 and key.y <= run1:
+			return true
+	return false
 
 
 ## B-4b — rebuild every craze FIELD's hole mask. Its own seam rather than a
@@ -2165,6 +2195,19 @@ func refresh_glass_rims() -> int:
 ## footprint. Only what no claim wanted is grouped, and that grouping is
 ## 26-connected (diagonals included) because a hole's cells are one hole however
 ## they touch.
+## The 26 neighbours in the walk's order (dx, then dy, then dz), built once: three nested `[-1, 0, 1]` literals allocated per
+## visited cell made the GLASS blast's grouping 58 ms of a Moto frame (2026-10-11).
+static var _NEIGHBOURS_26: Array[Vector3i] = _neighbours_26()
+static func _neighbours_26() -> Array[Vector3i]:
+	var out: Array[Vector3i] = []
+	for dx: int in [-1, 0, 1]:
+		for dy: int in [-1, 0, 1]:
+			for dz: int in [-1, 0, 1]:
+				if dx != 0 or dy != 0 or dz != 0:
+					out.append(Vector3i(dx, dy, dz))
+	return out
+
+
 func _group_erased_into_regions() -> Array:
 	var all: Dictionary = {}
 	for level in _glass_rim_dirty:
@@ -2200,15 +2243,11 @@ func _group_erased_into_regions() -> Array:
 		while not queue.is_empty():
 			var k: Vector3i = queue.pop_back()
 			members.append(k)
-			for dx in [-1, 0, 1]:
-				for dy in [-1, 0, 1]:
-					for dz in [-1, 0, 1]:
-						if dx == 0 and dy == 0 and dz == 0:
-							continue
-						var nk: Vector3i = k + Vector3i(dx, dy, dz)
-						if all.has(nk) and not seen.has(nk):
-							seen[nk] = true
-							queue.append(nk)
+			for step: Vector3i in _NEIGHBOURS_26:
+				var nk: Vector3i = k + step
+				if all.has(nk) and not seen.has(nk):
+					seen[nk] = true
+					queue.append(nk)
 		regions.append({
 			"members": members,
 			## The centroid is the stand-in for an impact nobody named, and it is
@@ -2415,7 +2454,7 @@ func glass_cell_present(level: int, cell: Vector2i) -> bool:
 func erase_glass_cell(level: int, cell: Vector2i) -> bool:
 	## R3D-14: no layer to erase; the light and glass seams the erase owed are all that is left of it.
 	note_external_write(level, cell)
-	note_glass_erased()   ## G-D30, seam 3 of 3 (the cook)
+	note_glass_erased(level, cell)   ## G-D30, seam 3 of 3 (the cook)
 	note_glass_erased_for_rim(level, cell)   ## CRACK-03
 	return true
 

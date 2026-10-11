@@ -120,8 +120,8 @@ func start(plan: Dictionary, voxel_board, smoke_overlay, tree: SceneTree) -> voi
 	_committed = false
 	## The crater is drawn NOW (Director, 2026-09-26: the crater two frames late looked wrong). R3D-LIGHT: the glass flush (crack
 	## re-cut, shard rims, craze masks: ~46 ms on the Moto for a blast that breaks glass) is the channel's SECOND frame's
-	## (`_run_tail()`), followed by a second remesh when the rims shaped any glass, because the glass mesh reads the shaped
-	## cells they record: the pane is gone in the crater frame and its shards arrive a frame later.
+	## (`_run_tail()`). No second remesh: the mesher reads only the store, which the flush does not write (the shaped-cell records and
+	## the opening masks reach the pane's shader); the full 24-chunk remesh it used to repeat changed nothing on the board (2026-10-11).
 	var board3d: Node = _board3d()
 	## Director, 2026-09-21 (a video of the blast on the Moto): the scorch was arriving BEFORE the crater and the smoke read.
 	## It now arrives AFTER the crater is drawn, in steps: the ramp is armed here, `_run_consequence` steps it from `soot_start_s`
@@ -181,7 +181,7 @@ func start(plan: Dictionary, voxel_board, smoke_overlay, tree: SceneTree) -> voi
 
 
 ## Roadmap A1 (Director, 2026-10-07) — THE DESIGNED HIT-STOP. The strongest grenade (BombDef tag `hit_stop`) commits UNDER its own
-## negative flash instead of after it: the heavy frames (cell writes, the crater remesh, then the glass flush and its second remesh)
+## negative flash instead of after it: the heavy frames (cell writes, the crater remesh, then the glass flush)
 ## land while the screen is inverted, so the hitch reads as the blast's weight. The work is split in two frames on purpose (the
 ## commit, then `run_hit_stop_tail()`), each held to `hit_stop_ceiling_ms`: a frame past it is reported, never silently accepted.
 ## Every other blast is unchanged: it commits at `start()`, held to the 100 ms line by the budgets.
@@ -209,7 +209,7 @@ func commit_under_flash(plan: Dictionary, voxel_board) -> float:
 	return _report_hit_stop("commit", t0)
 
 
-## The glass flush owed by the commit (crack re-cut, shard rims, craze masks, the second remesh), on the flash's next frame.
+## The glass flush owed by the commit (crack re-cut, shard rims, craze masks), on the flash's next frame.
 func run_hit_stop_tail(voxel_board) -> float:
 	var t0: int = Time.get_ticks_usec()
 	_run_tail(voxel_board)
@@ -360,10 +360,7 @@ func _run_tail(voxel_board) -> void:
 	if not _tail_pending:
 		return
 	_tail_pending = false
-	var shaped: int = _writer.flush(voxel_board)
-	var board3d: Node = _board3d()
-	if shaped > 0 and board3d != null and consequence_delta != null:
-		board3d.on_blast_commit(consequence_delta)
+	_writer.flush(voxel_board)
 
 ## Microseconds of one frame the consequence channel may spend dispatching VFX entries. `var` (Rule 1).
 var effect_budget_us: int = 8000

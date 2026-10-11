@@ -27,8 +27,8 @@ Record: `PROMPTS/RESUMO_SESSAO_2026-10-10_CAPTURE_RAILS.md`; [`CAPTURE_RAILS_MAS
 - **The glass blast's heavy frames on the Moto (GLASS): ~157 ms COMMIT, worst frame ~180-200 ms** (2026-10-11 round 4, was 610-680 ms)
   — every remaining heavy frame is the BLAST's (take frames 202-206), the collapse left the top list. Measured remainders: `damage` 66
   ms and `crazes` 35 ms in the commit, stage 1 ~106 ms, stages 2-3 ~110-135 ms, SIZED by `hit_stop_frame_budget_us` (110 ms; the queue fills
-  what the glass tail, now 70 ms, leaves), not by their work: lowering it flattens them and lays the rain later (Director's call). Round 5. The Galaxy is unmeasured.
-  Owner: the materials milestone (`GLASS_MASTER_PLAN` 1e-1h).
+  what the glass tail, now 70 ms, leaves), not by their work: lowering it flattens them and lays the rain later (Director's call). Round 5. The Galaxy: worst 144-171 ms after the flash's GPU copy (1j); the
+  Moto is owed a run of that change. Owner: the materials milestone (`GLASS_MASTER_PLAN` 1e-1j).
 - **Two capture paths.** `room.gd` reads 22 `INFILTRAITOR_CAPTURE_*` env vars for its own capture actions (`build_filmstrip.py`,
   `build_material_matrix.py`, the auto-screenshot), beside the scenario runner. `CAPTURE_RAILS` CR-5 moves the tools onto takes and
   then lists every reader and side effect before anything is retired, with the Director's OK.

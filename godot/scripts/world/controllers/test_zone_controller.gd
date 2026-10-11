@@ -1440,6 +1440,10 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 			await _pace(presenter)
 		g_sprite.visible = false
 	fuse_fx_stop(grenade)
+	var snap0: int = Time.get_ticks_usec()
+	if room._explosion_flash_overlay != null:
+		room._explosion_flash_overlay.snapshot_now()
+	_prof_clock("flash snapshot", snap0)
 	var burst0: int = Time.get_ticks_usec()
 	room.spawn_blast_burst(boom_anchor)
 	_prof_clock("spawn_blast_burst", burst0)
@@ -1887,3 +1891,4 @@ func _blocked_edges_dict() -> Dictionary:
 	for key in room._blast_opened_edge_keys():
 		blocked.erase(key)
 	return blocked
+

@@ -5808,6 +5808,8 @@ var PROP_DEBRIS_RAIN_BATCH: int = 24
 ## in GDScript: the first `spawn_glass_rain()` of a session read 230-242 ms on the Moto).
 func _warm_blast_resources() -> void:
 	ShardField3DWarmRef.atlas_texture()
+	if _explosion_flash_overlay != null:
+		_explosion_flash_overlay.warm()
 	if _voxel_board == null:
 		return
 	var seen: Dictionary = {}

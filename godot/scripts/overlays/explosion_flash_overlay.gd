@@ -120,7 +120,9 @@ var _holding: bool = false
 ## rather than one because a material is per-node.
 
 var _negative_layer: Node2D = null
-var _snapshot: ImageTexture = null  ## the frame the current strobe inverts (see _take_snapshot())
+var _snapshot: Texture2D = null  ## the frame the current strobe inverts (see _take_snapshot())
+## The GPU copy `_take_snapshot()` makes, freed with its strobe (`clear()`).
+var _snapshot_rid: RID = RID()
 var _negative_material: ShaderMaterial = null
 
 
@@ -182,16 +184,97 @@ func hold_frame(mode: int) -> void:
 	_redraw_all()
 
 
+## The negative flash, built at map load (Galaxy A16, 2026-10-11: the first strobe of a session paid 260-440 ms more than a later one).
+## The cost is the FIRST screen-sized snapshot texture (`ImageTexture.create_from_image` of the 1080x2340 readback: a new driver
+## allocation, measured by a plain readback just before it at 18 ms), not the readback nor the shader. So one real snapshot is read
+## and drawn as one invisible pixel (amount 0) for a few frames, then dropped like a strobe's.
+var _warm_frames: int = 0
+func warm() -> void:
+	if _negative_material == null or _holding or not is_inside_tree():
+		return
+	await get_tree().process_frame   ## a drawn frame to copy
+	if not is_instance_valid(self) or _holding:
+		return
+	_take_snapshot()
+	_warm_frames = 3
+	while _warm_frames > 0:
+		_negative_layer.queue_redraw()
+		await get_tree().process_frame
+		if not is_instance_valid(self):
+			return
+		_warm_frames -= 1
+	if not _holding:
+		_drop_snapshot()
+	_negative_layer.queue_redraw()
+
+
+## The strobe's snapshot, taken by the caller BEFORE the blast spawns anything: the readback syncs the GPU, and taken after the burst and
+## the shrapnel it also waited on their first uploads (Galaxy A16, 2026-10-11: 311 ms). What it reads is the same last rendered frame.
+func snapshot_now() -> void:
+	if _snapshot == null:
+		_take_snapshot()
+
+
 ## The last rendered frame, read back ONCE at the start of a strobe (the negative frames of one detonation share it).
 func _take_snapshot() -> void:
 	var t0: int = Time.get_ticks_usec()
+	if _copy_snapshot_on_gpu():
+		print_debug("[FLASH] snapshot copied on the GPU in %.1f ms" % (float(Time.get_ticks_usec() - t0) / 1000.0))
+		return
 	var image: Image = get_viewport().get_texture().get_image()
 	if image == null or image.is_empty():
 		push_warning("[ExplosionFlashOverlay] the viewport returned no image: the negative frame shows the live screen")
 		return
+	var t1: int = Time.get_ticks_usec()
 	_snapshot = ImageTexture.create_from_image(image)
 	_negative_material.set_shader_parameter("snapshot", _snapshot)
-	print_debug("[FLASH] snapshot %dx%d in %.1f ms" % [image.get_width(), image.get_height(), float(Time.get_ticks_usec() - t0) / 1000.0])
+	print_debug("[FLASH] snapshot read back %dx%d in %.1f ms (readback %.1f, texture %.1f)" % [image.get_width(), image.get_height(),
+		float(Time.get_ticks_usec() - t0) / 1000.0, float(t1 - t0) / 1000.0, float(Time.get_ticks_usec() - t1) / 1000.0])
+
+
+## The last rendered frame copied texture to texture on the GPU (2026-10-11). The readback above makes the CPU wait for the whole GPU
+## and fetch 10 MB: 360 ms in the first blast of a session on the Galaxy A16 (a later one ~45, the Moto ~30). The copy is recorded
+## before this frame renders into the viewport, so it holds the previous frame, as the readback did. False (and the readback runs)
+## when there is no RenderingDevice (the Compatibility renderer, headless) or the viewport's texture cannot be copied from.
+func _copy_snapshot_on_gpu() -> bool:
+	var rd: RenderingDevice = RenderingServer.get_rendering_device()
+	if rd == null:
+		return false
+	var src: RID = RenderingServer.texture_get_rd_texture(get_viewport().get_texture().get_rid())
+	if not src.is_valid():
+		return false
+	var sf: RDTextureFormat = rd.texture_get_format(src)
+	if (sf.usage_bits & RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT) == 0:
+		return false
+	var f := RDTextureFormat.new()
+	f.format = sf.format
+	f.width = sf.width
+	f.height = sf.height
+	f.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT | RenderingDevice.TEXTURE_USAGE_CAN_COPY_TO_BIT
+	var dst: RID = rd.texture_create(f, RDTextureView.new())
+	if not dst.is_valid():
+		return false
+	if rd.texture_copy(src, dst, Vector3.ZERO, Vector3.ZERO, Vector3(float(sf.width), float(sf.height), 1.0), 0, 0, 0, 0) != OK:
+		rd.free_rid(dst)
+		return false
+	var tex := Texture2DRD.new()
+	tex.texture_rd_rid = dst
+	_snapshot = tex
+	_snapshot_rid = dst
+	_negative_material.set_shader_parameter("snapshot", _snapshot)
+	return true
+
+
+## The strobe's snapshot goes (nothing screen-sized is held between detonations).
+func _drop_snapshot() -> void:
+	_snapshot = null
+	if _negative_material != null:
+		_negative_material.set_shader_parameter("snapshot", null)
+	if _snapshot_rid.is_valid():
+		var rd: RenderingDevice = RenderingServer.get_rendering_device()
+		if rd != null:
+			rd.free_rid(_snapshot_rid)
+		_snapshot_rid = RID()
 
 
 ## Both canvases redraw together — only the one matching `flash_mode` paints.
@@ -214,6 +297,10 @@ func _draw() -> void:
 ## rendered underneath, tweening back to normal. Drawn white — the colour is
 ## irrelevant, the shader replaces it outright.
 func _draw_negative() -> void:
+	if _warm_frames > 0 and not _holding and _negative_material != null:
+		_negative_material.set_shader_parameter("amount", 0.0)
+		_negative_layer.draw_rect(Rect2(_visible_world_rect().position, Vector2.ONE), Color.WHITE)
+		return
 	if not _holding or flash_mode != FlashMode.NEGATIVE or _negative_material == null:
 		return
 	if strobe_negative_amount <= 0.001 or _snapshot == null:
@@ -249,7 +336,5 @@ func _visible_world_rect() -> Rect2:
 func clear() -> void:
 	_holding = false
 	## The snapshot dies with its strobe: nothing screen-sized is held between detonations.
-	_snapshot = null
-	if _negative_material != null:
-		_negative_material.set_shader_parameter("snapshot", null)
+	_drop_snapshot()
 	_redraw_all()

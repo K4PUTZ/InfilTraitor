@@ -29,7 +29,9 @@ extends Node3D
 ## crack are the pane's own in both, so they stay whole. The voxels start falling at `FALL_FROM_FRAME` (inside the fade), so the last
 ## mixed frame is already a little lower. The rest that used to be here (~1/3 s) is now the pane standing on the board while the
 ## support is walked (`Room.GLASS_COLLAPSE_BLAST_DELAY_S`).
-const FADE_IN: PackedFloat32Array = [0.0, 0.25, 0.5, 0.75, 1.0]
+## 2026-10-11 (Director: "se conseguir suavizar um pouquinho a transição"): eight steps on a smoothstep instead of four linear
+## ones (0/25/50/75/100%), so it eases in and out of the cut.
+const FADE_IN: PackedFloat32Array = [0.0, 0.04, 0.15, 0.31, 0.5, 0.69, 0.85, 0.96, 1.0]
 const FALL_FROM_FRAME: int = 2
 static var ORDER_LEAD_FRAMES: float = 5.0               ## the farthest / lowest start up to this much earlier than the rest (a slight influence)
 static var GRAVITY: float = 9.8                          ## GU / s² (1 GU ~ 1 m)

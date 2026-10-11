@@ -1343,9 +1343,17 @@ func _drop_glass_voxels(entries: Array, landings: Dictionary) -> void:
 	if not is_instance_valid(self) or not is_instance_valid(_voxel_board):
 		return
 	var tq1: int = Time.get_ticks_usec()
+	## The board's commit and the swap take the NEXT frame: nothing on screen reads the store until the chunks remesh, so the destroy and
+	## the dirty pass (~40 ms on the Moto) no longer share one frame with the commit, the remesh's wait and the crack's cut (2026-10-11:
+	## 119 ms of one frame).
+	await get_tree().process_frame
+	if not is_instance_valid(self) or not is_instance_valid(_voxel_board) or not is_instance_valid(live) or not is_instance_valid(fall):
+		_destruction_render_busy = false
+		return
+	var tc0: int = Time.get_ticks_usec()
 	live.on_shot_commit(voxels)
-	print_debug("[GLASS-COLLAPSE] slabs pass %.1f ms wall over %d frame(s), board commit %.1f ms" % [float(tq1 - tq0) / 1000.0,
-		Engine.get_process_frames() - qf0, float(Time.get_ticks_usec() - tq1) / 1000.0])
+	print_debug("[GLASS-COLLAPSE] slabs pass %.1f ms wall over %d frame(s), board commit %.1f ms (the next frame)" % [float(tq1 - tq0) / 1000.0,
+		Engine.get_process_frames() - 1 - qf0, float(Time.get_ticks_usec() - tc0) / 1000.0])
 	_destruction_render_busy = false
 	## The fall appears in the frame the board's chunks no longer hold the voxels; its rain starts with it. Awaiting the board's own
 	## `remesh_committed` resumes HERE inside the step that swapped the chunks, so both changes reach the same drawn frame (a

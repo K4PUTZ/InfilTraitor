@@ -1706,16 +1706,20 @@ func _stage_persist(stage: Dictionary) -> void:
 
 ## The persistence as a resumable job for `budget_usec` (0 = to the end), answering true when finished: the hit-stop queue spreads it
 ## over the frames after the flash instead of one block (2026-10-11: 204 ms of one Moto frame for the GLASS blast's 3890 voxels). Nothing
-## on screen reads these records (rotation is camera-only; they serve the checkpoint), and the dirty flags and the revision still move
-## only once every record is written, in the order they always did.
+## on screen reads these records (rotation is camera-only; they serve the checkpoint). The dirty flags drop in the first step, the
+## revision moves once every record is written.
 const PERSIST_BUDGET_CHECK: int = 64   ## records between two clock reads
 func _stage_persist_step(stage: Dictionary, budget_usec: int) -> bool:
 	var delta: WorldDelta = stage["delta"]
+	var touched: Array = delta.touched_voxels
+	var t0: int = Time.get_ticks_usec()
 	if not stage.has("persist"):
 		stage["persist"] = {"i": 0, "j": 0, "usec": 0}
+		## The dirty flags go FIRST, not after the last record (nothing below reads them): a dirty pass that runs while the records are
+		## still being written (the glass collapse's) would otherwise take every blast voxel again (Moto 2026-10-11: 31 -> 111 ms).
+		for voxel: Voxel in touched:
+			voxel.clear_dirty()
 	var job: Dictionary = stage["persist"]
-	var t0: int = Time.get_ticks_usec()
-	var touched: Array = delta.touched_voxels
 	var i: int = int(job["i"])
 	var j: int = int(job["j"])
 	var n: int = 0
@@ -1745,8 +1749,6 @@ func _stage_persist_step(stage: Dictionary, budget_usec: int) -> bool:
 		return false
 	_prof("PERSIST — record_voxel_damage_to_base x%d took %.2f ms" % [
 		touched.size(), float(job["usec"]) / 1000.0])
-	for voxel in touched:
-		voxel.clear_dirty()
 	room.bump_world_revision()
 	return true
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**291 scripts · 86068 lines total** (under `godot/scripts/`)
+**291 scripts · 86090 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -661,7 +661,7 @@ extends `Node3D` · 3268 lines
 
 ### `glass_crack_mirror3d.gd`
 
-`class_name GlassCrackMirror3D` · extends `Node3D` · 333 lines
+`class_name GlassCrackMirror3D` · extends `Node3D` · 340 lines
 
 `godot/scripts/geometry/glass_crack_mirror3d.gd`
 
@@ -679,10 +679,6 @@ extends `Node3D` · 3268 lines
 
 **Public vars**
 - `var pane_materials: Array = []`
-
-**Public API**
-- `func setup(renderer: VoxelBoard, ground_level: int) -> void:`
-- `func twin_count() -> int:`
 
 ---
 
@@ -2419,7 +2415,7 @@ extends `RefCounted` · 37 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 616 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 621 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -2432,6 +2428,7 @@ extends `RefCounted` · 37 lines
 - `var is_done: bool = false`
 - `var background_step: Callable = Callable()`
 - `var background_budget_us: int = 8000`
+- `var background_drain_budget_us: int = 16000`
 - `var consequence_room = null`
 - `var consequence_delta = null`
 - `var ring_step_s: float = 0.055`
@@ -5811,7 +5808,7 @@ extends `Node` · 252 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1887 lines
+`class_name TestZoneController` · 1889 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -6094,7 +6091,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10280 lines
+extends `Node2D` · 10288 lines
 
 `godot/scripts/world/room.gd`
 

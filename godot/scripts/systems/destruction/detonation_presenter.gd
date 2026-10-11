@@ -45,6 +45,9 @@ var is_done: bool = false
 ## when it is finished; whatever is left is run to the end before the soot settles, so nothing outlives the blast.
 var background_step: Callable = Callable()
 var background_budget_us: int = 8000
+## What the channel left is drained at this budget a frame, never in one call: the Moto's GLASS blast drained the persistence's
+## remainder in ONE frame (`[SLOW-STEP] hit-stop queue task 3 111.7 ms`, 2026-10-11).
+var background_drain_budget_us: int = 16000
 
 
 func _background_tick() -> void:
@@ -52,10 +55,12 @@ func _background_tick() -> void:
 		background_step = Callable()
 
 
-func _background_drain() -> void:
+func _background_drain(tree: SceneTree) -> void:
 	while background_step.is_valid():
-		if bool(background_step.call(0)):
+		if bool(background_step.call(background_drain_budget_us)):
 			background_step = Callable()
+			return
+		await tree.process_frame
 
 
 ## §13.3 — the Room that owns the consequence beat and the light. Null keeps this
@@ -123,7 +128,7 @@ func start(plan: Dictionary, voxel_board, smoke_overlay, tree: SceneTree) -> voi
 	## (0 = right after the commit), and whatever is left after the channel is finished by `_finish_soot`.
 	_soot_begin(ramp)
 	await _run_consequence(plan, voxel_board, smoke_overlay, tree)
-	_background_drain()
+	await _background_drain(tree)
 	_run_tail(voxel_board)   ## a channel with nothing scheduled (or shorter than two frames) still owes it
 	await _finish_soot(voxel_board, tree, board3d)
 	## D-6 — the smoke is all instanced and rising, so the world may resume

@@ -45,6 +45,9 @@ var pane_materials: Array = []
 const OPEN_MAX: int = 16
 const OPEN_TEXELS_PER_VOXEL: int = 12
 var _open_seen: int = -1
+## One rasterised mask per (opening, frame size): a pane's openings are a handful of shapes, and re-rasterising every one of them
+## pixel by pixel each time the log grew cost ~100 ms of a Moto frame (the GLASS collapse's 4 new openings, 2026-10-11).
+var _open_mask_cache: Dictionary = {}
 
 
 func setup(renderer: VoxelBoard, ground_level: int) -> void:
@@ -309,15 +312,19 @@ func _sync_openings() -> void:
 		var rec: Dictionary = used[i]
 		var a: Vector3i = rec["anchor"]
 		params[i] = Vector4(float(a.x), float(a.y), float(a.z), 1.0 if bool(rec["run_is_x"]) else 0.0)
-		var img := Image.create(n, n, false, Image.FORMAT_R8)
-		var poly: PackedVector2Array = polys[i]
-		if not poly.is_empty():
-			for y: int in range(n):
-				for x: int in range(n):
-					var p := Vector2(-half + (float(x) + 0.5) / float(n) * 2.0 * half,
-						half - (float(y) + 0.5) / float(n) * 2.0 * half)
-					if Geometry2D.is_point_in_polygon(p, poly):
-						img.set_pixel(x, y, Color(1.0, 0.0, 0.0))
+		var mask_key: String = "%s|%d" % [String(rec["opening"]), n]
+		var img: Image = _open_mask_cache.get(mask_key)
+		if img == null:
+			img = Image.create(n, n, false, Image.FORMAT_R8)
+			var poly: PackedVector2Array = polys[i]
+			if not poly.is_empty():
+				for y: int in range(n):
+					for x: int in range(n):
+						var p := Vector2(-half + (float(x) + 0.5) / float(n) * 2.0 * half,
+							half - (float(y) + 0.5) / float(n) * 2.0 * half)
+						if Geometry2D.is_point_in_polygon(p, poly):
+							img.set_pixel(x, y, Color(1.0, 0.0, 0.0))
+			_open_mask_cache[mask_key] = img
 		images.append(img)
 	var array := Texture2DArray.new()
 	if not images.is_empty():

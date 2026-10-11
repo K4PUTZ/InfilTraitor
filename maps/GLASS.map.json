@@ -827,6 +827,23 @@
       "glass",
       "detail"
      ]
+    },
+    {
+     "id": "pane_end",
+     "at": [
+      16.0,
+      9.5,
+      2.5
+     ],
+     "extent": [
+      2.0,
+      1.0,
+      1.5
+     ],
+     "tags": [
+      "glass",
+      "detail"
+     ]
     }
    ],
    "regions": [
@@ -942,6 +959,24 @@
        "turn": "orbit"
       }
      ]
+    },
+    {
+     "id": "glass_edge_rail",
+     "keys": [
+      {
+       "frame": "wide",
+       "target": "@big_pane_zone",
+       "view": "N",
+       "hold": 320
+      },
+      {
+       "frame": "detail",
+       "target": "@pane_end",
+       "view": "N",
+       "move": 30,
+       "hold": 90
+      }
+     ]
     }
    ],
    "takes": [
@@ -970,6 +1005,19 @@
      "length": 720,
      "seed": 1,
      "note": "the hole's rim up close after the blast (the crack ink on the rim walls), then an orbit to E to see the thickness"
+    },
+    {
+     "id": "glass_edge",
+     "profile": "engine",
+     "rail": "glass_edge_rail",
+     "steps": [
+      "throw 0 @throw_front"
+     ],
+     "at_key": 0,
+     "after_hold": 20,
+     "length": 440,
+     "seed": 1,
+     "note": "the cracked big pane's edge up close after the blast: the crack on the thickness"
     }
    ]
   }

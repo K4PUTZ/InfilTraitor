@@ -820,6 +820,22 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = nu
 	return n
 
 
+## G-D55 (Director, 2026-10-10: "faz o pó sair no impacto de cada voxel") — the G6b-3 puff, small, where each falling voxel lands,
+## in the frame it lands (a few per frame at most: a frame where many land is one stretch of floor).
+func _glass_impact_dust(landings: Array) -> void:
+	if _debris_overlay == null or _voxel_board == null:
+		return
+	var puffs: int = 0
+	for lg: Dictionary in landings:
+		if puffs >= 6:
+			break
+		var to: Vector2 = _voxel_board.voxel_world_position(lg["grid_pos"], int(lg["landing_level"]))
+		if to == Vector2.ZERO:
+			continue
+		_debris_overlay.add_glass_dust(to, 14.0, Color(0.88, 0.93, 0.98))
+		puffs += 1
+
+
 ## ── G4-2 / G4-3 — CLAIM THE GLASS THAT STAYED STUCK TO THE FRAME ────────────
 ##
 ## Called by `WorldDelta.commit()` for every entry the break proposed, and by the
@@ -1163,7 +1179,9 @@ func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
 	fall.visible = false
 	var ts0: int = Time.get_ticks_usec()
 	var flights: Array = fall.call("setup", live, fall_entries, _voxel_board.glass_crack_records(),
-		func(hits: Array) -> void: record_glass_shards(GlassFall.pile_by_cell(hits)))
+		func(hits: Array) -> void:
+			record_glass_shards(GlassFall.pile_by_cell(hits))
+			_glass_impact_dust(hits))
 	var setup_ms: float = float(Time.get_ticks_usec() - ts0) / 1000.0
 	var setup_frame: int = Engine.get_frames_drawn()
 	while _destruction_render_busy:
@@ -1186,7 +1204,7 @@ func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
 		return
 	fall.visible = true
 	fall.call("start")
-	## No dust (G6b-3): it is spawned with the rain, and these shards land over the next second, each at its own impact frame.
+	## No dust with the rain (it would show before the shards land): each voxel puffs where it lands (`_glass_impact_dust`).
 	var n: int = spawn_glass_rain(flights, false)
 	print_debug("[GLASS-COLLAPSE] %d voxel(s) leave the board and fall (setup %.1f ms at drawn frame %d, shown at %d; %.1f ms to build + commit, wall); %d shard flight(s), %d shard(s)"
 		% [voxels.size(), setup_ms, setup_frame, Engine.get_frames_drawn(), float(Time.get_ticks_usec() - tw0) / 1000.0, flights.size(), n])

@@ -115,19 +115,41 @@ func _make_strips(rec: Dictionary, mat: ShaderMaterial) -> MeshInstance3D:
 	var run_is_x: bool = int(rec["run_axis"]) == 0
 	var cell: Vector2i = rec["impact_cell"]
 	var run_c: float = float(cell.x if run_is_x else cell.y)       ## the impact voxel's run index
-	var cross: float = float(cell.y if run_is_x else cell.x)       ## the pane's one voxel across
-	var lvl_c: float = float(int(rec["impact_level"]) - _ground_level)
+	var lvl_abs: int = int(rec["impact_level"])
+	var lvl_c: float = float(lvl_abs - _ground_level)
+	## The pane's thickness, read from the store (2026-10-10: assuming the impact cell's own voxel put the strips one voxel off):
+	## the cross cells around the impact that hold a pane voxel.
+	var cross_i: int = cell.y if run_is_x else cell.x
+	var t_lo: int = cross_i
+	var t_hi: int = cross_i
+	var store: VoxelStore = VoxelStore.active
+	if store != null:
+		var found: Array = []
+		for d: int in [-1, 0, 1]:
+			var cx: int = cell.x if run_is_x else cross_i + d
+			var cy: int = cross_i + d if run_is_x else cell.y
+			if store.has_glass_pane(cx, cy, lvl_abs):
+				found.append(cross_i + d)
+		if not found.is_empty():
+			t_lo = found.min()
+			t_hi = found.max()
 	var lift: float = FACE_LIFT_VOXELS
 	## A point (run, height, across) in voxel units -> the geometry root's space.
 	var at := func(r: float, h: float, t: float) -> Vector3:
 		return (Vector3(r, h, t) if run_is_x else Vector3(t, h, r)) * _unit
 	var uv := func(off: Vector2) -> Vector2: return Vector2(off.x / span.x + 0.5, 0.5 - off.y / span.y)
-	var r0: float = run_c + lo.x
-	var r1: float = run_c + hi.x + 1.0
-	var h0: float = lvl_c + lo.y
-	var h1: float = lvl_c + hi.y + 1.0
-	var t0: float = cross - lift
-	var t1: float = cross + 1.0 + lift
+	## An offset `o` of the crack is the point run_c + 0.5 + o (the impact voxel's centre is 0). `crack_pane_lo/hi` come two ways: a
+	## whole number is a border CELL's centre (an impact crack), a half one is already the pane's EDGE (a craze field: -23.5 / 24.5,
+	## measured 2026-10-10 — taking it for a centre put every strip half a voxel outside the pane). Either way, to the edge.
+	var edge_lo := func(v: float) -> float: return v - 0.5 if is_equal_approx(v, roundf(v)) else v
+	var edge_hi := func(v: float) -> float: return v + 0.5 if is_equal_approx(v, roundf(v)) else v
+	var r0: float = run_c + 0.5 + float(edge_lo.call(lo.x))
+	var r1: float = run_c + 0.5 + float(edge_hi.call(hi.x))
+	var h0: float = lvl_c + 0.5 + float(edge_lo.call(lo.y))
+	var h1: float = lvl_c + 0.5 + float(edge_hi.call(hi.y))
+	var t0: float = float(t_lo)
+	var t1: float = float(t_hi + 1)
+	var depth: float = t1 - t0
 	var verts := PackedVector3Array()
 	var uvs := PackedVector2Array()
 	var idx := PackedInt32Array()
@@ -136,18 +158,27 @@ func _make_strips(rec: Dictionary, mat: ShaderMaterial) -> MeshInstance3D:
 		verts.append_array([a, b, c, d])
 		uvs.append_array([ua, ub, uc, ud])
 		idx.append_array([base, base + 1, base + 2, base, base + 2, base + 3])
-	## Top and bottom: along the run, across the thickness; the ink of the top row / the bottom row.
-	for edge: Array in [[h1 + lift, hi.y], [h0 - lift, lo.y]]:
-		var y: float = edge[0]
-		var oy: float = edge[1]
-		quad.call(at.call(r0, y, t0), at.call(r1, y, t0), at.call(r1, y, t1), at.call(r0, y, t1),
-			uv.call(Vector2(lo.x, oy)), uv.call(Vector2(hi.x, oy)), uv.call(Vector2(hi.x, oy)), uv.call(Vector2(lo.x, oy)))
-	## The two ends: up the height, across the thickness; the ink of the first / the last column.
-	for edge: Array in [[r0 - lift, lo.x], [r1 + lift, hi.x]]:
-		var r: float = edge[0]
-		var ox: float = edge[1]
-		quad.call(at.call(r, h0, t0), at.call(r, h1, t0), at.call(r, h1, t1), at.call(r, h0, t1),
-			uv.call(Vector2(ox, lo.y)), uv.call(Vector2(ox, hi.y)), uv.call(Vector2(ox, hi.y)), uv.call(Vector2(ox, lo.y)))
+	## The DECAL itself on each edge, not a border line stretched (Director, 2026-10-10): the face's band just inside that border,
+	## as deep as the pane is thick, folded over the corner — so the edge shows the crack's real texture, continuous at the corner.
+	## Top / bottom: along the run; across the thickness the level runs inward from the border.
+	## (Offsets stay inside the crack's pane clip, `crack_pane_lo/hi`, which are the border cells' CENTRES.)
+	var fy0: float = hi.y
+	var fy1: float = hi.y - depth
+	quad.call(at.call(r0, h1 + lift, t1), at.call(r1, h1 + lift, t1), at.call(r1, h1 + lift, t0), at.call(r0, h1 + lift, t0),
+		uv.call(Vector2(lo.x, fy0)), uv.call(Vector2(hi.x, fy0)), uv.call(Vector2(hi.x, fy1)), uv.call(Vector2(lo.x, fy1)))
+	var by0: float = lo.y
+	var by1: float = lo.y + depth
+	quad.call(at.call(r0, h0 - lift, t1), at.call(r1, h0 - lift, t1), at.call(r1, h0 - lift, t0), at.call(r0, h0 - lift, t0),
+		uv.call(Vector2(lo.x, by0)), uv.call(Vector2(hi.x, by0)), uv.call(Vector2(hi.x, by1)), uv.call(Vector2(lo.x, by1)))
+	## The two ends: up the height; across the thickness the run goes inward from the end.
+	var ex0: float = hi.x
+	var ex1: float = hi.x - depth
+	quad.call(at.call(r1 + lift, h1, t1), at.call(r1 + lift, h1, t0), at.call(r1 + lift, h0, t0), at.call(r1 + lift, h0, t1),
+		uv.call(Vector2(ex0, hi.y)), uv.call(Vector2(ex1, hi.y)), uv.call(Vector2(ex1, lo.y)), uv.call(Vector2(ex0, lo.y)))
+	var sx0: float = lo.x
+	var sx1: float = lo.x + depth
+	quad.call(at.call(r0 - lift, h1, t1), at.call(r0 - lift, h1, t0), at.call(r0 - lift, h0, t0), at.call(r0 - lift, h0, t1),
+		uv.call(Vector2(sx0, hi.y)), uv.call(Vector2(sx1, hi.y)), uv.call(Vector2(sx1, lo.y)), uv.call(Vector2(sx0, lo.y)))
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts

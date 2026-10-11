@@ -1,6 +1,6 @@
 # ROOF MASTER PLAN — destroyed roofs
 
-> **Status: 🟡 v0.1, 2026-10-11 — opened by the Director; nothing built.** *"Faltam os telhados destruídos na engine. Vamos colocar
+> **Status: 🟡 v0.2, 2026-10-11 — opened by the Director; R-D1 to R-D3 ruled; nothing built.** *"Faltam os telhados destruídos na engine. Vamos colocar
 > eles na frente do modelo, porque acho que é uma das últimas coisas que falta destruir. […] Vamos iniciar os trabalhos pelo telhado
 > de vidro, os demais seguem ele como modelo, adaptando para cada tipo de material com suas características específicas."*
 >
@@ -26,6 +26,12 @@
 | The frag grenade is the stress case; 200 ms hit-stop ceiling; budgets judged on the Moto g04s. | roadmap 2026-10-07 | Every stage is measured on the Moto with the GLASS-style take. |
 | No all-glass rooms in INFILTRAITOR 1. | Director 2026-10-07 | A glass roof is a skylight or a roof panel over a room with ordinary walls. |
 
+## 0b. Director's rulings (2026-10-11)
+
+- **R-D1 — THE LIGHT ABOVE A ROOF (answers Q1).** *"Vamos ter luz externa em alguns cenários mais abertos (sol, lua, nublado, ambiente). Mas em geral os cenários serão internos e as luzes vão afetar zonas internas menores. Seria basicamente o conceito de um galpão com cubículos/aposentos, que vão ter sua luz própria, mas que também podem ser influenciados pela luz maior quando o telhado quebra."* So the light a hole lets in is **whatever light is ABOVE that roof**: the map's outdoor light (one of sun / moon / overcast / ambient, open scenes only) or, in the common case, the enclosing hall's own light over a cubicle's roof. A room keeps its own lamps; breaking its roof ADDS the larger light through the hole.
+- **R-D2 — SHOTS REACH ROOFS (answers Q3).** *"Os tiros por natureza são horizontais atualmente […] Nós vamos querer porém ter o gameplay onde o agente deliberadamente atira no telhado para causar alguma mudança no cenário. […] na prática vai ser o mesmo comportamento do vidro vertical, mas com as consequências, chuva, pó, caindo pra baixo."* A shot aimed at a roof behaves as a shot on a vertical pane (the hole, the craze, the support rule, G-D49's re-damage), with the consequences falling DOWN (rain, dust). The aiming gesture (how the player targets a roof) is designed with the interface, not here; the engine takes a shot whose target is a roof cell.
+- **R-D3 — AN INTACT GLASS ROOF IS TRANSLUCENT (answers Q2).** *"O telhado de vidro intacto tem opacidade, de maneira que a luz passa, porém restrita. Quando o vidro é destruído ela fica acentuada (full)."* An intact glass roof lets a RESTRICTED share of the light above through (a per-material transmission factor); a broken cell lets it through in full.
+
 ## 1. What exists today (inventory, 2026-10-11)
 
 - **A blast damages roof voxels:** `BlastCalculator` buckets every CEILING slab on a flooded GU (`hit_roofs`), `DetonationPlanBuilder._phase_roofs` runs the wall ring model on them (D14 falloff, `carved_side` always BOTTOM). The voxels vanish; WALK / SOOT / BURN see them.
@@ -47,7 +53,14 @@ Each stage closes with `verify.py` green, a desktop take judged by the Director,
 5. **A take and a fixture:** a map (or a POI on GLASS) with each roof type over an ordinary room, a grenade beside / under it.
 
 ### RF-1 — the GLASS roof (the model)
-A glass roof becomes a horizontal pane: transparent when intact (Q2), it cracks and crazes, breaks into shards and rain, holds by the support rule, collapses crossfaded, and changes the room's light when broken (G-D53: "skylights … broken to change the room's light"). Reuses the pane machinery (crack field, opening masks, rim, rain, piles) on a horizontal face, then retires the G1 "glass roof stays opaque" exception.
+A glass roof becomes a horizontal pane: translucent when intact (R-D3), it cracks and crazes, breaks into shards and rain falling DOWN, holds by the support rule, collapses crossfaded, and lets the light above in when broken (R-D1; G-D53: "skylights … broken to change the room's light"). Reuses the pane machinery (crack field, opening masks, rim, rain, piles) on a horizontal face, then retires the G1 "glass roof stays opaque" exception. Steps, each closed with `verify.py` and a capture before the next:
+1. **The fixture and the take.** A roof POI on GLASS (or a small map): a room with its own lamp under a glass roof, inside a larger lit hall, and an outdoor-lit open area; takes for a blast beside it and a shot into it.
+2. **The roof as a pane in the store.** A glass CEILING slab gets pane claims with a horizontal face (`VoxelStore.pane`), so cracks, openings, the rim and `GlassSupport` see it; the 3D board draws it with the pane material (translucent, the top and bottom faces broad, the edges the rim). Every reader of `pane` that assumes a vertical face is listed first (Rule: list what a function else does).
+3. **The light above (R-D1, R-D3), as a STATE the light field reads.** A per-roof "light above" (outdoor class or the enclosing hall's light) and a per-material transmission (glass < 1, opaque 0, a hole 1); the cover term (VL-D3) read from the live roof; the consequence light re-derives the cells under a changed roof. Measured on the Moto.
+4. **Breaking it.** The blast path (`_phase_roofs`) runs the glass shatter on a roof pane (shockwave zone, crazes, openings, remnants), the rain and dust falling to the floor below, the floor shards.
+5. **The shot (R-D2).** `AgentShotController` accepts a roof cell as the target: the point impact, the opening, G-D49's re-damage collapse, the rain down. The aiming gesture is out of scope (a dev scenario step fires it).
+6. **The collapse.** `GlassSupport` with a horizontal pane's sources (resting on a wall / block / non-glass claim below or beside it) and the crossfaded fall.
+7. **Devices.** The take on the Moto and the Galaxy, worst frame and PSS inside the segment budget.
 
 ### RF-2 onward — each material follows RF-1, with its own behaviour (§3)
 Order proposed: **concrete / stone** (the common case: SEG_* maps), **wood / plywood**, **metal**, **fabric** (the sag, designed then), **cardboard / paper**.
@@ -66,12 +79,11 @@ Order proposed: **concrete / stone** (the common case: SEG_* maps), **wood / ply
 
 ## 4. Questions for the Director (ask at the point each one blocks)
 
-1. **Q1 — what light enters a hole.** The light canon has a *Directional* class (sun, moon, global ambient) that nothing implements yet. Does a hole let in the map's outdoor light (one per map: day / night / overcast), or only lift the "under structure" darkening back to the open-floor value?
-2. **Q2 — an intact glass roof: transparent (a skylight: light already enters, you see the room through it from above) or opaque frosted glass?** Today it renders opaque.
-3. **Q3 — do shots reach roofs?** G-D53 says shots count, but the agent shoots horizontally on the playable plane; a round would only reach a roof slab if it can be aimed upward or the target is a low roof. Keep shots for a later weapon, or define how they hit?
+1. ~~Q1~~ — ruled, R-D1. 2. ~~Q2~~ — ruled, R-D3. 3. ~~Q3~~ — ruled, R-D2.
 4. **Q4 — a grenade thrown ONTO a roof (D15-D17)** is designed but unbuilt (a roof hit from above behaves as a floor, one grenade pierces one slab). In scope here, or does the grenade stay on the playable plane?
 5. **Q5 — metal roofs:** break like the others, or bend / hang (a sag like fabric's)?
 6. **Q6 — the gameplay side of the light:** detection does not consume light yet (`LIGHT_MASTER_PLAN` status). This plan changes the VISUAL light; the tactical effect waits on that link. Confirm it stays visual here.
 
 ## 5. Records
+- 2026-10-11 v0.2 — R-D1 (the light above a roof), R-D2 (shots reach roofs), R-D3 (a glass roof is translucent); RF-1 split into seven steps.
 - 2026-10-11 v0.1 — opened (Director), inventory §1, stages RF-0/RF-1/RF-2+, questions Q1-Q6.

@@ -483,6 +483,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-09_PROJECT_EVALUATION.md
 - RESUMO_SESSAO_2026-10-10_CAPTURE_RAILS.md
 - RESUMO_SESSAO_2026-10-10_LOAD_GLASS_COLLAPSE.md
+- RESUMO_SESSAO_2026-10-11_CAPTURE_RAILS_GLASS_COLLAPSE.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

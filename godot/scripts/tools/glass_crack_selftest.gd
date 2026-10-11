@@ -784,7 +784,8 @@ func test_the_occupancy_cut_reads_the_live_tilemap() -> void:
 
 	var src := FileAccess.get_file_as_string("res://godot/shaders/glass_crack3d.gdshader")
 	## G-D54 (2026-10-09): the occupancy is read into `occ` first (the edge spill may widen it), then mixed by the same dial.
-	if src.contains("mix(1.0, occ, crack_hole_cut)") and src.contains("float occ = texture(crack_occupancy, occ_uv).r"):
+	## G-D55 (2026-10-10): `occ` is 1 for a falling voxel (`crack_per_voxel`: the voxel IS the glass), the occupancy otherwise.
+	if src.contains("mix(1.0, occ, crack_hole_cut)") and src.contains("float occ = crack_per_voxel ? 1.0 : texture(crack_occupancy, occ_uv).r"):
 		_pass("the shader mixes the occupancy by the dial — 0.5 is half a cut, not a rounded boolean")
 	else:
 		_fail("the cut is no longer a continuous mix in glass_crack3d.gdshader — G-D30 says it is a dial")

@@ -40,6 +40,7 @@ uniform float glass_rim_ink_opacity : hint_range(0.0, 1.0) = 0.75;
 // The pale floor under the ink. 0.35 read as a white band (Director, 2026-10-10: "a base clara da espessura está meio forte […]
 // queremos que se confunda mesmo com a parte da frente"): low, so the rim is the front face's look, the ink's lines on the glass.
 uniform float glass_rim_base : hint_range(0.0, 1.0) = 0.08;
+uniform bool glass_ink_local = false;   // G-D55: a falling voxel reads its rim ink in model space
 
 void fragment() {
 	if (glass_cut_open()) {
@@ -67,7 +68,8 @@ void fragment() {
 		}
 	}
 	if (glass_edge > 0.5 && v_rim > 0.5) {
-		vec2 ink_uv = vec2(v_world.x + v_world.z, v_world.y * 1.7) * glass_rim_ink_scale;
+		vec3 ink_p = glass_ink_local ? v_local : v_world;
+		vec2 ink_uv = vec2(ink_p.x + ink_p.z, ink_p.y * 1.7) * glass_rim_ink_scale;
 		float ink = max(texture(glass_rim_ink_tex, ink_uv).r, glass_rim_base) * glass_rim_ink_opacity;
 		light = light * (1.0 - ink) + to_linear(glass_rim_ink_color) * ink;
 		cover = max(cover, ink);

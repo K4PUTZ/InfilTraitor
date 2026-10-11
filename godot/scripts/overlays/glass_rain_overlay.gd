@@ -182,7 +182,9 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 			var v0_f: float = float(f.get("pop", pop_max_gu_s)) * lerpf(0.35, 1.0, _unit(base, "pop" + salt)) / 60.0
 			var h: float = maxf(from3.y - to3.y, 0.0) / maxf(_board_vscale(), 0.001) if _board != null else 0.0
 			var fall: int = maxi(fall_frames_floor, int(ceil((v0_f + sqrt(v0_f * v0_f + 2.0 * g_f * h)) / maxf(g_f, 1e-6))))
-			var t0: int = int(_unit(base, "t0" + salt) * float(stagger_frames))
+			## G-D55: a shard of a voxel that hit the floor starts at its impact frame (`t0` from the event's start), a frame or two apart.
+			var t0: int = int(f["t0"]) + int(_unit(base, "t0" + salt) * 2.99) if f.has("t0") \
+				else int(_unit(base, "t0" + salt) * float(stagger_frames))
 			## The pieces of one voxel do not all land on the same pixel: a small
 			## sub-cell offset, hashed, so a pile reads as a scatter and not as a
 			## stack. ⚠️ It moves only where the shard DRAWS, never the landing CELL

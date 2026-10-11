@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**290 scripts · 85293 lines total** (under `godot/scripts/`)
+**291 scripts · 85480 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — actor_pose.gd, agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
+- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, layout_overlay3d.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
 - **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3276 lines
+extends `Node3D` · 3226 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -660,7 +660,7 @@ extends `Node3D` · 3276 lines
 
 ### `glass_crack_mirror3d.gd`
 
-`class_name GlassCrackMirror3D` · extends `Node3D` · 228 lines
+`class_name GlassCrackMirror3D` · extends `Node3D` · 247 lines
 
 `godot/scripts/geometry/glass_crack_mirror3d.gd`
 
@@ -679,7 +679,6 @@ extends `Node3D` · 3276 lines
 **Public API**
 - `func setup(renderer: VoxelBoard, ground_level: int) -> void:`
 - `func twin_count() -> int:`
-- `func clone_for_piece(cells: Dictionary, piece: Node3D) -> int:`
 
 ---
 
@@ -694,6 +693,23 @@ extends `Node3D` · 3276 lines
 **Constants / tuning**
 - `MAX_PANE_RUN_GU` = `8`
 - `MAX_PANE_STOREYS` = `4`
+
+---
+
+### `glass_voxel_fall3d.gd`
+
+`class_name GlassVoxelFall3D` · extends `Node3D` · 300 lines
+
+`godot/scripts/geometry/glass_voxel_fall3d.gd`
+
+> GlassVoxelFall3D — G-D55 as the Director refined it (2026-10-10): the glass that lost its support falls VOXEL BY VOXEL, each a small block of the pane carrying its own piece of the crack, and only becomes shards where it hits what is under it. *"Tudo acontecendo ao mesmo tempo, com variações internas de velocidade e ângulo […] voxels mais longes e mais baixos caem primeiro, voxels mais perto e mais altos caem depois. Mas é apenas uma leve influência […] Deixa os voxels +aprox 1/4 de segundo parados antes de cair […] randomizado entre 1/3 e 1/5."* THE MOTION IS CLOSED FORM, per voxel (B4: every number hashed off its base cell, never `randf`): it rests `wait` frames (1/5..1/3 s, minus a slight lead for the far and low ones), then falls under its own g (a spread of g), with its own small push (up, out along the pane's normal, sideways) and its own tumble (a hashed axis and speed); it stops at the first frame its lowest corner reaches the top of what stands under its column (the pane's base, a floor) — so the impact frame and the impact point are known at the start, and the shard rain for the whole event is ONE overlay whose flights start at those frames and points. DRAWING: a handful of MultiMeshes, never a node per voxel (the Mali pays per draw): per (material, pane orientation) the broad faces on the pane's material and the thickness on its edge twin (every edge marked broken: the rim ink), and per live crack one quad per voxel it covers, on the crack's own material in its per-voxel mode (`crack_per_voxel`: INSTANCE_CUSTOM.xy is the voxel's offset in the crack, so the ink is the pane's own). The body materials are copies with the opening cut off (a falling voxel is not in the pane any more) and the rim ink read in model space (it does not slide over a moving voxel). Aged in drawn frames, 60 per second, never seconds: a stalled frame must not swallow the fall.
+
+**Constants / tuning**
+- `MAX_FALL_FRAMES` = `240`
+
+**Public API**
+- `func setup(live: Node, entries: Array, cracks: Array, on_impact: Callable) -> Array:`
+- `func start() -> void:`
 
 ---
 
@@ -1624,7 +1640,7 @@ extends `Node2D` · 164 lines
 
 ### `glass_rain_overlay.gd`
 
-`class_name GlassRainOverlay` · extends `Node2D` · 322 lines
+`class_name GlassRainOverlay` · extends `Node2D` · 324 lines
 
 `godot/scripts/overlays/glass_rain_overlay.gd`
 
@@ -4130,7 +4146,7 @@ extends `SceneTree` · 232 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 1688 lines
+extends `SceneTree` · 1689 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -6056,7 +6072,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10141 lines
+extends `Node2D` · 10056 lines
 
 `godot/scripts/world/room.gd`
 

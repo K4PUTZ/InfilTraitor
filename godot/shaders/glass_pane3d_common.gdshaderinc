@@ -31,6 +31,7 @@ varying float v_face;
 varying vec3 v_world;
 varying vec3 v_normal;
 varying float v_rim;   // 1 on a broken rim wall (Board3DLive marks it COLOR.b = 0), 0 everywhere else
+varying vec3 v_local;  // model space: a FALLING voxel's rim ink is read here, so it does not slide over the voxel as it moves
 
 // CRACK-03/04 on the 3D pane: each applied opening is a polygon mask (one layer of open_masks, in a
 // square frame of +-open_half voxels around its struck cell). A fragment inside one is discarded, so
@@ -47,6 +48,7 @@ void vertex() {
 	v_world = w;
 	v_normal = NORMAL;
 	v_rim = 1.0 - COLOR.b;
+	v_local = VERTEX;
 	v_face = (abs(NORMAL.y) > 0.5 ? face_top : (abs(NORMAL.x) > 0.5 ? face_se : face_sw)) * COLOR.r;
 }
 

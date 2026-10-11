@@ -91,7 +91,76 @@ func _make_twin(rec: Dictionary) -> Dictionary:
 	mesh.material_override = mat
 	mesh.transform = _placement(rec)
 	add_child(mesh)
+	var strips: MeshInstance3D = _make_strips(rec, mat)
+	if strips != null:
+		mesh.add_child(strips)
+		strips.top_level = true   ## placed in the geometry root's space, not the quad's
+		strips.global_transform = (get_parent() as Node3D).global_transform
 	return {"mesh": mesh, "mat": mat, "rec": rec}
+
+
+## 2026-10-10 (Director: "precisamos cobrir as laterais, topos e fundos dos outros painéis que racharam com os decals […] quando a
+## face da frente rachar, a espessura precisa rachar também — sem alterar a diferenciação de opacidades/tons dos slivers"): the
+## crack's ink on the pane's THICKNESS. Four thin quads on the pane's top, bottom and two ends, with the SAME material (so every
+## parameter is the crack's own) and UVs that put each one on the front face's border: a crack line reaching the border carries over
+## the edge. Drawn OVER the edge faces (the decal's blend), so the edges keep their own tones. Depth-tested: an end that meets a wall
+## is hidden by it. The pane is one voxel thick (a panel, D16); the occupancy cut still applies, so a hole's border has no strip ink.
+func _make_strips(rec: Dictionary, mat: ShaderMaterial) -> MeshInstance3D:
+	var p: Dictionary = rec["params"]
+	var span: Vector2 = p.get("crack_span", Vector2.ZERO)
+	var lo: Vector2 = p.get("crack_pane_lo", Vector2.ZERO)
+	var hi: Vector2 = p.get("crack_pane_hi", Vector2.ZERO)
+	if span.x <= 0.0 or span.y <= 0.0:
+		return null
+	var run_is_x: bool = int(rec["run_axis"]) == 0
+	var cell: Vector2i = rec["impact_cell"]
+	var run_c: float = float(cell.x if run_is_x else cell.y)       ## the impact voxel's run index
+	var cross: float = float(cell.y if run_is_x else cell.x)       ## the pane's one voxel across
+	var lvl_c: float = float(int(rec["impact_level"]) - _ground_level)
+	var lift: float = FACE_LIFT_VOXELS
+	## A point (run, height, across) in voxel units -> the geometry root's space.
+	var at := func(r: float, h: float, t: float) -> Vector3:
+		return (Vector3(r, h, t) if run_is_x else Vector3(t, h, r)) * _unit
+	var uv := func(off: Vector2) -> Vector2: return Vector2(off.x / span.x + 0.5, 0.5 - off.y / span.y)
+	var r0: float = run_c + lo.x
+	var r1: float = run_c + hi.x + 1.0
+	var h0: float = lvl_c + lo.y
+	var h1: float = lvl_c + hi.y + 1.0
+	var t0: float = cross - lift
+	var t1: float = cross + 1.0 + lift
+	var verts := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var idx := PackedInt32Array()
+	var quad := func(a: Vector3, b: Vector3, c: Vector3, d: Vector3, ua: Vector2, ub: Vector2, uc: Vector2, ud: Vector2) -> void:
+		var base: int = verts.size()
+		verts.append_array([a, b, c, d])
+		uvs.append_array([ua, ub, uc, ud])
+		idx.append_array([base, base + 1, base + 2, base, base + 2, base + 3])
+	## Top and bottom: along the run, across the thickness; the ink of the top row / the bottom row.
+	for edge: Array in [[h1 + lift, hi.y], [h0 - lift, lo.y]]:
+		var y: float = edge[0]
+		var oy: float = edge[1]
+		quad.call(at.call(r0, y, t0), at.call(r1, y, t0), at.call(r1, y, t1), at.call(r0, y, t1),
+			uv.call(Vector2(lo.x, oy)), uv.call(Vector2(hi.x, oy)), uv.call(Vector2(hi.x, oy)), uv.call(Vector2(lo.x, oy)))
+	## The two ends: up the height, across the thickness; the ink of the first / the last column.
+	for edge: Array in [[r0 - lift, lo.x], [r1 + lift, hi.x]]:
+		var r: float = edge[0]
+		var ox: float = edge[1]
+		quad.call(at.call(r, h0, t0), at.call(r, h1, t0), at.call(r, h1, t1), at.call(r, h0, t1),
+			uv.call(Vector2(ox, lo.y)), uv.call(Vector2(ox, hi.y)), uv.call(Vector2(ox, hi.y)), uv.call(Vector2(ox, lo.y)))
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var mi := MeshInstance3D.new()
+	mi.name = "Strips"
+	mi.mesh = m
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
 
 
 ## Centre and basis of the quad, in the geometry root's local space.
@@ -113,56 +182,6 @@ func _placement(rec: Dictionary) -> Transform3D:
 	var run_dir: Vector3 = Vector3.RIGHT if run_axis == 0 else Vector3.BACK
 	var basis := Basis(run_dir, Vector3.UP, run_dir.cross(Vector3.UP))
 	return Transform3D(basis, Vector3(x, y, z) * _unit)
-
-
-## G-D55 — the cracks a falling glass PIECE carries with it. For every live crack on the piece's pane plane, a copy of its quad with
-## the record's parameters FROZEN now, except the occupancy: a mask of the piece's own cells (in the record's occupancy frame), so the
-## ink falls with exactly the glass it was drawn on — the board's own occupancy is about to call those cells a hole and cut it there.
-## `cells`: Vector3i(x, y, level) of the piece's voxels. The copies parent under `piece` (a child of the geometry root at identity,
-## the same space `_placement()` answers in). Returns how many cracks it carries.
-func clone_for_piece(cells: Dictionary, piece: Node3D) -> int:
-	var n: int = 0
-	if _renderer == null or _shader == null:
-		return 0
-	for rec: Dictionary in _renderer.glass_crack_records():
-		if not rec.has("params") or not bool(rec.get("visible", true)):
-			continue
-		var src: Dictionary = rec["params"]
-		var size: Vector2 = src.get("crack_occ_size", Vector2.ZERO)
-		var origin: Vector2 = src.get("crack_occ_origin", Vector2.ZERO)
-		var w: int = int(size.x)
-		var h: int = int(size.y)
-		if w < 1 or h < 1:
-			continue
-		var run_is_x: bool = int(rec["run_axis"]) == 0
-		var cross: Vector2i = rec["impact_cell"]
-		var run_base: int = int(rec.get("impact_run", cross.x if run_is_x else cross.y)) + int(roundf(origin.x))
-		var level_top: int = int(rec["impact_level"]) + int(roundf(origin.y))
-		var img := Image.create(w, h, false, Image.FORMAT_R8)
-		var any: bool = false
-		for c: Vector3i in cells:
-			if run_is_x and c.y != cross.y or not run_is_x and c.x != cross.x:
-				continue
-			var i: int = (c.x if run_is_x else c.y) - run_base
-			var j: int = level_top - c.z
-			if i >= 0 and i < w and j >= 0 and j < h:
-				img.set_pixel(i, j, Color8(255, 0, 0, 255))
-				any = true
-		if not any:
-			continue
-		var twin: Dictionary = _make_twin(rec)
-		var mesh: MeshInstance3D = twin["mesh"]
-		remove_child(mesh)
-		piece.add_child(mesh)
-		mesh.name = "PieceCrack_%d" % int(rec["id"])
-		var mat: ShaderMaterial = twin["mat"]
-		for param: String in MIRRORED:
-			if src.get(param) != null:
-				mat.set_shader_parameter(param, src[param])
-		mat.set_shader_parameter("crack_occupancy", ImageTexture.create_from_image(img))
-		mat.set_shader_parameter("crack_hole_cut", 1.0)
-		n += 1
-	return n
 
 
 ## Only writes what changed: this runs every frame per crack.

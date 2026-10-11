@@ -48,7 +48,8 @@ Director ruling 2026-09-02 (G-D3 + the CRACK-02 sprite). ⚠️ B-4's per-voxel
 perforation was built and ABANDONED (Director ruling); G-D25's big shards are
 SUPERSEDED by G-D44. **Left in M4:** `plastic` (screen backing) and S-4's
 four-class fracture art (order written, art deliberately not made); skylights
-(G-D16c/d) have `lift` authored but no geometry to run on.
+(G-D16c/d) have `lift` authored but no geometry to run on. (2026-10-11: skylights and every destroyed roof are
+[`ROOF_MASTER_PLAN`](ROOF_MASTER_PLAN.md), roadmap A1d.)
 
 Earlier, v1.5 — **2026-08-30: THE SEQUENCING BLOCK IS GONE.** M3-6 was
 sequenced behind `PERFORMANCE_MASTER_PLAN` P7; **P7b and P7c shipped 2026-08-26**

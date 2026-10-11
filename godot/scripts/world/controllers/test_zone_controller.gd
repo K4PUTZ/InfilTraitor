@@ -1839,6 +1839,7 @@ func _build_detonation_ctx(source_gu: Vector2i) -> Dictionary:
 		"lights": lights,
 		"shadow_results": shadow_results,
 		"under_structure": room._under_structure,
+		"roof_slabs": room._roof_slabs,
 		## E-DEBRIS-01: which materials throw dust/sparks/chips, and how often.
 		## Room policy as plain data — see Room.blast_debris_policy(). Absent
 		## means no debris, which is what every non-explosion caller wants.

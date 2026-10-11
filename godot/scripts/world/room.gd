@@ -379,6 +379,8 @@ func bump_world_revision() -> void:
 ## base-coord: it's derived from the current view's geometry, which is rebuilt
 ## intact every rotation, so recomputing per build is correct and self-consistent.
 var _under_structure: Dictionary = {}
+## ROOF R-D1 — {gu, level, material} per CEILING slab of the intact build, for `VoxelLightField.set_roofs()`.
+var _roof_slabs: Array = []
 
 
 ## Voxel-grid size of the base (N-frame) layout — GU size × 8. The perspective
@@ -2284,6 +2286,23 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	MemStage.mark("12 voxel store built")
 	## VL-D3: floor columns under structure, from the intact just-built geometry.
 	_under_structure = _voxel_board.columns_with_structure()
+	## ROOF R-D1: the roofs the light field holds lamps above back with (one entry per CEILING slab of a free-standing `roofs`
+	## entry; a new field gets them below). A solid block's own roof is NOT one: the block's walls are its outside, lit from the
+	## side, and counting its top made every block's walls lose the lamps above them (ROOF_LAB, 2026-10-11).
+	_roof_slabs = []
+	var free_roof_gus: Dictionary = {}
+	for ri: Dictionary in view_layout.get("roof_instances", []):
+		var base: Vector2i = ri.get("gu_cell", Vector2i.ZERO)
+		var size: Vector2i = ri.get("size", Vector2i.ONE)
+		for ox: int in range(size.x):
+			for oy: int in range(size.y):
+				free_roof_gus[base + Vector2i(ox, oy)] = true
+	if _slab_registry != null and not free_roof_gus.is_empty():
+		for sl: Slab in _slab_registry.all_slabs():
+			if sl.role == Slab.Role.CEILING and free_roof_gus.has(sl.gu_cell):
+				_roof_slabs.append({"gu": sl.gu_cell, "level": sl.level, "material": sl.material})
+	if _voxel_light_field != null:
+		_voxel_light_field.set_roofs(_roof_slabs)
 	_room_size = room_size
 	_assert_geometry_registered()
 	_refresh_gu_grid_overlay()
@@ -6084,6 +6103,7 @@ func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
 		return
 	if _voxel_light_field == null:
 		_voxel_light_field = VoxelLightField.new()
+		_voxel_light_field.set_roofs(_roof_slabs)
 	var _sp: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1" or _dev_flag_on("REPAINT_PROFILE")
 	var _s1: int = Time.get_ticks_usec()
 	var live_changes: Array[Vector3i] = []
@@ -6216,6 +6236,7 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary, scope_gus: Arr
 	## overwritten before they can reach a pixel.
 	if _voxel_light_field == null:
 		_voxel_light_field = VoxelLightField.new()
+		_voxel_light_field.set_roofs(_roof_slabs)
 	var field = _voxel_light_field
 	var top_wall_level: int = _voxel_board.top_wall_level()
 	var pre_changes: Array[Vector3i] = []
@@ -6299,6 +6320,7 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 		return
 	if _voxel_light_field == null:
 		_voxel_light_field = VoxelLightField.new()
+		_voxel_light_field.set_roofs(_roof_slabs)
 	## OVERHEAD lamps anchor at the top of the ACTUAL built wall stack, not the
 	## 8-storey ceiling-fixture height — see VoxelLightField.build().
 	var top_wall_level: int = _voxel_board.top_wall_level()

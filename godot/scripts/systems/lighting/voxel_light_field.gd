@@ -99,6 +99,12 @@ var under_structure_factor: float = 0.68
 ## never tactical visibility, so this cannot move a gameplay number.
 var micro_jitter_buckets: int = 0
 
+## ROOF R-D1 / R-D3 / R-D4 (Director, 2026-10-11): a roof stands between a lamp ABOVE it (its anchor at or above the roof's lowest
+## level) and every cell UNDER it. Such a lamp reaches a cell multiplied by the roof's transmission at that cell's own voxel column,
+## projected straight down: an opaque roof 0, an intact glass roof this share ("a luz passa, porém restrita"), a column whose roof
+## voxels are all gone 1 ("acentuada (full)"). A room's own lamps (below its roof) are untouched. Calibrated on screen.
+var glass_roof_transmission: float = 0.35
+
 var _lights: Array = []                    ## Array[LightSource] (active set)
 var _shadow_by_light: Dictionary = {}      ## light instance_id -> ShadowResult
 var _top_wall_level: int = 0               ## highest built voxel layer (OVERHEAD anchor)
@@ -142,6 +148,40 @@ var _lamp_cache: Dictionary = {}           ## Vector3i(gu.x, gu.y, level) -> flo
 ## exact product from scratch every time (clear_caches() used to nuke
 ## _bucket_cache wholesale) — this cache is what makes the toggle cheap.
 var _static_factor_cache: Dictionary = {}  ## Vector3i(cell.x, cell.y, level) -> float
+## ROOF — Vector2i gu -> Array[Vector3(lowest level, highest level, transmission)], the roofs over that GU column (`set_roofs()`).
+var _roofs: Dictionary = {}
+
+
+## ROOF — the map's roofs, from its CEILING slabs: `slabs` holds {gu: Vector2i, level: int, material: String} per slab. Static for
+## a map (the intact build); a hole is read from the occupancy, never from here. The caller rebuilds the field (`build()` with
+## `geometry_only` false) after a change.
+func set_roofs(slabs: Array) -> void:
+	var spans: Dictionary = {}   ## gu -> {material: [lo, hi]}
+	for sl: Dictionary in slabs:
+		var gu: Vector2i = sl["gu"]
+		var by_mat: Dictionary = spans.get(gu, {})
+		var mat: String = String(sl["material"])
+		var lv: int = int(sl["level"])
+		var r: Vector2i = by_mat.get(mat, Vector2i(lv, lv))
+		by_mat[mat] = Vector2i(mini(r.x, lv), maxi(r.y, lv))
+		spans[gu] = by_mat
+	_roofs = {}
+	for gu: Vector2i in spans:
+		var list: Array = []
+		for mat: String in spans[gu]:
+			var r: Vector2i = spans[gu][mat]
+			list.append(Vector3(float(r.x), float(r.y), glass_roof_transmission if GlassMaterials.is_glass(mat) else 0.0))
+		_roofs[gu] = list
+
+
+## ROOF — every cell a change at `key` (x, y, level) can relight through a roof: the cells of its voxel column below that roof.
+func add_roof_column_below(key: Vector3i, out: Dictionary) -> void:
+	var spans: Array = _roofs.get(Vector2i(key.x >> 3, key.y >> 3), [])
+	for sp: Vector3 in spans:
+		var lo: int = int(sp.x)
+		if key.z >= lo and key.z <= int(sp.y):
+			for l: int in range(GeometryCoords.FLOOR_DEEP_LEVEL, lo):
+				out[Vector3i(key.x, key.y, l)] = true
 
 
 ## Rebuild the field from the current lighting state. Called from room on every
@@ -247,6 +287,8 @@ func _stale_cells(occupancy: Dictionary) -> Dictionary:
 		if before == after:
 			continue
 		for cell in _symmetric_difference(before, after):
+			if not _roofs.is_empty():
+				add_roof_column_below(Vector3i(cell.x, cell.y, int(level)), stale)
 			for dz in range(-2, 2):
 				for dx in range(-1, 2):
 					for dy in range(-1, 2):
@@ -258,6 +300,8 @@ func _stale_cells(occupancy: Dictionary) -> Dictionary:
 func _stale_from_changes(changes: Array) -> Dictionary:
 	var stale: Dictionary = {}
 	for cell: Vector3i in changes:
+		if not _roofs.is_empty():
+			add_roof_column_below(cell, stale)
 		for dz in range(-2, 2):
 			for dx in range(-1, 2):
 				for dy in range(-1, 2):
@@ -394,6 +438,13 @@ func buckets_for_level(level: int, cells: Array, maps: Dictionary, origin: Vecto
 	var lamp := PackedFloat64Array()  ## 64-bit: a float32 copy of the lamp term moved 96 PLAYGROUND cells across a rounding edge
 	lamp.resize(gu_w * gu_h)
 	lamp.fill(-1.0)
+	var lamp_blocked := PackedFloat64Array()   ## ROOF: `_lamp_term()`'s blocked share and its anchor, per GU of the box
+	lamp_blocked.resize(gu_w * gu_h)
+	var lamp_anchor := PackedInt32Array()
+	lamp_anchor.resize(gu_w * gu_h)
+	var occ_has := func(l: int, c: Vector2i) -> bool:
+		var m: PackedByteArray = maps.get(l, PackedByteArray())
+		return not m.is_empty() and m[(c.y - origin.y) * width + (c.x - origin.x)] != 0
 	var top_f: float = float(top_bucket)
 	var i: int = 0
 	for cell: Vector2i in cells:
@@ -404,8 +455,13 @@ func buckets_for_level(level: int, cells: Array, maps: Dictionary, origin: Vecto
 		if intensity < 0.0:
 			## `_lamp_term()`, not `_lamp_intensity()`: this runs on the WorkerThreadPool, one level per task (Q5), and the cache is a
 			## shared Dictionary; `lamp` already memoises the term per GU of this level.
-			intensity = _lamp_term(Vector2i(gx, gy), level, top_bucket)
+			var terms: Vector3 = _lamp_term(Vector2i(gx, gy), level, top_bucket)
+			intensity = terms.x
 			lamp[li] = intensity
+			lamp_blocked[li] = terms.y
+			lamp_anchor[li] = int(terms.z)
+		if lamp_blocked[li] > 0.0:
+			intensity = maxf(intensity, lamp_blocked[li] * _roof_transmission(cell, level, lamp_anchor[li], occ_has))
 		var factor: float = 1.0
 		if not empty_occ:
 			var at: int = (cell.y - origin.y) * width + (cell.x - origin.x)
@@ -527,7 +583,10 @@ func _compute_bucket(cell: Vector2i, level: int) -> int:
 	## (GU, level) and cache. This was the repaint's hot loop: the sqrt-per-light
 	## ran 108k× when ~5k distinct (GU, level) pairs would do (VL-PERF).
 	var gu := Vector2i(cell.x >> 3, cell.y >> 3)
-	var intensity: float = _lamp_intensity(gu, level, top_bucket)
+	var terms: Vector3 = _lamp_intensity(gu, level, top_bucket)
+	var intensity: float = terms.x
+	if terms.y > 0.0:
+		intensity = maxf(intensity, terms.y * _roof_transmission(cell, level, int(terms.z), _occupancy_has))
 	intensity *= _static_factor(cell, level)
 	## FACE-READ-01: nudge the QUANTISED bucket, after rounding — nudging the
 	## continuous value before it was measured to be swallowed by the rounding
@@ -573,22 +632,47 @@ func micro_jitter_offset(cell: Vector2i, level: int) -> int:
 	return int(FacadeSampler._fnv1a_hash(key) % span) - micro_jitter_buckets
 
 
-## Lamp-only intensity for a GU column at one level, cached per (GU, level).
-func _lamp_intensity(gu: Vector2i, level: int, top_bucket: int) -> float:
+## Lamp-only terms for a GU column at one level, cached per (GU, level): see `_lamp_term()`.
+func _lamp_intensity(gu: Vector2i, level: int, top_bucket: int) -> Vector3:
 	var key := Vector3i(gu.x, gu.y, level)
 	if _lamp_cache.has(key):
 		return _lamp_cache[key]
-	var intensity: float = _lamp_term(gu, level, top_bucket)
-	_lamp_cache[key] = intensity
-	return intensity
+	var terms: Vector3 = _lamp_term(gu, level, top_bucket)
+	_lamp_cache[key] = terms
+	return terms
 
 
-## `_lamp_intensity()` without its cache: reads only, so safe off the main thread (`buckets_for_level()`).
-func _lamp_term(gu: Vector2i, level: int, top_bucket: int) -> float:
+## ROOF — the share of a lamp above that reaches `cell` at `level`: the product of the transmissions of every roof over its GU that
+## lies between the cell and `anchor` (the highest blocked lamp's anchor), each read at this voxel column (any roof voxel standing
+## there: the roof's material; none: 1). `has` answers (level, cell) -> bool, so the per-cell and the byte-map paths share this.
+func _roof_transmission(cell: Vector2i, level: int, anchor: int, has: Callable) -> float:
+	var t: float = 1.0
+	for sp: Vector3 in _roofs.get(Vector2i(cell.x >> 3, cell.y >> 3), []):
+		var lo: int = int(sp.x)
+		if level >= lo or lo > anchor:
+			continue
+		for l: int in range(lo, int(sp.y) + 1):
+			if has.call(l, cell):
+				t *= sp.z
+				break
+	return t
+
+
+func _occupancy_has(level: int, cell: Vector2i) -> bool:
+	return (_occupancy.get(level, {}) as Dictionary).has(cell)
+
+
+## `_lamp_intensity()` without its cache: reads only, so safe off the main thread (`buckets_for_level()`). Returns (free, blocked,
+## anchor): the strongest lamp no roof stands between (ambient included), the strongest lamp a roof over this GU blocks (ROOF R-D1,
+## 0 when none), and the highest anchor level among the blocked ones.
+func _lamp_term(gu: Vector2i, level: int, top_bucket: int) -> Vector3:
 	## A map with no lights reads as fully lit rather than pitch black, but still
 	## takes the surface shading in the caller — that gives an unlit test map its
 	## geometry read.
 	var intensity: float = 1.0 if no_lights_bucket < 0 else float(no_lights_bucket) / float(top_bucket)
+	var blocked: float = 0.0
+	var blocked_anchor: int = -1
+	var spans: Array = _roofs.get(gu, [])
 	if not _lights.is_empty():
 		intensity = ambient_intensity
 		for light in _lights:
@@ -603,13 +687,25 @@ func _lamp_term(gu: Vector2i, level: int, top_bucket: int) -> float:
 			var d_gu := Vector2(light.cell - gu).length()
 			if d_gu > radius:
 				continue
-			var d_lvl := absf(float(level - _anchor_level(light))) \
+			var anchor: int = _anchor_level(light)
+			var d_lvl := absf(float(level - anchor)) \
 					/ float(GeometryCoords.LEVELS_PER_STOREY) * vertical_gu_per_storey
 			var d := sqrt(d_gu * d_gu + d_lvl * d_lvl)
 			## VL-03: energy_multiplier carries the temporal state (flicker/pulse).
 			var lamp_energy := float(light.visual_energy) * float(light.energy_multiplier)
-			intensity = maxf(intensity, lamp_energy * _falloff(d, radius))
-	return intensity
+			var c: float = lamp_energy * _falloff(d, radius)
+			var roofed: bool = false
+			for sp: Vector3 in spans:
+				if level < int(sp.x) and anchor >= int(sp.x):
+					roofed = true
+					break
+			if roofed:
+				if c > blocked:
+					blocked = c
+				blocked_anchor = maxi(blocked_anchor, anchor)
+			else:
+				intensity = maxf(intensity, c)
+	return Vector3(intensity, blocked, float(blocked_anchor))
 
 
 ## The code layout lives on VoxelBoard (it owns the alternative-id space this

@@ -1873,6 +1873,7 @@ static func _phase_light(s: Dictionary, deadline: int) -> void:
 		s.erase("occ_gone")
 	var lights: Array = ctx.get("lights", [])
 	var field := VoxelLightFieldClass.new()
+	field.set_roofs(ctx.get("roof_slabs", []))   ## ROOF R-D1: lamps above a roof light under it through its holes
 	## D-7 (§7.4) — MAP-WIDE occupancy, not `s["occupancy"]` (which PHASE_WALK only
 	## fills for the affected containers). The soot wave still only QUERIES the
 	## blast neighbourhood, so a scoped occupancy was enough for it; but the room
@@ -2099,6 +2100,17 @@ static func _phase_soot_wave(s: Dictionary, deadline: int) -> void:
 			if _out_of_time(deadline):
 				s["sub"] = j
 				return
+	if not s.has("roof_relight_logged"):
+		s["roof_relight_logged"] = true
+		var roof_cols: Dictionary = {}
+		for key: Vector3i in s["touched_this_blast"]:
+			field.add_roof_column_below(key, roof_cols)
+		var moved: int = 0
+		for key: Vector3i in roof_cols:
+			if changed.has(key):
+				moved += 1
+		if not roof_cols.is_empty():
+			print_debug("[ROOF-LIGHT] %d cell(s) under the roof's changed voxels, %d relit" % [roof_cols.size(), moved])
 	s["smoke_gus"] = s["gu_rings"].keys()
 	_enter_phase(s, PHASE_SMOKE)
 
@@ -2107,6 +2119,7 @@ static func _phase_soot_wave(s: Dictionary, deadline: int) -> void:
 ## levels -2..+1) of a voxel this blast destroys.
 static func _hole_neighbourhood(s: Dictionary) -> Array:
 	var delta: WorldDelta = s["delta"]
+	var field: VoxelLightFieldClass = s.get("field")
 	var cell_to_voxel: ClaimGrid = s["cell_to_voxel"]
 	var out: Dictionary = {}
 	for key: Vector3i in s["touched_this_blast"]:
@@ -2117,6 +2130,9 @@ static func _hole_neighbourhood(s: Dictionary) -> Array:
 			for dx in range(-1, 2):
 				for dy in range(-1, 2):
 					out[Vector3i(key.x + dx, key.y + dy, key.z + dz)] = true
+		## ROOF R-D1: a roof voxel's column below relights through the hole (the field's own reach, `add_roof_column_below()`).
+		if field != null:
+			field.add_roof_column_below(key, out)
 	return out.keys()
 
 

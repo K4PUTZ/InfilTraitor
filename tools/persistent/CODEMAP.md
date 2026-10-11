@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**290 scripts · 85032 lines total** (under `godot/scripts/`)
+**290 scripts · 85293 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3181 lines
+extends `Node3D` · 3276 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -660,7 +660,7 @@ extends `Node3D` · 3181 lines
 
 ### `glass_crack_mirror3d.gd`
 
-`class_name GlassCrackMirror3D` · extends `Node3D` · 178 lines
+`class_name GlassCrackMirror3D` · extends `Node3D` · 228 lines
 
 `godot/scripts/geometry/glass_crack_mirror3d.gd`
 
@@ -679,6 +679,7 @@ extends `Node3D` · 3181 lines
 **Public API**
 - `func setup(renderer: VoxelBoard, ground_level: int) -> void:`
 - `func twin_count() -> int:`
+- `func clone_for_piece(cells: Dictionary, piece: Node3D) -> int:`
 
 ---
 
@@ -1623,7 +1624,7 @@ extends `Node2D` · 164 lines
 
 ### `glass_rain_overlay.gd`
 
-`class_name GlassRainOverlay` · extends `Node2D` · 320 lines
+`class_name GlassRainOverlay` · extends `Node2D` · 322 lines
 
 `godot/scripts/overlays/glass_rain_overlay.gd`
 
@@ -6055,7 +6056,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10027 lines
+extends `Node2D` · 10141 lines
 
 `godot/scripts/world/room.gd`
 

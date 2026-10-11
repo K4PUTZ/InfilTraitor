@@ -1874,6 +1874,101 @@ func on_blast_commit(delta) -> void:
 ## same fold as a blast, on the exact set the shot wrote. Its scorch and light reach the planes
 ## at every level from the floor stack up to the highest voxel it touched, not only the touched
 ## levels: a round into a wall base sooted the floor rows beneath it.
+## G-D55 — true while a remesh runs or waits: a falling glass piece stays hidden until the chunks it left have been rebuilt
+## without it, so the pane is never drawn twice (the board's copy and the piece) nor missing for a frame.
+func remesh_pending() -> bool:
+	return _remesh_task_id != -1 or not _remesh_queue.is_empty()
+
+
+## G-D55 (Director, 2026-10-10: "derrubar os painéis inteiros com os voxels + decals, e trocar para cacos no momento do impacto
+## com o chão") — a falling glass PIECE: the given pane claims meshed on their own, with the board's own merge and materials (the
+## pane's broad faces on its material, the thickness and top on its edge twin, every edge of the piece marked BROKEN so it carries the
+## crack's ink), in a Node3D under the geometry root at identity. Built BEFORE the claims are destroyed; the caller moves the node
+## (rotation about the piece's centre, the fall) and frees it at the impact. The bottom is not drawn (the board never draws one).
+func build_glass_piece(claims: Array) -> Node3D:
+	var store: VoxelStore = _store
+	var node := Node3D.new()
+	node.name = "GlassPiece"
+	_geometry_root.add_child(node)
+	if store == null or claims.is_empty():
+		return node
+	var cells: Dictionary = {}
+	for claim: int in claims:
+		var k: int = claim * 3
+		cells[Vector3i(store.xyz[k], store.xyz[k + 2], store.xyz[k + 1])] = claim
+	var planes: Dictionary = {}
+	for key: Vector3i in cells:
+		var claim: int = cells[key]
+		var material: int = _store_material[store.mat[claim]]
+		var face: int = int(store.pane[claim]) - 1
+		var x: int = key.x
+		var level: int = key.y
+		var y: int = key.z
+		for dir: int in ALL_DIRS:
+			if cells.has(key + DIR_STEP[dir]):
+				continue
+			var plane_key: Vector2i
+			var uv: Vector2i
+			if dir == Dir.TOP:
+				plane_key = Vector2i(dir, level)
+				uv = Vector2i(x, y)
+			elif dir == Dir.SE or dir == Dir.NW:
+				plane_key = Vector2i(dir, x)
+				uv = Vector2i(y, level)
+			else:
+				plane_key = Vector2i(dir, y)
+				uv = Vector2i(x, level)
+			if not planes.has(plane_key):
+				planes[plane_key] = {}
+			var face_material: int = material
+			if face >= 0 and material < _glass_edge_twin.size() and _glass_edge_twin[material] >= 0 and _is_pane_edge(dir, face):
+				face_material = _glass_edge_twin[material]
+			(planes[plane_key] as Dictionary)[uv] = face_material
+	var surfaces: Dictionary = {}
+	for plane_key: Vector2i in planes:
+		_merge_plane(plane_key.x, plane_key.y, planes[plane_key], surfaces)
+	for material: int in surfaces:
+		var surface: SurfaceData = surfaces[material]
+		var edge: bool = material < _is_glass_edge.size() and _is_glass_edge[material]
+		if edge:
+			for i: int in range(surface.colors.size()):
+				surface.colors[i].b = 0.0   ## a broken edge: the rim ink (glass_pane3d's rim branch)
+		var arrays: Array = []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = surface.vertices
+		arrays[Mesh.ARRAY_NORMAL] = surface.normals
+		arrays[Mesh.ARRAY_TEX_UV] = surface.uvs
+		if surface.colors.size() == surface.vertices.size():
+			arrays[Mesh.ARRAY_COLOR] = surface.colors
+		arrays[Mesh.ARRAY_INDEX] = surface.indices
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		mesh.surface_set_material(0, _shader_materials[material])
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if edge:
+			mi.sorting_offset = -GLASS_EDGE_SORT_OFFSET   ## as a chunk's edge instance: drawn before the broad faces
+		node.add_child(mi)
+	return node
+
+
+## A point of a piece (in the geometry root's space, as the piece's meshes are built) where it is NOW, in this board's space (where
+## the rain and the particles live).
+func piece_point(piece: Node3D, local: Vector3) -> Vector3:
+	return _geometry_root.transform * (piece.transform * local)
+
+
+## The geometry root's position of a voxel's centre (x, level, y): the space `build_glass_piece()` meshes in.
+func voxel_centre_local(x: int, y: int, level: int) -> Vector3:
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	return Vector3(float(x) + 0.5, float(level - _ground_level) + 0.5, float(y) + 0.5) * unit
+
+
+func crack_mirror() -> Node3D:
+	return _crack_mirror
+
+
 func on_shot_commit(touched: Array) -> void:
 	_commit_touched(touched, "shot", true)
 

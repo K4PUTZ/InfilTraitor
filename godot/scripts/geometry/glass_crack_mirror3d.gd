@@ -115,6 +115,56 @@ func _placement(rec: Dictionary) -> Transform3D:
 	return Transform3D(basis, Vector3(x, y, z) * _unit)
 
 
+## G-D55 — the cracks a falling glass PIECE carries with it. For every live crack on the piece's pane plane, a copy of its quad with
+## the record's parameters FROZEN now, except the occupancy: a mask of the piece's own cells (in the record's occupancy frame), so the
+## ink falls with exactly the glass it was drawn on — the board's own occupancy is about to call those cells a hole and cut it there.
+## `cells`: Vector3i(x, y, level) of the piece's voxels. The copies parent under `piece` (a child of the geometry root at identity,
+## the same space `_placement()` answers in). Returns how many cracks it carries.
+func clone_for_piece(cells: Dictionary, piece: Node3D) -> int:
+	var n: int = 0
+	if _renderer == null or _shader == null:
+		return 0
+	for rec: Dictionary in _renderer.glass_crack_records():
+		if not rec.has("params") or not bool(rec.get("visible", true)):
+			continue
+		var src: Dictionary = rec["params"]
+		var size: Vector2 = src.get("crack_occ_size", Vector2.ZERO)
+		var origin: Vector2 = src.get("crack_occ_origin", Vector2.ZERO)
+		var w: int = int(size.x)
+		var h: int = int(size.y)
+		if w < 1 or h < 1:
+			continue
+		var run_is_x: bool = int(rec["run_axis"]) == 0
+		var cross: Vector2i = rec["impact_cell"]
+		var run_base: int = int(rec.get("impact_run", cross.x if run_is_x else cross.y)) + int(roundf(origin.x))
+		var level_top: int = int(rec["impact_level"]) + int(roundf(origin.y))
+		var img := Image.create(w, h, false, Image.FORMAT_R8)
+		var any: bool = false
+		for c: Vector3i in cells:
+			if run_is_x and c.y != cross.y or not run_is_x and c.x != cross.x:
+				continue
+			var i: int = (c.x if run_is_x else c.y) - run_base
+			var j: int = level_top - c.z
+			if i >= 0 and i < w and j >= 0 and j < h:
+				img.set_pixel(i, j, Color8(255, 0, 0, 255))
+				any = true
+		if not any:
+			continue
+		var twin: Dictionary = _make_twin(rec)
+		var mesh: MeshInstance3D = twin["mesh"]
+		remove_child(mesh)
+		piece.add_child(mesh)
+		mesh.name = "PieceCrack_%d" % int(rec["id"])
+		var mat: ShaderMaterial = twin["mat"]
+		for param: String in MIRRORED:
+			if src.get(param) != null:
+				mat.set_shader_parameter(param, src[param])
+		mat.set_shader_parameter("crack_occupancy", ImageTexture.create_from_image(img))
+		mat.set_shader_parameter("crack_hole_cut", 1.0)
+		n += 1
+	return n
+
+
 ## Only writes what changed: this runs every frame per crack.
 func _mirror(twin: Dictionary) -> void:
 	var rec: Dictionary = twin["rec"]

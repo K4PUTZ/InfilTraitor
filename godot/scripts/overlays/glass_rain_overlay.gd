@@ -160,7 +160,8 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 		var from: Vector2 = f["from"]
 		var to: Vector2 = f["to"]
 		## R3D-4e-4 — the two real 3D ends of the fall: the pane's voxel and the landing.
-		var from3: Vector3 = ParticleMathRef.anchor(_board, from, f.get("from_floor", ParticleMathRef.NO_FLOOR))
+		## G-D55: a shard born where a falling PIECE hit the floor carries its own 3D start (`from3`, board space).
+		var from3: Vector3 = f["from3"] if f.has("from3") else ParticleMathRef.anchor(_board, from, f.get("from_floor", ParticleMathRef.NO_FLOOR))
 		## A landing voxel's position is its BASE; a shard lies on its TOP, one voxel step up. The 2D board never
 		## saw the difference (no depth test); on the 3D board a shard at the base is inside the slab, and the
 		## floor hides it (measured: to3.y = -0.1276, 20 px under the floor surface).
@@ -177,7 +178,8 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 			## Gravity: g_eff per frame², the pop per frame, and the frames to fall the real height (the positive root of
 			## ½·g·f² − v0·f − h = 0). Without a board the height is unknown: the floor time stands in.
 			var g_f: float = gravity_gu_s2 * lerpf(drag_min, 1.0, _unit(base, "drag" + salt)) / 3600.0
-			var v0_f: float = pop_max_gu_s * _unit(base, "pop" + salt) / 60.0
+			## `pop` (G-D55): a piece that shatters on the floor throws its shards UP, harder than a pane breaking in place.
+			var v0_f: float = float(f.get("pop", pop_max_gu_s)) * lerpf(0.35, 1.0, _unit(base, "pop" + salt)) / 60.0
 			var h: float = maxf(from3.y - to3.y, 0.0) / maxf(_board_vscale(), 0.001) if _board != null else 0.0
 			var fall: int = maxi(fall_frames_floor, int(ceil((v0_f + sqrt(v0_f * v0_f + 2.0 * g_f * h)) / maxf(g_f, 1e-6))))
 			var t0: int = int(_unit(base, "t0" + salt) * float(stagger_frames))

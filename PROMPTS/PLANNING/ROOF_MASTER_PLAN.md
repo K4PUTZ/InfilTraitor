@@ -1,6 +1,6 @@
 # ROOF MASTER PLAN — destroyed roofs
 
-> **Status: 🟡 v0.2, 2026-10-11 — opened by the Director; R-D1 to R-D3 ruled; nothing built.** *"Faltam os telhados destruídos na engine. Vamos colocar
+> **Status: 🟡 v0.4, 2026-10-11 — R-D1 to R-D8 ruled; the light through a roof (R-D4) BUILT; the skylight's form (R-D5), its blast (R-D6) and flying voxels for every shot (R-D8) planned.** *"Faltam os telhados destruídos na engine. Vamos colocar
 > eles na frente do modelo, porque acho que é uma das últimas coisas que falta destruir. […] Vamos iniciar os trabalhos pelo telhado
 > de vidro, os demais seguem ele como modelo, adaptando para cada tipo de material com suas características específicas."*
 >
@@ -32,6 +32,11 @@
 - **R-D2 — SHOTS REACH ROOFS (answers Q3).** *"Os tiros por natureza são horizontais atualmente […] Nós vamos querer porém ter o gameplay onde o agente deliberadamente atira no telhado para causar alguma mudança no cenário. […] na prática vai ser o mesmo comportamento do vidro vertical, mas com as consequências, chuva, pó, caindo pra baixo."* A shot aimed at a roof behaves as a shot on a vertical pane (the hole, the craze, the support rule, G-D49's re-damage), with the consequences falling DOWN (rain, dust). The aiming gesture (how the player targets a roof) is designed with the interface, not here; the engine takes a shot whose target is a roof cell.
 - **R-D3 — AN INTACT GLASS ROOF IS TRANSLUCENT (answers Q2).** *"O telhado de vidro intacto tem opacidade, de maneira que a luz passa, porém restrita. Quando o vidro é destruído ela fica acentuada (full)."* An intact glass roof lets a RESTRICTED share of the light above through (a per-material transmission factor); a broken cell lets it through in full.
 
+- **R-D5 — A SKYLIGHT IS A HORIZONTAL WINDOW, BUILT LIKE THE WALL'S PANE.** *"Pela forma que a gente construiu as paredes, são duas camadas de voxels, uma em cada GU que se encontram. E os vidros ocupam apenas metade da espessura, em uma ou outra GU […] criando uma película de vidro mais fina entre duas paredes, e deixando um gap de meia espessura entre elas. Precisamos fazer o mesmo com o telhado. Ou seja a claraboia, que pode eventualmente ser o teto todo (depois a gente faz designs mais específicos), vai ser uma janela na horizontal, com as slabs em duas camadas paralelas ao redor, e o vidro ocupando o centro do bloco, na camada mais pra baixo, deixando o gap na camada de cima."* The roof is two parallel layers (its two levels, `ROOF_LEVEL_COUNT`); the skylight is the roof's centre with the glass in the LOWER layer only and the upper layer EMPTY (a half-thickness recess seen from above, flush with the ceiling from below), the frame around it in both layers. A skylight may be the whole roof. ⚠️ The ROOF_LAB room A built at step 1 has glass in BOTH layers (the Director's observation): it is rebuilt to this form.
+- **R-D6 — A BLAST ON A SKYLIGHT.** *"Quando a granada explode, os voxels de vidro voam pra cima e pros lados, seguindo a força que já usamos no vidro vertical, e depois caem no chão, ou sobre a lateral do cubículo. A chuva e o pó acompanham, seguindo o mesmo mecanismo da janela vertical, adaptando a orientação. No final a luz é atualizada."* The broken glass leaves along the shockwave impulse the vertical pane already uses (`GlassFall`'s `{from, strength, lift}`, G4-4), UP and out from a blast below, then falls under gravity onto whatever is under it: the floor, the frame, a wall's top (the landing index already counts CEILING slabs as surfaces). Rain and dust are the vertical pane's, oriented to a horizontal face. The light updates at the end (the consequence light, R-D4).
+- **R-D7 — THE OTHER ROOF MATERIALS** (concrete, plywood / *madeirite*, cardboard, fabric, wood) behave alike, holding / breaking more or less by material (§3).
+- **R-D8 — SHOTS, ON A ROOF AND ON A WALL.** *"Tiros deixam as mesmas marcas, decals, etc. e podem abrir buracos, e fazer os voxels voarem também pra cima (vamos lembrar de fazer isso com os tiros laterais também, quando quebrarem voxels a gente faz a mesma animação do vidro sem sustentação, com o crossfade se necessário, fazendo o(s) voxel(eis) voar(em) até o chão)."* A shot into a roof leaves the wall's marks and decals, can open a hole, and the voxels it breaks FLY (up, along the shot) and fall. **And a lateral shot on a wall does the same**: the voxels any shot breaks leave as flying voxels (`GlassVoxelFall3D`'s motion and crossfade, generalised to every material) instead of vanishing. Stage RF-S below.
+
 ## 0c. R-D4 — the light mechanism (APPROVED 2026-10-11: "Aprova, aceita a mudança"; BUILT the same day, see §5)
 
 Found while building step 1: **the light is 2D.** `VoxelLightField._lamp_term()` lights a (GU, level) by distance from each lamp (plus `ShadowProjector`'s HORIZONTAL GU shadows from walls); **no roof blocks a lamp**, so the hall's lamp already lights a closed room's floor through an intact concrete roof. "The light above comes in through the hole" therefore needs a VERTICAL term:
@@ -56,23 +61,28 @@ Each stage closes with `verify.py` green, a desktop take judged by the Director,
 
 ### RF-0 — the shared foundation (built WITH RF-1, so glass proves it)
 1. **Roof support and collapse.** `GlassSupport`'s walk generalised to a slab: sources are roof voxels resting on a standing wall / column / block below (or touching a non-roof claim), reach by material (§3), the same off-thread walk after the event, the landing index, the crossfade, `GlassVoxelFall3D`'s motion. One support computation for panes and roofs.
-2. **What falls lands.** Opaque material: the voxels fall and join a persistent pile (the Tier 4 pile's record); glass: they shatter into the rain and the floor shards, as panes do.
-3. **The light comes in.** The floor (and walls) under a hole brighten: the cover term (VL-D3) read from the LIVE roof, plus whatever light the open sky gives (Q1). Applied by the consequence light, measured.
+2. **What flies lands.** A flying voxel (a collapse, a blast's broken glass, a shot's broken voxel) follows a ballistic path from the impulse, then gravity, onto the first surface under it. Glass shatters on landing into the rain and the floor shards, as panes do; an opaque voxel: Q-S2.
+3. **The light comes in.** ✅ BUILT (R-D4, record v0.3). The outdoor light of open scenes is built when a map needs it.
 4. **The rim.** A roof hole's edge looks broken per material (glass: the jagged rim of G-D54; others: §3), and the reveal keeps working over a holed roof.
-5. **A take and a fixture:** a map (or a POI on GLASS) with each roof type over an ordinary room, a grenade beside / under it.
 
-### RF-1 — the GLASS roof (the model)
-A glass roof becomes a horizontal pane: translucent when intact (R-D3), it cracks and crazes, breaks into shards and rain falling DOWN, holds by the support rule, collapses crossfaded, and lets the light above in when broken (R-D1; G-D53: "skylights … broken to change the room's light"). Reuses the pane machinery (crack field, opening masks, rim, rain, piles) on a horizontal face, then retires the G1 "glass roof stays opaque" exception. Steps, each closed with `verify.py` and a capture before the next:
-1. **The fixture and the take.** A roof POI on GLASS (or a small map): a room with its own lamp under a glass roof, inside a larger lit hall, and an outdoor-lit open area; takes for a blast beside it and a shot into it.
-2. **The roof as a pane in the store.** A glass CEILING slab gets pane claims with a horizontal face (`VoxelStore.pane`), so cracks, openings, the rim and `GlassSupport` see it; the 3D board draws it with the pane material (translucent, the top and bottom faces broad, the edges the rim). Every reader of `pane` that assumes a vertical face is listed first (Rule: list what a function else does).
-3. **The light above (R-D1, R-D3), as a STATE the light field reads.** A per-roof "light above" (outdoor class or the enclosing hall's light) and a per-material transmission (glass < 1, opaque 0, a hole 1); the cover term (VL-D3) read from the live roof; the consequence light re-derives the cells under a changed roof. Measured on the Moto.
-4. **Breaking it.** The blast path (`_phase_roofs`) runs the glass shatter on a roof pane (shockwave zone, crazes, openings, remnants), the rain and dust falling to the floor below, the floor shards.
-5. **The shot (R-D2).** `AgentShotController` accepts a roof cell as the target: the point impact, the opening, G-D49's re-damage collapse, the rain down. The aiming gesture is out of scope (a dev scenario step fires it).
-6. **The collapse.** `GlassSupport` with a horizontal pane's sources (resting on a wall / block / non-glass claim below or beside it) and the crossfaded fall.
-7. **Devices.** The take on the Moto and the Galaxy, worst frame and PSS inside the segment budget.
+### RF-1 — the GLASS skylight (the model)
+A skylight (R-D5) is a horizontal pane in the roof's lower layer: translucent when intact (R-D3), it cracks and crazes, breaks with its voxels flying up and out then falling (R-D6), the rain and dust oriented to it, holds by the support rule, collapses crossfaded, and lets the light above in. It reuses the vertical pane's machinery on a horizontal face, and retires G1's "glass roof stays opaque". Steps, each closed with `verify.py` and a capture before the next:
+1. ✅ **The fixture** (ROOF_LAB, record v0.3). To revise with step 2: room A's roof becomes a concrete frame with a glass skylight in its centre (R-D5); a take with the agent INSIDE a room (the reveal opens its roof) so the floor's light can be judged; a shot step.
+2. **The skylight's form (R-D5).** The map says where a roof's skylight is (Q-S1); `RoomBuilder` builds the frame in both layers and the skylight's glass in the LOWER layer only, the upper layer left empty. Existing glass roofs (PLAYGROUND, STRESS) follow the same rule as a whole-roof skylight. The light field needs nothing new (a glass span one level thick).
+3. **The skylight as a pane in the store.** Its glass claims become pane claims with a HORIZONTAL face (`VoxelStore.pane`; a face beyond SW / NE / NW / SE), so cracks, openings, the rim and `GlassSupport` see it; the 3D board draws it with the pane's translucent material (the broad faces top and bottom, the edges the rim). Every reader of `pane` that assumes a vertical face is listed first (list what a function else does).
+4. **The blast (R-D6).** `_phase_roofs` runs the glass shatter on the skylight (shockwave zone, crazes, openings, remnants, rim shards); the broken voxels fly along `GlassFall`'s impulse with its LIFT (up and out from below), then fall onto the floor, the frame or a wall's top; the rain and the dust follow, oriented to the horizontal face; the floor shards where they land; the light at the end.
+5. **The shot (R-D2, R-D8).** `AgentShotController` accepts a roof cell as the target: the wall's marks and decals on the roof, the hole, G-D49's re-damage, the voxels it breaks flying UP along the shot and falling. The aiming gesture is out of scope (a dev scenario step fires it).
+6. **The collapse.** `GlassSupport` with a horizontal pane's sources (resting on the frame, a wall, a block) and the crossfaded fall.
+7. **Devices.** The takes on the Moto and the Galaxy, worst frame and PSS inside the segment budget.
+
+### RF-S — flying voxels for every shot (R-D8)
+The voxels a lateral shot breaks on a wall (any material) leave as flying voxels instead of vanishing: `GlassVoxelFall3D`'s motion and crossfade generalised to every material, the impulse along the shot, landing on the floor (Q-S2 for what an opaque voxel becomes). Built with RF-1 step 5 (one code path for a shot's broken voxels, roof or wall); a dent or a mark that removes no voxel is unchanged.
 
 ### RF-2 onward — each material follows RF-1, with its own behaviour (§3)
-Order proposed: **concrete / stone** (the common case: SEG_* maps), **wood / plywood**, **metal**, **fabric** (the sag, designed then), **cardboard / paper**.
+Order proposed: **concrete / stone** (the common case: SEG_* maps), **wood / plywood**, **metal**, **fabric** (the sag, designed then), **cardboard / paper**. Each: the frame / roof in its material, the support reach, what flies and how it lands, the rim, the shot's marks (the wall's decals on a horizontal face).
+
+### Not in this plan
+- **Two-voxel walls authored in a map file.** The `walls` section is reserved and unbuilt (`map_sections_v1.gd`); a map's rooms are `blocks` (a solid GU) or `panels` (half thickness), and the two-voxel wall comes from the compiler's own walls. The fixture uses block rings; nothing in the roof depends on it.
 
 ## 3. Material behaviour (to calibrate on screen; values are starting points)
 
@@ -81,7 +91,7 @@ Order proposed: **concrete / stone** (the common case: SEG_* maps), **wood / ply
 | glass | short (G-D50's values) | shatters: shards, rain, floor shards | jagged rim, craze around it |
 | stone / concrete / brick | long ("barely affected") | chunks fall to a pile, dust | broken edge, dented underside |
 | wood | medium | planks / chunks fall, splinters | splintered edge |
-| plywood | short ("collapses more easily than wood") | sheets fall | torn edge |
+| plywood (*madeirite*) | short ("collapses more easily than wood") | sheets fall | torn edge |
 | metal | long, bends rather than breaks? (Q5) | sheet pieces | bent / torn edge |
 | fabric | — | SAGS: hangs down by distance from support (to be designed) | frayed edge |
 | cardboard / paper | short | flaps fall, light | torn edge |
@@ -89,11 +99,14 @@ Order proposed: **concrete / stone** (the common case: SEG_* maps), **wood / ply
 ## 4. Questions for the Director (ask at the point each one blocks)
 
 1. ~~Q1~~ — ruled, R-D1. 2. ~~Q2~~ — ruled, R-D3. 3. ~~Q3~~ — ruled, R-D2.
-4. **Q4 — a grenade thrown ONTO a roof (D15-D17)** is designed but unbuilt (a roof hit from above behaves as a floor, one grenade pierces one slab). In scope here, or does the grenade stay on the playable plane?
-5. **Q5 — metal roofs:** break like the others, or bend / hang (a sag like fabric's)?
-6. **Q6 — the gameplay side of the light:** detection does not consume light yet (`LIGHT_MASTER_PLAN` status). This plan changes the VISUAL light; the tactical effect waits on that link. Confirm it stays visual here.
+4. **Q-S1 — where a skylight is written in the map.** Proposed: a `roofs` entry may carry `skylight: {gu, size, material}` (a rectangle of whole GUs inside the roof; glass by default); those GUs get the glass in the lower layer and nothing in the upper one, the rest of the roof is the frame in the roof's material, both layers; a roof whose own `material` is glass is a skylight over its whole area (no frame). Or should the frame live INSIDE each GU (a voxel ring of frame round the glass in every skylight GU)?
+5. **Q-S2 — what an opaque voxel becomes when it lands** (a roof's collapse, a shot's broken concrete / wood voxel): it stays where it lands as a persistent pile (cosmetic, like the Tier 4 prop pile: a base-coord record, no `VoxelStore` claim), or it breaks into dust and debris and is gone?
+6. **Q4 — a grenade thrown ONTO a roof (D15-D17)** is designed but unbuilt (a roof hit from above behaves as a floor, one grenade pierces one slab). In scope here, or does the grenade stay on the playable plane?
+7. **Q5 — metal roofs:** break like the others, or bend / hang (a sag like fabric's)?
+8. **Q6 — the gameplay side of the light:** detection does not consume light yet (`LIGHT_MASTER_PLAN` status). This plan changes the VISUAL light; the tactical effect waits on that link. Confirm it stays visual here.
 
 ## 5. Records
+- 2026-10-11 v0.4 — R-D5 (the skylight: a horizontal window, glass in the roof's lower layer, the upper empty), R-D6 (a blast's broken glass flies up and out along the vertical pane's impulse, falls, rain and dust oriented), R-D7 (other materials alike), R-D8 (a shot's broken voxels fly, on a roof AND on a wall: stage RF-S); RF-0/RF-1 rewritten; Q-S1 (skylight authoring), Q-S2 (an opaque voxel's landing).
 - 2026-10-11 v0.3 — **RF-1 step 3's light BUILT** (R-D4): `VoxelLightField.set_roofs()` (free-standing `roofs` only: a solid block's top is not a roof, its walls are its outside — counting them darkened every block's walls), `_lamp_term()` returns (free, blocked, anchor), `_roof_transmission()` per voxel column (glass `glass_roof_transmission` 0.35, opaque 0, a hole 1), both the per-cell and the byte-map paths; a roof voxel's change stales its column below (`add_roof_column_below()`, also in the cook's `_hole_neighbourhood`). `roof_light_selftest` (no roof 11 | glass 4, hole 11 | concrete 2; bulk = per-cell; stale). Real map: a grenade in ROOF_LAB room A relit **118 cells** under the roof's changed voxels (`[ROOF-LIGHT]` log). The outdoor light (R-D1's open scenes) is not built. Steps 1 (ROOF_LAB) done; 2, 4-7 next.
 - 2026-10-11 v0.2 — R-D1 (the light above a roof), R-D2 (shots reach roofs), R-D3 (a glass roof is translucent); RF-1 split into seven steps.
 - 2026-10-11 v0.1 — opened (Director), inventory §1, stages RF-0/RF-1/RF-2+, questions Q1-Q6.

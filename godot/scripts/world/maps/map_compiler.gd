@@ -161,13 +161,23 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		var roof_gu: Vector2i = Vector2i(roof.get("gu", Vector2i.ZERO))
 		var roof_size_raw = roof.get("size", [1, 1])
 		var roof_size: Vector2i = roof_size_raw if roof_size_raw is Vector2i else Vector2i(int(roof_size_raw[0]), int(roof_size_raw[1]))
-		roof_instances.append({
+		var roof_entry: Dictionary = {
 			"gu_cell": roof_gu + offset,
 			"size": roof_size,
 			"storeys": maxi(1, int(roof.get("storeys", 1))),
 			"material": String(roof.get("material", "concrete")),
 			"kind": String(roof.get("kind", "flat")),
-		})
+		}
+		## ROOF R-D5 / Q-S1: a skylight is a rectangle of whole GUs inside the roof, glass by default.
+		var sky = roof.get("skylight", null)
+		if sky is Dictionary:
+			var sky_size_raw = sky.get("size", [1, 1])
+			roof_entry["skylight"] = {
+				"gu_cell": Vector2i(sky.get("gu", Vector2i.ZERO)) + offset,
+				"size": sky_size_raw if sky_size_raw is Vector2i else Vector2i(int(sky_size_raw[0]), int(sky_size_raw[1])),
+				"material": String(sky.get("material", "glass")),
+			}
+		roof_instances.append(roof_entry)
 
 	## --- floor-zone bake regions (author-declared ground material rects) -----
 	## Mirrors solid_block_instances' shape exactly (gu_cell + size + one

@@ -323,6 +323,26 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 			## would leave the comparisons intact and the placement wrong, or the
 			## reverse — which is exactly the half-right this helper exists to stop.
 			var roof_base_level: int = GeometryCoords.storey_level_base(block_storeys)
+			## ROOF R-D5 (Director, 2026-10-11): a skylight is a horizontal window built like a wall's pane: its glass in the roof's
+			## LOWER layer only, the upper layer left empty (a half-thickness recess), the frame round it in both layers. A roof
+			## whose own material is glass is a skylight over its whole area. GU -> skylight material.
+			var skylight_gus: Dictionary = {}
+			if GlassMaterials.is_glass(block_material) and block_instance in layout.get("roof_instances", []):
+				for sx in range(block_size.x):
+					for sy in range(block_size.y):
+						skylight_gus[block_gu_base + Vector2i(sx, sy)] = block_material
+			var sky = block_instance.get("skylight", null)
+			if sky is Dictionary:
+				var sky_base: Vector2i = sky.get("gu_cell", Vector2i.ZERO)
+				var sky_size: Vector2i = sky.get("size", Vector2i.ONE)
+				for sx in range(sky_size.x):
+					for sy in range(sky_size.y):
+						var sgu := sky_base + Vector2i(sx, sy)
+						if sgu.x < block_gu_base.x or sgu.y < block_gu_base.y \
+								or sgu.x >= block_gu_base.x + block_size.x or sgu.y >= block_gu_base.y + block_size.y:
+							push_error("[RoomBuilder] skylight GU %s lies outside its roof at %s size %s; skipped" % [sgu, block_gu_base, block_size])
+							continue
+						skylight_gus[sgu] = String(sky.get("material", "glass"))
 
 			for rx in range(block_size.x):
 				for ry in range(block_size.y):
@@ -331,9 +351,14 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 					var border_east: int = 0 if int(roof_level_by_gu.get(roof_gu + Vector2i(1, 0), -1)) >= roof_base_level else 1
 					var border_north: int = 0 if int(roof_level_by_gu.get(roof_gu + Vector2i(0, -1), -1)) >= roof_base_level else 1
 					var border_south: int = 0 if int(roof_level_by_gu.get(roof_gu + Vector2i(0, 1), -1)) >= roof_base_level else 1
-					for roof_level in range(roof_base_level, roof_base_level + ROOF_LEVEL_COUNT):
+					var levels: int = ROOF_LEVEL_COUNT
+					var slab_material: String = block_material
+					if skylight_gus.has(roof_gu):
+						levels = 1   ## the glass in the lower layer, the upper one empty
+						slab_material = String(skylight_gus[roof_gu])
+					for roof_level in range(roof_base_level, roof_base_level + levels):
 						var roof_slab := SlabGenerator.generate_with_border(
-							roof_gu, Slab.Role.CEILING, roof_level, block_material, room._slab_registry,
+							roof_gu, Slab.Role.CEILING, roof_level, slab_material, room._slab_registry,
 							border_west, border_east, border_north, border_south,
 						)
 						roof_slab.texture_anchor = roof_anchor_by_gu[roof_gu]

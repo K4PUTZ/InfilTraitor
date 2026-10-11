@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**292 scripts · 86464 lines total** (under `godot/scripts/`)
+**292 scripts · 86568 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -4995,7 +4995,7 @@ extends `SceneTree` · 129 lines
 
 ### `roof_entity_selftest.gd`
 
-extends `SceneTree` · 146 lines
+extends `SceneTree` · 208 lines
 
 `godot/scripts/tools/roof_entity_selftest.gd`
 
@@ -5675,7 +5675,7 @@ extends `Node2D` · 63 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 534 lines
+`class_name RoomBuilder` · 559 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -6009,7 +6009,7 @@ extends `Node` · 252 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 626 lines
+`class_name MapCompiler` · extends `RefCounted` · 636 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -6249,7 +6249,7 @@ extends `Node2D` · 10312 lines
 
 ### `perspective_mapper.gd`
 
-`class_name PerspectiveMapper` · 320 lines
+`class_name PerspectiveMapper` · 327 lines
 
 `godot/scripts/world/utilities/perspective_mapper.gd`
 

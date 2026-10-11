@@ -259,6 +259,13 @@ static func layout_with_perspective(layout: Dictionary, direction: String) -> Di
 		var c1 := cell_from_base(base_gu + roof_size - Vector2i.ONE, direction, base_size)
 		out["gu_cell"] = Vector2i(mini(c0.x, c1.x), mini(c0.y, c1.y))
 		out["size"] = rotated_size(roof_size, direction)
+		if out.has("skylight"):
+			var sky: Dictionary = out["skylight"]
+			var s_size: Vector2i = sky.get("size", Vector2i.ONE)
+			var s0 := cell_from_base(sky.get("gu_cell", Vector2i.ZERO), direction, base_size)
+			var s1 := cell_from_base(Vector2i(sky.get("gu_cell", Vector2i.ZERO)) + s_size - Vector2i.ONE, direction, base_size)
+			sky["gu_cell"] = Vector2i(mini(s0.x, s1.x), mini(s0.y, s1.y))
+			sky["size"] = rotated_size(s_size, direction)
 		rotated_roofs.append(out)
 	mapped["roof_instances"] = rotated_roofs
 

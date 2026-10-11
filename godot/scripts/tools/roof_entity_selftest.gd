@@ -51,6 +51,7 @@ func _init() -> void:
 		_rotation(layout)
 		_builder(layout, roof)
 		_unknown_kind(layout, roof)
+		_skylight(layout, roof)
 	if _failures == 0:
 		print("\n[SUCCESS] ROOF ENTITY SELFTEST PASS — all checks")
 		quit(0)
@@ -144,3 +145,64 @@ func _unknown_kind(layout: Dictionary, roof: Dictionary) -> void:
 	_check(found == 0, "a 'pointed' roof builds no slab over its 3x3 GUs (found %d)" % found)
 	_check(room._slab_registry.all_slabs().size() > 0, "the rest of the map still builds its slabs (the ring blocks' own roofs)")
 	room.queue_free()
+
+
+func _built_room(layout: Dictionary) -> MinimalRoom:
+	var room := MinimalRoom.new()
+	root.add_child(room)
+	var renderer := VoxelBoardClass.new()
+	room.add_child(renderer)
+	renderer.setup(Vector2.ZERO)
+	room._voxel_board = renderer
+	RoomBuilderClass.new(room).build_from_layout(layout, layout.get("size", Vector2i.ZERO))
+	return room
+
+
+## ROOF R-D5 / Q-S1 (2026-10-11) — a skylight is a horizontal window built like a wall's pane: its GUs hold the glass in the roof's
+## LOWER layer only and nothing in the upper one; the rest of the roof is the frame, both layers; a glass roof is a skylight over its
+## whole area; and the skylight's rectangle turns with the roof in every view (its centre GU stays the centre).
+func _skylight(layout: Dictionary, roof: Dictionary) -> void:
+	print("\n[skylight]")
+	var base_level: int = GeometryCoordsClass.storey_level_base(int(roof["storeys"]))
+	var origin: Vector2i = roof["gu_cell"]
+	var centre: Vector2i = origin + Vector2i(1, 1)
+	var with_sky: Dictionary = layout.duplicate(true)
+	((with_sky["roof_instances"] as Array)[0] as Dictionary)["skylight"] = {"gu_cell": centre, "size": Vector2i.ONE, "material": "glass"}
+	var room := _built_room(with_sky)
+	var lower: Slab = room._slab_registry.get_slab(Slab.make_id(centre, Slab.Role.CEILING, base_level))
+	var upper: Slab = room._slab_registry.get_slab(Slab.make_id(centre, Slab.Role.CEILING, base_level + 1))
+	_check(lower != null and lower.material == "glass" and upper == null, "the skylight GU: glass in the lower layer, the upper layer empty")
+	var frame: int = 0
+	for dx: int in range(3):
+		for dy: int in range(3):
+			var gu: Vector2i = origin + Vector2i(dx, dy)
+			if gu == centre:
+				continue
+			for level_offset: int in range(2):
+				var sl: Slab = room._slab_registry.get_slab(Slab.make_id(gu, Slab.Role.CEILING, base_level + level_offset))
+				if sl != null and sl.material == "concrete":
+					frame += 1
+	_check(frame == 16, "the frame: 8 GUs x 2 layers of concrete round it (found %d)" % frame)
+	room.queue_free()
+
+	var all_glass: Dictionary = layout.duplicate(true)
+	((all_glass["roof_instances"] as Array)[0] as Dictionary)["material"] = "glass"
+	var room2 := _built_room(all_glass)
+	var low_n: int = 0
+	var up_n: int = 0
+	for dx: int in range(3):
+		for dy: int in range(3):
+			var gu: Vector2i = origin + Vector2i(dx, dy)
+			if room2._slab_registry.get_slab(Slab.make_id(gu, Slab.Role.CEILING, base_level)) != null:
+				low_n += 1
+			if room2._slab_registry.get_slab(Slab.make_id(gu, Slab.Role.CEILING, base_level + 1)) != null:
+				up_n += 1
+	_check(low_n == 9 and up_n == 0, "a glass roof is a whole-roof skylight: 9 lower-layer slabs, no upper (found %d / %d)" % [low_n, up_n])
+	room2.queue_free()
+
+	for direction: String in ["E", "S", "W"]:
+		var mapped: Dictionary = PerspectiveMapperClass.layout_with_perspective(with_sky, direction)
+		var r: Dictionary = (mapped["roof_instances"] as Array)[0]
+		var sky: Dictionary = r.get("skylight", {})
+		_check(not sky.is_empty() and sky["gu_cell"] == r["gu_cell"] + Vector2i(1, 1) and sky["size"] == Vector2i.ONE,
+			"%s: the skylight turns with its roof (still the centre GU)" % direction)

@@ -4,7 +4,7 @@
  "id": "ROOF_LAB",
  "meta": {
   "title": "Roof Lab",
-  "description": "ROOF_MASTER_PLAN RF-1 step 1 fixture (2026-10-11). Two 3x3 rooms of 2-storey concrete block rings, each with a door on its south side and its own lamp inside: room A (interior gu 7..9 x 6..8) under a GLASS roof, room B (interior gu 15..17 x 6..8) under a CONCRETE roof (the stages after glass). A larger lamp outside stands for the hall / outdoor light above the roofs (R-D1). The agent starts outside, south of the rooms, so the roofs stay drawn. Dev fixture, not a level."
+  "description": "ROOF_MASTER_PLAN RF-1 step 1 fixture (2026-10-11). Two 3x3 rooms of 2-storey concrete block rings, each with a door on its south side and its own lamp inside: room A (interior gu 7..9 x 6..8) under a CONCRETE roof with a 1-GU GLASS SKYLIGHT in its centre (gu 8,7; R-D5: the glass in the roof's lower layer, the upper layer empty), room B (interior gu 15..17 x 6..8) under a CONCRETE roof (the stages after glass). A larger lamp outside stands for the hall / outdoor light above the roofs (R-D1). The agent starts outside, south of the rooms, so the roofs stay drawn. Dev fixture, not a level. The agent starts INSIDE room A (the reveal opens its roof) so the floor's light under the skylight can be judged."
  },
  "sections": {
   "board": {
@@ -19,8 +19,8 @@
   "actors": {
    "v": 1,
    "agent_start": [
-    12,
-    13
+    7,
+    8
    ],
    "guards": []
   },
@@ -475,7 +475,7 @@
    "v": 1,
    "items": [
     {
-     "comment": "room A: the glass roof (RF-1)",
+     "comment": "room A: a concrete roof with a glass skylight in its centre (RF-1, R-D5)",
      "gu": [
       7,
       6
@@ -485,8 +485,19 @@
       3
      ],
      "storeys": 2,
-     "material": "glass",
-     "kind": "flat"
+     "material": "concrete",
+     "kind": "flat",
+     "skylight": {
+      "gu": [
+       8,
+       7
+      ],
+      "size": [
+       1,
+       1
+      ],
+      "material": "glass"
+     }
     },
     {
      "comment": "room B: the concrete roof (RF-2)",
@@ -557,6 +568,34 @@
      "at": [
       16.5,
       7.5
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "skylight",
+     "at": [
+      8.5,
+      7.5,
+      2.0
+     ],
+     "extent": [
+      1.0,
+      1.0,
+      0.25
+     ],
+     "tags": [
+      "roof",
+      "glass",
+      "detail"
+     ]
+    },
+    {
+     "id": "room_a_far",
+     "at": [
+      9.5,
+      6.5
      ],
      "tags": [
       "event"
@@ -643,13 +682,13 @@
      "profile": "engine",
      "rail": "glass_roof_rail",
      "steps": [
-      "throw 0 @room_a_inside"
+      "throw 0 @room_a_far"
      ],
      "at_key": 0,
      "after_hold": 20,
      "length": 600,
      "seed": 1,
-     "note": "ROOF RF-1: a grenade inside room A under the glass roof"
+     "note": "ROOF RF-1: the agent inside room A, a grenade in its far corner under the skylight's edge"
     }
    ]
   }

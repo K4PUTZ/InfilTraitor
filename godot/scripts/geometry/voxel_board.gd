@@ -2030,17 +2030,26 @@ func _build_crack_occupancy(c: Dictionary) -> void:
 		h = mini(h, GLASS_OCC_MAX_SIDE)
 	var run_is_x: bool = int(c["run_axis"]) == 0
 	var cross: Vector2i = c["impact_cell"]
-	var img := Image.create(w, h, false, Image.FORMAT_R8)
 	## R3D-END (END-2): the 2D render-order clip also cut away every cell a nearer wall hid on the SCREEN, from an index
 	## of the opaque tile layers. The 3D board depth-tests the quad itself, and on it that index was always empty.
-	var solid := Color8(255, 0, 0, 255)
-	var gone := Color8(0, 0, 0, 255)
+	## G-D55 (2026-10-11, the Moto's glass-fall spike): the bytes are filled straight, no `set_pixel` per cell (18.6 ms for the
+	## GLASS map's cracks on the Moto in the step a fall shows).
+	var bytes := PackedByteArray()
+	bytes.resize(w * h)
+	var store: VoxelStore = VoxelStore.active
+	var hold: bool = not glass_occ_hold.is_empty()
+	var k: int = 0
 	for j in range(h):
 		var level: int = lvl1 - j
 		for i in range(w):
 			var run: int = run0 + i
-			var cell := Vector2i(run, cross.y) if run_is_x else Vector2i(cross.x, run)
-			img.set_pixel(i, j, solid if _glass_cell_present(level, cell) else gone)   ## R3D-14: the store's glass panes
+			var x: int = run if run_is_x else cross.x
+			var y: int = cross.y if run_is_x else run
+			var present: bool = (store != null and store.has_glass_pane(x, y, level)) \
+				or (hold and glass_occ_hold.has(Vector3i(x, y, level)))   ## R3D-14: the store's glass panes
+			bytes[k] = 255 if present else 0
+			k += 1
+	var img := Image.create_from_data(w, h, false, Image.FORMAT_R8, bytes)
 	var tex = c.get("occ_texture")
 	if tex != null and tex is ImageTexture \
 			and (tex as ImageTexture).get_size() == Vector2(float(w), float(h)):

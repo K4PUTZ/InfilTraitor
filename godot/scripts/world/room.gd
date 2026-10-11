@@ -719,7 +719,11 @@ func _respawn_base_shards() -> void:
 ## (a crate's wood, say) instead of adding a second falling-shard mechanism for it.
 ##
 ## Returns how many shards are in flight.
-func spawn_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = null) -> int:
+## `paused` (G-D55): the overlay waits (no frame counted, nothing drawn) until its `paused` is set false; `_last_glass_rain` names it.
+var _last_glass_rain: Node = null
+
+
+func spawn_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = null, paused: bool = false) -> int:
 	if _voxel_board == null or flights.is_empty():
 		return 0
 	var rows: Array = []
@@ -778,6 +782,8 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = nu
 	## its upper shards drawn in the lower plane's band for the ~40 frames it lives;
 	## stated because it is a trade for the one draw call, not an oversight.
 	rain.z_index = _voxel_board.level_z_index(top_level) + 2
+	rain.paused = paused
+	_last_glass_rain = rain
 	_voxel_board.add_child(rain)
 	rain.set_board3d(board3d())
 	var n: int = rain.spawn(rows)
@@ -1153,8 +1159,47 @@ func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
 		fall_entries.append({"x": c.x, "y": c.y, "level": c.z, "score": e["score"],
 			"material": int(live.call("store_material_of", claim)), "face": int(store.pane[claim]) - 1,
 			"landing": landing_of.get(c, {})})
-	## The claims go: DESTROYED, base-recorded, a remnant's record and cut dropped (as G-D45). The cracks keep counting their cells
+	## SPREAD OVER FRAMES (2026-10-11, the Moto's release frame was 233-266 ms: destroy + record 10, floors 10, the fall's setup 29, the
+	## rain 38, the board's dirty pass 31, the rest the board and the GPU). Nothing on screen changes until the chunks swap, so the
+	## fall and its rain are prepared on the frames before the voxels are destroyed, one heavy piece per frame.
+	## 1. What stands under each column, the falling voxels counted as gone already (they are, by the time any of them lands).
+	var td0: int = Time.get_ticks_usec()
+	var falling: Dictionary = {}
+	for fe: Dictionary in fall_entries:
+		falling[Vector3i(int(fe["x"]), int(fe["y"]), int(fe["level"]))] = true
+	for fe: Dictionary in fall_entries:
+		var lvl: int = int(fe["level"]) - 1
+		var floor_level: int = -1
+		while lvl >= store.l0:
+			if store.has_cell(int(fe["x"]), int(fe["y"]), lvl) and not falling.has(Vector3i(int(fe["x"]), int(fe["y"]), lvl)):
+				floor_level = lvl
+				break
+			lvl -= 1
+		var top: Vector3 = live.call("voxel_centre_local", 0, 0, floor_level if floor_level >= 0 else _voxel_board.ground_plane_level() - 1)
+		fe["floor_y"] = top.y + unit * 0.5
+	## 2. The fall (its meshes at rest, every voxel's whole motion), hidden until the swap.
+	var fall: Node3D = GlassVoxelFall3DClass.new()
+	(live.call("geometry_root") as Node3D).add_child(fall)
+	var flights: Array = fall.call("setup", live, fall_entries, _voxel_board.glass_crack_records(),
+		func(hits: Array) -> void:
+			record_glass_shards(GlassFall.pile_by_cell(hits))
+			_glass_impact_dust(hits))
+	var td1: int = Time.get_ticks_usec()
+	await get_tree().process_frame
+	if not is_instance_valid(self) or not is_instance_valid(fall) or VoxelStore.active != store:
+		return
+	## 3. The rain, laid PAUSED: it starts in the step the fall does, so its flights' frames are the fall's own. No dust with it (it
+	## would show before the shards land): each voxel puffs where it lands (`_glass_impact_dust`).
+	var td2: int = Time.get_ticks_usec()
+	var n: int = spawn_glass_rain(flights, false, null, true)
+	var rain: Node = _last_glass_rain
+	var td3: int = Time.get_ticks_usec()
+	await get_tree().process_frame
+	if not is_instance_valid(self) or not is_instance_valid(fall) or VoxelStore.active != store:
+		return
+	## 4. The claims go: DESTROYED, base-recorded, a remnant's record and cut dropped (as G-D45). The cracks keep counting their cells
 	## as glass until the chunks drop them (`VoxelBoard.glass_occ_hold`), so the ink is cut in the same step the fall shows.
+	var td4: int = Time.get_ticks_usec()
 	for v: Voxel in voxels:
 		_voxel_board.glass_occ_hold[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
 	for v: Voxel in voxels:
@@ -1166,38 +1211,31 @@ func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
 			_base_remnants.erase(bkey)
 			_voxel_board.erase_glass_cell(v.level, v.grid_pos)
 	bump_world_revision()
-	## What each column holds under the voxel, NOW that every falling voxel is gone: the top it lands on.
-	for fe: Dictionary in fall_entries:
-		var lvl: int = int(fe["level"]) - 1
-		var floor_level: int = -1
-		while lvl >= store.l0:
-			if store.has_cell(int(fe["x"]), int(fe["y"]), lvl):
-				floor_level = lvl
-				break
-			lvl -= 1
-		var top: Vector3 = live.call("voxel_centre_local", 0, 0, floor_level if floor_level >= 0 else _voxel_board.ground_plane_level() - 1)
-		fe["floor_y"] = top.y + unit * 0.5
-	var fall: Node3D = GlassVoxelFall3DClass.new()
-	(live.call("geometry_root") as Node3D).add_child(fall)
-	var ts0: int = Time.get_ticks_usec()
-	var flights: Array = fall.call("setup", live, fall_entries, _voxel_board.glass_crack_records(),
-		func(hits: Array) -> void:
-			record_glass_shards(GlassFall.pile_by_cell(hits))
-			_glass_impact_dust(hits))
-	var setup_ms: float = float(Time.get_ticks_usec() - ts0) / 1000.0
+	var td5: int = Time.get_ticks_usec()
+	var setup_ms: float = float(td1 - td0) / 1000.0
 	var setup_frame: int = Engine.get_frames_drawn()
 	while _destruction_render_busy:
 		await get_tree().process_frame
 		if not is_instance_valid(_voxel_board):
 			return
 	_destruction_render_busy = true
+	var td6: int = Time.get_ticks_usec()
+	var dirty_frame: int = Engine.get_process_frames()
 	await _voxel_board.process_dirty_async(_edge_registry)
+	print_debug("[GLASS-COLLAPSE] spread: floors + fall setup %.1f ms | rain %.1f ms | destroy + record %.1f ms, dirty pass %.1f ms wall over %d frame(s)"
+		% [float(td1 - td0) / 1000.0, float(td3 - td2) / 1000.0, float(td5 - td4) / 1000.0, float(Time.get_ticks_usec() - td6) / 1000.0,
+		Engine.get_process_frames() - dirty_frame])
 	if not is_instance_valid(self) or not is_instance_valid(_voxel_board):
 		return
+	var tq0: int = Time.get_ticks_usec()
+	var qf0: int = Engine.get_process_frames()
 	await _voxel_board.process_dirty_slabs_async(_slab_registry)
 	if not is_instance_valid(self) or not is_instance_valid(_voxel_board):
 		return
+	var tq1: int = Time.get_ticks_usec()
 	live.on_shot_commit(voxels)
+	print_debug("[GLASS-COLLAPSE] slabs pass %.1f ms wall over %d frame(s), board commit %.1f ms" % [float(tq1 - tq0) / 1000.0,
+		Engine.get_process_frames() - qf0, float(Time.get_ticks_usec() - tq1) / 1000.0])
 	_destruction_render_busy = false
 	## The fall appears in the frame the board's chunks no longer hold the voxels; its rain starts with it. Awaiting the board's own
 	## `remesh_committed` resumes HERE inside the step that swapped the chunks, so both changes reach the same drawn frame (a
@@ -1206,10 +1244,14 @@ func _drop_glass_voxels(entries: Array, landing_of: Dictionary) -> void:
 		await live.remesh_committed
 	if not is_instance_valid(live) or not is_instance_valid(fall):
 		return
+	var tr0: int = Time.get_ticks_usec()
 	_voxel_board.release_glass_occ_hold()   ## the pane's crack is cut here, in the step the chunks swapped
+	var tr1: int = Time.get_ticks_usec()
 	fall.call("start")
-	## No dust with the rain (it would show before the shards land): each voxel puffs where it lands (`_glass_impact_dust`).
-	var n: int = spawn_glass_rain(flights, false)
+	if is_instance_valid(rain):
+		rain.set("paused", false)
+	print_debug("[GLASS-COLLAPSE] show step: crack cut %.1f ms, start %.1f ms" % [float(tr1 - tr0) / 1000.0,
+		float(Time.get_ticks_usec() - tr1) / 1000.0])
 	print_debug("[GLASS-COLLAPSE] %d voxel(s) leave the board and fall (setup %.1f ms at drawn frame %d, shown at %d; %.1f ms to build + commit, wall); %d shard flight(s), %d shard(s)"
 		% [voxels.size(), setup_ms, setup_frame, Engine.get_frames_drawn(), float(Time.get_ticks_usec() - tw0) / 1000.0, flights.size(), n])
 

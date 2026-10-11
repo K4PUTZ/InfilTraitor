@@ -230,7 +230,13 @@ func _unit(base: int, what: String) -> float:
 	return float(FacadeSamplerClass._fnv1a_continue(base, what) % 100000) / 100000.0
 
 
+## G-D55: a rain laid ahead of its fall waits here (no frame counted, nothing drawn) until the fall starts.
+var paused: bool = false
+
+
 func _process(_delta: float) -> void:
+	if paused:
+		return
 	_frame += 1
 	var f3: RefCounted = _field3d
 	var cam: Basis = Basis.IDENTITY

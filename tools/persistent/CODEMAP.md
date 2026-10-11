@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**291 scripts · 85646 lines total** (under `godot/scripts/`)
+**291 scripts · 85703 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1226,7 +1226,7 @@ extends `Node3D` · 3258 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2606 lines
+`class_name VoxelBoard` · extends `Node2D` · 2615 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1646,7 +1646,7 @@ extends `Node2D` · 164 lines
 
 ### `glass_rain_overlay.gd`
 
-`class_name GlassRainOverlay` · extends `Node2D` · 324 lines
+`class_name GlassRainOverlay` · extends `Node2D` · 330 lines
 
 `godot/scripts/overlays/glass_rain_overlay.gd`
 
@@ -1679,6 +1679,7 @@ extends `Node2D` · 164 lines
 - `var glint_strength: float = 0.9`
 - `var glint_landed: float = 0.25`
 - `var max_shards: int = 3000`
+- `var paused: bool = false`
 
 **Public API**
 - `func set_board3d(board: Node3D) -> void:`
@@ -6078,7 +6079,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10078 lines
+extends `Node2D` · 10120 lines
 
 `godot/scripts/world/room.gd`
 

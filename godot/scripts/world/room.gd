@@ -5849,8 +5849,10 @@ static var RUBBLE_HOLD_S: float = 0.33
 ## soot) and keep it as they fall (Director, 2026-10-12: they enter looking like the wall, then form the pile in the wall's darker
 ## tone); a small brightness variation between cubes, so a pile still reads as cubes.
 static var RUBBLE_JITTER: float = 0.03
-## ...and they darken WITH the wall: the shot's soot lands two frames after the impact (`apply_shot_soot()`), the cells beside the
-## hole at ring 0 + `SHOT_SOOT_LIGHTEN`, and the sub-voxels take that ring at the same moment, at once.
+## ...and the ones that MAKE the struck face darken WITH the wall: the shot's soot lands two frames after the impact
+## (`apply_shot_soot()`), the cells beside the hole at ring 0 + `SHOT_SOOT_LIGHTEN`, and the block's front layer (the face the
+## round hit) takes that ring at the same moment. The rest of the block is the concrete inside and keeps the wall's tone: the soot on
+## every cube made the pile black (Director, 2026-10-12).
 static var RUBBLE_SOOT_DELAY_S: float = 0.05
 
 
@@ -5867,6 +5869,8 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 	var shade := PackedFloat32Array()
 	var x_normal: bool = absf(push_dir.x) > absf(push_dir.z)
 	var zones := PackedInt32Array()
+	var char_tones := PackedFloat32Array()
+	var front_soot: float = float(live.call("soot_ring_mult", BlastCalculator.SHOT_SOOT_LIGHTEN))
 	var release := PackedFloat32Array()
 	var speed := PackedFloat32Array()
 	var lattice: Array = []
@@ -5891,6 +5895,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 					var outward: float = clampf(0.5 + off.dot(back) / maxf(reach * 2.0, 0.001), 0.0, 1.0)
 					var h01: float = float(PropFragmentSim._mix(h, (a * div + b) * div + cc) % 1000) / 1000.0
 					var sh: Vector2 = RubblePresetsRef.shape(mat, variant, b, outward, h01)
+					char_tones.append(front_soot if outward > 0.99 else 1.0)
 					release.append(sh.x)
 					speed.append(sh.y)
 	var solid := func(col: Vector2i, k: int) -> bool:
@@ -5907,8 +5912,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 	var sim := PropFragmentSim.new({"cells": lattice, "zones": zones, "origin": Vector3.ZERO,
 		"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS * div), "blast": Vector2.ZERO, "weight": 1.0, "seed": seed,
 		"wave_delay": RUBBLE_SOOT_DELAY_S, "push_dir": push_dir, "carve": false, "char": false, "stack": stack, "solid": solid, "can_cross": cross,
-		"hold": RUBBLE_HOLD_S, "shade": shade, "char_time": 0.0,
-		"char_tone": float(live.call("soot_ring_mult", BlastCalculator.SHOT_SOOT_LIGHTEN)), "jitter": RUBBLE_JITTER, "release": release, "speed": speed})
+		"hold": RUBBLE_HOLD_S, "shade": shade, "char_time": 0.0, "char_tones": char_tones, "jitter": RUBBLE_JITTER, "release": release, "speed": speed})
 	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)
 	var landed_so_far: Array = []
 	node.landed.connect(func(records: Array) -> void:

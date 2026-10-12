@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 87625 lines total** (under `godot/scripts/`)
+**295 scripts · 87631 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -901,7 +901,7 @@ extends `Node3D` · 3353 lines
 
 ### `prop_fragment_sim.gd`
 
-`class_name PropFragmentSim` · extends `RefCounted` · 444 lines
+`class_name PropFragmentSim` · extends `RefCounted` · 446 lines
 
 `godot/scripts/geometry/prop_fragment_sim.gd`
 
@@ -6131,7 +6131,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10594 lines
+extends `Node2D` · 10598 lines
 
 `godot/scripts/world/room.gd`
 

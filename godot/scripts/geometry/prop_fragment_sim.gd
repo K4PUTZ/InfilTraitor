@@ -96,7 +96,7 @@ var _done: bool = false
 ## wall face it replaces), jitter (float, default 0.06: the ± brightness variation between cubes),
 ## release (PackedFloat32Array per fragment: seconds after `hold` before it leaves), speed (PackedFloat32Array per fragment: a
 ## multiplier on its push). `release` and `speed` are how a caller shapes the way a block crumbles (`RubblePresets`).
-## char_tone (float: every fragment's darkened tone, in place of the charred one), char_time (seconds the darkening takes after
+## char_tone (float: every fragment's darkened tone, in place of the charred one; or char_tones, PackedFloat32Array per fragment), char_time (seconds the darkening takes after
 ## `wave_delay`). With `push_dir` the fragments leave AGAINST it (the reaction to the impact).
 func _init(p: Dictionary) -> void:
 	var cells: Array = p["cells"]
@@ -107,6 +107,7 @@ func _init(p: Dictionary) -> void:
 	wave_time = float(p.get("wave_delay", wave_time))
 	char_time = maxf(float(p.get("char_time", CHAR_TIME)), STEP)
 	var char_tone: float = float(p.get("char_tone", -1.0))
+	var char_tones: PackedFloat32Array = p.get("char_tones", PackedFloat32Array())
 	_seed = FacadeSampler._fnv1a_hash(String(p.get("seed", "")))
 	_can_cross = p.get("can_cross", Callable())
 	_solid = p.get("solid", Callable())
@@ -154,7 +155,8 @@ func _init(p: Dictionary) -> void:
 		far = maxf(far, centres[i].distance_to(blast))
 		state[i] = State.FALLING
 		vanish_at[i] = -1.0
-		tone[i] = char_tone if char_tone >= 0.0 else (BoardLook.char_mult(_h01(i, P_TONE)) if charred else 1.0)
+		var ct: float = char_tones[i] if i < char_tones.size() else char_tone
+		tone[i] = ct if ct >= 0.0 else (BoardLook.char_mult(_h01(i, P_TONE)) if charred else 1.0)
 		jitter[i] = (1.0 - jitter_amp) + 2.0 * jitter_amp * _h01(i, P_JIT)
 		if i < shade.size():
 			jitter[i] *= shade[i]

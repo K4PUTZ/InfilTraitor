@@ -5856,6 +5856,8 @@ static var RUBBLE_JITTER: float = 0.03
 ## others are the material's flat colour (the pattern does not continue inward). `outward` of the front layer is 1.0, the next ~0.67.
 ## Percent of the splinter blocks' floor columns that get a debris stamp under them.
 const SPLINTER_STAMP_CHANCE: int = 70
+## Where on the front-to-back ramp (0 = the wall's tone, 1 = the hole's lifted tone) a flying splinter sits.
+static var SPLINTER_RAMP: float = 0.5
 static var RUBBLE_TEXTURED_OUTWARD: float = 0.9
 
 
@@ -5910,8 +5912,8 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 					var cube_shade: float = face * lerpf(1.0, fresh_lift, 1.0 - outward)
 					var cube_flat: bool = outward <= RUBBLE_TEXTURED_OUTWARD
 					if splinters and RubblePresetsRef.splinter_role(gp, lv, a, b, cc, x_normal) == RubblePresetsRef.FLY:
-						## Born in the air at the impact, never seen seated in the hole: the light end of the ramp, flat like the chips (Director 2026-10-12).
-						cube_shade = face * float(live.call("fresh_lift_textured"))
+						## Born in the air at the impact, never seen seated in the hole: a point on the ramp (the end of it read too light, the middle is Director 2026-10-12's), flat like the chips.
+						cube_shade = face * lerpf(1.0, float(live.call("fresh_lift_textured")), SPLINTER_RAMP)
 						cube_flat = true
 					var fine := Vector3i(gp.x * div + a, (lv - ground) * div + b, gp.y * div + cc)
 					if splinters:

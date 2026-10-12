@@ -204,7 +204,7 @@ func add_glass_dust(center: Vector2, reach: float, color: Color) -> void:
 
 ## Queue `count` wood chips that fly from `origin` on a short ballistic arc
 ## timed to land at `target`, then settle/fade there.
-func add_chips(origin: Vector2, target: Vector2, count: int, color: Color) -> void:
+func add_chips(origin: Vector2, target: Vector2, count: int, color: Color, settle_scale: float = 1.0) -> void:
 	for i in range(count):
 		var arc_duration: float = randf_range(chip_arc_duration_min, chip_arc_duration_max)
 		var displacement: Vector2 = target - origin
@@ -220,7 +220,8 @@ func add_chips(origin: Vector2, target: Vector2, count: int, color: Color) -> vo
 			"a3": ParticleMathRef.anchor(_board, origin, target),  ## `target` is the floor beneath it
 			"vel": vel,
 			"arc_duration": arc_duration,
-			"settle_duration": randf_range(chip_settle_duration_min, chip_settle_duration_max),
+			"settle_duration": randf_range(chip_settle_duration_min, chip_settle_duration_max) * settle_scale,
+			"hold": 0.7 if settle_scale > 1.0 else 0.0,   ## a long-lived splinter lies there, then fades over the last part
 			"elapsed": 0.0,
 			"color": color,
 			"half_w": chip_half_w * size_jitter,
@@ -368,7 +369,8 @@ func _draw() -> void:
 		var alpha: float = 1.0
 		if chip["elapsed"] >= chip["arc_duration"]:
 			var st: float = (chip["elapsed"] - chip["arc_duration"]) / chip["settle_duration"]
-			alpha = pow(1.0 - st, chip_fade_power)
+			var hold: float = float(chip.get("hold", 0.0))
+			alpha = pow(1.0 - clampf((st - hold) / (1.0 - hold), 0.0, 1.0), chip_fade_power)
 		var c: Color = chip["color"]
 		c.a *= alpha
 		var half_w: float = chip["half_w"]

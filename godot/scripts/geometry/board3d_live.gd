@@ -441,6 +441,9 @@ var _fresh_twin: PackedInt32Array = PackedInt32Array()
 ## sets it apart from the textured wall, and it is also the front-to-back ramp of a rubble block.
 static var FRESH_CLEAN: float = 1.0
 static var FRESH_LIFT: float = 1.0
+## Wood keeps the concrete model (Director, 2026-10-12): the inside of its hole is the SAME texture, lighter (`FRESH_LIFT_TEXTURED`).
+static var FRESH_KEEPS_FACADE: Array[String] = ["wood"]
+static var FRESH_LIFT_TEXTURED: float = 1.3
 const FRESH_SUFFIX: String = "#fresh"
 var _warned_cut_below: bool = false
 ## PB-6: the chunks the cutaway currently reaches (a ghosted column or a revealed roof GU in them): only these draw the
@@ -1514,9 +1517,11 @@ func _material(material_id: String) -> int:
 			var fresh_solid := twin.duplicate() as ShaderMaterial
 			for fm: ShaderMaterial in [fresh, fresh_solid]:
 				fm.set_shader_parameter("fresh_clean", FRESH_CLEAN)
-				fm.set_shader_parameter("fresh_lift", FRESH_LIFT)
+				var keeps: bool = FRESH_KEEPS_FACADE.has(material_id)
+				fm.set_shader_parameter("fresh_lift", FRESH_LIFT_TEXTURED if keeps else FRESH_LIFT)
 				fm.set_shader_parameter("fresh_probe", 1.0)
-				fm.set_shader_parameter("has_facade", 0.0)   ## the inside of a hole is the material's flat colour (Director 2026-10-12: the pattern does not continue inward)
+				if not keeps:
+					fm.set_shader_parameter("has_facade", 0.0)   ## the inside of a hole is the material's flat colour (Director 2026-10-12: the pattern does not continue inward)
 			for k: int in range(2):
 				_material_ids.append(material_id + FRESH_SUFFIX + (SOLID_SUFFIX if k == 1 else ""))
 				_material_glass.append(false)

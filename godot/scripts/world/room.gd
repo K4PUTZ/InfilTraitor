@@ -2085,7 +2085,7 @@ var vfx_impact_profiles: Dictionary = {
 	"concrete": {"sparks": 2,  "smoke": true,  "dust": true,  "chips": 0},
 	## Brick follows stone, a little more fragile (Director 2026-10-05): fewer sparks.
 	"brick":    {"sparks": 5,  "smoke": false, "dust": true,  "chips": 0},
-	"wood":     {"sparks": 0,  "smoke": true,  "dust": false, "chips": 2},
+	"wood":     {"sparks": 0,  "smoke": true,  "dust": false, "chips": 5, "chip_settle": 8.0},   ## splinters at the impact that stay on the floor a while (Director 2026-10-12)
 }
 ## Per-impact spark count jitter, so 24 pellets do not all throw the identical
 ## fan. Multiplies the profile's own count.
@@ -5381,7 +5381,7 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 	var chips: int = int(profile.get("chips", 0))
 	if chips > 0:
 		_debris_overlay.add_chips(origin, floor_pos, chips,
-			_vfx_material_base_color(material_id))
+			_vfx_material_base_color(material_id), float(profile.get("chip_settle", 1.0)))
 
 
 const NO_SHOOTER: Vector2i = Vector2i(-99999, -99999)

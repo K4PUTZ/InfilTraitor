@@ -363,6 +363,8 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 						)
 						roof_slab.texture_anchor = roof_anchor_by_gu[roof_gu]
 						roof_slabs.append(roof_slab)
+		## ROOF R-D5 — a skylight's glass slabs into panes (the vertical panes were grouped above).
+		GlassPaneGrouper.assign_skylights(roof_slabs)
 
 		room._edge_registry = edge_registry
 		room._junction_columns = junction_columns

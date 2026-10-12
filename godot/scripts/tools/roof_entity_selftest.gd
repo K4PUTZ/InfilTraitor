@@ -172,6 +172,10 @@ func _skylight(layout: Dictionary, roof: Dictionary) -> void:
 	var lower: Slab = room._slab_registry.get_slab(Slab.make_id(centre, Slab.Role.CEILING, base_level))
 	var upper: Slab = room._slab_registry.get_slab(Slab.make_id(centre, Slab.Role.CEILING, base_level + 1))
 	_check(lower != null and lower.material == "glass" and upper == null, "the skylight GU: glass in the lower layer, the upper layer empty")
+	_check(lower != null and lower.pane_id.begins_with("PANE_SKY_") and lower.face == 4,
+		"the skylight's slab is a horizontal pane (pane_id %s, face %d)" % [lower.pane_id if lower != null else "-", lower.face if lower != null else -1])
+	var frame_slab: Slab = room._slab_registry.get_slab(Slab.make_id(origin, Slab.Role.CEILING, base_level))
+	_check(frame_slab != null and frame_slab.pane_id == "" and frame_slab.face == -1, "a frame slab is no pane")
 	var frame: int = 0
 	for dx: int in range(3):
 		for dy: int in range(3):
@@ -198,6 +202,13 @@ func _skylight(layout: Dictionary, roof: Dictionary) -> void:
 			if room2._slab_registry.get_slab(Slab.make_id(gu, Slab.Role.CEILING, base_level + 1)) != null:
 				up_n += 1
 	_check(low_n == 9 and up_n == 0, "a glass roof is a whole-roof skylight: 9 lower-layer slabs, no upper (found %d / %d)" % [low_n, up_n])
+	var ids: Dictionary = {}
+	for dx: int in range(3):
+		for dy: int in range(3):
+			var sl: Slab = room2._slab_registry.get_slab(Slab.make_id(origin + Vector2i(dx, dy), Slab.Role.CEILING, base_level))
+			if sl != null:
+				ids[sl.pane_id] = true
+	_check(ids.size() == 1 and not ids.has(""), "its 9 GUs are ONE pane (%s)" % str(ids.keys()))
 	room2.queue_free()
 
 	for direction: String in ["E", "S", "W"]:

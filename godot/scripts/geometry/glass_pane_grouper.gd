@@ -20,6 +20,9 @@
 ## Every glass slice leaves this pass with a non-empty `pane_id`.
 class_name GlassPaneGrouper
 
+## Preloaded, not by `class_name`: a new class is not in the global cache of a headless run until the editor rescans.
+const PaneFrameRef = preload("res://godot/scripts/systems/destruction/pane_frame.gd")
+
 
 static func assign(edge_registry: EdgeRegistry, solid_block_instances: Array) -> void:
 	var glass: Array = []
@@ -95,6 +98,41 @@ static func assign(edge_registry: EdgeRegistry, solid_block_instances: Array) ->
 		s.pane_id = "PANE_%s" % _find(parent, s.id)
 
 	_check_pane_size(panels)
+
+
+## ROOF R-D5 (2026-10-11) — the SKYLIGHTS: glass CEILING slabs, one pane per connected run of GUs (4-adjacent) at one level and of
+## one material (two glass materials are two panes, as for panels). The id is the component's lowest GU and its level, so it is the
+## same on every build. Each gets `face` = `PaneFrame.HORIZONTAL`.
+static func assign_skylights(roof_slabs: Array) -> void:
+	var by_key: Dictionary = {}   ## Vector3i(gu.x, gu.y, level) -> Slab
+	for sl: Slab in roof_slabs:
+		if sl.role == Slab.Role.CEILING and GlassMaterials.is_glass(sl.material):
+			by_key[Vector3i(sl.gu_cell.x, sl.gu_cell.y, sl.level)] = sl
+	var seen: Dictionary = {}
+	var keys: Array = by_key.keys()
+	keys.sort()
+	for start: Vector3i in keys:
+		if seen.has(start):
+			continue
+		var comp: Array = []
+		var stack: Array = [start]
+		seen[start] = true
+		var lo: Vector3i = start
+		while not stack.is_empty():
+			var k: Vector3i = stack.pop_back()
+			comp.append(k)
+			if k.x < lo.x or (k.x == lo.x and k.y < lo.y):
+				lo = k
+			for d: Vector3i in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]:
+				var nk: Vector3i = k + d
+				if by_key.has(nk) and not seen.has(nk) and (by_key[nk] as Slab).material == (by_key[k] as Slab).material:
+					seen[nk] = true
+					stack.append(nk)
+		var pid: String = "PANE_SKY_%d_%d_%d" % [lo.x, lo.y, lo.z]
+		for k: Vector3i in comp:
+			var sl: Slab = by_key[k]
+			sl.pane_id = pid
+			sl.face = PaneFrameRef.HORIZONTAL
 
 
 ## GLASS G-D23 — A PANE HAS A MAXIMUM SIZE, and it is derived, not invented.

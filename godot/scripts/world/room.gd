@@ -1397,7 +1397,8 @@ func _glass_slice_at(grid_pos: Vector2i, level: int):
 	return _glass_slice_by_cell.get(Vector3i(grid_pos.x, grid_pos.y, level))
 
 
-## Cell -> pane slice and pane id -> slices, built once per edge registry. `_glass_slice_at` and `_pane_by_id` each walked every slice
+## Cell -> pane host and pane id -> hosts, built once per edge registry (and slab registry). A host is a pane's SLICE, or a SKYLIGHT's
+## CEILING slab (ROOF R-D5): both carry `pane_id` and `face` (`PaneFrame.HORIZONTAL` for a skylight). `_glass_slice_at` and `_pane_by_id` each walked every slice
 ## (and every voxel) per call, and a commit calls them per remnant, rim shard and orphan: most of the Moto's ~575 ms of glass in the
 ## GLASS blast's commit frame (2026-10-11). Sound because `GlassPaneGrouper.assign()` sets `pane_id` once, when the room is built, and
 ## a slice's voxels never move; a new registry (map load) or a changed slice count rebuilds it.
@@ -1409,10 +1410,16 @@ var _glass_pane_slices: Dictionary = {}     ## pane_id -> Array of slices; SHARE
 
 func _ensure_glass_index() -> void:
 	var slices: Array = _edge_registry.all_slices()
-	if _edge_registry.get_instance_id() == _glass_index_registry_id and slices.size() == _glass_index_slice_count:
+	var skylights: Array = []
+	if _slab_registry != null:
+		for slab: Slab in _slab_registry.all_slabs():
+			if slab.pane_id != "":
+				skylights.append(slab)
+	if _edge_registry.get_instance_id() == _glass_index_registry_id and slices.size() + skylights.size() == _glass_index_slice_count:
 		return
 	_glass_index_registry_id = _edge_registry.get_instance_id()
-	_glass_index_slice_count = slices.size()
+	_glass_index_slice_count = slices.size() + skylights.size()
+	slices = slices + skylights
 	_glass_slice_by_cell.clear()
 	_glass_pane_slices.clear()
 	for sl in slices:

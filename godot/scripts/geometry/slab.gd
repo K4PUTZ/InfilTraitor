@@ -34,6 +34,11 @@ var material: String             ## material type
 ## no builder context. Zero (unused) for FLOOR slabs outside a declared
 ## floor_zones region — those keep rendering via EarthVariantSelector.
 var texture_anchor: Vector2i = Vector2i.ZERO
+## ROOF R-D5 (2026-10-11) — a glass CEILING slab is a SKYLIGHT, a horizontal pane: `GlassPaneGrouper.assign_skylights()` stamps the
+## pane it belongs to and `face` = `PaneFrame.HORIZONTAL`, so a skylight answers the same `pane_id` / `face` a pane's slice does.
+## Empty / -1 on every other slab.
+var pane_id: String = ""
+var face: int = -1
 
 
 func _init(p_id: String, p_gu_cell: Vector2i, p_role: int, p_level: int, p_material: String = "concrete"):

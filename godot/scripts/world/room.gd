@@ -2090,8 +2090,8 @@ var vfx_impact_profiles: Dictionary = {
 ## Per-impact spark count jitter, so 24 pellets do not all throw the identical
 ## fan. Multiplies the profile's own count.
 var vfx_impact_spark_jitter: float = 0.35
-## A round's sand trickle (concrete, stone, brick): one per impact now that only the struck voxel emits, so it is certain.
-var vfx_impact_dust_chance: float = 1.0
+## A round's sand trickle (concrete, stone, brick): the chance one struck voxel leaves one (Director 2026-10-12: one round in two).
+var vfx_impact_dust_chance: float = 0.5   ## Director 2026-10-12: half the rounds leave a trickle
 ## RENDER3D: how far in front of the struck face (grid units) a wall impact's smoke and sparks are born. A shot
 ## leaves its voxel SOLID (dented), and the 3D VFX are depth-tested, so an emission at the voxel's centre was
 ## inside the wall and culled. Smoke discs are camera-facing and wider than the voxel, so this is a tuning value.
@@ -5377,7 +5377,7 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 		_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id),
 			1.0, 1.0, 0, 1.0, 0.0, floor_pos, anchor_3d)
 	if bool(profile.get("dust", false)) and randf() < vfx_impact_dust_chance:
-		_debris_overlay.add_sand_trickle(origin, floor_pos, _vfx_material_base_color(material_id).lerp(Color.WHITE, 0.15))
+		_debris_overlay.add_sand_trickle(origin, floor_pos, _vfx_material_base_color(material_id))
 	var chips: int = int(profile.get("chips", 0))
 	if chips > 0:
 		_debris_overlay.add_chips(origin, floor_pos, chips,
@@ -5907,6 +5907,44 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 	return sim.count
 
 
+## Director 2026-10-12: "um pouquinho de fuligem em baixo da pilha, no final — só um shadezinho leve". The surface each settled pile
+## column rests on takes a light ring of the soot ladder (the thick middle of the pile one darker, a halo one lighter), through the soot map
+## like any other stamp: on a floor the plane blends it bilinearly (no square edges), and it is saved and restored with the rest.
+static var RUBBLE_SOOT_RING: int = 2
+static var RUBBLE_SOOT_THICK: int = 12   ## cubes on one board voxel column from which the ring under it is one darker
+
+
+func _soot_under_rubble(records: Array) -> void:
+	if _voxel_board == null or records.is_empty():
+		return
+	var div: int = RubblePresetsRef.DIVISION
+	var ground: int = _voxel_board.ground_plane_level()
+	var count: Dictionary = {}    ## Vector3i(board x, board y, surface level) -> cubes on it
+	var lowest: Dictionary = {}   ## board voxel column -> the lowest fine level of a cube on it
+	for r: Dictionary in records:
+		var col: Vector2i = r["column"]
+		var vc := Vector2i(floori(float(col.x) / div), floori(float(col.y) / div))
+		lowest[vc] = mini(int(lowest.get(vc, 1 << 20)), int(r["level"]))
+	for r: Dictionary in records:
+		var col: Vector2i = r["column"]
+		var vc := Vector2i(floori(float(col.x) / div), floori(float(col.y) / div))
+		var key := Vector3i(vc.x, vc.y, ground - 1 + floori(float(int(lowest[vc])) / div))
+		count[key] = int(count.get(key, 0)) + 1
+	## The cubes hide the cells they lie on, so the shade reaches one voxel past the pile, one ring lighter (a darker write wins).
+	var writes: Dictionary = {}
+	for key: Vector3i in count:
+		if not writes.has(key.z):
+			writes[key.z] = {}
+		var lw: Dictionary = writes[key.z]
+		var ring: int = RUBBLE_SOOT_RING - (1 if int(count[key]) >= RUBBLE_SOOT_THICK else 0)
+		for dx in range(-1, 2):
+			for dy in range(-1, 2):
+				var c := Vector2i(key.x + dx, key.y + dy)
+				var r: int = ring if dx == 0 and dy == 0 else ring + 1
+				lw[c] = mini(int(lw.get(c, BlastCalculator.FACE_SOOT_CLEAN)), r)
+	_paint_soot(stamp_soot(writes), "rubble soot")
+
+
 func _on_rubble_settled(records: Array, zone_materials: Array, tones: PackedFloat32Array) -> void:
 	var div: int = RubblePresetsRef.DIVISION
 	var base_records: Array = []
@@ -5916,6 +5954,7 @@ func _on_rubble_settled(records: Array, zone_materials: Array, tones: PackedFloa
 		var col: Vector2i = r["column"]
 		puffs[Vector2i(floori(float(col.x) / div), floori(float(col.y) / div))] = [int(r["level"]), int(r.get("zone", 0))]
 	_base_rubble_piles.append({"y0": 0.0, "zone_materials": zone_materials, "records": base_records, "div": div})
+	_soot_under_rubble(records)
 	## A little dust where the chips lie (the glass's floor dust, in the material's tone), instead of a contact shadow.
 	if _debris_overlay == null or _voxel_board == null:
 		return

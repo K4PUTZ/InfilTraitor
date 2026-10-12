@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 87437 lines total** (under `godot/scripts/`)
+**295 scripts · 87493 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1438,14 +1438,9 @@ extends `Node3D` · 3283 lines
 
 ### `debris_overlay.gd`
 
-`class_name DebrisOverlay` · extends `Node2D` · 416 lines
+`class_name DebrisOverlay` · extends `Node2D` · 433 lines
 
 `godot/scripts/overlays/debris_overlay.gd`
-
-**Constants / tuning**
-- `CircleField3DRef` = `preload("res://godot/scripts/geometry/circle_field3d.gd")`
-- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
-- `QuadField3DRef` = `preload("res://godot/scripts/geometry/quad_field3d.gd")`
 
 **Public vars**
 - `var dust_delay_min: float = 0.25`
@@ -1485,29 +1480,6 @@ extends `Node3D` · 3283 lines
 - `var chip_rotation_speed_min: float = -10.0`
 - `var chip_rotation_speed_max: float = 10.0`
 - `var chip_fade_power: float = 1.3`
-- `var trickle_count_min: int = 9`
-- `var trickle_count_max: int = 13`
-- `var trickle_delay: float = 0.5`
-- `var trickle_span_min: float = 0.35`
-- `var trickle_span_max: float = 0.6`
-- `var trickle_fall_min: float = 0.45`
-- `var trickle_fall_max: float = 0.65`
-- `var trickle_rest_min: float = 0.3`
-- `var trickle_rest_max: float = 0.5`
-- `var trickle_sway: float = 1.1`
-- `var trickle_pile_spread: float = 3.2`
-- `var trickle_dash_half: Vector2 = Vector2(0.5, 2.0)`
-- `var trickle_opacity: float = 0.5`
-- `var trickle_origin_shift: Vector2 = Vector2(2.0, -3.0)`
-- `var trickle_start_radii: Vector2 = Vector2(3.0, 3.6)`
-
-**Public API**
-- `func add_dust(origin: Vector2, target: Vector2, color: Color) -> void:`
-- `func add_sand_trickle(origin: Vector2, target: Vector2, color: Color) -> void:`
-- `func add_glass_dust(center: Vector2, reach: float, color: Color) -> void:`
-- `func add_chips(origin: Vector2, target: Vector2, count: int, color: Color) -> void:`
-- `func set_board3d(board: Node3D) -> void:`
-- `func clear() -> void:`
 
 ---
 
@@ -6154,7 +6126,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10539 lines
+extends `Node2D` · 10578 lines
 
 `godot/scripts/world/room.gd`
 

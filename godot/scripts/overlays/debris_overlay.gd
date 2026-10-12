@@ -87,18 +87,27 @@ var chip_fade_power: float = 1.3
 ## What a round leaves running down a concrete / stone / brick wall: a THIN thread of single grains that start one after another, fall
 ## slowly down the face to the floor beneath, and lie there a moment before they fade. (`add_dust` is the blast's puff of a dozen
 ## specks falling together; this is not it.)
-var trickle_count_min: int = 9
-var trickle_count_max: int = 13
-var trickle_delay: float = 0.5             ## seconds of stillness after the round, then it starts
-var trickle_span_min: float = 0.35         ## seconds over which the grains are released, one after another
+## 2026-10-12 (Director: "começa bem pequeno, aumenta a quantidade e o tamanho dos traços, e pára novamente — rápido e sutil, que não
+## pareça água"): the release follows an ENVELOPE — few short dashes, then more and longer ones in the middle, then few again — and
+## every trickle draws its own speed, length of release and darkening, so two holes never run alike.
+var trickle_count_min: int = 10
+var trickle_count_max: int = 22
+var trickle_delay_min: float = 0.3         ## seconds of stillness after the round, then it starts
+var trickle_delay_max: float = 0.6
+var trickle_span_min: float = 0.2          ## seconds over which the grains are released (the envelope's width)
 var trickle_span_max: float = 0.6
-var trickle_fall_min: float = 0.45         ## each grain's own fall
-var trickle_fall_max: float = 0.65
+var trickle_fall_min: float = 0.3          ## each grain's own fall
+var trickle_fall_max: float = 0.55
+var trickle_speed_min: float = 0.65        ## a trickle's own multiplier on its grains' fall time (lower = faster)
+var trickle_speed_max: float = 1.5
+var trickle_darken_min: float = 0.0        ## a trickle's own darkening of the material colour
+var trickle_darken_max: float = 0.4
+var trickle_dash_len: Vector2 = Vector2(0.5, 3.0)   ## px, a dash's half-length at the envelope's edge and at its peak
+var trickle_dash_width: float = 0.3                 ## px, a dash's half-width (thinner than a pixel: it draws as a faint hair)
 var trickle_rest_min: float = 0.3          ## seconds a grain lies on the floor, fading
 var trickle_rest_max: float = 0.5
 var trickle_sway: float = 1.1              ## px, how far a grain wanders sideways: a thread, not a cloud
 var trickle_pile_spread: float = 3.2       ## px, how far along the floor the grains lie
-var trickle_dash_half: Vector2 = Vector2(0.5, 2.0)   ## px: a falling grain is a dash 1 px wide and 4 px long; lying down it turns on its side
 var trickle_opacity: float = 0.5
 var trickle_origin_shift: Vector2 = Vector2(2.0, -3.0)  ## px: the thread's source sits a little up and to the right of the struck point
 var trickle_start_radii: Vector2 = Vector2(3.0, 3.6)     ## px: each grain is born at a random point of this ellipse, not all at one spot
@@ -145,10 +154,17 @@ func _random_in_ellipse(radii: Vector2) -> Vector2:
 func add_sand_trickle(origin: Vector2, target: Vector2, color: Color) -> void:
 	var grains: Array = []
 	var span: float = randf_range(trickle_span_min, trickle_span_max)
+	var delay: float = randf_range(trickle_delay_min, trickle_delay_max)
+	var speed: float = randf_range(trickle_speed_min, trickle_speed_max)
+	color = color.darkened(randf_range(trickle_darken_min, trickle_darken_max))
 	for i in range(randi_range(trickle_count_min, trickle_count_max)):
+		var u: float = (randf() + randf()) * 0.5   ## triangular: the grains bunch in the middle of the release
+		var env: float = sin(u * PI)               ## 0 at the edges, 1 at the peak: a dash's length follows it
 		grains.append({
-			"t0": trickle_delay + span * pow(randf(), 1.3),  ## released a little more densely at the start, then thinning out
-			"fall": randf_range(trickle_fall_min, trickle_fall_max),
+			"t0": delay + span * u,
+			"len": lerpf(trickle_dash_len.x, trickle_dash_len.y, env * randf_range(0.6, 1.0)),
+			"shade": randf_range(0.85, 1.1),
+			"fall": randf_range(trickle_fall_min, trickle_fall_max) * speed,
 			"rest": randf_range(trickle_rest_min, trickle_rest_max),
 			"start": _random_in_ellipse(trickle_start_radii) + trickle_origin_shift,
 			"sway": randf_range(-trickle_sway, trickle_sway),
@@ -384,9 +400,10 @@ func _draw() -> void:
 			else:
 				p = (t["target"] as Vector2) + Vector2(sx, 0.0) + (g["lie"] as Vector2)
 				a = pow(1.0 - (age - fall) / float(g["rest"]), dust_fade_power)
-			var c: Color = base
-			c.a = minf(c.a * a * trickle_opacity, 1.0)
-			var half: Vector2 = Vector2(trickle_dash_half.y, trickle_dash_half.x) if lying else trickle_dash_half
+			var c: Color = base * float(g["shade"])
+			c.a = minf(base.a * a * trickle_opacity, 1.0)
+			var dash := Vector2(trickle_dash_width, float(g["len"]))
+			var half: Vector2 = Vector2(minf(dash.y, 1.0), dash.x) if lying else dash
 			drawn += 1
 			cmds += 1
 			if submit:

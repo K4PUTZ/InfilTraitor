@@ -439,7 +439,7 @@ var _fresh_twin: PackedInt32Array = PackedInt32Array()
 ## Director 2026-10-12: the concrete inside a hole is fresh — no soot, lit by the light at the opening (never brighter than the room
 ## allows: a dark room keeps it dark), a little lighter than the wall.
 static var FRESH_CLEAN: float = 1.0
-static var FRESH_LIFT: float = 1.15
+static var FRESH_LIFT: float = 1.3
 const FRESH_SUFFIX: String = "#fresh"
 var _warned_cut_below: bool = false
 ## PB-6: the chunks the cutaway currently reaches (a ghosted column or a revealed roof GU in them): only these draw the

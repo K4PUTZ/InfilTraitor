@@ -737,6 +737,11 @@ func fire_at_active() -> void:
 	if not rubble_cells.is_empty():
 		var placed: int = room.spawn_shot_rubble(rubble_cells, Vector3(aim.x, 0.0, aim.y), salt)
 		print_debug("[SHOT-RUBBLE] %d voxel(s) broken, %d sub-voxel(s) in place" % [rubble_cells.size(), placed])
+	## NOT awaited. The soot follows the hole: a stamp around the voxels this shot touched (~1 ms), two frames after the impact, into the
+	## soot map and the plane (SOOT-STAMP). It used to wait for the render passes below (~25 frames): with the hole now drawn on the
+	## impact frame, a bullet mark stayed clean and bright that long beside the dents, then darkened (Director, 2026-10-12).
+	if not cell_to_voxel.is_empty():
+		room.apply_shot_soot(cell_to_voxel.values(), weapon_def.soot_radius)
 
 	cancel_active()
 	if cell_to_voxel.is_empty():
@@ -790,11 +795,6 @@ func fire_at_active() -> void:
 	print_debug("[AGENT-SHOT-PROF] resolve %.2f · apply+vfx %.2f · render-pass %.2f · repaint %.2f ms · %d voxel(s)"
 		% [prof_resolve_ms, prof_apply_ms, prof_render_ms, prof_repaint_ms,
 		cell_to_voxel.size()])
-
-	## NOT awaited, and deliberately LAST. The tiles have swapped and the smoke is
-	## out; the soot is the only thing left. SOOT-STAMP: a stamp around the voxels
-	## this shot touched (~1 ms), two frames later, into the soot map and the plane.
-	room.apply_shot_soot(cell_to_voxel.values(), weapon_def.soot_radius)
 
 
 ## The grid-axis step whose direction best matches `aim`. Four candidates and a
@@ -1213,3 +1213,4 @@ func _gu_centre_world(gu: Vector2i, levels_up: int = MUZZLE_LEVELS_ABOVE_GROUND)
 	var centre: Vector2i = GeometryCoords.gu_to_voxel_origin(gu) + Vector2i(half, half)
 	var renderer: VoxelBoard = room._voxel_board
 	return renderer.voxel_world_position(centre, renderer.ground_plane_level() + levels_up)
+

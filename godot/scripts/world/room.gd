@@ -5847,7 +5847,7 @@ const RubblePresetsRef = preload("res://godot/scripts/systems/destruction/rubble
 static var RUBBLE_HOLD_S: float = 0.33
 ## The fragment shader has no face-direction shading and the wall does: measured 2026-10-12 (PLAYGROUND concrete, the impact frame of a
 ## shotgun shot) flat sub-voxels in the facade's mean tone read ~78/255 against the wall's ~54 around them; their ratio scales the colour.
-static var RUBBLE_TONE_SCALE: float = 0.69
+static var RUBBLE_TONE_SCALE: float = 0.95
 
 
 func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:

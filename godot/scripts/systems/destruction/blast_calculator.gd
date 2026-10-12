@@ -1824,8 +1824,10 @@ static func stamp_around(seeds: Array, radius: int, store: VoxelStore,
 		## -1..+1 before the ring is picked, so the scorch's outline is ragged
 		## instead of a perfect L1 diamond. A cell pushed past `radius` is simply
 		## dropped (no soot), which is what makes the edge ragged rather than wider.
-		var dist: int = int(best[k]) + soot_edge_offset(Vector2i(k.x, k.y), k.z)
-		if dist < 0 or dist > radius:
+		## A roll below 0 is the centre, not a gap: it used to `continue` too, so a struck cell that rolled -1 kept NO soot while
+		## every neighbour around it was stained — one clean, bright voxel in the middle of a shot's stain (Director, 2026-10-12).
+		var dist: int = maxi(int(best[k]) + soot_edge_offset(Vector2i(k.x, k.y), k.z), 0)
+		if dist > radius:
 			continue
 		var touches: bool = false
 		for d: Vector3i in _SOOT_NEIGHBOURS:

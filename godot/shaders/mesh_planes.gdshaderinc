@@ -38,6 +38,22 @@ vec4 plane_texel(vec3 world, out bool inside, out ivec3 cell) {
 	return inside ? texelFetch(cell_plane, ivec3(pc, layer), 0) : vec4(0.0);
 }
 
+// ROOF R-D9 (a shot's rubble, `#define OWN_LEVEL_LIGHT`): the plane texel of the cell the point is IN, at its own level, and the floor
+// cell's (`plane_texel`) where that cell holds nothing. A cube still seated in a wall, or resting in a hole, sits in the broken
+// voxel's own cell, which keeps the light the wall had there; read from the floor under the wall it drew one block white and the
+// next black (Director, 2026-10-12). Two fetches where the first misses: only the rubble's shader has it.
+vec4 plane_texel_own(vec3 world, out bool inside, out ivec3 cell) {
+	ivec2 pc = ivec2(floor(vec2(world.x, world.z) * 8.0)) + plane_origin;
+	int layer = int(floor(world.y * 8.0)) + mesh_ground_level - level_base;
+	cell = ivec3(pc.x, layer, pc.y);
+	inside = layer >= 0 && layer < level_count && pc.x >= 0 && pc.y >= 0 && pc.x < plane_size.x && pc.y < plane_size.y;
+	vec4 t = inside ? texelFetch(cell_plane, ivec3(pc, layer), 0) : vec4(0.0);
+	if (!inside || t == vec4(0.0)) {
+		t = plane_texel(world, inside, cell);
+	}
+	return t;
+}
+
 // The light ladder's multiplier for a texel (sRGB, the way the board multiplies).
 float plane_lum(vec4 t) {
 	int bucket = int(floor(t.g * 255.0 + 0.5));

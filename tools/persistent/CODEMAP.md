@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 87571 lines total** (under `godot/scripts/`)
+**295 scripts · 87586 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -953,7 +953,7 @@ extends `Node3D` · 3327 lines
 
 ### `prop_fragments3d.gd`
 
-`class_name PropFragments3D` · extends `Node3D` · 259 lines
+`class_name PropFragments3D` · extends `Node3D` · 271 lines
 
 `godot/scripts/geometry/prop_fragments3d.gd`
 
@@ -966,13 +966,6 @@ extends `Node3D` · 3327 lines
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/prop_mesh3d.gdshader"`
 - `FLOATS_PER_INSTANCE` = `16`
-
-**Public API**
-- `func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array, light_floor: float = 0.0) -> void:`
-- `func is_finished() -> bool:`
-- `func floor_y() -> float:`
-- `func voxel_size() -> float:`
-- `func finish_now() -> void:`
 
 ---
 
@@ -2275,7 +2268,7 @@ extends `RefCounted` · 37 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1852 lines
+`class_name BlastCalculator` · 1854 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -5718,7 +5711,7 @@ extends `Node2D` · 63 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1215 lines
+`class_name AgentShotController` · 1216 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 

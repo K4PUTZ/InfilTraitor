@@ -34,27 +34,29 @@ var _buf: PackedFloat32Array = PackedFloat32Array()
 var _voxel: float = 0.125
 var _y0: float = 0.0
 var _finished: bool = false
+var _rubble: bool = false
+static var _rubble_shader_cache: Shader = null
 var _landed_sent: PackedByteArray = PackedByteArray()   ## per fragment: 1 once `landed` has reported it
 var _settled_at: PackedByteArray = PackedByteArray()   ## per fragment: 1 once its row holds its FINAL value (landed or gone, charring done)
 
 
 ## A live one: steps `sim` every frame until it is done. `zone_materials[zone]` is the material id of each zone of the sim.
-## `light_floor` (ROOF R-D9, a shot's rubble): the least light a cube draws with (`prop_mesh3d`'s `light_floor`), 0 = none.
-func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array, light_floor: float = 0.0) -> void:
+## `rubble` (ROOF R-D9, a shot's sub-voxels): the cubes read the light of the cell they are IN (`OWN_LEVEL_LIGHT`), not the floor's.
+func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array, rubble: bool = false) -> void:
 	_board = board
 	_sim = sim
+	_rubble = rubble
 	_init_zones(zone_materials, sim.zone)
 	_voxel = sim.voxel
 	_y0 = sim.origin.y
 	_build(sim.count)
-	_mat.set_shader_parameter("light_floor", light_floor)
 	_upload()
 	set_process(true)
 
 
 ## A static pile from records. `y0` is the floor's world height under it; `division` is the lattice the records' columns are in.
 static func make_pile(board: Node3D, records: Array, y0: float, zone_materials: Array, division: int = 1,
-		light_floor: float = 0.0) -> PropFragments3D:
+		rubble: bool = false) -> PropFragments3D:
 	var node := PropFragments3D.new()
 	node._board = board
 	node._voxel = 0.125 / float(maxi(division, 1))
@@ -64,8 +66,8 @@ static func make_pile(board: Node3D, records: Array, y0: float, zone_materials: 
 	node._init_zones(zone_materials, zones)
 	node._y0 = y0
 	node._finished = true
+	node._rubble = rubble
 	node._build(records.size())
-	node._mat.set_shader_parameter("light_floor", light_floor)
 	for i in range(records.size()):
 		var r: Dictionary = records[i]
 		var col: Vector2i = r["column"]
@@ -130,6 +132,16 @@ func _exit_tree() -> void:
 		_board.call("unregister_prop_light_material", _mat)
 
 
+## The prop shader with `OWN_LEVEL_LIGHT` defined, built once from the graded source.
+static func _rubble_shader() -> Shader:
+	if _rubble_shader_cache == null:
+		var code: String = BoardLook.graded_shader(SHADER_PATH).code
+		var at: int = code.find("shader_type spatial;")
+		_rubble_shader_cache = Shader.new()
+		_rubble_shader_cache.code = code.insert(at + "shader_type spatial;".length(), "\n#define OWN_LEVEL_LIGHT")
+	return _rubble_shader_cache
+
+
 func _build(n: int) -> void:
 	var cube := BoxMesh.new()
 	cube.size = Vector3.ONE * _voxel
@@ -146,7 +158,7 @@ func _build(n: int) -> void:
 	_landed_sent = PackedByteArray()
 	_landed_sent.resize(n)
 	_mat = ShaderMaterial.new()
-	_mat.shader = BoardLook.graded_shader(SHADER_PATH)
+	_mat.shader = _rubble_shader() if _rubble else BoardLook.graded_shader(SHADER_PATH)
 	_mat.set_shader_parameter("albedo", Color.WHITE)
 	_mat.set_shader_parameter("use_color", 1.0)
 	_mat.set_shader_parameter("soot_affects", 0.0)   ## the fragment carries its own charred tone

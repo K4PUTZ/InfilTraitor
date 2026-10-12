@@ -396,6 +396,7 @@ var _geometry_root: Node3D = null
 const GlassCrackMirror3DClass = preload("res://godot/scripts/geometry/glass_crack_mirror3d.gd")
 const GlassVoxelFall3DRef = preload("res://godot/scripts/geometry/glass_voxel_fall3d.gd")
 const ShardField3DRef = preload("res://godot/scripts/geometry/shard_field3d.gd")
+const PaneFrameRef = preload("res://godot/scripts/systems/destruction/pane_frame.gd")
 var _crack_mirror: Node3D = null
 var _ground_level: int = 0
 ## Vector3i(grid x, level, grid y) → index into _material_ids.
@@ -2552,7 +2553,7 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 			continue
 		var material: int = _store_material[mat[claim]]
 		var glass: bool = _material_glass[material]
-		if glass and GLASS_RIM_ON and pane_of[claim] != 0 and pane_of[claim] != VoxelStore.PANE_HORIZONTAL:   ## ROOF: a skylight's rim comes later
+		if glass and GLASS_RIM_ON and pane_of[claim] != 0:
 			var rim: Array = _glass_rim_record(store, claim, cell, x, y, level, material, int(pane_of[claim]) - 1)
 			if not rim.is_empty():
 				rims.append(rim)
@@ -2632,12 +2633,14 @@ const RIM_CORNER: Vector2 = Vector2(0.45, 0.85)
 ## The rim record of a glass PANE voxel, or [] when it is not on a rim. A side of the pane's plane is EXPOSED when the cell beside it
 ## held a pane voxel that is gone (a destroyed glass claim still owns its cell: `occ` 0, `owner` set): a pane's natural end, next to
 ## air or a frame, stays straight. Record: [x, y, level, material, x_normal, exposed (4 bits), wall (4 bits), front, back], sides in
-## the order r-min, l-max, r-max, l-min (r = the pane's run axis, l = the level).
+## the order r-min, l-max, r-max, l-min (r = the pane's run axis, l = the level; ROOF R-D5: a skylight's r is x and l is y,
+## `PaneFrame`). The record carries the pane's `face` (a `Face`, or `PaneFrame.HORIZONTAL`) where it used to carry `x_normal`.
 func _glass_rim_record(store: VoxelStore, claim: int, cell: int, x: int, y: int, level: int, material: int, face: int) -> Array:
-	var x_normal: bool = face == 0 or face == 2
-	var r_step: int = store.w if x_normal else 1
-	var t_step: int = 1 if x_normal else store.w
-	var side_steps: PackedInt32Array = [-r_step, store.plane, r_step, -store.plane]
+	var horizontal: bool = face == PaneFrameRef.HORIZONTAL
+	var r_step: int = PaneFrameRef.u_step(face, store)
+	var l_step: int = PaneFrameRef.v_step(face, store)
+	var t_step: int = PaneFrameRef.normal_step(face, store)
+	var side_steps: PackedInt32Array = [-r_step, l_step, r_step, -l_step]
 	var exposed: int = 0
 	var wall: int = 0
 	for side: int in range(4):
@@ -2650,13 +2653,13 @@ func _glass_rim_record(store: VoxelStore, claim: int, cell: int, x: int, y: int,
 		if o >= 0 and store.pane[o] != 0 and (store.state[o] & 1) == 0:
 			exposed |= 1 << side
 			wall |= 1 << side
-		elif side != 3:   ## a bare side draws its wall as the cube did (the cube never drew a bottom)
+		elif side != 3 or horizontal:   ## a bare side draws its wall as the cube did (the cube never drew a bottom; a skylight's four sides all show)
 			wall |= 1 << side
 	if exposed == 0:
 		return []
 	var front: bool = cell + t_step < store.occ.size() and store.occ[cell + t_step] == 0
 	var back: bool = cell - t_step >= 0 and store.occ[cell - t_step] == 0
-	return [x, y, level, material, x_normal, exposed, wall, front, back]
+	return [x, y, level, material, face, exposed, wall, front, back]
 
 
 ## One rim voxel as geometry: the jagged outline (front at the pane's +normal face, back at its -normal face, the back skewed), the two
@@ -2666,7 +2669,9 @@ func _emit_glass_rim(rec: Array, surfaces: Dictionary) -> int:
 	var y: int = rec[1]
 	var level: int = rec[2]
 	var material: int = rec[3]
-	var x_normal: bool = rec[4]
+	var face: int = rec[4]
+	var horizontal: bool = face == PaneFrameRef.HORIZONTAL
+	var x_normal: bool = face == 0 or face == 2
 	var exposed: int = rec[5]
 	var wall: int = rec[6]
 	var rng := RandomNumberGenerator.new()
@@ -2709,9 +2714,12 @@ func _emit_glass_rim(rec: Array, surfaces: Dictionary) -> int:
 			seg_side.append(side)
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var origin := Vector3(float(x), float(level) - float(_ground_level), float(y))
-	var axis_t: Vector3 = Vector3(1, 0, 0) if x_normal else Vector3(0, 0, 1)
-	var axis_r: Vector3 = Vector3(0, 0, 1) if x_normal else Vector3(1, 0, 0)
-	var to3 := func(p: Vector2, t: float) -> Vector3: return origin + axis_r * p.x + Vector3(0, p.y, 0) + axis_t * t
+	## The rim's three axes: r (the run), l (the outline's "up") and t (the thickness, front = +t). A vertical pane: r along the run, l up
+	## (the level), t its normal; a skylight (ROOF R-D5): r = x, l = y (world +Z), t = up.
+	var axis_t: Vector3 = Vector3(0, 1, 0) if horizontal else (Vector3(1, 0, 0) if x_normal else Vector3(0, 0, 1))
+	var axis_r: Vector3 = Vector3(1, 0, 0) if horizontal else (Vector3(0, 0, 1) if x_normal else Vector3(1, 0, 0))
+	var axis_l: Vector3 = Vector3(0, 0, 1) if horizontal else Vector3(0, 1, 0)
+	var to3 := func(p: Vector2, t: float) -> Vector3: return origin + axis_r * p.x + axis_l * p.y + axis_t * t
 	if not surfaces.has(material):
 		surfaces[material] = SurfaceData.new()
 	var body: SurfaceData = surfaces[material]
@@ -2742,7 +2750,7 @@ func _emit_glass_rim(rec: Array, surfaces: Dictionary) -> int:
 		var j2: int = (j + 1) % n
 		var dir2: Vector2 = front[j2] - front[j]
 		var out2 := Vector2(dir2.y, -dir2.x).normalized()   ## right of a counter-clockwise outline = outward
-		var normal: Vector3 = axis_r * out2.x + Vector3(0, out2.y, 0)
+		var normal: Vector3 = axis_r * out2.x + axis_l * out2.y
 		## A wall along an EXPOSED side is the break itself: it carries the crack's ink (the shader's rim branch), so the decal
 		## needs no spill over the face beside it (Director, 2026-10-10). A wall along a bare side is the pane's own edge.
 		var broken: bool = ((exposed >> seg_side[j]) & 1) == 1

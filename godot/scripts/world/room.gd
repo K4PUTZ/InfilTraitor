@@ -632,6 +632,13 @@ func _craze_plan(grid_pos: Vector2i, level: int, intensity: float, report: bool)
 	var anchor_cell := Vector2i(anchor_run, c_cell.y) if run_is_x \
 		else Vector2i(c_cell.x, anchor_run)
 	var anchor_level: int = int(plan["centre_level"]) + int(roundf(lo_off.y))
+	if int(plan["run_axis"]) == 2:
+		## ROOF 3c — a SKYLIGHT: its (u, v) are (x, y) at one level, so the anchor is the pane's low (x, y) corner and the level is
+		## its own. (Rotation is camera-only, R3D-ROT: the view IS base space, so the low corner is the base one.)
+		anchor_off = lo_off.x
+		run_grows_with_base = true
+		anchor_cell = Vector2i(int(plan["centre_run"]) + int(roundf(lo_off.x)), int(plan["centre_v"]) + int(roundf(lo_off.y)))
+		anchor_level = int(plan["centre_level"])
 
 	## ⚠️ AND THE PANE'S IDENTITY KEY IS THIS ANCHOR, NOT ITS CENTRE — B-2 HAD IT
 	## WRONG AND THE ANCHOR MEASUREMENT IS WHAT FOUND IT. `plan_pane_field()`
@@ -4133,6 +4140,58 @@ func scenario_perspective(direction: String) -> bool:
 ## the soot projection a rotation or a SaveState restore runs, with no rebuild around it. Probing
 ## before and after is the one way to ask "does the incremental light equal a full relight of the
 ## SAME voxels" without the rebuild's own effects in the answer.
+## ROOF RF-1 step 3c — a DEV event on the first skylight, until the blast and the shot reach skylights (steps 4-5): a round hole of
+## `SKYLIGHT_HIT_RADIUS` voxels at the pane's centre (its voxels DESTROYED, base-recorded) and a craze field over the rest, flushed the
+## way the cook's glass is (the dirty pass, the crack re-cut, the openings and their rim, the craze masks), then the board's commit.
+const SKYLIGHT_HIT_RADIUS: float = 6.5
+func scenario_skylight_hit() -> bool:
+	_ensure_glass_index()
+	var ids: Array = []
+	for pid: String in _glass_pane_slices:
+		if pid.begins_with("PANE_SKY_"):
+			ids.append(pid)
+	if ids.is_empty():
+		push_error("[Room] skylight_hit: this map has no skylight")
+		return false
+	ids.sort()
+	var hosts: Array = _glass_pane_slices[ids[0]]
+	var sum := Vector2.ZERO
+	var n: int = 0
+	for h in hosts:
+		var packed: PackedInt32Array = h.cells_packed()
+		for o in range(0, packed.size(), 3):
+			sum += Vector2(float(packed[o]) + 0.5, float(packed[o + 1]) + 0.5)
+			n += 1
+	if n == 0:
+		return false
+	var centre: Vector2 = sum / float(n)
+	var gone: Array = []
+	var keep: Voxel = null
+	for h in hosts:
+		for v: Voxel in h.voxels:
+			if Vector2(float(v.grid_pos.x) + 0.5, float(v.grid_pos.y) + 0.5).distance_to(centre) <= SKYLIGHT_HIT_RADIUS:
+				v.set_damage(Voxel.DamageState.DESTROYED, true, Voxel.CarvedSide.BOTTOM, 0, 0)
+				record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state, v.damage_is_blast, v.damage_carved_side,
+					v.damage_variant, v.damage_substrate, v)
+				gone.append(v)
+			elif keep == null:
+				keep = v
+	await _voxel_board.process_dirty_slabs_async(_slab_registry)
+	var craze_id: int = 0
+	if keep != null:
+		craze_id = claim_glass_craze(keep.grid_pos, keep.level, 0.6)
+	_voxel_board.refresh_glass_crack_occupancy()
+	var shaped: int = _voxel_board.refresh_glass_rims()
+	_voxel_board.refresh_craze_opening_masks()
+	var live: Node = board3d()
+	if live != null:
+		live.on_shot_commit(gone)
+	bump_world_revision()
+	print_debug("[SKYLIGHT-HIT] pane %s: %d voxel(s) destroyed round (%.1f, %.1f), craze %d, %d cell(s) shaped by the opening"
+		% [ids[0], gone.size(), centre.x, centre.y, craze_id, shaped])
+	return true
+
+
 func scenario_relight() -> bool:
 	_repaint_voxel_light_buckets(false)
 	for _f in range(10):

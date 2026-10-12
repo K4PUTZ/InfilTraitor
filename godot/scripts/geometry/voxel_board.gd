@@ -32,6 +32,7 @@ var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 ## G4-3 — preloaded rather than used by `class_name`: this file is parsed
 ## before the global class cache exists in a headless lint run.
 const GlassOpening = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
+const PaneFrameRef = preload("res://godot/scripts/systems/destruction/pane_frame.gd")
 
 ## D32 — the four wall materials the Director authors decals for. Glass is
 ## absent by D22 (DESTROYED-only) and brick is deferred; both were the
@@ -879,10 +880,10 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 ## time. `use_solid`/`is_zoned_floor` are computed once per slab by the
 ## caller (constant across every voxel in it), not re-derived per voxel.
 func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, _use_solid: bool, is_zoned_floor: bool) -> void:
-	## Mirrors `_process_dirty_slice_voxel()`. A slab voxel is a glass PANE unless it is a glass roof or a glazed floor zone,
-	## which stay opaque by G1's own rule.
-	var is_glass_pane: bool = GlassMaterials.is_glass(slab.material) \
-		and not (slab.role == Slab.Role.CEILING or is_zoned_floor)
+	## Mirrors `_process_dirty_slice_voxel()`. A slab voxel is a glass PANE unless it is a glazed floor zone, which stays opaque
+	## by G1's own rule. A glass roof is a SKYLIGHT, a horizontal pane (ROOF R-D5, 2026-10-11: G1's roof exception retired), so its
+	## erase runs the glass seams (the crack's re-cut, the opening batch) like a wall pane's.
+	var is_glass_pane: bool = GlassMaterials.is_glass(slab.material) and not is_zoned_floor
 	if not voxel.visible:
 		if is_glass_pane:
 			_render3d_glass_gone(voxel, slab.material)
@@ -1258,7 +1259,7 @@ func glass_crack_covering(pane_id: String, run: int, level: int) -> int:
 		var r: Vector2i = c["radius"]
 		if absi(run - int(c["impact_run"])) > r.x:
 			continue
-		if absi(level - int(c["impact_level"])) > r.y:
+		if absi(level - _crack_v(c)) > r.y:   ## `level` is the pane's v (a skylight's y)
 			continue
 		return int(c["id"])
 	return 0
@@ -1383,6 +1384,7 @@ func spawn_glass_craze(spec: Dictionary) -> int:
 		"wide": false,
 		"impact_run": int(spec["centre_run"]),
 		"impact_level": centre_level,
+		"impact_v": int(spec.get("centre_v", centre_level)),   ## ROOF 3c: the pane's v (a skylight's y; a wall pane's level)
 		"impact_cell": centre_cell,
 		"face": int(spec.get("face", Face.SW)),
 		"radius": Vector2i.ZERO,
@@ -1503,26 +1505,29 @@ func _build_craze_opening_mask(c: Dictionary) -> void:
 		img = Image.create(w, h, false, Image.FORMAT_R8)
 	img.fill(Color(0.0, 0.0, 0.0))
 
-	var run_is_x: bool = int(c["run_axis"]) == 0
+	var face: int = _crack_face(c)
+	var horizontal: bool = face == PaneFrameRef.HORIZONTAL
+	var run_is_x: bool = PaneFrameRef.run_is_x(face)
 	var c_run: int = int(c["impact_run"])
-	var c_lvl: int = int(c["impact_level"])
-	var cross: int = (c["impact_cell"] as Vector2i).y if run_is_x \
-		else (c["impact_cell"] as Vector2i).x
+	var c_lvl: int = _crack_v(c)
+	var cross: int = _crack_fixed(c)
 	var painted: int = 0
 	for rec in _glass_applied_openings:
-		if bool(rec["run_is_x"]) != run_is_x:
+		var rec_face: int = int(rec.get("face", Face.SW if bool(rec["run_is_x"]) else Face.NW))
+		if (rec_face == PaneFrameRef.HORIZONTAL) != horizontal or (not horizontal and bool(rec["run_is_x"]) != run_is_x):
 			continue
 		var a: Vector3i = rec["anchor"]
 		## Same face plane as this pane, or it is another pane's hole.
-		if (a.y if run_is_x else a.x) != cross:
+		if PaneFrameRef.fixed_of(face, a) != cross:
 			continue
-		var a_run: int = a.x if run_is_x else a.y
+		var a_uv: Vector2i = PaneFrameRef.to_uv(face, a)
+		var a_run: int = a_uv.x
 		var poly: PackedVector2Array = GlassOpening.polygon(String(rec["opening"]))
 		if poly.is_empty():
 			continue
 		## The polygon lives in (run, level) voxels around its own anchor; move it
 		## into the mask's frame once, rather than per texel.
-		var off := Vector2(float(a_run - c_run) - origin.x, origin.y - float(a.z - c_lvl))
+		var off := Vector2(float(a_run - c_run) - origin.x, origin.y - float(a_uv.y - c_lvl))
 		## Only this opening's own bounding box is walked — a whole-mask sweep per
 		## hole would be 38 point-in-polygon tests per texel on a real pane.
 		var plo := Vector2(INF, INF)
@@ -2022,19 +2027,34 @@ func _crack_holds_any(c: Dictionary, cells: Dictionary) -> bool:
 	var hi: Vector2 = c["pane_hi"]
 	var run0: int = int(c["impact_run"]) + int(roundf(lo.x))
 	var run1: int = run0 + mini(int(roundf(hi.x - lo.x)) + 1, GLASS_OCC_MAX_SIDE) - 1
-	var lvl1: int = int(c["impact_level"]) + int(roundf(hi.y))
+	var lvl1: int = _crack_v(c) + int(roundf(hi.y))
 	var lvl0: int = lvl1 - mini(int(roundf(hi.y - lo.y)) + 1, GLASS_OCC_MAX_SIDE) + 1
-	var run_is_x: bool = int(c["run_axis"]) == 0
-	var cross: Vector2i = c["impact_cell"]
+	var face: int = _crack_face(c)
+	var fixed: int = _crack_fixed(c)
 	for key: Vector3i in cells:
-		if key.z < lvl0 or key.z > lvl1:
+		if PaneFrameRef.fixed_of(face, key) != fixed:
 			continue
-		if run_is_x:
-			if key.y == cross.y and key.x >= run0 and key.x <= run1:
-				return true
-		elif key.x == cross.x and key.y >= run0 and key.y <= run1:
+		var uv: Vector2i = PaneFrameRef.to_uv(face, key)
+		if uv.y >= lvl0 and uv.y <= lvl1 and uv.x >= run0 and uv.x <= run1:
 			return true
 	return false
+
+
+## ROOF 3c — a crack record's pane frame: its face (a `Face`, or `PaneFrame.HORIZONTAL` for a skylight), its v (the level for a wall
+## pane, the y for a skylight: `impact_v`, which a wall pane's records may lack) and the coordinate its plane is fixed at.
+static func _crack_face(c: Dictionary) -> int:
+	if c.has("face"):
+		return int(c["face"])
+	return Face.SW if int(c["run_axis"]) == 0 else Face.NW
+
+
+static func _crack_v(c: Dictionary) -> int:
+	return int(c.get("impact_v", c["impact_level"]))
+
+
+static func _crack_fixed(c: Dictionary) -> int:
+	var cell: Vector2i = c["impact_cell"]
+	return PaneFrameRef.fixed_of(_crack_face(c), Vector3i(cell.x, cell.y, int(c["impact_level"])))
 
 
 ## B-4b — rebuild every craze FIELD's hole mask. Its own seam rather than a
@@ -2061,7 +2081,7 @@ func _build_crack_occupancy(c: Dictionary) -> void:
 	var lo: Vector2 = c["pane_lo"]
 	var hi: Vector2 = c["pane_hi"]
 	var run0: int = int(c["impact_run"]) + int(roundf(lo.x))
-	var lvl1: int = int(c["impact_level"]) + int(roundf(hi.y))
+	var lvl1: int = _crack_v(c) + int(roundf(hi.y))
 	var w: int = int(roundf(hi.x - lo.x)) + 1
 	var h: int = int(roundf(hi.y - lo.y)) + 1
 	if w < 1 or h < 1:
@@ -2074,8 +2094,8 @@ func _build_crack_occupancy(c: Dictionary) -> void:
 			% [c["pane_id"], w, h, GLASS_OCC_MAX_SIDE])
 		w = mini(w, GLASS_OCC_MAX_SIDE)
 		h = mini(h, GLASS_OCC_MAX_SIDE)
-	var run_is_x: bool = int(c["run_axis"]) == 0
-	var cross: Vector2i = c["impact_cell"]
+	var face: int = _crack_face(c)
+	var fixed: int = _crack_fixed(c)
 	## R3D-END (END-2): the 2D render-order clip also cut away every cell a nearer wall hid on the SCREEN, from an index
 	## of the opaque tile layers. The 3D board depth-tests the quad itself, and on it that index was always empty.
 	## G-D55 (2026-10-11, the Moto's glass-fall spike): the bytes are filled straight, no `set_pixel` per cell (18.6 ms for the
@@ -2086,13 +2106,12 @@ func _build_crack_occupancy(c: Dictionary) -> void:
 	var hold: bool = not glass_occ_hold.is_empty()
 	var k: int = 0
 	for j in range(h):
-		var level: int = lvl1 - j
+		var v: int = lvl1 - j
 		for i in range(w):
-			var run: int = run0 + i
-			var x: int = run if run_is_x else cross.x
-			var y: int = cross.y if run_is_x else run
-			var present: bool = (store != null and store.has_glass_pane(x, y, level)) \
-				or (hold and glass_occ_hold.has(Vector3i(x, y, level)))   ## R3D-14: the store's glass panes
+			## (u, v) -> the cell through the pane's frame (ROOF 3c: a skylight's (x, y) at its level, a wall pane's (run, level))
+			var cell3: Vector3i = PaneFrameRef.to_cell(face, Vector2i(run0 + i, v), fixed)
+			var present: bool = (store != null and store.has_glass_pane(cell3.x, cell3.y, cell3.z)) \
+				or (hold and glass_occ_hold.has(cell3))   ## R3D-14: the store's glass panes
 			bytes[k] = 255 if present else 0
 			k += 1
 	var img := Image.create_from_data(w, h, false, Image.FORMAT_R8, bytes)
@@ -2301,21 +2320,24 @@ func _apply_opening_to_region(region: Dictionary) -> int:
 			var cover: int = GlassOpening.coverage(opening_id, dr, dl)
 			if cover == GlassOpening.Coverage.NONE:
 				continue
-			## Both run axes are offered; the one that is not this pane's simply
-			## has no glass at the cell it names.
-			for run_is_x in [true, false]:
-				var cell := Vector2i(anchor.x + dr, anchor.y) if run_is_x \
-					else Vector2i(anchor.x, anchor.y + dr)
-				var level: int = anchor.z + dl
+			## Every pane frame is offered (a wall pane along X, along Y, a skylight: ROOF 3c, `PaneFrame`); the ones that are not this
+			## pane's simply have no pane of that orientation at the cell they name.
+			for mode: int in [Face.SW, Face.NW, PaneFrameRef.HORIZONTAL]:
+				var a_uv: Vector2i = PaneFrameRef.to_uv(mode, anchor)
+				var c3: Vector3i = PaneFrameRef.to_cell(mode, a_uv + Vector2i(dr, dl), PaneFrameRef.fixed_of(mode, anchor))
+				var cell := Vector2i(c3.x, c3.y)
+				var level: int = c3.z
 				## R3D-14: the pane's face and presence come from the claims; nothing is swapped (no rim atom), and
 				## "already a shard" is the shaped-cell record.
 				var pane_face: int = VoxelStore.active.glass_pane_face_at(cell.x, cell.y, level) \
 					if VoxelStore.active != null else 0
 				var skey := Vector3i(cell.x, cell.y, level)
-				if pane_face == 0 or pane_face == VoxelStore.PANE_HORIZONTAL or _glass_shaped_cells.has(skey):
-					continue   ## (ROOF: a skylight's openings are RF-1 step 3's later sub-step, not cut by a wall's opening)
+				if pane_face == 0 or _glass_shaped_cells.has(skey):
+					continue
 				var sface: int = pane_face - 1
-				if (sface == Face.SW or sface == Face.NE) != run_is_x:
+				if (sface == PaneFrameRef.HORIZONTAL) != (mode == PaneFrameRef.HORIZONTAL):
+					continue
+				if mode != PaneFrameRef.HORIZONTAL and PaneFrameRef.run_is_x(sface) != PaneFrameRef.run_is_x(mode):
 					continue
 				face = sface
 				if cover == GlassOpening.Coverage.FULL:
@@ -2346,7 +2368,7 @@ func _apply_opening_to_region(region: Dictionary) -> int:
 	if face != -1:
 		_glass_applied_openings.append({
 			"anchor": anchor, "opening": opening_id,
-			"run_is_x": (face == Face.SW or face == Face.NE)})
+			"run_is_x": (face == Face.SW or face == Face.NE), "face": face})
 	return swapped
 
 

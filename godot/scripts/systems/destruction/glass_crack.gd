@@ -27,6 +27,7 @@ class_name GlassCrack
 const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.gd")
 ## CRACK-04 — B4's one hash, for the variant pick. Same owner the bake uses.
 const FacadeSampler = preload("res://godot/scripts/systems/facade_sampler.gd")
+const PaneFrameRef = preload("res://godot/scripts/systems/destruction/pane_frame.gd")
 
 ## G-D14 — the crack web's reach, per hole width, as (run, level) voxel radii.
 ## This is the set of voxels that enter the CRACKED STATE, and — since CRACK-02
@@ -273,9 +274,12 @@ static func resolve_craze_sheet(plan: Dictionary, base_key: String) -> void:
 ## which the pane clip discards anyway.
 ##
 ## Returns {} when the pane holds no glass at all.
+## ROOF 3c: the hosts may be a SKYLIGHT's CEILING slabs (`face` = `PaneFrame.HORIZONTAL`): the extent is then in (x, y) at their
+## level, `run_axis` 2, and the result carries `centre_v` (the y); for a wall pane `centre_v` is the centre level, as before.
 static func plan_pane_field(pane_slices: Array, face: int, intensity: float) -> Dictionary:
 	if pane_slices.is_empty():
 		return {}
+	var horizontal: bool = face == PaneFrameRef.HORIZONTAL
 	var run_is_x: bool = (face == Face.SW or face == Face.NE)
 	var run_lo: int = 0
 	var run_hi: int = 0
@@ -287,35 +291,39 @@ static func plan_pane_field(pane_slices: Array, face: int, intensity: float) -> 
 	for s in pane_slices:
 		if pane_id == "":
 			pane_id = s.pane_id
-		var s_base: int = GeometryCoordsMod.storey_level_base(s.start_storey)
+		var is_slice: bool = s is Slice
+		var s_base: int = GeometryCoordsMod.storey_level_base(s.start_storey) if is_slice else 0
 		var packed: PackedInt32Array = VoxelStore.cells_of(s)
 		for o in range(0, packed.size(), VoxelStore.CELL_STRIDE):
 			## ⚠️ `material_at()`, never `slice.material` — a G-D9 banded window
 			## keeps its brick sill and head in these same slices, and the field
 			## must not reach across them. Same rule `plan_pane_crack()` walks.
-			if not GlassMaterials.is_glass(s.material_at(packed[o + 2] - s_base)):
+			## (A skylight's slab is one material.)
+			if not GlassMaterials.is_glass(s.material_at(packed[o + 2] - s_base) if is_slice else s.material):
 				continue
-			var run: int = packed[o] if run_is_x else packed[o + 1]
+			var uv: Vector2i = PaneFrameRef.to_uv(face, Vector3i(packed[o], packed[o + 1], packed[o + 2]))
+			var run: int = uv.x
 			## The EXTENT counts DESTROYED glass, exactly as the crack's does: a
 			## hole is still part of the pane, and clipping the field to the
 			## standing glass would shrink it every time the pane took a hit.
 			if not seen:
 				run_lo = run
 				run_hi = run
-				lvl_lo = packed[o + 2]
-				lvl_hi = packed[o + 2]
-				cross = packed[o + 1] if run_is_x else packed[o]
+				lvl_lo = uv.y
+				lvl_hi = uv.y
+				cross = PaneFrameRef.fixed_of(face, Vector3i(packed[o], packed[o + 1], packed[o + 2]))
 				seen = true
 			else:
 				run_lo = mini(run_lo, run)
 				run_hi = maxi(run_hi, run)
-				lvl_lo = mini(lvl_lo, packed[o + 2])
-				lvl_hi = maxi(lvl_hi, packed[o + 2])
+				lvl_lo = mini(lvl_lo, uv.y)
+				lvl_hi = maxi(lvl_hi, uv.y)
 	if not seen:
 		return {}
 	var c_run: int = (run_lo + run_hi) / 2
-	var c_lvl: int = (lvl_lo + lvl_hi) / 2
-	var centre_cell := Vector2i(c_run, cross) if run_is_x else Vector2i(cross, c_run)
+	var c_lvl: int = (lvl_lo + lvl_hi) / 2   ## the centre's v: a level, or a skylight's y
+	var centre3: Vector3i = PaneFrameRef.to_cell(face, Vector2i(c_run, c_lvl), cross)
+	var centre_cell := Vector2i(centre3.x, centre3.y)
 	var lo := Vector2(float(run_lo - c_run), float(lvl_lo - c_lvl))
 	var hi := Vector2(float(run_hi - c_run), float(lvl_hi - c_lvl))
 	## The quad is symmetric about the centre cell (`Sprite2D.centered`), so it has
@@ -327,11 +335,12 @@ static func plan_pane_field(pane_slices: Array, face: int, intensity: float) -> 
 	var sheet: String = craze_sheet_id_for(intensity)
 	return {
 		"pane_id": pane_id,
-		"run_axis": 0 if run_is_x else 1,
+		"run_axis": 2 if horizontal else (0 if run_is_x else 1),
 		"face": face,
 		"centre_cell": centre_cell,
-		"centre_level": c_lvl,
+		"centre_level": centre3.z,
 		"centre_run": c_run,
+		"centre_v": c_lvl,
 		"pane_lo": lo,
 		"pane_hi": hi,
 		"span": span,

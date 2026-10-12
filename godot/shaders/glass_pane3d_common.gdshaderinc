@@ -37,7 +37,7 @@ varying vec3 v_local;  // model space: a FALLING voxel's rim ink is read here, s
 // square frame of +-open_half voxels around its struck cell). A fragment inside one is discarded, so
 // the cells the hole touches are torn along the polygon instead of ending in a rectangle.
 uniform int open_count = 0;
-uniform vec4 open_a[16]; // (anchor.x, anchor.y, anchor level, 1 = runs along X)
+uniform vec4 open_a[16]; // (anchor.x, anchor.y, anchor level, 1 = runs along X, 0 = along Z, 2 = a skylight: in (x, z) at its level)
 uniform sampler2DArray open_masks : filter_linear, repeat_disable;
 uniform float open_half = 4.0;
 uniform int mesh_ground_level = 80;
@@ -61,13 +61,14 @@ bool glass_cut_open() {
 		float level_c = p.y + float(mesh_ground_level);
 		for (int i = 0; i < open_count; i++) {
 			vec4 a = open_a[i];
+			bool horizontal = a.w > 1.5;   // ROOF 3c: a skylight's opening lies in (x, z) at its level
 			bool run_x = a.w > 0.5;
-			float cross_v = floor(run_x ? pn.z : pn.x);
-			if (cross_v != (run_x ? a.y : a.x)) {
+			float cross_v = horizontal ? floor(pn.y + float(mesh_ground_level)) : floor(run_x ? pn.z : pn.x);
+			if (cross_v != (horizontal ? a.z : (run_x ? a.y : a.x))) {
 				continue;
 			}
-			float dr = (run_x ? p.x - (a.x + 0.5) : p.z - (a.y + 0.5));
-			float dl = level_c - (a.z + 0.5);
+			float dr = horizontal ? p.x - (a.x + 0.5) : (run_x ? p.x - (a.x + 0.5) : p.z - (a.y + 0.5));
+			float dl = horizontal ? p.z - (a.y + 0.5) : level_c - (a.z + 0.5);
 			vec2 uv = vec2((dr + open_half) / (2.0 * open_half), (open_half - dl) / (2.0 * open_half));
 			if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0
 					&& texture(open_masks, vec3(uv, float(i))).r > 0.5) {

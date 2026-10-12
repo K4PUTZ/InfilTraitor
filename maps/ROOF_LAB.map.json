@@ -778,6 +778,17 @@
        "hold": 600
       }
      ]
+    },
+    {
+     "id": "skylight_rail",
+     "keys": [
+      {
+       "frame": "detail",
+       "target": "@skylight",
+       "view": "N",
+       "hold": 200
+      }
+     ]
     }
    ],
    "takes": [
@@ -793,6 +804,19 @@
      "length": 600,
      "seed": 1,
      "note": "ROOF RF-1: the agent inside room A, a grenade in its far corner under the skylight's edge"
+    },
+    {
+     "id": "skylight_hit",
+     "profile": "engine",
+     "rail": "skylight_rail",
+     "steps": [
+      "skylight_hit"
+     ],
+     "at_key": 0,
+     "after_hold": 20,
+     "length": 160,
+     "seed": 1,
+     "note": "ROOF RF-1 step 3c: the dev hit on the skylight (a round hole at its centre, a craze field over the rest) until the blast and the shot reach skylights"
     }
    ]
   }

@@ -16,6 +16,7 @@ class_name GlassCrackMirror3D
 extends Node3D
 
 const SHADER_PATH: String = "res://godot/shaders/glass_crack3d.gdshader"
+const PaneFrameRef = preload("res://godot/scripts/systems/destruction/pane_frame.gd")
 
 ## The record's uniforms, copied verbatim.
 const MIRRORED: Array[String] = [
@@ -125,6 +126,8 @@ func _make_twin(rec: Dictionary) -> Dictionary:
 ## The face's outward normal (the side its quad is lifted to, `_placement`).
 func _outward(rec: Dictionary) -> Vector3:
 	match int(rec.get("face", Face.SW)):
+		PaneFrameRef.HORIZONTAL:
+			return Vector3.UP   ## ROOF 3c: a skylight's crack lies on its top
 		Face.SE:
 			return Vector3.RIGHT
 		Face.NE:
@@ -142,6 +145,11 @@ func _pane_thickness(rec: Dictionary) -> int:
 	var run_is_x: bool = int(rec["run_axis"]) == 0
 	var cell: Vector2i = rec["impact_cell"]
 	var n: int = 0
+	if int(rec.get("face", -1)) == PaneFrameRef.HORIZONTAL:
+		for d: int in [-1, 0, 1]:
+			if store.has_glass_pane(cell.x, cell.y, int(rec["impact_level"]) + d):
+				n += 1
+		return maxi(n, 1)
 	for d: int in [-1, 0, 1]:
 		var cx: int = cell.x if run_is_x else cell.x + d
 		var cy: int = cell.y + d if run_is_x else cell.y
@@ -164,22 +172,30 @@ func _make_strips(rec: Dictionary, mat: ShaderMaterial) -> MeshInstance3D:
 	if span.x <= 0.0 or span.y <= 0.0:
 		return null
 	var run_is_x: bool = int(rec["run_axis"]) == 0
+	var horizontal: bool = int(rec.get("face", -1)) == PaneFrameRef.HORIZONTAL
 	var cell: Vector2i = rec["impact_cell"]
-	var run_c: float = float(cell.x if run_is_x else cell.y)       ## the impact voxel's run index
+	var run_c: float = float(cell.x if (run_is_x or horizontal) else cell.y)       ## the impact voxel's run index (a skylight's x)
 	var lvl_abs: int = int(rec["impact_level"])
-	var lvl_c: float = float(lvl_abs - _ground_level)
+	## The strips' "height" axis is the pane's v: the level for a wall pane, a skylight's y (ROOF 3c).
+	var lvl_c: float = float(cell.y) if horizontal else float(lvl_abs - _ground_level)
 	## The pane's thickness, read from the store (2026-10-10: assuming the impact cell's own voxel put the strips one voxel off):
 	## the cross cells around the impact that hold a pane voxel.
 	var cross_i: int = cell.y if run_is_x else cell.x
 	var t_lo: int = cross_i
 	var t_hi: int = cross_i
 	var store: VoxelStore = VoxelStore.active
+	if horizontal:
+		## A skylight's thickness is across its levels (relative to the ground, like any height).
+		cross_i = lvl_abs - _ground_level
+		t_lo = cross_i
+		t_hi = cross_i
 	if store != null:
 		var found: Array = []
 		for d: int in [-1, 0, 1]:
-			var cx: int = cell.x if run_is_x else cross_i + d
-			var cy: int = cross_i + d if run_is_x else cell.y
-			if store.has_glass_pane(cx, cy, lvl_abs):
+			var cx: int = cell.x if (run_is_x or horizontal) else cross_i + d
+			var cy: int = cell.y if horizontal else (cross_i + d if run_is_x else cell.y)
+			var cl: int = lvl_abs + d if horizontal else lvl_abs
+			if store.has_glass_pane(cx, cy, cl):
 				found.append(cross_i + d)
 		if not found.is_empty():
 			t_lo = found.min()
@@ -187,6 +203,8 @@ func _make_strips(rec: Dictionary, mat: ShaderMaterial) -> MeshInstance3D:
 	var lift: float = FACE_LIFT_VOXELS
 	## A point (run, height, across) in voxel units -> the geometry root's space.
 	var at := func(r: float, h: float, t: float) -> Vector3:
+		if horizontal:
+			return Vector3(r, t, h) * _unit   ## a skylight: r = x, h = y (world z), t = the level (world y)
 		return (Vector3(r, h, t) if run_is_x else Vector3(t, h, r)) * _unit
 	var uv := func(off: Vector2) -> Vector2: return Vector2(off.x / span.x + 0.5, 0.5 - off.y / span.y)
 	## An offset `o` of the crack is the point run_c + 0.5 + o (the impact voxel's centre is 0). `crack_pane_lo/hi` come two ways: a
@@ -260,6 +278,11 @@ func _placement(rec: Dictionary) -> Transform3D:
 	var lift: float = FACE_LIFT_VOXELS
 	var x: float = float(cell.x) + 0.5
 	var z: float = float(cell.y) + 0.5
+	if face == PaneFrameRef.HORIZONTAL:
+		## ROOF 3c: on a skylight's top, lifted up; local x = +X (u), local y = +Z (v = y), so its normal points down and
+		## `crack_side` shows it from above (the back twin, under the glass, from below).
+		var top: float = float(int(rec["impact_level"]) - _ground_level) + 1.0 + lift
+		return Transform3D(Basis(Vector3.RIGHT, Vector3.BACK, Vector3.RIGHT.cross(Vector3.BACK)), Vector3(x, top, z) * _unit)
 	## Each face stands on its own edge of the voxel: SW and SE are the near ones (+Z, +X),
 	## NE and NW the far ones (-Z, -X); a far face's lift goes the other way.
 	match face:
@@ -311,7 +334,8 @@ func _sync_openings() -> void:
 	for i: int in range(used.size()):
 		var rec: Dictionary = used[i]
 		var a: Vector3i = rec["anchor"]
-		params[i] = Vector4(float(a.x), float(a.y), float(a.z), 1.0 if bool(rec["run_is_x"]) else 0.0)
+		var mode: float = 2.0 if int(rec.get("face", -1)) == PaneFrameRef.HORIZONTAL else (1.0 if bool(rec["run_is_x"]) else 0.0)
+		params[i] = Vector4(float(a.x), float(a.y), float(a.z), mode)
 		var mask_key: String = "%s|%d" % [String(rec["opening"]), n]
 		var img: Image = _open_mask_cache.get(mask_key)
 		if img == null:

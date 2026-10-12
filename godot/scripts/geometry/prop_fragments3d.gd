@@ -41,7 +41,7 @@ var _settled_at: PackedByteArray = PackedByteArray()   ## per fragment: 1 once i
 
 
 ## A live one: steps `sim` every frame until it is done. `zone_materials[zone]` is the material id of each zone of the sim.
-## `rubble` (ROOF R-D9, a shot's sub-voxels): the cubes read the light of the cell they are IN (`OWN_LEVEL_LIGHT`), not the floor's.
+## `rubble` (ROOF R-D9, a shot's sub-voxels): the cubes carry their light and soot in their colour (`BAKED_LIGHT`), not the floor's.
 func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array, rubble: bool = false) -> void:
 	_board = board
 	_sim = sim
@@ -132,13 +132,13 @@ func _exit_tree() -> void:
 		_board.call("unregister_prop_light_material", _mat)
 
 
-## The prop shader with `OWN_LEVEL_LIGHT` defined, built once from the graded source.
+## The prop shader with `BAKED_LIGHT` defined, built once from the graded source.
 static func _rubble_shader() -> Shader:
 	if _rubble_shader_cache == null:
 		var code: String = BoardLook.graded_shader(SHADER_PATH).code
 		var at: int = code.find("shader_type spatial;")
 		_rubble_shader_cache = Shader.new()
-		_rubble_shader_cache.code = code.insert(at + "shader_type spatial;".length(), "\n#define OWN_LEVEL_LIGHT")
+		_rubble_shader_cache.code = code.insert(at + "shader_type spatial;".length(), "\n#define BAKED_LIGHT")
 	return _rubble_shader_cache
 
 

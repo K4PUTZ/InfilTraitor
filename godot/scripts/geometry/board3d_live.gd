@@ -2000,6 +2000,32 @@ func crack_mirror() -> Node3D:
 	return _crack_mirror
 
 
+## The multiplier one ring of the soot ladder gives a face (`soot_mult`), 1.0 for clean.
+func soot_ring_mult(ring: int) -> float:
+	return _soot_mult[ring] if ring >= 0 and ring < _soot_mult.size() else 1.0
+
+
+## ROOF R-D9 (Director, 2026-10-12): the shade one SIDE face of a voxel draws with, as `OPAQUE_SHADER` computes it (the face's tone
+## for this view x the cell's light bucket x its soot ring on that face), so a broken voxel's sub-voxels can take over its look
+## exactly. `x_normal`: the face looks along x (else along z, the board's y). The facade and the material colour are not in it.
+func face_shade(x: int, y: int, level: int, x_normal: bool) -> float:
+	var board: VoxelBoard = _room._voxel_board if _room != null else null
+	if board == null or _tone.size() < 3 or _light_ladder.is_empty():
+		return 1.0
+	var slots: Vector2i = VIEW_FACE_SLOTS[_view]
+	var slot: int = slots.x if x_normal else slots.y
+	var bucket: int = board.cell_bucket_at(level, Vector2i(x, y))
+	var light: float = _light_ladder[clampi(bucket, 0, _light_ladder.size() - 1)]   ## the shader's clamp(bucket, 0, 11)
+	var code: int = board.cell_soot_at(level, Vector2i(x, y))
+	var ring: int = int(float(code % 36) / 6.0) if slot == 1 else code % 6
+	var soot: float = 1.0
+	if ring <= 3 and _soot_mult.size() > ring:
+		soot = _soot_mult[ring]
+	elif ring == 5:
+		soot = (BoardLook.SOOT_CHAR_MIN + BoardLook.SOOT_CHAR_MAX) * 0.5
+	return _tone[slot] * light * soot
+
+
 func on_shot_commit(touched: Array) -> void:
 	_commit_touched(touched, "shot", true)
 

@@ -41,11 +41,7 @@ void vertex() {
 void fragment() {
 	bool inside;
 	ivec3 cell;
-#ifdef OWN_LEVEL_LIGHT
-	vec4 t = plane_texel_own(v_world, inside, cell);
-#else
 	vec4 t = plane_texel(v_world, inside, cell);
-#endif
 	float lum = 1.0;
 	float soot = 1.0;
 	if (inside) {
@@ -67,5 +63,11 @@ void fragment() {
 		detail = texture(facade, mix(fr, 2.0 - fr, step(1.0, fr))).r;
 	}
 	float light = contrast == 1.0 ? lum * key : pow(lum * key, contrast);
+#ifdef BAKED_LIGHT
+	// ROOF R-D9 (a shot's rubble): the light AND the soot are already in the instance colour (the shade of the wall face each cube
+	// replaces, `Board3DLive.face_shade()`), so the cubes enter the hole looking like the wall they were and keep that tone as they fall.
+	light = 1.0;
+	soot = 1.0;
+#endif
 	ALBEDO = base * pow(vec3(light * soot * detail), vec3(2.2));
 }

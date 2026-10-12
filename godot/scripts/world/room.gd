@@ -5845,9 +5845,13 @@ func _on_prop_fragments_settled(records: Array, base_gu: Vector2i, y0: float, zo
 ## material}]. `push_dir`: the shot's direction in geometry-root space. Returns the sub-voxels placed.
 const RubblePresetsRef = preload("res://godot/scripts/systems/destruction/rubble_presets.gd")
 static var RUBBLE_HOLD_S: float = 0.33
-## The fragment shader has no face-direction shading and the wall does: measured 2026-10-12 (PLAYGROUND concrete, the impact frame of a
-## shotgun shot) flat sub-voxels in the facade's mean tone read ~78/255 against the wall's ~54 around them; their ratio scales the colour.
-static var RUBBLE_TONE_SCALE: float = 0.95
+## The sub-voxels take over the shade of the face the shot struck (`Board3DLive.face_shade()`: the side's tone, the cell's light, its
+## soot) and keep it as they fall (Director, 2026-10-12: they enter looking like the wall, then form the pile in the wall's darker
+## tone); a small brightness variation between cubes, so a pile still reads as cubes.
+static var RUBBLE_JITTER: float = 0.03
+## ...and they darken WITH the wall: the shot's soot lands two frames after the impact (`apply_shot_soot()`), the cells beside the
+## hole at ring 0 + `SHOT_SOOT_LIGHTEN`, and the sub-voxels take that ring at the same moment, at once.
+static var RUBBLE_SOOT_DELAY_S: float = 0.05
 
 
 func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
@@ -5860,7 +5864,8 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 	var back := Vector2(-push_dir.x, -push_dir.z).normalized() if Vector2(push_dir.x, push_dir.z).length() > 0.001 else Vector2.ZERO
 	var reach: float = (absf(back.x) + absf(back.y)) * float(div - 1) * 0.5
 	var zone_materials: Array = []
-	var tones := PackedFloat32Array()
+	var shade := PackedFloat32Array()
+	var x_normal: bool = absf(push_dir.x) > absf(push_dir.z)
 	var zones := PackedInt32Array()
 	var release := PackedFloat32Array()
 	var speed := PackedFloat32Array()
@@ -5871,16 +5876,17 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 		if z < 0:
 			z = zone_materials.size()
 			zone_materials.append(mat)
-			tones.append(RUBBLE_TONE_SCALE)
 		var gp: Vector2i = c["grid_pos"]
 		var lv: int = int(c["level"])
 		var variant: int = RubblePresetsRef.variant_of(gp, lv)
 		var h: int = FacadeSampler._fnv1a_hash("RUBBLE|%d,%d,%d" % [gp.x, gp.y, lv])
+		var face: float = float(live.call("face_shade", gp.x, gp.y, lv, x_normal))
 		for a in range(div):
 			for b in range(div):
 				for cc in range(div):
 					lattice.append(Vector3i(gp.x * div + a, (lv - ground) * div + b, gp.y * div + cc))
 					zones.append(z)
+					shade.append(face)
 					var off := Vector2(float(a) - float(div - 1) * 0.5, float(cc) - float(div - 1) * 0.5)
 					var outward: float = clampf(0.5 + off.dot(back) / maxf(reach * 2.0, 0.001), 0.0, 1.0)
 					var h01: float = float(PropFragmentSim._mix(h, (a * div + b) * div + cc) % 1000) / 1000.0
@@ -5900,14 +5906,15 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 		return not WallEdgeData.is_edge_blocked(from, to, edges)
 	var sim := PropFragmentSim.new({"cells": lattice, "zones": zones, "origin": Vector3.ZERO,
 		"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS * div), "blast": Vector2.ZERO, "weight": 1.0, "seed": seed,
-		"wave_delay": 0.0, "push_dir": push_dir, "carve": false, "char": false, "stack": stack, "solid": solid, "can_cross": cross,
-		"hold": RUBBLE_HOLD_S, "tones": tones, "release": release, "speed": speed})
+		"wave_delay": RUBBLE_SOOT_DELAY_S, "push_dir": push_dir, "carve": false, "char": false, "stack": stack, "solid": solid, "can_cross": cross,
+		"hold": RUBBLE_HOLD_S, "shade": shade, "char_time": 0.0,
+		"char_tone": float(live.call("soot_ring_mult", BlastCalculator.SHOT_SOOT_LIGHTEN)), "jitter": RUBBLE_JITTER, "release": release, "speed": speed})
 	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)
 	var landed_so_far: Array = []
 	node.landed.connect(func(records: Array) -> void:
 		landed_so_far.append_array(records)
 		_soot_under_rubble(landed_so_far))
-	node.settled.connect(_on_rubble_settled.bind(zone_materials, tones))
+	node.settled.connect(_on_rubble_settled.bind(zone_materials))
 	return sim.count
 
 
@@ -5954,7 +5961,7 @@ func _soot_under_rubble(records: Array) -> void:
 	_paint_soot(stamp_soot(writes), "rubble soot")
 
 
-func _on_rubble_settled(records: Array, zone_materials: Array, tones: PackedFloat32Array) -> void:
+func _on_rubble_settled(records: Array, zone_materials: Array) -> void:
 	var div: int = RubblePresetsRef.DIVISION
 	var base_records: Array = []
 	var puffs: Dictionary = {}   ## board voxel column -> [level, zone]: where the chips lie, for the floor dust
@@ -5977,7 +5984,7 @@ func _on_rubble_settled(records: Array, zone_materials: Array, tones: PackedFloa
 		var zone: int = int(lz[1])
 		var def = registry.resolve(String(zone_materials[zone])) if registry != null else null
 		var c: Color = def.base_color if def != null else Color(0.55, 0.55, 0.55)
-		var t: float = tones[zone] if zone < tones.size() else 1.0
+		var t: float = 0.7   ## the dust is the material's colour, a little darker
 		var to: Vector2 = _voxel_board.voxel_world_position(vc, ground - 1 + floori(float(int(lz[0])) / div))
 		if to == Vector2.ZERO:
 			continue

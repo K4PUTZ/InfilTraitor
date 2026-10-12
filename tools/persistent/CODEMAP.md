@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 87586 lines total** (under `godot/scripts/`)
+**295 scripts · 87625 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3327 lines
+extends `Node3D` · 3353 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -901,7 +901,7 @@ extends `Node3D` · 3327 lines
 
 ### `prop_fragment_sim.gd`
 
-`class_name PropFragmentSim` · extends `RefCounted` · 438 lines
+`class_name PropFragmentSim` · extends `RefCounted` · 444 lines
 
 `godot/scripts/geometry/prop_fragment_sim.gd`
 
@@ -935,6 +935,7 @@ extends `Node3D` · 3327 lines
 - `var weight: float = 1.0`
 - `var time: float = 0.0`
 - `var wave_time: float = 0.06`
+- `var char_time: float = CHAR_TIME`
 - `var hold: float = 0.0`
 - `var release: PackedFloat32Array = PackedFloat32Array()`
 - `var pos: PackedVector3Array = PackedVector3Array()`
@@ -948,6 +949,16 @@ extends `Node3D` · 3327 lines
 - `var tone: PackedFloat32Array = PackedFloat32Array()`
 - `var jitter: PackedFloat32Array = PackedFloat32Array()`
 - `var vanish_at: PackedFloat32Array = PackedFloat32Array()`
+
+**Public API**
+- `func is_done() -> bool:`
+- `func advance(delta: float) -> void:`
+- `func step() -> void:`
+- `func pile_records() -> Array:`
+- `func vanished_count() -> int:`
+- `func char_amount(i: int) -> float:`
+- `func char_finished() -> bool:`
+- `func rotation_of(i: int) -> Basis:`
 
 ---
 
@@ -6120,7 +6131,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10587 lines
+extends `Node2D` · 10594 lines
 
 `godot/scripts/world/room.gd`
 

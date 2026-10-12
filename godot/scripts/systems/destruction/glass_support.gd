@@ -84,6 +84,8 @@ static func unsupported(store: Snap) -> Array:
 	for claim: int in range(store.claims):
 		if store.pane[claim] == 0 or (store.state[claim] & 1) == 0:
 			continue
+		if store.pane[claim] == VoxelStore.PANE_HORIZONTAL:   ## ROOF: a skylight's support is RF-1 step 6, not walked yet
+			continue
 		var k: int = claim * 3
 		var cell: int = store.cell_index(store.xyz[k], store.xyz[k + 1], store.xyz[k + 2])
 		if store.owner[cell] != claim:

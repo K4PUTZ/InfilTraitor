@@ -18,7 +18,7 @@
 ##     is not counted.
 ##  7. The glass pane queries (R3D-14): `glass_pane_face_at()` answers from the claims what the hidden glass layer used to. A banded
 ##     glass slice is a pane only on its glass levels, on the slice's face; a glass INTERIOR slab is a pane (face NW), a glass
-##     CEILING slab is not; a cell two glass claims hold answers for the LAST visible one, and for the other once that one is
+##     CEILING slab is a horizontal pane (`PANE_HORIZONTAL`, ROOF R-D5; it was not one before 2026-10-11); a cell two glass claims hold answers for the LAST visible one, and for the other once that one is
 ##     destroyed; a destroyed pane and a cell with no glass answer 0.
 ##  6. `occupancy_dict_after()`, the cook's predicted occupancy, works per CLAIM: a cell two
 ##     claims hold stays occupied while one of them is gone and empties when both are, a
@@ -381,7 +381,7 @@ func test_glass_panes(fixture: Dictionary, store: VoxelStore) -> void:
 	var row_only: int = store.glass_pane_face_at(9, 8, base)
 	## (9, 8) on the brick band: a wall, not a pane.
 	var brick: int = store.glass_pane_face_at(9, 8, base + 1)
-	## The partition is a pane on face NW; the roof is glass and is not.
+	## The partition is a pane on face NW; the glass roof is a HORIZONTAL pane (ROOF R-D5, 2026-10-11: a skylight).
 	var part: int = store.glass_pane_face_at(24, 8, base)
 	var roofed: int = store.glass_pane_face_at(32, 8, base + 4)
 	## A concrete slab cell and an empty cell.
@@ -403,7 +403,7 @@ func test_glass_panes(fixture: Dictionary, store: VoxelStore) -> void:
 	for v: Voxel in [later, earlier]:
 		v.set_damage(Voxel.DamageState.INTACT, false, Voxel.CarvedSide.NONE, 0, 0)
 		v.set_visible(true)
-	var ok: bool = row_only == row.face + 1 and brick == 0 and part == Face.NW + 1 and roofed == 0 \
+	var ok: bool = row_only == row.face + 1 and brick == 0 and part == Face.NW + 1 and roofed == VoxelStore.PANE_HORIZONTAL \
 		and concrete == 0 and empty == 0 and both == later_face and after_later == earlier_face and after_both == 0 \
 		and later_face != earlier_face and store.has_glass_pane(9, 8, base) and not store.has_glass_pane(9, 8, base + 1)
 	_check(ok, "[TEST 7] glass panes: row level %d (face %d), brick band %d, partition %d, roof %d, concrete %d, empty %d; a shared cell answers %d (later), %d once it is gone (earlier), %d once both are"

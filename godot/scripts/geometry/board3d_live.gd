@@ -2552,7 +2552,7 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 			continue
 		var material: int = _store_material[mat[claim]]
 		var glass: bool = _material_glass[material]
-		if glass and GLASS_RIM_ON and pane_of[claim] != 0:
+		if glass and GLASS_RIM_ON and pane_of[claim] != 0 and pane_of[claim] != VoxelStore.PANE_HORIZONTAL:   ## ROOF: a skylight's rim comes later
 			var rim: Array = _glass_rim_record(store, claim, cell, x, y, level, material, int(pane_of[claim]) - 1)
 			if not rim.is_empty():
 				rims.append(rim)
@@ -2607,6 +2607,8 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 ## A pane voxel's face is an EDGE (the pane's thickness or its top) unless it faces along the pane's own normal: a pane on face
 ## NW / SE (`VoxelStore.pane`, Face NW 0, NE 1, SE 2, SW 3) shows its broad faces to Dir.NW / Dir.SE, one on NE / SW to Dir.NE / Dir.SW.
 static func _is_pane_edge(dir: int, face: int) -> bool:
+	if face == VoxelStore.PANE_HORIZONTAL - 1:
+		return dir != Dir.TOP   ## ROOF R-D5: a skylight shows its broad face up; every side is its thickness
 	if dir == Dir.TOP:
 		return true
 	var x_normal: bool = face == 0 or face == 2

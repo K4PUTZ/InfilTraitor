@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**292 scripts · 86568 lines total** (under `godot/scripts/`)
+**292 scripts · 86578 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3268 lines
+extends `Node3D` · 3270 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -2570,7 +2570,7 @@ extends `RefCounted` · 37 lines
 
 ### `glass_support.gd`
 
-`class_name GlassSupport` · 178 lines
+`class_name GlassSupport` · 180 lines
 
 `godot/scripts/systems/destruction/glass_support.gd`
 
@@ -3680,7 +3680,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 873 lines
+`class_name VoxelStore` · extends `RefCounted` · 879 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
@@ -3694,6 +3694,7 @@ extends `Node` · 54 lines
 - `KIND_PROP` = `3`
 - `GEOM_STRIDE` = `7`
 - `CELL_STRIDE` = `4`
+- `PANE_HORIZONTAL` = `5`
 
 **Public vars**
 - `var claims: int = 0`
@@ -5400,7 +5401,7 @@ extends `SceneTree` · 428 lines
 
 `godot/scripts/tools/voxel_store_selftest.gd`
 
-> RENDER3D R3D-1b Test: the shadow `VoxelStore` holds what the objects hold. WHAT THIS PINS, each against `BoardProbe`'s own dump of the OBJECTS, so a check reads "the store says what the objects say" rather than "the store says what this test expects": 1. A built store dumps identically to the objects — a banded slice, slabs, a junction column, a cell two slices claim, and a slab whose voxels are out of box order (which must be found irregular and served by a table, not by the arithmetic). 2. A damage write through `Voxel.set_damage()` lands in the store: dumps identical, and the derived grid follows (destroyed → not occupied). 3. A cell two claims hold: destroying the first hands ownership to the second while the cell stays occupied; destroying both empties it. Grid rebuilt from the claims agrees at each step. 4. A write into the out-of-order slab lands on the right claim. 5. A write the store cannot place is COUNTED: a voxel of a container the store never saw. A container-less projection (`WorldDelta.project_voxel()`) is not a claim and is not counted. 7. The glass pane queries (R3D-14): `glass_pane_face_at()` answers from the claims what the hidden glass layer used to. A banded glass slice is a pane only on its glass levels, on the slice's face; a glass INTERIOR slab is a pane (face NW), a glass CEILING slab is not; a cell two glass claims hold answers for the LAST visible one, and for the other once that one is destroyed; a destroyed pane and a cell with no glass answer 0. 6. `occupancy_dict_after()`, the cook's predicted occupancy, works per CLAIM: a cell two claims hold stays occupied while one of them is gone and empties when both are, a cell one claim holds empties with it, and the store itself is not written (R3D-13: the per-cell predecessor emptied a box corner at the first claim destroyed, which put the cook's light 21 and 13 cells from a full relight on PLAYGROUND).
+> RENDER3D R3D-1b Test: the shadow `VoxelStore` holds what the objects hold. WHAT THIS PINS, each against `BoardProbe`'s own dump of the OBJECTS, so a check reads "the store says what the objects say" rather than "the store says what this test expects": 1. A built store dumps identically to the objects — a banded slice, slabs, a junction column, a cell two slices claim, and a slab whose voxels are out of box order (which must be found irregular and served by a table, not by the arithmetic). 2. A damage write through `Voxel.set_damage()` lands in the store: dumps identical, and the derived grid follows (destroyed → not occupied). 3. A cell two claims hold: destroying the first hands ownership to the second while the cell stays occupied; destroying both empties it. Grid rebuilt from the claims agrees at each step. 4. A write into the out-of-order slab lands on the right claim. 5. A write the store cannot place is COUNTED: a voxel of a container the store never saw. A container-less projection (`WorldDelta.project_voxel()`) is not a claim and is not counted. 7. The glass pane queries (R3D-14): `glass_pane_face_at()` answers from the claims what the hidden glass layer used to. A banded glass slice is a pane only on its glass levels, on the slice's face; a glass INTERIOR slab is a pane (face NW), a glass CEILING slab is a horizontal pane (`PANE_HORIZONTAL`, ROOF R-D5; it was not one before 2026-10-11); a cell two glass claims hold answers for the LAST visible one, and for the other once that one is destroyed; a destroyed pane and a cell with no glass answer 0. 6. `occupancy_dict_after()`, the cook's predicted occupancy, works per CLAIM: a cell two claims hold stays occupied while one of them is gone and empties when both are, a cell one claim holds empties with it, and the store itself is not written (R3D-13: the per-cell predecessor emptied a box corner at the first claim destroyed, which put the cook's light 21 and 13 cells from a full relight on PLAYGROUND).
 
 **Constants / tuning**
 - `BoardProbeClass` = `preload("res://godot/scripts/systems/board_probe.gd")`

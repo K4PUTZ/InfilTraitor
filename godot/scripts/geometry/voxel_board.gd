@@ -2312,8 +2312,8 @@ func _apply_opening_to_region(region: Dictionary) -> int:
 				var pane_face: int = VoxelStore.active.glass_pane_face_at(cell.x, cell.y, level) \
 					if VoxelStore.active != null else 0
 				var skey := Vector3i(cell.x, cell.y, level)
-				if pane_face == 0 or _glass_shaped_cells.has(skey):
-					continue
+				if pane_face == 0 or pane_face == VoxelStore.PANE_HORIZONTAL or _glass_shaped_cells.has(skey):
+					continue   ## (ROOF: a skylight's openings are RF-1 step 3's later sub-step, not cut by a wall's opening)
 				var sface: int = pane_face - 1
 				if (sface == Face.SW or sface == Face.NE) != run_is_x:
 					continue

@@ -139,7 +139,10 @@ uniform float pit_dark = 0.60;     // the inside of a crater (side faces and the
 // soot. Arithmetic, no branch (an untaken branch costs on the Mali): 0 / 1 on every other material.
 uniform float fresh_clean = 0.0;
 uniform float fresh_lift = 1.0;
-uniform float fresh_light = 0.0;  // and a floor under its light: the light field holds a wall's inside unlit, so a hole's back was black
+// A fresh face reads the cell IN FRONT of it (the hole), not its own: the light field holds a wall's inside unlit, so a hole's back
+// drew black; the hole's cell carries the light that reaches the opening, so the face follows the room's light (a lamp put out darkens
+// it too). One fetch either way: 0 = the face's own cell (every other material), 1 = the cell it looks into.
+uniform float fresh_probe = 0.0;
 varying vec3 v_world;
 varying vec3 v_normal;
 // R3D-7 — the cutaway, driven by the OcclusionSet: one texel per grid
@@ -223,7 +226,7 @@ void vertex() {
 }
 void fragment() {
 	// The voxel this pixel belongs to: half a voxel back along the face normal.
-	ivec3 v = ivec3(floor(v_world * 8.0 - v_normal * 0.01));
+	ivec3 v = ivec3(floor(v_world * 8.0 - v_normal * 0.01 + v_normal * fresh_probe));
 	int cs = cut_state(v, FRAGCOORD.xy);
 	if (cs == 1) {
 		discard;
@@ -258,7 +261,7 @@ void fragment() {
 			tone += blur - own_tone;
 		}
 	}
-	f = max(f, fresh_light) * mix(tone, 1.0, fresh_clean) * fresh_lift;
+	f *= mix(tone, 1.0, fresh_clean) * fresh_lift;
 	int rel = level + rel_offset;
 	if (rel < 0) {
 		f *= depth_dim[min(-rel - 1, 4)];
@@ -433,10 +436,10 @@ var _solid_twin: PackedInt32Array = PackedInt32Array()
 ## ROOF R-D9: material index -> its FRESH twin (the faces that look into a hole in a wall; `fresh_clean` / `fresh_lift`), -1 for none.
 ## A fresh twin has its own solid twin (`_solid_twin`), so the cutaway swap works on it as on any material.
 var _fresh_twin: PackedInt32Array = PackedInt32Array()
-## Director 2026-10-12: the concrete inside a hole is fresh — no soot and no shadow at all, a little lighter than the wall.
+## Director 2026-10-12: the concrete inside a hole is fresh — no soot, lit by the light at the opening (never brighter than the room
+## allows: a dark room keeps it dark), a little lighter than the wall.
 static var FRESH_CLEAN: float = 1.0
-static var FRESH_LIFT: float = 1.06
-static var FRESH_LIGHT: float = 1.0
+static var FRESH_LIFT: float = 1.15
 const FRESH_SUFFIX: String = "#fresh"
 var _warned_cut_below: bool = false
 ## PB-6: the chunks the cutaway currently reaches (a ghosted column or a revealed roof GU in them): only these draw the
@@ -1511,7 +1514,7 @@ func _material(material_id: String) -> int:
 			for fm: ShaderMaterial in [fresh, fresh_solid]:
 				fm.set_shader_parameter("fresh_clean", FRESH_CLEAN)
 				fm.set_shader_parameter("fresh_lift", FRESH_LIFT)
-				fm.set_shader_parameter("fresh_light", FRESH_LIGHT)
+				fm.set_shader_parameter("fresh_probe", 1.0)
 			for k: int in range(2):
 				_material_ids.append(material_id + FRESH_SUFFIX + (SOLID_SUFFIX if k == 1 else ""))
 				_material_glass.append(false)
@@ -1999,6 +2002,11 @@ func voxel_centre_local(x: int, y: int, level: int) -> Vector3:
 
 func crack_mirror() -> Node3D:
 	return _crack_mirror
+
+
+## How much lighter a fresh face (inside a hole) is than the light at the opening (`FRESH_LIFT`).
+func fresh_lift() -> float:
+	return FRESH_LIFT
 
 
 ## ROOF R-D9 (Director, 2026-10-12): the shade one SIDE face of a voxel draws with, as `OPAQUE_SHADER` computes it (the face's tone

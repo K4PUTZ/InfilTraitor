@@ -5847,10 +5847,10 @@ const RubblePresetsRef = preload("res://godot/scripts/systems/destruction/rubble
 static var RUBBLE_HOLD_S: float = 0.33
 ## The sub-voxels take over the shade of the face the shot struck WITHOUT its soot (`Board3DLive.face_shade()`: the side's tone and the
 ## cell's light) and keep it as they fall and pile (Director, 2026-10-12: one colour per cube, so no soot on any of them — on every
-## cube it made the pile black). The layers behind the struck face are a little lighter (the concrete inside, up to
-## `RUBBLE_INNER_LIFT`), and a small brightness variation between cubes keeps a pile reading as cubes.
+## cube it made the pile black). The layers ramp from the wall's face (front) to the fresh concrete inside (back, the hole's own
+## faces' `Board3DLive.FRESH_LIFT`): a cube left in the hole reads like the hole's sides (Director, 2026-10-12). A small brightness
+## variation between cubes keeps a pile reading as cubes.
 static var RUBBLE_JITTER: float = 0.03
-static var RUBBLE_INNER_LIFT: float = 0.08
 
 
 func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
@@ -5880,6 +5880,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 		var variant: int = RubblePresetsRef.variant_of(gp, lv)
 		var h: int = FacadeSampler._fnv1a_hash("RUBBLE|%d,%d,%d" % [gp.x, gp.y, lv])
 		var face: float = float(live.call("face_shade", gp.x, gp.y, lv, x_normal, false))
+		var fresh_lift: float = float(live.call("fresh_lift"))
 		for a in range(div):
 			for b in range(div):
 				for cc in range(div):
@@ -5887,7 +5888,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 					zones.append(z)
 					var off := Vector2(float(a) - float(div - 1) * 0.5, float(cc) - float(div - 1) * 0.5)
 					var outward: float = clampf(0.5 + off.dot(back) / maxf(reach * 2.0, 0.001), 0.0, 1.0)
-					shade.append(face * (1.0 + RUBBLE_INNER_LIFT * (1.0 - outward)))
+					shade.append(face * lerpf(1.0, fresh_lift, 1.0 - outward))
 					var h01: float = float(PropFragmentSim._mix(h, (a * div + b) * div + cc) % 1000) / 1000.0
 					var sh: Vector2 = RubblePresetsRef.shape(mat, variant, b, outward, h01)
 					release.append(sh.x)

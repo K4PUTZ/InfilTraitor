@@ -32,6 +32,7 @@
 ## PLAYGROUND but intact for its calibration history (§6b).
 class_name AgentShotController
 
+const RubblePresetsRef = preload("res://godot/scripts/systems/destruction/rubble_presets.gd")
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 
 ## B2, and DECLARED rather than quietly picked, because §6c asks for exactly
@@ -615,7 +616,8 @@ func fire_at_active() -> void:
 		for pe in plan_entries:
 			var pv: Voxel = pe["voxel"]
 			if not prop_hit and int(pe["state"]) == Voxel.DamageState.DESTROYED \
-					and pv.damage_state != Voxel.DamageState.DESTROYED and not GlassMaterials.is_glass(hit_material):
+					and pv.damage_state != Voxel.DamageState.DESTROYED and not GlassMaterials.is_glass(hit_material) \
+						and not RubblePresetsRef.NO_FALL.has(hit_material):
 				rubble_cells.append({"grid_pos": pv.grid_pos, "level": pv.level, "material": hit_material})
 			pv.set_damage(int(pe["state"]), bool(pe["is_blast"]),
 				int(pe["carved_side"]), int(pe["variant"]), int(pe["substrate"]))

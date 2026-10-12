@@ -2081,7 +2081,7 @@ var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
 ## which is the one row that is a hard rule rather than a level on a dial.
 var vfx_impact_profiles: Dictionary = {
 	"metal":    {"sparks": 16, "smoke": false, "dust": false, "chips": 0},
-	"stone":    {"sparks": 7,  "smoke": false, "dust": true,  "chips": 0},
+	"stone":    {"sparks": 7,  "smoke": false, "dust": true,  "dust_chance": 0.25, "chips": 0},   ## Director 2026-10-12: one round in four
 	"concrete": {"sparks": 2,  "smoke": true,  "dust": true,  "chips": 0},
 	## Brick follows stone, a little more fragile (Director 2026-10-05): fewer sparks.
 	"brick":    {"sparks": 5,  "smoke": false, "dust": true,  "chips": 0},
@@ -2090,7 +2090,7 @@ var vfx_impact_profiles: Dictionary = {
 ## Per-impact spark count jitter, so 24 pellets do not all throw the identical
 ## fan. Multiplies the profile's own count.
 var vfx_impact_spark_jitter: float = 0.35
-## A round's sand trickle (concrete, stone, brick): the chance one struck voxel leaves one (Director 2026-10-12: one round in two).
+## A round's sand trickle (concrete, stone, brick): the chance one struck voxel leaves one (Director 2026-10-12: one round in two; a profile's `dust_chance` overrides it, stone's is one in four).
 var vfx_impact_dust_chance: float = 0.5   ## Director 2026-10-12: half the rounds leave a trickle
 ## RENDER3D: how far in front of the struck face (grid units) a wall impact's smoke and sparks are born. A shot
 ## leaves its voxel SOLID (dented), and the 3D VFX are depth-tested, so an emission at the voxel's centre was
@@ -5376,7 +5376,7 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 	if bool(profile.get("smoke", false)):
 		_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id),
 			1.0, 1.0, 0, 1.0, 0.0, floor_pos, anchor_3d)
-	if bool(profile.get("dust", false)) and randf() < vfx_impact_dust_chance:
+	if bool(profile.get("dust", false)) and randf() < float(profile.get("dust_chance", vfx_impact_dust_chance)):
 		_debris_overlay.add_sand_trickle(origin, floor_pos, _vfx_material_base_color(material_id))
 	var chips: int = int(profile.get("chips", 0))
 	if chips > 0:

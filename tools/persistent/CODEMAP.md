@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 87637 lines total** (under `godot/scripts/`)
+**295 scripts · 87641 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2590,7 +2590,7 @@ extends `RefCounted` · 37 lines
 
 ### `rubble_presets.gd`
 
-`class_name RubblePresets` · extends `RefCounted` · 51 lines
+`class_name RubblePresets` · extends `RefCounted` · 53 lines
 
 `godot/scripts/systems/destruction/rubble_presets.gd`
 
@@ -5722,13 +5722,14 @@ extends `Node2D` · 63 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1216 lines
+`class_name AgentShotController` · 1218 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
 > AgentShotController — WEAPON_MASTER_PLAN §6c: THE AGENT SHOOTS. The Director's own scoping of the wave (2026-08-16): *"O que a gente quer testar agora é só a mecânica de mirar da GU A para a GU B e o tiro acertar a parede C atrás. Pra isso só precisamos de um inimigo em qualquer posição, e ao clicar nele + 'disparar', como fizemos com a granada, o agente atira, e por falta de outra opção, erra sempre o alvo (por enquanto)."* THIS IS D25 LITERALLY — a shot always targets an ACTOR, picked through the same contextual menu the grenade already uses. It is NOT §5c's aim mode: D31's weapon slots and `S` key and D32's Tab-cycled target list with a visible hit percentage are combat-phase surface, explicitly out of this wave. D32 later replaces this menu AS A UI while leaving D25's principle untouched, so nothing here is written to survive it — the parts worth keeping are the roll (ShotHitRoll), the origin (Agent.muzzle_origin()) and the off-axis aim (BlastCalculator's aim_offset_deg), all of which live outside this file. WHAT IT REUSES RATHER THAN REBUILDS, which is most of it: §6c's own audit found that everything downstream of a miss shipped in July. The pellet selection, the impact resolution, D30's punch ladder, the bullet marks, the face-local soot and the whole decal pipeline are called here exactly as WeaponBenchController calls them. What is genuinely new is that a shot now leaves an ACTOR AT A POSITION and that something is drawn between the muzzle and the wall. WHY IT IS A SECOND CONTROLLER AND NOT A BRANCH INSIDE WeaponBenchController: that one owns static props placed on a bench — it holds `_weapons` rows with their own GU cells, facings and shot counters, and PLAYGROUND retired every one of them on 2026-08-17. Threading an actor through its prop model would have meant a fake prop standing in for the agent, which is the substitution this project's evidence rules ban. The bench file stays as it is, unused by PLAYGROUND but intact for its calibration history (§6b).
 
 **Constants / tuning**
+- `RubblePresetsRef` = `preload("res://godot/scripts/systems/destruction/rubble_presets.gd")`
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `WEAPON_ID` = `"shotgun"`
 

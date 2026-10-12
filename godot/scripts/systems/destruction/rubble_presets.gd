@@ -22,6 +22,8 @@ static var SPEED: Dictionary = {
 	"concrete": 0.9, "stone": 0.9, "brick": 1.0, "metal": 0.7,
 	"wood": 1.3, "plywood": 1.3, "cardboard": 1.5, "fabric": 1.1, "generic": 1.0,
 }
+## Materials whose broken voxels do NOT crumble (Director, 2026-10-12: stone gives a hole and the bullet-hole dust, nothing falls).
+static var NO_FALL: Array[String] = ["stone"]
 static var LAYER_STEP_S: float = 0.045   ## seconds between two layers of a block leaving
 static var JITTER_S: float = 0.03        ## a hashed extra delay per sub-voxel, so a layer does not leave as one slab
 

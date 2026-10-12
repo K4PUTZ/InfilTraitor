@@ -1,6 +1,6 @@
 # INFILTRAITOR — Roadmap
 
-> 🏠 **2026-10-11 — NEXT: A1d, destroyed roofs, before A1b (the agent's model).** The glass track closed the same day (Moto worst 184-191 ms, Galaxy 144-171 ms). Plan: [`ROOF_MASTER_PLAN`](../../PROMPTS/PLANNING/ROOF_MASTER_PLAN.md); glass roof first, the other materials follow it.
+> 🏠 **2026-10-12 — A1d IN PROGRESS: the glass skylight breaks under a grenade (RF-1 steps 1-4 + the burst built); next the shot on a roof + RF-S. Record: `PROMPTS/RESUMO_SESSAO_2026-10-12_ROOF_RF1.md`.** Was: **2026-10-11 — NEXT: A1d, destroyed roofs, before A1b (the agent's model).** The glass track closed the same day (Moto worst 184-191 ms, Galaxy 144-171 ms). Plan: [`ROOF_MASTER_PLAN`](../../PROMPTS/PLANNING/ROOF_MASTER_PLAN.md); glass roof first, the other materials follow it.
 
 > 🎥 **2026-10-10 — dev tooling planned: `CAPTURE_RAILS_MASTER_PLAN` (v0.3, nothing built).** The map's anchors in GU (`layout`
 > section: compass, bounds and envelope, POIs, regions, objectives), capture profiles (desktop 1920×1080 with the HUD hidden for

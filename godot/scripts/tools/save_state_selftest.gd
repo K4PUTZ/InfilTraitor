@@ -39,6 +39,7 @@ class RoomStub extends RefCounted:
 	var _base_shattered_props: Dictionary = {}
 	var _base_debris: Dictionary = {}
 	var _base_prop_piles: Dictionary = {}
+	var _base_rubble_piles: Array = []
 	var projected: int = 0
 	func project_soot_store() -> void:
 		projected += 1
@@ -214,8 +215,17 @@ func _test_props_round_trip() -> void:
 	## A pile on the 4x finer fragment lattice carries its division; a pile with none (an older save) is read as 1.
 	a._base_prop_piles[Vector2i(8, 8)] = {"y0": 0.0, "zone_materials": ["wood"], "div": 4, "records": [
 		{"col": Vector2i(197, 201), "level": 3, "mult": 0.25, "zone": 0}]}
+	## ROOF R-D9: a shot's rubble (a list, two piles may share a GU).
+	a._base_rubble_piles.append({"y0": 0.0, "zone_materials": ["concrete", "wood"], "div": 1, "records": [
+		{"col": Vector2i(40, 41), "level": 0, "mult": 1.0, "zone": 0}, {"col": Vector2i(40, 41), "level": 1, "mult": 0.97, "zone": 1}]})
+	a._base_rubble_piles.append({"y0": 0.0, "zone_materials": ["concrete"], "div": 1, "records": [
+		{"col": Vector2i(40, 41), "level": 2, "mult": 1.0, "zone": 0}]})
 	var b := RoomStub.new()
 	_check(SaveState.restore(b, SaveState.capture(a)), "props: restore() accepts what capture() produced")
+	_check(b._base_rubble_piles.size() == 2 and b._base_rubble_piles[0]["zone_materials"] == ["concrete", "wood"] \
+		and b._base_rubble_piles[0]["records"].size() == 2 and b._base_rubble_piles[0]["records"][1]["col"] == Vector2i(40, 41) \
+		and int(b._base_rubble_piles[0]["records"][1]["zone"]) == 1 and int(b._base_rubble_piles[1]["records"][0]["level"]) == 2,
+		"rubble: both piles of a shot's rubble came back with every cube")
 	var fine: Dictionary = b._base_prop_piles.get(Vector2i(8, 8), {})
 	_check(not fine.is_empty() and int(fine.get("div", 0)) == 4 and fine["records"][0]["col"] == Vector2i(197, 201),
 		"props: a pile on the fragment lattice keeps its division and its fine columns")
@@ -243,7 +253,8 @@ func _test_props_round_trip() -> void:
 		and c._base_prop_piles.is_empty(),
 		"props: a save written before R3D-PROPS restores as nothing shattered and no debris")
 	SaveState.clear_run_state(a)
-	_check(a._base_shattered_props.is_empty() and a._base_debris.is_empty() and a._base_prop_piles.is_empty(),
+	_check(a._base_shattered_props.is_empty() and a._base_debris.is_empty() and a._base_prop_piles.is_empty() \
+		and a._base_rubble_piles.is_empty(),
 		"props: clear_run_state empties the shattered set, the debris and the piles")
 
 

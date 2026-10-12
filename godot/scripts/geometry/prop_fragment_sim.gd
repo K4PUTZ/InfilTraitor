@@ -24,6 +24,11 @@ const SLIDE_TIME: float = 0.07
 ## Outward speed (GU/s) at weight 1, and the up-kick.
 const PUSH_SPEED: float = 1.3
 const PUSH_UP: float = 1.2
+## ROOF R-D9 — a SHOT's broken voxels (`push_dir`): speed along the shot (GU/s, hashed in the range), the up-kick, and the sideways spread
+## (a share of the speed, ±). Tuned by eye; `var` so a calibration can move them (rule 1).
+static var SHOT_SPEED: Vector2 = Vector2(0.7, 1.9)
+static var SHOT_UP: Vector2 = Vector2(0.3, 1.1)
+static var SHOT_SPREAD: float = 0.45
 ## The charred tone of a fragment: a multiplier on its colour, `BoardLook.char_mult(h)` = `lerp(MIN, MAX, h*h)` (mostly dark, some lighter; D-P5).
 ## Seconds over which a fragment goes from its own colour to its charred tone, starting at the wave.
 const CHAR_TIME: float = 0.30
@@ -70,6 +75,7 @@ var _slide_t: PackedFloat32Array = PackedFloat32Array()
 var _seed: int = 0               ## the blast's seed, hashed once
 var _frag_hash: PackedInt64Array = PackedInt64Array()   ## one hash per fragment, mixed with a purpose for every roll
 var _can_cross: Callable = Callable()
+var _solid: Callable = Callable()   ## (column: Vector2i, k: int) -> bool, the board's standing voxels (k = levels above `origin.y`)
 var _acc: float = 0.0
 var _done: bool = false
 
@@ -77,6 +83,10 @@ var _done: bool = false
 ## `p`: cells (Array[Vector3i]), zones (PackedInt32Array), origin (Vector3), blast (Vector2, world X/Z), weight (0..1),
 ## seed (String), voxel (float, optional), wave_delay (float seconds, optional), can_cross (Callable(Vector2i, Vector2i) -> bool,
 ## optional: may a fragment pass from this GU to that one).
+## ROOF R-D9 (a shot's broken voxels; all optional): push_dir (Vector3, the shot's direction: every fragment is thrown along it instead of
+## away from `blast`), carve (bool, default true: false = no fragment vanishes), char (bool, default true: false = no charring), stack
+## (Dictionary column -> height already lying there, so a new pile lands ON an old one), solid (Callable(column, k) -> bool: the board's
+## standing voxels, a fragment stops against one sideways and lands on top of one).
 func _init(p: Dictionary) -> void:
 	var cells: Array = p["cells"]
 	var zones: PackedInt32Array = p.get("zones", PackedInt32Array())
@@ -86,6 +96,13 @@ func _init(p: Dictionary) -> void:
 	wave_time = float(p.get("wave_delay", wave_time))
 	_seed = FacadeSampler._fnv1a_hash(String(p.get("seed", "")))
 	_can_cross = p.get("can_cross", Callable())
+	_solid = p.get("solid", Callable())
+	var push_dir: Vector3 = p.get("push_dir", Vector3.ZERO)
+	var carve: bool = bool(p.get("carve", true))
+	var charred: bool = bool(p.get("char", true))
+	var pre: Dictionary = p.get("stack", {})
+	for col in pre:
+		_stack[col] = int(pre[col])
 	var blast: Vector2 = p["blast"]
 	count = cells.size()
 	pos.resize(count)
@@ -116,7 +133,7 @@ func _init(p: Dictionary) -> void:
 		far = maxf(far, centres[i].distance_to(blast))
 		state[i] = State.FALLING
 		vanish_at[i] = -1.0
-		tone[i] = BoardLook.char_mult(_h01(i, P_TONE))
+		tone[i] = BoardLook.char_mult(_h01(i, P_TONE)) if charred else 1.0
 		jitter[i] = 0.94 + 0.12 * _h01(i, P_JIT)
 	## The blast carves away the fragments nearest it: rank by (a hash nudged by distance), the first `round(weight * count)` go.
 	var order: Array = range(count)
@@ -126,11 +143,14 @@ func _init(p: Dictionary) -> void:
 		score[i] = _h01(i, P_DESTROY) + 0.6 * (centres[i].distance_to(blast) / far)
 	order.sort_custom(func(a: int, b: int) -> bool:
 		return score[a] < score[b] or (score[a] == score[b] and a < b))
-	var destroyed: int = int(round(weight * float(count)))
+	var destroyed: int = int(round(weight * float(count))) if carve else 0
 	for k in range(destroyed):
 		var i: int = order[k]
 		vanish_at[i] = wave_time + 0.06 * _h01(i, P_VANISH)
 	## Every fragment is pushed from the blast and falls; the push scales with the weight and with how close it was.
+	if push_dir != Vector3.ZERO:
+		_push_along(push_dir.normalized())
+		return
 	for i in range(count):
 		var away: Vector2 = centres[i] - blast
 		var dir: Vector2 = away.normalized() if away.length() > 0.001 else Vector2.from_angle(_h01(i, P_DIR) * TAU)
@@ -138,6 +158,20 @@ func _init(p: Dictionary) -> void:
 		var speed: float = PUSH_SPEED * weight * near * (0.55 + 0.45 * _h01(i, P_SPEED))
 		vel[i] = Vector3(dir.x * speed, PUSH_UP * weight * near * (0.3 + 0.7 * _h01(i, P_UP)), dir.y * speed)
 		spin[i] = Vector3(_h01(i, P_SX) - 0.5, _h01(i, P_SY) - 0.5, _h01(i, P_SZ) - 0.5) * (14.0 * weight)
+
+
+## R-D9: every fragment thrown along the shot, spread sideways, kicked up.
+func _push_along(d: Vector3) -> void:
+	var side: Vector3 = d.cross(Vector3.UP)
+	if side.length() < 0.01:
+		side = Vector3.RIGHT   ## a vertical shot (a roof): spread in X and Z
+	side = side.normalized()
+	var other: Vector3 = d.cross(side).normalized()
+	for i in range(count):
+		var speed: float = lerpf(SHOT_SPEED.x, SHOT_SPEED.y, _h01(i, P_SPEED))
+		var spread: Vector3 = side * (_h01(i, P_DIR) * 2.0 - 1.0) + other * (_h01(i, P_SX) * 2.0 - 1.0) * 0.5
+		vel[i] = (d + spread * SHOT_SPREAD) * speed + Vector3.UP * lerpf(SHOT_UP.x, SHOT_UP.y, _h01(i, P_UP))
+		spin[i] = Vector3(_h01(i, P_SX) - 0.5, _h01(i, P_SY) - 0.5, _h01(i, P_SZ) - 0.5) * 14.0
 
 
 func is_done() -> bool:
@@ -237,9 +271,17 @@ func _fall(i: int) -> void:
 			next.x = pos[i].x
 			next.z = pos[i].z
 			vel[i] = Vector3(v.x * -0.3, v.y, v.z * -0.3)
+	if _solid.is_valid():
+		## Sideways into a standing voxel: it stops there (the same small bounce as a wall edge).
+		var k_now: int = floori((pos[i].y - origin.y) / voxel)
+		var col_next := Vector2i(floori(next.x / voxel), floori(next.z / voxel))
+		if bool(_solid.call(col_next, k_now)):
+			next.x = pos[i].x
+			next.z = pos[i].z
+			vel[i] = Vector3(vel[i].x * -0.3, vel[i].y, vel[i].z * -0.3)
 	euler[i] += spin[i] * STEP
 	var col := Vector2i(floori(next.x / voxel), floori(next.z / voxel))
-	var top: float = origin.y + float(int(_stack.get(col, 0))) * voxel
+	var top: float = origin.y + float(_height(col, floori((pos[i].y - origin.y) / voxel))) * voxel
 	if vel[i].y <= 0.0 and next.y - voxel * 0.5 <= top + 1.0e-6:
 		_land(i, col)
 	else:
@@ -247,7 +289,7 @@ func _fall(i: int) -> void:
 
 
 func _land(i: int, col: Vector2i) -> void:
-	var k: int = int(_stack.get(col, 0))
+	var k: int = _height(col, floori((pos[i].y - origin.y) / voxel))
 	_stack[col] = k + 1
 	column[i] = col
 	level[i] = k
@@ -268,7 +310,7 @@ func _slump(i: int) -> void:
 	var best_h: int = h - 1
 	for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 		var n: Vector2i = col + d
-		var nh: int = int(_stack.get(n, 0))
+		var nh: int = _height(n, h)
 		if nh > h - 2:
 			continue
 		if _can_cross.is_valid() and not _same_gu(col, n) and not bool(_can_cross.call(_gu_of(col), _gu_of(n))):
@@ -324,7 +366,7 @@ func _finish() -> void:
 
 
 func _land_no_slump(i: int, col: Vector2i) -> void:
-	var k: int = int(_stack.get(col, 0))
+	var k: int = _height(col, floori((pos[i].y - origin.y) / voxel))
 	_stack[col] = k + 1
 	column[i] = col
 	level[i] = k
@@ -332,6 +374,18 @@ func _land_no_slump(i: int, col: Vector2i) -> void:
 	vel[i] = Vector3.ZERO
 	euler[i] = Vector3.ZERO
 	state[i] = State.LANDED
+
+
+## How many levels are filled on `col` under level `below`: the landed cubes, or the standing board voxels under it (whichever is
+## higher). Without `solid`, the cubes alone.
+func _height(col: Vector2i, below: int) -> int:
+	var h: int = int(_stack.get(col, 0))
+	if not _solid.is_valid():
+		return h
+	for k in range(mini(below, 64), h - 1, -1):
+		if bool(_solid.call(col, k)):
+			return maxi(h, k + 1)
+	return h
 
 
 func _cell_centre(col: Vector2i, k: int) -> Vector3:

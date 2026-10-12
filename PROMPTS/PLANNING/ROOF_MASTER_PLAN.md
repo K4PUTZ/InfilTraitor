@@ -36,6 +36,8 @@
 - **R-D6 — A BLAST ON A SKYLIGHT.** *"Quando a granada explode, os voxels de vidro voam pra cima e pros lados, seguindo a força que já usamos no vidro vertical, e depois caem no chão, ou sobre a lateral do cubículo. A chuva e o pó acompanham, seguindo o mesmo mecanismo da janela vertical, adaptando a orientação. No final a luz é atualizada."* The broken glass leaves along the shockwave impulse the vertical pane already uses (`GlassFall`'s `{from, strength, lift}`, G4-4), UP and out from a blast below, then falls under gravity onto whatever is under it: the floor, the frame, a wall's top (the landing index already counts CEILING slabs as surfaces). Rain and dust are the vertical pane's, oriented to a horizontal face. The light updates at the end (the consequence light, R-D4).
 - **R-D7 — THE OTHER ROOF MATERIALS** (concrete, plywood / *madeirite*, cardboard, fabric, wood) behave alike, holding / breaking more or less by material (§3).
 - **R-D8 — SHOTS, ON A ROOF AND ON A WALL.** *"Tiros deixam as mesmas marcas, decals, etc. e podem abrir buracos, e fazer os voxels voarem também pra cima (vamos lembrar de fazer isso com os tiros laterais também, quando quebrarem voxels a gente faz a mesma animação do vidro sem sustentação, com o crossfade se necessário, fazendo o(s) voxel(eis) voar(em) até o chão)."* A shot into a roof leaves the wall's marks and decals, can open a hole, and the voxels it breaks FLY (up, along the shot) and fall. **And a lateral shot on a wall does the same**: the voxels any shot breaks leave as flying voxels (`GlassVoxelFall3D`'s motion and crossfade, generalised to every material) instead of vanishing. Stage RF-S below.
+- **R-D9 — ONE RUBBLE MACHINE (2026-10-12, Director chose the recommended option).** The opaque voxels a shot breaks (wall or roof) fly and pile through `PropFragmentSim` / `PropFragments3D`, extended with a DIRECTIONAL impulse (along the shot) and an uncharred option; the pile is the Tier 4 pile (stacks, slumps, base-coord record, checkpoint restore). Glass keeps `GlassVoxelFall3D` (it shatters on landing). This supersedes R-D8's "`GlassVoxelFall3D` generalised to every material" for opaque voxels: one pile in the game, not two.
+- **R-D10 — A ROOF SHOT IS A STRAIGHT RAY (2026-10-12, Director chose the recommended option).** From the muzzle to the target roof cell's centre in 3D; it stops at the first solid voxel it crosses (a wall on the way takes the round); a roof hit lands on the lower layer's underside; the broken voxels fly up along the ray and fall.
 
 ## 0c. R-D4 — the light mechanism (APPROVED 2026-10-11: "Aprova, aceita a mudança"; BUILT the same day, see §5)
 
@@ -80,6 +82,7 @@ A skylight (R-D5) is a horizontal pane in the roof's lower layer: translucent wh
 7. **Devices.** The takes on the Moto and the Galaxy, worst frame and PSS inside the segment budget.
 
 ### RF-S — flying voxels for every shot (R-D8)
+✅ **BUILT 2026-10-12 (v0.12, R-D9).** `PropFragmentSim` takes `push_dir` / `carve` / `char` / `stack` / `solid`; `Room.spawn_shot_rubble()` throws the opaque voxels a shot DESTROYED (not glass, not a prop) along the shot right after `on_shot_commit`; they stop against standing voxels, land on the floor, a wall's top or an earlier pile, and stay (`Room._base_rubble_piles`, saved as `rubble_piles`, laid back with the prop piles). Real path: PLAYGROUND concrete, shotgun, 4 voxels destroyed, 4 thrown (`[SHOT-RUBBLE]`); `prop_fragment_sim_selftest` [shot rubble] 6 checks, `save_state_selftest` [rubble]. Below: the plan as written.
 The voxels a lateral shot breaks on a wall (any material) leave as flying voxels instead of vanishing: `GlassVoxelFall3D`'s motion and crossfade generalised to every material, the impulse along the shot, landing on the floor as rubble (Q-S2). Built with RF-1 step 5 (one code path for a shot's broken voxels, roof or wall); a dent or a mark that removes no voxel is unchanged.
 
 ### RF-2 onward — each material follows RF-1, with its own behaviour (§3)
@@ -111,6 +114,7 @@ Order proposed: **concrete / stone** (the common case: SEG_* maps), **wood / ply
 
 ## 5. Records
 - 2026-10-12 v0.11 — the skylight's blast throws WHOLE VOXELS (the burst), shattering where each lands (Director).
+- 2026-10-12 v0.12 — R-D9 (one rubble machine: `PropFragmentSim`) and R-D10 (a roof shot is a straight ray) ruled; **RF-S BUILT** (a shot's broken opaque voxels fly along the shot and pile).
 - 2026-10-11 v0.10 — **step 4 BUILT, first pass** (a grenade breaks a skylight through the glass stage: shatter, craze, remnants on the frame, rain, floor shards, light; wall glass identical).
 - 2026-10-11 v0.9 — **step 3c BUILT** (the crack / craze / openings / rim on a skylight; dev step `skylight_hit`; the wall glass unchanged, 904 frames identical).
 - 2026-10-11 v0.8 — **step 3b BUILT** (skylight panes, the room's glass index, `PaneFrame`).

@@ -99,6 +99,14 @@ static func capture(room) -> Dictionary:
 			var cc: Vector2i = r["col"]
 			recs.append([cc.x, cc.y, int(r["level"]), float(r["mult"]), int(r.get("zone", 0))])
 		prop_piles.append([gk.x, gk.y, float(pile["y0"]), pile["zone_materials"], recs, int(pile.get("div", 1))])
+	## ROOF R-D9: a shot's rubble, the same row without a GU ([y0, [material per zone], [[col_x, col_y, level, mult, zone], ...], division]).
+	var rubble_piles: Array = []
+	for pile: Dictionary in room._base_rubble_piles:
+		var rrecs: Array = []
+		for r: Dictionary in pile["records"]:
+			var rc: Vector2i = r["col"]
+			rrecs.append([rc.x, rc.y, int(r["level"]), float(r["mult"]), int(r.get("zone", 0))])
+		rubble_piles.append([float(pile["y0"]), pile["zone_materials"], rrecs, int(pile.get("div", 1))])
 	return {
 		"version": FORMAT_VERSION,
 		## The map a save belongs to. A loader that restores damage into the WRONG
@@ -111,6 +119,7 @@ static func capture(room) -> Dictionary:
 		## R3D-PROPS — an OLD save has neither key and reads as "nothing shattered, no debris": the honest restore.
 		"shattered_props": shattered_props,
 		"prop_piles": prop_piles,
+		"rubble_piles": rubble_piles,
 		"debris": debris,
 		## G6 — `[base_x, base_y, level, count]` per pile. ⚠️ The COUNT travels, not
 		## a flag: it is what decides how heavy the pile reads, and a save that
@@ -227,6 +236,16 @@ static func restore(room, data: Dictionary) -> bool:
 			zone_materials.append(String(zm))
 		room._base_prop_piles[Vector2i(int(pp[0]), int(pp[1]))] = {"y0": float(pp[2]), "zone_materials": zone_materials,
 			"records": pile_records, "div": int(pp[5]) if pp.size() > 5 else 1}
+	room._base_rubble_piles.clear()
+	for rp in data.get("rubble_piles", []):
+		var rubble_records: Array = []
+		for rr in rp[2]:
+			rubble_records.append({"col": Vector2i(int(rr[0]), int(rr[1])), "level": int(rr[2]), "mult": float(rr[3]), "zone": int(rr[4])})
+		var rubble_materials: Array = []
+		for zm in rp[1]:
+			rubble_materials.append(String(zm))
+		room._base_rubble_piles.append({"y0": float(rp[0]), "zone_materials": rubble_materials, "records": rubble_records,
+			"div": int(rp[3])})
 	room._base_debris.clear()
 	for dd in data.get("debris", []):
 		room._base_debris[String(dd[0])] = {"base": Vector2(float(dd[1]), float(dd[2])), "level": int(dd[3]),
@@ -306,3 +325,4 @@ static func clear_run_state(room) -> void:
 	room._base_shattered_props.clear()
 	room._base_debris.clear()
 	room._base_prop_piles.clear()
+	room._base_rubble_piles.clear()

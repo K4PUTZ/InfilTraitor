@@ -21,6 +21,7 @@ func _init() -> void:
 	_test_fixed_step_time()
 	_test_walls_hold_fragments()
 	_test_fine_lattice()
+	_test_shot_rubble()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -248,3 +249,70 @@ func _test_fine_lattice() -> void:
 	_fixture(1)
 	print("")
 
+
+
+## ROOF R-D9: a shot's broken voxels. A 2-voxel-thick wall slab 1 voxel wide, levels 4..7 broken out of a wall standing on levels 0..3:
+## thrown along +X, nothing vanishes, nothing chars, nothing lands inside the standing wall, the cubes end on the +X side (the shot's),
+## the pile lands ON an earlier one (`stack`), and the same seed gives the same pile.
+func _test_shot_rubble() -> void:
+	var broken: Array = []
+	for k in range(4, 8):
+		for x in range(8, 10):
+			broken.append(Vector3i(x, k, 20))
+	var solid := func(col: Vector2i, k: int) -> bool:
+		return col.x >= 8 and col.x <= 9 and col.y == 20 and k >= 0 and k <= 3
+	var make := func(stack: Dictionary) -> PropFragmentSim:
+		return PropFragmentSim.new({"cells": broken, "zones": PackedInt32Array(), "origin": Vector3.ZERO, "voxel": 0.125,
+			"blast": Vector2.ZERO, "weight": 1.0, "seed": "SHOT", "wave_delay": 0.0, "push_dir": Vector3(1, 0, 0),
+			"carve": false, "char": false, "solid": solid, "stack": stack})
+	var a: PropFragmentSim = make.call({})
+	_run(a)
+	var recs: Array = a.pile_records()
+	if recs.size() == broken.size() and a.vanished_count() == 0:
+		_pass("shot rubble: all %d cubes land, none vanish (carve false)" % broken.size())
+	else:
+		_fail("shot rubble: %d of %d landed, %d vanished" % [recs.size(), broken.size(), a.vanished_count()])
+	var charred: int = 0
+	var inside: int = 0
+	var behind: int = 0
+	for i in range(a.count):
+		if not is_equal_approx(a.tone[i], 1.0):
+			charred += 1
+	for r: Dictionary in recs:
+		var col: Vector2i = r["column"]
+		if bool(solid.call(col, int(r["level"]))):
+			inside += 1
+		if col.x < 8:
+			behind += 1
+	if charred == 0:
+		_pass("shot rubble: no cube is charred (char false)")
+	else:
+		_fail("shot rubble: %d cube(s) charred" % charred)
+	if inside == 0:
+		_pass("shot rubble: no cube rests inside the standing wall")
+	else:
+		_fail("shot rubble: %d cube(s) inside the standing wall" % inside)
+	if behind == 0:
+		_pass("shot rubble: every cube lands on the shot's side (+X) or on the wall's top")
+	else:
+		_fail("shot rubble: %d cube(s) landed behind the shooter's line (x < 8)" % behind)
+	var b: PropFragmentSim = make.call({})
+	_run(b)
+	if b.pile_records() == recs:
+		_pass("shot rubble: same seed, same pile")
+	else:
+		_fail("shot rubble: two runs of one seed differ")
+	## An earlier pile 3 high on every column the first pile used: the new cubes sit on it.
+	var pre: Dictionary = {}
+	for r: Dictionary in recs:
+		pre[r["column"]] = 3
+	var c: PropFragmentSim = make.call(pre)
+	_run(c)
+	var low: int = 0
+	for r: Dictionary in c.pile_records():
+		if pre.has(r["column"]) and int(r["level"]) < 3:
+			low += 1
+	if low == 0:
+		_pass("shot rubble: a new pile lands on top of an earlier one (stack)")
+	else:
+		_fail("shot rubble: %d cube(s) inside an earlier pile" % low)

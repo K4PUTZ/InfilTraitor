@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**294 scripts · 87061 lines total** (under `godot/scripts/`)
+**294 scripts · 87277 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -901,7 +901,7 @@ extends `Node3D` · 3278 lines
 
 ### `prop_fragment_sim.gd`
 
-`class_name PropFragmentSim` · extends `RefCounted` · 360 lines
+`class_name PropFragmentSim` · extends `RefCounted` · 414 lines
 
 `godot/scripts/geometry/prop_fragment_sim.gd`
 
@@ -3444,7 +3444,7 @@ extends `Node` · 143 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 308 lines
+`class_name SaveState` · extends `RefCounted` · 328 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -4899,7 +4899,7 @@ extends `Node` · 318 lines
 
 ### `prop_fragment_sim_selftest.gd`
 
-extends `SceneTree` · 250 lines
+extends `SceneTree` · 318 lines
 
 `godot/scripts/tools/prop_fragment_sim_selftest.gd`
 
@@ -5144,7 +5144,7 @@ extends `SceneTree` · 36 lines
 
 ### `save_state_selftest.gd`
 
-extends `SceneTree` · 264 lines
+extends `SceneTree` · 275 lines
 
 `godot/scripts/tools/save_state_selftest.gd`
 
@@ -5736,7 +5736,7 @@ extends `Node2D` · 63 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1204 lines
+`class_name AgentShotController` · 1213 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -6145,7 +6145,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10430 lines
+extends `Node2D` · 10484 lines
 
 `godot/scripts/world/room.gd`
 

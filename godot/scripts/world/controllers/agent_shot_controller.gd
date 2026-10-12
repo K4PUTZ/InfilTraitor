@@ -519,6 +519,9 @@ func fire_at_active() -> void:
 	var pellets_landed: int = 0
 	var punch_log: Array = []
 	var is_line: bool = weapon_def.delivery == WeaponDef.DELIVERY_LINE
+	## ROOF R-D9 / RF-S: the opaque wall voxels this shot DESTROYED (not glass: a pane has its own fall and rain; not a prop: its pile
+	## is the prop's), thrown as rubble once the board drops them.
+	var rubble_cells: Array = []
 
 	## ── RESOLVE FIRST, THEN FLY, THEN BREAK ────────────────────────────────
 	## The pellet loop used to do all three in one pass, and the DECORATIVE
@@ -611,6 +614,9 @@ func fire_at_active() -> void:
 		var touched: Array = []
 		for pe in plan_entries:
 			var pv: Voxel = pe["voxel"]
+			if not prop_hit and int(pe["state"]) == Voxel.DamageState.DESTROYED \
+					and pv.damage_state != Voxel.DamageState.DESTROYED and not GlassMaterials.is_glass(hit_material):
+				rubble_cells.append({"grid_pos": pv.grid_pos, "level": pv.level, "material": hit_material})
 			pv.set_damage(int(pe["state"]), bool(pe["is_blast"]),
 				int(pe["carved_side"]), int(pe["variant"]), int(pe["substrate"]))
 			touched.append(pv)
@@ -765,6 +771,9 @@ func fire_at_active() -> void:
 	var board3d: Node = room.board3d()
 	if board3d != null:
 		board3d.on_shot_commit(cell_to_voxel.values() + reaped_voxels)
+	if not rubble_cells.is_empty():
+		var thrown: int = room.spawn_shot_rubble(rubble_cells, Vector3(aim.x, 0.0, aim.y), salt)
+		print_debug("[SHOT-RUBBLE] %d voxel(s) broken, %d thrown along %s" % [rubble_cells.size(), thrown, aim])
 	room._destruction_render_busy = false
 	## W-PROF-01, on the AGENT path this time. §0's routes are chosen from these
 	## two numbers, so they are printed rather than assumed — the figures it was

@@ -227,6 +227,9 @@ var _base_debris: Dictionary = {}
 ## {"y0": floor height in world units, "zone_materials": [material id per zone], "records": [{"col": base voxel column, "level": stack level, "zone", "mult": colour
 ## multiplier}]}); laid back after the board is rebuilt. A cosmetic record, not `VoxelStore` state. R3D-ROT deletes the replay.
 var _base_prop_piles: Dictionary = {}
+## ROOF R-D9: the rubble a shot's broken voxels leave (the same pile machinery as `_base_prop_piles`, one entry per shot, in the same
+## shape: {"y0", "zone_materials", "records", "div"}). A list, not keyed by GU: two shots at one wall are two piles.
+var _base_rubble_piles: Array = []
 var _debris_tone_hist: Dictionary = {}   ## PROP_DEBUG only: soot tone -> pieces placed on it
 
 ## CRACK-02 S-3 (GLASS_MASTER_PLAN §13.2) — EVERY CRACK, IN BASE COORDS.
@@ -2405,6 +2408,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_base_shattered_props.clear()   ## R3D-PROPS: nor any Tier 4 prop shattered
 	_base_debris.clear()            ## R3D-PROPS: nor any debris lying on its floor
 	_base_prop_piles.clear()        ## P2: nor any pile of charred fragments
+	_base_rubble_piles.clear()      ## R-D9: nor any rubble a shot left
 	_pending_prop_breaks.clear()
 	_base_remnants.clear()      ## G4: and none is stuck to a frame
 	_base_rim_shards.clear()    ## CRACK-06: nor clinging to a torn glass edge
@@ -5833,6 +5837,51 @@ func _on_prop_fragments_settled(records: Array, base_gu: Vector2i, y0: float, zo
 		print("[PROP-DEBUG] pile at base GU %s: %d cubes, y0 %.3f" % [base_gu, base_records.size(), y0])
 
 
+## ROOF R-D9 / RF-S — the opaque voxels a shot broke leave as flying cubes (the Tier 4 fragment machinery): thrown along the shot
+## (`push_dir`, geometry-root space), uncharred, nothing carved away; they stop against standing voxels, land on the floor, a wall's top
+## or an earlier pile, and stay as rubble (Q-S2). `cells`: [{grid_pos (board voxel x, y), level, material}]. Returns the cubes thrown.
+func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
+	var live: Node = board3d()
+	var store: VoxelStore = VoxelStore.active
+	if live == null or _voxel_board == null or cells.is_empty():
+		return 0
+	var ground: int = _voxel_board.ground_plane_level()
+	var zone_materials: Array = []
+	var zones := PackedInt32Array()
+	var lattice: Array = []
+	for c: Dictionary in cells:
+		var mat: String = String(c["material"])
+		var z: int = zone_materials.find(mat)
+		if z < 0:
+			z = zone_materials.size()
+			zone_materials.append(mat)
+		zones.append(z)
+		var gp: Vector2i = c["grid_pos"]
+		lattice.append(Vector3i(gp.x, int(c["level"]) - ground, gp.y))
+	var solid := func(col: Vector2i, k: int) -> bool:
+		return store != null and store.has_cell(col.x, col.y, ground + k)
+	var stack: Dictionary = {}
+	for pile: Dictionary in _base_rubble_piles:
+		for r: Dictionary in pile["records"]:
+			stack[r["col"]] = maxi(int(stack.get(r["col"], 0)), int(r["level"]) + 1)
+	var edges: Dictionary = _movement_edge_set()
+	var cross := func(from: Vector2i, to: Vector2i) -> bool:
+		return not WallEdgeData.is_edge_blocked(from, to, edges)
+	var sim := PropFragmentSim.new({"cells": lattice, "zones": zones, "origin": Vector3.ZERO,
+		"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS), "blast": Vector2.ZERO, "weight": 1.0, "seed": seed,
+		"wave_delay": 0.0, "push_dir": push_dir, "carve": false, "char": false, "stack": stack, "solid": solid, "can_cross": cross})
+	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials)
+	node.settled.connect(_on_rubble_settled.bind(zone_materials))
+	return sim.count
+
+
+func _on_rubble_settled(records: Array, zone_materials: Array) -> void:
+	var base_records: Array = []
+	for r: Dictionary in records:
+		base_records.append({"col": r["column"], "level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
+	_base_rubble_piles.append({"y0": 0.0, "zone_materials": zone_materials, "records": base_records, "div": 1})
+
+
 ## A rotation or a save is about to happen: any fragment simulation still running is run to its end first, so its pile is recorded.
 func _finish_running_prop_fragments() -> void:
 	var live: Node = board3d()
@@ -5858,6 +5907,11 @@ func _respawn_base_prop_piles() -> void:
 		live.call("spawn_prop_pile", records, float(pile["y0"]), pile["zone_materials"], division)
 		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
 			print("[PROP-DEBUG] pile of base GU %s laid back: %d cubes" % [base_gu, records.size()])
+	for pile: Dictionary in _base_rubble_piles:
+		var rubble: Array = []
+		for r: Dictionary in pile["records"]:
+			rubble.append({"column": r["col"], "level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
+		live.call("spawn_prop_pile", rubble, float(pile["y0"]), pile["zone_materials"], int(pile.get("div", 1)))
 
 
 ## R3D-PROPS Tier 1/2 debris (Director, 2026-09-28): "aproveitar o mecanismo do vidro que

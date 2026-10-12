@@ -728,6 +728,16 @@ func fire_at_active() -> void:
 	## R3D-PROPS: a crate this shot brought down stops blocking.
 	room._release_destroyed_prop_cells()
 
+	## ROOF R-D9 (Director, 2026-10-12): the hole and its chips appear on the frame the round lands, not after the render passes
+	## below. The store already holds the shot (every write mirrors) and nothing after this point writes it, so the 3D board is
+	## remeshed HERE, and the broken voxels are replaced in the same frame by their sub-voxels (which hide the hole until they go).
+	var board3d: Node = room.board3d()
+	if board3d != null and not cell_to_voxel.is_empty():
+		board3d.on_shot_commit(cell_to_voxel.values() + reaped_voxels)
+	if not rubble_cells.is_empty():
+		var placed: int = room.spawn_shot_rubble(rubble_cells, Vector3(aim.x, 0.0, aim.y), salt)
+		print_debug("[SHOT-RUBBLE] %d voxel(s) broken, %d sub-voxel(s) in place" % [rubble_cells.size(), placed])
+
 	cancel_active()
 	if cell_to_voxel.is_empty():
 		return
@@ -765,15 +775,7 @@ func fire_at_active() -> void:
 	elif room.has_method("_repaint_voxel_light_buckets"):
 		room._repaint_voxel_light_buckets(true)
 	var prof_repaint_ms: float = float(Time.get_ticks_usec() - prof_repaint0) / 1000.0
-	## RENDER3D (R3D-7): the 3D board is redrawn from the packed store, which already holds
-	## the shot; only WHICH chunks to remesh has to be handed over. The 2D board's render
-	## pass above is what made a shot visible there, and nothing else reaches this board.
-	var board3d: Node = room.board3d()
-	if board3d != null:
-		board3d.on_shot_commit(cell_to_voxel.values() + reaped_voxels)
-	if not rubble_cells.is_empty():
-		var thrown: int = room.spawn_shot_rubble(rubble_cells, Vector3(aim.x, 0.0, aim.y), salt)
-		print_debug("[SHOT-RUBBLE] %d voxel(s) broken, %d thrown along %s" % [rubble_cells.size(), thrown, aim])
+	## RENDER3D (R3D-7): the 3D board was remeshed on the impact frame, above (ROOF R-D9).
 	room._destruction_render_busy = false
 	## W-PROF-01, on the AGENT path this time. §0's routes are chosen from these
 	## two numbers, so they are printed rather than assumed — the figures it was

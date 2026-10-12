@@ -24,11 +24,12 @@ const SLIDE_TIME: float = 0.07
 ## Outward speed (GU/s) at weight 1, and the up-kick.
 const PUSH_SPEED: float = 1.3
 const PUSH_UP: float = 1.2
-## ROOF R-D9 — a SHOT's broken voxels (`push_dir`): speed along the shot (GU/s, hashed in the range), the up-kick, and the sideways spread
-## (a share of the speed, ±). Tuned by eye; `var` so a calibration can move them (rule 1).
-static var SHOT_SPEED: Vector2 = Vector2(0.7, 1.9)
-static var SHOT_UP: Vector2 = Vector2(0.3, 1.1)
-static var SHOT_SPREAD: float = 0.45
+## ROOF R-D9 — a SHOT's broken voxels (`push_dir`): the fall is the SECONDARY motion, a reaction against the impact (Director,
+## 2026-10-12): the chips sit in the hole for `hold` seconds, then leave gently BACK along the shot (GU/s, hashed in the range) with a
+## small up-kick and a sideways spread (a share of the speed, ±), and gravity does the rest from rest. `var` so a calibration can move them (rule 1).
+static var SHOT_SPEED: Vector2 = Vector2(0.08, 0.45)
+static var SHOT_UP: Vector2 = Vector2(0.0, 0.25)
+static var SHOT_SPREAD: float = 0.6
 ## The charred tone of a fragment: a multiplier on its colour, `BoardLook.char_mult(h)` = `lerp(MIN, MAX, h*h)` (mostly dark, some lighter; D-P5).
 ## Seconds over which a fragment goes from its own colour to its charred tone, starting at the wave.
 const CHAR_TIME: float = 0.30
@@ -54,6 +55,7 @@ var origin: Vector3 = Vector3.ZERO
 var weight: float = 1.0
 var time: float = 0.0
 var wave_time: float = 0.06
+var hold: float = 0.0   ## R-D9: seconds every fragment stays where it was before anything moves
 
 ## Per fragment (all sized `count`).
 var pos: PackedVector3Array = PackedVector3Array()
@@ -86,7 +88,9 @@ var _done: bool = false
 ## ROOF R-D9 (a shot's broken voxels; all optional): push_dir (Vector3, the shot's direction: every fragment is thrown along it instead of
 ## away from `blast`), carve (bool, default true: false = no fragment vanishes), char (bool, default true: false = no charring), stack
 ## (Dictionary column -> height already lying there, so a new pile lands ON an old one), solid (Callable(column, k) -> bool: the board's
-## standing voxels, a fragment stops against one sideways and lands on top of one).
+## standing voxels, a fragment stops against one sideways and lands on top of one), hold (seconds nothing moves), vanish (PackedByteArray,
+## 1 = this fragment turns to dust at `hold`), tones (PackedFloat32Array per zone: a multiplier on its colour, the wall's general tone).
+## With `push_dir` the fragments leave AGAINST it (the reaction to the impact).
 func _init(p: Dictionary) -> void:
 	var cells: Array = p["cells"]
 	var zones: PackedInt32Array = p.get("zones", PackedInt32Array())
@@ -100,6 +104,9 @@ func _init(p: Dictionary) -> void:
 	var push_dir: Vector3 = p.get("push_dir", Vector3.ZERO)
 	var carve: bool = bool(p.get("carve", true))
 	var charred: bool = bool(p.get("char", true))
+	hold = float(p.get("hold", 0.0))
+	var vanish: PackedByteArray = p.get("vanish", PackedByteArray())
+	var tones: PackedFloat32Array = p.get("tones", PackedFloat32Array())
 	var pre: Dictionary = p.get("stack", {})
 	for col in pre:
 		_stack[col] = int(pre[col])
@@ -135,6 +142,8 @@ func _init(p: Dictionary) -> void:
 		vanish_at[i] = -1.0
 		tone[i] = BoardLook.char_mult(_h01(i, P_TONE)) if charred else 1.0
 		jitter[i] = 0.94 + 0.12 * _h01(i, P_JIT)
+		if zone[i] < tones.size():
+			jitter[i] *= tones[zone[i]]
 	## The blast carves away the fragments nearest it: rank by (a hash nudged by distance), the first `round(weight * count)` go.
 	var order: Array = range(count)
 	var score: PackedFloat32Array = PackedFloat32Array()
@@ -149,7 +158,10 @@ func _init(p: Dictionary) -> void:
 		vanish_at[i] = wave_time + 0.06 * _h01(i, P_VANISH)
 	## Every fragment is pushed from the blast and falls; the push scales with the weight and with how close it was.
 	if push_dir != Vector3.ZERO:
-		_push_along(push_dir.normalized())
+		for i in range(mini(vanish.size(), count)):
+			if vanish[i] == 1:
+				vanish_at[i] = hold
+		_push_along(-push_dir.normalized())
 		return
 	for i in range(count):
 		var away: Vector2 = centres[i] - blast
@@ -160,7 +172,7 @@ func _init(p: Dictionary) -> void:
 		spin[i] = Vector3(_h01(i, P_SX) - 0.5, _h01(i, P_SY) - 0.5, _h01(i, P_SZ) - 0.5) * (14.0 * weight)
 
 
-## R-D9: every fragment thrown along the shot, spread sideways, kicked up.
+## R-D9: every fragment leaves along `d` (the caller passes the reaction, against the shot), spread sideways, barely kicked up.
 func _push_along(d: Vector3) -> void:
 	var side: Vector3 = d.cross(Vector3.UP)
 	if side.length() < 0.01:
@@ -171,7 +183,7 @@ func _push_along(d: Vector3) -> void:
 		var speed: float = lerpf(SHOT_SPEED.x, SHOT_SPEED.y, _h01(i, P_SPEED))
 		var spread: Vector3 = side * (_h01(i, P_DIR) * 2.0 - 1.0) + other * (_h01(i, P_SX) * 2.0 - 1.0) * 0.5
 		vel[i] = (d + spread * SHOT_SPREAD) * speed + Vector3.UP * lerpf(SHOT_UP.x, SHOT_UP.y, _h01(i, P_UP))
-		spin[i] = Vector3(_h01(i, P_SX) - 0.5, _h01(i, P_SY) - 0.5, _h01(i, P_SZ) - 0.5) * 14.0
+		spin[i] = Vector3(_h01(i, P_SX) - 0.5, _h01(i, P_SY) - 0.5, _h01(i, P_SZ) - 0.5) * 8.0
 
 
 func is_done() -> bool:
@@ -195,6 +207,8 @@ func advance(delta: float) -> void:
 ## One fixed step.
 func step() -> void:
 	time += STEP
+	if time < hold:
+		return   ## R-D9: the chips sit in the hole, absorbing the shock
 	var moving: bool = false
 	for i in range(count):
 		var st: int = state[i]
@@ -211,7 +225,7 @@ func step() -> void:
 			moving = true
 			_slide(i)
 	## Not before the last carved fragment has had its turn to vanish (one that landed early is still to go).
-	if (not moving and time >= wave_time + 0.07) or time >= MAX_SIM_TIME:
+	if (not moving and time >= maxf(wave_time + 0.07, hold + 0.02)) or time >= MAX_SIM_TIME + hold:
 		_finish()
 
 

@@ -252,8 +252,9 @@ func _test_fine_lattice() -> void:
 
 
 ## ROOF R-D9: a shot's broken voxels. A 2-voxel-thick wall slab 1 voxel wide, levels 4..7 broken out of a wall standing on levels 0..3:
-## thrown along +X, nothing vanishes, nothing chars, nothing lands inside the standing wall, the cubes end on the +X side (the shot's),
-## the pile lands ON an earlier one (`stack`), and the same seed gives the same pile.
+## shot along +X: nothing moves during `hold`, the masked ones turn to dust at it, nothing chars, nothing lands inside the standing wall,
+## the chips leave AGAINST the shot (-X, the reaction) or rest on the wall's top, the pile lands ON an earlier one (`stack`), and the same
+## seed gives the same pile.
 func _test_shot_rubble() -> void:
 	var broken: Array = []
 	for k in range(4, 8):
@@ -261,17 +262,27 @@ func _test_shot_rubble() -> void:
 			broken.append(Vector3i(x, k, 20))
 	var solid := func(col: Vector2i, k: int) -> bool:
 		return col.x >= 8 and col.x <= 9 and col.y == 20 and k >= 0 and k <= 3
+	var vanish := PackedByteArray()
+	for i in range(broken.size()):
+		vanish.append(1 if i % 2 == 1 else 0)
 	var make := func(stack: Dictionary) -> PropFragmentSim:
-		return PropFragmentSim.new({"cells": broken, "zones": PackedInt32Array(), "origin": Vector3.ZERO, "voxel": 0.125,
+		return PropFragmentSim.new({"hold": 0.3, "vanish": vanish, "cells": broken, "zones": PackedInt32Array(), "origin": Vector3.ZERO, "voxel": 0.125,
 			"blast": Vector2.ZERO, "weight": 1.0, "seed": "SHOT", "wave_delay": 0.0, "push_dir": Vector3(1, 0, 0),
 			"carve": false, "char": false, "solid": solid, "stack": stack})
 	var a: PropFragmentSim = make.call({})
+	var start: PackedVector3Array = a.pos.duplicate()
+	for _s in range(15):
+		a.step()
+	if a.pos == start and a.vanished_count() == 0:
+		_pass("shot rubble: nothing moves or vanishes during the hold (0.25 s of 0.3)")
+	else:
+		_fail("shot rubble: the chips moved or vanished during the hold")
 	_run(a)
 	var recs: Array = a.pile_records()
-	if recs.size() == broken.size() and a.vanished_count() == 0:
-		_pass("shot rubble: all %d cubes land, none vanish (carve false)" % broken.size())
+	if recs.size() == broken.size() / 2 and a.vanished_count() == broken.size() / 2:
+		_pass("shot rubble: the masked half turned to dust, the other %d landed" % recs.size())
 	else:
-		_fail("shot rubble: %d of %d landed, %d vanished" % [recs.size(), broken.size(), a.vanished_count()])
+		_fail("shot rubble: %d landed, %d vanished (want %d / %d)" % [recs.size(), a.vanished_count(), broken.size() / 2, broken.size() / 2])
 	var charred: int = 0
 	var inside: int = 0
 	var behind: int = 0
@@ -282,7 +293,7 @@ func _test_shot_rubble() -> void:
 		var col: Vector2i = r["column"]
 		if bool(solid.call(col, int(r["level"]))):
 			inside += 1
-		if col.x < 8:
+		if col.x > 9:
 			behind += 1
 	if charred == 0:
 		_pass("shot rubble: no cube is charred (char false)")
@@ -293,9 +304,9 @@ func _test_shot_rubble() -> void:
 	else:
 		_fail("shot rubble: %d cube(s) inside the standing wall" % inside)
 	if behind == 0:
-		_pass("shot rubble: every cube lands on the shot's side (+X) or on the wall's top")
+		_pass("shot rubble: every chip leaves against the shot (-X) or rests on the wall's top")
 	else:
-		_fail("shot rubble: %d cube(s) landed behind the shooter's line (x < 8)" % behind)
+		_fail("shot rubble: %d chip(s) went along the shot, past the wall (x > 9)" % behind)
 	var b: PropFragmentSim = make.call({})
 	_run(b)
 	if b.pile_records() == recs:

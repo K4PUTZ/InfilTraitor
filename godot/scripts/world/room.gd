@@ -5837,17 +5837,31 @@ func _on_prop_fragments_settled(records: Array, base_gu: Vector2i, y0: float, zo
 		print("[PROP-DEBUG] pile at base GU %s: %d cubes, y0 %.3f" % [base_gu, base_records.size(), y0])
 
 
-## ROOF R-D9 / RF-S — the opaque voxels a shot broke leave as flying cubes (the Tier 4 fragment machinery): thrown along the shot
-## (`push_dir`, geometry-root space), uncharred, nothing carved away; they stop against standing voxels, land on the floor, a wall's top
-## or an earlier pile, and stay as rubble (Q-S2). `cells`: [{grid_pos (board voxel x, y), level, material}]. Returns the cubes thrown.
+## ROOF R-D9 / RF-S — the opaque voxels a shot broke become chips (the Tier 4 fragment machinery, Director 2026-10-12): on the frame the
+## round lands every broken voxel is replaced by `RubblePresetsRef.DIVISION`³ sub-voxels sitting where it was, in the wall's general tone
+## (no facade), so the hole is never seen before they go; after `RUBBLE_HOLD_S` the preset's few chips fall gently back against the
+## shot and the rest turn to dust. The chips stop against standing voxels, land on the floor, a wall's top or an earlier pile, stay
+## (Q-S2) and leave a little dust on the floor. `cells`: [{grid_pos (board voxel x, y), level, material}]. `push_dir`: the shot's
+## direction in geometry-root space. Returns the sub-voxels placed.
+const RubblePresetsRef = preload("res://godot/scripts/systems/destruction/rubble_presets.gd")
+static var RUBBLE_HOLD_S: float = 0.33
+## The fragment shader has no face-direction shading and the wall does: measured 2026-10-12 (PLAYGROUND concrete, the impact frame of a
+## shotgun shot) the seated sub-voxels read ~78/255 against the wall's ~54 around them, so the tone is scaled by their ratio.
+static var RUBBLE_TONE_SCALE: float = 0.69
+var _rubble_tones: Dictionary = {}   ## material -> the mean of its facade (the wall's general tone), 1.0 without one
+
+
 func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 	var live: Node = board3d()
 	var store: VoxelStore = VoxelStore.active
 	if live == null or _voxel_board == null or cells.is_empty():
 		return 0
 	var ground: int = _voxel_board.ground_plane_level()
+	var div: int = RubblePresetsRef.DIVISION
 	var zone_materials: Array = []
+	var tones := PackedFloat32Array()
 	var zones := PackedInt32Array()
+	var vanish := PackedByteArray()
 	var lattice: Array = []
 	for c: Dictionary in cells:
 		var mat: String = String(c["material"])
@@ -5855,31 +5869,87 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 		if z < 0:
 			z = zone_materials.size()
 			zone_materials.append(mat)
-		zones.append(z)
+			tones.append(_rubble_tone(mat))
 		var gp: Vector2i = c["grid_pos"]
-		lattice.append(Vector3i(gp.x, int(c["level"]) - ground, gp.y))
+		var lv: int = int(c["level"])
+		var chips: PackedByteArray = RubblePresetsRef.mask(mat, RubblePresetsRef.variant_of(gp, lv))
+		for a in range(div):
+			for b in range(div):
+				for cc in range(div):
+					lattice.append(Vector3i(gp.x * div + a, (lv - ground) * div + b, gp.y * div + cc))
+					zones.append(z)
+					vanish.append(0 if chips[(a * div + b) * div + cc] == 1 else 1)
 	var solid := func(col: Vector2i, k: int) -> bool:
-		return store != null and store.has_cell(col.x, col.y, ground + k)
+		return store != null and store.has_cell(floori(float(col.x) / div), floori(float(col.y) / div), ground + floori(float(k) / div))
 	var stack: Dictionary = {}
 	for pile: Dictionary in _base_rubble_piles:
+		if int(pile.get("div", 1)) != div:
+			continue
 		for r: Dictionary in pile["records"]:
 			stack[r["col"]] = maxi(int(stack.get(r["col"], 0)), int(r["level"]) + 1)
 	var edges: Dictionary = _movement_edge_set()
 	var cross := func(from: Vector2i, to: Vector2i) -> bool:
 		return not WallEdgeData.is_edge_blocked(from, to, edges)
 	var sim := PropFragmentSim.new({"cells": lattice, "zones": zones, "origin": Vector3.ZERO,
-		"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS), "blast": Vector2.ZERO, "weight": 1.0, "seed": seed,
-		"wave_delay": 0.0, "push_dir": push_dir, "carve": false, "char": false, "stack": stack, "solid": solid, "can_cross": cross})
-	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials)
-	node.settled.connect(_on_rubble_settled.bind(zone_materials))
+		"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS * div), "blast": Vector2.ZERO, "weight": 1.0, "seed": seed,
+		"wave_delay": 0.0, "push_dir": push_dir, "carve": false, "char": false, "stack": stack, "solid": solid, "can_cross": cross,
+		"hold": RUBBLE_HOLD_S, "vanish": vanish, "tones": tones})
+	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)
+	node.settled.connect(_on_rubble_settled.bind(zone_materials, tones))
 	return sim.count
 
 
-func _on_rubble_settled(records: Array, zone_materials: Array) -> void:
+## The wall's general tone for a material: the mean of its grayscale facade (the wall draws base colour × facade), measured once.
+## Approximate on purpose (Director: a chip is a deliberate visual confusion, not a matched pixel).
+func _rubble_tone(material: String) -> float:
+	if _rubble_tones.has(material):
+		return float(_rubble_tones[material])
+	var tone: float = 1.0
+	var live: Node = board3d()
+	var tex: Texture2D = live.call("material_facade_texture", material) if live != null else null
+	var img: Image = tex.get_image() if tex != null else null
+	if img != null and not img.is_empty():
+		if img.is_compressed():
+			img.decompress()
+		img.resize(8, 8, Image.INTERPOLATE_BILINEAR)
+		var sum: float = 0.0
+		for y in range(8):
+			for x in range(8):
+				sum += img.get_pixel(x, y).r
+		tone = sum / 64.0
+	tone *= RUBBLE_TONE_SCALE
+	_rubble_tones[material] = tone
+	return tone
+
+
+func _on_rubble_settled(records: Array, zone_materials: Array, tones: PackedFloat32Array) -> void:
+	var div: int = RubblePresetsRef.DIVISION
 	var base_records: Array = []
+	var puffs: Dictionary = {}   ## board voxel column -> [level, zone]: where the chips lie, for the floor dust
 	for r: Dictionary in records:
 		base_records.append({"col": r["column"], "level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
-	_base_rubble_piles.append({"y0": 0.0, "zone_materials": zone_materials, "records": base_records, "div": 1})
+		var col: Vector2i = r["column"]
+		puffs[Vector2i(floori(float(col.x) / div), floori(float(col.y) / div))] = [int(r["level"]), int(r.get("zone", 0))]
+	_base_rubble_piles.append({"y0": 0.0, "zone_materials": zone_materials, "records": base_records, "div": div})
+	## A little dust where the chips lie (the glass's floor dust, in the material's tone), instead of a contact shadow.
+	if _debris_overlay == null or _voxel_board == null:
+		return
+	var registry = Registries.get_material_registry()
+	var ground: int = _voxel_board.ground_plane_level()
+	var n: int = 0
+	for vc: Vector2i in puffs:
+		if n >= 6:
+			break
+		var lz: Array = puffs[vc]
+		var zone: int = int(lz[1])
+		var def = registry.resolve(String(zone_materials[zone])) if registry != null else null
+		var c: Color = def.base_color if def != null else Color(0.55, 0.55, 0.55)
+		var t: float = tones[zone] if zone < tones.size() else 1.0
+		var to: Vector2 = _voxel_board.voxel_world_position(vc, ground - 1 + floori(float(int(lz[0])) / div))
+		if to == Vector2.ZERO:
+			continue
+		_debris_overlay.add_glass_dust(to, 12.0, Color(c.r * t, c.g * t, c.b * t, 1.0))
+		n += 1
 
 
 ## A rotation or a save is about to happen: any fragment simulation still running is run to its end first, so its pile is recorded.
@@ -5911,7 +5981,7 @@ func _respawn_base_prop_piles() -> void:
 		var rubble: Array = []
 		for r: Dictionary in pile["records"]:
 			rubble.append({"column": r["col"], "level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
-		live.call("spawn_prop_pile", rubble, float(pile["y0"]), pile["zone_materials"], int(pile.get("div", 1)))
+		live.call("spawn_prop_pile", rubble, float(pile["y0"]), pile["zone_materials"], int(pile.get("div", 1)), true)
 
 
 ## R3D-PROPS Tier 1/2 debris (Director, 2026-09-28): "aproveitar o mecanismo do vidro que

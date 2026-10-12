@@ -4,7 +4,7 @@
  "id": "ROOF_LAB",
  "meta": {
   "title": "Roof Lab",
-  "description": "ROOF_MASTER_PLAN RF-1 step 1 fixture (2026-10-11). Two 3x3 rooms of 2-storey concrete block rings, each with a door on its south side and its own lamp inside: room A (interior gu 7..9 x 6..8) under a CONCRETE roof with a 1-GU GLASS SKYLIGHT in its centre (gu 8,7; R-D5: the glass in the roof's lower layer, the upper layer empty), room B (interior gu 15..17 x 6..8) under a CONCRETE roof (the stages after glass). A larger lamp outside stands for the hall / outdoor light above the roofs (R-D1). The agent starts outside, south of the rooms, so the roofs stay drawn. Dev fixture, not a level. The agent starts INSIDE room A (the reveal opens its roof) so the floor's light under the skylight can be judged."
+  "description": "ROOF_MASTER_PLAN RF-1 step 1 fixture (2026-10-11). Two 3x3 rooms of 2-storey concrete block rings, each with a door on its south side and its own lamp inside: room A (interior gu 5..9 x 4..8) under a CONCRETE roof with a 3x3 GLASS SKYLIGHT in its centre (gu 6..8 x 5..7; R-D5: the glass in the roof's lower layer, the upper layer empty), room B (interior gu 15..17 x 6..8) under a CONCRETE roof (the stages after glass). A larger lamp outside stands for the hall / outdoor light above the roofs (R-D1). The agent starts outside, south of the rooms, so the roofs stay drawn. Dev fixture, not a level. The agent starts INSIDE room A (the reveal opens its roof) so the floor's light under the skylight can be judged."
  },
  "sections": {
   "board": {
@@ -19,7 +19,7 @@
   "actors": {
    "v": 1,
    "agent_start": [
-    7,
+    5,
     8
    ],
    "guards": []
@@ -31,8 +31,8 @@
    "dividers": [],
    "lights": [
     {
-     "x": 8,
-     "y": 7,
+     "x": 7,
+     "y": 6,
      "height_class": 2,
      "radius": 4,
      "intensity": 0.9
@@ -57,9 +57,35 @@
    "v": 2,
    "items": [
     {
-     "comment": "ring 6,5",
+     "comment": "ring 4,3",
      "gu": [
-      6,
+      4,
+      3
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 4,4",
+     "gu": [
+      4,
+      4
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 4,5",
+     "gu": [
+      4,
       5
      ],
      "material": "concrete",
@@ -70,9 +96,9 @@
      ]
     },
     {
-     "comment": "ring 6,6",
+     "comment": "ring 4,6",
      "gu": [
-      6,
+      4,
       6
      ],
      "material": "concrete",
@@ -83,9 +109,9 @@
      ]
     },
     {
-     "comment": "ring 6,7",
+     "comment": "ring 4,7",
      "gu": [
-      6,
+      4,
       7
      ],
      "material": "concrete",
@@ -96,10 +122,62 @@
      ]
     },
     {
-     "comment": "ring 6,8",
+     "comment": "ring 4,8",
+     "gu": [
+      4,
+      8
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 4,9",
+     "gu": [
+      4,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 5,3",
+     "gu": [
+      5,
+      3
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 5,9",
+     "gu": [
+      5,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 6,3",
      "gu": [
       6,
-      8
+      3
      ],
      "material": "concrete",
      "storeys": 2,
@@ -122,10 +200,10 @@
      ]
     },
     {
-     "comment": "ring 7,5",
+     "comment": "ring 7,3",
      "gu": [
       7,
-      5
+      3
      ],
      "material": "concrete",
      "storeys": 2,
@@ -135,9 +213,22 @@
      ]
     },
     {
-     "comment": "ring 7,9",
+     "comment": "ring 8,3",
      "gu": [
-      7,
+      8,
+      3
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 8,9",
+     "gu": [
+      8,
       9
      ],
      "material": "concrete",
@@ -148,23 +239,10 @@
      ]
     },
     {
-     "comment": "ring 8,5",
-     "gu": [
-      8,
-      5
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 9,5",
+     "comment": "ring 9,3",
      "gu": [
       9,
-      5
+      3
      ],
      "material": "concrete",
      "storeys": 2,
@@ -178,6 +256,32 @@
      "gu": [
       9,
       9
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 10,3",
+     "gu": [
+      10,
+      3
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "ring 10,4",
+     "gu": [
+      10,
+      4
      ],
      "material": "concrete",
      "storeys": 2,
@@ -475,26 +579,26 @@
    "v": 1,
    "items": [
     {
-     "comment": "room A: a concrete roof with a glass skylight in its centre (RF-1, R-D5)",
+     "comment": "room A: a concrete roof with a 3x3 glass skylight in its centre (RF-1, R-D5)",
      "gu": [
-      7,
-      6
+      5,
+      4
      ],
      "size": [
-      3,
-      3
+      5,
+      5
      ],
      "storeys": 2,
      "material": "concrete",
      "kind": "flat",
      "skylight": {
       "gu": [
-       8,
-       7
+       6,
+       5
       ],
       "size": [
-       1,
-       1
+       3,
+       3
       ],
       "material": "glass"
      }
@@ -521,13 +625,13 @@
     {
      "id": "glass_roof",
      "at": [
-      8.5,
       7.5,
+      6.5,
       2.0
      ],
      "extent": [
-      3.0,
-      3.0,
+      5.0,
+      5.0,
       0.5
      ],
      "tags": [
@@ -556,8 +660,8 @@
     {
      "id": "room_a_inside",
      "at": [
-      8.5,
-      7.5
+      7.5,
+      6.5
      ],
      "tags": [
       "event"
@@ -576,13 +680,13 @@
     {
      "id": "skylight",
      "at": [
-      8.5,
       7.5,
+      6.5,
       2.0
      ],
      "extent": [
-      1.0,
-      1.0,
+      3.0,
+      3.0,
       0.25
      ],
      "tags": [
@@ -594,8 +698,8 @@
     {
      "id": "room_a_far",
      "at": [
-      9.5,
-      6.5
+      8.5,
+      4.5
      ],
      "tags": [
       "event"
@@ -607,8 +711,8 @@
      "id": "roof_lab",
      "box": {
       "min": [
-       4,
        3,
+       2,
        0
       ],
       "max": [
@@ -626,8 +730,8 @@
      "id": "room_a",
      "box": {
       "min": [
-       6,
-       5,
+       4,
+       3,
        0
       ],
       "max": [

@@ -19,6 +19,9 @@ const FLOATS_PER_INSTANCE: int = 16   ## 12 of transform + 4 of colour
 
 ## Emitted once, when the simulation has finished: the pile as records ({"column", "level", "mult"}; see `_pile_records`).
 signal settled(records: Array)
+## ROOF R-D9: the fragments that landed since the last frame ({"column", "level"}), while the simulation runs (a shot's rubble
+## darkens the floor under it as it piles). Built only when something listens.
+signal landed(records: Array)
 
 var _zone_colors: Array[Color] = []
 
@@ -31,6 +34,7 @@ var _buf: PackedFloat32Array = PackedFloat32Array()
 var _voxel: float = 0.125
 var _y0: float = 0.0
 var _finished: bool = false
+var _landed_sent: PackedByteArray = PackedByteArray()   ## per fragment: 1 once `landed` has reported it
 var _settled_at: PackedByteArray = PackedByteArray()   ## per fragment: 1 once its row holds its FINAL value (landed or gone, charring done)
 
 
@@ -102,10 +106,23 @@ func _process(delta: float) -> void:
 	if _sim == null or _finished:
 		return
 	_sim.advance(delta)
+	_report_landed()
 	if _sim.is_done():
 		_finalize()
 	else:
 		_upload()
+
+
+func _report_landed() -> void:
+	if not landed.has_connections():
+		return
+	var out: Array = []
+	for i in range(_sim.count):
+		if _landed_sent[i] == 0 and _sim.state[i] == PropFragmentSim.State.LANDED:
+			_landed_sent[i] = 1
+			out.append({"column": _sim.column[i], "level": _sim.level[i]})
+	if not out.is_empty():
+		landed.emit(out)
 
 
 func _exit_tree() -> void:
@@ -126,6 +143,8 @@ func _build(n: int) -> void:
 	_buf.resize(n * FLOATS_PER_INSTANCE)
 	_settled_at = PackedByteArray()
 	_settled_at.resize(n)
+	_landed_sent = PackedByteArray()
+	_landed_sent.resize(n)
 	_mat = ShaderMaterial.new()
 	_mat.shader = BoardLook.graded_shader(SHADER_PATH)
 	_mat.set_shader_parameter("albedo", Color.WHITE)

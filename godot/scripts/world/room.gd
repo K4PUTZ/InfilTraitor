@@ -5903,15 +5903,20 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 		"wave_delay": 0.0, "push_dir": push_dir, "carve": false, "char": false, "stack": stack, "solid": solid, "can_cross": cross,
 		"hold": RUBBLE_HOLD_S, "tones": tones, "release": release, "speed": speed})
 	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)
+	var landed_so_far: Array = []
+	node.landed.connect(func(records: Array) -> void:
+		landed_so_far.append_array(records)
+		_soot_under_rubble(landed_so_far))
 	node.settled.connect(_on_rubble_settled.bind(zone_materials, tones))
 	return sim.count
 
 
-## Director 2026-10-12: "um pouquinho de fuligem em baixo da pilha, no final — só um shadezinho leve". The surface each settled pile
-## column rests on takes a light ring of the soot ladder (the thick middle of the pile one darker, a halo one lighter), through the soot map
-## like any other stamp: on a floor the plane blends it bilinearly (no square edges), and it is saved and restored with the rest.
-static var RUBBLE_SOOT_RING: int = 2
-static var RUBBLE_SOOT_THICK: int = 12   ## cubes on one board voxel column from which the ring under it is one darker
+## Director 2026-10-12: "um pouquinho de fuligem em baixo da pilha — só um shadezinho leve", fading in WITH the pile: the surface
+## each pile column rests on takes a light ring of the soot ladder that darkens as cubes land on it (`RUBBLE_SOOT_STEPS`: from that
+## many cubes, that ring; a halo one voxel past the pile one ring lighter), stamped again every frame cubes land and a last time when
+## the pile settles. Through the soot map like any other stamp: on a floor the plane blends it bilinearly (no square edges), a stamp only
+## darkens, and it is saved and restored with the rest.
+static var RUBBLE_SOOT_STEPS: Array = [[12, 1], [4, 2], [1, 3]]   ## [cubes on one board voxel column, ring], darkest first
 
 
 func _soot_under_rubble(records: Array) -> void:
@@ -5936,13 +5941,17 @@ func _soot_under_rubble(records: Array) -> void:
 		if not writes.has(key.z):
 			writes[key.z] = {}
 		var lw: Dictionary = writes[key.z]
-		var ring: int = RUBBLE_SOOT_RING - (1 if int(count[key]) >= RUBBLE_SOOT_THICK else 0)
+		var ring: int = BlastCalculator.FACE_SOOT_CLEAN
+		for st: Array in RUBBLE_SOOT_STEPS:
+			if int(count[key]) >= int(st[0]):
+				ring = int(st[1])
+				break
 		for dx in range(-1, 2):
 			for dy in range(-1, 2):
 				var c := Vector2i(key.x + dx, key.y + dy)
-				var r: int = ring if dx == 0 and dy == 0 else ring + 1
+				var r: int = ring if dx == 0 and dy == 0 else mini(ring + 1, BlastCalculator.FACE_SOOT_CLEAN)
 				lw[c] = mini(int(lw.get(c, BlastCalculator.FACE_SOOT_CLEAN)), r)
-	_stamp_soot_faded(writes, "rubble soot")
+	_paint_soot(stamp_soot(writes), "rubble soot")
 
 
 func _on_rubble_settled(records: Array, zone_materials: Array, tones: PackedFloat32Array) -> void:
@@ -6964,38 +6973,6 @@ func settle_soot() -> Dictionary:
 
 ## `level -> {view_cell: tone}` into the soot plane, and the levels it touched up to
 ## whichever board draws them. `reason` names the 3D board's upload log line.
-## Director 2026-10-12: a shot's soot (round the hole, under the rubble) came in at once; it FADES IN. A cell's soot is one tone of
-## the ladder, so the fade is a walk down it: every cell is stamped at the lightest ring first and one ring darker every
-## `SOOT_FADE_STEP_FRAMES` drawn frames until it reaches its own tone (a charred cell last of all). A stamp only darkens, so the
-## steps are ordinary stamps; each one is a few cells repainted. Not awaited by the callers.
-static var SOOT_FADE_STEP_FRAMES: int = 6
-
-
-func _stamp_soot_faded(writes: Dictionary, reason: String) -> void:
-	var renderer: VoxelBoard = _voxel_board
-	var lightest: int = BlastCalculator.FACE_SOOT_CLEAN - 1
-	for step in range(lightest + 2):
-		var target_ring: int = lightest - step   ## -1 = the last step, which lets a charred cell char
-		var stage: Dictionary = {}
-		for level in writes:
-			var out: Dictionary = {}
-			var lw: Dictionary = writes[level]
-			for cell: Vector2i in lw:
-				var tone: int = int(lw[cell])
-				if tone == BlastCalculator.FACE_SOOT_CHAR:
-					out[cell] = tone if target_ring < 0 else maxi(target_ring, 0)
-				elif target_ring >= 0:
-					out[cell] = maxi(tone, target_ring)
-			if not out.is_empty():
-				stage[level] = out
-		if step > 0:
-			for _f in range(SOOT_FADE_STEP_FRAMES):
-				await get_tree().process_frame
-			if not is_instance_valid(renderer) or renderer != _voxel_board:
-				return
-		_paint_soot(stamp_soot(stage), reason)
-
-
 func _paint_soot(cells: Dictionary, reason: String) -> void:
 	if cells.is_empty() or _voxel_board == null:
 		return
@@ -7047,13 +7024,14 @@ func apply_shot_soot(touched: Array, radius: int = -1) -> void:
 	if not is_instance_valid(renderer) or renderer != _voxel_board:
 		return
 	var t0: int = Time.get_ticks_usec()
-	var writes: Dictionary = BlastCalculator.stamp_around(seeds, use_radius, VoxelStore.active, holes, true)
+	var changed: Dictionary = stamp_soot(BlastCalculator.stamp_around(
+		seeds, use_radius, VoxelStore.active, holes, true))
+	_paint_soot(changed, "shot soot")
 	var n: int = 0
-	for level in writes:
-		n += (writes[level] as Dictionary).size()
-	print_debug("[SHOT-SOOT] %d cell(s) on %d level(s) planned in %.2f ms, fading in"
-		% [n, writes.size(), float(Time.get_ticks_usec() - t0) / 1000.0])
-	_stamp_soot_faded(writes, "shot soot")
+	for level in changed:
+		n += (changed[level] as Dictionary).size()
+	print_debug("[SHOT-SOOT] %d cell(s) on %d level(s) in %.2f ms"
+		% [n, changed.size(), float(Time.get_ticks_usec() - t0) / 1000.0])
 
 
 func _update_alert_label() -> void:

@@ -60,6 +60,10 @@ static func capture(room) -> Dictionary:
 		var by_tag: Dictionary = room._base_damage_claims[key]
 		for tag in by_tag.keys():
 			claim_damage.append([key.x, key.y, key.z, int(tag)] + (by_tag[tag] as Array))
+	## Still-falling fragments are run to their end FIRST: a shot's rubble stamps its final soot under the pile when it settles
+	## (ROOF R-D9), so the soot below must be read after it, or a save during the fall loses that soot.
+	if room.has_method("_finish_running_prop_fragments"):
+		room._finish_running_prop_fragments()
 	var soot: Array = []
 	var shards: Array = []
 	for key in room._base_shards.keys():
@@ -88,9 +92,7 @@ static func capture(room) -> Dictionary:
 		debris.append([String(did), bp.x, bp.y, int(d["level"]), String(d["material"]), int(d["variant"]),
 			tint.r, tint.g, tint.b, tint.a, float(d["rot"])])
 	## P2: the piles of charred fragments ([base_gu_x, base_gu_y, y0, [material per zone], [[col_x, col_y, level, mult, zone], ...], division]; the columns are in the fragment lattice, `division` per board voxel, 1 in an old save). Still-falling
-	## fragments are run to their end first so their pile is in the record.
-	if room.has_method("_finish_running_prop_fragments"):
-		room._finish_running_prop_fragments()
+	## fragments were run to their end first (above, before the soot), so their pile is in the record.
 	var prop_piles: Array = []
 	for gk in room._base_prop_piles.keys():
 		var pile: Dictionary = room._base_prop_piles[gk]

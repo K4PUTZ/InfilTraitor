@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 87572 lines total** (under `godot/scripts/`)
+**295 scripts · 87571 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -953,7 +953,7 @@ extends `Node3D` · 3327 lines
 
 ### `prop_fragments3d.gd`
 
-`class_name PropFragments3D` · extends `Node3D` · 240 lines
+`class_name PropFragments3D` · extends `Node3D` · 259 lines
 
 `godot/scripts/geometry/prop_fragments3d.gd`
 
@@ -961,6 +961,7 @@ extends `Node3D` · 3327 lines
 
 **Signals**
 - `signal settled(records: Array)`
+- `signal landed(records: Array)`
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/prop_mesh3d.gdshader"`
@@ -3425,7 +3426,7 @@ extends `Node` · 143 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 328 lines
+`class_name SaveState` · extends `RefCounted` · 330 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -6126,7 +6127,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10609 lines
+extends `Node2D` · 10587 lines
 
 `godot/scripts/world/room.gd`
 

@@ -134,6 +134,12 @@ uniform int face_z_slot = 2;
 uniform float depth_dim[5];
 uniform float soot_smooth = 1.0;  // 1: a floor top's soot tone is the cell plane's B channel read bilinear (no square edges); 0: one cell, hard
 uniform float pit_dark = 0.60;     // the inside of a crater (side faces and the tops below the walkable floor) is darkened by this
+// ROOF R-D9 (Director 2026-10-12): a face looking INTO a hole a wall took (the material's FRESH twin, `_fresh_twin`) is freshly broken
+// material: most of its cell's soot is taken off and it reads a little lighter; the wall's outer face around the opening keeps the
+// soot. Arithmetic, no branch (an untaken branch costs on the Mali): 0 / 1 on every other material.
+uniform float fresh_clean = 0.0;
+uniform float fresh_lift = 1.0;
+uniform float fresh_light = 0.0;  // and a floor under its light: the light field holds a wall's inside unlit, so a hole's back was black
 varying vec3 v_world;
 varying vec3 v_normal;
 // R3D-7 — the cutaway, driven by the OcclusionSet: one texel per grid
@@ -252,7 +258,7 @@ void fragment() {
 			tone += blur - own_tone;
 		}
 	}
-	f *= tone;
+	f = max(f, fresh_light) * mix(tone, 1.0, fresh_clean) * fresh_lift;
 	int rel = level + rel_offset;
 	if (rel < 0) {
 		f *= depth_dim[min(-rel - 1, 4)];
@@ -424,6 +430,13 @@ var _material_index: Dictionary = {}
 ## decals and the twins themselves. The twin sits in `_material_ids` (id + `SOLID_SUFFIX`), `_material_glass` and `_shader_materials`
 ## like any material, so every loop that sets uniforms reaches it; it is never in `_material_index`.
 var _solid_twin: PackedInt32Array = PackedInt32Array()
+## ROOF R-D9: material index -> its FRESH twin (the faces that look into a hole in a wall; `fresh_clean` / `fresh_lift`), -1 for none.
+## A fresh twin has its own solid twin (`_solid_twin`), so the cutaway swap works on it as on any material.
+var _fresh_twin: PackedInt32Array = PackedInt32Array()
+static var FRESH_CLEAN: float = 0.8
+static var FRESH_LIFT: float = 1.06
+static var FRESH_LIGHT: float = 0.6
+const FRESH_SUFFIX: String = "#fresh"
 var _warned_cut_below: bool = false
 ## PB-6: the chunks the cutaway currently reaches (a ghosted column or a revealed roof GU in them): only these draw the
 ## cuttable shader; every other chunk's surfaces point at the solid twins. Switched per occlusion update by material swap
@@ -1457,6 +1470,7 @@ func _material(material_id: String) -> int:
 		_material_glass.append(GlassMaterials.is_glass(material_id))
 		_shader_materials.append(_make_material(material_id))
 		_solid_twin.append(-1)
+		_fresh_twin.append(-1)
 		var index: int = _shader_materials.size() - 1
 		_glass_edge_twin.append(-1)
 		_is_glass_edge.append(false)
@@ -1475,6 +1489,7 @@ func _material(material_id: String) -> int:
 			_material_glass.append(true)
 			_shader_materials.append(edge)
 			_solid_twin.append(-1)
+			_fresh_twin.append(-1)
 			_glass_edge_twin.append(-1)
 			_is_glass_edge.append(true)
 			_glass_edge_twin[index] = _shader_materials.size() - 1
@@ -1485,9 +1500,27 @@ func _material(material_id: String) -> int:
 			_material_glass.append(false)
 			_shader_materials.append(twin)
 			_solid_twin.append(-1)
+			_fresh_twin.append(-1)
 			_glass_edge_twin.append(-1)
 			_is_glass_edge.append(false)
 			_solid_twin[index] = _shader_materials.size() - 1
+			## ROOF R-D9: the fresh twin (cuttable) and ITS solid twin, both with the fresh uniforms.
+			var fresh := _shader_materials[index].duplicate() as ShaderMaterial
+			var fresh_solid := twin.duplicate() as ShaderMaterial
+			for fm: ShaderMaterial in [fresh, fresh_solid]:
+				fm.set_shader_parameter("fresh_clean", FRESH_CLEAN)
+				fm.set_shader_parameter("fresh_lift", FRESH_LIFT)
+				fm.set_shader_parameter("fresh_light", FRESH_LIGHT)
+			for k: int in range(2):
+				_material_ids.append(material_id + FRESH_SUFFIX + (SOLID_SUFFIX if k == 1 else ""))
+				_material_glass.append(false)
+				_shader_materials.append(fresh if k == 0 else fresh_solid)
+				_solid_twin.append(-1)
+				_fresh_twin.append(-1)
+				_glass_edge_twin.append(-1)
+				_is_glass_edge.append(false)
+			_fresh_twin[index] = _shader_materials.size() - 2
+			_solid_twin[_shader_materials.size() - 2] = _shader_materials.size() - 1
 	return int(_material_index[material_id])
 
 
@@ -2575,12 +2608,19 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 			if damage == Voxel.DamageState.CRACKED or damage == Voxel.DamageState.DENTED:
 				_decal_faces(store.material_ids[mat[claim]], damage, ((state[claim] >> 3) & 1) == 1,
 					(state[claim] >> 4) & 7, store.aux[claim] & 15, decal_dirs, decal_layers, dirs)
+		var fresh: int = _fresh_twin[material] if not glass and level >= _ground_level and material < _fresh_twin.size() else -1
 		for dir: int in dirs:
 			var n: int = cell + steps[dir]
+			var into_hole: bool = false
 			if occ[n]:
 				## Hidden by a neighbour, unless that neighbour is glass and this is not.
 				if not (_material_glass[_store_material[mat[owner[n]]]] and not glass):
 					continue
+			elif fresh >= 0:
+				## ROOF R-D9: the cell beside this face held a voxel that is gone (a destroyed claim still owns its cell) — the face
+				## looks into a hole and is freshly broken material, unless what was there was glass (a pane's hole is not this wall's).
+				var o: int = owner[n]
+				into_hole = o >= 0 and (state[o] & 1) == 0 and not _material_glass[_store_material[mat[o]]]
 			var di: int = decal_dirs.find(dir)
 			if di != -1:
 				decals.append([dir, x, y, level, int(decal_layers[di]), dir == dent_dir])
@@ -2601,7 +2641,7 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 				uv = Vector2i(x, level)
 			if not planes.has(plane_key):
 				planes[plane_key] = {}
-			var face_material: int = material
+			var face_material: int = fresh if into_hole else material
 			if glass and pane_of[claim] != 0 and material < _glass_edge_twin.size() and _glass_edge_twin[material] >= 0 \
 					and _is_pane_edge(dir, pane_of[claim] - 1):
 				face_material = _glass_edge_twin[material]

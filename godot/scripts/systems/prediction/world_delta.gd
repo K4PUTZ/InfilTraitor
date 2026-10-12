@@ -217,6 +217,10 @@ var glass_rim_shards: Array = []
 ## written to `SaveState`, never converted to BASE coords, and never replayed on a
 ## rotation — because there is nothing left to replay.
 var glass_shard_flights: Array = []
+## ROOF R-D6 — a SKYLIGHT a blast broke: its voxels are thrown up and out as whole voxels (`Room.spawn_skylight_burst`), and shatter
+## where they land, instead of rain leaving the pane at once. Each: {cells: [{grid_pos, level}], from: Vector2 (the epicentre, voxels),
+## strength: 0..1}. Proposed by the cook (pure), spawned at commit.
+var skylight_bursts: Array = []
 
 ## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — WHICH VOXELS THE FIRE ATE.
 ##
@@ -388,6 +392,9 @@ func commit(room = null, defer_rain: bool = false) -> void:
 		if not glass_shard_flights.is_empty() and not defer_rain:
 			room.spawn_glass_rain(glass_shard_flights)
 		t = _split("glass rain", t)
+		if not skylight_bursts.is_empty() and room.has_method("spawn_skylight_burst"):
+			room.spawn_skylight_burst(skylight_bursts)
+		t = _split("skylight burst", t)
 		## G-D45 — a remnant this blast orphaned (its frame destroyed) falls with
 		## it. Unconditional: the frame that held an OLD remnant can be brick this
 		## delta broke with no glass of its own, so it is not gated on the glass

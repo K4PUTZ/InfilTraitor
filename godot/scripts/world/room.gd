@@ -915,6 +915,58 @@ func _finish_glass_rain(job: Dictionary) -> void:
 
 ## G-D55 (Director, 2026-10-10: "faz o pó sair no impacto de cada voxel") — the G6b-3 puff, small, where each falling voxel lands,
 ## in the frame it lands (a few per frame at most: a frame where many land is one stretch of floor).
+## ROOF R-D6 (Director, 2026-10-11) — the voxels a blast takes out of a SKYLIGHT, thrown up and out from the epicentre as whole voxels
+## (`GlassVoxelFall3D`'s BURST), each landing on whatever surface is under it when it comes down and shattering there: the shard rain
+## starts at the impacts, the pile and the dust where each lands, as the unsupported wall glass does. Called by the commit (the cells
+## are already DESTROYED; the store's floor is the one the blast left). The pane's own mesh goes with the board's remesh under the flash.
+func spawn_skylight_burst(bursts: Array) -> void:
+	var store: VoxelStore = VoxelStore.active
+	var live: Node = board3d()
+	if store == null or live == null or _voxel_board == null:
+		return
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var col_cache: Dictionary = {}
+	var surfaces := func(x: int, y: int) -> Array:
+		var key := Vector2i(x, y)
+		if col_cache.has(key):
+			return col_cache[key]
+		var out: Array = []
+		var top_level: int = store.l0 + store.nl - 1
+		for lv: int in range(top_level, store.l0 - 1, -1):
+			if store.has_cell(x, y, lv) and not store.has_cell(x, y, lv + 1):
+				out.append([float((live.call("voxel_centre_local", 0, 0, lv) as Vector3).y) + unit * 0.5, lv])
+		col_cache[key] = out
+		return out
+	for burst: Dictionary in bursts:
+		var ep: Vector2 = burst["from"]
+		var from3: Vector3 = live.call("voxel_centre_local", int(ep.x), int(ep.y), _voxel_board.ground_plane_level())
+		var entries: Array = []
+		for c: Dictionary in burst["cells"]:
+			var gp: Vector2i = c["grid_pos"]
+			var lv: int = int(c["level"])
+			if gp.x < store.x0 or gp.y < store.y0 or lv < store.l0 or gp.x >= store.x0 + store.w or gp.y >= store.y0 + store.h \
+					or lv >= store.l0 + store.nl:
+				continue
+			var claim: int = store.owner[store.cell_index(gp.x, gp.y, lv)]
+			if claim < 0:
+				continue
+			entries.append({"x": gp.x, "y": gp.y, "level": lv, "material": int(live.call("store_material_of", claim)),
+				"face": VoxelStore.PANE_HORIZONTAL - 1, "score": 0.5, "landing": {}, "surfaces": surfaces,
+				"burst": {"from": from3, "strength": float(burst.get("strength", 1.0))}})
+		if entries.is_empty():
+			continue
+		var fall: Node3D = GlassVoxelFall3DClass.new()
+		(live.call("geometry_root") as Node3D).add_child(fall)
+		var flights: Array = fall.call("setup", live, entries, [],
+			func(hits: Array) -> void:
+				record_glass_shards(GlassFall.pile_by_cell(hits))
+				_glass_impact_dust(hits))
+		fall.call("start")
+		var n: int = spawn_glass_rain(flights, false)
+		print_debug("[SKYLIGHT-BURST] %d voxel(s) thrown (strength %.2f), %d land, %d shard(s) of rain from the impacts"
+			% [entries.size(), float(burst.get("strength", 1.0)), flights.size(), n])
+
+
 func _glass_impact_dust(landings: Array) -> void:
 	if _debris_overlay == null or _voxel_board == null:
 		return

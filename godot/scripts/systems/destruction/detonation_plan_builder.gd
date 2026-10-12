@@ -867,7 +867,12 @@ static func _glass_pane(s: Dictionary, g: Dictionary, pid) -> void:
 		_craze_pane(s, pid, pane_slices, ring, epicenter)
 		## The landings are worked out AFTER the loop, once for every shattered pane (`_glass_step` stages 1-3): the surface index walks
 		## every cell of every slab, ~60 ms a pane on the desktop and a 1.1 s step in the Moto's cook.
-		g["pending"].append({"fallen": fallen, "impulse": impulse, "shards": entries.size()})
+		if face == PaneFrameRef.HORIZONTAL:
+			## ROOF R-D6 — a skylight's broken glass leaves as whole voxels thrown up and out, shattering where each lands (the room
+			## works out the flights at commit: it needs the floor the blast left), not as a rain from the pane.
+			delta.skylight_bursts.append({"cells": fallen, "from": Vector2(epicenter), "strength": push})
+		else:
+			g["pending"].append({"fallen": fallen, "impulse": impulse, "shards": entries.size()})
 
 
 ## The resumable glass stage of PHASE_SLICES (A1, 2026-10-08): the Galaxy A16 measured the unsliced `_shatter_glass_panes()` + `_land_shards()` as ONE

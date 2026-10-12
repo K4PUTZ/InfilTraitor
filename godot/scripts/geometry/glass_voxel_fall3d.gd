@@ -41,6 +41,14 @@ static var PUSH_OUT: Vector2 = Vector2(0.05, 0.55)       ## GU / s along the pan
 static var PUSH_SIDE: float = 0.3                        ## GU / s along the run, ±
 static var TUMBLE: Vector2 = Vector2(1.5, 8.0)           ## rad / s about a hashed axis
 const MAX_FALL_FRAMES: int = 240
+## ROOF R-D6 (Director, 2026-10-11: *"a troca dos painéis de vidro pelos voxels, como na perda de sustentação da parede, de maneira
+## que eles voem pra cima, percam a velocidade e caiam em volta, quebrando no impacto com o chão"*) — a BURST: the voxels a blast takes
+## out of a SKYLIGHT are thrown up and out from the epicentre, and land around, on whatever surface is under them when they come down
+## (the floor, the roof's frame, a wall's top), shattering there. Scaled by the blast's strength at the pane (0..1).
+static var BURST_UP: Vector2 = Vector2(2.2, 4.2)         ## GU / s up
+static var BURST_OUT: Vector2 = Vector2(0.6, 2.4)        ## GU / s away from the epicentre, in the ground plane
+static var BURST_START: int = 2                          ## frames, hashed 0..this (no rest: the blast throws them)
+static var BURST_TUMBLE: Vector2 = Vector2(4.0, 14.0)    ## rad / s
 
 var _unit: float = 0.125
 var _voxels: Array = []           ## per voxel: {centre, start, impact, g, v, axis, w, x_normal, mm_body: [mm, i], cracks: [[mm, i]]}
@@ -67,21 +75,26 @@ func setup(live: Node, entries: Array, cracks: Array, on_impact: Callable) -> Ar
 	var root_xf: Transform3D = live.call("geometry_root_transform")
 	_root_xf = root_xf
 	for e: Dictionary in entries:
-		var vx: Dictionary = _motion(e)
-		vx["centre"] = live.call("voxel_centre_local", int(e["x"]), int(e["y"]), int(e["level"]))
+		var centre: Vector3 = live.call("voxel_centre_local", int(e["x"]), int(e["y"]), int(e["level"]))
+		var vx: Dictionary = _motion(e, centre)
+		vx["centre"] = centre
 		vx["x_normal"] = int(e["face"]) == 0 or int(e["face"]) == 2
+		vx["orient"] = 2 if int(e["face"]) == HORIZONTAL_FACE else (1 if vx["x_normal"] else 0)
 		vx["landing"] = e["landing"]
 		vx["cell"] = Vector3i(int(e["x"]), int(e["y"]), int(e["level"]))
 		vx["cracks"] = []
-		_solve_impact(vx, float(e["floor_y"]))
-		var gk := Vector2i(int(e["material"]), 1 if vx["x_normal"] else 0)
+		if e.has("surfaces"):
+			_solve_burst_impact(vx, e["surfaces"])
+		else:
+			_solve_impact(vx, float(e["floor_y"]))
+		var gk := Vector2i(int(e["material"]), int(vx["orient"]))
 		if not groups.has(gk):
 			groups[gk] = []
 		(groups[gk] as Array).append(_voxels.size())
 		_voxels.append(vx)
 		_last = maxi(_last, int(vx["start"]) + int(vx["impact"]))
-		if not (e["landing"] as Dictionary).is_empty():
-			var row: Dictionary = (e["landing"] as Dictionary).duplicate()
+		if not (vx["landing"] as Dictionary).is_empty():
+			var row: Dictionary = (vx["landing"] as Dictionary).duplicate()
 			row["from3"] = root_xf * (_transform_at(vx, int(vx["impact"])).origin)
 			row["t0"] = int(vx["start"]) + int(vx["impact"])
 			row["pop"] = 1.6
@@ -92,8 +105,8 @@ func setup(live: Node, entries: Array, cracks: Array, on_impact: Callable) -> Ar
 		if mats.is_empty():
 			continue
 		var members: Array = groups[gk]
-		var broad: MultiMesh = _multimesh(_cube(gk.y == 1, true), members.size())
-		var edge: MultiMesh = _multimesh(_cube(gk.y == 1, false), members.size())
+		var broad: MultiMesh = _multimesh(_cube(gk.y, true), members.size())
+		var edge: MultiMesh = _multimesh(_cube(gk.y, false), members.size())
 		for k: int in range(members.size()):
 			(_voxels[members[k]] as Dictionary)["body"] = [broad, edge, k]
 		_add_instance(broad, mats[0], 0.0)
@@ -117,10 +130,32 @@ func setup(live: Node, entries: Array, cracks: Array, on_impact: Callable) -> Ar
 	return flights
 
 
+## `PaneFrame.HORIZONTAL`: a skylight's voxel (its broad faces up and down).
+const HORIZONTAL_FACE: int = 4
+
+
 ## The hashed motion of one voxel.
-func _motion(e: Dictionary) -> Dictionary:
+func _motion(e: Dictionary, centre: Vector3) -> Dictionary:
 	var h: int = FacadeSampler._fnv1a_hash("GLASSVOXFALL:%d,%d,%d" % [int(e["x"]), int(e["y"]), int(e["level"])])
 	var u := func(salt: String) -> float: return float(FacadeSampler._fnv1a_continue(h, salt) % 100000) / 100000.0
+	if e.has("burst"):
+		## ROOF R-D6 — thrown up and away from the epicentre (`burst`: {from: geometry-root point, strength 0..1}).
+		var b: Dictionary = e["burst"]
+		var k: float = clampf(float(b.get("strength", 1.0)), 0.2, 1.0)
+		var away := Vector3(centre.x - (b["from"] as Vector3).x, 0.0, centre.z - (b["from"] as Vector3).z)
+		var ang: float = (u.call("ang") * 2.0 - 1.0) * 0.6
+		away = (away.normalized() if away.length() > 0.001 else Vector3(1, 0, 0)).rotated(Vector3.UP, ang)
+		var bv: Vector3 = away * lerpf(BURST_OUT.x, BURST_OUT.y, u.call("out")) * k + Vector3.UP * lerpf(BURST_UP.x, BURST_UP.y, u.call("up")) * k
+		var baxis := Vector3(u.call("ax") * 2.0 - 1.0, u.call("ay") * 2.0 - 1.0, u.call("az") * 2.0 - 1.0)
+		if baxis.length() < 0.05:
+			baxis = Vector3.RIGHT
+		return {
+			"start": int(roundf(u.call("st") * float(BURST_START))),
+			"g": GRAVITY * (1.0 - GRAVITY_SPREAD * u.call("g")) / 3600.0,
+			"v": bv / 60.0,
+			"axis": baxis.normalized(),
+			"w": lerpf(BURST_TUMBLE.x, BURST_TUMBLE.y, u.call("w")) * (1.0 if u.call("ws") < 0.5 else -1.0) / 60.0,
+		}
 	var wait: float = float(FALL_FROM_FRAME) + ORDER_LEAD_FRAMES * (1.0 - float(e.get("score", 0.5)))
 	var x_normal: bool = int(e["face"]) == 0 or int(e["face"]) == 2
 	var n: Vector3 = Vector3(1, 0, 0) if x_normal else Vector3(0, 0, 1)
@@ -167,6 +202,41 @@ func _solve_impact(vx: Dictionary, floor_y: float) -> void:
 	vx["impact"] = MAX_FALL_FRAMES
 
 
+## ROOF R-D6 — a BURST voxel's impact: the first frame, on the way DOWN, its lowest corner reaches the top of the highest surface under
+## the column it is over then (`surfaces(x, y)` -> that column's surface tops in geometry-root y, highest first). Its landing row is
+## made there (the shard rain and the pile start where it broke).
+func _solve_burst_impact(vx: Dictionary, surfaces: Callable) -> void:
+	var half: float = _unit * 0.5
+	var axis: Vector3 = vx["axis"]
+	var w: float = float(vx["w"])
+	var c0: Vector3 = vx["centre"]
+	var v: Vector3 = vx["v"]
+	var g: float = float(vx["g"])
+	var cell: Vector3i = vx["cell"]
+	for f: int in range(1, MAX_FALL_FRAMES):
+		var t: float = float(f)
+		if v.y - g * t > 0.0:
+			continue   ## still rising
+		var p: Vector3 = c0 + v * t + Vector3(0.0, -0.5 * g * t * t, 0.0)
+		var b := Basis(axis, w * t)
+		var low: float = p.y - half * (absf(b.x.y) + absf(b.y.y) + absf(b.z.y))
+		var cx: int = floori(p.x / _unit)
+		var cy: int = floori(p.z / _unit)
+		var tops: Array = surfaces.call(cx, cy)
+		for k: int in range(tops.size()):
+			var top: float = float(tops[k][0])
+			if top > p.y + half:
+				continue   ## a surface above the voxel's centre is not under it
+			if low <= top:
+				vx["impact"] = f
+				vx["landing"] = {"grid_pos": Vector2i(cx, cy), "from_level": cell.z, "landing_level": int(tops[k][1]),
+					"origin_pos": Vector2i(cx, cy)}
+				return
+			break
+	vx["impact"] = MAX_FALL_FRAMES
+	vx["landing"] = {}
+
+
 func _multimesh(mesh: Mesh, count: int) -> MultiMesh:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -190,10 +260,11 @@ func _add_instance(mm: MultiMesh, mat: Material, sort: float, crack: bool = fals
 
 ## One voxel as a cube centred on the origin. `broad` = only the two faces along the pane's normal (the pane's material); otherwise
 ## the other four (the thickness, the top, the bottom: the edge twin, marked broken, COLOR.b = 0). Triangles wound as the board's.
-func _cube(x_normal: bool, broad: bool) -> ArrayMesh:
+func _cube(orient: int, broad: bool) -> ArrayMesh:
 	var h: float = _unit * 0.5
 	var dirs: Array[Vector3] = [Vector3.RIGHT, Vector3.LEFT, Vector3.UP, Vector3.DOWN, Vector3.BACK, Vector3.FORWARD]
-	var normal_axis: Vector3 = Vector3.RIGHT if x_normal else Vector3.BACK
+	## 0: a pane along X (normal Z), 1: along Z (normal X), 2: a skylight (normal Y, ROOF R-D6)
+	var normal_axis: Vector3 = Vector3.UP if orient == 2 else (Vector3.RIGHT if orient == 1 else Vector3.BACK)
 	var verts := PackedVector3Array()
 	var norms := PackedVector3Array()
 	var cols := PackedColorArray()
@@ -234,6 +305,8 @@ func _cube(x_normal: bool, broad: bool) -> ArrayMesh:
 func _add_crack(rec: Dictionary) -> void:
 	if not rec.has("params") or not bool(rec.get("visible", true)):
 		return
+	if int(rec.get("face", -1)) == HORIZONTAL_FACE:
+		return   ## a skylight's crack on its falling voxels is not drawn yet (ROOF RF-1)
 	var p: Dictionary = rec["params"]
 	var run_is_x: bool = int(rec["run_axis"]) == 0
 	var cell: Vector2i = rec["impact_cell"]

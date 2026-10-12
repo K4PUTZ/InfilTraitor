@@ -1796,12 +1796,12 @@ func mesh_prop_position(id: String) -> Variant:
 
 
 ## The voxel fragments of a broken prop: one node, one draw call, stepping `sim` every frame and keeping the landed cubes as a pile.
-## `rubble` (ROOF R-D9, a shot's chips): flat colour, and no contact shadow (chips this small throw none worth a square under them).
+## `rubble` (ROOF R-D9, a shot's sub-voxels): no contact shadow (cubes this small throw none worth a square under them).
 func spawn_prop_fragments(sim: PropFragmentSim, zone_materials: Array, rubble: bool = false) -> PropFragments3D:
 	var node := PropFragments3D.new()
 	node.name = "PropFragments_%d" % _fragment_nodes.size()
 	_geometry_root.add_child(node)
-	node.setup(self, sim, zone_materials, rubble)
+	node.setup(self, sim, zone_materials)
 	_fragment_nodes.append(node)
 	if rubble:
 		return node
@@ -1812,7 +1812,7 @@ func spawn_prop_fragments(sim: PropFragmentSim, zone_materials: Array, rubble: b
 
 ## A pile laid back from records (after a rotation rebuilt the board, or a restore).
 func spawn_prop_pile(records: Array, y0: float, zone_materials: Array, division: int = 1, rubble: bool = false) -> PropFragments3D:
-	var node: PropFragments3D = PropFragments3D.make_pile(self, records, y0, zone_materials, division, rubble)
+	var node: PropFragments3D = PropFragments3D.make_pile(self, records, y0, zone_materials, division)
 	_geometry_root.add_child(node)
 	_fragment_nodes.append(node)
 	if rubble:

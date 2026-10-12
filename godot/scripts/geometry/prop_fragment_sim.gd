@@ -56,6 +56,8 @@ var weight: float = 1.0
 var time: float = 0.0
 var wave_time: float = 0.06
 var hold: float = 0.0   ## R-D9: seconds every fragment stays where it was before anything moves
+var release: PackedFloat32Array = PackedFloat32Array()   ## R-D9: per fragment, seconds after `hold` before it leaves (empty = 0)
+var _release_max: float = 0.0
 
 ## Per fragment (all sized `count`).
 var pos: PackedVector3Array = PackedVector3Array()
@@ -89,7 +91,9 @@ var _done: bool = false
 ## away from `blast`), carve (bool, default true: false = no fragment vanishes), char (bool, default true: false = no charring), stack
 ## (Dictionary column -> height already lying there, so a new pile lands ON an old one), solid (Callable(column, k) -> bool: the board's
 ## standing voxels, a fragment stops against one sideways and lands on top of one), hold (seconds nothing moves), vanish (PackedByteArray,
-## 1 = this fragment turns to dust at `hold`), tones (PackedFloat32Array per zone: a multiplier on its colour, the wall's general tone).
+## 1 = this fragment turns to dust at `hold`), tones (PackedFloat32Array per zone: a multiplier on its colour, the wall's general tone),
+## release (PackedFloat32Array per fragment: seconds after `hold` before it leaves), speed (PackedFloat32Array per fragment: a
+## multiplier on its push). `release` and `speed` are how a caller shapes the way a block crumbles (`RubblePresets`).
 ## With `push_dir` the fragments leave AGAINST it (the reaction to the impact).
 func _init(p: Dictionary) -> void:
 	var cells: Array = p["cells"]
@@ -107,6 +111,10 @@ func _init(p: Dictionary) -> void:
 	hold = float(p.get("hold", 0.0))
 	var vanish: PackedByteArray = p.get("vanish", PackedByteArray())
 	var tones: PackedFloat32Array = p.get("tones", PackedFloat32Array())
+	release = p.get("release", PackedFloat32Array())
+	for r in release:
+		_release_max = maxf(_release_max, r)
+	var speed_of: PackedFloat32Array = p.get("speed", PackedFloat32Array())
 	var pre: Dictionary = p.get("stack", {})
 	for col in pre:
 		_stack[col] = int(pre[col])
@@ -161,7 +169,7 @@ func _init(p: Dictionary) -> void:
 		for i in range(mini(vanish.size(), count)):
 			if vanish[i] == 1:
 				vanish_at[i] = hold
-		_push_along(-push_dir.normalized())
+		_push_along(-push_dir.normalized(), speed_of)
 		return
 	for i in range(count):
 		var away: Vector2 = centres[i] - blast
@@ -173,14 +181,14 @@ func _init(p: Dictionary) -> void:
 
 
 ## R-D9: every fragment leaves along `d` (the caller passes the reaction, against the shot), spread sideways, barely kicked up.
-func _push_along(d: Vector3) -> void:
+func _push_along(d: Vector3, speed_of: PackedFloat32Array) -> void:
 	var side: Vector3 = d.cross(Vector3.UP)
 	if side.length() < 0.01:
 		side = Vector3.RIGHT   ## a vertical shot (a roof): spread in X and Z
 	side = side.normalized()
 	var other: Vector3 = d.cross(side).normalized()
 	for i in range(count):
-		var speed: float = lerpf(SHOT_SPEED.x, SHOT_SPEED.y, _h01(i, P_SPEED))
+		var speed: float = lerpf(SHOT_SPEED.x, SHOT_SPEED.y, _h01(i, P_SPEED)) * (speed_of[i] if i < speed_of.size() else 1.0)
 		var spread: Vector3 = side * (_h01(i, P_DIR) * 2.0 - 1.0) + other * (_h01(i, P_SX) * 2.0 - 1.0) * 0.5
 		vel[i] = (d + spread * SHOT_SPREAD) * speed + Vector3.UP * lerpf(SHOT_UP.x, SHOT_UP.y, _h01(i, P_UP))
 		spin[i] = Vector3(_h01(i, P_SX) - 0.5, _h01(i, P_SY) - 0.5, _h01(i, P_SZ) - 0.5) * 8.0
@@ -220,12 +228,14 @@ func step() -> void:
 			continue
 		if st == State.FALLING:
 			moving = true
+			if i < release.size() and time < hold + release[i]:
+				continue   ## R-D9: still in the block, its turn has not come
 			_fall(i)
 		elif st == State.SLIDING:
 			moving = true
 			_slide(i)
 	## Not before the last carved fragment has had its turn to vanish (one that landed early is still to go).
-	if (not moving and time >= maxf(wave_time + 0.07, hold + 0.02)) or time >= MAX_SIM_TIME + hold:
+	if (not moving and time >= maxf(wave_time + 0.07, hold + 0.02)) or time >= MAX_SIM_TIME + hold + _release_max:
 		_finish()
 
 

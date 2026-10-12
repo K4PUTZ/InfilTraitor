@@ -327,3 +327,15 @@ func _test_shot_rubble() -> void:
 		_pass("shot rubble: a new pile lands on top of an earlier one (stack)")
 	else:
 		_fail("shot rubble: %d cube(s) inside an earlier pile" % low)
+	## `release`: fragment 0 leaves at the hold, fragment 1 0.2 s later — at hold + 0.1 s only fragment 0 has moved.
+	var rel := PackedFloat32Array([0.0, 0.2])
+	var d: PropFragmentSim = PropFragmentSim.new({"cells": [Vector3i(0, 8, 0), Vector3i(4, 8, 0)], "origin": Vector3.ZERO, "voxel": 0.125,
+		"blast": Vector2.ZERO, "weight": 1.0, "seed": "REL", "push_dir": Vector3(1, 0, 0), "carve": false, "char": false, "hold": 0.1,
+		"release": rel})
+	var p0: PackedVector3Array = d.pos.duplicate()
+	for _s in range(12):
+		d.step()
+	if d.pos[0] != p0[0] and d.pos[1] == p0[1]:
+		_pass("shot rubble: a fragment leaves at hold + its release, not before")
+	else:
+		_fail("shot rubble: release ignored (moved: %s, %s)" % [d.pos[0] != p0[0], d.pos[1] != p0[1]])

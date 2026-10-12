@@ -35,13 +35,10 @@ var _settled_at: PackedByteArray = PackedByteArray()   ## per fragment: 1 once i
 
 
 ## A live one: steps `sim` every frame until it is done. `zone_materials[zone]` is the material id of each zone of the sim.
-## `plain` (ROOF R-D9, a shot's rubble): no facade, the cubes are flat colour (the material colour × their tone).
-func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array, plain: bool = false) -> void:
+func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array) -> void:
 	_board = board
 	_sim = sim
 	_init_zones(zone_materials, sim.zone)
-	if plain:
-		_facade_material = ""
 	_voxel = sim.voxel
 	_y0 = sim.origin.y
 	_build(sim.count)
@@ -50,8 +47,7 @@ func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array, plain: bo
 
 
 ## A static pile from records. `y0` is the floor's world height under it; `division` is the lattice the records' columns are in.
-static func make_pile(board: Node3D, records: Array, y0: float, zone_materials: Array, division: int = 1,
-		plain: bool = false) -> PropFragments3D:
+static func make_pile(board: Node3D, records: Array, y0: float, zone_materials: Array, division: int = 1) -> PropFragments3D:
 	var node := PropFragments3D.new()
 	node._board = board
 	node._voxel = 0.125 / float(maxi(division, 1))
@@ -59,8 +55,6 @@ static func make_pile(board: Node3D, records: Array, y0: float, zone_materials: 
 	for r: Dictionary in records:
 		zones.append(int(r.get("zone", 0)))
 	node._init_zones(zone_materials, zones)
-	if plain:
-		node._facade_material = ""
 	node._y0 = y0
 	node._finished = true
 	node._build(records.size())

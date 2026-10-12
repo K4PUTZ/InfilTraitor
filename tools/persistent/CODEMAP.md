@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 87432 lines total** (under `godot/scripts/`)
+**295 scripts · 87437 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -901,7 +901,7 @@ extends `Node3D` · 3283 lines
 
 ### `prop_fragment_sim.gd`
 
-`class_name PropFragmentSim` · extends `RefCounted` · 428 lines
+`class_name PropFragmentSim` · extends `RefCounted` · 438 lines
 
 `godot/scripts/geometry/prop_fragment_sim.gd`
 
@@ -936,6 +936,7 @@ extends `Node3D` · 3283 lines
 - `var time: float = 0.0`
 - `var wave_time: float = 0.06`
 - `var hold: float = 0.0`
+- `var release: PackedFloat32Array = PackedFloat32Array()`
 - `var pos: PackedVector3Array = PackedVector3Array()`
 - `var vel: PackedVector3Array = PackedVector3Array()`
 - `var euler: PackedVector3Array = PackedVector3Array()`
@@ -952,7 +953,7 @@ extends `Node3D` · 3283 lines
 
 ### `prop_fragments3d.gd`
 
-`class_name PropFragments3D` · extends `Node3D` · 242 lines
+`class_name PropFragments3D` · extends `Node3D` · 236 lines
 
 `godot/scripts/geometry/prop_fragments3d.gd`
 
@@ -964,6 +965,13 @@ extends `Node3D` · 3283 lines
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/prop_mesh3d.gdshader"`
 - `FLOATS_PER_INSTANCE` = `16`
+
+**Public API**
+- `func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array) -> void:`
+- `func is_finished() -> bool:`
+- `func floor_y() -> float:`
+- `func voxel_size() -> float:`
+- `func finish_now() -> void:`
 
 ---
 
@@ -2605,15 +2613,18 @@ extends `RefCounted` · 37 lines
 
 ### `rubble_presets.gd`
 
-`class_name RubblePresets` · extends `RefCounted` · 47 lines
+`class_name RubblePresets` · extends `RefCounted` · 51 lines
 
 `godot/scripts/systems/destruction/rubble_presets.gd`
 
-> RubblePresets — how a voxel a shot broke splits into chips (ROOF_MASTER_PLAN R-D9, Director 2026-10-12). A broken voxel is replaced, on the frame the round lands, by DIVISION³ sub-voxels sitting exactly where it was (the hole is never shown before the chips leave). After the hold, a few of them fall as chips and the rest turn to dust. WHICH ones fall is a preset: three per material (the project's three-variant scheme), each a fixed mask over the sub-voxel lattice, picked per voxel by a B4 FNV-1a hash of its cell, so the same wall breaks the same way on every run. No facade on a chip (flat colour, the wall's tone). `CHIP_SHARE` is the share of a voxel that falls as chips, per material (`generic` for anything not listed): concrete and stone spall a few small flakes, wood and board shed more. `var`, rule 1.
+> RubblePresets — how a voxel a shot broke crumbles (ROOF_MASTER_PLAN R-D9, Director 2026-10-12). A broken voxel is replaced, on the frame the round lands, by a block of DIVISION³ sub-voxels sitting exactly where it was (the hole is never shown before they go). The whole block then crumbles out of the wall and piles on the floor. HOW it crumbles is one of three fall presets (the project's three-variant scheme), picked per voxel by a B4 FNV-1a hash of its cell, so the same wall breaks the same way on every run: 0 TOPPLE — the top layer leaves first, the block peels down from above; 1 SLUMP  — the bottom gives first and the block sags almost straight down at the wall's foot; 2 SPILL  — the face nearest the shooter leaves first and the block spills further out. A preset gives each sub-voxel a release delay (seconds after the hold) and a multiplier on its push. `SPEED` scales a material's push (concrete crumbles, wood and board spill further). `var`, rule 1.
 
 **Constants / tuning**
 - `DIVISION` = `4`
 - `VARIANTS` = `3`
+- `TOPPLE` = `0`
+- `SLUMP` = `1`
+- `SPILL` = `2`
 
 ---
 
@@ -4897,7 +4908,7 @@ extends `Node` · 318 lines
 
 ### `prop_fragment_sim_selftest.gd`
 
-extends `SceneTree` · 329 lines
+extends `SceneTree` · 341 lines
 
 `godot/scripts/tools/prop_fragment_sim_selftest.gd`
 
@@ -6143,7 +6154,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10554 lines
+extends `Node2D` · 10539 lines
 
 `godot/scripts/world/room.gd`
 

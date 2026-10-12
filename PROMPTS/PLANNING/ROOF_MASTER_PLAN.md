@@ -114,6 +114,7 @@ Order proposed: **concrete / stone** (the common case: SEG_* maps), **wood / ply
 
 ## 5. Records
 - 2026-10-12 v0.11 — the skylight's blast throws WHOLE VOXELS (the burst), shattering where each lands (Director).
+- 2026-10-12 v0.13 — RF-S reworked on the Director's review: a broken voxel becomes a 4×4×4 block of sub-voxels in the wall's facade, seated on the impact frame (the board is remeshed on that frame), held 1/3 s, then the whole block crumbles back against the shot by one of three fall presets (`RubblePresets`: topple / slump / spill, hashed per cell) and piles; no pile shadow, a little floor dust; the pile is the simulated one, saved cube by cube (`rubble_piles`). Open: the bullet-hole dust streaks (next).
 - 2026-10-12 v0.12 — R-D9 (one rubble machine: `PropFragmentSim`) and R-D10 (a roof shot is a straight ray) ruled; **RF-S BUILT** (a shot's broken opaque voxels fly along the shot and pile).
 - 2026-10-11 v0.10 — **step 4 BUILT, first pass** (a grenade breaks a skylight through the glass stage: shatter, craze, remnants on the frame, rain, floor shards, light; wall glass identical).
 - 2026-10-11 v0.9 — **step 3c BUILT** (the crack / craze / openings / rim on a skylight; dev step `skylight_hit`; the wall glass unchanged, 904 frames identical).

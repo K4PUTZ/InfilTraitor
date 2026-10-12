@@ -5837,18 +5837,17 @@ func _on_prop_fragments_settled(records: Array, base_gu: Vector2i, y0: float, zo
 		print("[PROP-DEBUG] pile at base GU %s: %d cubes, y0 %.3f" % [base_gu, base_records.size(), y0])
 
 
-## ROOF R-D9 / RF-S — the opaque voxels a shot broke become chips (the Tier 4 fragment machinery, Director 2026-10-12): on the frame the
-## round lands every broken voxel is replaced by `RubblePresetsRef.DIVISION`³ sub-voxels sitting where it was, in the wall's general tone
-## (no facade), so the hole is never seen before they go; after `RUBBLE_HOLD_S` the preset's few chips fall gently back against the
-## shot and the rest turn to dust. The chips stop against standing voxels, land on the floor, a wall's top or an earlier pile, stay
-## (Q-S2) and leave a little dust on the floor. `cells`: [{grid_pos (board voxel x, y), level, material}]. `push_dir`: the shot's
-## direction in geometry-root space. Returns the sub-voxels placed.
+## ROOF R-D9 / RF-S — the opaque voxels a shot broke crumble (the Tier 4 fragment machinery, Director 2026-10-12): on the frame the
+## round lands every broken voxel is replaced by a block of `RubblePresets.DIVISION`³ sub-voxels sitting where it was, wearing the
+## wall's own facade (the fragment shader projects it in world space, as the wall does), so the hole is never seen before they go.
+## After `RUBBLE_HOLD_S` the whole block crumbles back against the shot by one of three fall presets (`RubblePresets`) and piles on
+## the floor, a wall's top or an earlier pile, where it stays (Q-S2) with a little dust. `cells`: [{grid_pos (board voxel x, y), level,
+## material}]. `push_dir`: the shot's direction in geometry-root space. Returns the sub-voxels placed.
 const RubblePresetsRef = preload("res://godot/scripts/systems/destruction/rubble_presets.gd")
 static var RUBBLE_HOLD_S: float = 0.33
 ## The fragment shader has no face-direction shading and the wall does: measured 2026-10-12 (PLAYGROUND concrete, the impact frame of a
-## shotgun shot) the seated sub-voxels read ~78/255 against the wall's ~54 around them, so the tone is scaled by their ratio.
+## shotgun shot) flat sub-voxels in the facade's mean tone read ~78/255 against the wall's ~54 around them; their ratio scales the colour.
 static var RUBBLE_TONE_SCALE: float = 0.69
-var _rubble_tones: Dictionary = {}   ## material -> the mean of its facade (the wall's general tone), 1.0 without one
 
 
 func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
@@ -5858,10 +5857,13 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 		return 0
 	var ground: int = _voxel_board.ground_plane_level()
 	var div: int = RubblePresetsRef.DIVISION
+	var back := Vector2(-push_dir.x, -push_dir.z).normalized() if Vector2(push_dir.x, push_dir.z).length() > 0.001 else Vector2.ZERO
+	var reach: float = (absf(back.x) + absf(back.y)) * float(div - 1) * 0.5
 	var zone_materials: Array = []
 	var tones := PackedFloat32Array()
 	var zones := PackedInt32Array()
-	var vanish := PackedByteArray()
+	var release := PackedFloat32Array()
+	var speed := PackedFloat32Array()
 	var lattice: Array = []
 	for c: Dictionary in cells:
 		var mat: String = String(c["material"])
@@ -5869,16 +5871,22 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 		if z < 0:
 			z = zone_materials.size()
 			zone_materials.append(mat)
-			tones.append(_rubble_tone(mat))
+			tones.append(RUBBLE_TONE_SCALE)
 		var gp: Vector2i = c["grid_pos"]
 		var lv: int = int(c["level"])
-		var chips: PackedByteArray = RubblePresetsRef.mask(mat, RubblePresetsRef.variant_of(gp, lv))
+		var variant: int = RubblePresetsRef.variant_of(gp, lv)
+		var h: int = FacadeSampler._fnv1a_hash("RUBBLE|%d,%d,%d" % [gp.x, gp.y, lv])
 		for a in range(div):
 			for b in range(div):
 				for cc in range(div):
 					lattice.append(Vector3i(gp.x * div + a, (lv - ground) * div + b, gp.y * div + cc))
 					zones.append(z)
-					vanish.append(0 if chips[(a * div + b) * div + cc] == 1 else 1)
+					var off := Vector2(float(a) - float(div - 1) * 0.5, float(cc) - float(div - 1) * 0.5)
+					var outward: float = clampf(0.5 + off.dot(back) / maxf(reach * 2.0, 0.001), 0.0, 1.0)
+					var h01: float = float(PropFragmentSim._mix(h, (a * div + b) * div + cc) % 1000) / 1000.0
+					var sh: Vector2 = RubblePresetsRef.shape(mat, variant, b, outward, h01)
+					release.append(sh.x)
+					speed.append(sh.y)
 	var solid := func(col: Vector2i, k: int) -> bool:
 		return store != null and store.has_cell(floori(float(col.x) / div), floori(float(col.y) / div), ground + floori(float(k) / div))
 	var stack: Dictionary = {}
@@ -5893,33 +5901,10 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 	var sim := PropFragmentSim.new({"cells": lattice, "zones": zones, "origin": Vector3.ZERO,
 		"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS * div), "blast": Vector2.ZERO, "weight": 1.0, "seed": seed,
 		"wave_delay": 0.0, "push_dir": push_dir, "carve": false, "char": false, "stack": stack, "solid": solid, "can_cross": cross,
-		"hold": RUBBLE_HOLD_S, "vanish": vanish, "tones": tones})
+		"hold": RUBBLE_HOLD_S, "tones": tones, "release": release, "speed": speed})
 	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)
 	node.settled.connect(_on_rubble_settled.bind(zone_materials, tones))
 	return sim.count
-
-
-## The wall's general tone for a material: the mean of its grayscale facade (the wall draws base colour × facade), measured once.
-## Approximate on purpose (Director: a chip is a deliberate visual confusion, not a matched pixel).
-func _rubble_tone(material: String) -> float:
-	if _rubble_tones.has(material):
-		return float(_rubble_tones[material])
-	var tone: float = 1.0
-	var live: Node = board3d()
-	var tex: Texture2D = live.call("material_facade_texture", material) if live != null else null
-	var img: Image = tex.get_image() if tex != null else null
-	if img != null and not img.is_empty():
-		if img.is_compressed():
-			img.decompress()
-		img.resize(8, 8, Image.INTERPOLATE_BILINEAR)
-		var sum: float = 0.0
-		for y in range(8):
-			for x in range(8):
-				sum += img.get_pixel(x, y).r
-		tone = sum / 64.0
-	tone *= RUBBLE_TONE_SCALE
-	_rubble_tones[material] = tone
-	return tone
 
 
 func _on_rubble_settled(records: Array, zone_materials: Array, tones: PackedFloat32Array) -> void:

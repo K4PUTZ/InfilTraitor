@@ -1829,12 +1829,13 @@ func mesh_prop_position(id: String) -> Variant:
 
 
 ## The voxel fragments of a broken prop: one node, one draw call, stepping `sim` every frame and keeping the landed cubes as a pile.
-## `rubble` (ROOF R-D9, a shot's sub-voxels): no contact shadow (cubes this small throw none worth a square under them).
+## `rubble` (ROOF R-D9, a shot's sub-voxels): no contact shadow (cubes this small throw none worth a square under them), and the fresh
+## faces' light floor (a cube resting in a hole sits in a cell the light field holds unlit).
 func spawn_prop_fragments(sim: PropFragmentSim, zone_materials: Array, rubble: bool = false) -> PropFragments3D:
 	var node := PropFragments3D.new()
 	node.name = "PropFragments_%d" % _fragment_nodes.size()
 	_geometry_root.add_child(node)
-	node.setup(self, sim, zone_materials)
+	node.setup(self, sim, zone_materials, FRESH_LIGHT if rubble else 0.0)
 	_fragment_nodes.append(node)
 	if rubble:
 		return node
@@ -1845,7 +1846,7 @@ func spawn_prop_fragments(sim: PropFragmentSim, zone_materials: Array, rubble: b
 
 ## A pile laid back from records (after a rotation rebuilt the board, or a restore).
 func spawn_prop_pile(records: Array, y0: float, zone_materials: Array, division: int = 1, rubble: bool = false) -> PropFragments3D:
-	var node: PropFragments3D = PropFragments3D.make_pile(self, records, y0, zone_materials, division)
+	var node: PropFragments3D = PropFragments3D.make_pile(self, records, y0, zone_materials, division, FRESH_LIGHT if rubble else 0.0)
 	_geometry_root.add_child(node)
 	_fragment_nodes.append(node)
 	if rubble:
@@ -2622,9 +2623,12 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 				var o: int = owner[n]
 				into_hole = o >= 0 and (state[o] & 1) == 0 and not _material_glass[_store_material[mat[o]]]
 			var di: int = decal_dirs.find(dir)
-			if di != -1:
+			## ROOF R-D9: no bullet mark on a face inside a hole: seen through the opening it read as a black square (Director, 2026-10-12).
+			if di != -1 and not into_hole:
 				decals.append([dir, x, y, level, int(decal_layers[di]), dir == dent_dir])
-			if dir == dent_dir:
+			## ROOF R-D9: a dent on a face that looks into a hole (the second layer behind a shot's opening) is drawn flat and fresh: its
+			## recess, seen through the opening, read as a black square (Director, 2026-10-12).
+			if dir == dent_dir and not into_hole:
 				dents.append([dir, x, y, level, material])
 				faces += 1
 				continue

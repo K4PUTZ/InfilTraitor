@@ -31,6 +31,9 @@ uniform float soot_affects = 1.0;
 // ladder (every prop), > 1 darkens the shaded faces and leaves the fully lit ones, so a small rounded object reads with more
 // form. Per material (`PropMesh3D.set_contrast`).
 uniform float contrast : hint_range(0.5, 3.0) = 1.0;
+// ROOF R-D9: a floor under the light term (0 = none, every prop). A shot's rubble sets it: a cube resting in a hole sits in a cell the
+// light field holds unlit (a wall's inside), and it drew black (Director, 2026-10-12).
+uniform float light_floor = 0.0;
 #include "res://godot/shaders/mesh_planes.gdshaderinc"
 
 void vertex() {
@@ -62,6 +65,6 @@ void fragment() {
 		vec2 fr = mod(uv / vec2(64.0, 32.0), 2.0);
 		detail = texture(facade, mix(fr, 2.0 - fr, step(1.0, fr))).r;
 	}
-	float light = contrast == 1.0 ? lum * key : pow(lum * key, contrast);
+	float light = max(contrast == 1.0 ? lum * key : pow(lum * key, contrast), light_floor);
 	ALBEDO = base * pow(vec3(light * soot * detail), vec3(2.2));
 }

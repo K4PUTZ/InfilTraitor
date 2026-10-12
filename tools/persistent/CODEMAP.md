@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 87533 lines total** (under `godot/scripts/`)
+**295 scripts · 87541 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3323 lines
+extends `Node3D` · 3327 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -953,7 +953,7 @@ extends `Node3D` · 3323 lines
 
 ### `prop_fragments3d.gd`
 
-`class_name PropFragments3D` · extends `Node3D` · 236 lines
+`class_name PropFragments3D` · extends `Node3D` · 240 lines
 
 `godot/scripts/geometry/prop_fragments3d.gd`
 
@@ -967,7 +967,7 @@ extends `Node3D` · 3323 lines
 - `FLOATS_PER_INSTANCE` = `16`
 
 **Public API**
-- `func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array) -> void:`
+- `func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array, light_floor: float = 0.0) -> void:`
 - `func is_finished() -> bool:`
 - `func floor_y() -> float:`
 - `func voxel_size() -> float:`

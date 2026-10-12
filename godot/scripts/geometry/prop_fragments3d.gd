@@ -35,19 +35,22 @@ var _settled_at: PackedByteArray = PackedByteArray()   ## per fragment: 1 once i
 
 
 ## A live one: steps `sim` every frame until it is done. `zone_materials[zone]` is the material id of each zone of the sim.
-func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array) -> void:
+## `light_floor` (ROOF R-D9, a shot's rubble): the least light a cube draws with (`prop_mesh3d`'s `light_floor`), 0 = none.
+func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array, light_floor: float = 0.0) -> void:
 	_board = board
 	_sim = sim
 	_init_zones(zone_materials, sim.zone)
 	_voxel = sim.voxel
 	_y0 = sim.origin.y
 	_build(sim.count)
+	_mat.set_shader_parameter("light_floor", light_floor)
 	_upload()
 	set_process(true)
 
 
 ## A static pile from records. `y0` is the floor's world height under it; `division` is the lattice the records' columns are in.
-static func make_pile(board: Node3D, records: Array, y0: float, zone_materials: Array, division: int = 1) -> PropFragments3D:
+static func make_pile(board: Node3D, records: Array, y0: float, zone_materials: Array, division: int = 1,
+		light_floor: float = 0.0) -> PropFragments3D:
 	var node := PropFragments3D.new()
 	node._board = board
 	node._voxel = 0.125 / float(maxi(division, 1))
@@ -58,6 +61,7 @@ static func make_pile(board: Node3D, records: Array, y0: float, zone_materials: 
 	node._y0 = y0
 	node._finished = true
 	node._build(records.size())
+	node._mat.set_shader_parameter("light_floor", light_floor)
 	for i in range(records.size()):
 		var r: Dictionary = records[i]
 		var col: Vector2i = r["column"]

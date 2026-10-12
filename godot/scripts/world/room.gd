@@ -5909,6 +5909,10 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 					var h01: float = float(PropFragmentSim._mix(h, (a * div + b) * div + cc) % 1000) / 1000.0
 					var cube_shade: float = face * lerpf(1.0, fresh_lift, 1.0 - outward)
 					var cube_flat: bool = outward <= RUBBLE_TEXTURED_OUTWARD
+					if splinters and RubblePresetsRef.splinter_role(gp, lv, a, b, cc, x_normal) == RubblePresetsRef.FLY:
+						## Born in the air at the impact, never seen seated in the hole: the light end of the ramp, flat like the chips (Director 2026-10-12).
+						cube_shade = face * float(live.call("fresh_lift_textured"))
+						cube_flat = true
 					var fine := Vector3i(gp.x * div + a, (lv - ground) * div + b, gp.y * div + cc)
 					if splinters:
 						var role: int = RubblePresetsRef.splinter_role(gp, lv, a, b, cc, x_normal)
@@ -6009,7 +6013,7 @@ func _stamp_landed_splinters(records: Array, stamped: Dictionary) -> void:
 		return
 	var div: int = RubblePresetsRef.DIVISION
 	var fine: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS * div)
-	var ground: int = _voxel_board.ground_plane_level()
+	var ground: int = _voxel_board.ground_plane_level() - 1   ## the floor's top level: a stamp lies ON it (ground itself floats one voxel up)
 	var tint: Color = _vfx_material_base_color("wood")
 	for r: Dictionary in records:
 		if int(r["level"]) != 0:
@@ -6041,7 +6045,7 @@ func _stamp_chips(grid_pos: Vector2i, shooter_gu: Vector2i, material_id: String,
 	var variant: int = randi() % 3
 	var rot: float = randf_range(0.0, TAU)
 	var tint: Color = _vfx_material_base_color(material_id)
-	var ground: int = _voxel_board.ground_plane_level()
+	var ground: int = _voxel_board.ground_plane_level() - 1   ## the floor's top level (see `_stamp_landed_splinters`)
 	await get_tree().create_timer(0.5).timeout   ## the chips come down first
 	if not is_instance_valid(_voxel_board):
 		return

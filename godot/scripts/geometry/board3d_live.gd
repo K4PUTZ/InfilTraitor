@@ -2012,6 +2012,11 @@ func crack_mirror() -> Node3D:
 
 
 ## How much lighter a fresh face (inside a hole) is than the light at the opening (`FRESH_LIFT`).
+## The lift of a material whose hole keeps its texture (wood).
+func fresh_lift_textured() -> float:
+	return FRESH_LIFT_TEXTURED
+
+
 func fresh_lift() -> float:
 	return FRESH_LIFT
 

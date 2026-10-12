@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 87649 lines total** (under `godot/scripts/`)
+**295 scripts · 87768 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1443,7 +1443,7 @@ extends `Node3D` · 3366 lines
 
 ### `debris_overlay.gd`
 
-`class_name DebrisOverlay` · extends `Node2D` · 435 lines
+`class_name DebrisOverlay` · extends `Node2D` · 433 lines
 
 `godot/scripts/overlays/debris_overlay.gd`
 
@@ -2590,7 +2590,7 @@ extends `RefCounted` · 37 lines
 
 ### `rubble_presets.gd`
 
-`class_name RubblePresets` · extends `RefCounted` · 54 lines
+`class_name RubblePresets` · extends `RefCounted` · 84 lines
 
 `godot/scripts/systems/destruction/rubble_presets.gd`
 
@@ -2602,6 +2602,9 @@ extends `RefCounted` · 37 lines
 - `TOPPLE` = `0`
 - `SLUMP` = `1`
 - `SPILL` = `2`
+- `FLY` = `0`
+- `STAY` = `1`
+- `GONE` = `2`
 
 ---
 
@@ -6132,7 +6135,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10598 lines
+extends `Node2D` · 10689 lines
 
 `godot/scripts/world/room.gd`
 

@@ -73,7 +73,7 @@ static func make_pile(board: Node3D, records: Array, y0: float, zone_materials: 
 		var col: Vector2i = r["column"]
 		var centre := Vector3((float(col.x) + 0.5) * node._voxel, y0 + (float(int(r["level"])) + 0.5) * node._voxel,
 			(float(col.y) + 0.5) * node._voxel)
-		node._write(i, Transform3D(Basis.IDENTITY, centre), node._colour(float(r["mult"]), int(r.get("zone", 0))))
+		node._write(i, Transform3D(Basis.IDENTITY, centre), node._colour(float(r["mult"]), int(r.get("zone", 0)), bool(r.get("flat", false))))
 	node._mm.buffer = node._buf
 	node.set_process(false)
 	return node
@@ -203,9 +203,9 @@ var _facade_material: String = ""
 
 
 ## The linear instance colour for a multiplier on a zone's material colour.
-func _colour(mult: float, zone: int = 0) -> Color:
+func _colour(mult: float, zone: int = 0, flat: bool = false) -> Color:
 	var c: Color = _zone_colors[clampi(zone, 0, _zone_colors.size() - 1)]
-	return Color(c.r * mult, c.g * mult, c.b * mult, 1.0).srgb_to_linear()
+	return Color(c.r * mult, c.g * mult, c.b * mult, 0.0 if flat else 1.0).srgb_to_linear()
 
 
 func _write(i: int, xf: Transform3D, c: Color) -> void:
@@ -243,7 +243,7 @@ func _upload() -> void:
 			_settled_at[i] = 1
 			continue
 		var mult: float = sim.jitter[i] * lerpf(1.0, sim.tone[i], sim.char_amount(i))
-		_write(i, Transform3D(sim.rotation_of(i), sim.pos[i]), _colour(mult, sim.zone[i]))
+		_write(i, Transform3D(sim.rotation_of(i), sim.pos[i]), _colour(mult, sim.zone[i], sim.flat[i] == 1))
 		if st == PropFragmentSim.State.LANDED and charred:
 			_settled_at[i] = 1
 	_mm.buffer = _buf
@@ -258,7 +258,7 @@ func _finalize() -> void:
 	for i in range(sim.count):
 		if sim.state[i] == PropFragmentSim.State.LANDED:
 			records.append({"column": sim.column[i], "level": sim.level[i], "zone": sim.zone[i],
-				"mult": sim.jitter[i] * lerpf(1.0, sim.tone[i], sim.char_amount(i))})
+				"mult": sim.jitter[i] * lerpf(1.0, sim.tone[i], sim.char_amount(i)), "flat": sim.flat[i] == 1})
 	_mm.instance_count = records.size()
 	_buf = PackedFloat32Array()
 	_buf.resize(records.size() * FLOATS_PER_INSTANCE)
@@ -266,6 +266,6 @@ func _finalize() -> void:
 		var r: Dictionary = records[i]
 		var col: Vector2i = r["column"]
 		var centre := Vector3((float(col.x) + 0.5) * _voxel, _y0 + (float(int(r["level"])) + 0.5) * _voxel, (float(col.y) + 0.5) * _voxel)
-		_write(i, Transform3D(Basis.IDENTITY, centre), _colour(float(r["mult"]), int(r["zone"])))
+		_write(i, Transform3D(Basis.IDENTITY, centre), _colour(float(r["mult"]), int(r["zone"]), bool(r.get("flat", false))))
 	_mm.buffer = _buf
 	settled.emit(records)

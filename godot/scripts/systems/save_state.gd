@@ -107,7 +107,7 @@ static func capture(room) -> Dictionary:
 		var rrecs: Array = []
 		for r: Dictionary in pile["records"]:
 			var rc: Vector2i = r["col"]
-			rrecs.append([rc.x, rc.y, int(r["level"]), float(r["mult"]), int(r.get("zone", 0))])
+			rrecs.append([rc.x, rc.y, int(r["level"]), float(r["mult"]), int(r.get("zone", 0)), 1 if bool(r.get("flat", false)) else 0])
 		rubble_piles.append([float(pile["y0"]), pile["zone_materials"], rrecs, int(pile.get("div", 1))])
 	return {
 		"version": FORMAT_VERSION,
@@ -242,7 +242,8 @@ static func restore(room, data: Dictionary) -> bool:
 	for rp in data.get("rubble_piles", []):
 		var rubble_records: Array = []
 		for rr in rp[2]:
-			rubble_records.append({"col": Vector2i(int(rr[0]), int(rr[1])), "level": int(rr[2]), "mult": float(rr[3]), "zone": int(rr[4])})
+			rubble_records.append({"col": Vector2i(int(rr[0]), int(rr[1])), "level": int(rr[2]), "mult": float(rr[3]), "zone": int(rr[4]),
+				"flat": rr.size() > 5 and int(rr[5]) == 1})
 		var rubble_materials: Array = []
 		for zm in rp[1]:
 			rubble_materials.append(String(zm))

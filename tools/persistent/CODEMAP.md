@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 87626 lines total** (under `godot/scripts/`)
+**295 scripts · 87637 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3359 lines
+extends `Node3D` · 3361 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -901,7 +901,7 @@ extends `Node3D` · 3359 lines
 
 ### `prop_fragment_sim.gd`
 
-`class_name PropFragmentSim` · extends `RefCounted` · 440 lines
+`class_name PropFragmentSim` · extends `RefCounted` · 443 lines
 
 `godot/scripts/geometry/prop_fragment_sim.gd`
 
@@ -946,6 +946,7 @@ extends `Node3D` · 3359 lines
 - `var level: PackedInt32Array = PackedInt32Array()`
 - `var column: Array[Vector2i] = []`
 - `var tone: PackedFloat32Array = PackedFloat32Array()`
+- `var flat: PackedByteArray = PackedByteArray()`
 - `var jitter: PackedFloat32Array = PackedFloat32Array()`
 - `var vanish_at: PackedFloat32Array = PackedFloat32Array()`
 
@@ -3429,7 +3430,7 @@ extends `Node` · 143 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 330 lines
+`class_name SaveState` · extends `RefCounted` · 331 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -6130,7 +6131,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10593 lines
+extends `Node2D` · 10598 lines
 
 `godot/scripts/world/room.gd`
 

@@ -437,9 +437,10 @@ var _solid_twin: PackedInt32Array = PackedInt32Array()
 ## A fresh twin has its own solid twin (`_solid_twin`), so the cutaway swap works on it as on any material.
 var _fresh_twin: PackedInt32Array = PackedInt32Array()
 ## Director 2026-10-12: the concrete inside a hole is fresh — no soot, lit by the light at the opening (never brighter than the room
-## allows: a dark room keeps it dark), a little lighter than the wall.
+## allows: a dark room keeps it dark). No lift (1.0, was 1.3 until the inside lost its texture, 2026-10-12): the flat material colour already
+## sets it apart from the textured wall, and it is also the front-to-back ramp of a rubble block.
 static var FRESH_CLEAN: float = 1.0
-static var FRESH_LIFT: float = 1.3
+static var FRESH_LIFT: float = 1.0
 const FRESH_SUFFIX: String = "#fresh"
 var _warned_cut_below: bool = false
 ## PB-6: the chunks the cutaway currently reaches (a ghosted column or a revealed roof GU in them): only these draw the
@@ -1515,6 +1516,7 @@ func _material(material_id: String) -> int:
 				fm.set_shader_parameter("fresh_clean", FRESH_CLEAN)
 				fm.set_shader_parameter("fresh_lift", FRESH_LIFT)
 				fm.set_shader_parameter("fresh_probe", 1.0)
+				fm.set_shader_parameter("has_facade", 0.0)   ## the inside of a hole is the material's flat colour (Director 2026-10-12: the pattern does not continue inward)
 			for k: int in range(2):
 				_material_ids.append(material_id + FRESH_SUFFIX + (SOLID_SUFFIX if k == 1 else ""))
 				_material_glass.append(false)

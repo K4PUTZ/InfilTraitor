@@ -69,6 +69,7 @@ var zone: PackedInt32Array = PackedInt32Array()
 var level: PackedInt32Array = PackedInt32Array()      ## stack level once landed
 var column: Array[Vector2i] = []                      ## board voxel column (x, z) once landed
 var tone: PackedFloat32Array = PackedFloat32Array()   ## the charred multiplier this fragment ends at
+var flat: PackedByteArray = PackedByteArray()  ## 1 = drawn without the facade's texture (a rubble cube behind the struck face)
 var jitter: PackedFloat32Array = PackedFloat32Array() ## a small brightness variation, so a flat colour still reads as cubes
 var vanish_at: PackedFloat32Array = PackedFloat32Array()  ## -1 = survives
 
@@ -131,6 +132,8 @@ func _init(p: Dictionary) -> void:
 	level.resize(count)
 	tone.resize(count)
 	jitter.resize(count)
+	flat = p.get("flat", PackedByteArray())
+	flat.resize(count)
 	vanish_at.resize(count)
 	_slide_from.resize(count)
 	_slide_to.resize(count)

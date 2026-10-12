@@ -55,7 +55,7 @@ void fragment() {
 	}
 	// the ladder is an sRGB multiplier (the board multiplies in sRGB); the albedo is already linear
 	float detail = 1.0;
-	if (has_facade > 0.5) {
+	if (has_facade > 0.5 && COLOR.a > 0.5) {
 		vec3 an = abs(v_normal);
 		vec3 vox = v_world * 8.0;
 		vec2 uv = an.y >= max(an.x, an.z) ? vox.xz : (an.x >= an.z ? vec2(vox.z, -vox.y) : vec2(vox.x, -vox.y));

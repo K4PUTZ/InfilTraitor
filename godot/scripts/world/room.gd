@@ -5851,6 +5851,9 @@ static var RUBBLE_HOLD_S: float = 0.33
 ## faces' `Board3DLive.FRESH_LIFT`): a cube left in the hole reads like the hole's sides (Director, 2026-10-12). A small brightness
 ## variation between cubes keeps a pile reading as cubes.
 static var RUBBLE_JITTER: float = 0.03
+## Director 2026-10-12: only the cubes of the layer facing the shooter (the struck face, the most exposed) keep the facade's texture; the
+## others are the material's flat colour (the pattern does not continue inward). `outward` of the front layer is 1.0, the next ~0.67.
+static var RUBBLE_TEXTURED_OUTWARD: float = 0.9
 
 
 func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
@@ -5868,6 +5871,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 	var zones := PackedInt32Array()
 	var release := PackedFloat32Array()
 	var speed := PackedFloat32Array()
+	var flat := PackedByteArray()
 	var lattice: Array = []
 	for c: Dictionary in cells:
 		var mat: String = String(c["material"])
@@ -5889,6 +5893,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 					var off := Vector2(float(a) - float(div - 1) * 0.5, float(cc) - float(div - 1) * 0.5)
 					var outward: float = clampf(0.5 + off.dot(back) / maxf(reach * 2.0, 0.001), 0.0, 1.0)
 					shade.append(face * lerpf(1.0, fresh_lift, 1.0 - outward))
+					flat.append(0 if outward > RUBBLE_TEXTURED_OUTWARD else 1)
 					var h01: float = float(PropFragmentSim._mix(h, (a * div + b) * div + cc) % 1000) / 1000.0
 					var sh: Vector2 = RubblePresetsRef.shape(mat, variant, b, outward, h01)
 					release.append(sh.x)
@@ -5907,7 +5912,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 	var sim := PropFragmentSim.new({"cells": lattice, "zones": zones, "origin": Vector3.ZERO,
 		"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS * div), "blast": Vector2.ZERO, "weight": 1.0, "seed": seed,
 		"wave_delay": 0.0, "push_dir": push_dir, "carve": false, "char": false, "stack": stack, "solid": solid, "can_cross": cross,
-		"hold": RUBBLE_HOLD_S, "shade": shade, "jitter": RUBBLE_JITTER, "release": release, "speed": speed})
+		"hold": RUBBLE_HOLD_S, "shade": shade, "jitter": RUBBLE_JITTER, "release": release, "speed": speed, "flat": flat})
 	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)
 	var landed_so_far: Array = []
 	node.landed.connect(func(records: Array) -> void:
@@ -5965,7 +5970,7 @@ func _on_rubble_settled(records: Array, zone_materials: Array) -> void:
 	var base_records: Array = []
 	var puffs: Dictionary = {}   ## board voxel column -> [level, zone]: where the chips lie, for the floor dust
 	for r: Dictionary in records:
-		base_records.append({"col": r["column"], "level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
+		base_records.append({"col": r["column"], "level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0)), "flat": bool(r.get("flat", false))})
 		var col: Vector2i = r["column"]
 		puffs[Vector2i(floori(float(col.x) / div), floori(float(col.y) / div))] = [int(r["level"]), int(r.get("zone", 0))]
 	_base_rubble_piles.append({"y0": 0.0, "zone_materials": zone_materials, "records": base_records, "div": div})
@@ -6019,7 +6024,7 @@ func _respawn_base_prop_piles() -> void:
 	for pile: Dictionary in _base_rubble_piles:
 		var rubble: Array = []
 		for r: Dictionary in pile["records"]:
-			rubble.append({"column": r["col"], "level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
+			rubble.append({"column": r["col"], "level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0)), "flat": bool(r.get("flat", false))})
 		live.call("spawn_prop_pile", rubble, float(pile["y0"]), pile["zone_materials"], int(pile.get("div", 1)), true)
 
 

@@ -792,6 +792,15 @@ func glass_pane_face_at(x: int, y: int, level: int) -> int:
 	return 0
 
 
+## ROOF step 4 — the `pane` byte of the claim that owns this cell, visible OR NOT (0 when none): what a cell WAS, asked of a hole
+## (an opening's anchor is already destroyed when the opening is grouped). The pane byte is immutable after the build.
+func pane_byte_owning(x: int, y: int, level: int) -> int:
+	if x < x0 or y < y0 or level < l0 or x >= x0 + w or y >= y0 + h or level >= l0 + nl:
+		return 0
+	var o: int = owner[cell_index(x, y, level)]
+	return pane[o] if o >= 0 else 0
+
+
 ## True when a visible glass pane voxel holds the cell.
 func has_glass_pane(x: int, y: int, level: int) -> bool:
 	return glass_pane_face_at(x, y, level) != 0

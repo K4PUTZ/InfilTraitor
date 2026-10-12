@@ -63,6 +63,7 @@ class_name DetonationPlanBuilder
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 const WorldDeltaClass = preload("res://godot/scripts/systems/prediction/world_delta.gd")
 const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
+const PaneFrameRef = preload("res://godot/scripts/systems/destruction/pane_frame.gd")
 const VoxelLightFieldClass = preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")
 
 ## VL-02c/D2 (unchanged from the pre-reset detonate_active() this task
@@ -631,7 +632,12 @@ static func _glass_begin(s: Dictionary) -> Dictionary:
 		if _is_glass_pane_slice(slc0):
 			has_glass_pane = true
 			break
-	if not has_glass_pane:
+	## ROOF step 4 — the SKYLIGHTS (glass CEILING slabs grouped into panes, `GlassPaneGrouper.assign_skylights`) are panes too.
+	var skylights: Array = []
+	for sl0: Slab in slab_registry.all_slabs():
+		if sl0.pane_id != "":
+			skylights.append(sl0)
+	if not has_glass_pane and skylights.is_empty():
 		return {}
 
 	## ── G-D48 — THE GLASS-ONLY SHOCKWAVE RE-FLOOD ───────────────────────────
@@ -644,13 +650,16 @@ static func _glass_begin(s: Dictionary) -> Dictionary:
 	## container keeps the ring it got from the narrower flood.
 	var glass_max: int = GlassShatter.glass_blast_max_ring()
 	var affected: Dictionary
+	var affected_roofs: Dictionary
 	if have_ctx and glass_max > bomb_def.ring_multipliers.size() - 1:
 		var glass_rings: Dictionary = BlastCalculatorClass.flood_gu_rings(source_gu, bomb_def,
 			ctx.get("blocked_edges", {}), ctx.get("blocked_cells", {}), glass_max)
-		affected = BlastCalculatorClass.find_affected_containers(
-			glass_rings, edge_registry, slab_registry, [])["slices"]
+		var found: Dictionary = BlastCalculatorClass.find_affected_containers(glass_rings, edge_registry, slab_registry, [])
+		affected = found["slices"]
+		affected_roofs = found.get("roofs", {})
 	else:
 		affected = s["affected"]["slices"]
+		affected_roofs = s["affected"].get("roofs", {})
 
 	var _rdiag: bool = OS.get_environment("INFILTRAITOR_GLASS_RING_DIAG") == "1"
 	if _rdiag:
@@ -667,11 +676,18 @@ static func _glass_begin(s: Dictionary) -> Dictionary:
 			print("[GLASS-RING-DIAG]  slice sid=%s pane=%s ring=%d gu_cell=%s" % [sid, slc.pane_id, r, slc.gu_cell])
 		if not pane_min_ring.has(slc.pane_id) or r < int(pane_min_ring[slc.pane_id]):
 			pane_min_ring[slc.pane_id] = r
+	## ROOF step 4 — a skylight's ring is its GU's, as every roof's is (`_phase_roofs` gives a roof slab its GU ring, no height term).
+	for sky: Slab in skylights:
+		if not affected_roofs.has(sky.id):
+			continue
+		var rr: int = int(affected_roofs[sky.id])
+		if not pane_min_ring.has(sky.pane_id) or rr < int(pane_min_ring[sky.pane_id]):
+			pane_min_ring[sky.pane_id] = rr
 	if pane_min_ring.is_empty():
 		return {}
 
-	var slices_by_pane: Dictionary = {}
-	for slc2 in all_slices:
+	var slices_by_pane: Dictionary = {}   ## pane_id -> its hosts (a wall pane's slices, a skylight's slabs)
+	for slc2 in all_slices + skylights:
 		if slc2.pane_id in pane_min_ring:
 			if not slices_by_pane.has(slc2.pane_id):
 				slices_by_pane[slc2.pane_id] = []
@@ -825,10 +841,12 @@ static func _glass_pane(s: Dictionary, g: Dictionary, pid) -> void:
 		## shatter, so a break in the outer ramp is never thrown at strength
 		## zero; a G-D49 re-crack past the ramp's end falls straight down.
 		## `lift` stays 0.0: a skylight would set it, and G-D16c/d is unbuilt.
+		var push: float = clampf(GlassShatter.shockwave_strength(ring), 0.0, 1.0)
 		var impulse: Dictionary = {
 			"from": Vector2(epicenter),
-			"strength": clampf(GlassShatter.shockwave_strength(ring), 0.0, 1.0),
-			"lift": 0.0,
+			"strength": push,
+			## ROOF R-D6 — a SKYLIGHT's shards are thrown UP and out by a blast under it, so they land wider (`GlassFall`'s lift).
+			"lift": push if face == PaneFrameRef.HORIZONTAL else 0.0,
 		}
 		## ── G-D47 — WHAT SURVIVES A PARTIAL BREAK IS CRACKED, NEVER INTACT ──
 		##
@@ -1101,6 +1119,9 @@ static func _phase_roofs(s: Dictionary, deadline: int) -> void:
 	var i: int = int(s["cursor"])
 	while i < ids.size():
 		var roof: Slab = slab_registry.get_slab(ids[i])
+		if roof.pane_id != "":
+			i += 1   ## ROOF step 4: a SKYLIGHT is a glass pane; the glass stage (`_glass_begin`) owns it, not the ring scatter
+			continue
 		var base_ring: int = affected[ids[i]]
 		delta.add_damage(BlastCalculatorClass.simulate_container_damage(
 			roof.voxels, roof.id, roof.material, base_ring, roof.level, true,

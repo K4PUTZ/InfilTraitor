@@ -2240,7 +2240,15 @@ func _group_erased_into_regions() -> Array:
 		var opening_id: String = String(_glass_region_openings[anchor])
 		var bounds: Rect2i = GlassOpening.cell_bounds(opening_id)
 		var members: Array = []
+		## ROOF step 4 — a SKYLIGHT's claim: its region is the opening's footprint in (x, y) at the anchor's level.
+		var sky_claim: bool = VoxelStore.active != null \
+			and VoxelStore.active.pane_byte_owning(anchor.x, anchor.y, anchor.z) == VoxelStore.PANE_HORIZONTAL
 		for k in all.keys():
+			if sky_claim:
+				if k.z == anchor.z and absi(k.x - anchor.x) <= bounds.size.x and absi(k.y - anchor.y) <= bounds.size.y:
+					members.append(k)
+					all.erase(k)
+				continue
 			## Both run axes are offered — the erased cell's own face went with
 			## its source, and a cell that is not in this pane simply will not be
 			## glass when the walk gets there.

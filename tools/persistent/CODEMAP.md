@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**294 scripts · 86859 lines total** (under `godot/scripts/`)
+**294 scripts · 86924 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1219,7 +1219,7 @@ extends `Node3D` · 3278 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2692 lines
+`class_name VoxelBoard` · extends `Node2D` · 2700 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -2401,7 +2401,7 @@ extends `RefCounted` · 37 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 3167 lines
+`class_name DetonationPlanBuilder` · 3188 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2411,6 +2411,7 @@ extends `RefCounted` · 37 lines
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `WorldDeltaClass` = `preload("res://godot/scripts/systems/prediction/world_delta.gd")`
 - `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
+- `PaneFrameRef` = `preload("res://godot/scripts/systems/destruction/pane_frame.gd")`
 - `VoxelLightFieldClass` = `preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")`
 - `CRATER_MAX_FACTOR` = `0.40`
 - `CRATER_CORE_FACTOR` = `0.30`
@@ -2560,7 +2561,7 @@ extends `RefCounted` · 37 lines
 
 ### `glass_shatter.gd`
 
-`class_name GlassShatter` · 919 lines
+`class_name GlassShatter` · 946 lines
 
 `godot/scripts/systems/destruction/glass_shatter.gd`
 
@@ -2571,6 +2572,7 @@ extends `RefCounted` · 37 lines
 - `ShotPunchTableClass` = `preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")`
 - `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `ShardShapesClass` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
+- `PaneFrameRef` = `preload("res://godot/scripts/systems/destruction/pane_frame.gd")`
 
 ---
 
@@ -3699,7 +3701,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 879 lines
+`class_name VoxelStore` · extends `RefCounted` · 888 lines
 
 `godot/scripts/systems/voxel_store.gd`
 

@@ -57,6 +57,22 @@ const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.
 ## here. The mask this file produces is the mask that file consumes, so a second
 ## copy of the four constants is a drift waiting to happen.
 const ShardShapesClass = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
+const PaneFrameRef = preload("res://godot/scripts/systems/destruction/pane_frame.gd")
+
+
+## ROOF 3c / step 4 (2026-10-11) — a pane's HOST is a wall pane's Slice or a SKYLIGHT's CEILING slab: the slab is one material and has
+## no storeys, so these two answer for both. The lattice key is the pane frame's (u, v) (`PaneFrame.to_uv`): a wall pane's (run, level)
+## exactly as `_cell_key()` always was, a skylight's (x, y).
+static func _host_base(h) -> int:
+	return GeometryCoordsMod.storey_level_base(h.start_storey) if h is Slice else 0
+
+
+static func _host_material_at(h, level: int) -> String:
+	return h.material_at(level - _host_base(h)) if h is Slice else String(h.material)
+
+
+static func _key(cells: PackedInt32Array, o: int, face: int) -> Vector2i:
+	return PaneFrameRef.to_uv(face, Vector3i(cells[o], cells[o + 1], cells[o + 2]))
 
 static var SHATTER_K: float = 1.14       ## logistic steepness
 static var SHATTER_X0: float = 3.79      ## logistic midpoint, in glass_punch units
@@ -270,14 +286,13 @@ static func crazed_fraction(pane_slices: Array) -> float:
 	var glass_total: int = 0
 	var cracked: int = 0
 	for slice in pane_slices:
-		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
 		var cells: PackedInt32Array = VoxelStore.cells_of(slice)
 		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
 			var st: int = cells[o + 3]
 			var damage: int = (st >> 1) & 3
 			if (st & 1) == 0 or damage == Voxel.DamageState.DESTROYED:
 				continue
-			if not GlassMaterials.is_glass(slice.material_at(cells[o + 2] - slice_base)):
+			if not GlassMaterials.is_glass(_host_material_at(slice, cells[o + 2])):
 				continue
 			glass_total += 1
 			if damage == Voxel.DamageState.CRACKED:
@@ -322,7 +337,6 @@ static func crazed_fraction(pane_slices: Array) -> float:
 static func plan_pane_craze(pane_slices: Array) -> Array:
 	var out: Array = []
 	for slice in pane_slices:
-		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
 		var cells: PackedInt32Array = VoxelStore.cells_of(slice)
 		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
 			var st: int = cells[o + 3]
@@ -331,7 +345,7 @@ static func plan_pane_craze(pane_slices: Array) -> Array:
 				continue
 			if damage == Voxel.DamageState.CRACKED:
 				continue
-			if not GlassMaterials.is_glass(slice.material_at(cells[o + 2] - slice_base)):
+			if not GlassMaterials.is_glass(_host_material_at(slice, cells[o + 2])):
 				continue
 			## The object is still what a caller writes through (`set_damage`); only the
 			## decision is read from the store.
@@ -448,6 +462,8 @@ static func collect_anchor_positions(pane_slices: Array, face: int, all_slices: 
 	var anchors: Dictionary = {}
 	if pane_slices.is_empty():
 		return anchors
+	if face == PaneFrameRef.HORIZONTAL:
+		return _skylight_anchors(pane_slices)
 	var run_is_x: bool = (face == Face.SW or face == Face.NE)
 	## The pane's own plane: same face, and the same coordinate on the axis the
 	## run does NOT travel along.
@@ -473,6 +489,26 @@ static func collect_anchor_positions(pane_slices: Array, face: int, all_slices: 
 			if GlassMaterials.is_glass(s.material_at(cells[o + 2] - s_base)):
 				continue
 			anchors[_cell_key(cells, o, run_is_x)] = true
+	return anchors
+
+
+## ROOF step 4 — a SKYLIGHT's anchors: every standing NON-glass claim in its own plane (its level) beside one of its glass cells, read
+## from the store (the roof's frame, a wall or a block reaching that level). Keyed (x, y) like the skylight's lattice.
+static func _skylight_anchors(pane_slices: Array) -> Dictionary:
+	var anchors: Dictionary = {}
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		return anchors
+	for h in pane_slices:
+		var cells: PackedInt32Array = VoxelStore.cells_of(h)
+		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
+			for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var nx: int = cells[o] + d.x
+				var ny: int = cells[o + 1] + d.y
+				var lv: int = cells[o + 2]
+				if store.has_cell(nx, ny, lv) and not store.has_glass_pane(nx, ny, lv) \
+						and not GlassMaterials.is_glass(store.material_ids[store.mat[store.owner[store.cell_index(nx, ny, lv)]]]):
+					anchors[Vector2i(nx, ny)] = true
 	return anchors
 
 
@@ -522,9 +558,7 @@ static func collect_anchor_positions(pane_slices: Array, face: int, all_slices: 
 static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vector2i,
 		hit_level: int, glass_punch: float, salt: String,
 		anchor_positions: Dictionary = {}, radius_override: int = -1) -> Dictionary:
-	## Run axis of the pane: X for {SW, NE}, Y for {SE, NW} — matches
-	## GlassPaneGrouper's `Vector2i(absi(fd.y), absi(fd.x))`.
-	var run_is_x: bool = (face == Face.SW or face == Face.NE)
+	## The pane's frame is its `face` (`PaneFrame`): a wall pane's (run, level), a skylight's (x, y).
 	## G-D16 / V-C — the pane's BASE material, and it is safe to read from any one
 	## slice: `GlassPaneGrouper` only unions slices that share it (two glass
 	## materials are two panes), so a pane is single-material by construction.
@@ -535,7 +569,7 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	## V-D — and the pane's per-placement class override, from the same slice. A
 	## pane is single-material by construction (the union splits on material), and
 	## every slice of one authored panel carries the same tag.
-	var pane_class: int = pane_slices[0].glass_class if not pane_slices.is_empty() \
+	var pane_class: int = pane_slices[0].glass_class if not pane_slices.is_empty() and pane_slices[0] is Slice \
 		else GlassMaterials.CLASS_UNSET
 
 	## Build the pane's own lattice of VISIBLE voxels, keyed by (col, level) where
@@ -552,9 +586,8 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	## room needs the same answer at claim and respawn time (G4-2) and two walks
 	## that agree today are two walks that can disagree later. The extra pass over
 	## the pane's voxels is not worth a second copy of the rule.
-	var own_frame: Dictionary = pane_frame_keys(pane_slices, run_is_x)
+	var own_frame: Dictionary = pane_frame_keys(pane_slices, face)
 	for slice in pane_slices:
-		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
 		var cells: PackedInt32Array = VoxelStore.cells_of(slice)
 		for vi in range(slice.voxels.size()):
 			var o: int = vi * VoxelStore.CELL_STRIDE
@@ -563,8 +596,8 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 			## a flood candidate, and nothing left to anchor.
 			if (st & 1) == 0 or ((st >> 1) & 3) == Voxel.DamageState.DESTROYED:
 				continue
-			var key := _cell_key(cells, o, run_is_x)
-			if not GlassMaterials.is_glass(slice.material_at(cells[o + 2] - slice_base)):
+			var key := _key(cells, o, face)
+			if not GlassMaterials.is_glass(_host_material_at(slice, cells[o + 2])):
 				continue
 			## ⚠️ THE LATTICE KEY DROPS THE THICKNESS AXIS. `_cell_key()` is
 			## (col, level) — for an SW/NE pane that is (grid_pos.x, level), and the
@@ -585,8 +618,7 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	if lattice.is_empty():
 		return {"destroyed": [], "remnants": []}
 
-	var origin_col: int = hit_grid_pos.x if run_is_x else hit_grid_pos.y
-	var origin := Vector2i(origin_col, hit_level)
+	var origin: Vector2i = PaneFrameRef.to_uv(face, Vector3i(hit_grid_pos.x, hit_grid_pos.y, hit_level))
 
 	## BFS from the hit, Chebyshev radius. A small radius takes a patch, a large
 	## one takes the lot.
@@ -786,34 +818,32 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 ##
 ## Those voxels are FRAME, not pane: they are not flood candidates, the fracture
 ## does not travel through them, and they ANCHOR the glass beside them.
-static func pane_frame_keys(pane_slices: Array, run_is_x: bool) -> Dictionary:
+static func pane_frame_keys(pane_slices: Array, face: int) -> Dictionary:
 	var out: Dictionary = {}
 	for slice in pane_slices:
-		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
 		var cells: PackedInt32Array = VoxelStore.cells_of(slice)
 		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
 			var st: int = cells[o + 3]
 			if (st & 1) == 0 or ((st >> 1) & 3) == Voxel.DamageState.DESTROYED:
 				continue
-			if not GlassMaterials.is_glass(slice.material_at(cells[o + 2] - slice_base)):
-				out[_cell_key(cells, o, run_is_x)] = true
+			if not GlassMaterials.is_glass(_host_material_at(slice, cells[o + 2])):
+				out[_key(cells, o, face)] = true
 	return out
 
 
 ## CRACK-06 — the mirror of `pane_frame_keys`: the (col, level) keys still holding
 ## VISIBLE glass (CRACKED counts — the sheet stands; DESTROYED does not). This is
 ## what a RIM shard hangs from, the torn edge of the pane's own surviving glass.
-static func pane_glass_keys(pane_slices: Array, run_is_x: bool) -> Dictionary:
+static func pane_glass_keys(pane_slices: Array, face: int) -> Dictionary:
 	var out: Dictionary = {}
 	for slice in pane_slices:
-		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
 		var cells: PackedInt32Array = VoxelStore.cells_of(slice)
 		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
 			var st: int = cells[o + 3]
 			if (st & 1) == 0 or ((st >> 1) & 3) == Voxel.DamageState.DESTROYED:
 				continue
-			if GlassMaterials.is_glass(slice.material_at(cells[o + 2] - slice_base)):
-				out[_cell_key(cells, o, run_is_x)] = true
+			if GlassMaterials.is_glass(_host_material_at(slice, cells[o + 2])):
+				out[_key(cells, o, face)] = true
 	return out
 
 
@@ -889,24 +919,21 @@ static func remnant_anchor_mask(pane_slices: Array, face: int, all_slices: Array
 static func remnant_anchor_context(pane_slices: Array, face: int, all_slices: Array) -> Array:
 	if pane_slices.is_empty():
 		return []
-	var run_is_x: bool = (face == Face.SW or face == Face.NE)
-	return [run_is_x, pane_frame_keys(pane_slices, run_is_x), collect_anchor_positions(pane_slices, face, all_slices)]
+	return [face, pane_frame_keys(pane_slices, face), collect_anchor_positions(pane_slices, face, all_slices)]
 
 
 ## The per-pane half of `rim_shard_anchor_mask`: the pane's surviving glass. Valid while that pane's glass does not change.
 static func rim_shard_anchor_context(pane_slices: Array, face: int) -> Array:
 	if pane_slices.is_empty():
 		return []
-	var run_is_x: bool = (face == Face.SW or face == Face.NE)
-	return [run_is_x, pane_glass_keys(pane_slices, run_is_x), {}]
+	return [face, pane_glass_keys(pane_slices, face), {}]
 
 
 ## One cell's anchor mask from a context above (an empty context = no pane = 0).
 static func mask_in_context(ctx: Array, grid_pos: Vector2i, level: int) -> int:
 	if ctx.is_empty():
 		return 0
-	var run_is_x: bool = ctx[0]
-	return anchor_mask_for(Vector2i(grid_pos.x if run_is_x else grid_pos.y, level), ctx[1], ctx[2])
+	return anchor_mask_for(PaneFrameRef.to_uv(int(ctx[0]), Vector3i(grid_pos.x, grid_pos.y, level)), ctx[1], ctx[2])
 
 
 ## CRACK-06 — a RIM shard's anchor: the pane's OWN surviving glass, the torn edge.

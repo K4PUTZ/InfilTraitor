@@ -433,9 +433,10 @@ var _solid_twin: PackedInt32Array = PackedInt32Array()
 ## ROOF R-D9: material index -> its FRESH twin (the faces that look into a hole in a wall; `fresh_clean` / `fresh_lift`), -1 for none.
 ## A fresh twin has its own solid twin (`_solid_twin`), so the cutaway swap works on it as on any material.
 var _fresh_twin: PackedInt32Array = PackedInt32Array()
-static var FRESH_CLEAN: float = 0.8
+## Director 2026-10-12: the concrete inside a hole is fresh — no soot and no shadow at all, a little lighter than the wall.
+static var FRESH_CLEAN: float = 1.0
 static var FRESH_LIFT: float = 1.06
-static var FRESH_LIGHT: float = 0.6
+static var FRESH_LIGHT: float = 1.0
 const FRESH_SUFFIX: String = "#fresh"
 var _warned_cut_below: bool = false
 ## PB-6: the chunks the cutaway currently reaches (a ghosted column or a revealed roof GU in them): only these draw the
@@ -2000,15 +2001,10 @@ func crack_mirror() -> Node3D:
 	return _crack_mirror
 
 
-## The multiplier one ring of the soot ladder gives a face (`soot_mult`), 1.0 for clean.
-func soot_ring_mult(ring: int) -> float:
-	return _soot_mult[ring] if ring >= 0 and ring < _soot_mult.size() else 1.0
-
-
 ## ROOF R-D9 (Director, 2026-10-12): the shade one SIDE face of a voxel draws with, as `OPAQUE_SHADER` computes it (the face's tone
-## for this view x the cell's light bucket x its soot ring on that face), so a broken voxel's sub-voxels can take over its look
-## exactly. `x_normal`: the face looks along x (else along z, the board's y). The facade and the material colour are not in it.
-func face_shade(x: int, y: int, level: int, x_normal: bool) -> float:
+## for this view x the cell's light bucket, x its soot ring on that face when `with_soot`), so a broken voxel's sub-voxels can take
+## over its look. `x_normal`: the face looks along x (else along z, the board's y). The facade and the material colour are not in it.
+func face_shade(x: int, y: int, level: int, x_normal: bool, with_soot: bool = true) -> float:
 	var board: VoxelBoard = _room._voxel_board if _room != null else null
 	if board == null or _tone.size() < 3 or _light_ladder.is_empty():
 		return 1.0
@@ -2016,6 +2012,8 @@ func face_shade(x: int, y: int, level: int, x_normal: bool) -> float:
 	var slot: int = slots.x if x_normal else slots.y
 	var bucket: int = board.cell_bucket_at(level, Vector2i(x, y))
 	var light: float = _light_ladder[clampi(bucket, 0, _light_ladder.size() - 1)]   ## the shader's clamp(bucket, 0, 11)
+	if not with_soot:
+		return _tone[slot] * light
 	var code: int = board.cell_soot_at(level, Vector2i(x, y))
 	var ring: int = int(float(code % 36) / 6.0) if slot == 1 else code % 6
 	var soot: float = 1.0

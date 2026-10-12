@@ -55,7 +55,6 @@ var origin: Vector3 = Vector3.ZERO
 var weight: float = 1.0
 var time: float = 0.0
 var wave_time: float = 0.06
-var char_time: float = CHAR_TIME   ## R-D9: a caller may darken its fragments faster (a shot's rubble: at once, with the wall's soot)
 var hold: float = 0.0   ## R-D9: seconds every fragment stays where it was before anything moves
 var release: PackedFloat32Array = PackedFloat32Array()   ## R-D9: per fragment, seconds after `hold` before it leaves (empty = 0)
 var _release_max: float = 0.0
@@ -96,8 +95,7 @@ var _done: bool = false
 ## wall face it replaces), jitter (float, default 0.06: the ± brightness variation between cubes),
 ## release (PackedFloat32Array per fragment: seconds after `hold` before it leaves), speed (PackedFloat32Array per fragment: a
 ## multiplier on its push). `release` and `speed` are how a caller shapes the way a block crumbles (`RubblePresets`).
-## char_tone (float: every fragment's darkened tone, in place of the charred one; or char_tones, PackedFloat32Array per fragment), char_time (seconds the darkening takes after
-## `wave_delay`). With `push_dir` the fragments leave AGAINST it (the reaction to the impact).
+## With `push_dir` the fragments leave AGAINST it (the reaction to the impact).
 func _init(p: Dictionary) -> void:
 	var cells: Array = p["cells"]
 	var zones: PackedInt32Array = p.get("zones", PackedInt32Array())
@@ -105,9 +103,6 @@ func _init(p: Dictionary) -> void:
 	voxel = float(p.get("voxel", voxel))
 	weight = clampf(float(p["weight"]), 0.0, 1.0)
 	wave_time = float(p.get("wave_delay", wave_time))
-	char_time = maxf(float(p.get("char_time", CHAR_TIME)), STEP)
-	var char_tone: float = float(p.get("char_tone", -1.0))
-	var char_tones: PackedFloat32Array = p.get("char_tones", PackedFloat32Array())
 	_seed = FacadeSampler._fnv1a_hash(String(p.get("seed", "")))
 	_can_cross = p.get("can_cross", Callable())
 	_solid = p.get("solid", Callable())
@@ -155,8 +150,7 @@ func _init(p: Dictionary) -> void:
 		far = maxf(far, centres[i].distance_to(blast))
 		state[i] = State.FALLING
 		vanish_at[i] = -1.0
-		var ct: float = char_tones[i] if i < char_tones.size() else char_tone
-		tone[i] = ct if ct >= 0.0 else (BoardLook.char_mult(_h01(i, P_TONE)) if charred else 1.0)
+		tone[i] = BoardLook.char_mult(_h01(i, P_TONE)) if charred else 1.0
 		jitter[i] = (1.0 - jitter_amp) + 2.0 * jitter_amp * _h01(i, P_JIT)
 		if i < shade.size():
 			jitter[i] *= shade[i]
@@ -275,14 +269,14 @@ func vanished_count() -> int:
 
 ## 0 = its own colour, 1 = fully charred (the multiplier `tone[i]` applies at 1).
 func char_amount(i: int) -> float:
-	var ramp: float = clampf((time - wave_time) / char_time, 0.0, 1.0)
+	var ramp: float = clampf((time - wave_time) / CHAR_TIME, 0.0, 1.0)
 	return ramp * clampf(weight * 1.15, 0.0, 1.0)
 
 
 ## True once the charring ramp has run its course. Every carved fragment has vanished by then (`vanish_at` is within 0.06 s of the wave),
 ## so a landed fragment can no longer be moved by one vanishing under it: its row is final.
 func char_finished() -> bool:
-	return time - wave_time >= char_time
+	return time - wave_time >= CHAR_TIME
 
 
 func rotation_of(i: int) -> Basis:

@@ -445,7 +445,10 @@ static var FRESH_LIFT: float = 1.0
 static var FRESH_KEEPS_FACADE: Array[String] = ["wood", "plywood", "cardboard", "fabric"]
 static var FRESH_LIFT_TEXTURED: float = 1.3
 ## Per material (Director 2026-10-12): wood's hole is lighter, plywood's has the NORMAL shade (no artificial lightening), same texture.
-static var FRESH_LIFT_OF: Dictionary = {"wood": 1.3, "plywood": 1.0, "cardboard": 1.0, "fabric": 1.0}
+static var FRESH_LIFT_OF: Dictionary = {"wood": 1.3, "plywood": 1.0, "cardboard": 0.6, "fabric": 0.6}
+## Cardboard and fabric have no FRESH inside to their opening (Director, 2026-10-12): the zone around the hole is SCORCHED instead, so it keeps the
+## soot (`fresh_clean` 0) and reads darker (lift 0.6).
+static var FRESH_CLEAN_OF: Dictionary = {"cardboard": 0.0, "fabric": 0.0}
 const FRESH_SUFFIX: String = "#fresh"
 var _warned_cut_below: bool = false
 ## PB-6: the chunks the cutaway currently reaches (a ghosted column or a revealed roof GU in them): only these draw the
@@ -1518,7 +1521,7 @@ func _material(material_id: String) -> int:
 			var fresh := _shader_materials[index].duplicate() as ShaderMaterial
 			var fresh_solid := twin.duplicate() as ShaderMaterial
 			for fm: ShaderMaterial in [fresh, fresh_solid]:
-				fm.set_shader_parameter("fresh_clean", FRESH_CLEAN)
+				fm.set_shader_parameter("fresh_clean", float(FRESH_CLEAN_OF.get(material_id, FRESH_CLEAN)))
 				var keeps: bool = FRESH_KEEPS_FACADE.has(material_id)
 				fm.set_shader_parameter("fresh_lift", float(FRESH_LIFT_OF.get(material_id, FRESH_LIFT_TEXTURED)) if keeps else FRESH_LIFT)
 				fm.set_shader_parameter("fresh_probe", 1.0)

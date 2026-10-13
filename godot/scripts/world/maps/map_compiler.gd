@@ -106,7 +106,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			var cell: Vector2i = Vector2i(raw_cell) + offset
 			if blocked_map.has(cell):
 				continue
-			wall_tiles.append({"cell": cell, "tile_name": "solidblock_%s" % material})
+			wall_tiles.append({"cell": cell, "tile_name": "solidblock_%s" % material, "side": String(divider.get("side", ""))})
 			blocked_map[cell] = true
 			blocked_edges.append({"from": cell, "to": cell + Vector2i(0, -1)})
 			blocked_edges.append({"from": cell, "to": cell + Vector2i(0,  1)})
@@ -149,7 +149,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 				for storey in range(storeys):
 					while wall_levels.size() <= storey:
 						wall_levels.append([])
-					wall_levels[storey].append({"cell": cell, "tile_name": "solidblock_%s" % material})
+					wall_levels[storey].append({"cell": cell, "tile_name": "solidblock_%s" % material, "side": String(block.get("side", ""))})
 				blocked_map[cell] = true
 
 	## --- free-standing roofs (R3D-7): a roof is an entity of its own ----------

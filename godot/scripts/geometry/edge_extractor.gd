@@ -4,6 +4,17 @@ class_name EdgeExtractor
 
 const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 
+## ONE-LAYER MATERIALS (Director, 2026-10-12): glass, cardboard and fabric are thin by nature, in every situation, so the compiler gives them a single
+## layer and never a two-slice wall. A solid block of one of them keeps its OUTER shell (the layer in the neighbouring GU, away from the block's own
+## cell) and drops the inner layer; a block or divider can ask for the other with `side: "inner"` (the layer stays in its own GU). The designer's call,
+## never forced. A wall of one of these materials in a framed element (a window) sits in the INNER GU: that is the panel's own authored cell.
+const THIN_MATERIALS: Array[String] = ["cardboard", "fabric"]
+
+
+static func is_thin_material(material: String) -> bool:
+	return GlassMaterials.is_glass(material) or THIN_MATERIALS.has(material)
+
+
 ## Mapping from wall tile suffix to face direction (DIRECTION_GLOSSARY §6)
 const _EDGE_BY_SUFFIX: Dictionary = {
 	"NW": Face.NW,  ## (-1, 0)
@@ -45,6 +56,7 @@ static func extract(compiled: Dictionary) -> Dictionary:
 	# Build occupancy map for solidblock_ entries: (cell, storey) -> material
 	# Used for exposure culling: a face is only emitted if the neighbor is NOT occupied
 	var solidblock_occupancy: Dictionary = {}  # (cell, storey) key -> material
+	var solidblock_side: Dictionary = {}  # (cell, storey) key -> "inner" | "outer", a one-layer block's authored side
 
 	# Cells that carry a "wall_" tile (exterior/room-perimeter walls). Used
 	# alongside solidblock_occupancy for exposure culling: a solidblock_ cell
@@ -103,6 +115,8 @@ static func extract(compiled: Dictionary) -> Dictionary:
 			elif tile_name.begins_with("solidblock_"):
 				var material := tile_name.substr(11)  # Remove "solidblock_" prefix
 				solidblock_occupancy["%d,%d,%d" % [cell.x, cell.y, storey]] = material
+				if String(entry.get("side", "")) != "":
+					solidblock_side["%d,%d,%d" % [cell.x, cell.y, storey]] = String(entry["side"])
 			
 			# Legacy solid blocks (divider convention): "block_SE", "block_NW", etc.
 			# Keep this branch untouched per Finding B (preserve legacy behavior)
@@ -154,6 +168,9 @@ static func extract(compiled: Dictionary) -> Dictionary:
 			# For solidblock edges: BOTH min_storey and max_storey are tracked (can start at >0)
 			if edge.id not in edge_groups:
 				edge_groups[edge.id] = {"edge_template": edge, "min_storey": storey, "max_storey": storey}
+				## One layer: the outer shell (the neighbour's GU) unless the block asked for `inner`.
+				if is_thin_material(material):
+					edge_groups[edge.id]["occupied_gu"] = cell if String(solidblock_side.get(occupancy_key, "")) == "inner" else neighbor_cell
 			else:
 				# Update both min and max storey
 				edge_groups[edge.id]["min_storey"] = mini(edge_groups[edge.id]["min_storey"], storey)

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 88030 lines total** (under `godot/scripts/`)
+**295 scripts · 88047 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -551,7 +551,7 @@ extends `Node3D` · 3376 lines
 
 ### `edge_extractor.gd`
 
-`class_name EdgeExtractor` · 246 lines
+`class_name EdgeExtractor` · 263 lines
 
 `godot/scripts/geometry/edge_extractor.gd`
 
@@ -559,6 +559,7 @@ extends `Node3D` · 3376 lines
 
 **Constants / tuning**
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `THIN_MATERIALS` = `["cardboard", "fabric"]`
 - `_EDGE_BY_SUFFIX` = `{ "NW": Face.NW,  ## (-1, 0) "NE": Face.NE,  ## (0, -1) "SE": Face.SE,  ## (+1, 0) "SW": Face.SW,  ## (0, +1) }`
 
 ---

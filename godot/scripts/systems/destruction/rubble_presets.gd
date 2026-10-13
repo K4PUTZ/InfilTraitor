@@ -66,19 +66,34 @@ static var STAY_EDGE: float = 0.55      ## chance a cube on the block's edge (in
 static var STAY_INNER: float = 0.12     ## ... and one inside it
 static var FLY_SHARE: float = 0.55      ## of the cubes that do not stay, the share that flies (the rest are gone)
 ## Per material: plywood (madeirite) is wood with more destruction and more splinters (Director, 2026-10-12).
-static var FLY_SHARE_OF: Dictionary = {"plywood": 0.8}
+static var FLY_SHARE_OF: Dictionary = {"plywood": 0.5}
 ## Plywood's splinters are darker and vary more from cube to cube (Director, 2026-10-12): a lower point on the ramp and a wider brightness jitter.
 static var RAMP_OF: Dictionary = {"plywood": 0.15}
 static var JITTER_OF: Dictionary = {"plywood": 0.14}
 ## Plywood: an open, airy break (Director, 2026-10-12): only a share of the broken voxels get a block of sub-voxels at all (the others are plain
 ## empty holes), the blocks that do are mostly hollow, the rim is thin and the thrown pieces keep the facade's texture (the floor noise of
 ## black stains and mixed wood tones). Wood keeps the defaults above.
-static var BLOCK_SHARE_OF: Dictionary = {"plywood": 0.35}
+static var BLOCK_SHARE_OF: Dictionary = {"plywood": 0.15}
 static var STAY_EDGE_OF: Dictionary = {"plywood": 0.40}
 static var STAY_INNER_OF: Dictionary = {"plywood": 0.05}
 static var FLY_TEXTURED_OF: Dictionary = {"plywood": true}
 ## The most broken voxels of one shot that turn into blocks on one frame (the rest follow on the next ones).
 const BLOCKS_PER_FRAME: int = 5
+## PUNCH-OUT (Director, 2026-10-12): the middle of a hole-only wall's break is cut out whole and thrown FORWARD, with the shot, to land as rubble
+## beyond the wall. `FORWARD_KEEP` is the share of a cut voxel's 64 cubes that is drawn at all (the rest are gone: the zone is empty
+## either way, this is only what the eye sees fly), `FORWARD_SPEED` the push, a little more than a splinter's.
+static var FORWARD_KEEP: float = 0.22
+static var FORWARD_SPEED: Vector2 = Vector2(2.0, 3.6)
+static var FORWARD_DELAY_S: float = 0.05
+## Part of the cut zone falls on the SHOOTER's side instead (Director, 2026-10-12: the rubble was all behind the wall): this share of its voxels, hashed,
+## slumps out slowly against the shot (`FRONT_SPEED`) and piles in front.
+static var FRONT_SHARE: float = 0.35
+static var FRONT_SPEED: Vector2 = Vector2(0.5, 1.3)
+static var FORWARD_MATERIALS: Array[String] = ["plywood"]
+## The cut zone around the centre of a shot's destroyed cells on a wall face, as an ellipse in (col, row) cells; a survivor with this many of its
+## four neighbours gone is a floating island and goes too.
+static var ZONE_RADIUS: Vector2 = Vector2(1.5, 2.0)
+const ISLAND_NEIGHBOURS: int = 3
 static var FLY_SPEED: Vector2 = Vector2(1.8, 3.2)   ## a flying splinter's push multiplier, min..max (a crumble is 0.35-1.6 x the material's speed)
 static var FLY_DELAY_S: float = 0.04    ## the most a splinter waits after the impact, so they do not leave as one slab
 
@@ -105,3 +120,20 @@ static func splinter_role(material: String, cell: Vector2i, level: int, a: int, 
 ## (release delay s, push multiplier) of a flying splinter, from a hashed number in [0, 1).
 static func splinter_shape(h01: float) -> Vector2:
 	return Vector2(h01 * FLY_DELAY_S, lerpf(FLY_SPEED.x, FLY_SPEED.y, h01))
+
+
+static func forward_role(cell: Vector2i, level: int, a: int, b: int, cc: int) -> int:
+	var h: int = FacadeSampler._fnv1a_hash("FWD|%d,%d,%d|%d,%d,%d" % [cell.x, cell.y, level, a, b, cc])
+	return FLY if float(h % 1000) / 1000.0 < FORWARD_KEEP else GONE
+
+
+static func is_front_drop(cell: Vector2i, level: int) -> bool:
+	return float(FacadeSampler._fnv1a_hash("FRONT|%d,%d,%d" % [cell.x, cell.y, level]) % 1000) / 1000.0 < FRONT_SHARE
+
+
+static func front_shape(h01: float) -> Vector2:
+	return Vector2(h01 * FORWARD_DELAY_S, lerpf(FRONT_SPEED.x, FRONT_SPEED.y, h01))
+
+
+static func forward_shape(h01: float) -> Vector2:
+	return Vector2(h01 * FORWARD_DELAY_S, lerpf(FORWARD_SPEED.x, FORWARD_SPEED.y, h01))

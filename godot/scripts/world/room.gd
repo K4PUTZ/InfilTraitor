@@ -2086,7 +2086,7 @@ var vfx_impact_profiles: Dictionary = {
 	## Brick follows stone, a little more fragile (Director 2026-10-05): fewer sparks.
 	"brick":    {"sparks": 5,  "smoke": false, "dust": true,  "chips": 0},
 	## Plywood (madeirite): wood with more splinters (Director 2026-10-12).
-	"plywood":  {"sparks": 0,  "smoke": true,  "dust": false, "chips": 5, "chip_spread": 2.0, "chip_stamp": 0.55},
+	"plywood":  {"sparks": 0,  "smoke": true,  "dust": false, "chips": 6, "chip_spread": 2.0, "chip_stamp": 0.55},
 	"wood":     {"sparks": 0,  "smoke": true,  "dust": false, "chips": 3, "chip_spread": 1.8, "chip_stamp": 0.4},   ## Director 2026-10-12: chips fan out farther and fade; where they land a debris stamp stays
 }
 ## Per-impact spark count jitter, so 24 pellets do not all throw the identical
@@ -5864,14 +5864,36 @@ static var RUBBLE_TEXTURED_OUTWARD: float = 0.9
 
 
 ## The rest of a big shot's blocks, a few per frame (a coroutine: the caller does not wait). Each batch is a normal call, so each saves itself.
-func _spawn_rubble_later(cells: Array, push_dir: Vector3, seed: String) -> void:
+func _spawn_rubble_later(cells: Array, push_dir: Vector3, seed: String, forward: bool, front: bool = false) -> void:
 	await get_tree().process_frame
 	if not is_instance_valid(_voxel_board):
 		return
-	spawn_shot_rubble(cells, push_dir, seed + "|later")
+	_spawn_shot_rubble_impl(cells, push_dir, seed + "|later", forward, front)
 
 
-func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
+## `forward`: the PUNCH-OUT of a hole-only wall (`RubblePresets.FORWARD_*`): the cut zone's cubes fly WITH the shot instead of against it.
+func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String, forward: bool = false) -> int:
+	## The punch-out: a share of its voxels slumps out on the shooter's side, the rest flies with the shot.
+	if forward:
+		var front: Array = []
+		var through: Array = []
+		for c: Dictionary in cells:
+			if RubblePresetsRef.is_front_drop(c["grid_pos"], int(c["level"])):
+				front.append(c)
+			else:
+				through.append(c)
+		if not front.is_empty() and not through.is_empty():
+			return spawn_shot_rubble(through, push_dir, seed + "|thru", true) + _spawn_front_drop(front, push_dir, seed + "|front")
+		if through.is_empty():
+			return _spawn_front_drop(front, push_dir, seed + "|front")
+	return _spawn_shot_rubble_impl(cells, push_dir, seed, forward, false)
+
+
+func _spawn_front_drop(cells: Array, push_dir: Vector3, seed: String) -> int:
+	return _spawn_shot_rubble_impl(cells, push_dir, seed, true, true)
+
+
+func _spawn_shot_rubble_impl(cells: Array, push_dir: Vector3, seed: String, forward: bool, front: bool) -> int:
 	var live: Node = board3d()
 	var store: VoxelStore = VoxelStore.active
 	if live == null or _voxel_board == null or cells.is_empty():
@@ -5885,12 +5907,12 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 	if by_material.size() > 1:
 		var total: int = 0
 		for m: String in by_material:
-			total += spawn_shot_rubble(by_material[m], push_dir, seed + "|" + m)
+			total += _spawn_shot_rubble_impl(by_material[m], push_dir, seed + "|" + m, forward, front)
 		return total
 	var splinters: bool = RubblePresetsRef.SPLINTERS.has(String(cells[0]["material"]))
 	## A shot that breaks many voxels does not build every block on the impact frame: the first few now, the rest on the next frames.
 	if splinters and cells.size() > RubblePresetsRef.BLOCKS_PER_FRAME:
-		_spawn_rubble_later(cells.slice(RubblePresetsRef.BLOCKS_PER_FRAME), push_dir, seed)
+		_spawn_rubble_later(cells.slice(RubblePresetsRef.BLOCKS_PER_FRAME), push_dir, seed, forward, front)
 		cells = cells.slice(0, RubblePresetsRef.BLOCKS_PER_FRAME)
 	var jitter_amp: float = float(RubblePresetsRef.JITTER_OF.get(String(cells[0]["material"]), RUBBLE_JITTER))
 	var staying: Array = []   ## splinter mode: the cubes that stay in the hole, as pile records
@@ -5914,7 +5936,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 			zone_materials.append(mat)
 		var gp: Vector2i = c["grid_pos"]
 		var lv: int = int(c["level"])
-		if splinters and not RubblePresetsRef.block_kept(mat, gp, lv):
+		if splinters and not forward and not RubblePresetsRef.block_kept(mat, gp, lv):
 			continue   ## a plain empty hole: no block for this voxel
 		var variant: int = RubblePresetsRef.variant_of(gp, lv)
 		var h: int = FacadeSampler._fnv1a_hash("RUBBLE|%d,%d,%d" % [gp.x, gp.y, lv])
@@ -5928,13 +5950,13 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 					var h01: float = float(PropFragmentSim._mix(h, (a * div + b) * div + cc) % 1000) / 1000.0
 					var cube_shade: float = face * lerpf(1.0, fresh_lift, 1.0 - outward)
 					var cube_flat: bool = outward <= RUBBLE_TEXTURED_OUTWARD
-					if splinters and RubblePresetsRef.splinter_role(mat, gp, lv, a, b, cc, x_normal) == RubblePresetsRef.FLY:
+					if splinters and (forward or RubblePresetsRef.splinter_role(mat, gp, lv, a, b, cc, x_normal) == RubblePresetsRef.FLY):
 						## Born in the air at the impact, never seen seated in the hole: a point on the ramp (the end of it read too light, the middle is Director 2026-10-12's), flat like the chips.
 						cube_shade = face * lerpf(1.0, float(live.call("fresh_lift_textured")), float(RubblePresetsRef.RAMP_OF.get(mat, SPLINTER_RAMP)))
 						cube_flat = not bool(RubblePresetsRef.FLY_TEXTURED_OF.get(mat, false))
 					var fine := Vector3i(gp.x * div + a, (lv - ground) * div + b, gp.y * div + cc)
 					if splinters:
-						var role: int = RubblePresetsRef.splinter_role(mat, gp, lv, a, b, cc, x_normal)
+						var role: int = RubblePresetsRef.forward_role(gp, lv, a, b, cc) if forward else RubblePresetsRef.splinter_role(mat, gp, lv, a, b, cc, x_normal)
 						if role == RubblePresetsRef.GONE:
 							continue
 						if role == RubblePresetsRef.STAY:
@@ -5945,7 +5967,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 					zones.append(z)
 					shade.append(cube_shade)
 					flat.append(1 if cube_flat else 0)
-					var sh: Vector2 = RubblePresetsRef.splinter_shape(h01) if splinters else RubblePresetsRef.shape(mat, variant, b, outward, h01)
+					var sh: Vector2 = (RubblePresetsRef.front_shape(h01) if front else RubblePresetsRef.forward_shape(h01)) if forward else RubblePresetsRef.splinter_shape(h01) if splinters else RubblePresetsRef.shape(mat, variant, b, outward, h01)
 					release.append(sh.x)
 					speed.append(sh.y)
 	## The splinters that stay are the hole's ragged rim: drawn at once, saved with the rest of the rubble (the same record as a landed cube).
@@ -5967,7 +5989,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 		return not WallEdgeData.is_edge_blocked(from, to, edges)
 	var sim := PropFragmentSim.new({"cells": lattice, "zones": zones, "origin": Vector3.ZERO,
 		"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS * div), "blast": Vector2.ZERO, "weight": 1.0, "seed": seed,
-		"wave_delay": 0.0, "push_dir": push_dir, "carve": false, "char": false, "stack": stack, "solid": solid, "can_cross": cross,
+		"wave_delay": 0.0, "push_dir": -push_dir if forward and not front else push_dir, "carve": false, "char": false, "stack": stack, "solid": solid, "can_cross": cross,
 		"hold": 0.0 if splinters else RUBBLE_HOLD_S, "shade": shade, "jitter": jitter_amp, "release": release, "speed": speed, "flat": flat})
 	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)
 	var landed_so_far: Array = []

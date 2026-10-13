@@ -523,6 +523,9 @@ func fire_at_active() -> void:
 	## ROOF R-D9 / RF-S: the opaque wall voxels this shot DESTROYED (not glass: a pane has its own fall and rain; not a prop: its pile
 	## is the prop's), thrown as rubble once the board drops them.
 	var rubble_cells: Array = []
+	## PUNCH-OUT: per wall edge, per face slice, the indices THIS shot destroyed, for the materials whose middle is cut out and thrown forward.
+	var zone_hits: Dictionary = {}
+	var forward_cells: Array = []
 
 	## ── RESOLVE FIRST, THEN FLY, THEN BREAK ────────────────────────────────
 	## The pellet loop used to do all three in one pass, and the DECORATIVE
@@ -619,6 +622,13 @@ func fire_at_active() -> void:
 					and pv.damage_state != Voxel.DamageState.DESTROYED and not GlassMaterials.is_glass(hit_material) \
 						and not RubblePresetsRef.NO_FALL.has(hit_material):
 				rubble_cells.append({"grid_pos": pv.grid_pos, "level": pv.level, "material": hit_material})
+				if RubblePresetsRef.FORWARD_MATERIALS.has(hit_material):
+					var zone_slice: Slice = pe["container"]
+					var by_slice: Dictionary = zone_hits.get(zone_slice.edge_id, {})
+					var hit_set: Dictionary = by_slice.get(zone_slice.id, {})
+					hit_set[zone_slice.voxels.find(pv)] = true
+					by_slice[zone_slice.id] = hit_set
+					zone_hits[zone_slice.edge_id] = by_slice
 			pv.set_damage(int(pe["state"]), bool(pe["is_blast"]),
 				int(pe["carved_side"]), int(pe["variant"]), int(pe["substrate"]))
 			touched.append(pv)
@@ -649,6 +659,7 @@ func fire_at_active() -> void:
 				"%s:%d" % [salt, i], cell_to_voxel, cell_to_material, cell_to_depth,
 				layer_depth)
 
+	_punch_out_zones(zone_hits, rubble_cells, forward_cells, cell_to_voxel, cell_to_material, cell_to_depth)
 	var prof_apply_ms: float = float(Time.get_ticks_usec() - prof_apply0) / 1000.0
 	## B3: a round with no wall behind the target is VOID and nothing happens
 	## (D15). That is a legitimate outcome, not a failure, so it is reported
@@ -737,9 +748,11 @@ func fire_at_active() -> void:
 	var board3d: Node = room.board3d()
 	if board3d != null and not cell_to_voxel.is_empty():
 		board3d.on_shot_commit(cell_to_voxel.values() + reaped_voxels)
-	if not rubble_cells.is_empty():
+	if not rubble_cells.is_empty() or not forward_cells.is_empty():
 		var placed: int = room.spawn_shot_rubble(rubble_cells, Vector3(aim.x, 0.0, aim.y), salt)
-		print_debug("[SHOT-RUBBLE] %d voxel(s) broken, %d sub-voxel(s) in place" % [rubble_cells.size(), placed])
+		if not forward_cells.is_empty():
+			placed += room.spawn_shot_rubble(forward_cells, Vector3(aim.x, 0.0, aim.y), salt + "|fwd", true)
+		print_debug("[SHOT-RUBBLE] %d voxel(s) broken (%d cut out and thrown forward), %d sub-voxel(s) in place" % [rubble_cells.size() + forward_cells.size(), forward_cells.size(), placed])
 	## NOT awaited. The soot follows the hole: a stamp around the voxels this shot touched (~1 ms), two frames after the impact, into the
 	## soot map and the plane (SOOT-STAMP). It used to wait for the render passes below (~25 frames): with the hole now drawn on the
 	## impact frame, a bullet mark stayed clean and bright that long beside the dents, then darkened (Director, 2026-10-12).
@@ -880,6 +893,72 @@ func _is_struck_voxel(pv: Voxel, hit_slice: Slice, resolved: Dictionary, prop_hi
 		return true
 	var struck: Voxel = hit_slice.voxel_at(int(resolved["voxel_index"]))
 	return struck == null or (struck.grid_pos == pv.grid_pos and struck.level == pv.level)
+
+
+## PUNCH-OUT (Director, 2026-10-12): the middle of a hole-only wall's break is cut out whole. Per wall edge: the centre of the cells this shot
+## destroyed, an ellipse around it (`RubblePresets.ZONE_RADIUS`) and any survivor left floating in it (most of its neighbours gone) are destroyed
+## on EVERY face of the edge (the same cells: the pair rule of `PassageQuery`), and the cut voxels, with those this shot had already broken
+## inside the zone, are handed to the forward throw instead of the backward rubble.
+func _punch_out_zones(zone_hits: Dictionary, rubble_cells: Array, forward_cells: Array, cell_to_voxel: Dictionary,
+		cell_to_material: Dictionary, cell_to_depth: Dictionary) -> void:
+	var w: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
+	for edge_id: String in zone_hits:
+		var faces: Array = room._edge_registry.slices_of_edge(edge_id)
+		if faces.is_empty():
+			continue
+		var broken: Dictionary = {}   ## index -> true, over every face
+		for sid: String in zone_hits[edge_id]:
+			for idx in zone_hits[edge_id][sid]:
+				broken[int(idx)] = true
+		if broken.is_empty():
+			continue
+		var rows: int = int(float((faces[0] as Slice).voxels.size()) / float(w))
+		var mean := Vector2.ZERO
+		for idx: int in broken:
+			mean += Vector2(float(idx % w), float(int(float(idx) / float(w))))
+		mean /= float(broken.size())
+		var zone: Dictionary = {}
+		for idx in range(rows * w):
+			var d := Vector2((float(idx % w) - mean.x) / RubblePresetsRef.ZONE_RADIUS.x, (float(int(float(idx) / float(w))) - mean.y) / RubblePresetsRef.ZONE_RADIUS.y)
+			if d.length_squared() <= 1.0:
+				zone[idx] = true
+		for _pass in range(2):
+			var added: Array = []
+			for idx in range(rows * w):
+				if zone.has(idx):
+					continue
+				var gone: int = 0
+				for n: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+					var r: int = int(float(idx) / float(w)) + n.y
+					var c: int = idx % w + n.x
+					if r >= 0 and r < rows and c >= 0 and c < w and zone.has(r * w + c):
+						gone += 1
+				if gone >= RubblePresetsRef.ISLAND_NEIGHBOURS:
+					added.append(idx)
+			for idx: int in added:
+				zone[idx] = true
+		for face: Slice in faces:
+			for idx: int in zone:
+				if idx >= face.voxels.size():
+					continue
+				var v: Voxel = face.voxels[idx]
+				var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+				var was_broken_now: bool = false
+				for k in range(rubble_cells.size()):
+					var rc: Dictionary = rubble_cells[k]
+					if rc["grid_pos"] == v.grid_pos and int(rc["level"]) == v.level:
+						forward_cells.append(rc)
+						rubble_cells.remove_at(k)
+						was_broken_now = true
+						break
+				if was_broken_now or VoxelStore.damage_of(v) == Voxel.DamageState.DESTROYED:
+					continue
+				v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+				_index_voxel(cell_to_voxel, v)
+				cell_to_material[key] = face.material
+				if not cell_to_depth.has(key):
+					cell_to_depth[key] = 0
+				forward_cells.append({"grid_pos": v.grid_pos, "level": v.level, "material": face.material})
 
 
 func _index_voxel(cell_to_voxel: Dictionary, v: Voxel) -> void:

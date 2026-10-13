@@ -57,18 +57,20 @@ static func shape(material: String, variant: int, height: int, outward: float, h
 ## splits three ways, by a hash of each cube: some FLY (thrown against the shot at once, a little farther than a crumble, and land),
 ## some STAY where they were (the ragged rim of the hole, saved with the pile) and the rest are GONE (the hollow of the crater). The
 ## cubes on the block's edge in the struck face's plane stay far more often, so the hole reads as splintered around its mouth.
-static var SPLINTERS: Array[String] = ["wood"]
+static var SPLINTERS: Array[String] = ["wood", "plywood"]
 const FLY: int = 0
 const STAY: int = 1
 const GONE: int = 2
 static var STAY_EDGE: float = 0.55      ## chance a cube on the block's edge (in the face's plane) stays
 static var STAY_INNER: float = 0.12     ## ... and one inside it
 static var FLY_SHARE: float = 0.55      ## of the cubes that do not stay, the share that flies (the rest are gone)
+## Per material: plywood (madeirite) is wood with more destruction and more splinters (Director, 2026-10-12).
+static var FLY_SHARE_OF: Dictionary = {"plywood": 0.8}
 static var FLY_SPEED: Vector2 = Vector2(1.8, 3.2)   ## a flying splinter's push multiplier, min..max (a crumble is 0.35-1.6 x the material's speed)
 static var FLY_DELAY_S: float = 0.04    ## the most a splinter waits after the impact, so they do not leave as one slab
 
 
-static func splinter_role(cell: Vector2i, level: int, a: int, b: int, cc: int, x_normal: bool) -> int:
+static func splinter_role(material: String, cell: Vector2i, level: int, a: int, b: int, cc: int, x_normal: bool) -> int:
 	var top: int = DIVISION - 1
 	var lateral: int = cc if x_normal else a
 	var edge: bool = lateral == 0 or lateral == top or b == 0 or b == top
@@ -76,7 +78,7 @@ static func splinter_role(cell: Vector2i, level: int, a: int, b: int, cc: int, x
 	var u: float = float(h % 1000) / 1000.0
 	if u < (STAY_EDGE if edge else STAY_INNER):
 		return STAY
-	return FLY if float(FacadeSampler._fnv1a_hash("SPLFLY|%d" % h) % 1000) / 1000.0 < FLY_SHARE else GONE
+	return FLY if float(FacadeSampler._fnv1a_hash("SPLFLY|%d" % h) % 1000) / 1000.0 < float(FLY_SHARE_OF.get(material, FLY_SHARE)) else GONE
 
 
 ## (release delay s, push multiplier) of a flying splinter, from a hashed number in [0, 1).

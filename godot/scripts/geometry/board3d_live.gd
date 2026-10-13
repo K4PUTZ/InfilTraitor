@@ -442,7 +442,7 @@ var _fresh_twin: PackedInt32Array = PackedInt32Array()
 static var FRESH_CLEAN: float = 1.0
 static var FRESH_LIFT: float = 1.0
 ## Wood keeps the concrete model (Director, 2026-10-12): the inside of its hole is the SAME texture, lighter (`FRESH_LIFT_TEXTURED`).
-static var FRESH_KEEPS_FACADE: Array[String] = ["wood"]
+static var FRESH_KEEPS_FACADE: Array[String] = ["wood", "plywood"]
 static var FRESH_LIFT_TEXTURED: float = 1.3
 const FRESH_SUFFIX: String = "#fresh"
 var _warned_cut_below: bool = false

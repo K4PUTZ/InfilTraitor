@@ -7940,10 +7940,16 @@ func event_probe_report(label: String) -> void:
 ##    only readable against how close it came. This is the number that stat is
 ##    tuned on.
 func report_blast_passage(delta) -> void:
-	if _edge_registry == null or delta == null:
+	if delta != null:
+		report_passage_of(delta.touched_voxels, "E-PASSAGE")
+
+
+## The same report for any set of voxels (a shot's, `[SHOT-PASSAGE]`).
+func report_passage_of(voxels: Array, tag: String) -> void:
+	if _edge_registry == null:
 		return
 	var edge_ids: Dictionary = {}
-	for voxel in delta.touched_voxels:
+	for voxel in voxels:
 		var cid: int = voxel.container_id()
 		if cid == 0:
 			continue
@@ -7967,8 +7973,8 @@ func report_blast_passage(delta) -> void:
 			e, _edge_registry, GeometryCoords.PLAYABLE_STOREY))
 		best_fraction = maxf(best_fraction, PassageQuery.removed_fraction(
 			e, _edge_registry, GeometryCoords.PLAYABLE_STOREY))
-	print_debug("[E-PASSAGE] passage over %d touched edge(s): %s · widest base storey %d/64 cells open (%.0f%% removed, opens at %.0f%%)"
-		% [edge_ids.size(), tally, best_open, best_fraction * 100.0,
+	print_debug("[%s] passage over %d touched edge(s): %s · widest base storey %d/64 cells open (%.0f%% removed, opens at %.0f%%)"
+		% [tag, edge_ids.size(), tally, best_open, best_fraction * 100.0,
 		PassageQuery.PASSAGE_MIN_REMOVED_FRACTION * 100.0])
 
 

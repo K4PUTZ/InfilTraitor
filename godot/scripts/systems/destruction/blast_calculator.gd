@@ -844,6 +844,11 @@ static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 		## reason destroy_min() is — the sibling at depth 1 is the same wall and
 		## must answer with the same number.
 		var cascade_neighbours: bool = current_punch >= ShotPunchTable.cascade_min(current_slice.material)
+		## TEAR: the same cells on every slice of the wall (the salt has no depth in it), so the pair rule sees them as gone through.
+		var tear: int = int(ShotPunchTable.TEAR_SIZE.get(current_slice.material, 0))
+		if tear > 0:
+			for ti in select_tear_cells(current_slice, voxel_index, tear, "%s:TEAR" % salt):
+				plan.append(_destroyed_plan_entry(current_slice.voxels[ti], current_slice, depth))
 		for ni in select_face_neighbours(current_slice, voxel_index, neighbour_count,
 				"%s:NEIGHBOUR:%d" % [salt, depth]):
 			plan.append(_destroyed_plan_entry(current_slice.voxels[ni], current_slice, depth))
@@ -857,6 +862,39 @@ static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 ## set_damage()'s own defaults — written here rather than defaulted so the plan
 ## entry is a complete description of the call, and a reader never has to go and
 ## check what a bare set_damage(DESTROYED) leaves behind.
+## `size` cells torn around `voxel_index`, as a hashed random walk from it: each step takes one cell next to the patch so far, the straight-down
+## neighbour preferred (a hanging splinter), the diagonals least. Same salt, same cells (B4): both slices of a wall tear alike.
+static func select_tear_cells(slice: Slice, voxel_index: int, size: int, salt: String) -> Array:
+	if size <= 0 or slice == null or slice.voxels.is_empty():
+		return []
+	var w: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
+	var rows: int = int(float(slice.voxels.size()) / float(w))
+	var taken: Dictionary = {voxel_index: true}
+	var out: Array = []
+	var steps: Array = [[-1, 0, 1.3], [1, 0, 0.9], [0, -1, 1.2], [0, 1, 1.2], [-1, -1, 0.5], [-1, 1, 0.5], [1, -1, 0.5], [1, 1, 0.5]]
+	for step in range(size):
+		var best: int = -1
+		var best_score: float = INF
+		for idx: int in taken:
+			var row: int = int(float(idx) / float(w))
+			var col: int = idx % w
+			for st: Array in steps:
+				var r: int = row + int(st[0])
+				var c: int = col + int(st[1])
+				if r < 0 or r >= rows or c < 0 or c >= w or taken.has(r * w + c):
+					continue
+				var h: float = float(FacadeSampler._fnv1a_hash("%s:%d:%d" % [salt, step, r * w + c]) % 10000) / 10000.0
+				var score: float = (h + 0.001) / float(st[2])
+				if score < best_score:
+					best_score = score
+					best = r * w + c
+		if best < 0:
+			break
+		taken[best] = true
+		out.append(best)
+	return out
+
+
 static func _destroyed_plan_entry(voxel: Voxel, container, depth: int) -> Dictionary:
 	return {"voxel": voxel, "container": container, "depth": depth,
 		"state": Voxel.DamageState.DESTROYED, "is_blast": false,

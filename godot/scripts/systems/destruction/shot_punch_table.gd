@@ -189,6 +189,13 @@ static var PUNCH_DESTROY_MIN: float = 0.80
 ## not silently half-fixed.
 static var HOLE_ONLY_MATERIALS: Array[String] = ["fabric", "cardboard", "plywood"]
 
+## TEAR (Director, 2026-10-12): a round through a HOLE-ONLY material does not leave a clean one-voxel hole: it tears an irregular patch (the
+## reference: a ragged hole with a drip hanging below it). `TEAR_SIZE[material]` is how many cells, besides the struck one, one destroying hit
+## takes from each slice of the wall, grown from the struck cell by a hashed random walk that favours going DOWN; both slices of the wall take
+## the same cells, so the pair rule of `PassageQuery` counts them. The sum of a shotgun's pellets then opens a small CROUCH passage
+## (`PASSAGE_MIN_REMOVED_FRACTION`), as the Director asked; ordinary wood keeps its clean holes. A stat (rule 1), tuned on `[SHOT-PASSAGE]`.
+static var TEAR_SIZE: Dictionary = {"plywood": 4, "cardboard": 5, "fabric": 6}
+
 ## Neighbour destruction (D30.1): neighbours are DESTROYED or untouched, and
 ## NEVER take a mark of their own — that stays the projectile's alone. Count
 ## ramps linearly from 0 at NEIGHBOUR_PUNCH_START to all 8 at

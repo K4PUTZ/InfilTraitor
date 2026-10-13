@@ -712,6 +712,7 @@ func fire_at_active() -> void:
 	## PREDICTION_MASTER_PLAN §5.2 — a shot is a committed mutation, so every
 	## cached blast prediction is now stale.
 	room.bump_world_revision()
+	room.report_passage_of(cell_to_voxel.values(), "SHOT-PASSAGE")
 
 	## VL-PERSIST: record into base coords so the damage survives a checkpoint
 	## restore (SaveState replays it after load_map()).

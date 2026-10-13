@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 87819 lines total** (under `godot/scripts/`)
+**295 scripts · 87871 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2279,7 +2279,7 @@ extends `RefCounted` · 37 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1854 lines
+`class_name BlastCalculator` · 1892 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2621,7 +2621,7 @@ extends `RefCounted` · 37 lines
 
 ### `shot_punch_table.gd`
 
-`class_name ShotPunchTable` · 427 lines
+`class_name ShotPunchTable` · 434 lines
 
 `godot/scripts/systems/destruction/shot_punch_table.gd`
 
@@ -5726,7 +5726,7 @@ extends `Node2D` · 63 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1218 lines
+`class_name AgentShotController` · 1219 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -6136,7 +6136,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10712 lines
+extends `Node2D` · 10718 lines
 
 `godot/scripts/world/room.gd`
 

@@ -444,6 +444,8 @@ static var FRESH_LIFT: float = 1.0
 ## Wood keeps the concrete model (Director, 2026-10-12): the inside of its hole is the SAME texture, lighter (`FRESH_LIFT_TEXTURED`).
 static var FRESH_KEEPS_FACADE: Array[String] = ["wood", "plywood"]
 static var FRESH_LIFT_TEXTURED: float = 1.3
+## Per material (Director 2026-10-12): wood's hole is lighter, plywood's has the NORMAL shade (no artificial lightening), same texture.
+static var FRESH_LIFT_OF: Dictionary = {"wood": 1.3, "plywood": 1.0}
 const FRESH_SUFFIX: String = "#fresh"
 var _warned_cut_below: bool = false
 ## PB-6: the chunks the cutaway currently reaches (a ghosted column or a revealed roof GU in them): only these draw the
@@ -1518,7 +1520,7 @@ func _material(material_id: String) -> int:
 			for fm: ShaderMaterial in [fresh, fresh_solid]:
 				fm.set_shader_parameter("fresh_clean", FRESH_CLEAN)
 				var keeps: bool = FRESH_KEEPS_FACADE.has(material_id)
-				fm.set_shader_parameter("fresh_lift", FRESH_LIFT_TEXTURED if keeps else FRESH_LIFT)
+				fm.set_shader_parameter("fresh_lift", float(FRESH_LIFT_OF.get(material_id, FRESH_LIFT_TEXTURED)) if keeps else FRESH_LIFT)
 				fm.set_shader_parameter("fresh_probe", 1.0)
 				if not keeps:
 					fm.set_shader_parameter("has_facade", 0.0)   ## the inside of a hole is the material's flat colour (Director 2026-10-12: the pattern does not continue inward)
@@ -2013,8 +2015,8 @@ func crack_mirror() -> Node3D:
 
 ## How much lighter a fresh face (inside a hole) is than the light at the opening (`FRESH_LIFT`).
 ## The lift of a material whose hole keeps its texture (wood).
-func fresh_lift_textured() -> float:
-	return FRESH_LIFT_TEXTURED
+func fresh_lift_textured(material_id: String = "wood") -> float:
+	return float(FRESH_LIFT_OF.get(material_id, FRESH_LIFT_TEXTURED))
 
 
 func fresh_lift() -> float:

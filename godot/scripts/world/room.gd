@@ -5952,7 +5952,7 @@ func _spawn_shot_rubble_impl(cells: Array, push_dir: Vector3, seed: String, forw
 					var cube_flat: bool = outward <= RUBBLE_TEXTURED_OUTWARD
 					if splinters and (forward or RubblePresetsRef.splinter_role(mat, gp, lv, a, b, cc, x_normal) == RubblePresetsRef.FLY):
 						## Born in the air at the impact, never seen seated in the hole: a point on the ramp (the end of it read too light, the middle is Director 2026-10-12's), flat like the chips.
-						cube_shade = face * lerpf(1.0, float(live.call("fresh_lift_textured")), float(RubblePresetsRef.RAMP_OF.get(mat, SPLINTER_RAMP)))
+						cube_shade = face * lerpf(1.0, float(live.call("fresh_lift_textured", mat)), float(RubblePresetsRef.RAMP_OF.get(mat, SPLINTER_RAMP)))
 						cube_flat = not bool(RubblePresetsRef.FLY_TEXTURED_OF.get(mat, false))
 					var fine := Vector3i(gp.x * div + a, (lv - ground) * div + b, gp.y * div + cc)
 					if splinters:

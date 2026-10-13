@@ -70,8 +70,25 @@ static var FLY_SHARE_OF: Dictionary = {"plywood": 0.8}
 ## Plywood's splinters are darker and vary more from cube to cube (Director, 2026-10-12): a lower point on the ramp and a wider brightness jitter.
 static var RAMP_OF: Dictionary = {"plywood": 0.15}
 static var JITTER_OF: Dictionary = {"plywood": 0.14}
+## Plywood: an open, airy break (Director, 2026-10-12): only a share of the broken voxels get a block of sub-voxels at all (the others are plain
+## empty holes), the blocks that do are mostly hollow, the rim is thin and the thrown pieces keep the facade's texture (the floor noise of
+## black stains and mixed wood tones). Wood keeps the defaults above.
+static var BLOCK_SHARE_OF: Dictionary = {"plywood": 0.35}
+static var STAY_EDGE_OF: Dictionary = {"plywood": 0.40}
+static var STAY_INNER_OF: Dictionary = {"plywood": 0.05}
+static var FLY_TEXTURED_OF: Dictionary = {"plywood": true}
+## The most broken voxels of one shot that turn into blocks on one frame (the rest follow on the next ones).
+const BLOCKS_PER_FRAME: int = 5
 static var FLY_SPEED: Vector2 = Vector2(1.8, 3.2)   ## a flying splinter's push multiplier, min..max (a crumble is 0.35-1.6 x the material's speed)
 static var FLY_DELAY_S: float = 0.04    ## the most a splinter waits after the impact, so they do not leave as one slab
+
+
+## Whether this broken voxel gets a block of sub-voxels at all (hashed on its cell, B4).
+static func block_kept(material: String, cell: Vector2i, level: int) -> bool:
+	var share: float = float(BLOCK_SHARE_OF.get(material, 1.0))
+	if share >= 1.0:
+		return true
+	return float(FacadeSampler._fnv1a_hash("SPLBLOCK|%d,%d,%d" % [cell.x, cell.y, level]) % 1000) / 1000.0 < share
 
 
 static func splinter_role(material: String, cell: Vector2i, level: int, a: int, b: int, cc: int, x_normal: bool) -> int:
@@ -80,7 +97,7 @@ static func splinter_role(material: String, cell: Vector2i, level: int, a: int, 
 	var edge: bool = lateral == 0 or lateral == top or b == 0 or b == top
 	var h: int = FacadeSampler._fnv1a_hash("SPLINTER|%d,%d,%d|%d,%d,%d" % [cell.x, cell.y, level, a, b, cc])
 	var u: float = float(h % 1000) / 1000.0
-	if u < (STAY_EDGE if edge else STAY_INNER):
+	if u < float((STAY_EDGE_OF.get(material, STAY_EDGE) if edge else STAY_INNER_OF.get(material, STAY_INNER))):
 		return STAY
 	return FLY if float(FacadeSampler._fnv1a_hash("SPLFLY|%d" % h) % 1000) / 1000.0 < float(FLY_SHARE_OF.get(material, FLY_SHARE)) else GONE
 

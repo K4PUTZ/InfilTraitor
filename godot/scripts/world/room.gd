@@ -5863,6 +5863,14 @@ static var SPLINTER_RAMP: float = 0.5
 static var RUBBLE_TEXTURED_OUTWARD: float = 0.9
 
 
+## The rest of a big shot's blocks, a few per frame (a coroutine: the caller does not wait). Each batch is a normal call, so each saves itself.
+func _spawn_rubble_later(cells: Array, push_dir: Vector3, seed: String) -> void:
+	await get_tree().process_frame
+	if not is_instance_valid(_voxel_board):
+		return
+	spawn_shot_rubble(cells, push_dir, seed + "|later")
+
+
 func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 	var live: Node = board3d()
 	var store: VoxelStore = VoxelStore.active
@@ -5880,6 +5888,10 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 			total += spawn_shot_rubble(by_material[m], push_dir, seed + "|" + m)
 		return total
 	var splinters: bool = RubblePresetsRef.SPLINTERS.has(String(cells[0]["material"]))
+	## A shot that breaks many voxels does not build every block on the impact frame: the first few now, the rest on the next frames.
+	if splinters and cells.size() > RubblePresetsRef.BLOCKS_PER_FRAME:
+		_spawn_rubble_later(cells.slice(RubblePresetsRef.BLOCKS_PER_FRAME), push_dir, seed)
+		cells = cells.slice(0, RubblePresetsRef.BLOCKS_PER_FRAME)
 	var jitter_amp: float = float(RubblePresetsRef.JITTER_OF.get(String(cells[0]["material"]), RUBBLE_JITTER))
 	var staying: Array = []   ## splinter mode: the cubes that stay in the hole, as pile records
 	var ground: int = _voxel_board.ground_plane_level()
@@ -5902,6 +5914,8 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 			zone_materials.append(mat)
 		var gp: Vector2i = c["grid_pos"]
 		var lv: int = int(c["level"])
+		if splinters and not RubblePresetsRef.block_kept(mat, gp, lv):
+			continue   ## a plain empty hole: no block for this voxel
 		var variant: int = RubblePresetsRef.variant_of(gp, lv)
 		var h: int = FacadeSampler._fnv1a_hash("RUBBLE|%d,%d,%d" % [gp.x, gp.y, lv])
 		var face: float = float(live.call("face_shade", gp.x, gp.y, lv, x_normal, false))
@@ -5917,7 +5931,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 					if splinters and RubblePresetsRef.splinter_role(mat, gp, lv, a, b, cc, x_normal) == RubblePresetsRef.FLY:
 						## Born in the air at the impact, never seen seated in the hole: a point on the ramp (the end of it read too light, the middle is Director 2026-10-12's), flat like the chips.
 						cube_shade = face * lerpf(1.0, float(live.call("fresh_lift_textured")), float(RubblePresetsRef.RAMP_OF.get(mat, SPLINTER_RAMP)))
-						cube_flat = true
+						cube_flat = not bool(RubblePresetsRef.FLY_TEXTURED_OF.get(mat, false))
 					var fine := Vector3i(gp.x * div + a, (lv - ground) * div + b, gp.y * div + cc)
 					if splinters:
 						var role: int = RubblePresetsRef.splinter_role(mat, gp, lv, a, b, cc, x_normal)

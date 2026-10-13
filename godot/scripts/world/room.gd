@@ -2087,6 +2087,9 @@ var vfx_impact_profiles: Dictionary = {
 	"brick":    {"sparks": 5,  "smoke": false, "dust": true,  "chips": 0},
 	## Plywood (madeirite): wood with more splinters (Director 2026-10-12).
 	"plywood":  {"sparks": 0,  "smoke": true,  "dust": false, "chips": 6, "chip_spread": 2.0, "chip_stamp": 0.55},
+	## Cardboard and fabric (Director 2026-10-12): no splinters, no dust; a darker smoke fills the opening to pull the eye (`smoke_dark`).
+	"cardboard": {"sparks": 0, "smoke": true,  "dust": false, "chips": 0, "smoke_dark": 0.55},
+	"fabric":   {"sparks": 0,  "smoke": true,  "dust": false, "chips": 0, "smoke_dark": 0.6},
 	"wood":     {"sparks": 0,  "smoke": true,  "dust": false, "chips": 3, "chip_spread": 1.8, "chip_stamp": 0.4},   ## Director 2026-10-12: chips fan out farther and fade; where they land a debris stamp stays
 }
 ## Per-impact spark count jitter, so 24 pellets do not all throw the identical
@@ -5376,7 +5379,11 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 			vfx_surface_spark_speed_scale, vfx_surface_spark_duration_scale, floor_pos, anchor_3d,
 			_impact_spray_dir(grid_pos, level, carved_side, shooter_gu), deg_to_rad(vfx_impact_spray_cone_deg))
 	if bool(profile.get("smoke", false)):
-		_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id),
+		var smoke_color: Color = _vfx_smoke_color_for_material(material_id)
+		var smoke_dark: float = float(profile.get("smoke_dark", 0.0))
+		if smoke_dark > 0.0:
+			smoke_color = Color(smoke_color.r * (1.0 - smoke_dark), smoke_color.g * (1.0 - smoke_dark), smoke_color.b * (1.0 - smoke_dark), smoke_color.a)
+		_smoke_spark_overlay.add_smoke(origin, smoke_color,
 			1.0, 1.0, 0, 1.0, 0.0, floor_pos, anchor_3d)
 	if bool(profile.get("dust", false)) and randf() < float(profile.get("dust_chance", vfx_impact_dust_chance)):
 		_debris_overlay.add_sand_trickle(origin, floor_pos, _vfx_material_base_color(material_id))
@@ -5910,8 +5917,11 @@ func _spawn_shot_rubble_impl(cells: Array, push_dir: Vector3, seed: String, forw
 			total += _spawn_shot_rubble_impl(by_material[m], push_dir, seed + "|" + m, forward, front)
 		return total
 	var splinters: bool = RubblePresetsRef.SPLINTERS.has(String(cells[0]["material"]))
+	## Splinters or a forward throw leave floor stamps; only the throw of a material with no splinters (cardboard, fabric) also leaves soot, no dust.
+	var stamps: bool = splinters or forward
+	var thrown: bool = splinters or forward   ## hold 0, a per-cube role: the cubes are thrown at the impact instead of crumbling after a hold
 	## A shot that breaks many voxels does not build every block on the impact frame: the first few now, the rest on the next frames.
-	if splinters and cells.size() > RubblePresetsRef.BLOCKS_PER_FRAME:
+	if thrown and cells.size() > RubblePresetsRef.BLOCKS_PER_FRAME:
 		_spawn_rubble_later(cells.slice(RubblePresetsRef.BLOCKS_PER_FRAME), push_dir, seed, forward, front)
 		cells = cells.slice(0, RubblePresetsRef.BLOCKS_PER_FRAME)
 	var jitter_amp: float = float(RubblePresetsRef.JITTER_OF.get(String(cells[0]["material"]), RUBBLE_JITTER))
@@ -5950,12 +5960,12 @@ func _spawn_shot_rubble_impl(cells: Array, push_dir: Vector3, seed: String, forw
 					var h01: float = float(PropFragmentSim._mix(h, (a * div + b) * div + cc) % 1000) / 1000.0
 					var cube_shade: float = face * lerpf(1.0, fresh_lift, 1.0 - outward)
 					var cube_flat: bool = outward <= RUBBLE_TEXTURED_OUTWARD
-					if splinters and (forward or RubblePresetsRef.splinter_role(mat, gp, lv, a, b, cc, x_normal) == RubblePresetsRef.FLY):
+					if thrown and (forward or RubblePresetsRef.splinter_role(mat, gp, lv, a, b, cc, x_normal) == RubblePresetsRef.FLY):
 						## Born in the air at the impact, never seen seated in the hole: a point on the ramp (the end of it read too light, the middle is Director 2026-10-12's), flat like the chips.
 						cube_shade = face * lerpf(1.0, float(live.call("fresh_lift_textured", mat)), float(RubblePresetsRef.RAMP_OF.get(mat, SPLINTER_RAMP)))
 						cube_flat = not bool(RubblePresetsRef.FLY_TEXTURED_OF.get(mat, false))
 					var fine := Vector3i(gp.x * div + a, (lv - ground) * div + b, gp.y * div + cc)
-					if splinters:
+					if thrown:
 						var role: int = RubblePresetsRef.forward_role(gp, lv, a, b, cc) if forward else RubblePresetsRef.splinter_role(mat, gp, lv, a, b, cc, x_normal)
 						if role == RubblePresetsRef.GONE:
 							continue
@@ -5967,7 +5977,7 @@ func _spawn_shot_rubble_impl(cells: Array, push_dir: Vector3, seed: String, forw
 					zones.append(z)
 					shade.append(cube_shade)
 					flat.append(1 if cube_flat else 0)
-					var sh: Vector2 = (RubblePresetsRef.front_shape(h01) if front else RubblePresetsRef.forward_shape(h01)) if forward else RubblePresetsRef.splinter_shape(h01) if splinters else RubblePresetsRef.shape(mat, variant, b, outward, h01)
+					var sh: Vector2 = (RubblePresetsRef.front_shape(h01) if front else RubblePresetsRef.forward_shape(h01)) if forward else RubblePresetsRef.splinter_shape(h01) if thrown else RubblePresetsRef.shape(mat, variant, b, outward, h01)
 					release.append(sh.x)
 					speed.append(sh.y)
 	## The splinters that stay are the hole's ragged rim: drawn at once, saved with the rest of the rubble (the same record as a landed cube).
@@ -5990,14 +6000,15 @@ func _spawn_shot_rubble_impl(cells: Array, push_dir: Vector3, seed: String, forw
 	var sim := PropFragmentSim.new({"cells": lattice, "zones": zones, "origin": Vector3.ZERO,
 		"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS * div), "blast": Vector2.ZERO, "weight": 1.0, "seed": seed,
 		"wave_delay": 0.0, "push_dir": -push_dir if forward and not front else push_dir, "carve": false, "char": false, "stack": stack, "solid": solid, "can_cross": cross,
-		"hold": 0.0 if splinters else RUBBLE_HOLD_S, "shade": shade, "jitter": jitter_amp, "release": release, "speed": speed, "flat": flat})
+		"hold": 0.0 if thrown else RUBBLE_HOLD_S, "shade": shade, "jitter": jitter_amp, "release": release, "speed": speed, "flat": flat})
 	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)
 	var landed_so_far: Array = []
 	var stamped: Dictionary = {}
 	node.landed.connect(func(records: Array) -> void:
-		if splinters:
+		if stamps:
 			_stamp_landed_splinters(records, stamped, String(zone_materials[0]))
-			return
+			if splinters:
+				return
 		landed_so_far.append_array(records)
 		_soot_under_rubble(landed_so_far))
 	node.settled.connect(_on_rubble_settled.bind(zone_materials))
@@ -6111,6 +6122,8 @@ func _on_rubble_settled(records: Array, zone_materials: Array) -> void:
 	if zone_materials.size() == 1 and RubblePresetsRef.SPLINTERS.has(String(zone_materials[0])):
 		return   ## splinters leave stamps, not a soot ring and a dust puff (see `_stamp_landed_splinters`)
 	_soot_under_rubble(records)
+	if zone_materials.size() == 1 and RubblePresetsRef.NO_DUST.has(String(zone_materials[0])):
+		return   ## cardboard and fabric: soot yes, dust no
 	## A little dust where the chips lie (the glass's floor dust, in the material's tone), instead of a contact shadow.
 	if _debris_overlay == null or _voxel_board == null:
 		return

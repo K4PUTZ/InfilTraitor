@@ -442,10 +442,10 @@ var _fresh_twin: PackedInt32Array = PackedInt32Array()
 static var FRESH_CLEAN: float = 1.0
 static var FRESH_LIFT: float = 1.0
 ## Wood keeps the concrete model (Director, 2026-10-12): the inside of its hole is the SAME texture, lighter (`FRESH_LIFT_TEXTURED`).
-static var FRESH_KEEPS_FACADE: Array[String] = ["wood", "plywood"]
+static var FRESH_KEEPS_FACADE: Array[String] = ["wood", "plywood", "cardboard", "fabric"]
 static var FRESH_LIFT_TEXTURED: float = 1.3
 ## Per material (Director 2026-10-12): wood's hole is lighter, plywood's has the NORMAL shade (no artificial lightening), same texture.
-static var FRESH_LIFT_OF: Dictionary = {"wood": 1.3, "plywood": 1.0}
+static var FRESH_LIFT_OF: Dictionary = {"wood": 1.3, "plywood": 1.0, "cardboard": 1.0, "fabric": 1.0}
 const FRESH_SUFFIX: String = "#fresh"
 var _warned_cut_below: bool = false
 ## PB-6: the chunks the cutaway currently reaches (a ghosted column or a revealed roof GU in them): only these draw the

@@ -619,9 +619,9 @@ func fire_at_active() -> void:
 		for pe in plan_entries:
 			var pv: Voxel = pe["voxel"]
 			if not prop_hit and int(pe["state"]) == Voxel.DamageState.DESTROYED \
-					and pv.damage_state != Voxel.DamageState.DESTROYED and not GlassMaterials.is_glass(hit_material) \
-						and not RubblePresetsRef.NO_FALL.has(hit_material):
-				rubble_cells.append({"grid_pos": pv.grid_pos, "level": pv.level, "material": hit_material})
+					and pv.damage_state != Voxel.DamageState.DESTROYED and not GlassMaterials.is_glass(hit_material):
+				if not RubblePresetsRef.NO_FALL.has(hit_material):
+					rubble_cells.append({"grid_pos": pv.grid_pos, "level": pv.level, "material": hit_material})
 				if RubblePresetsRef.FORWARD_MATERIALS.has(hit_material):
 					var zone_slice: Slice = pe["container"]
 					var by_slice: Dictionary = zone_hits.get(zone_slice.edge_id, {})
@@ -944,6 +944,7 @@ func _punch_out_zones(zone_hits: Dictionary, rubble_cells: Array, forward_cells:
 				var v: Voxel = face.voxels[idx]
 				var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 				var was_broken_now: bool = false
+				var broken_by_shot: bool = (zone_hits[edge_id].get(face.id, {}) as Dictionary).has(idx)
 				for k in range(rubble_cells.size()):
 					var rc: Dictionary = rubble_cells[k]
 					if rc["grid_pos"] == v.grid_pos and int(rc["level"]) == v.level:
@@ -951,7 +952,12 @@ func _punch_out_zones(zone_hits: Dictionary, rubble_cells: Array, forward_cells:
 						rubble_cells.remove_at(k)
 						was_broken_now = true
 						break
-				if was_broken_now or VoxelStore.damage_of(v) == Voxel.DamageState.DESTROYED:
+				if was_broken_now:
+					continue
+				if broken_by_shot:   ## a cell this shot broke inside the zone that no backward rubble was kept for (cardboard, fabric): it goes forward too
+					forward_cells.append({"grid_pos": v.grid_pos, "level": v.level, "material": face.material})
+					continue
+				if VoxelStore.damage_of(v) == Voxel.DamageState.DESTROYED:
 					continue
 				v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
 				_index_voxel(cell_to_voxel, v)

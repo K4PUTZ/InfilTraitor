@@ -76,7 +76,7 @@ static var JITTER_OF: Dictionary = {"plywood": 0.14}
 static var BLOCK_SHARE_OF: Dictionary = {"plywood": 0.15}
 static var STAY_EDGE_OF: Dictionary = {"plywood": 0.40}
 static var STAY_INNER_OF: Dictionary = {"plywood": 0.05}
-static var FLY_TEXTURED_OF: Dictionary = {"plywood": true}
+static var FLY_TEXTURED_OF: Dictionary = {"plywood": true, "cardboard": true, "fabric": true}
 ## The most broken voxels of one shot that turn into blocks on one frame (the rest follow on the next ones).
 const BLOCKS_PER_FRAME: int = 5
 ## PUNCH-OUT (Director, 2026-10-12): the middle of a hole-only wall's break is cut out whole and thrown FORWARD, with the shot, to land as rubble
@@ -89,7 +89,9 @@ static var FORWARD_DELAY_S: float = 0.05
 ## slumps out slowly against the shot (`FRONT_SPEED`) and piles in front.
 static var FRONT_SHARE: float = 0.35
 static var FRONT_SPEED: Vector2 = Vector2(0.5, 1.3)
-static var FORWARD_MATERIALS: Array[String] = ["plywood"]
+static var FORWARD_MATERIALS: Array[String] = ["plywood", "cardboard", "fabric"]
+## Shed no dust puff where the pile lands (Director, 2026-10-12: cardboard and fabric leave no splinters and no dust, only a little soot).
+static var NO_DUST: Array[String] = ["cardboard", "fabric"]
 ## The cut zone around the centre of a shot's destroyed cells on a wall face, as an ellipse in (col, row) cells; a survivor with this many of its
 ## four neighbours gone is a floating island and goes too.
 static var ZONE_RADIUS: Vector2 = Vector2(1.5, 2.0)

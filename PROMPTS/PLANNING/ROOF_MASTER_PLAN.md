@@ -1,6 +1,6 @@
 # ROOF MASTER PLAN — destroyed roofs
 
-> **Status: 🟡 v0.14, 2026-10-12 — RF-1 steps 1-4 BUILT; RF-S (a shot's broken voxels crumble and pile, fresh hole interior) BUILT and closed with the Director; NEXT: brick under RF-S, then step 5 (the roof shot).**  *"Faltam os telhados destruídos na engine. Vamos colocar
+> **Status: 🟡 v0.19, 2026-10-12 — RF-1 steps 1-4 BUILT; RF-S built and closed for concrete, brick, stone, wood, plywood, cardboard and fabric (records v0.15-v0.19 below; session `RESUMO_SESSAO_2026-10-12_RF_S_MATERIALS.md`); NEXT (Director): the same behaviours in EXPLOSIONS per material, then the roofs (step 5 the roof shot, shots at the ceiling, the falling-rubble animation adapted).**  *"Faltam os telhados destruídos na engine. Vamos colocar
 > eles na frente do modelo, porque acho que é uma das últimas coisas que falta destruir. […] Vamos iniciar os trabalhos pelo telhado
 > de vidro, os demais seguem ele como modelo, adaptando para cada tipo de material com suas características específicas."*
 >

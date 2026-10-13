@@ -1,6 +1,8 @@
 # MATERIALS_MASTER_PLAN
 ## The materials milestone — burn, breach, see through, and flow — v1.3
 
+> ⏭️ **2026-10-12 — ONE-LAYER MATERIALS and per-material shot behaviour (Director; `ROOF_MASTER_PLAN` v0.17-v0.19, `docs/ARCHITECTURE.md` §0.4).** Glass, cardboard and fabric are ONE layer in every situation and the COMPILER enforces it (`EdgeExtractor.is_thin_material`: a solid block / divider keeps its OUTER shell, `side: "inner"` overrides; windows and frames default to the INNER GU, `side` on `panels` is next). Plywood stays two slices. What a shot leaves per material (rubble, splinters, stamps, tear, punch-out) is `RubblePresets` + `ShotPunchTable.TEAR_SIZE`; explosions inherit it next.
+
 > 🧭 **2026-10-04 — order of the next rounds.** See [`docs/production/roadmap.md`](../../docs/production/roadmap.md)'s top block (single source) and `RENDER3D_MASTER_PLAN` v1.61 (R3D-FINISH). The materials milestone (glass reopened, the 8 library materials) runs after the stealth loop and minimal confrontation.
 
 > 🧭 **2026-09-27 — reorganization pointer.** M1/M2/M4 (glass) are DONE. M5 (voxel props) is now `RENDER3D_MASTER_PLAN`'s `R3D-PROPS` track — read there for current status. The `plastic` backing and S-4 fracture art stay deliberately unmade (see `RENDER3D_MASTER_PLAN`'s OPEN THREADS).

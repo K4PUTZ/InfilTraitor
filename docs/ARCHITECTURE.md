@@ -70,6 +70,12 @@ R3D-ACTORS (live skinned actors, D64), R3D-ROT (camera-only rotation), R3D-WORLD
 
 ---
 
+### 0.4 What a shot does to a wall, per material (2026-10-12, `ROOF_MASTER_PLAN` v0.19)
+
+`AgentShotController` plans the hit (`BlastCalculator.plan_point_impact`: a hole-only material also tears an irregular patch, `ShotPunchTable.TEAR_SIZE`, the same cells on both slices), applies it, then hands the destroyed voxels to **`Room.spawn_shot_rubble`**: one machine for every material (`PropFragmentSim` / `PropFragments3D`, the Tier 4 fragments): each broken voxel becomes a 4x4x4 block of sub-voxels on the impact frame, wearing the struck face's shade (`Board3DLive.face_shade`). **`RubblePresets` is the per-material table**: `SPEED` and the three crumble presets (concrete, brick), `NO_FALL` (stone, cardboard, metal, fabric: nothing falls), `SPLINTERS` (wood, plywood: thrown at once, FLY / STAY / GONE per cube; the STAY cubes are the hole's rim), `FORWARD_MATERIALS` (the punch-out: the centre of a hole-only break is cut out and thrown WITH the shot, `_punch_out_zones`). Every landed or staying cube is saved (`Room._base_rubble_piles`, SaveState `rubble_piles`, a sixth element `flat` per cube); splinters and the forward throw leave floor stamps (`_base_debris`, laid on the floor TOP level, `ground_plane_level() - 1`). A face looking INTO a hole draws with its material's FRESH twin (`Board3DLive._fresh_twin`; per material `FRESH_KEEPS_FACADE`, `FRESH_LIFT_OF`, `FRESH_CLEAN_OF`: wood lighter, plywood normal, brick flat, cardboard / fabric scorched).
+
+**One-layer materials** (glass family, cardboard, fabric): `EdgeExtractor.is_thin_material` gives a solid block or divider a single slice, in the OUTER GU (`side: "inner"` overrides); the corner columns still come from `JunctionResolver`, whose rule already asks for the outer cell of the elbow.
+
 ## How to read this document
 
 Each system is tagged with an explicit status:

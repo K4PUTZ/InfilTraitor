@@ -22,8 +22,9 @@ static var SPEED: Dictionary = {
 	"concrete": 0.9, "stone": 0.9, "brick": 1.0, "metal": 0.7,
 	"wood": 1.3, "plywood": 1.3, "cardboard": 1.5, "fabric": 1.1, "generic": 1.0,
 }
-## Materials whose broken voxels do NOT crumble (Director, 2026-10-12: stone gives a hole and the bullet-hole dust, nothing falls).
-static var NO_FALL: Array[String] = ["stone"]
+## Materials whose broken voxels do NOT crumble (Director, 2026-10-12: stone gives a hole and the bullet-hole dust, nothing falls; cardboard,
+## metal and fabric shed no particles at all from a shot — metal keeps its sparks, which are light, not debris).
+static var NO_FALL: Array[String] = ["stone", "cardboard", "metal", "fabric"]
 static var LAYER_STEP_S: float = 0.045   ## seconds between two layers of a block leaving
 static var JITTER_S: float = 0.03        ## a hashed extra delay per sub-voxel, so a layer does not leave as one slab
 
@@ -66,6 +67,9 @@ static var STAY_INNER: float = 0.12     ## ... and one inside it
 static var FLY_SHARE: float = 0.55      ## of the cubes that do not stay, the share that flies (the rest are gone)
 ## Per material: plywood (madeirite) is wood with more destruction and more splinters (Director, 2026-10-12).
 static var FLY_SHARE_OF: Dictionary = {"plywood": 0.8}
+## Plywood's splinters are darker and vary more from cube to cube (Director, 2026-10-12): a lower point on the ramp and a wider brightness jitter.
+static var RAMP_OF: Dictionary = {"plywood": 0.15}
+static var JITTER_OF: Dictionary = {"plywood": 0.14}
 static var FLY_SPEED: Vector2 = Vector2(1.8, 3.2)   ## a flying splinter's push multiplier, min..max (a crumble is 0.35-1.6 x the material's speed)
 static var FLY_DELAY_S: float = 0.04    ## the most a splinter waits after the impact, so they do not leave as one slab
 

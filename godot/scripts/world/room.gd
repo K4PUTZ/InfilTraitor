@@ -5880,6 +5880,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 			total += spawn_shot_rubble(by_material[m], push_dir, seed + "|" + m)
 		return total
 	var splinters: bool = RubblePresetsRef.SPLINTERS.has(String(cells[0]["material"]))
+	var jitter_amp: float = float(RubblePresetsRef.JITTER_OF.get(String(cells[0]["material"]), RUBBLE_JITTER))
 	var staying: Array = []   ## splinter mode: the cubes that stay in the hole, as pile records
 	var ground: int = _voxel_board.ground_plane_level()
 	var div: int = RubblePresetsRef.DIVISION
@@ -5915,7 +5916,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 					var cube_flat: bool = outward <= RUBBLE_TEXTURED_OUTWARD
 					if splinters and RubblePresetsRef.splinter_role(mat, gp, lv, a, b, cc, x_normal) == RubblePresetsRef.FLY:
 						## Born in the air at the impact, never seen seated in the hole: a point on the ramp (the end of it read too light, the middle is Director 2026-10-12's), flat like the chips.
-						cube_shade = face * lerpf(1.0, float(live.call("fresh_lift_textured")), SPLINTER_RAMP)
+						cube_shade = face * lerpf(1.0, float(live.call("fresh_lift_textured")), float(RubblePresetsRef.RAMP_OF.get(mat, SPLINTER_RAMP)))
 						cube_flat = true
 					var fine := Vector3i(gp.x * div + a, (lv - ground) * div + b, gp.y * div + cc)
 					if splinters:
@@ -5924,7 +5925,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 							continue
 						if role == RubblePresetsRef.STAY:
 							staying.append({"column": Vector2i(fine.x, fine.z), "level": fine.y, "zone": z, "flat": cube_flat,
-								"mult": cube_shade * (1.0 + (h01 - 0.5) * 2.0 * RUBBLE_JITTER)})
+								"mult": cube_shade * (1.0 + (h01 - 0.5) * 2.0 * jitter_amp)})
 							continue
 					lattice.append(fine)
 					zones.append(z)
@@ -5953,7 +5954,7 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String) -> int:
 	var sim := PropFragmentSim.new({"cells": lattice, "zones": zones, "origin": Vector3.ZERO,
 		"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS * div), "blast": Vector2.ZERO, "weight": 1.0, "seed": seed,
 		"wave_delay": 0.0, "push_dir": push_dir, "carve": false, "char": false, "stack": stack, "solid": solid, "can_cross": cross,
-		"hold": 0.0 if splinters else RUBBLE_HOLD_S, "shade": shade, "jitter": RUBBLE_JITTER, "release": release, "speed": speed, "flat": flat})
+		"hold": 0.0 if splinters else RUBBLE_HOLD_S, "shade": shade, "jitter": jitter_amp, "release": release, "speed": speed, "flat": flat})
 	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)
 	var landed_so_far: Array = []
 	var stamped: Dictionary = {}

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 89265 lines total** (under `godot/scripts/`)
+**295 scripts · 89270 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2520,11 +2520,11 @@ extends `RefCounted` · 37 lines
 
 ### `glass_support.gd`
 
-`class_name GlassSupport` · 180 lines
+`class_name GlassSupport` · 185 lines
 
 `godot/scripts/systems/destruction/glass_support.gd`
 
-> GlassSupport — GLASS_MASTER_PLAN G-S1, G-D50 / G-D51 / G-D52 (Director, 2026-10-09): which surviving glass no longer stands. PURE: it reads the packed `VoxelStore` and returns claims; it writes nothing. `Room.schedule_glass_collapse()` stages the fall. THE RULE. · G-D50 — a pane voxel stands when it is connected, through glass, to something that HOLDS it: a non-glass material touching it in the pane's own plane (the floor under it, a frame, a wall, a band) — glass holds glass, cracked or pristine. A piece connected to nothing falls: the floating remnants a second grenade left behind (2026-10-09). · G-D51 — a glass column with nothing under it hangs off its neighbours for about ONE GU (`CANTILEVER_VOXELS`) from the nearest held column; height adds pressure (`HEIGHT_PRESSURE` voxels of reach lost per level above the pane's bottom), and a hashed jitter keeps the break line from being a ruler. Both sides count: a column held from neither side falls. THE MODEL. A 0-1 walk over the pane's voxels in its own plane: a VERTICAL step costs 0 (a column hangs from, or stands on, its own glass), a LATERAL step costs 1. Sources are the held voxels. A voxel's cost is how far, sideways, it is from a held column. Unreached, or past its own reach, it falls; the walk is redone on what is left until nothing more goes (a column that only stood through a falling one goes too). THE ORDER (G-D52): farthest from the support first, lower before higher — `score` = cost + DOWN_WEIGHT x levels below the top.
+> GlassSupport — GLASS_MASTER_PLAN G-S1, G-D50 / G-D51 / G-D52 (Director, 2026-10-09): which surviving glass no longer stands. PURE: it reads the packed `VoxelStore` and returns claims; it writes nothing. `Room.schedule_glass_collapse()` stages the fall. THE RULE. · G-D50 — a pane voxel stands when it is connected, through glass, to something that HOLDS it: a non-glass material touching it in the pane's own plane (the floor under it, a frame, a wall, a band) — glass holds glass, cracked or pristine. A piece connected to nothing falls: the floating remnants a second grenade left behind (2026-10-09). · G-D51 — a glass column with nothing under it hangs off its neighbours for about ONE GU (`CANTILEVER_VOXELS`) from the nearest held column; height adds pressure (`HEIGHT_PRESSURE` voxels of reach lost per level above the pane's bottom), and a hashed jitter keeps the break line from being a ruler. Both sides count: a column held from neither side falls. THE MODEL. A 0-1 walk over the pane's voxels in its own plane: a VERTICAL step costs 0 (a column hangs from, or stands on, its own glass), a LATERAL step costs 1. Sources are the held voxels. A voxel's cost is how far, sideways, it is from a held column. Unreached, or past its own reach, it falls; the walk is redone on what is left until nothing more goes (a column that only stood through a falling one goes too). THE ORDER (G-D52): farthest from the support first, lower before higher — `score` = cost + DOWN_WEIGHT x levels below the top. A SKYLIGHT (ROOF RF-1 step 6, 2026-10-14: a wide glass roof left its front edges hanging over walls that were gone): a horizontal pane voxel has no free step: both in-plane axes (x, y) cost 1, it is HELD by a non-glass claim under it, over it or beside it (a wall's top, a frame), and it hangs the same one GU off the nearest held voxel, with no height pressure (`run_step` -1 marks it).
 
 **Constants / tuning**
 - `UNREACHED_COST` = `1000.0`

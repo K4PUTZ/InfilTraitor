@@ -345,7 +345,7 @@
    "v": 1,
    "items": [
     {
-     "comment": "room A: a 6x6 concrete roof with a 4x4 glass skylight in its centre (RF-1, R-D5); since 2026-10-14 only its back walls x 4 / y 3 stand, like room B",
+     "comment": "room A: a 6x6 GLASS roof (a whole-roof skylight, no frame; 2026-10-14: does the glass left at the edges fall without support?); only its back walls x 4 / y 3 stand, like room B",
      "gu": [
       5,
       4
@@ -355,19 +355,8 @@
       6
      ],
      "storeys": 2,
-     "material": "concrete",
-     "kind": "flat",
-     "skylight": {
-      "gu": [
-       6,
-       5
-      ],
-      "size": [
-       4,
-       4
-      ],
-      "material": "glass"
-     }
+     "material": "glass",
+     "kind": "flat"
     },
     {
      "comment": "room B: the concrete roof (RF-2), 4x4 so it also covers where the front walls stood (removed for the bench)",

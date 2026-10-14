@@ -14,6 +14,9 @@
 ## Unreached, or past its own reach, it falls; the walk is redone on what is left until nothing more goes (a column that only stood
 ## through a falling one goes too).
 ## THE ORDER (G-D52): farthest from the support first, lower before higher — `score` = cost + DOWN_WEIGHT x levels below the top.
+## A SKYLIGHT (ROOF RF-1 step 6, 2026-10-14: a wide glass roof left its front edges hanging over walls that were gone): a horizontal pane voxel
+## has no free step: both in-plane axes (x, y) cost 1, it is HELD by a non-glass claim under it, over it or beside it (a wall's top, a frame),
+## and it hangs the same one GU off the nearest held voxel, with no height pressure (`run_step` -1 marks it).
 class_name GlassSupport
 
 ## One GU, in voxels: how far glass hangs sideways off the nearest held column. `static var` (Rule 1): a balance dial.
@@ -84,14 +87,15 @@ static func unsupported(store: Snap) -> Array:
 	for claim: int in range(store.claims):
 		if store.pane[claim] == 0 or (store.state[claim] & 1) == 0:
 			continue
-		if store.pane[claim] == VoxelStore.PANE_HORIZONTAL:   ## ROOF: a skylight's support is RF-1 step 6, not walked yet
-			continue
 		var k: int = claim * 3
 		var cell: int = store.cell_index(store.xyz[k], store.xyz[k + 1], store.xyz[k + 2])
 		if store.owner[cell] != claim:
 			continue
-		var face: int = int(store.pane[claim]) - 1
 		glass[cell] = claim
+		if store.pane[claim] == VoxelStore.PANE_HORIZONTAL:
+			run_step[cell] = -1   ## a skylight: see the header
+			continue
+		var face: int = int(store.pane[claim]) - 1
 		run_step[cell] = store.w if (face == 0 or face == 2) else 1
 		lo_level = mini(lo_level, store.xyz[k + 2])
 	if glass.is_empty():
@@ -106,7 +110,7 @@ static func unsupported(store: Snap) -> Array:
 			var claim: int = glass[cell]
 			var level: int = store.xyz[claim * 3 + 2]
 			var c: float = float(cost.get(cell, UNREACHED_COST))
-			if c < UNREACHED_COST and c <= _reach(store, claim, level - lo_level):
+			if c < UNREACHED_COST and c <= _reach(store, claim, 0 if int(run_step[cell]) < 0 else level - lo_level):
 				continue
 			falling[cell] = c
 			more += 1
@@ -145,12 +149,13 @@ static func _walk(store: Snap, glass: Dictionary, run_step: Dictionary, glass_ma
 			if float(cost[cell]) < current:
 				continue
 			var rs: int = run_step[cell]
-			for step: int in [store.plane, -store.plane]:   ## vertical: free
-				var n: int = cell + step
-				if glass.has(n) and not falling.has(n) and (not cost.has(n) or float(cost[n]) > current):
-					cost[n] = current
-					front.append(n)
-			for step: int in [rs, -rs]:   ## lateral: one
+			if rs > 0:
+				for step: int in [store.plane, -store.plane]:   ## vertical: free
+					var n: int = cell + step
+					if glass.has(n) and not falling.has(n) and (not cost.has(n) or float(cost[n]) > current):
+						cost[n] = current
+						front.append(n)
+			for step: int in ([rs, -rs] if rs > 0 else [1, -1, store.w, -store.w]):   ## lateral: one (a skylight: both axes)
 				var n: int = cell + step
 				if glass.has(n) and not falling.has(n) and (not cost.has(n) or float(cost[n]) > current + 1.0):
 					cost[n] = current + 1.0
@@ -162,7 +167,7 @@ static func _walk(store: Snap, glass: Dictionary, run_step: Dictionary, glass_ma
 
 ## A voxel is HELD when a visible non-glass claim touches it in the pane's plane: below (the floor), above (a head), or either side.
 static func _held(store: Snap, cell: int, rs: int, glass_mat: PackedByteArray) -> bool:
-	for step: int in [-store.plane, store.plane, rs, -rs]:
+	for step: int in ([-store.plane, store.plane, rs, -rs] if rs > 0 else [-store.plane, store.plane, 1, -1, store.w, -store.w]):
 		var n: int = cell + step
 		if n < 0 or n >= store.occ.size() or store.occ[n] == 0:
 			continue

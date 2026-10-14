@@ -1258,9 +1258,16 @@ static func _phase_roofs(s: Dictionary, deadline: int) -> void:
 	s["cursor"] = i
 	if i >= ids.size():
 		var by_level: Dictionary = {}
+		var lo := Vector2i(1 << 30, 1 << 30)
+		var hi := Vector2i(-(1 << 30), -(1 << 30))
 		for c: Dictionary in delta.blast_roof_rubble:
 			by_level[int(c["level"])] = int(by_level.get(int(c["level"]), 0)) + 1
-		print_debug("[ROOF-BLAST] %d roof slab(s) in reach, %d voxel(s) destroyed, by level %s" % [ids.size(), delta.blast_roof_rubble.size(), by_level])
+			var gp: Vector2i = c["grid_pos"]
+			lo = Vector2i(mini(lo.x, gp.x), mini(lo.y, gp.y))
+			hi = Vector2i(maxi(hi.x, gp.x), maxi(hi.y, gp.y))
+		var span: Vector2i = hi - lo + Vector2i.ONE if not delta.blast_roof_rubble.is_empty() else Vector2i.ZERO
+		print_debug("[ROOF-BLAST] %d roof slab(s) in reach, %d voxel(s) destroyed, by level %s, the hole spans %d x %d voxels"
+			% [ids.size(), delta.blast_roof_rubble.size(), by_level, span.x, span.y])
 		_enter_phase(s, PHASE_FLOORS)
 
 
@@ -1817,7 +1824,8 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 		## ROOF RF-2 (Director, 2026-10-14): the blast came from BELOW, so a roof's TOP layer (what faces the sky) takes far less soot than its
 		## underside: `RubblePresets.ROOF_TOP_SOOT_LIFT` tones lighter, or none.
 		if tone >= 0 and _is_roof_top(container_of, key):
-			tone += RubblePresetsRef.ROOF_TOP_SOOT_LIFT
+			## ... except where the fire reached the top face (cardboard, fabric: `ROOF_TOP_SOOT_LIFT_OF`).
+			tone += int(RubblePresetsRef.ROOF_TOP_SOOT_LIFT_OF.get((container_of[key] as Slab).material, RubblePresetsRef.ROOF_TOP_SOOT_LIFT))
 			if tone >= BlastCalculatorClass.FACE_SOOT_CLEAN:
 				tone = -1
 		if tone >= 0 and int(soot_codes.get(key, 0)) != BlastCalculatorClass.FACE_SOOT_CHAR \
@@ -2710,6 +2718,91 @@ static func _build_ember_wave(s: Dictionary) -> void:
 				"EMBERSEED", neighbour.grid_pos, neighbour.level), flammability,
 				_radius_of(neighbour.grid_pos, epicenter))
 			_climb_from(ncell, ring, s, seen, waves["ember"])
+	_spread_roof_fire(s, seen, waves["ember"])
+
+
+## ROOF RF-2 (Director, 2026-10-14): on a roof of a material in `RubblePresets.ROOF_FIRE_SPREAD_OF` (cardboard, fabric) the fire creeps OUTWARD
+## across the roof from every voxel of it the ember wave lit, ring by ring at the same level (`ROOF_FIRE_*`): ring k catches at
+## `ROOF_FIRE_CHANCE`^k, hashed per cell (B4: `build_plan()` is pure), and a cell that misses spreads no further. Every voxel it reaches ends
+## CHARRED WHEN THE FRONT GETS THERE (`delta.roof_fire` -> `Room.spread_roof_fire`, at `ROOF_FIRE_STEP_S` per ring), not in the commit (a black
+## band appearing before the fire read wrong); a share wears an ember released at that same moment (`at`) that burns `ROOF_FIRE_LIFE` times
+## longer. Nothing is consumed: `_maybe_burn()` is not called, so the hole stays the blast's and its burnt edge's.
+static func _spread_roof_fire(s: Dictionary, seen: Dictionary, ember_by_ring: Dictionary) -> void:
+	if RubblePresetsRef.ROOF_FIRE_SPREAD_OF.is_empty():
+		return
+	var flammable_cells: Dictionary = s["flammable_cells"]
+	var cell_to_voxel: ClaimGrid = s["cell_to_voxel"]
+	var delta: WorldDelta = s["delta"]
+	var voxel_board: VoxelBoardClass = s["voxel_board"]
+	var epicenter: Vector2i = s["epicenter"]
+	var ring_of: Dictionary = s["ring_of"]
+	## The roof material a lit cell belongs to, or "" when it is not a spreading roof.
+	var spread_material := func(v: Voxel) -> String:
+		var cid: int = v.container_id()
+		if cid == 0:
+			return ""
+		var slab = instance_from_id(cid)
+		if not (slab is Slab) or (slab as Slab).role != Slab.Role.CEILING:
+			return ""
+		return (slab as Slab).material if RubblePresetsRef.ROOF_FIRE_SPREAD_OF.has((slab as Slab).material) else ""
+	var frontier: Array = []   ## [Vector3i cell, ring]
+	for key: Vector3i in seen.keys():
+		var v: Voxel = cell_to_voxel.voxel_at(key)
+		if v != null and String(spread_material.call(v)) != "":
+			frontier.append([key, int(ring_of.get(key, 0))])
+	var lit: int = 0
+	var embers: int = 0
+	var step: int = 0
+	while not frontier.is_empty():
+		step += 1
+		var chance: float = pow(RubblePresetsRef.ROOF_FIRE_CHANCE, float(step))
+		var next: Array = []
+		for item: Array in frontier:
+			var from: Vector3i = item[0]
+			for d: Vector3i in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]:
+				var ncell: Vector3i = from + d
+				if seen.has(ncell):
+					continue
+				var flammability: float = float(flammable_cells.get(ncell, 0.0))
+				if flammability <= 0.0:
+					continue
+				var voxel: Voxel = cell_to_voxel.voxel_at(ncell)
+				if voxel == null:
+					continue
+				var material: String = spread_material.call(voxel)
+				if material == "" or step > int(RubblePresetsRef.ROOF_FIRE_SPREAD_OF[material]):
+					continue
+				var p: Array = delta.projection_of(voxel)
+				var state: int = int(p[WorldDelta.P_STATE]) if not p.is_empty() else voxel.damage_state
+				var vis: bool = bool(p[WorldDelta.P_VISIBLE]) if not p.is_empty() else voxel.visible
+				if not vis or state == Voxel.DamageState.DESTROYED:
+					continue
+				seen[ncell] = true
+				if _hash_unit("ROOFFIRE", voxel.grid_pos, voxel.level) > chance:
+					continue
+				var at: float = RubblePresetsRef.ROOF_FIRE_STEP_S * (float(step) - 0.5 + _hash_unit("ROOFFIREDELAY", voxel.grid_pos, voxel.level))
+				delta.roof_fire.append({"grid_pos": voxel.grid_pos, "level": voxel.level, "at": at})
+				lit += 1
+				next.append([ncell, int(item[1])])
+				if _hash_unit("ROOFFIREEMBER", voxel.grid_pos, voxel.level) >= RubblePresetsRef.ROOF_FIRE_EMBER_SHARE:
+					continue
+				var world_pos: Vector2 = voxel_board.voxel_world_position(voxel.grid_pos, voxel.level)
+				_append(ember_by_ring, int(item[1]), {
+					"cell": voxel.grid_pos,
+					"level": voxel.level,
+					"world_pos": world_pos,
+					"floor_pos": _floor_of(voxel_board, voxel.grid_pos, world_pos),
+					"duration_scale": flammability * RubblePresetsRef.ROOF_FIRE_LIFE,
+					"at": at,   ## released when the front reaches it (`DetonationPresenter._delay_for`: an explicit time wins)
+					"on_top": true,   ## on the roof's surface, not buried in its voxel (`EmberOverlay.top_face_anchor`)
+					"climb": 0,
+					"r": _radius_of(voxel.grid_pos, epicenter),
+				})
+				embers += 1
+		frontier = next
+	if lit > 0:
+		print_debug("[ROOF-FIRE] the fire creeps %d ring(s) across the roof: %d voxel(s) to char over %.2f s, %d ember(s)"
+			% [step - 1, lit, RubblePresetsRef.ROOF_FIRE_STEP_S * float(step - 1), embers])
 
 
 ## R3D-PROPS (2026-09-29, Director): a voxel an ember lights ends CHARRED — the soot map's darkest tone, black. Collected here

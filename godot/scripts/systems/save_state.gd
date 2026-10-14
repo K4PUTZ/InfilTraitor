@@ -64,6 +64,9 @@ static func capture(room) -> Dictionary:
 	## (ROOF R-D9), so the soot below must be read after it, or a save during the fall loses that soot.
 	if room.has_method("_finish_running_prop_fragments"):
 		room._finish_running_prop_fragments()
+	## ... and a roof fire still creeping (ROOF RF-2) chars the rest of its cells, for the same reason.
+	if room.has_method("_finish_roof_fire"):
+		room._finish_roof_fire()
 	var soot: Array = []
 	var shards: Array = []
 	for key in room._base_shards.keys():

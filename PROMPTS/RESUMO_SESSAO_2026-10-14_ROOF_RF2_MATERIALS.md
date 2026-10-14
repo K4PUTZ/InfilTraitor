@@ -34,10 +34,20 @@ block from the voxel cap's overflow.
 - PLAYGROUND plywood after the one-layer change: `shot_plywood` CROUCH 61% at 40,11 (same as 2026-10-13), `blast_plywood` door STANDING.
 - The red / green specks: red translucent particle discs rising through the hole; the green is the video's chroma (raw PNG: 94 red, 0 green px).
 
-## 5. NEXT
-1. The Director judges the five materials (`videos/roof_materials/`, git-ignored; the comparison sheet `roof_materials_compare_v2.png`).
-   Open look question: wood's rim splinters read as light dots on the charred rim (flat colour); plywood's are textured.
+## 5. The Director's review of that round (v0.23, built the same day)
+"Tá ficando muito bom." Asked and built: stone keeps its 12 x 10 hole (measured first: the `[ROOF-BLAST]` line now prints the span; the Director
+kept it) but sheds a lot of dust for longer (46 rim trickles over 2.6 s); crumbs on the rim of concrete, brick and stone, like wood's splinters
+(`Room._roof_rim_bits`); wood's rim splinters darker; cardboard and fabric burn longer and farther with heavy soot on the top face
+(`DetonationPlanBuilder._spread_roof_fire`: the fire creeps 6 rings outward, 212 voxels charred as the front passes over 2.1 s, 119 embers on the
+surface, out by ~7 s). Two traps found on the way: an ember anchored at a STANDING voxel's centre is hidden by the depth test (the creeping fire's
+embers now sit on the top face, `EmberOverlay.top_face_anchor`); charring the band in the commit made it black before the fire arrived (it is now
+stamped over time, `Room.spread_roof_fire`, and a save chars the rest first). Cardboard's missing rim dust was the ember wave consuming its lit
+rim. `verify.py` smoke PASSED (102 s). Clips: `videos/roof_materials/clip_{cardboard,fabric,stone}.mp4`.
+
+## 6. NEXT
+1. The Director judges the v0.23 round (the clips above): is stone's dust enough from this camera, do the rim crumbs read as crumbs.
 2. The roof's support / collapse: a wide hole (cardboard r 11) leaves an ISLAND of roof floating over it.
 3. Metal (Q5) and fabric's sag; then step 5 (the roof shot).
 4. Owed: the Moto cost of a roof blast per material (wood's splinter blocks hash a string per cube in `splinter_role`, 5 blocks per frame;
-   cardboard's 150 gliding pieces run up to 4 s); `_movement_edge_set()` per piece family; `ShrapnelOverlay`'s fate.
+   cardboard's 150 gliding pieces run up to 4 s; the creeping fire's 119 embers and a soot upload per frame for 2.1 s); `_movement_edge_set()`
+   per piece family; `ShrapnelOverlay`'s fate.

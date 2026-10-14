@@ -125,13 +125,14 @@ static var ROOF_SOOT: Vector2 = Vector2(0.45, 0.85)
 static var ROOF_RIM_TRICKLES: int = 48
 static var ROOF_RIM_DELAY: Vector2 = Vector2(0.1, 1.1)
 ## PER MATERIAL (Director, 2026-10-14; concrete is the model above, brick keeps it). Each `_OF` row overrides its value for one material:
-##   stone     — barely affected: a smaller hole, heavier rubble (more 2x2x2 chunks, fewer loose voxels), nothing blown up onto the roof, half the
-##               rim dust (a stone wall's blast dust is half concrete's too);
+##   stone     — barely affected: a smaller hole, heavier rubble (more 2x2x2 chunks, fewer loose voxels), nothing blown up onto the roof, and a
+##               lot of dust falling from under the rim for longer (Director, 2026-10-14);
+##   concrete, brick and stone keep CRUMBS on the crater's rim (`ROOF_RIM_BITS_OF`);
 ##   wood      — the shot's SPLINTERS (`spawn_shot_rubble`'s splinter blocks: they fly and stamp the floor), no chunks, a few whole voxels, less
-##               dust, and the rim stays splintered: sub-voxel cubes ATTACHED to the standing rim (`ROOF_RIM_SPLINTERS`), never loose in the hole;
+##               dust, and the rim stays splintered: sub-voxel cubes ATTACHED to the standing rim (`ROOF_RIM_BITS_OF`, darker), never loose in the hole;
 ##   plywood   — wood's, far more pieces (in proportion to its wider hole), darker and more varied, like its shot (`JITTER_OF`);
 ##   cardboard — light flaps that glide down (`ROOF_FALL_OF`: gravity, terminal speed, sway), more of them blown up onto the roof, no dust
-##               (`NO_DUST`), no chunks or crumbling blocks.
+##               (`NO_DUST`), no chunks or crumbling blocks; the fire spreads across the roof and chars it (`ROOF_FIRE_*`, fabric too).
 ## Cardboard, fabric and plywood roofs are ONE layer (`RoomBuilder`), so they never make a 2x2x2 chunk anyway. Fabric keeps the defaults
 ## until its sag is designed (Q5).
 static var ROOF_CHUNK_SHARE_OF: Dictionary = {"stone": 0.8, "wood": 0.0, "plywood": 0.0, "cardboard": 0.0}
@@ -145,13 +146,35 @@ static var ROOF_MAX_UP_OF: Dictionary = {"cardboard": 30}
 ## A light piece's kick upward is smaller, or it would rise metres under its low gravity.
 static var ROOF_UP_PUSH_OF: Dictionary = {"cardboard": Vector2(0.7, 2.2)}
 static var ROOF_SOOT_OF: Dictionary = {"plywood": Vector2(0.3, 0.75)}
-static var ROOF_RIM_TRICKLES_OF: Dictionary = {"stone": 24, "wood": 16, "plywood": 16}
+## Stone sheds a lot of dust from under its rim (Director, 2026-10-14: "deixar cair bastante pozinho por baixo"): every rim voxel of its small
+## hole trickles, the starts spread over a longer window (`ROOF_RIM_DELAY_OF`) so the dust keeps falling after the rubble has landed.
+static var ROOF_RIM_TRICKLES_OF: Dictionary = {"stone": 96, "wood": 16, "plywood": 16}
+static var ROOF_RIM_DELAY_OF: Dictionary = {"stone": Vector2(0.1, 2.6)}
 ## How a piece falls, per material: {gravity (x GRAVITY), fall_max (GU/s), sway (GU/s), max_time (s)} (`PropFragmentSim`).
 static var ROOF_FALL_OF: Dictionary = {"cardboard": {"gravity": 0.35, "fall_max": 0.9, "sway": 1.5, "max_time": 4.0}}
-## The splintered rim (wood, plywood): of each destroyed voxel beside a standing one, the sub-voxel cubes on the face toward it stay at
-## `[first layer, second layer]` chance, at most `ROOF_RIM_SPLINTERS_MAX` cubes per blast.
-static var ROOF_RIM_SPLINTERS: Vector2 = Vector2(0.45, 0.15)
-static var ROOF_RIM_SPLINTERS_MAX: int = 320
+## The ragged RIM (`Room._roof_rim_bits`; Director, 2026-10-14): of each destroyed voxel beside a standing one, the sub-voxel cubes on the face
+## toward it stay attached, at `[first layer, second layer]` chance: wood and plywood's SPLINTERS, and the CRUMBS (farelos) of concrete, brick and
+## stone. At most `ROOF_RIM_BITS_MAX` cubes per blast. They are sooted in `ROOF_RIM_BITS_SOOT_OF` (else the falling pieces' `ROOF_SOOT_OF`): wood's
+## read as light dots on its charred rim (Director: darker). `ROOF_RIM_BITS_TEXTURED` wear the facade; wood keeps the shot's flat splinter look.
+static var ROOF_RIM_BITS_OF: Dictionary = {
+	"wood": Vector2(0.45, 0.15), "plywood": Vector2(0.45, 0.15),
+	"concrete": Vector2(0.35, 0.1), "brick": Vector2(0.35, 0.1), "stone": Vector2(0.35, 0.1),
+}
+static var ROOF_RIM_BITS_SOOT_OF: Dictionary = {"wood": Vector2(0.22, 0.45)}
+static var ROOF_RIM_BITS_TEXTURED: Array[String] = ["plywood", "concrete", "brick", "stone"]
+static var ROOF_RIM_BITS_MAX: int = 320
+## The roof's FIRE (Director, 2026-10-14: cardboard "queimasse mais tempo e mais longe, e pode deixar com bastante fuligem, porque nesse caso o
+## fogo efetivamente chegou na face superior"; fabric the same). On a roof of these materials the fire does not stop at the hole's burning edge:
+## it creeps OUTWARD across the roof up to `ROOF_FIRE_SPREAD_OF` voxels, one ring every `ROOF_FIRE_STEP_S`; ring k catches at `ROOF_FIRE_CHANCE`^k
+## (a miss ends that branch, so the front is ragged); every voxel it reaches ends CHARRED and `ROOF_FIRE_EMBER_SHARE` of them glow, `ROOF_FIRE_LIFE`
+## times longer than an edge ember. It consumes nothing (the hole stays the blast's and its burnt edge's). The top layer takes the ring's full
+## soot (`ROOF_TOP_SOOT_LIFT_OF` 0: the fire reached the face that looks at the sky).
+static var ROOF_FIRE_SPREAD_OF: Dictionary = {"cardboard": 6, "fabric": 6}
+static var ROOF_FIRE_STEP_S: float = 0.35
+static var ROOF_FIRE_CHANCE: float = 0.88
+static var ROOF_FIRE_EMBER_SHARE: float = 0.55
+static var ROOF_FIRE_LIFE: float = 1.5
+static var ROOF_TOP_SOOT_LIFT_OF: Dictionary = {"cardboard": 0, "fabric": 0}
 ## How many tones lighter a roof's TOP layer is sooted than the blast's ring would make it (it faces away from a blast below).
 static var ROOF_TOP_SOOT_LIFT: int = 2
 static var BLAST_IMPACTS_PER_FRAME: int = 4

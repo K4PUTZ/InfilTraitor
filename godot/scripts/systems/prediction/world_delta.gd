@@ -236,6 +236,9 @@ var blast_trickles: Array = []
 ## ROOF RF-2 (Director, 2026-10-13/14): the roof voxels a blast DESTROYS (`DetonationPlanBuilder._phase_roofs`, the hole over the epicentre),
 ## {grid_pos, level, material}: chunks, whole voxels and a few crumbling blocks falling from the hole (`Room.spawn_blast_roof_rubble`).
 var blast_roof_rubble: Array = []
+## ... and the roof voxels the fire creeps across (`DetonationPlanBuilder._spread_roof_fire`, cardboard / fabric roofs): {grid_pos, level, at (s)}.
+## Each is CHARRED when the front reaches it (`Room.spread_roof_fire`), not in the commit, so the black follows the fire.
+var roof_fire: Array = []
 var blast_source_gu: Vector2i = Vector2i.ZERO
 
 ## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — WHICH VOXELS THE FIRE ATE.
@@ -418,6 +421,8 @@ func commit(room = null, defer_rain: bool = false) -> void:
 			room.spawn_blast_breaches(blast_breaches)
 		if not blast_roof_rubble.is_empty() and room.has_method("spawn_blast_roof_rubble"):
 			room.spawn_blast_roof_rubble(blast_roof_rubble, blast_epicentre)
+		if not roof_fire.is_empty() and room.has_method("spread_roof_fire"):
+			room.spread_roof_fire(roof_fire)
 		t = _split("blast rubble", t)
 		if not blast_trickles.is_empty() and room.has_method("season_blast_trickles"):
 			room.season_blast_trickles(blast_trickles)

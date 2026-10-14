@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 88946 lines total** (under `godot/scripts/`)
+**295 scripts · 89135 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1499,7 +1499,7 @@ extends `Node2D` · 255 lines
 
 ### `ember_overlay.gd`
 
-`class_name EmberOverlay` · extends `Node2D` · 414 lines
+`class_name EmberOverlay` · extends `Node2D` · 426 lines
 
 `godot/scripts/overlays/ember_overlay.gd`
 
@@ -2313,7 +2313,7 @@ extends `RefCounted` · 37 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 229 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 232 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
@@ -2342,7 +2342,7 @@ extends `RefCounted` · 37 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 3434 lines
+`class_name DetonationPlanBuilder` · 3527 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2563,7 +2563,7 @@ extends `RefCounted` · 37 lines
 
 ### `rubble_presets.gd`
 
-`class_name RubblePresets` · extends `RefCounted` · 240 lines
+`class_name RubblePresets` · extends `RefCounted` · 263 lines
 
 `godot/scripts/systems/destruction/rubble_presets.gd`
 
@@ -3269,7 +3269,7 @@ extends `Node` · 236 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 449 lines
+`class_name WorldDelta` · extends `RefCounted` · 454 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -3301,6 +3301,7 @@ extends `Node` · 236 lines
 - `var blast_breaches: Array = []`
 - `var blast_trickles: Array = []`
 - `var blast_roof_rubble: Array = []`
+- `var roof_fire: Array = []`
 - `var blast_source_gu: Vector2i = Vector2i.ZERO`
 - `var burnt_cells: Dictionary = {}`
 - `var light_field = null`
@@ -3423,7 +3424,7 @@ extends `Node` · 143 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 331 lines
+`class_name SaveState` · extends `RefCounted` · 334 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -6125,7 +6126,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11096 lines
+extends `Node2D` · 11146 lines
 
 `godot/scripts/world/room.gd`
 

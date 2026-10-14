@@ -2417,6 +2417,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_base_prop_piles.clear()        ## P2: nor any pile of charred fragments
 	_base_rubble_piles.clear()      ## R-D9: nor any rubble a shot left
 	_quiet_destroy.clear()          ## ROOF RF-2: nor a roof voxel waiting to skip its puff
+	_roof_fire_pending.clear()      ## ROOF RF-2: nor a roof fire still creeping
 	_pending_prop_breaks.clear()
 	_base_remnants.clear()      ## G4: and none is stuck to a frame
 	_base_rim_shards.clear()    ## CRACK-06: nor clinging to a torn glass edge
@@ -6023,15 +6024,16 @@ func spawn_blast_roof_rubble(cells: Array, epicentre: Vector2) -> int:
 		RubblePresetsRef.ROOF_UP_PUSH_OF.get(material, RubblePresetsRef.ROOF_UP_PUSH))
 	if not subs.is_empty():
 		total += spawn_shot_rubble(subs, Vector3.DOWN, seed)
-	var rim_splinters: int = 0
-	if RubblePresetsRef.SPLINTERS.has(material):
-		rim_splinters = _roof_rim_splinters(destroyed, material, seed, soot_range)
+	var rim_bits: int = 0
+	if RubblePresetsRef.ROOF_RIM_BITS_OF.has(material):
+		rim_bits = _roof_rim_bits(destroyed, material, seed, RubblePresetsRef.ROOF_RIM_BITS_SOOT_OF.get(material, soot_range))
 	var trickles: int = 0
 	if not RubblePresetsRef.NO_DUST.has(material):
 		trickles = _roof_rim_trickles(destroyed, material, seed,
-			int(RubblePresetsRef.ROOF_RIM_TRICKLES_OF.get(material, RubblePresetsRef.ROOF_RIM_TRICKLES)))
-	print_debug("[BLAST-RUBBLE] roof %s: %d destroyed voxel(s) -> %d chunk(s), %d voxel(s), %d up, %d crumbling block(s); %d piece(s), %d rim splinter(s), %d rim trickle(s)"
-		% [material, cells.size(), chunks.size(), voxels.size(), ups.size(), subs.size(), total, rim_splinters, trickles])
+			int(RubblePresetsRef.ROOF_RIM_TRICKLES_OF.get(material, RubblePresetsRef.ROOF_RIM_TRICKLES)),
+			RubblePresetsRef.ROOF_RIM_DELAY_OF.get(material, RubblePresetsRef.ROOF_RIM_DELAY))
+	print_debug("[BLAST-RUBBLE] roof %s: %d destroyed voxel(s) -> %d chunk(s), %d voxel(s), %d up, %d crumbling block(s); %d piece(s), %d rim bit(s), %d rim trickle(s)"
+		% [material, cells.size(), chunks.size(), voxels.size(), ups.size(), subs.size(), total, rim_bits, trickles])
 	return total
 
 
@@ -6087,9 +6089,9 @@ func _spawn_roof_pieces(lattice: Array, size: int, material: String, epicentre: 
 
 
 ## Dust trickling from the hole's rim while the mass comes down: the standing voxels of the roof's LOWER layer beside a destroyed one, up to
-## `limit` (`RubblePresets.ROOF_RIM_TRICKLES`, per material) in hashed order, each after its own delay in `ROOF_RIM_DELAY`. The bullet hole's
-## trickle, from the underside.
-func _roof_rim_trickles(destroyed: Dictionary, material: String, seed: String, limit: int) -> int:
+## `limit` (`RubblePresets.ROOF_RIM_TRICKLES`, per material) in hashed order, each after its own delay in `span` (`ROOF_RIM_DELAY`, per material).
+## The bullet hole's trickle, from the underside.
+func _roof_rim_trickles(destroyed: Dictionary, material: String, seed: String, limit: int, span: Vector2) -> int:
 	var store: VoxelStore = VoxelStore.active
 	if store == null or destroyed.is_empty():
 		return 0
@@ -6107,7 +6109,6 @@ func _roof_rim_trickles(destroyed: Dictionary, material: String, seed: String, l
 	var picked: Array = rim.keys()
 	picked.sort_custom(func(a: Vector3i, b: Vector3i) -> bool: return int(rim[a]) < int(rim[b]))
 	picked = picked.slice(0, limit)
-	var span: Vector2 = RubblePresetsRef.ROOF_RIM_DELAY
 	for i in range(picked.size()):
 		var n: Vector3i = picked[i]
 		var t01: float = float(int(rim[n]) % 1000) / 1000.0   ## hashed, so neighbours do not start in sequence around the rim
@@ -6116,11 +6117,11 @@ func _roof_rim_trickles(destroyed: Dictionary, material: String, seed: String, l
 	return picked.size()
 
 
-## Wood and plywood (Director, 2026-10-14): the hole's rim is SPLINTERED. Of every destroyed voxel beside a standing roof voxel (same level), the
-## shot's sub-voxel cubes on the face toward that neighbour stay where they were, attached to it (`RubblePresets.ROOF_RIM_SPLINTERS`: the first
-## layer of cubes, then a sparser second one), so the rim reads ragged and nothing hangs loose in the middle of the hole. Sooted like the rest of
-## the roof's pieces, lit as the standing voxel they cling to; saved as a rubble pile (div 4). Returns the cubes placed.
-func _roof_rim_splinters(destroyed: Dictionary, material: String, seed: String, soot_range: Vector2) -> int:
+## The hole's RAGGED RIM (Director, 2026-10-14): wood and plywood's splinters, concrete, brick and stone's crumbs. Of every destroyed voxel beside a
+## standing roof voxel (same level), the shot's sub-voxel cubes on the face toward that neighbour stay where they were, attached to it
+## (`RubblePresets.ROOF_RIM_BITS_OF`: the first layer of cubes, then a sparser second one), so the rim reads ragged and nothing hangs loose in the
+## middle of the hole. Sooted in `soot_range`, lit as the standing voxel they cling to; saved as a rubble pile (div 4). Returns the cubes placed.
+func _roof_rim_bits(destroyed: Dictionary, material: String, seed: String, soot_range: Vector2) -> int:
 	var live: Node = board3d()
 	var store: VoxelStore = VoxelStore.active
 	if live == null or store == null or destroyed.is_empty():
@@ -6128,9 +6129,9 @@ func _roof_rim_splinters(destroyed: Dictionary, material: String, seed: String, 
 	var ground: int = _voxel_board.ground_plane_level()
 	var div: int = RubblePresetsRef.DIVISION
 	var top: int = div - 1
-	var chance: Vector2 = RubblePresetsRef.ROOF_RIM_SPLINTERS
+	var chance: Vector2 = RubblePresetsRef.ROOF_RIM_BITS_OF[material]
 	var jitter_amp: float = float(RubblePresetsRef.JITTER_OF.get(material, RUBBLE_JITTER))
-	var flat: bool = not bool(RubblePresetsRef.FLY_TEXTURED_OF.get(material, false))
+	var flat: bool = not RubblePresetsRef.ROOF_RIM_BITS_TEXTURED.has(material)
 	var staying: Array = []
 	var keys: Array = destroyed.keys()
 	keys.sort()   ## a stable order, so the cap keeps the same cubes on every run
@@ -6156,7 +6157,7 @@ func _roof_rim_splinters(destroyed: Dictionary, material: String, seed: String, 
 							"flat": flat, "mult": shade * soot * j})
 	if staying.is_empty():
 		return 0
-	var cap: int = RubblePresetsRef.ROOF_RIM_SPLINTERS_MAX
+	var cap: int = RubblePresetsRef.ROOF_RIM_BITS_MAX
 	if staying.size() > cap:
 		## Thinned evenly round the whole rim, never cut off at one side of it.
 		var thinned: Array = []
@@ -6167,6 +6168,55 @@ func _roof_rim_splinters(destroyed: Dictionary, material: String, seed: String, 
 	_base_rubble_piles.append({"y0": 0.0, "zone_materials": [material], "records": _rubble_base_records(staying), "div": div})
 	live.call("spawn_prop_pile", staying, 0.0, [material], div, true)
 	return staying.size()
+
+
+## ROOF RF-2 (Director, 2026-10-14): the fire creeping across a cardboard / fabric roof (`WorldDelta.roof_fire`, {grid_pos, level, at}) chars each
+## voxel when the front reaches it, `at` seconds after the commit, through the soot map (`stamp_soot`: the one truth, saved and restored like any
+## stamp), a frame's worth at a time. Still pending when a save or a new map comes: `_finish_roof_fire()` stamps the rest at once / drops it.
+var _roof_fire_pending: Dictionary = {}   ## id -> {"cells": Array sorted by `at`, "next": int (the first not charred yet)}
+var _roof_fire_ids: int = 0
+
+
+func spread_roof_fire(cells: Array) -> void:
+	var sorted: Array = cells.duplicate()
+	sorted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
+	_roof_fire_ids += 1
+	var id: int = _roof_fire_ids
+	var fire: Dictionary = {"cells": sorted, "next": 0}
+	_roof_fire_pending[id] = fire
+	var elapsed: float = 0.0
+	while _roof_fire_pending.has(id):
+		await get_tree().process_frame
+		if not is_instance_valid(_voxel_board) or not _roof_fire_pending.has(id):
+			return   ## a new map, or a save already charred the rest
+		elapsed += get_process_delta_time()
+		var start: int = int(fire["next"])
+		var end: int = start
+		while end < sorted.size() and float((sorted[end] as Dictionary)["at"]) <= elapsed:
+			end += 1
+		if end > start:
+			_char_roof_cells(sorted.slice(start, end))
+			fire["next"] = end
+		if end >= sorted.size():
+			_roof_fire_pending.erase(id)
+
+
+func _char_roof_cells(cells: Array) -> void:
+	var writes: Dictionary = {}
+	for c: Dictionary in cells:
+		var level: int = int(c["level"])
+		if not writes.has(level):
+			writes[level] = {}
+		(writes[level] as Dictionary)[c["grid_pos"]] = BlastCalculator.FACE_SOOT_CHAR
+	_paint_soot(stamp_soot(writes), "roof fire")
+
+
+## A save is about to read the soot: the fire's remaining cells are charred now, so the save holds the roof as it will end.
+func _finish_roof_fire() -> void:
+	for id: int in _roof_fire_pending:
+		var fire: Dictionary = _roof_fire_pending[id]
+		_char_roof_cells((fire["cells"] as Array).slice(int(fire["next"])))
+	_roof_fire_pending.clear()
 
 
 ## A landed chunk's record as the board voxels it covers (a pile is saved at one division: whole voxels).
@@ -6264,7 +6314,7 @@ func _spawn_shot_rubble_impl(cells: Array, push_dir: Vector3, seed: String, forw
 	## keep the struck face's shade, with no artificial lightening of the inside; only a shot's blocks ramp to the fresh lift.
 	var blast_made: bool = seed.begins_with("blast|") or seed.begins_with("breach|") or seed.begins_with("roof|")
 	## A ROOF's block (Director, 2026-10-14) is picked by `spawn_blast_roof_rubble`'s own share, so it never skips itself as a plain hole; its cubes
-	## that would STAY would hang in the middle of the hole (the splintered rim is `_roof_rim_splinters`'), so they are gone; and every cube
+	## that would STAY would hang in the middle of the hole (the ragged rim is `_roof_rim_bits`'), so they are gone; and every cube
 	## keeps the facade (no face of a falling roof block is "behind" another: flat cubes read as light patches in the pile).
 	var roof_made: bool = seed.begins_with("roof|")
 	var staying: Array = []   ## splinter mode: the cubes that stay in the hole, as pile records

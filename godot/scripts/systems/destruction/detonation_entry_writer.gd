@@ -167,10 +167,13 @@ func apply(kind: String, entry: Dictionary, voxel_board, smoke_overlay) -> int:
 			var life_gain: float = ember_overlay.burnt_ember_life_gain if burnt else 1.0
 			var radius_gain: float = ember_overlay.burnt_ember_radius_gain if burnt else 1.0
 			var cool: float = ember_overlay.burnt_ember_cool_rate if burnt else 1.0
+			## ROOF RF-2: a fire creeping across a roof (`on_top`) glows on the voxel's top face, not inside it.
+			var anchor: Vector3 = ember_overlay.top_face_anchor(entry["cell"], int(entry["level"])) \
+				if bool(entry.get("on_top", false)) else ParticleMathRef.NO_ANCHOR
 			ember_overlay.add_ember(entry["world_pos"], -1.0, Vector2.ZERO, 0.0, 0.0,
 				float(entry.get("duration_scale", 1.0)) * life_gain,
 				float(entry.get("delay", 0.0)), radius_gain, cool, true,
-				entry.get("floor_pos", ParticleMathRef.NO_FLOOR))
+				entry.get("floor_pos", ParticleMathRef.NO_FLOOR), anchor)
 			return 1
 		"debris":
 			## E-DEBRIS-01. The plan already decided WHICH effect this voxel

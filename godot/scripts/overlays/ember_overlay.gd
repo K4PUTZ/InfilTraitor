@@ -164,6 +164,18 @@ func set_smoke_overlay(overlay: SmokeSparkOverlay) -> void:
 	_smoke_overlay = overlay
 
 
+## ROOF RF-2 (2026-10-14): the 3D anchor ON a voxel's top face, `top_face_lift_gu` above it, or NO_ANCHOR without a board. A fire creeping
+## across a roof glows on its surface: anchored at the voxel's centre (the 2D default) the ember sits inside a standing voxel and the depth
+## test hides all of it.
+var top_face_lift_gu: float = 0.04
+
+
+func top_face_anchor(cell: Vector2i, level: int) -> Vector3:
+	if _board == null or not _board.has_method("voxel_face_point"):
+		return ParticleMathRef.NO_ANCHOR
+	return (_board.call("voxel_face_point", cell, level, Vector3.UP) as Vector3) + Vector3.UP * top_face_lift_gu
+
+
 ## Queue one glow at a voxel's world position (VoxelBoard.voxel_world_position).
 ## duration <= 0 rolls a random one in [min_glow_duration, max_glow_duration],
 ## then applies the height bias below; a caller-supplied duration is used as

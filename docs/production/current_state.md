@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-10-13 · **Branch:** claude/r3d-actors-y5r8hs
+**Version:** 0.9.107 · **Updated:** 2026-10-14 · **Branch:** claude/r3d-actors-y5r8hs
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -527,6 +527,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-12_RF_S_MATERIALS.md
 - RESUMO_SESSAO_2026-10-12_ROOF_RF1.md
 - RESUMO_SESSAO_2026-10-13_RF_S_EXPLOSIONS.md
+- RESUMO_SESSAO_2026-10-14_ROOF_RF2.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

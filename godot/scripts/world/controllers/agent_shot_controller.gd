@@ -917,9 +917,10 @@ func _punch_out_zones(zone_hits: Dictionary, rubble_cells: Array, forward_cells:
 		for idx: int in broken:
 			mean += Vector2(float(idx % w), float(int(float(idx) / float(w))))
 		mean /= float(broken.size())
+		var radius: Vector2 = RubblePresetsRef.ZONE_RADIUS_OF.get((faces[0] as Slice).material, RubblePresetsRef.ZONE_RADIUS)
 		var zone: Dictionary = {}
 		for idx in range(rows * w):
-			var d := Vector2((float(idx % w) - mean.x) / RubblePresetsRef.ZONE_RADIUS.x, (float(int(float(idx) / float(w))) - mean.y) / RubblePresetsRef.ZONE_RADIUS.y)
+			var d := Vector2((float(idx % w) - mean.x) / radius.x, (float(int(float(idx) / float(w))) - mean.y) / radius.y)
 			if d.length_squared() <= 1.0:
 				zone[idx] = true
 		for _pass in range(2):

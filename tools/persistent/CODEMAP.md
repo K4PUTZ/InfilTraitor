@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 88047 lines total** (under `godot/scripts/`)
+**295 scripts · 88374 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3376 lines
+extends `Node3D` · 3392 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -2371,7 +2371,7 @@ extends `RefCounted` · 37 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 3193 lines
+`class_name DetonationPlanBuilder` · 3371 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2381,6 +2381,7 @@ extends `RefCounted` · 37 lines
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `WorldDeltaClass` = `preload("res://godot/scripts/systems/prediction/world_delta.gd")`
 - `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
+- `RubblePresetsRef` = `preload("res://godot/scripts/systems/destruction/rubble_presets.gd")`
 - `PaneFrameRef` = `preload("res://godot/scripts/systems/destruction/pane_frame.gd")`
 - `VoxelLightFieldClass` = `preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")`
 - `CRATER_MAX_FACTOR` = `0.40`
@@ -2591,7 +2592,7 @@ extends `RefCounted` · 37 lines
 
 ### `rubble_presets.gd`
 
-`class_name RubblePresets` · extends `RefCounted` · 141 lines
+`class_name RubblePresets` · extends `RefCounted` · 172 lines
 
 `godot/scripts/systems/destruction/rubble_presets.gd`
 
@@ -2606,8 +2607,6 @@ extends `RefCounted` · 37 lines
 - `FLY` = `0`
 - `STAY` = `1`
 - `GONE` = `2`
-- `BLOCKS_PER_FRAME` = `5`
-- `ISLAND_NEIGHBOURS` = `3`
 
 ---
 
@@ -3299,7 +3298,7 @@ extends `Node` · 236 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 420 lines
+`class_name WorldDelta` · extends `RefCounted` · 444 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -3327,6 +3326,22 @@ extends `Node` · 236 lines
 - `var glass_openings: Array = []`
 - `var glass_crazes: Array = []`
 - `var glass_shard_piles: Dictionary = {}`
+- `var blast_impacts: Array = []`
+- `var blast_breaches: Array = []`
+- `var blast_trickles: Array = []`
+- `var blast_source_gu: Vector2i = Vector2i.ZERO`
+- `var burnt_cells: Dictionary = {}`
+- `var light_field = null`
+- `var light_changed_cells: Dictionary = {}`
+- `var light_field_usable: bool = false`
+- `var commit_split: Dictionary = {}`
+
+**Public API**
+- `func add_damage(entries: Array) -> void:`
+- `func projections() -> Dictionary:`
+- `func changes(voxel) -> bool:`
+- `func projection_of(voxel) -> Array:`
+- `func state_of(voxel) -> int:`
 
 ---
 
@@ -5728,7 +5743,7 @@ extends `Node2D` · 63 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1304 lines
+`class_name AgentShotController` · 1305 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -6138,7 +6153,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10753 lines
+extends `Node2D` · 10830 lines
 
 `godot/scripts/world/room.gd`
 

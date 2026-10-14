@@ -63,6 +63,7 @@ class_name DetonationPlanBuilder
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 const WorldDeltaClass = preload("res://godot/scripts/systems/prediction/world_delta.gd")
 const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
+const RubblePresetsRef = preload("res://godot/scripts/systems/destruction/rubble_presets.gd")
 const PaneFrameRef = preload("res://godot/scripts/systems/destruction/pane_frame.gd")
 const VoxelLightFieldClass = preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")
 
@@ -577,6 +578,9 @@ static func _phase_slices(s: Dictionary, deadline: int) -> void:
 			break
 	s["cursor"] = i
 	if i >= ids.size():
+		if not s.has("breach_done"):
+			s["breach_done"] = true
+			_plan_blast_breaches(s)
 		## The glass stage is resumable: `s["glass"]` holds its stages and cursors, `{}` means no pane to shatter or craze.
 		if not s.has("glass"):
 			s["glass"] = _glass_begin(s)
@@ -585,6 +589,81 @@ static func _phase_slices(s: Dictionary, deadline: int) -> void:
 			return
 		s.erase("glass")
 		_enter_phase(s, PHASE_JUNCTIONS)
+
+
+## RF-S explosions (Director, 2026-10-13): a blast OPENS a hole-only wall (plywood) near it, a passage to walk through UPRIGHT (the shot's needs a
+## crouch): a DOOR of `RubblePresets.BLAST_BREACH_HALF_WIDTH` x `BLAST_BREACH_ROWS` voxels standing on the floor (the top rows an arch), centred on
+## the blast's projection on the wall, sized against `PassageQuery`'s STANDING rule (two stacked storeys, half of each gone over half the face's
+## positions), cut through every face of the edge (the pair rule of `PassageQuery` counts it), plus the floating islands, as the shot's punch-out. REAL
+## damage (it joins the Delta before the walk, the soot and the light see it); the voxels are also proposed as `blast_breaches`, thrown through
+## the wall away from the blast at commit (the shot's forward rubble: splinters, stamps). Only edges whose ring is <= `BLAST_BREACH_RING`.
+static func _plan_blast_breaches(s: Dictionary) -> void:
+	var delta: WorldDelta = s["delta"]
+	var registry: EdgeRegistry = s["edge_registry"]
+	var affected: Dictionary = s["affected"]["slices"]
+	var epicenter: Vector2i = s["epicenter"]
+	var w: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
+	var done_edges: Dictionary = {}
+	var half: float = RubblePresetsRef.BLAST_BREACH_HALF_WIDTH
+	var top: int = RubblePresetsRef.BLAST_BREACH_ROWS
+	var arch: float = RubblePresetsRef.BLAST_BREACH_ARCH_ROWS
+	for sid in affected:
+		var first: Slice = registry.get_slice(sid)
+		if first == null or done_edges.has(first.edge_id) or int(affected[sid]) > RubblePresetsRef.BLAST_BREACH_RING \
+				or not RubblePresetsRef.BLAST_BREACH_MATERIALS.has(first.material) or first.voxels.size() < 2:
+			continue
+		done_edges[first.edge_id] = true
+		## The wall's run axis from two neighbouring voxels of one row (index = row * w + column).
+		var along_x: bool = (first.voxels[1] as Voxel).grid_pos.x != (first.voxels[0] as Voxel).grid_pos.x
+		var v0: Voxel = first.voxels[0]
+		var col0: int = v0.grid_pos.x if along_x else v0.grid_pos.y
+		var step: int = signi(((first.voxels[1] as Voxel).grid_pos.x - v0.grid_pos.x) if along_x else ((first.voxels[1] as Voxel).grid_pos.y - v0.grid_pos.y))
+		## The door fits the face: its centre is kept `half` from either end.
+		var centre_col: float = clampf(float(((epicenter.x if along_x else epicenter.y) - col0) * step), half - 0.5, float(w) - half - 0.5)
+		var rows: int = int(float(first.voxels.size()) / float(w))
+		var zone: Dictionary = {}
+		for idx in range(rows * w):
+			var dc: float = absf(float(idx % w) - centre_col)
+			var row: float = float(int(float(idx) / float(w)))
+			if dc > half or row >= float(top):
+				continue
+			## The arch: over the last `arch` rows the width narrows along a quarter ellipse.
+			var into_arch: float = row - (float(top) - arch)
+			if into_arch > 0.0 and (dc / half) * (dc / half) + (into_arch / arch) * (into_arch / arch) > 1.0:
+				continue
+			zone[idx] = true
+		for _pass in range(2):
+			var added: Array = []
+			for idx in range(rows * w):
+				if zone.has(idx):
+					continue
+				var gone: int = 0
+				for n: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+					var r: int = int(float(idx) / float(w)) + n.y
+					var c: int = idx % w + n.x
+					if r >= 0 and r < rows and c >= 0 and c < w and zone.has(r * w + c):
+						gone += 1
+				if gone >= RubblePresetsRef.ISLAND_NEIGHBOURS:
+					added.append(idx)
+			for idx: int in added:
+				zone[idx] = true
+		## Thrown away from the blast: the wall's normal, signed by which side of it the blast is on.
+		var normal_coord: int = v0.grid_pos.y if along_x else v0.grid_pos.x
+		var side: int = signi(normal_coord - (epicenter.y if along_x else epicenter.x))
+		var push := Vector2(0.0, float(side)) if along_x else Vector2(float(side), 0.0)
+		var entries: Array = []
+		for face: Slice in registry.slices_of_edge(first.edge_id):
+			for idx: int in zone:
+				if idx >= face.voxels.size():
+					continue
+				var v: Voxel = face.voxels[idx]
+				if v.damage_state == Voxel.DamageState.DESTROYED:
+					continue
+				entries.append(BlastCalculatorClass.damage_entry(v, Voxel.DamageState.DESTROYED, true))
+				delta.blast_breaches.append({"grid_pos": v.grid_pos, "level": v.level, "material": face.material, "push": push})
+		delta.add_damage(entries)
+	if not done_edges.is_empty():
+		print_debug("[BLAST-RUBBLE] breach: %d edge(s), %d voxel(s) cut" % [done_edges.size(), delta.blast_breaches.size()])
 
 
 ## GLASS G3-C — true for a glass PANEL slice (has a pane_id, not a BLOCK) that a
@@ -1975,6 +2054,14 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				_append_voxel_debris(waves["debris"], voxel, ring, _material_name(container),
 					s["debris_policy"], voxel_board, epicenter)
 			elif state == Voxel.DamageState.DENTED or state == Voxel.DamageState.CRACKED:
+				## RF-S: a few marked wall voxels trickle sand like a bullet hole (hashed pick, B4; capped).
+				if container is Slice and RubblePresetsRef.BLAST_TRICKLE_MATERIALS.has(container.material) \
+						and delta.blast_trickles.size() < RubblePresetsRef.BLAST_MAX_TRICKLES:
+					var th: int = FacadeSampler._fnv1a_hash("TRICKLE|%d,%d,%d" % [key.x, key.y, key.z])
+					if float(th % 1000) / 1000.0 < float(RubblePresetsRef.BLAST_TRICKLE_SHARE_OF.get(container.material, RubblePresetsRef.BLAST_TRICKLE_SHARE)):
+						delta.blast_trickles.append({"grid_pos": voxel.grid_pos, "level": voxel.level, "material": container.material,
+							"carved_side": int(delta.projection_of(voxel)[WorldDelta.P_SIDE]),
+							"delay": float((th >> 10) % 1000) / 1000.0 * RubblePresetsRef.BLAST_TRICKLE_SPREAD_S})
 				touched_this_blast[key] = true
 				touched_voxels.append(voxel)
 				_append_voxel_smoke(waves["smoke"], smoked_gus, voxel, ring, smoke_weights,
@@ -2011,8 +2098,99 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				break
 	s["cursor"] = i
 	if i >= keys.size():
+		if not _plan_blast_pellets(s, deadline):
+			return   ## resumed on the next step, one cone at a time (the cook's budget)
 		s["expose_rings"] = s["exposed_by_ring"].keys()
 		_enter_phase(s, PHASE_EXPOSE)
+
+
+## RF-S explosions (Director, 2026-10-13): "a seasoning of the shot" in the blast's inner ring, to keep one visual identity. A handful of shotgun
+## pellets leaves the epicentre in eight cones (the four axes, the four diagonals) as far as `RubblePresets.BLAST_PELLET_STEPS`, and the shot's own
+## PURE plan says what each would do. Nothing is applied here (the blast destroys what it destroys); the pellets only pick, with the shot's rules:
+##   - the BLOCKS (`blast_rubble`): a voxel the pellet's plan reaches (any tier) that the blast destroys (never a block over a wall left
+##     standing; the two rarely agree on a BREAK, so the pellet only says where);
+##   - the IMPACTS (`blast_impacts`): the struck face of a voxel the blast leaves standing gets the shot's impact effects (`Room.dispatch_impact_vfx`:
+##     dust, chips and their floor stamp, the sand trickle, metal's sparks).
+## Resumable (the Moto measured the one-shot plan at 64-78 ms, a frame of its own): one cone per visit, cursor in `s`, true when done. A pellet
+## that lands on a voxel an earlier pellet already planned is skipped before its plan (most of a cone's pellets do).
+static func _plan_blast_pellets(s: Dictionary, deadline: int) -> bool:
+	var delta: WorldDelta = s["delta"]
+	if not s.has("pellet_cone"):
+		## DevFlag `BLAST_SEASON=0`: the whole seasoning off, the A/B control for the handset measurement.
+		var tree := Engine.get_main_loop() as SceneTree
+		var flags: Node = tree.root.get_node_or_null("/root/DevFlags") if tree != null else null
+		## The autoload by node, not by name: this script also runs headless in selftests, where a bare `Registries` does not compile.
+		var registries: Node = tree.root.get_node_or_null("/root/Registries") if tree != null else null
+		var weapon = registries.call("get_weapon_registry").get_weapon(RubblePresetsRef.BLAST_WEAPON) if registries != null else null
+		if (String(flags.value("BLAST_SEASON", "1")) if flags != null else OS.get_environment("INFILTRAITOR_BLAST_SEASON")) == "0" \
+				or weapon == null or weapon.delivery != WeaponDef.DELIVERY_CONE or s["edge_registry"] == null:
+			return true
+		s["pellet_cone"] = 0
+		s["pellet_weapon"] = weapon
+		s["pellet_seen"] = {}
+		s["pellet_struck"] = {}
+		s["pellet_planned"] = {}
+		s["pellet_ms"] = 0.0
+		delta.blast_epicentre = Vector2(s["epicenter"])
+		delta.blast_source_gu = s["source_gu"]
+	var weapon = s["pellet_weapon"]
+	var ctx: Dictionary = s["ctx"]
+	var origin: Vector2i = s["source_gu"]
+	var registry: EdgeRegistry = s["edge_registry"]
+	var seen: Dictionary = s["pellet_seen"]
+	var struck: Dictionary = s["pellet_struck"]
+	var planned: Dictionary = s["pellet_planned"]
+	var axes: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
+	while int(s["pellet_cone"]) < 8:
+		var t0: int = Time.get_ticks_usec()
+		var cone: int = int(s["pellet_cone"])
+		s["pellet_cone"] = cone + 1
+		var a: int = cone % 4
+		var offset: float = 45.0 if cone >= 4 else 0.0
+		var salt: String = "blast|%d,%d|%d|%d" % [origin.x, origin.y, a, int(offset)]
+		var picks: Array = BlastCalculatorClass.select_cone_pellet_impacts(origin, axes[a], weapon.cone_half_angle_deg,
+			RubblePresetsRef.BLAST_PELLET_STEPS, RubblePresetsRef.BLAST_PELLETS, ctx.get("blocked_edges", {}), ctx.get("blocked_cells", {}),
+			salt, offset)
+		for i in range(picks.size()):
+			var resolved: Dictionary = BlastCalculatorClass.resolve_pellet_voxel(picks[i], registry, "%s:%d" % [salt, i])
+			if resolved.is_empty():
+				continue
+			var slice: Slice = resolved["slice"]
+			if GlassMaterials.is_glass(slice.material):
+				continue
+			var hv: Voxel = slice.voxels[int(resolved["voxel_index"])]
+			var hkey := Vector3i(hv.grid_pos.x, hv.grid_pos.y, hv.level)
+			if planned.has(hkey):
+				continue
+			planned[hkey] = true
+			var punch: float = ShotPunchTable.compute(weapon.punch, slice.material, ShotPunchTable.SKILL_NEUTRAL, 1.0, "%s:%d" % [salt, i])
+			for pe in BlastCalculatorClass.plan_point_impact(slice, int(resolved["voxel_index"]), punch, registry, "%s:%d" % [salt, i],
+					[], origin, weapon.blowout):
+				var pv: Voxel = pe["voxel"]
+				var key := Vector3i(pv.grid_pos.x, pv.grid_pos.y, pv.level)
+				if delta.state_of(pv) != Voxel.DamageState.DESTROYED:
+					## The face the round struck, still standing after the blast: one impact per voxel.
+					if pv == hv and not struck.has(key) and delta.blast_impacts.size() < RubblePresetsRef.BLAST_MAX_IMPACTS:
+						struck[key] = true
+						delta.blast_impacts.append({"grid_pos": pv.grid_pos, "level": pv.level, "material": slice.material,
+							"carved_side": int(pe["carved_side"])})
+					continue
+				if pv.damage_state == Voxel.DamageState.DESTROYED or seen.has(key) \
+						or RubblePresetsRef.NO_FALL.has(slice.material) or RubblePresetsRef.FORWARD_MATERIALS.has(slice.material) \
+						or delta.blast_rubble.size() >= RubblePresetsRef.BLAST_MAX_CELLS:
+					continue
+				seen[key] = true
+				delta.blast_rubble.append({"grid_pos": pv.grid_pos, "level": pv.level, "material": slice.material, "face": int(picks[i]["face"])})
+		s["pellet_ms"] = float(s["pellet_ms"]) + float(Time.get_ticks_usec() - t0) / 1000.0
+		if _out_of_time(deadline):
+			return int(s["pellet_cone"]) >= 8 and _pellets_done(s)
+	return _pellets_done(s)
+
+
+static func _pellets_done(s: Dictionary) -> bool:
+	var delta: WorldDelta = s["delta"]
+	print_debug("[BLAST-RUBBLE] pellet plan %.2f ms: %d block(s), %d impact(s)" % [float(s["pellet_ms"]), delta.blast_rubble.size(), delta.blast_impacts.size()])
+	return true
 
 
 ## --- Phase 8: exposure fallback, wired into its ring's destroy entries. ----

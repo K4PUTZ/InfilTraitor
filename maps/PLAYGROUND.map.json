@@ -684,9 +684,24 @@
         }
       ]
     },
+   "capture": {"v": 1, "rails": [{"id": "wood_rail", "keys": [{"frame": "detail", "target": "@wood_wall", "view": "N", "hold": 300}]}, {"id": "plywood_rail", "keys": [{"frame": "detail", "target": "@plywood_wall", "view": "N", "hold": 300}]}, {"id": "brick_rail", "keys": [{"frame": "detail", "target": "@brick_wall", "view": "N", "hold": 300}]}, {"id": "cardboard_rail", "keys": [{"frame": "detail", "target": "@cardboard_wall", "view": "N", "hold": 300}]}, {"id": "fabric_rail", "keys": [{"frame": "detail", "target": "@fabric_wall", "view": "N", "hold": 300}]}, {"id": "stone_rail", "keys": [{"frame": "detail", "target": "@stone_wall", "view": "N", "hold": 300}]}, {"id": "concrete_rail", "keys": [{"frame": "detail", "target": "@concrete_wall", "view": "N", "hold": 300}]}], "takes": [{"id": "blast_wood", "profile": "engine", "rail": "wood_rail", "steps": ["throw 0 @wood_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the wood wall"}, {"id": "blast_plywood", "profile": "engine", "rail": "plywood_rail", "steps": ["throw 0 @plywood_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the plywood wall"}, {"id": "shot_plywood", "profile": "engine", "rail": "plywood_rail", "steps": ["shoot 0"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S: the shotgun reference on plywood (INFILTRAITOR_SHOT_AGENT_CELL=40,11 INFILTRAITOR_SHOT_GUARD_CELL=40,9)"}, {"id": "blast_brick", "profile": "engine", "rail": "brick_rail", "steps": ["throw 0 @brick_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the brick wall"}, {"id": "blast_cardboard", "profile": "engine", "rail": "cardboard_rail", "steps": ["throw 0 @cardboard_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the cardboard wall"}, {"id": "blast_fabric", "profile": "engine", "rail": "fabric_rail", "steps": ["throw 0 @fabric_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the fabric wall"}, {"id": "blast_stone", "profile": "engine", "rail": "stone_rail", "steps": ["throw 0 @stone_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the stone wall"}, {"id": "shot_stone", "profile": "engine", "rail": "stone_rail", "steps": ["shoot 0"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S: shotgun on stone (INFILTRAITOR_SHOT_AGENT_CELL=18,11 INFILTRAITOR_SHOT_GUARD_CELL=18,9)"}, {"id": "shot_concrete", "profile": "engine", "rail": "concrete_rail", "steps": ["shoot 0"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S: a shotgun round into the concrete wall, the reference for blast_concrete (run with INFILTRAITOR_SHOT_AGENT_CELL=8,11 INFILTRAITOR_SHOT_GUARD_CELL=8,9)"}, {"id": "blast_concrete", "profile": "engine", "rail": "concrete_rail", "steps": ["throw 0 @concrete_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the concrete wall"}]},
    "layout": {
     "v": 1,
     "poi": [
+     {"id": "plywood_wall", "at": [35.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
+     {"id": "plywood_front", "at": [35.5, 4.5], "tags": ["event"]},
+     {"id": "brick_wall", "at": [23.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
+     {"id": "brick_front", "at": [23.5, 4.5], "tags": ["event"]},
+     {"id": "cardboard_wall", "at": [27.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
+     {"id": "cardboard_front", "at": [27.5, 4.5], "tags": ["event"]},
+     {"id": "fabric_wall", "at": [31.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
+     {"id": "fabric_front", "at": [31.5, 4.5], "tags": ["event"]},
+     {"id": "stone_wall", "at": [13.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
+     {"id": "stone_front", "at": [13.5, 4.5], "tags": ["event"]},
+     {"id": "wood_wall", "at": [18.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
+     {"id": "concrete_wall", "at": [3.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
+     {"id": "wood_front", "at": [18.5, 4.5], "tags": ["event"]},
+     {"id": "concrete_front", "at": [3.5, 4.5], "tags": ["event"]},
      {
       "id": "throw_material_row",
       "at": [

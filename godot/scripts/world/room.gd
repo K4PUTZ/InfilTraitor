@@ -2081,7 +2081,7 @@ var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
 ## which is the one row that is a hard rule rather than a level on a dial.
 var vfx_impact_profiles: Dictionary = {
 	"metal":    {"sparks": 16, "smoke": false, "dust": false, "chips": 0},
-	"stone":    {"sparks": 7,  "smoke": false, "dust": true,  "dust_chance": 0.25, "chips": 0},   ## Director 2026-10-12: one round in four
+	"stone":    {"sparks": 7,  "smoke": false, "dust": true,  "dust_chance": 0.35, "chips": 0},   ## Director 2026-10-13: a little more than one in four, less than the others
 	"concrete": {"sparks": 2,  "smoke": true,  "dust": true,  "chips": 0},
 	## Brick follows stone, a little more fragile (Director 2026-10-05): fewer sparks.
 	"brick":    {"sparks": 5,  "smoke": false, "dust": true,  "chips": 0},
@@ -5349,8 +5349,9 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 ## it. No new signal: a signal would have to be emitted from the render pass,
 ## which re-renders dirty voxels for reasons that have nothing to do with being
 ## freshly shot.
+## `dust_chance` >= 0 overrides the profile's trickle chance, `chips_mult` scales its chips (a blast's seasoning, `RubblePresets.BLAST_*_OF`).
 func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
-		carved_side: int = Voxel.CarvedSide.NONE, shooter_gu: Vector2i = NO_SHOOTER) -> void:
+		carved_side: int = Voxel.CarvedSide.NONE, shooter_gu: Vector2i = NO_SHOOTER, dust_chance: float = -1.0, chips_mult: float = 1.0) -> void:
 	if _voxel_board == null or _smoke_spark_overlay == null or _debris_overlay == null:
 		return
 	var profile: Dictionary = vfx_impact_profiles.get(material_id, {})
@@ -5385,9 +5386,9 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 			smoke_color = Color(smoke_color.r * (1.0 - smoke_dark), smoke_color.g * (1.0 - smoke_dark), smoke_color.b * (1.0 - smoke_dark), smoke_color.a)
 		_smoke_spark_overlay.add_smoke(origin, smoke_color,
 			1.0, 1.0, 0, 1.0, 0.0, floor_pos, anchor_3d)
-	if bool(profile.get("dust", false)) and randf() < float(profile.get("dust_chance", vfx_impact_dust_chance)):
+	if bool(profile.get("dust", false)) and randf() < (dust_chance if dust_chance >= 0.0 else float(profile.get("dust_chance", vfx_impact_dust_chance))):
 		_debris_overlay.add_sand_trickle(origin, floor_pos, _vfx_material_base_color(material_id))
-	var chips: int = int(profile.get("chips", 0))
+	var chips: int = roundi(float(profile.get("chips", 0)) * chips_mult)
 	if chips > 0:
 		_debris_overlay.add_chips(origin, floor_pos, chips,
 			_vfx_material_base_color(material_id), float(profile.get("chip_spread", 1.0)))
@@ -5894,6 +5895,82 @@ func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String, forward: b
 		if through.is_empty():
 			return _spawn_front_drop(front, push_dir, seed + "|front")
 	return _spawn_shot_rubble_impl(cells, push_dir, seed, forward, false)
+
+
+## RF-S explosions (Director, 2026-10-13): the wall voxels the simulated pellets of a blast would break (`DetonationPlanBuilder._plan_blast_pellets`)
+## fragment exactly as a shot's do, material by material. One call per struck face: the push is the pellets' own direction (into that wall), so the
+## pieces leave against it, as a shot's. `cells`: [{grid_pos, level, material, face}]. Returns the sub-voxels placed.
+func spawn_blast_rubble(cells: Array, epicentre: Vector2) -> int:
+	var by_face: Dictionary = {}
+	for c: Dictionary in cells:
+		var group: Array = by_face.get(int(c["face"]), [])
+		group.append(c)
+		by_face[int(c["face"])] = group
+	var total: int = 0
+	for face: int in by_face:
+		var d: Vector2i = Face.delta(face)
+		total += spawn_shot_rubble(by_face[face], Vector3(d.x, 0.0, d.y), "blast|%d|%d,%d" % [face, roundi(epicentre.x), roundi(epicentre.y)])
+	print_debug("[BLAST-RUBBLE] %d voxel(s) on %d face(s), %d sub-voxel(s)" % [cells.size(), by_face.size(), total])
+	return total
+
+
+## The voxels a blast cut out of a hole-only wall: the shot's punch-out (`spawn_shot_rubble(..., forward = true)`), one call per push.
+func spawn_blast_breaches(cells: Array) -> int:
+	var by_push: Dictionary = {}
+	for c: Dictionary in cells:
+		var group: Array = by_push.get(c["push"], [])
+		group.append(c)
+		by_push[c["push"]] = group
+	var total: int = 0
+	for push: Vector2 in by_push:
+		total += spawn_shot_rubble(by_push[push], Vector3(push.x, 0.0, push.y), "breach|%s" % push, true)
+	print_debug("[BLAST-RUBBLE] breach thrown: %d voxel(s), %d sub-voxel(s)" % [cells.size(), total])
+	return total
+
+
+## RF-S explosions (Director, 2026-10-13): the bullet hole's sand trickle on a few of the wall voxels a blast marked (`WorldDelta.blast_trickles`),
+## in the material's colour (brick reddish), each after its own hashed delay so they do not start as one.
+func season_blast_trickles(trickles: Array) -> void:
+	if _voxel_board == null or _debris_overlay == null:
+		return
+	for t: Dictionary in trickles:
+		_blast_trickle_after(t)
+	print_debug("[BLAST-RUBBLE] %d sand trickle(s) on marked wall voxels" % trickles.size())
+
+
+func _blast_trickle_after(t: Dictionary) -> void:
+	await get_tree().create_timer(float(t["delay"])).timeout
+	if not is_instance_valid(_voxel_board) or _debris_overlay == null:
+		return
+	var grid_pos: Vector2i = t["grid_pos"]
+	var level: int = int(t["level"])
+	var origin: Vector2 = _voxel_board.voxel_world_position(grid_pos, level)
+	var floor_pos: Vector2 = _voxel_board.voxel_world_position(grid_pos, _voxel_board.ground_plane_level())
+	var anchor_3d: Vector3 = _impact_anchor_3d(grid_pos, level, int(t["carved_side"]))
+	if anchor_3d != ParticleMath.NO_ANCHOR:
+		var pair: Array[Vector2] = (board3d() as Node).call("particle_pair", anchor_3d)
+		origin = pair[0]
+		floor_pos = pair[1]
+	_debris_overlay.add_sand_trickle(origin, floor_pos, _vfx_material_base_color(String(t["material"])))
+
+
+## The shot's impact effects on the faces a blast's pellets struck (`WorldDelta.blast_impacts`), `RubblePresets.BLAST_IMPACTS_PER_FRAME` per frame
+## from the frame after the commit (a coroutine: the commit does not wait). All at once cost the Moto's flash frame its share of 50-62 ms.
+func season_blast_impacts(impacts: Array, source_gu: Vector2i) -> void:
+	var k: int = 0
+	while k < impacts.size():
+		await get_tree().process_frame
+		if not is_instance_valid(_voxel_board):
+			return
+		for _n in range(RubblePresetsRef.BLAST_IMPACTS_PER_FRAME):
+			if k >= impacts.size():
+				break
+			var imp: Dictionary = impacts[k]
+			k += 1
+			var m: String = String(imp["material"])
+			dispatch_impact_vfx(imp["grid_pos"], int(imp["level"]), m, int(imp["carved_side"]), source_gu,
+				float(RubblePresetsRef.BLAST_DUST_CHANCE_OF.get(m, -1.0)), float(RubblePresetsRef.BLAST_CHIPS_MULT_OF.get(m, 1.0)))
+	print_debug("[BLAST-RUBBLE] %d pellet impact(s) on standing faces" % impacts.size())
 
 
 func _spawn_front_drop(cells: Array, push_dir: Vector3, seed: String) -> int:

@@ -571,6 +571,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 				_crack_mirror.pane_materials.append(_shader_materials[i].next_pass)
 	_diag_step("c camera + crack mirror")
 	_warm_glass_fall.call_deferred()
+	_warm_rubble.call_deferred()
 	var quads: int = 0
 	var faces: int = 0
 	var chunk_list: Array = _store_chunks() if _store != null else _by_chunk.keys()
@@ -1990,6 +1991,21 @@ func _warm_glass_fall() -> void:
 			return
 	warm.queue_free()
 	shards.detach()
+
+
+## RF-S — the rubble's material (the prop shader with `BAKED_LIGHT`, a shot's or a blast's sub-voxels) drawn ONCE at load, one cube far under
+## the floor for three frames, so its pipeline exists before the first break: the Moto paid it in a blast's flash frame (2026-10-13).
+func _warm_rubble() -> void:
+	if not is_inside_tree():
+		return
+	var warm: PropFragments3D = PropFragments3D.make_pile(self, [{"column": Vector2i(0, 0), "level": 0, "mult": 1.0, "zone": 0}],
+		-1000.0, ["concrete"], 4, true)
+	_geometry_root.add_child(warm)
+	for _f: int in range(3):
+		await get_tree().process_frame
+		if not is_instance_valid(warm):
+			return
+	warm.queue_free()
 
 
 ## The geometry root's transform (this board's space <- the meshes' space).

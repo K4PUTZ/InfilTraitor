@@ -194,7 +194,7 @@ static var HOLE_ONLY_MATERIALS: Array[String] = ["fabric", "cardboard", "plywood
 ## takes from each slice of the wall, grown from the struck cell by a hashed random walk that favours going DOWN; both slices of the wall take
 ## the same cells, so the pair rule of `PassageQuery` counts them. The sum of a shotgun's pellets then opens a small CROUCH passage
 ## (`PASSAGE_MIN_REMOVED_FRACTION`), as the Director asked; ordinary wood keeps its clean holes. A stat (rule 1), tuned on `[SHOT-PASSAGE]`.
-static var TEAR_SIZE: Dictionary = {"plywood": 4, "cardboard": 5, "fabric": 6}
+static var TEAR_SIZE: Dictionary = {"plywood": 6, "cardboard": 5, "fabric": 6}
 
 ## Neighbour destruction (D30.1): neighbours are DESTROYED or untouched, and
 ## NEVER take a mark of their own — that stays the projectile's alone. Count

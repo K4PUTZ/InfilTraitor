@@ -221,6 +221,19 @@ var glass_shard_flights: Array = []
 ## where they land, instead of rain leaving the pane at once. Each: {cells: [{grid_pos, level}], from: Vector2 (the epicentre, voxels),
 ## strength: 0..1}. Proposed by the cook (pure), spawned at commit.
 var skylight_bursts: Array = []
+## ROOF RF-S (explosions) — the opaque wall voxels of the blast's inner rings that become blocks of sub-voxels thrown outward from `blast_epicentre`
+## (board voxels) at commit (`Room.spawn_blast_rubble`, `RubblePresets.BLAST_*`). Each: {grid_pos: Vector2i, level: int, material: String, face: int}. A proposal.
+var blast_rubble: Array = []
+var blast_epicentre: Vector2 = Vector2.ZERO
+## ... and the standing faces the simulated pellets struck, which get the shot's impact effects (`Room.dispatch_impact_vfx`). Each: {grid_pos,
+## level, material, carved_side}. `blast_source_gu` is the shooter those effects spray back toward.
+var blast_impacts: Array = []
+## ... and the voxels a blast cut out of a hole-only wall (`DetonationPlanBuilder._plan_blast_breaches`), thrown through it away from the blast.
+## Each: {grid_pos, level, material, push: Vector2 (voxel grid)}.
+var blast_breaches: Array = []
+## ... and the marked wall voxels that trickle sand like a bullet hole: {grid_pos, level, material, carved_side, delay (s)}.
+var blast_trickles: Array = []
+var blast_source_gu: Vector2i = Vector2i.ZERO
 
 ## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — WHICH VOXELS THE FIRE ATE.
 ##
@@ -395,6 +408,17 @@ func commit(room = null, defer_rain: bool = false) -> void:
 		if not skylight_bursts.is_empty() and room.has_method("spawn_skylight_burst"):
 			room.spawn_skylight_burst(skylight_bursts)
 		t = _split("skylight burst", t)
+		## The blocks on THIS frame (they stand in for the voxels the blast just removed, so the hole is never seen empty); the impacts after it, a few per frame.
+		if not blast_rubble.is_empty() and room.has_method("spawn_blast_rubble"):
+			room.spawn_blast_rubble(blast_rubble, blast_epicentre)
+		if not blast_breaches.is_empty() and room.has_method("spawn_blast_breaches"):
+			room.spawn_blast_breaches(blast_breaches)
+		t = _split("blast rubble", t)
+		if not blast_trickles.is_empty() and room.has_method("season_blast_trickles"):
+			room.season_blast_trickles(blast_trickles)
+		if not blast_impacts.is_empty() and room.has_method("season_blast_impacts"):
+			room.season_blast_impacts(blast_impacts, blast_source_gu)
+		t = _split("blast impacts", t)
 		## G-D45 — a remnant this blast orphaned (its frame destroyed) falls with
 		## it. Unconditional: the frame that held an OLD remnant can be brick this
 		## delta broke with no glass of its own, so it is not gated on the glass

@@ -77,6 +77,34 @@ static var BLOCK_SHARE_OF: Dictionary = {"plywood": 0.15}
 static var STAY_EDGE_OF: Dictionary = {"plywood": 0.40}
 static var STAY_INNER_OF: Dictionary = {"plywood": 0.05}
 static var FLY_TEXTURED_OF: Dictionary = {"plywood": true, "cardboard": true, "fabric": true}
+## BLAST FRAGMENTS (Director, 2026-10-13): a seasoning of the shot in a blast's inner ring, so both read as one visual language. Simulated
+## shotgun pellets (`BLAST_WEAPON`, `BLAST_PELLETS` per cone, eight cones, `BLAST_PELLET_STEPS` GU) pick, with the shot's own plan, the voxels that
+## become blocks (at most `BLAST_MAX_CELLS`: a block is 64 cubes, the Moto's budget) and the standing faces that get the shot's impact effects
+## (at most `BLAST_MAX_IMPACTS`). The punch-out materials (`FORWARD_MATERIALS`) are not seasoned yet.
+static var BLAST_WEAPON: String = "shotgun"
+static var BLAST_PELLETS: int = 24
+static var BLAST_PELLET_STEPS: int = 2
+static var BLAST_MAX_CELLS: int = 40
+static var BLAST_MAX_IMPACTS: int = 40
+static var BLAST_IMPACTS_PER_FRAME: int = 4
+## The bullet hole's sand trickle on wall voxels a blast marked (dented / cracked): the share of them picked, the cap, the materials and how
+## long after the commit the last one may start (Director, 2026-10-13).
+static var BLAST_TRICKLE_MATERIALS: Array[String] = ["concrete", "brick", "stone"]
+static var BLAST_TRICKLE_SHARE: float = 0.08
+static var BLAST_TRICKLE_SHARE_OF: Dictionary = {"stone": 0.04}   ## stone a little less than the others (Director, 2026-10-13)
+static var BLAST_MAX_TRICKLES: int = 10
+static var BLAST_TRICKLE_SPREAD_S: float = 1.2
+## A blast near a hole-only wall opens a DOOR in it (`DetonationPlanBuilder._plan_blast_breaches`), on edges in these rings: half its width in
+## voxels (of the face's 8), its height in levels from the floor (STANDING wants two storeys, 16 levels, half gone) and how many top rows arch.
+static var BLAST_BREACH_MATERIALS: Array[String] = ["plywood", "cardboard", "fabric"]
+static var BLAST_BREACH_HALF_WIDTH: float = 3.1
+static var BLAST_BREACH_ROWS: int = 13
+static var BLAST_BREACH_ARCH_ROWS: float = 1.0
+static var BLAST_BREACH_RING: int = 1
+## Per material, on a blast's pellet impacts only (Director, 2026-10-13): concrete trickles sand from every struck face, wood throws more chips
+## (each chip's landing stamps the floor).
+static var BLAST_DUST_CHANCE_OF: Dictionary = {"concrete": 1.0, "brick": 1.0, "stone": 0.5}
+static var BLAST_CHIPS_MULT_OF: Dictionary = {"wood": 3.0}
 ## The most broken voxels of one shot that turn into blocks on one frame (the rest follow on the next ones).
 const BLOCKS_PER_FRAME: int = 5
 ## PUNCH-OUT (Director, 2026-10-12): the middle of a hole-only wall's break is cut out whole and thrown FORWARD, with the shot, to land as rubble
@@ -95,6 +123,9 @@ static var NO_DUST: Array[String] = ["cardboard", "fabric"]
 ## The cut zone around the centre of a shot's destroyed cells on a wall face, as an ellipse in (col, row) cells; a survivor with this many of its
 ## four neighbours gone is a floating island and goes too.
 static var ZONE_RADIUS: Vector2 = Vector2(1.5, 2.0)
+## Per material (Director, 2026-10-13): plywood's hole is a little wider, enough for the agent to squeeze through it head first (a crawl, not a
+## door: it need not reach the floor); more rounds widen it.
+static var ZONE_RADIUS_OF: Dictionary = {"plywood": Vector2(3.2, 3.2)}
 const ISLAND_NEIGHBOURS: int = 3
 static var FLY_SPEED: Vector2 = Vector2(1.8, 3.2)   ## a flying splinter's push multiplier, min..max (a crumble is 0.35-1.6 x the material's speed)
 static var FLY_DELAY_S: float = 0.04    ## the most a splinter waits after the impact, so they do not leave as one slab

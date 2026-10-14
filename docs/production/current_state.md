@@ -1,12 +1,25 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-10-12 · **Branch:** claude/r3d-actors-y5r8hs
+**Version:** 0.9.107 · **Updated:** 2026-10-13 · **Branch:** claude/r3d-actors-y5r8hs
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
 
 ---
+
+## Where the project stands — 2026-10-13 (RF-S in explosions: a seasoning of the shot per material; doors in hole-only walls)
+
+- **A blast now speaks the shot's visual language** (Director: "uma temperada do tiro no anel de dentro"): simulated shotgun pellets from
+  the epicentre run through the shot's PURE plan in the cook and pick the voxels that become the shot's blocks (where the blast also
+  destroys), the standing faces that get the shot's dust / chips / stamps / sparks, and a few marked voxels that trickle sand in the
+  material's colour (concrete, brick, stone; stone less). Nothing new simulates; `RubblePresets.BLAST_*` is the table.
+- **Plywood, cardboard and fabric OPEN:** a blast cuts a real door (7 of 8 columns, ~3/4 of the wall's height) before the walk, the soot and
+  the light; `[E-PASSAGE]` STANDING on all three. The **shot** on plywood widened (zone 3.2 x 3.2, tear 6): CROUCH at all four cells tried.
+- **Moto:** after warming the rubble shader at load, slicing the pellet plan and spreading the impacts, the seasoning costs +7 to +11 ms
+  on the worst blast frame (114 / 121 vs 107 / 110 ms) and nothing in PSS (A/B in one APK, DevFlag `BLAST_SEASON=0`).
+- Records: `ROOF_MASTER_PLAN` v0.20, `docs/ARCHITECTURE.md` §0.4, `PROMPTS/RESUMO_SESSAO_2026-10-13_RF_S_EXPLOSIONS.md`.
+- **Next (Director):** the roofs (step 5 the roof shot, shots at the ceiling, the falling-rubble animation adapted).
 
 ## Where the project stands — 2026-10-11, later (the glass blast optimised on the Moto; collapse after the blast, crossfaded)
 
@@ -496,6 +509,9 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-11_CAPTURE_RAILS_GLASS_COLLAPSE.md
 - RESUMO_SESSAO_2026-10-11_GLASS_CLOSE.md
 - RESUMO_SESSAO_2026-10-11_GLASS_DEVICE_OPT.md
+- RESUMO_SESSAO_2026-10-12_RF_S.md
+- RESUMO_SESSAO_2026-10-12_RF_S_MATERIALS.md
+- RESUMO_SESSAO_2026-10-12_ROOF_RF1.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -503,7 +519,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 212
+- GDScript modules: 213
 - Test scripts: 78
 - Known maps: 3
 - Shipped facade files: 0

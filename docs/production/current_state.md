@@ -528,6 +528,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-12_ROOF_RF1.md
 - RESUMO_SESSAO_2026-10-13_RF_S_EXPLOSIONS.md
 - RESUMO_SESSAO_2026-10-14_ROOF_RF2.md
+- RESUMO_SESSAO_2026-10-14_ROOF_RF2_MATERIALS.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

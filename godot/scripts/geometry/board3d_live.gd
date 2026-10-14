@@ -647,6 +647,27 @@ func ground_point(point_2d: Vector2) -> Vector3:
 	return Vector3(gu.x + 0.5, 0.0, gu.y + 0.5)
 
 
+## ROOF RF-2 (Director, 2026-10-14: the grenade's smoke rose THROUGH the roof): the height (board-local y) of the underside of the first
+## standing ROOF voxel (a CEILING slab's) above the point `p`, or INF when no roof covers its column (or it is outside the store). A puff
+## stops climbing there. Walls do not count: a puff born in a wall's hole keeps rising past the wall above it, as it always did.
+func ceiling_above(p: Vector3) -> float:
+	var store: VoxelStore = VoxelStore.active
+	if store == null or p == ParticleMath.NO_ANCHOR:
+		return INF
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var x: int = floori(p.x / unit)
+	var y: int = floori(p.z / unit)
+	var from: int = _ground_level + floori(p.y / (unit * VERTICAL_SCALE)) + 1
+	for lv in range(maxi(from, store.l0), store.l0 + store.nl):
+		if not store.has_cell(x, y, lv):
+			continue
+		var claim: int = store.owner[store.cell_index(x, y, lv)]
+		var slab: Slab = store.container_of(claim) as Slab if claim >= 0 else null
+		if slab != null and slab.role == Slab.Role.CEILING:
+			return float(lv - _ground_level) * unit * VERTICAL_SCALE
+	return INF
+
+
 ## The world point at the CENTRE of one face of a voxel (`normal`: the face's outward direction, base coordinates). The one place a
 ## shot's tracer, sparks, chips and dent decal take their impact point from, so the three can never land on different spots
 ## (Director, 2026-10-05: "o traçante, a faísca e o decal estão batendo em 3 pontos diferentes").
@@ -2685,8 +2706,9 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 			elif fresh >= 0:
 				## ROOF R-D9: the cell beside this face held a voxel that is gone (a destroyed claim still owns its cell) — the face
 				## looks into a hole and is freshly broken material, unless what was there was glass (a pane's hole is not this wall's).
+				## Director 2026-10-14: only a SHOT's hole is fresh; a blast's (its destroyed claim carries the blast bit) keeps the wall's own look.
 				var o: int = owner[n]
-				into_hole = o >= 0 and (state[o] & 1) == 0 and not _material_glass[_store_material[mat[o]]]
+				into_hole = o >= 0 and (state[o] & 1) == 0 and ((state[o] >> 3) & 1) == 0 and not _material_glass[_store_material[mat[o]]]
 			var di: int = decal_dirs.find(dir)
 			## ROOF R-D9: no bullet mark on a face inside a hole: seen through the opening it read as a black square (Director, 2026-10-12).
 			if di != -1 and not into_hole:

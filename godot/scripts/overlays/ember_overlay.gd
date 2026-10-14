@@ -232,10 +232,16 @@ func add_ember(world_pos: Vector2, duration: float = -1.0,
 	if VfxDrawProbe.enabled:
 		VfxDrawProbe.spawn_us += Time.get_ticks_usec() - probe_t0
 		VfxDrawProbe.spawn_n += 1
+	var a3: Vector3 = ParticleMathRef.anchor(_board, world_pos, floor_pos, anchor_3d)
+	## ROOF RF-2: a moving ember born under a roof stops at its underside (`Board3DLive.ceiling_above`), so its burn-out puff stays under it.
+	var ceil_y: float = INF
+	if (velocity != Vector2.ZERO or rise != 0.0) and _board != null and _board.has_method("ceiling_above"):
+		ceil_y = float(_board.call("ceiling_above", a3))
 	_embers.append({
 		"pos": world_pos,
 		"a2": world_pos,
-		"a3": ParticleMathRef.anchor(_board, world_pos, floor_pos, anchor_3d),
+		"a3": a3,
+		"ceil_y": ceil_y,
 		"vel": velocity,
 		"drag": drag,
 		"rise": rise,
@@ -328,6 +334,15 @@ func _process(delta: float) -> void:
 			var drag: float = float(e.get("drag", 0.0))
 			if drag > 0.0:
 				e["vel"] = vel * exp(-drag * delta)
+			var ceil_y: float = float(e.get("ceil_y", INF))
+			if ceil_y != INF and _board != null:
+				var ppu: float = float(_board.call("px_per_unit")) * ParticleMathRef.COS_ELEVATION
+				var a3e: Vector3 = e["a3"]
+				var a2e: Vector2 = e["a2"]
+				var pe: Vector2 = e["pos"]
+				if a3e.y - (pe.y - a2e.y) / ppu > ceil_y:
+					e["pos"] = Vector2(pe.x, a2e.y - (ceil_y - a3e.y) * ppu)
+					e["vel"] = Vector2((e["vel"] as Vector2).x, maxf((e["vel"] as Vector2).y, 0.0))
 		if e["elapsed"] < e["duration"]:
 			alive.append(e)
 		elif _smoke_overlay != null and bool(e.get("smoke_on_death", true)):

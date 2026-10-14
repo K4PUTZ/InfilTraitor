@@ -122,7 +122,7 @@ var _chips: Array = []
 
 ## Queue a small puff of dust that waits, then falls from `origin` to `target`
 ## (the floor position at the same grid column) and settles/fades there.
-func add_dust(origin: Vector2, target: Vector2, color: Color) -> void:
+func add_dust(origin: Vector2, target: Vector2, color: Color, anchor_3d: Vector3 = ParticleMathRef.NO_ANCHOR) -> void:
 	var speck_count: int = randi_range(dust_speck_count_min, dust_speck_count_max)
 	var specks: Array = []
 	for i in range(speck_count):
@@ -130,7 +130,7 @@ func add_dust(origin: Vector2, target: Vector2, color: Color) -> void:
 			randf_range(-dust_speck_spread, dust_speck_spread)))
 	_dust.append({
 		"a2": origin,
-		"a3": ParticleMathRef.anchor(_board, origin, target),  ## `target` is the floor beneath it
+		"a3": ParticleMathRef.anchor(_board, origin, target, anchor_3d),  ## `target` is the floor beneath it
 		"origin": origin,
 		"target": target,
 		"color": color,

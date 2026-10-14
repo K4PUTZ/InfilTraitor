@@ -1445,7 +1445,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		room._explosion_flash_overlay.snapshot_now()
 	_prof_clock("flash snapshot", snap0)
 	var burst0: int = Time.get_ticks_usec()
-	room.spawn_blast_burst(boom_anchor)
+	room.spawn_blast_burst(boom_anchor, anchor)
 	_prof_clock("spawn_blast_burst", burst0)
 	if room._camera_controller != null:
 		room._camera_controller.shake(SHAKE_SECONDS, SHAKE_AMPLITUDE_PX)
@@ -1460,11 +1460,8 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## flash begins, and the negative peak lands one frame later — *"o frame
 	## negativo já tem que acontecer logo em seguida"* — instead of three frames
 	## of ramp later.
-	var frag0: int = Time.get_ticks_usec()
-	if room._shrapnel_overlay != null:
-		room._shrapnel_overlay.spawn_shrapnel(boom_anchor, waves, room._voxel_board)
-	_prof("FRAG — spawn_shrapnel %.2f ms (BEFORE the flash now)" % [
-		float(Time.get_ticks_usec() - frag0) / 1000.0])
+	## ROOF RF-2 (Director, 2026-10-14): the shrapnel is no longer thrown. Its fragments flew in 2D toward the damaged cells, so on the 3D
+	## board the ones aimed at a roof rose straight THROUGH it as dark discs ("podemos remover").
 
 	var flash_overlay = room._explosion_flash_overlay
 	if flash_overlay != null:

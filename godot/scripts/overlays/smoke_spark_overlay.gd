@@ -154,6 +154,8 @@ func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: f
 		else randi_range(CosmeticDensity.scaled(smoke_blob_count_min), CosmeticDensity.scaled(smoke_blob_count_max))
 	## R3D-4e-2 — the emission's 3D anchor: where the particle is in the world when it is born.
 	var a3: Vector3 = ParticleMathRef.anchor(_board, pos, floor_pos, anchor_3d)
+	## ROOF RF-2: a puff born under a roof stops climbing at its underside (`Board3DLive.ceiling_above`); one under a hole goes out through it.
+	var ceil_y: float = float(_board.call("ceiling_above", a3)) if _board != null and _board.has_method("ceiling_above") else INF
 	for i in range(blob_count):
 		var offset := Vector2(randf_range(-smoke_spawn_jitter, smoke_spawn_jitter),
 			randf_range(-smoke_spawn_jitter, smoke_spawn_jitter)) * scale
@@ -170,6 +172,7 @@ func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: f
 			"color": color,
 			"start_radius": smoke_start_radius * scale * randf_range(0.85, 1.15),
 			"end_radius": smoke_end_radius * scale * randf_range(0.85, 1.15) * float(style.get("growth", 1.0)),
+			"ceil_y": ceil_y,
 		})
 		## An optional STYLE (the steam vent's billow, R3D-SURFACES SM-6b): a sideways `wind` (px/s) added to the puff's velocity, its own drift
 		## `damp` (per second, instead of the global 0.78: a plume keeps climbing) and `fade` power. A puff without a style behaves exactly as before.
@@ -241,6 +244,20 @@ func _process(delta: float) -> void:
 		s["elapsed"] += delta
 		s["pos"] += s["vel"] * delta
 		s["vel"] *= (pow(float(s["damp"]), delta) if s.has("damp") else damping)
+		## Under a roof: the puff's top may not pass the ceiling's underside; it spreads under it instead (its climb is spent sideways).
+		var ceil_y: float = float(s.get("ceil_y", INF))
+		if ceil_y != INF and _board != null:
+			var ppu: float = float(_board.call("px_per_unit")) * ParticleMathRef.COS_ELEVATION
+			var t_now: float = float(s["elapsed"]) / float(s["duration"])
+			var r_world: float = lerpf(float(s["start_radius"]), float(s["end_radius"]), t_now) * smoke_3d_radius_scale / ppu
+			var top: float = maxf(ceil_y - r_world, (s["a3"] as Vector3).y)   ## never pushed below where it was born
+			var a3s: Vector3 = s["a3"]
+			var a2s: Vector2 = s["a2"]
+			var pos_s: Vector2 = s["pos"]
+			if a3s.y - (pos_s.y - a2s.y) / ppu > top:
+				var climb: float = maxf(-(s["vel"] as Vector2).y, 0.0)
+				s["pos"] = Vector2(pos_s.x, a2s.y - (top - a3s.y) * ppu)
+				s["vel"] = Vector2((s["vel"] as Vector2).x + signf(pos_s.x - a2s.x + 0.001) * climb * 0.5, 0.0)
 		if s["elapsed"] < s["duration"]:
 			alive_smoke.append(s)
 	_smoke = alive_smoke

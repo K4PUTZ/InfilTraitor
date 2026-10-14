@@ -4,7 +4,7 @@
  "id": "ROOF_LAB",
  "meta": {
   "title": "Roof Lab",
-  "description": "ROOF_MASTER_PLAN RF-1 step 1 fixture (2026-10-11). Two 3x3 rooms of 2-storey concrete block rings, each with a door on its south side and its own lamp inside: room A (interior gu 5..9 x 4..8) under a CONCRETE roof with a 3x3 GLASS SKYLIGHT in its centre (gu 6..8 x 5..7; R-D5: the glass in the roof's lower layer, the upper layer empty), room B (interior gu 15..17 x 6..8) under a CONCRETE roof (the stages after glass). A larger lamp outside stands for the hall / outdoor light above the roofs (R-D1). The agent starts outside, south of the rooms, so the roofs stay drawn. Dev fixture, not a level. The agent starts INSIDE room A (the reveal opens its roof) so the floor's light under the skylight can be judged."
+  "description": "ROOF_MASTER_PLAN RF-1 step 1 fixture (2026-10-11). Two 3x3 rooms of 2-storey concrete block rings, each with a door on its south side and its own lamp inside: room A (interior gu 5..9 x 4..8) under a CONCRETE roof with a 3x3 GLASS SKYLIGHT in its centre (gu 6..8 x 5..7; R-D5: the glass in the roof's lower layer, the upper layer empty), room B (interior gu 15..17 x 6..8) under a CONCRETE roof (the stages after glass; since 2026-10-14 only its two back walls x 14 / y 5 stand and its roof is 4x4, gu 15..18 x 6..9, so a blast's hole above and the rubble below are both in view: take `roof_blast`). A larger lamp outside stands for the hall / outdoor light above the roofs (R-D1). The agent starts outside, south of the rooms, so the roofs stay drawn. Dev fixture, not a level. The agent starts INSIDE room A (the reveal opens its roof) so the floor's light under the skylight can be judged."
  },
  "sections": {
   "board": {
@@ -434,19 +434,6 @@
      ]
     },
     {
-     "comment": "ring 15,9",
-     "gu": [
-      15,
-      9
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
      "comment": "ring 16,5",
      "gu": [
       16,
@@ -473,75 +460,10 @@
      ]
     },
     {
-     "comment": "ring 17,9",
-     "gu": [
-      17,
-      9
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
      "comment": "ring 18,5",
      "gu": [
       18,
       5
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 18,6",
-     "gu": [
-      18,
-      6
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 18,7",
-     "gu": [
-      18,
-      7
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 18,8",
-     "gu": [
-      18,
-      8
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 18,9",
-     "gu": [
-      18,
-      9
      ],
      "material": "concrete",
      "storeys": 2,
@@ -604,14 +526,14 @@
      }
     },
     {
-     "comment": "room B: the concrete roof (RF-2)",
+     "comment": "room B: the concrete roof (RF-2), 4x4 so it also covers where the front walls stood (removed for the bench)",
      "gu": [
       15,
       6
      ],
      "size": [
-      3,
-      3
+      4,
+      4
      ],
      "storeys": 2,
      "material": "concrete",
@@ -662,6 +584,16 @@
      "at": [
       7.5,
       6.5
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "room_b_front",
+     "at": [
+      17.5,
+      8.5
      ],
      "tags": [
       "event"
@@ -780,6 +712,17 @@
      ]
     },
     {
+     "id": "room_b_rail",
+     "keys": [
+      {
+       "frame": "wide",
+       "target": "@room_b",
+       "view": "N",
+       "hold": 600
+      }
+     ]
+    },
+    {
      "id": "skylight_rail",
      "keys": [
       {
@@ -804,6 +747,19 @@
      "length": 600,
      "seed": 1,
      "note": "ROOF RF-1: the agent inside room A, a grenade in its far corner under the skylight's edge"
+    },
+    {
+     "id": "roof_blast",
+     "profile": "engine",
+     "rail": "room_b_rail",
+     "steps": [
+      "throw 0 @room_b_front"
+     ],
+     "at_key": 0,
+     "after_hold": 20,
+     "length": 600,
+     "seed": 1,
+     "note": "ROOF RF-2: a grenade in the middle of room B, near its open corner: room B keeps only its two back walls (x 14, y 5; the front walls were removed so the hole above and the rubble below are both in view)"
     },
     {
      "id": "skylight_hit",

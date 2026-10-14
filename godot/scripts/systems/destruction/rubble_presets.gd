@@ -86,6 +86,45 @@ static var BLAST_PELLETS: int = 24
 static var BLAST_PELLET_STEPS: int = 2
 static var BLAST_MAX_CELLS: int = 40
 static var BLAST_MAX_IMPACTS: int = 40
+## The HOLE a blast opens in a roof (Director, 2026-10-13: "abrir buraco sobre a granada"): every roof voxel within this radius (board voxels, 8 per
+## GU) of the epicentre's centre is destroyed through every layer, the edge ragged by `BLAST_ROOF_HOLE_RAGGED` (a hashed share of a voxel per
+## column); outside it the ring's scattered DESTROYED rolls become dents (marks and dust, no pinholes). Lighter materials open wider.
+static var BLAST_ROOF_HOLE_RADIUS: float = 6.0
+static var BLAST_ROOF_HOLE_RADIUS_OF: Dictionary = {"stone": 5.0, "wood": 8.0, "plywood": 10.0, "cardboard": 11.0, "fabric": 11.0}
+static var BLAST_ROOF_HOLE_RAGGED: float = 1.8
+## The outline is not a circle (Director, 2026-10-14: "não tão circular, com mais irregularidades"): the radius swings with the angle around the
+## epicentre, a sum of lobes [harmonic, share of the radius] with phases hashed per blast, so every hole has its own shape.
+static var BLAST_ROOF_HOLE_LOBES: Array = [[2, 0.22], [3, 0.18], [5, 0.12], [7, 0.07]]
+## What the hole's voxels become (Director, 2026-10-14: "usar mais os voxels e até blocos com chunks de voxels que despencam; alguns vão subir e
+## cair em cima do telhado"; the skylight's burst is the model). A whole 2x2x2 cell of the hole (the roof's two layers) is a CHUNK at
+## `ROOF_CHUNK_SHARE`; every other voxel is a whole VOXEL at `ROOF_VOXEL_SHARE`, a crumbling block of sub-voxels (the shot's) at `ROOF_SUB_SHARE`,
+## else it simply vanishes when the roof gives way, no trace (Director, 2026-10-14). Caps per blast for the Moto. Thrown away from the
+## epicentre and barely up: `ROOF_PUSH` [out, up] GU/s, times `ROOF_WEIGHT_*` (a chunk is heavier, it mostly drops); the pieces land on the
+## floor, a pile or the roof around the hole.
+static var ROOF_CHUNK_SHARE: float = 0.3
+static var ROOF_VOXEL_SHARE: float = 0.4
+static var ROOF_SUB_SHARE: float = 0.12
+static var ROOF_MAX_CHUNKS: int = 4
+static var ROOF_MAX_VOXELS: int = 60
+static var ROOF_MAX_SUBS: int = 8
+static var ROOF_PUSH: Vector2 = Vector2(0.6, 0.3)
+static var ROOF_WEIGHT_VOXEL: float = 0.8
+static var ROOF_WEIGHT_CHUNK: float = 0.45
+## A share of the whole voxels is blown UP out of the hole and comes down on the roof around it (Director, 2026-10-14: "alguns explodindo pra
+## cima e caindo no telhado, só alguns menores"): `ROOF_UP_SHARE` of them, at most `ROOF_MAX_UP`, with the `ROOF_UP_PUSH` [out, up] kick.
+static var ROOF_UP_SHARE: float = 0.1
+static var ROOF_MAX_UP: int = 8
+static var ROOF_UP_PUSH: Vector2 = Vector2(0.9, 4.0)
+## The falling mass is sooted, each piece its own shade in `ROOF_SOOT` [darkest, lightest] (a multiplier, hashed per piece), so it does not read
+## clean. The charred ladder (`PropFragmentSim` `char`) read pitch black in the air.
+static var ROOF_SOOT: Vector2 = Vector2(0.45, 0.85)
+## While it comes down, dust trickles from almost every voxel of the hole's rim (Director, 2026-10-14: "bastante pozinho, de quase todos os
+## voxels na borda, durante a queda do entulho, e irem parando em seguida"; the bullet hole's sand trickle, in the material's colour), each
+## starting in `ROOF_RIM_DELAY` [first, last] seconds after the blast and running its own short envelope: at most `ROOF_RIM_TRICKLES`.
+static var ROOF_RIM_TRICKLES: int = 48
+static var ROOF_RIM_DELAY: Vector2 = Vector2(0.1, 1.1)
+## How many tones lighter a roof's TOP layer is sooted than the blast's ring would make it (it faces away from a blast below).
+static var ROOF_TOP_SOOT_LIFT: int = 2
 static var BLAST_IMPACTS_PER_FRAME: int = 4
 ## The bullet hole's sand trickle on wall voxels a blast marked (dented / cracked): the share of them picked, the cap, the materials and how
 ## long after the commit the last one may start (Director, 2026-10-13).

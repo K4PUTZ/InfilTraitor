@@ -83,6 +83,8 @@ var _can_cross: Callable = Callable()
 var _solid: Callable = Callable()   ## (column: Vector2i, k: int) -> bool, the board's standing voxels (k = levels above `origin.y`)
 var _acc: float = 0.0
 var _done: bool = false
+var _push_speed: float = PUSH_SPEED
+var _push_up: float = PUSH_UP
 
 
 ## `p`: cells (Array[Vector3i]), zones (PackedInt32Array), origin (Vector3), blast (Vector2, world X/Z), weight (0..1),
@@ -118,6 +120,9 @@ func _init(p: Dictionary) -> void:
 	for r in release:
 		_release_max = maxf(_release_max, r)
 	var speed_of: PackedFloat32Array = p.get("speed", PackedFloat32Array())
+	## ROOF RF-2: a roof's pieces thrown out of a blast's hole ride a stronger kick than a prop's (optional, GU/s).
+	_push_speed = float(p.get("push_speed", PUSH_SPEED))
+	_push_up = float(p.get("push_up", PUSH_UP))
 	var pre: Dictionary = p.get("stack", {})
 	for col in pre:
 		_stack[col] = int(pre[col])
@@ -180,8 +185,8 @@ func _init(p: Dictionary) -> void:
 		var away: Vector2 = centres[i] - blast
 		var dir: Vector2 = away.normalized() if away.length() > 0.001 else Vector2.from_angle(_h01(i, P_DIR) * TAU)
 		var near: float = 1.0 - 0.5 * (away.length() / far)
-		var speed: float = PUSH_SPEED * weight * near * (0.55 + 0.45 * _h01(i, P_SPEED))
-		vel[i] = Vector3(dir.x * speed, PUSH_UP * weight * near * (0.3 + 0.7 * _h01(i, P_UP)), dir.y * speed)
+		var speed: float = _push_speed * weight * near * (0.55 + 0.45 * _h01(i, P_SPEED))
+		vel[i] = Vector3(dir.x * speed, _push_up * weight * near * (0.3 + 0.7 * _h01(i, P_UP)), dir.y * speed)
 		spin[i] = Vector3(_h01(i, P_SX) - 0.5, _h01(i, P_SY) - 0.5, _h01(i, P_SZ) - 0.5) * (14.0 * weight)
 
 

@@ -1191,6 +1191,38 @@ static func _phase_props(s: Dictionary, deadline: int) -> void:
 		_enter_phase(s, PHASE_ROOFS)
 
 
+## ROOF RF-2 (Director, 2026-10-13): a blast opens a HOLE over the epicentre (`RubblePresets.BLAST_ROOF_HOLE_*`), through every layer of the roof;
+## the ring's scattered DESTROYED rolls outside it become DENTED. Returns the slab's damage entries rewritten.
+static func _roof_hole(roof: Slab, entries: Array, epicenter: Vector2i) -> Array:
+	var centre: Vector2 = Vector2(epicenter) + Vector2(0.5, 0.5)   ## the epicentre is a board voxel cell
+	var radius: float = float(RubblePresetsRef.BLAST_ROOF_HOLE_RADIUS_OF.get(roof.material, RubblePresetsRef.BLAST_ROOF_HOLE_RADIUS))
+	var lobes: Array = RubblePresetsRef.BLAST_ROOF_HOLE_LOBES
+	var phases: Array = []
+	for k in range(lobes.size()):
+		phases.append(float(FacadeSampler._fnv1a_hash("ROOFLOBE|%d,%d|%d" % [epicenter.x, epicenter.y, k]) % 1000) / 1000.0 * TAU)
+	var by_voxel: Dictionary = {}
+	for e: Dictionary in entries:
+		by_voxel[e["voxel"]] = e
+	var out: Array = []
+	for v in roof.voxels:
+		var h: int = FacadeSampler._fnv1a_hash("ROOFHOLE|%d,%d" % [v.grid_pos.x, v.grid_pos.y])
+		var ragged: float = (float(h % 1000) / 1000.0 - 0.5) * 2.0 * RubblePresetsRef.BLAST_ROOF_HOLE_RAGGED
+		var off: Vector2 = Vector2(v.grid_pos) + Vector2(0.5, 0.5) - centre
+		var swing: float = 1.0
+		for k in range(lobes.size()):
+			swing += float(lobes[k][1]) * sin(float(lobes[k][0]) * off.angle() + float(phases[k]))
+		if off.length() <= radius * swing + ragged:
+			out.append(BlastCalculatorClass.damage_entry(v, Voxel.DamageState.DESTROYED, true, Voxel.CarvedSide.BOTTOM))
+			continue
+		if not by_voxel.has(v):
+			continue
+		var e: Dictionary = by_voxel[v]
+		if int(e["state"]) == Voxel.DamageState.DESTROYED:
+			e = BlastCalculatorClass.damage_entry(v, Voxel.DamageState.DENTED, true, Voxel.CarvedSide.BOTTOM)
+		out.append(e)
+	return out
+
+
 static func _phase_roofs(s: Dictionary, deadline: int) -> void:
 	var ids: Array = s["roof_ids"]
 	var slab_registry: SlabRegistry = s["slab_registry"]
@@ -1207,10 +1239,15 @@ static func _phase_roofs(s: Dictionary, deadline: int) -> void:
 			i += 1   ## ROOF step 4: a SKYLIGHT is a glass pane; the glass stage (`_glass_begin`) owns it, not the ring scatter
 			continue
 		var base_ring: int = affected[ids[i]]
-		delta.add_damage(BlastCalculatorClass.simulate_container_damage(
+		var entries: Array = BlastCalculatorClass.simulate_container_damage(
 			roof.voxels, roof.id, roof.material, base_ring, roof.level, true,
 			bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
-			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter))
+			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter)
+		entries = _roof_hole(roof, entries, epicenter)
+		delta.add_damage(entries)
+		for e: Dictionary in entries:
+			if int(e["state"]) == Voxel.DamageState.DESTROYED:
+				delta.blast_roof_rubble.append({"grid_pos": e["voxel"].grid_pos, "level": int(e["voxel"].level), "material": roof.material})
 		for v in roof.voxels:
 			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 			ring_of[key] = base_ring + BlastCalculatorClass.vertical_ring_for(v.level - roof.level)
@@ -1220,6 +1257,10 @@ static func _phase_roofs(s: Dictionary, deadline: int) -> void:
 			break
 	s["cursor"] = i
 	if i >= ids.size():
+		var by_level: Dictionary = {}
+		for c: Dictionary in delta.blast_roof_rubble:
+			by_level[int(c["level"])] = int(by_level.get(int(c["level"]), 0)) + 1
+		print_debug("[ROOF-BLAST] %d roof slab(s) in reach, %d voxel(s) destroyed, by level %s" % [ids.size(), delta.blast_roof_rubble.size(), by_level])
 		_enter_phase(s, PHASE_FLOORS)
 
 
@@ -1706,6 +1747,15 @@ static func _walk_equiv(s: Dictionary, store: VoxelStore) -> void:
 		blast.size(), weapon.size(), fresh.size(), fresh_flam.size(), fresh_burn.size()])
 
 
+## ROOF RF-2: is `key` a voxel of a roof's TOP layer (a CEILING slab's, with no roof voxel above it)? The SOOT phase soots it lighter (it faces away from a blast below).
+static func _is_roof_top(container_of: Dictionary, key: Vector3i) -> bool:
+	var c = container_of.get(key)
+	if not (c is Slab) or (c as Slab).role != Slab.Role.CEILING:
+		return false
+	var above = container_of.get(key + Vector3i(0, 0, 1))
+	return not (above is Slab and (above as Slab).role == Slab.Role.CEILING)
+
+
 ## --- Phase 5: SOOT-STAMP (Director, 2026-09-22) --------------------------------
 ##
 ## The blast's scorch is a STAMP, not a derivation. Every surviving voxel this blast
@@ -1753,6 +1803,7 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 	var soot_codes: Dictionary = s["soot_codes"]
 	var writes: Dictionary = (s["delta"] as WorldDelta).scorch_writes
 	var voxel_board: VoxelBoardClass = s["voxel_board"]
+	var container_of: Dictionary = s["container_of"]
 	var i: int = int(s["cursor"])
 	var since_check: int = 0
 	while i < todo.size():
@@ -1763,6 +1814,12 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 		var touches: bool = _touches_hole(s, key)
 		var tone: int = BlastCalculatorClass.soot_tone(cell, key.z, int(row[1]), touches,
 			not touches and halo_on and _touches_hole_diag(s, key))
+		## ROOF RF-2 (Director, 2026-10-14): the blast came from BELOW, so a roof's TOP layer (what faces the sky) takes far less soot than its
+		## underside: `RubblePresets.ROOF_TOP_SOOT_LIFT` tones lighter, or none.
+		if tone >= 0 and _is_roof_top(container_of, key):
+			tone += RubblePresetsRef.ROOF_TOP_SOOT_LIFT
+			if tone >= BlastCalculatorClass.FACE_SOOT_CLEAN:
+				tone = -1
 		if tone >= 0 and int(soot_codes.get(key, 0)) != BlastCalculatorClass.FACE_SOOT_CHAR \
 				and (not soot_codes.has(key) or tone < int(soot_codes[key])):
 			var shown: int = -1 if voxel_board == null else \
@@ -2042,17 +2099,22 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 			var ring: int = ring_of[key]
 			var container = container_of.get(key)
 			var state: int = delta.state_of(voxel)
+			## ROOF RF-2 (Director, 2026-10-14): a roof voxel puffs no smoke, throws no debris (nor seeds a plume): born at the roof's height, its puffs rose OVER
+			## the roof as dark discs. What a roof's hole shows is its rubble and the rim's dust (`Room.spawn_blast_roof_rubble`).
+			var roof_quiet: bool = container is Slab and (container as Slab).role == Slab.Role.CEILING
 			if state == Voxel.DamageState.DESTROYED:
 				touched_this_blast[key] = true
 				touched_voxels.append(voxel)
 				_count(census, "destroy", container, true)
-				_append_voxel_smoke(waves["smoke"], smoked_gus, voxel, ring,
-					smoke_weights, DESTROY_SMOKE_INTENSITY, voxel_board, epicenter,
-					_material_name(container), s["plume_gus"])
+				if not roof_quiet:
+					_append_voxel_smoke(waves["smoke"], smoked_gus, voxel, ring,
+						smoke_weights, DESTROY_SMOKE_INTENSITY, voxel_board, epicenter,
+						_material_name(container), s["plume_gus"])
 				_append(waves["destroy"], ring, {"cell": voxel.grid_pos, "level": voxel.level,
 					"r": _radius_of(voxel.grid_pos, epicenter)})
-				_append_voxel_debris(waves["debris"], voxel, ring, _material_name(container),
-					s["debris_policy"], voxel_board, epicenter)
+				if not roof_quiet:
+					_append_voxel_debris(waves["debris"], voxel, ring, _material_name(container),
+						s["debris_policy"], voxel_board, epicenter)
 			elif state == Voxel.DamageState.DENTED or state == Voxel.DamageState.CRACKED:
 				## RF-S: a few marked wall voxels trickle sand like a bullet hole (hashed pick, B4; capped).
 				if container is Slice and RubblePresetsRef.BLAST_TRICKLE_MATERIALS.has(container.material) \
@@ -2064,10 +2126,11 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 							"delay": float((th >> 10) % 1000) / 1000.0 * RubblePresetsRef.BLAST_TRICKLE_SPREAD_S})
 				touched_this_blast[key] = true
 				touched_voxels.append(voxel)
-				_append_voxel_smoke(waves["smoke"], smoked_gus, voxel, ring, smoke_weights,
-					DENT_SMOKE_INTENSITY if state == Voxel.DamageState.DENTED
-						else CRACK_SMOKE_INTENSITY,
-					voxel_board, epicenter, _material_name(container), s["plume_gus"])
+				if not roof_quiet:
+					_append_voxel_smoke(waves["smoke"], smoked_gus, voxel, ring, smoke_weights,
+						DENT_SMOKE_INTENSITY if state == Voxel.DamageState.DENTED
+							else CRACK_SMOKE_INTENSITY,
+						voxel_board, epicenter, _material_name(container), s["plume_gus"])
 				## The resolver takes a whole Voxel and reads five damage fields off
 				## it, so it is handed the Delta's PROJECTED copy. The real Voxel is
 				## what goes into `touched_voxels`, because that list is the commit's

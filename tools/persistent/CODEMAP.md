@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 88374 lines total** (under `godot/scripts/`)
+**295 scripts · 88714 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3392 lines
+extends `Node3D` · 3414 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -902,7 +902,7 @@ extends `Node3D` · 3392 lines
 
 ### `prop_fragment_sim.gd`
 
-`class_name PropFragmentSim` · extends `RefCounted` · 443 lines
+`class_name PropFragmentSim` · extends `RefCounted` · 448 lines
 
 `godot/scripts/geometry/prop_fragment_sim.gd`
 
@@ -1528,7 +1528,7 @@ extends `Node2D` · 255 lines
 
 ### `ember_overlay.gd`
 
-`class_name EmberOverlay` · extends `Node2D` · 399 lines
+`class_name EmberOverlay` · extends `Node2D` · 414 lines
 
 `godot/scripts/overlays/ember_overlay.gd`
 
@@ -1999,7 +1999,7 @@ extends `Node2D` · 115 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 370 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 387 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 
@@ -2371,7 +2371,7 @@ extends `RefCounted` · 37 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 3371 lines
+`class_name DetonationPlanBuilder` · 3434 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2592,7 +2592,7 @@ extends `RefCounted` · 37 lines
 
 ### `rubble_presets.gd`
 
-`class_name RubblePresets` · extends `RefCounted` · 172 lines
+`class_name RubblePresets` · extends `RefCounted` · 211 lines
 
 `godot/scripts/systems/destruction/rubble_presets.gd`
 
@@ -3298,7 +3298,7 @@ extends `Node` · 236 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 444 lines
+`class_name WorldDelta` · extends `RefCounted` · 449 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -3329,6 +3329,7 @@ extends `Node` · 236 lines
 - `var blast_impacts: Array = []`
 - `var blast_breaches: Array = []`
 - `var blast_trickles: Array = []`
+- `var blast_roof_rubble: Array = []`
 - `var blast_source_gu: Vector2i = Vector2i.ZERO`
 - `var burnt_cells: Dictionary = {}`
 - `var light_field = null`
@@ -5870,7 +5871,7 @@ extends `Node` · 252 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1895 lines
+`class_name TestZoneController` · 1892 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -6153,7 +6154,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10830 lines
+extends `Node2D` · 11007 lines
 
 `godot/scripts/world/room.gd`
 

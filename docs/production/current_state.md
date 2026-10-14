@@ -8,6 +8,20 @@
 
 ---
 
+## Where the project stands — 2026-10-14 (RF-2: a blast under an opaque roof opens a hole and drops its rubble)
+
+- **A grenade under a roof now opens a hole over itself** through both layers, with an irregular outline (lobes hashed per blast) and a
+  ragged edge; the hole's voxels fall as 2x2x2 chunks, whole voxels and a few crumbling blocks, sooted, a few blown onto the roof beside
+  the hole, the rest vanishes; dust trickles from the rim while it falls; the roof's top layer is barely sooted. Concrete judged by the
+  Director on ROOF_LAB room B (front walls removed, roof 4x4, take `roof_blast`); the other materials are built, not yet watched.
+- **No artificial lightening in a blast** (Director): a blast's hole and blocks keep the material's own shade; only the shot is "fresh".
+- **2D leftovers fixed:** a blast's embers / sparks / dust were placed by a 2D pixel distance that is ~2.2 GU on the 3D board (above any
+  roof): now anchored at the grenade in 3D, for every blast; smoke and embers stop under a roof; the **shrapnel is no longer thrown**
+  (it flew through roofs; its overlay is still built, never spawned: the Director decides whether to delete it).
+- **Not measured:** the Moto cost of a roof blast (584 pieces + 48 trickles on the concrete bench).
+- Records: `ROOF_MASTER_PLAN` v0.21, `docs/ARCHITECTURE.md` §0.4, `PROMPTS/RESUMO_SESSAO_2026-10-14_ROOF_RF2.md`.
+- **Next (Director):** the other roof materials on the same bench, then the roof shot (step 5).
+
 ## Where the project stands — 2026-10-13 (RF-S in explosions: a seasoning of the shot per material; doors in hole-only walls)
 
 - **A blast now speaks the shot's visual language** (Director: "uma temperada do tiro no anel de dentro"): simulated shotgun pellets from
@@ -512,6 +526,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-12_RF_S.md
 - RESUMO_SESSAO_2026-10-12_RF_S_MATERIALS.md
 - RESUMO_SESSAO_2026-10-12_ROOF_RF1.md
+- RESUMO_SESSAO_2026-10-13_RF_S_EXPLOSIONS.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

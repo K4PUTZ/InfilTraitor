@@ -233,6 +233,9 @@ var blast_impacts: Array = []
 var blast_breaches: Array = []
 ## ... and the marked wall voxels that trickle sand like a bullet hole: {grid_pos, level, material, carved_side, delay (s)}.
 var blast_trickles: Array = []
+## ROOF RF-2 (Director, 2026-10-13/14): the roof voxels a blast DESTROYS (`DetonationPlanBuilder._phase_roofs`, the hole over the epicentre),
+## {grid_pos, level, material}: chunks, whole voxels and a few crumbling blocks falling from the hole (`Room.spawn_blast_roof_rubble`).
+var blast_roof_rubble: Array = []
 var blast_source_gu: Vector2i = Vector2i.ZERO
 
 ## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — WHICH VOXELS THE FIRE ATE.
@@ -413,6 +416,8 @@ func commit(room = null, defer_rain: bool = false) -> void:
 			room.spawn_blast_rubble(blast_rubble, blast_epicentre)
 		if not blast_breaches.is_empty() and room.has_method("spawn_blast_breaches"):
 			room.spawn_blast_breaches(blast_breaches)
+		if not blast_roof_rubble.is_empty() and room.has_method("spawn_blast_roof_rubble"):
+			room.spawn_blast_roof_rubble(blast_roof_rubble, blast_epicentre)
 		t = _split("blast rubble", t)
 		if not blast_trickles.is_empty() and room.has_method("season_blast_trickles"):
 			room.season_blast_trickles(blast_trickles)

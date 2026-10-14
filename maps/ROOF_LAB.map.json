@@ -4,7 +4,7 @@
  "id": "ROOF_LAB",
  "meta": {
   "title": "Roof Lab",
-  "description": "ROOF_MASTER_PLAN RF-1 step 1 fixture (2026-10-11). Two 3x3 rooms of 2-storey concrete block rings, each with a door on its south side and its own lamp inside: room A (interior gu 5..9 x 4..8) under a CONCRETE roof with a 3x3 GLASS SKYLIGHT in its centre (gu 6..8 x 5..7; R-D5: the glass in the roof's lower layer, the upper layer empty), room B (interior gu 15..17 x 6..8) under a CONCRETE roof (the stages after glass; since 2026-10-14 only its two back walls x 14 / y 5 stand and its roof is 4x4, gu 15..18 x 6..9, so a blast's hole above and the rubble below are both in view: take `roof_blast`). A larger lamp outside stands for the hall / outdoor light above the roofs (R-D1). The agent starts outside, south of the rooms, so the roofs stay drawn. Dev fixture, not a level. The agent starts INSIDE room A (the reveal opens its roof) so the floor's light under the skylight can be judged."
+  "description": "ROOF_MASTER_PLAN RF-1 step 1 fixture (2026-10-11). Two 3x3 rooms of 2-storey concrete block rings, each with a door on its south side and its own lamp inside: room A (interior gu 5..9 x 4..8) under a CONCRETE roof with a 3x3 GLASS SKYLIGHT in its centre (gu 6..8 x 5..7; R-D5: the glass in the roof's lower layer, the upper layer empty), room B (interior gu 15..17 x 6..8) under a CONCRETE roof (the stages after glass; since 2026-10-14 only its two back walls x 14 / y 5 stand and its roof is 4x4, gu 15..18 x 6..9, so a blast's hole above and the rubble below are both in view: take `roof_blast`). A larger lamp outside stands for the hall / outdoor light above the roofs (R-D1). The agent starts outside, south of the rooms, so the roofs stay drawn. Dev fixture, not a level. The agent starts INSIDE room A (the reveal opens its roof) so the floor's light under the skylight can be judged. Since 2026-10-14 room A follows room B's model: its front walls (x 10, y 9) are gone, its roof is 6x6 (gu 5..10 x 4..9) with a 4x4 skylight (gu 6..9 x 5..8)."
  },
  "sections": {
   "board": {
@@ -19,8 +19,8 @@
   "actors": {
    "v": 1,
    "agent_start": [
-    5,
-    8
+    6,
+    12
    ],
    "guards": []
   },
@@ -135,19 +135,6 @@
      ]
     },
     {
-     "comment": "ring 4,9",
-     "gu": [
-      4,
-      9
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
      "comment": "ring 5,3",
      "gu": [
       5,
@@ -161,36 +148,10 @@
      ]
     },
     {
-     "comment": "ring 5,9",
-     "gu": [
-      5,
-      9
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
      "comment": "ring 6,3",
      "gu": [
       6,
       3
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 6,9",
-     "gu": [
-      6,
-      9
      ],
      "material": "concrete",
      "storeys": 2,
@@ -226,127 +187,10 @@
      ]
     },
     {
-     "comment": "ring 8,9",
-     "gu": [
-      8,
-      9
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
      "comment": "ring 9,3",
      "gu": [
       9,
       3
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 9,9",
-     "gu": [
-      9,
-      9
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 10,3",
-     "gu": [
-      10,
-      3
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 10,4",
-     "gu": [
-      10,
-      4
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 10,5",
-     "gu": [
-      10,
-      5
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 10,6",
-     "gu": [
-      10,
-      6
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 10,7",
-     "gu": [
-      10,
-      7
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 10,8",
-     "gu": [
-      10,
-      8
-     ],
-     "material": "concrete",
-     "storeys": 2,
-     "size": [
-      1,
-      1
-     ]
-    },
-    {
-     "comment": "ring 10,9",
-     "gu": [
-      10,
-      9
      ],
      "material": "concrete",
      "storeys": 2,
@@ -501,14 +345,14 @@
    "v": 1,
    "items": [
     {
-     "comment": "room A: a concrete roof with a 3x3 glass skylight in its centre (RF-1, R-D5)",
+     "comment": "room A: a 6x6 concrete roof with a 4x4 glass skylight in its centre (RF-1, R-D5); since 2026-10-14 only its back walls x 4 / y 3 stand, like room B",
      "gu": [
       5,
       4
      ],
      "size": [
-      5,
-      5
+      6,
+      6
      ],
      "storeys": 2,
      "material": "concrete",
@@ -519,8 +363,8 @@
        5
       ],
       "size": [
-       3,
-       3
+       4,
+       4
       ],
       "material": "glass"
      }
@@ -547,13 +391,13 @@
     {
      "id": "glass_roof",
      "at": [
-      7.5,
-      6.5,
+      8.0,
+      7.0,
       2.0
      ],
      "extent": [
-      5.0,
-      5.0,
+      6.0,
+      6.0,
       0.5
      ],
      "tags": [
@@ -582,8 +426,8 @@
     {
      "id": "room_a_inside",
      "at": [
-      7.5,
-      6.5
+      8.0,
+      7.0
      ],
      "tags": [
       "event"
@@ -612,13 +456,13 @@
     {
      "id": "skylight",
      "at": [
-      7.5,
-      6.5,
+      8.0,
+      7.0,
       2.0
      ],
      "extent": [
-      3.0,
-      3.0,
+      4.0,
+      4.0,
       0.25
      ],
      "tags": [
@@ -631,7 +475,7 @@
      "id": "room_a_far",
      "at": [
       8.5,
-      4.5
+      7.5
      ],
      "tags": [
       "event"

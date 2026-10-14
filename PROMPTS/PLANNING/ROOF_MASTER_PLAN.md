@@ -115,6 +115,11 @@ What a BLAST does to each opaque roof is built (v0.22, `RubblePresets.ROOF_*_OF`
 8. **Q6 — the gameplay side of the light:** detection does not consume light yet (`LIGHT_MASTER_PLAN` status). This plan changes the VISUAL light; the tactical effect waits on that link. Confirm it stays visual here.
 
 ## 5. Records
+- 2026-10-14 — **ROOF_LAB room A reformed on room B's model** (Director: "o telhado do vidro está muito pequeno"): its front walls (x 10, y 9) are
+  gone, the roof is 6x6 (gu 5..10 x 4..9) with a 4x4 glass skylight (gu 6..9 x 5..8), the agent starts OUTSIDE (6, 12: inside, the reveal ghosted
+  the whole roof) and `room_a_far` aims under the skylight (8.5, 7.5; at its old 8.5, 4.5 the grenade went off under the concrete frame and the glass
+  stood). Re-checked after RF-2: the skylight bursts whole, its voxels fly up and shatter on the floor, rim shards stay on the frame, the frame
+  stands; the RF-2 support pass skips panes (`GlassSupport` keeps them: "every pane voxel stands").
 - 2026-10-14 v0.25 — **The after-fire soot softened** (Director: "muito forte e muito viva, parece um animal se movimentando"): `Room.char_after_fire`
   walks each cell down a LADDER of soot tones over `CHAR_FADE_S` 1.4 s (from tone 3) as its ember fades, instead of jumping to black; a SOFT
   material's cell (cardboard, fabric: `_mark_charred` flags `soft`) ends at a feathered soot tone, not CHAR: 7+ burnt neighbours of 8 -> tone 0,

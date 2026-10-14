@@ -2417,7 +2417,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_base_prop_piles.clear()        ## P2: nor any pile of charred fragments
 	_base_rubble_piles.clear()      ## R-D9: nor any rubble a shot left
 	_quiet_destroy.clear()          ## ROOF RF-2: nor a roof voxel waiting to skip its puff
-	_roof_fire_pending.clear()      ## ROOF RF-2: nor a roof fire still creeping
+	_fire_char_pending.clear()      ## ROOF RF-2: nor a roof fire still creeping
 	_pending_prop_breaks.clear()
 	_base_remnants.clear()      ## G4: and none is stuck to a frame
 	_base_rim_shards.clear()    ## CRACK-06: nor clinging to a torn glass edge
@@ -5984,6 +5984,18 @@ func spawn_blast_roof_rubble(cells: Array, epicentre: Vector2) -> int:
 		var gp: Vector2i = c["grid_pos"]
 		destroyed[Vector3i(gp.x, gp.y, int(c["level"]))] = c
 		_quiet_destroy[Vector3i(gp.x, gp.y, int(c["level"]))] = true
+	## A piece of roof that lost its support (`island`) falls whole, apart from the hole's own pieces.
+	var island: Array = []
+	for c: Dictionary in cells:
+		if bool(c.get("island", false)):
+			var gp: Vector2i = c["grid_pos"]
+			island.append(Vector3i(gp.x, int(c["level"]) - ground, gp.y))
+	if island.size() > RubblePresetsRef.ROOF_MAX_ISLAND:
+		var thinned: Array = []
+		var stride: float = float(island.size()) / float(RubblePresetsRef.ROOF_MAX_ISLAND)
+		for n in range(RubblePresetsRef.ROOF_MAX_ISLAND):
+			thinned.append(island[int(float(n) * stride)])
+		island = thinned
 	var ups: Array = []      ## whole voxels blown up onto the roof
 	var chunks: Array = []   ## Vector3i chunk cell (x / 2, y / 2, level / 2 above the ground)
 	var voxels: Array = []
@@ -5992,6 +6004,8 @@ func spawn_blast_roof_rubble(cells: Array, epicentre: Vector2) -> int:
 	var hash01 := func(tag: String, k: Vector3i) -> float:
 		return float(FacadeSampler._fnv1a_hash("ROOFPIECE|%s|%d,%d,%d" % [tag, k.x, k.y, k.z]) % 1000) / 1000.0
 	for k: Vector3i in destroyed:
+		if bool((destroyed[k] as Dictionary).get("island", false)):
+			continue
 		if posmod(k.x, 2) != 0 or posmod(k.y, 2) != 0 or posmod(k.z - ground, 2) != 0 or chunks.size() >= max_chunks:
 			continue
 		var whole: bool = true
@@ -6003,7 +6017,7 @@ func spawn_blast_roof_rubble(cells: Array, epicentre: Vector2) -> int:
 		for d: Vector3i in [Vector3i.ZERO, Vector3i(1, 0, 0), Vector3i(0, 1, 0), Vector3i(1, 1, 0), Vector3i(0, 0, 1), Vector3i(1, 0, 1), Vector3i(0, 1, 1), Vector3i(1, 1, 1)]:
 			taken[k + d] = true
 	for k: Vector3i in destroyed:
-		if taken.has(k):
+		if taken.has(k) or bool((destroyed[k] as Dictionary).get("island", false)):
 			continue
 		var roll: float = hash01.call("voxel", k)
 		if roll < voxel_share and float(hash01.call("up", k)) < up_share and ups.size() < max_up:
@@ -6024,6 +6038,7 @@ func spawn_blast_roof_rubble(cells: Array, epicentre: Vector2) -> int:
 		RubblePresetsRef.ROOF_UP_PUSH_OF.get(material, RubblePresetsRef.ROOF_UP_PUSH))
 	if not subs.is_empty():
 		total += spawn_shot_rubble(subs, Vector3.DOWN, seed)
+	total += _spawn_roof_pieces(island, 1, material, epicentre, RubblePresetsRef.ROOF_WEIGHT_ISLAND, seed + "|island", RubblePresetsRef.ROOF_ISLAND_PUSH)
 	var rim_bits: int = 0
 	if RubblePresetsRef.ROOF_RIM_BITS_OF.has(material):
 		rim_bits = _roof_rim_bits(destroyed, material, seed, RubblePresetsRef.ROOF_RIM_BITS_SOOT_OF.get(material, soot_range))
@@ -6031,9 +6046,9 @@ func spawn_blast_roof_rubble(cells: Array, epicentre: Vector2) -> int:
 	if not RubblePresetsRef.NO_DUST.has(material):
 		trickles = _roof_rim_trickles(destroyed, material, seed,
 			int(RubblePresetsRef.ROOF_RIM_TRICKLES_OF.get(material, RubblePresetsRef.ROOF_RIM_TRICKLES)),
-			RubblePresetsRef.ROOF_RIM_DELAY_OF.get(material, RubblePresetsRef.ROOF_RIM_DELAY))
-	print_debug("[BLAST-RUBBLE] roof %s: %d destroyed voxel(s) -> %d chunk(s), %d voxel(s), %d up, %d crumbling block(s); %d piece(s), %d rim bit(s), %d rim trickle(s)"
-		% [material, cells.size(), chunks.size(), voxels.size(), ups.size(), subs.size(), total, rim_bits, trickles])
+			RubblePresetsRef.ROOF_RIM_DELAY_OF.get(material, RubblePresetsRef.ROOF_RIM_DELAY), int(RubblePresetsRef.ROOF_DUST_REACH_OF.get(material, 1)))
+	print_debug("[BLAST-RUBBLE] roof %s: %d destroyed voxel(s) -> %d chunk(s), %d voxel(s), %d up, %d crumbling block(s), %d unsupported falling whole; %d piece(s), %d rim bit(s), %d rim trickle(s)"
+		% [material, cells.size(), chunks.size(), voxels.size(), ups.size(), subs.size(), island.size(), total, rim_bits, trickles])
 	return total
 
 
@@ -6091,7 +6106,8 @@ func _spawn_roof_pieces(lattice: Array, size: int, material: String, epicentre: 
 ## Dust trickling from the hole's rim while the mass comes down: the standing voxels of the roof's LOWER layer beside a destroyed one, up to
 ## `limit` (`RubblePresets.ROOF_RIM_TRICKLES`, per material) in hashed order, each after its own delay in `span` (`ROOF_RIM_DELAY`, per material).
 ## The bullet hole's trickle, from the underside.
-func _roof_rim_trickles(destroyed: Dictionary, material: String, seed: String, limit: int, span: Vector2) -> int:
+## `reach` > 1 (stone's shower): the standing lower-layer voxels up to `reach` voxels from the hole shed dust too, not only the rim.
+func _roof_rim_trickles(destroyed: Dictionary, material: String, seed: String, limit: int, span: Vector2, reach: int = 1) -> int:
 	var store: VoxelStore = VoxelStore.active
 	if store == null or destroyed.is_empty():
 		return 0
@@ -6106,6 +6122,18 @@ func _roof_rim_trickles(destroyed: Dictionary, material: String, seed: String, l
 			var n: Vector3i = k + d
 			if store.has_cell(n.x, n.y, n.z):
 				rim[n] = FacadeSampler._fnv1a_hash("ROOFRIM|%s|%d,%d" % [seed, n.x, n.y])
+	## The shower: ring by ring outward from the rim, over standing voxels of the same layer.
+	var frontier: Array = rim.keys()
+	for _ring in range(reach - 1):
+		var next: Array = []
+		for k: Vector3i in frontier:
+			for d: Vector3i in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]:
+				var n: Vector3i = k + d
+				if rim.has(n) or destroyed.has(n) or not store.has_cell(n.x, n.y, n.z):
+					continue
+				rim[n] = FacadeSampler._fnv1a_hash("ROOFRIM|%s|%d,%d" % [seed, n.x, n.y])
+				next.append(n)
+		frontier = next
 	var picked: Array = rim.keys()
 	picked.sort_custom(func(a: Vector3i, b: Vector3i) -> bool: return int(rim[a]) < int(rim[b]))
 	picked = picked.slice(0, limit)
@@ -6170,24 +6198,24 @@ func _roof_rim_bits(destroyed: Dictionary, material: String, seed: String, soot_
 	return staying.size()
 
 
-## ROOF RF-2 (Director, 2026-10-14): the fire creeping across a cardboard / fabric roof (`WorldDelta.roof_fire`, {grid_pos, level, at}) chars each
+## ROOF RF-2 (Director, 2026-10-14): the fire creeping across a cardboard / fabric roof (`WorldDelta.fire_char`, {grid_pos, level, at}) chars each
 ## voxel when the front reaches it, `at` seconds after the commit, through the soot map (`stamp_soot`: the one truth, saved and restored like any
-## stamp), a frame's worth at a time. Still pending when a save or a new map comes: `_finish_roof_fire()` stamps the rest at once / drops it.
-var _roof_fire_pending: Dictionary = {}   ## id -> {"cells": Array sorted by `at`, "next": int (the first not charred yet)}
-var _roof_fire_ids: int = 0
+## stamp), a frame's worth at a time. Still pending when a save or a new map comes: `_finish_fire_char()` stamps the rest at once / drops it.
+var _fire_char_pending: Dictionary = {}   ## id -> {"cells": Array sorted by `at`, "next": int (the first not charred yet)}
+var _fire_char_ids: int = 0
 
 
-func spread_roof_fire(cells: Array) -> void:
+func char_after_fire(cells: Array) -> void:
 	var sorted: Array = cells.duplicate()
 	sorted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
-	_roof_fire_ids += 1
-	var id: int = _roof_fire_ids
+	_fire_char_ids += 1
+	var id: int = _fire_char_ids
 	var fire: Dictionary = {"cells": sorted, "next": 0}
-	_roof_fire_pending[id] = fire
+	_fire_char_pending[id] = fire
 	var elapsed: float = 0.0
-	while _roof_fire_pending.has(id):
+	while _fire_char_pending.has(id):
 		await get_tree().process_frame
-		if not is_instance_valid(_voxel_board) or not _roof_fire_pending.has(id):
+		if not is_instance_valid(_voxel_board) or not _fire_char_pending.has(id):
 			return   ## a new map, or a save already charred the rest
 		elapsed += get_process_delta_time()
 		var start: int = int(fire["next"])
@@ -6198,7 +6226,7 @@ func spread_roof_fire(cells: Array) -> void:
 			_char_roof_cells(sorted.slice(start, end))
 			fire["next"] = end
 		if end >= sorted.size():
-			_roof_fire_pending.erase(id)
+			_fire_char_pending.erase(id)
 
 
 func _char_roof_cells(cells: Array) -> void:
@@ -6212,11 +6240,11 @@ func _char_roof_cells(cells: Array) -> void:
 
 
 ## A save is about to read the soot: the fire's remaining cells are charred now, so the save holds the roof as it will end.
-func _finish_roof_fire() -> void:
-	for id: int in _roof_fire_pending:
-		var fire: Dictionary = _roof_fire_pending[id]
+func _finish_fire_char() -> void:
+	for id: int in _fire_char_pending:
+		var fire: Dictionary = _fire_char_pending[id]
 		_char_roof_cells((fire["cells"] as Array).slice(int(fire["next"])))
-	_roof_fire_pending.clear()
+	_fire_char_pending.clear()
 
 
 ## A landed chunk's record as the board voxels it covers (a pile is saved at one division: whole voxels).

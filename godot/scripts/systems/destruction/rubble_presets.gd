@@ -90,8 +90,8 @@ static var BLAST_MAX_IMPACTS: int = 40
 ## GU) of the epicentre's centre is destroyed through every layer, the edge ragged by `BLAST_ROOF_HOLE_RAGGED` (a hashed share of a voxel per
 ## column); outside it the ring's scattered DESTROYED rolls become dents (marks and dust, no pinholes). Lighter materials open wider.
 static var BLAST_ROOF_HOLE_RADIUS: float = 6.0
-## Stone 5 -> 4 (Director, 2026-10-14: stone is barely affected).
-static var BLAST_ROOF_HOLE_RADIUS_OF: Dictionary = {"stone": 4.0, "wood": 8.0, "plywood": 10.0, "cardboard": 11.0, "fabric": 11.0}
+## Stone 5 -> 4 -> 3.2 (Director, 2026-10-14: stone is barely affected, and should differ more from concrete).
+static var BLAST_ROOF_HOLE_RADIUS_OF: Dictionary = {"stone": 3.2, "wood": 8.0, "plywood": 10.0, "cardboard": 11.0, "fabric": 11.0}
 static var BLAST_ROOF_HOLE_RAGGED: float = 1.8
 ## The outline is not a circle (Director, 2026-10-14: "não tão circular, com mais irregularidades"): the radius swings with the angle around the
 ## epicentre, a sum of lobes [harmonic, share of the radius] with phases hashed per blast, so every hole has its own shape.
@@ -136,11 +136,11 @@ static var ROOF_RIM_DELAY: Vector2 = Vector2(0.1, 1.1)
 ## Cardboard, fabric and plywood roofs are ONE layer (`RoomBuilder`), so they never make a 2x2x2 chunk anyway. Fabric keeps the defaults
 ## until its sag is designed (Q5).
 static var ROOF_CHUNK_SHARE_OF: Dictionary = {"stone": 0.8, "wood": 0.0, "plywood": 0.0, "cardboard": 0.0}
-static var ROOF_MAX_CHUNKS_OF: Dictionary = {"stone": 10}
+static var ROOF_MAX_CHUNKS_OF: Dictionary = {"stone": 5}
 static var ROOF_VOXEL_SHARE_OF: Dictionary = {"stone": 0.25, "wood": 0.12, "plywood": 0.35, "cardboard": 0.45}
-static var ROOF_MAX_VOXELS_OF: Dictionary = {"stone": 30, "wood": 30, "plywood": 120, "cardboard": 120}
+static var ROOF_MAX_VOXELS_OF: Dictionary = {"stone": 12, "wood": 30, "plywood": 120, "cardboard": 120}
 static var ROOF_SUB_SHARE_OF: Dictionary = {"stone": 0.06, "wood": 0.3, "plywood": 0.15, "cardboard": 0.0}
-static var ROOF_MAX_SUBS_OF: Dictionary = {"stone": 4, "wood": 20, "plywood": 16}
+static var ROOF_MAX_SUBS_OF: Dictionary = {"stone": 2, "wood": 20, "plywood": 16}
 static var ROOF_UP_SHARE_OF: Dictionary = {"stone": 0.0, "cardboard": 0.35}
 static var ROOF_MAX_UP_OF: Dictionary = {"cardboard": 30}
 ## A light piece's kick upward is smaller, or it would rise metres under its low gravity.
@@ -148,8 +148,11 @@ static var ROOF_UP_PUSH_OF: Dictionary = {"cardboard": Vector2(0.7, 2.2)}
 static var ROOF_SOOT_OF: Dictionary = {"plywood": Vector2(0.3, 0.75)}
 ## Stone sheds a lot of dust from under its rim (Director, 2026-10-14: "deixar cair bastante pozinho por baixo"): every rim voxel of its small
 ## hole trickles, the starts spread over a longer window (`ROOF_RIM_DELAY_OF`) so the dust keeps falling after the rubble has landed.
-static var ROOF_RIM_TRICKLES_OF: Dictionary = {"stone": 96, "wood": 16, "plywood": 16}
+static var ROOF_RIM_TRICKLES_OF: Dictionary = {"stone": 120, "wood": 16, "plywood": 16}
 static var ROOF_RIM_DELAY_OF: Dictionary = {"stone": Vector2(0.1, 2.6)}
+## ... and not only from the rim (Director, 2026-10-14: "um chuveirinho de pó junto com os cubos que caem"): the lower layer's voxels up to this
+## many voxels from the hole shed dust too, so a shower falls around the opening while the cubes come down. 1 = the rim only.
+static var ROOF_DUST_REACH_OF: Dictionary = {"stone": 4}
 ## How a piece falls, per material: {gravity (x GRAVITY), fall_max (GU/s), sway (GU/s), max_time (s)} (`PropFragmentSim`).
 static var ROOF_FALL_OF: Dictionary = {"cardboard": {"gravity": 0.35, "fall_max": 0.9, "sway": 1.5, "max_time": 4.0}}
 ## The ragged RIM (`Room._roof_rim_bits`; Director, 2026-10-14): of each destroyed voxel beside a standing one, the sub-voxel cubes on the face
@@ -163,6 +166,11 @@ static var ROOF_RIM_BITS_OF: Dictionary = {
 static var ROOF_RIM_BITS_SOOT_OF: Dictionary = {"wood": Vector2(0.22, 0.45)}
 static var ROOF_RIM_BITS_TEXTURED: Array[String] = ["plywood", "concrete", "brick", "stone"]
 static var ROOF_RIM_BITS_MAX: int = 320
+## A piece of roof the hole left with no support (`DetonationPlanBuilder._roof_islands`) falls WHOLE, voxel by voxel, barely pushed: at most
+## `ROOF_MAX_ISLAND` voxels (thinned evenly past it), `ROOF_ISLAND_PUSH` [out, up] GU/s at `ROOF_WEIGHT_ISLAND`.
+static var ROOF_MAX_ISLAND: int = 800
+static var ROOF_ISLAND_PUSH: Vector2 = Vector2(0.2, 0.0)
+static var ROOF_WEIGHT_ISLAND: float = 0.3
 ## The roof's FIRE (Director, 2026-10-14: cardboard "queimasse mais tempo e mais longe, e pode deixar com bastante fuligem, porque nesse caso o
 ## fogo efetivamente chegou na face superior"; fabric the same). On a roof of these materials the fire does not stop at the hole's burning edge:
 ## it creeps OUTWARD across the roof up to `ROOF_FIRE_SPREAD_OF` voxels, one ring every `ROOF_FIRE_STEP_S`; ring k catches at `ROOF_FIRE_CHANCE`^k

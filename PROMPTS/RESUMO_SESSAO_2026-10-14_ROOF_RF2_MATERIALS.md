@@ -44,9 +44,14 @@ embers now sit on the top face, `EmberOverlay.top_face_anchor`); charring the ba
 stamped over time, `Room.spread_roof_fire`, and a save chars the rest first). Cardboard's missing rim dust was the ember wave consuming its lit
 rim. `verify.py` smoke PASSED (102 s). Clips: `videos/roof_materials/clip_{cardboard,fabric,stone}.mp4`.
 
-## 6. NEXT
+## 6. Second review (v0.24)
+Stone smaller (10 x 8, fewer pieces) with a dust shower around the opening (120 trickles); the char of every burning material comes AFTER its
+flames (`WorldDelta.fire_char`, `Room.char_after_fire`, lag 1.6 s x flammability); a roof piece the hole cut off from every support falls whole
+(`DetonationPlanBuilder._roof_islands`: cardboard's front tip, 55 voxels). Clips: `videos/roof_materials/clip_{cardboard,stone}_v4.mp4`.
+
+## 7. NEXT
 1. The Director judges the v0.23 round (the clips above): is stone's dust enough from this camera, do the rim crumbs read as crumbs.
-2. The roof's support / collapse: a wide hole (cardboard r 11) leaves an ISLAND of roof floating over it.
+2. Re-check the GLASS roof (Director). The roof support runs in the blast only (a shot, and a crossfade like the glass collapse, are not built).
 3. Metal (Q5) and fabric's sag; then step 5 (the roof shot).
 4. Owed: the Moto cost of a roof blast per material (wood's splinter blocks hash a string per cube in `splinter_role`, 5 blocks per frame;
    cardboard's 150 gliding pieces run up to 4 s; the creeping fire's 119 embers and a soot upload per frame for 2.1 s); `_movement_edge_set()`

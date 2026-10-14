@@ -65,8 +65,8 @@ static func capture(room) -> Dictionary:
 	if room.has_method("_finish_running_prop_fragments"):
 		room._finish_running_prop_fragments()
 	## ... and a roof fire still creeping (ROOF RF-2) chars the rest of its cells, for the same reason.
-	if room.has_method("_finish_roof_fire"):
-		room._finish_roof_fire()
+	if room.has_method("_finish_fire_char"):
+		room._finish_fire_char()
 	var soot: Array = []
 	var shards: Array = []
 	for key in room._base_shards.keys():

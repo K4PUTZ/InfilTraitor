@@ -1,6 +1,6 @@
 # ROOF MASTER PLAN — destroyed roofs
 
-> **Status: 🟡 v0.23, 2026-10-14 — RF-1 steps 1-4 BUILT; RF-S built and closed for concrete, brick, stone, wood, plywood, cardboard and fabric, for SHOTS (v0.15-v0.19) and EXPLOSIONS (v0.20); RF-2: a blast under an OPAQUE roof opens a hole and drops its rubble, CONCRETE judged (v0.21), and since v0.22 PER MATERIAL (stone heavier, wood / plywood splinters + a splintered rim, cardboard flaps that glide; v0.23: crumbs on the masonry rims, stone's long dust, a fire that creeps across cardboard / fabric roofs and chars them); cardboard, fabric AND PLYWOOD are one layer in roofs and walls (sessions `RESUMO_SESSAO_2026-10-14_ROOF_RF2.md`, `RESUMO_SESSAO_2026-10-14_ROOF_RF2_MATERIALS.md`). NEXT (Director): judge the v0.23 round on ROOF_LAB room B; then the roof's support / collapse (a floating island of roof is left by a wide hole), metal and fabric's sag (Q5), step 5 (the roof shot).**  *"Faltam os telhados destruídos na engine. Vamos colocar
+> **Status: 🟡 v0.24, 2026-10-14 — RF-1 steps 1-4 BUILT; RF-S built and closed for concrete, brick, stone, wood, plywood, cardboard and fabric, for SHOTS (v0.15-v0.19) and EXPLOSIONS (v0.20); RF-2: a blast under an OPAQUE roof opens a hole and drops its rubble, CONCRETE judged (v0.21), and since v0.22 PER MATERIAL (stone heavier, wood / plywood splinters + a splintered rim, cardboard flaps that glide; v0.23: crumbs on the masonry rims, stone's long dust, a fire that creeps across cardboard / fabric roofs and chars them); cardboard, fabric AND PLYWOOD are one layer in roofs and walls (sessions `RESUMO_SESSAO_2026-10-14_ROOF_RF2.md`, `RESUMO_SESSAO_2026-10-14_ROOF_RF2_MATERIALS.md`). v0.24: unsupported roof islands fall, the char follows the fire. NEXT (Director): judge v0.24; re-check the GLASS roof (Director: "rever o telhado de vidro depois"); metal and fabric's sag (Q5), step 5 (the roof shot).**  *"Faltam os telhados destruídos na engine. Vamos colocar
 > eles na frente do modelo, porque acho que é uma das últimas coisas que falta destruir. […] Vamos iniciar os trabalhos pelo telhado
 > de vidro, os demais seguem ele como modelo, adaptando para cada tipo de material com suas características específicas."*
 >
@@ -115,6 +115,16 @@ What a BLAST does to each opaque roof is built (v0.22, `RubblePresets.ROOF_*_OF`
 8. **Q6 — the gameplay side of the light:** detection does not consume light yet (`LIGHT_MASTER_PLAN` status). This plan changes the VISUAL light; the tactical effect waits on that link. Confirm it stays visual here.
 
 ## 5. Records
+- 2026-10-14 v0.24 — **Second review, built.** **Stone** differs more from concrete: hole r 3.2 (10 x 8 voxels, 78 destroyed), at most 5 chunks /
+  12 voxels / 2 crumbling blocks, and a dust SHOWER: the lower layer up to 4 voxels from the hole trickles too (`ROOF_DUST_REACH_OF`), 120 trickles
+  over 2.6 s. **The char follows the fire, for every material that burns** (Director: "o fogo se espalha primeiro, e a fuligem vai alcançando ele
+  conforme se apaga"): `_mark_charred` no longer stamps CHAR in the commit; every ember-lit voxel (edge, climb, a roof's creeping fire) goes on
+  `WorldDelta.fire_char` (renamed from `roof_fire`) at its lighting time + `FIRE_CHAR_LAG_S` 1.6 x flammability, and `Room.char_after_fire` stamps it
+  then (the commit still stamps the ring's tone). **The roof's SUPPORT (RF-0 step 1, for opaque roofs):** `DetonationPlanBuilder._roof_islands`, after
+  the hole: a standing voxel of a reached roof is supported when it touches a standing claim that is not one of them (a wall top, a block, an
+  unreached roof slab) or a supported one; the rest is destroyed with the hole and falls WHOLE (`island`, `ROOF_ISLAND_PUSH` / `ROOF_WEIGHT_ISLAND`,
+  cap 800). Bench: cardboard / fabric 55 voxels (the front tip), concrete 10, wood 8, stone 2. In the blast's commit, not crossfaded after it like
+  the glass collapse; a shot does not run it yet. `verify.py` smoke PASSED (99 s).
 - 2026-10-14 v0.23 — **The Director's review of v0.22 ("tá ficando muito bom"), built.** **Stone's hole** was measured before touching it: the
   `[ROOF-BLAST]` line now prints the hole's span, and stone's is **12 x 10 voxels** (concrete 18 x 14, wood 24 x 18, cardboard / fabric 28 x 23), so
   inside the asked 10-16; the Director kept it ("vamos deixar a pedra assim"). **Stone dust:** every rim voxel trickles (`ROOF_RIM_TRICKLES_OF`

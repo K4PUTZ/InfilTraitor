@@ -1268,7 +1268,66 @@ static func _phase_roofs(s: Dictionary, deadline: int) -> void:
 		var span: Vector2i = hi - lo + Vector2i.ONE if not delta.blast_roof_rubble.is_empty() else Vector2i.ZERO
 		print_debug("[ROOF-BLAST] %d roof slab(s) in reach, %d voxel(s) destroyed, by level %s, the hole spans %d x %d voxels"
 			% [ids.size(), delta.blast_roof_rubble.size(), by_level, span.x, span.y])
+		_roof_islands(s)
 		_enter_phase(s, PHASE_FLOORS)
+
+
+## ROOF RF-2 (Director, 2026-10-14: "condicionar a permanência daquela zona a estar em contato com algum suporte; caso contrário deve despencar
+## também, assim que o contato com a sustentação se rompe, da mesma maneira que fizemos com as paredes de vidro"). After the hole, a standing voxel
+## of a roof this blast reached is SUPPORTED when it touches (six neighbours) a standing claim that is not one of those roof voxels — a wall's top
+## under it, a block, a roof slab the blast did not reach — or touches a supported one. What is left is an ISLAND the hole cut off: destroyed on
+## the Delta with the hole and proposed as falling pieces (`blast_roof_rubble`, `island`: every voxel falls, `Room.spawn_blast_roof_rubble`).
+## A skylight (glass) keeps the glass collapse (`GlassSupport`).
+static func _roof_islands(s: Dictionary) -> void:
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		return
+	var delta: WorldDelta = s["delta"]
+	var slab_registry: SlabRegistry = s["slab_registry"]
+	var remaining: Dictionary = {}   ## Vector3i -> [Voxel, material]
+	for id in s["roof_ids"]:
+		var roof: Slab = slab_registry.get_slab(id)
+		if roof == null or roof.pane_id != "":
+			continue
+		for v in roof.voxels:
+			if delta.state_of(v) != Voxel.DamageState.DESTROYED:
+				remaining[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = [v, roof.material]
+	if remaining.is_empty():
+		return
+	var grid: ClaimGrid = ClaimGrid.of_store(store)
+	var dirs: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
+	var reached: Dictionary = {}
+	var queue: Array = []
+	for key: Vector3i in remaining:
+		for d: Vector3i in dirs:
+			var n: Vector3i = key + d
+			if remaining.has(n):
+				continue
+			var other: Voxel = grid.voxel_at(n)
+			if other != null and delta.state_of(other) != Voxel.DamageState.DESTROYED:
+				reached[key] = true
+				queue.append(key)
+				break
+	var head: int = 0
+	while head < queue.size():
+		var key: Vector3i = queue[head]
+		head += 1
+		for d: Vector3i in dirs:
+			var n: Vector3i = key + d
+			if remaining.has(n) and not reached.has(n):
+				reached[n] = true
+				queue.append(n)
+	var entries: Array = []
+	for key: Vector3i in remaining:
+		if reached.has(key):
+			continue
+		var v: Voxel = remaining[key][0]
+		entries.append(BlastCalculatorClass.damage_entry(v, Voxel.DamageState.DESTROYED, true, Voxel.CarvedSide.BOTTOM))
+		delta.blast_roof_rubble.append({"grid_pos": v.grid_pos, "level": int(v.level), "material": String(remaining[key][1]), "island": true})
+	if entries.is_empty():
+		return
+	delta.add_damage(entries)
+	print_debug("[ROOF-BLAST] %d roof voxel(s) lost every support and fall (of %d standing in reach)" % [entries.size(), remaining.size()])
 
 
 ## D2's floor gate: unlocked from a GU's second blast onward, threaded through
@@ -1794,15 +1853,8 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 		if not holes.is_empty() or s.has("real_destroyed"):
 			s["hole_cells"] = holes
 		s["soot_todo"] = _soot_todo(s)
-		## The charred voxels go in FIRST, and the loop below never overwrites them (`char` is above every tone).
-		var char_codes: Dictionary = s["soot_codes"]
-		var char_writes: Dictionary = (s["delta"] as WorldDelta).scorch_writes
-		print("[E-CHAR] %d voxel(s) marked CHARRED by embers" % (s.get("char_cells", {}) as Dictionary).size())
-		for ckey: Vector3i in s.get("char_cells", {}):
-			char_codes[ckey] = BlastCalculatorClass.FACE_SOOT_CHAR
-			if not char_writes.has(ckey.z):
-				char_writes[ckey.z] = {}
-			(char_writes[ckey.z] as Dictionary)[Vector2i(ckey.x, ckey.y)] = BlastCalculatorClass.FACE_SOOT_CHAR
+		## The voxels embers lit are CHARRED later, as each flame dies (`delta.fire_char`, `_mark_charred`); the commit stamps their ring's tone.
+		print("[E-CHAR] %d voxel(s) to char after their fire" % (s["delta"] as WorldDelta).fire_char.size())
 		if OS.get_environment("INFILTRAITOR_HOLE_EQUIV") == "1":
 			_hole_equiv(s)
 	var todo: Array = s["soot_todo"]
@@ -2689,7 +2741,7 @@ static func _build_ember_wave(s: Dictionary) -> void:
 			if not vis or state == Voxel.DamageState.DESTROYED:
 				continue
 			seen[ncell] = true
-			_mark_charred(s, neighbour)
+			_mark_charred(s, neighbour, EMBER_SEED_STAGGER_S * _hash_unit("EMBERSEED", neighbour.grid_pos, neighbour.level), flammability)
 			_append(waves["ember"], ring, {
 				"cell": neighbour.grid_pos,
 				"level": neighbour.level,
@@ -2724,7 +2776,7 @@ static func _build_ember_wave(s: Dictionary) -> void:
 ## ROOF RF-2 (Director, 2026-10-14): on a roof of a material in `RubblePresets.ROOF_FIRE_SPREAD_OF` (cardboard, fabric) the fire creeps OUTWARD
 ## across the roof from every voxel of it the ember wave lit, ring by ring at the same level (`ROOF_FIRE_*`): ring k catches at
 ## `ROOF_FIRE_CHANCE`^k, hashed per cell (B4: `build_plan()` is pure), and a cell that misses spreads no further. Every voxel it reaches ends
-## CHARRED WHEN THE FRONT GETS THERE (`delta.roof_fire` -> `Room.spread_roof_fire`, at `ROOF_FIRE_STEP_S` per ring), not in the commit (a black
+## CHARRED WHEN THE FRONT GETS THERE (`delta.fire_char` -> `Room.spread_roof_fire`, at `ROOF_FIRE_STEP_S` per ring), not in the commit (a black
 ## band appearing before the fire read wrong); a share wears an ember released at that same moment (`at`) that burns `ROOF_FIRE_LIFE` times
 ## longer. Nothing is consumed: `_maybe_burn()` is not called, so the hole stays the blast's and its burnt edge's.
 static func _spread_roof_fire(s: Dictionary, seen: Dictionary, ember_by_ring: Dictionary) -> void:
@@ -2781,7 +2833,7 @@ static func _spread_roof_fire(s: Dictionary, seen: Dictionary, ember_by_ring: Di
 				if _hash_unit("ROOFFIRE", voxel.grid_pos, voxel.level) > chance:
 					continue
 				var at: float = RubblePresetsRef.ROOF_FIRE_STEP_S * (float(step) - 0.5 + _hash_unit("ROOFFIREDELAY", voxel.grid_pos, voxel.level))
-				delta.roof_fire.append({"grid_pos": voxel.grid_pos, "level": voxel.level, "at": at})
+				_mark_charred(s, voxel, at, flammability * RubblePresetsRef.ROOF_FIRE_LIFE)
 				lit += 1
 				next.append([ncell, int(item[1])])
 				if _hash_unit("ROOFFIREEMBER", voxel.grid_pos, voxel.level) >= RubblePresetsRef.ROOF_FIRE_EMBER_SHARE:
@@ -2805,12 +2857,15 @@ static func _spread_roof_fire(s: Dictionary, seen: Dictionary, ember_by_ring: Di
 			% [step - 1, lit, RubblePresetsRef.ROOF_FIRE_STEP_S * float(step - 1), embers])
 
 
-## R3D-PROPS (2026-09-29, Director): a voxel an ember lights ends CHARRED — the soot map's darkest tone, black. Collected here
-## (the fire phase runs before the soot phase) and stamped by `_phase_soot()`.
-static func _mark_charred(s: Dictionary, voxel: Voxel) -> void:
-	if not s.has("char_cells"):
-		s["char_cells"] = {}
-	(s["char_cells"] as Dictionary)[Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)] = true
+## R3D-PROPS (2026-09-29, Director): a voxel an ember lights ends CHARRED — the soot map's darkest tone, black. Since 2026-10-14 (Director:
+## "o fogo se espalha primeiro, e a fuligem vai alcançando ele conforme se apaga") the black is not stamped in the commit: it is proposed on
+## `delta.fire_char` for `lit_at` + `FIRE_CHAR_LAG_S` x flammability seconds later, as the ember dies (`Room.char_after_fire`).
+static var FIRE_CHAR_LAG_S: float = 1.6
+
+
+static func _mark_charred(s: Dictionary, voxel: Voxel, lit_at: float = 0.0, flammability: float = 1.0) -> void:
+	(s["delta"] as WorldDelta).fire_char.append({"grid_pos": voxel.grid_pos, "level": voxel.level,
+		"at": lit_at + FIRE_CHAR_LAG_S * maxf(flammability, 0.3)})
 
 
 ## E-EMBER-02 (Director, 2026-08-13): *"os voxels também se propagam para cima,
@@ -2858,7 +2913,7 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 		if _hash_unit("EMBERCLIMB", voxel.grid_pos, voxel.level) > chance:
 			return
 		seen[up] = true
-		_mark_charred(s, voxel)
+		_mark_charred(s, voxel, EMBER_CLIMB_DELAY_S * float(step), flammability)
 		var jitter: float = _hash_unit("EMBERDELAY", voxel.grid_pos, voxel.level)
 		_append(ember_by_ring, ring, {
 			"cell": voxel.grid_pos,

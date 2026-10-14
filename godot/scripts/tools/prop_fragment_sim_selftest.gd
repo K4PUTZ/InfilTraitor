@@ -22,6 +22,7 @@ func _init() -> void:
 	_test_walls_hold_fragments()
 	_test_fine_lattice()
 	_test_shot_rubble()
+	_test_glide()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -339,3 +340,61 @@ func _test_shot_rubble() -> void:
 		_pass("shot rubble: a fragment leaves at hold + its release, not before")
 	else:
 		_fail("shot rubble: release ignored (moved: %s, %s)" % [d.pos[0] != p0[0], d.pos[1] != p0[1]])
+
+
+## ROOF RF-2 (Director, 2026-10-14: cardboard's flaps glide down) — `gravity`, `fall_max` and `sway`: a light piece dropped from the same height
+## lands later than a normal one, never falls faster than its terminal speed, drifts sideways while it falls, still lands (within `max_time`),
+## and two runs of one seed agree.
+func _test_glide() -> void:
+	print("[8] a light piece glides down: lower gravity, terminal speed, sway, still lands")
+	var cells: Array = []
+	for i in range(12):
+		cells.append(Vector3i(8 + (i % 4) * 3, 16, 8 + int(i / 4.0) * 3))
+	var make := func(extra: Dictionary) -> PropFragmentSim:
+		var p := {"cells": cells, "origin": Vector3.ZERO, "voxel": 0.125, "blast": Vector2(1.6, 1.6), "weight": 0.8, "seed": "GLIDE",
+			"wave_delay": 0.0, "carve": false, "char": false, "push_speed": 0.6, "push_up": 0.3}
+		p.merge(extra)
+		return PropFragmentSim.new(p)
+	var light := {"gravity": 0.35, "fall_max": 0.9, "sway": 1.5, "max_time": 4.0}
+	var heavy: PropFragmentSim = make.call({})
+	var glide: PropFragmentSim = make.call(light)
+	var fastest: float = 0.0
+	var off_line: int = 0
+	var guard: int = 0
+	while not glide.is_done() and guard < 600:
+		glide.step()
+		for i in range(glide.count):
+			if glide.state[i] == PropFragmentSim.State.FALLING:
+				fastest = maxf(fastest, -glide.vel[i].y)
+		guard += 1
+	var t_glide: float = glide.time
+	var t_heavy: float = _run(heavy)
+	if t_glide > t_heavy * 1.8:
+		_pass("glide: the light pieces take longer to come down (%.2f s vs %.2f s)" % [t_glide, t_heavy])
+	else:
+		_fail("glide: %.2f s vs %.2f s for the normal pieces" % [t_glide, t_heavy])
+	if fastest <= 0.9 + 1.0e-4:
+		_pass("glide: never faster than the terminal speed (%.3f <= 0.9 GU/s)" % fastest)
+	else:
+		_fail("glide: fell at %.3f GU/s, over the terminal 0.9" % fastest)
+	var landed: int = glide.pile_records().size()
+	if landed == cells.size() and t_glide < 4.0:
+		_pass("glide: all %d landed on their own, before max_time (%.2f s)" % [landed, t_glide])
+	else:
+		_fail("glide: %d of %d landed, at %.2f s" % [landed, cells.size(), t_glide])
+	## The same glide without the sway: whatever differs is the sway's alone.
+	var still: PropFragmentSim = make.call({"gravity": 0.35, "fall_max": 0.9, "max_time": 4.0})
+	_run(still)
+	for i in range(glide.count):
+		if Vector2(glide.pos[i].x, glide.pos[i].z).distance_to(Vector2(still.pos[i].x, still.pos[i].z)) > 0.01:
+			off_line += 1
+	if off_line > 0:
+		_pass("glide: the sway moves %d of %d pieces off the line they fall along without it" % [off_line, cells.size()])
+	else:
+		_fail("glide: the sway moved nothing sideways")
+	var again: PropFragmentSim = make.call(light)
+	_run(again)
+	if again.pile_records() == glide.pile_records():
+		_pass("glide: same seed, same pile")
+	else:
+		_fail("glide: two runs of one seed differ")

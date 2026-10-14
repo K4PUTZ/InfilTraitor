@@ -45,7 +45,12 @@ const P_UP: int = 7
 const P_SX: int = 8
 const P_SY: int = 9
 const P_SZ: int = 10
+const P_SWAY: int = 11
+const P_SWAY_RATE: int = 12
+const P_SWAY_AXIS: int = 13
 const P_SLUMP: int = 100
+## ROOF RF-2 (Director, 2026-10-14: cardboard's flaps "caem devagar, planando"): radians per second of a gliding fragment's sway, ± a hashed share.
+static var SWAY_RATE: float = 5.0
 
 enum State { FALLING, SLIDING, LANDED, GONE }
 
@@ -85,6 +90,10 @@ var _acc: float = 0.0
 var _done: bool = false
 var _push_speed: float = PUSH_SPEED
 var _push_up: float = PUSH_UP
+var _gravity: float = 1.0      ## a multiplier on GRAVITY
+var _fall_max: float = 0.0     ## the terminal fall speed, GU/s (0 = none)
+var _sway: float = 0.0         ## the side-to-side glide of a falling fragment, GU/s (0 = none)
+var _max_time: float = MAX_SIM_TIME
 
 
 ## `p`: cells (Array[Vector3i]), zones (PackedInt32Array), origin (Vector3), blast (Vector2, world X/Z), weight (0..1),
@@ -99,6 +108,8 @@ var _push_up: float = PUSH_UP
 ## release (PackedFloat32Array per fragment: seconds after `hold` before it leaves), speed (PackedFloat32Array per fragment: a
 ## multiplier on its push). `release` and `speed` are how a caller shapes the way a block crumbles (`RubblePresets`).
 ## With `push_dir` the fragments leave AGAINST it (the reaction to the impact).
+## ROOF RF-2 (all optional): gravity (a multiplier), fall_max (terminal fall speed, GU/s), sway (a falling fragment glides side to side
+## along its own hashed axis, GU/s) and max_time (seconds before whatever is still in the air is put on its column): a light piece glides down.
 func _init(p: Dictionary) -> void:
 	var cells: Array = p["cells"]
 	var zones: PackedInt32Array = p.get("zones", PackedInt32Array())
@@ -123,6 +134,10 @@ func _init(p: Dictionary) -> void:
 	## ROOF RF-2: a roof's pieces thrown out of a blast's hole ride a stronger kick than a prop's (optional, GU/s).
 	_push_speed = float(p.get("push_speed", PUSH_SPEED))
 	_push_up = float(p.get("push_up", PUSH_UP))
+	_gravity = float(p.get("gravity", 1.0))
+	_fall_max = float(p.get("fall_max", 0.0))
+	_sway = float(p.get("sway", 0.0))
+	_max_time = float(p.get("max_time", MAX_SIM_TIME))
 	var pre: Dictionary = p.get("stack", {})
 	for col in pre:
 		_stack[col] = int(pre[col])
@@ -245,7 +260,7 @@ func step() -> void:
 			moving = true
 			_slide(i)
 	## Not before the last carved fragment has had its turn to vanish (one that landed early is still to go).
-	if (not moving and time >= maxf(wave_time + 0.07, hold + 0.02)) or time >= MAX_SIM_TIME + hold + _release_max:
+	if (not moving and time >= maxf(wave_time + 0.07, hold + 0.02)) or time >= _max_time + hold + _release_max:
 		_finish()
 
 
@@ -295,9 +310,17 @@ func rotation_of(i: int) -> Basis:
 
 func _fall(i: int) -> void:
 	var v: Vector3 = vel[i]
-	v.y -= GRAVITY * STEP
+	v.y -= GRAVITY * _gravity * STEP
+	if _fall_max > 0.0:
+		v.y = maxf(v.y, -_fall_max)
 	vel[i] = v
 	var next: Vector3 = pos[i] + v * STEP
+	if _sway > 0.0 and v.y < 0.0:
+		## Gliding down: a pendulum along the fragment's own axis, on top of its drift (not added to `vel`, so it never builds up).
+		var axis: Vector2 = Vector2.from_angle(_h01(i, P_SWAY_AXIS) * TAU)
+		var rate: float = SWAY_RATE * (0.7 + 0.6 * _h01(i, P_SWAY_RATE))
+		var swing: float = cos(_h01(i, P_SWAY) * TAU + time * rate) * _sway * STEP
+		next += Vector3(axis.x, 0.0, axis.y) * swing
 	if _can_cross.is_valid():
 		var from_gu := Vector2i(floori(pos[i].x), floori(pos[i].z))
 		var to_gu := Vector2i(floori(next.x), floori(next.z))

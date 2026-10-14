@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 88714 lines total** (under `godot/scripts/`)
+**295 scripts · 88946 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -551,7 +551,7 @@ extends `Node3D` · 3414 lines
 
 ### `edge_extractor.gd`
 
-`class_name EdgeExtractor` · 263 lines
+`class_name EdgeExtractor` · 264 lines
 
 `godot/scripts/geometry/edge_extractor.gd`
 
@@ -559,7 +559,7 @@ extends `Node3D` · 3414 lines
 
 **Constants / tuning**
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
-- `THIN_MATERIALS` = `["cardboard", "fabric"]`
+- `THIN_MATERIALS` = `["cardboard", "fabric", "plywood"]`
 - `_EDGE_BY_SUFFIX` = `{ "NW": Face.NW,  ## (-1, 0) "NE": Face.NE,  ## (0, -1) "SE": Face.SE,  ## (+1, 0) "SW": Face.SW,  ## (0, +1) }`
 
 ---
@@ -902,7 +902,7 @@ extends `Node3D` · 3414 lines
 
 ### `prop_fragment_sim.gd`
 
-`class_name PropFragmentSim` · extends `RefCounted` · 448 lines
+`class_name PropFragmentSim` · extends `RefCounted` · 471 lines
 
 `godot/scripts/geometry/prop_fragment_sim.gd`
 
@@ -927,39 +927,10 @@ extends `Node3D` · 3414 lines
 - `P_SX` = `8`
 - `P_SY` = `9`
 - `P_SZ` = `10`
+- `P_SWAY` = `11`
+- `P_SWAY_RATE` = `12`
+- `P_SWAY_AXIS` = `13`
 - `P_SLUMP` = `100`
-
-**Public vars**
-- `var count: int = 0`
-- `var voxel: float = 0.125`
-- `var origin: Vector3 = Vector3.ZERO`
-- `var weight: float = 1.0`
-- `var time: float = 0.0`
-- `var wave_time: float = 0.06`
-- `var hold: float = 0.0`
-- `var release: PackedFloat32Array = PackedFloat32Array()`
-- `var pos: PackedVector3Array = PackedVector3Array()`
-- `var vel: PackedVector3Array = PackedVector3Array()`
-- `var euler: PackedVector3Array = PackedVector3Array()`
-- `var spin: PackedVector3Array = PackedVector3Array()`
-- `var state: PackedInt32Array = PackedInt32Array()`
-- `var zone: PackedInt32Array = PackedInt32Array()`
-- `var level: PackedInt32Array = PackedInt32Array()`
-- `var column: Array[Vector2i] = []`
-- `var tone: PackedFloat32Array = PackedFloat32Array()`
-- `var flat: PackedByteArray = PackedByteArray()`
-- `var jitter: PackedFloat32Array = PackedFloat32Array()`
-- `var vanish_at: PackedFloat32Array = PackedFloat32Array()`
-
-**Public API**
-- `func is_done() -> bool:`
-- `func advance(delta: float) -> void:`
-- `func step() -> void:`
-- `func pile_records() -> Array:`
-- `func vanished_count() -> int:`
-- `func char_amount(i: int) -> float:`
-- `func char_finished() -> bool:`
-- `func rotation_of(i: int) -> Basis:`
 
 ---
 
@@ -2592,7 +2563,7 @@ extends `RefCounted` · 37 lines
 
 ### `rubble_presets.gd`
 
-`class_name RubblePresets` · extends `RefCounted` · 211 lines
+`class_name RubblePresets` · extends `RefCounted` · 240 lines
 
 `godot/scripts/systems/destruction/rubble_presets.gd`
 
@@ -4907,7 +4878,7 @@ extends `Node` · 318 lines
 
 ### `prop_fragment_sim_selftest.gd`
 
-extends `SceneTree` · 341 lines
+extends `SceneTree` · 400 lines
 
 `godot/scripts/tools/prop_fragment_sim_selftest.gd`
 
@@ -5038,7 +5009,7 @@ extends `SceneTree` · 129 lines
 
 ### `roof_entity_selftest.gd`
 
-extends `SceneTree` · 219 lines
+extends `SceneTree` · 248 lines
 
 `godot/scripts/tools/roof_entity_selftest.gd`
 
@@ -5718,7 +5689,7 @@ extends `Node2D` · 63 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 561 lines
+`class_name RoomBuilder` · 563 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -6154,7 +6125,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11007 lines
+extends `Node2D` · 11096 lines
 
 `godot/scripts/world/room.gd`
 

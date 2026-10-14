@@ -52,6 +52,7 @@ func _init() -> void:
 		_builder(layout, roof)
 		_unknown_kind(layout, roof)
 		_skylight(layout, roof)
+		_thin(layout, roof)
 	if _failures == 0:
 		print("\n[SUCCESS] ROOF ENTITY SELFTEST PASS — all checks")
 		quit(0)
@@ -217,3 +218,31 @@ func _skylight(layout: Dictionary, roof: Dictionary) -> void:
 		var sky: Dictionary = r.get("skylight", {})
 		_check(not sky.is_empty() and sky["gu_cell"] == r["gu_cell"] + Vector2i(1, 1) and sky["size"] == Vector2i.ONE,
 			"%s: the skylight turns with its roof (still the centre GU)" % direction)
+
+
+## ROOF RF-2 (Director, 2026-10-14) — cardboard, fabric and plywood are ONE layer in a roof as in a wall: every GU holds the material in the
+## LOWER layer only, the upper one empty (no pane: they are opaque). Concrete keeps both layers (the [RoomBuilder] case above).
+func _thin(layout: Dictionary, roof: Dictionary) -> void:
+	print("\n[thin roof]")
+	var base_level: int = GeometryCoordsClass.storey_level_base(int(roof["storeys"]))
+	var origin: Vector2i = roof["gu_cell"]
+	for material: String in ["cardboard", "fabric", "plywood"]:
+		var thin: Dictionary = layout.duplicate(true)
+		((thin["roof_instances"] as Array)[0] as Dictionary)["material"] = material
+		var room := _built_room(thin)
+		var low_n: int = 0
+		var up_n: int = 0
+		var panes: int = 0
+		for dx: int in range(3):
+			for dy: int in range(3):
+				var gu: Vector2i = origin + Vector2i(dx, dy)
+				var low: Slab = room._slab_registry.get_slab(Slab.make_id(gu, Slab.Role.CEILING, base_level))
+				if low != null and low.material == material:
+					low_n += 1
+					if low.pane_id != "":
+						panes += 1
+				if room._slab_registry.get_slab(Slab.make_id(gu, Slab.Role.CEILING, base_level + 1)) != null:
+					up_n += 1
+		_check(low_n == 9 and up_n == 0 and panes == 0,
+			"a %s roof is one layer: 9 lower-layer slabs, no upper, no pane (found %d / %d / %d)" % [material, low_n, up_n, panes])
+		room.queue_free()

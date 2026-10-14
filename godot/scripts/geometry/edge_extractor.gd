@@ -8,7 +8,8 @@ const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd
 ## layer and never a two-slice wall. A solid block of one of them keeps its OUTER shell (the layer in the neighbouring GU, away from the block's own
 ## cell) and drops the inner layer; a block or divider can ask for the other with `side: "inner"` (the layer stays in its own GU). The designer's call,
 ## never forced. A wall of one of these materials in a framed element (a window) sits in the INNER GU: that is the panel's own authored cell.
-const THIN_MATERIALS: Array[String] = ["cardboard", "fabric"]
+## Plywood (madeirite) joined them on 2026-10-14 (Director: "teto e paredes"); a roof of any of them is one layer too (`RoomBuilder`).
+const THIN_MATERIALS: Array[String] = ["cardboard", "fabric", "plywood"]
 
 
 static func is_thin_material(material: String) -> bool:

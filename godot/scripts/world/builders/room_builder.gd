@@ -356,6 +356,8 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 					if skylight_gus.has(roof_gu):
 						levels = 1   ## the glass in the lower layer, the upper one empty
 						slab_material = String(skylight_gus[roof_gu])
+					elif EdgeExtractor.is_thin_material(block_material):
+						levels = 1   ## Director 2026-10-14: a cardboard, fabric or plywood roof is ONE layer, the lower one (as its walls)
 					for roof_level in range(roof_base_level, roof_base_level + levels):
 						var roof_slab := SlabGenerator.generate_with_border(
 							roof_gu, Slab.Role.CEILING, roof_level, slab_material, room._slab_registry,

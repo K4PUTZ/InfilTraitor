@@ -90,7 +90,8 @@ static var BLAST_MAX_IMPACTS: int = 40
 ## GU) of the epicentre's centre is destroyed through every layer, the edge ragged by `BLAST_ROOF_HOLE_RAGGED` (a hashed share of a voxel per
 ## column); outside it the ring's scattered DESTROYED rolls become dents (marks and dust, no pinholes). Lighter materials open wider.
 static var BLAST_ROOF_HOLE_RADIUS: float = 6.0
-static var BLAST_ROOF_HOLE_RADIUS_OF: Dictionary = {"stone": 5.0, "wood": 8.0, "plywood": 10.0, "cardboard": 11.0, "fabric": 11.0}
+## Stone 5 -> 4 (Director, 2026-10-14: stone is barely affected).
+static var BLAST_ROOF_HOLE_RADIUS_OF: Dictionary = {"stone": 4.0, "wood": 8.0, "plywood": 10.0, "cardboard": 11.0, "fabric": 11.0}
 static var BLAST_ROOF_HOLE_RAGGED: float = 1.8
 ## The outline is not a circle (Director, 2026-10-14: "não tão circular, com mais irregularidades"): the radius swings with the angle around the
 ## epicentre, a sum of lobes [harmonic, share of the radius] with phases hashed per blast, so every hole has its own shape.
@@ -123,6 +124,34 @@ static var ROOF_SOOT: Vector2 = Vector2(0.45, 0.85)
 ## starting in `ROOF_RIM_DELAY` [first, last] seconds after the blast and running its own short envelope: at most `ROOF_RIM_TRICKLES`.
 static var ROOF_RIM_TRICKLES: int = 48
 static var ROOF_RIM_DELAY: Vector2 = Vector2(0.1, 1.1)
+## PER MATERIAL (Director, 2026-10-14; concrete is the model above, brick keeps it). Each `_OF` row overrides its value for one material:
+##   stone     — barely affected: a smaller hole, heavier rubble (more 2x2x2 chunks, fewer loose voxels), nothing blown up onto the roof, half the
+##               rim dust (a stone wall's blast dust is half concrete's too);
+##   wood      — the shot's SPLINTERS (`spawn_shot_rubble`'s splinter blocks: they fly and stamp the floor), no chunks, a few whole voxels, less
+##               dust, and the rim stays splintered: sub-voxel cubes ATTACHED to the standing rim (`ROOF_RIM_SPLINTERS`), never loose in the hole;
+##   plywood   — wood's, far more pieces (in proportion to its wider hole), darker and more varied, like its shot (`JITTER_OF`);
+##   cardboard — light flaps that glide down (`ROOF_FALL_OF`: gravity, terminal speed, sway), more of them blown up onto the roof, no dust
+##               (`NO_DUST`), no chunks or crumbling blocks.
+## Cardboard, fabric and plywood roofs are ONE layer (`RoomBuilder`), so they never make a 2x2x2 chunk anyway. Fabric keeps the defaults
+## until its sag is designed (Q5).
+static var ROOF_CHUNK_SHARE_OF: Dictionary = {"stone": 0.8, "wood": 0.0, "plywood": 0.0, "cardboard": 0.0}
+static var ROOF_MAX_CHUNKS_OF: Dictionary = {"stone": 10}
+static var ROOF_VOXEL_SHARE_OF: Dictionary = {"stone": 0.25, "wood": 0.12, "plywood": 0.35, "cardboard": 0.45}
+static var ROOF_MAX_VOXELS_OF: Dictionary = {"stone": 30, "wood": 30, "plywood": 120, "cardboard": 120}
+static var ROOF_SUB_SHARE_OF: Dictionary = {"stone": 0.06, "wood": 0.3, "plywood": 0.15, "cardboard": 0.0}
+static var ROOF_MAX_SUBS_OF: Dictionary = {"stone": 4, "wood": 20, "plywood": 16}
+static var ROOF_UP_SHARE_OF: Dictionary = {"stone": 0.0, "cardboard": 0.35}
+static var ROOF_MAX_UP_OF: Dictionary = {"cardboard": 30}
+## A light piece's kick upward is smaller, or it would rise metres under its low gravity.
+static var ROOF_UP_PUSH_OF: Dictionary = {"cardboard": Vector2(0.7, 2.2)}
+static var ROOF_SOOT_OF: Dictionary = {"plywood": Vector2(0.3, 0.75)}
+static var ROOF_RIM_TRICKLES_OF: Dictionary = {"stone": 24, "wood": 16, "plywood": 16}
+## How a piece falls, per material: {gravity (x GRAVITY), fall_max (GU/s), sway (GU/s), max_time (s)} (`PropFragmentSim`).
+static var ROOF_FALL_OF: Dictionary = {"cardboard": {"gravity": 0.35, "fall_max": 0.9, "sway": 1.5, "max_time": 4.0}}
+## The splintered rim (wood, plywood): of each destroyed voxel beside a standing one, the sub-voxel cubes on the face toward it stay at
+## `[first layer, second layer]` chance, at most `ROOF_RIM_SPLINTERS_MAX` cubes per blast.
+static var ROOF_RIM_SPLINTERS: Vector2 = Vector2(0.45, 0.15)
+static var ROOF_RIM_SPLINTERS_MAX: int = 320
 ## How many tones lighter a roof's TOP layer is sooted than the blast's ring would make it (it faces away from a blast below).
 static var ROOF_TOP_SOOT_LIFT: int = 2
 static var BLAST_IMPACTS_PER_FRAME: int = 4

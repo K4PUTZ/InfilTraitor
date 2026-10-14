@@ -5952,10 +5952,31 @@ func spawn_blast_breaches(cells: Array) -> int:
 ## ROOF RF-2 (Director, 2026-10-13/14): the roof voxels a blast destroyed (`WorldDelta.blast_roof_rubble`) leave the hole as the skylight's
 ## burst does, in the material: whole 2x2x2 CHUNKS (the roof's two layers), whole VOXELS and a few of the shot's crumbling blocks
 ## (`RubblePresets.ROOF_*`), thrown away from the epicentre (a few up onto the roof around the hole), falling onto the floor or a pile. The rest
-## vanishes. Their per-voxel smoke and dust are skipped (`_quiet_destroy`).
+## vanishes. Their per-voxel smoke and dust are skipped (`_quiet_destroy`). Every share, cap and fall is the material's (`RubblePresets.ROOF_*_OF`,
+## Director 2026-10-14), so a blast under two roofs of different materials runs once per material.
 func spawn_blast_roof_rubble(cells: Array, epicentre: Vector2) -> int:
 	if _voxel_board == null or cells.is_empty():
 		return 0
+	var by_material: Dictionary = {}
+	for c: Dictionary in cells:
+		var group: Array = by_material.get(String(c["material"]), [])
+		group.append(c)
+		by_material[String(c["material"])] = group
+	if by_material.size() > 1:
+		var total_all: int = 0
+		for m: String in by_material:
+			total_all += spawn_blast_roof_rubble(by_material[m], epicentre)
+		return total_all
+	var material: String = String(cells[0]["material"])
+	var chunk_share: float = float(RubblePresetsRef.ROOF_CHUNK_SHARE_OF.get(material, RubblePresetsRef.ROOF_CHUNK_SHARE))
+	var max_chunks: int = int(RubblePresetsRef.ROOF_MAX_CHUNKS_OF.get(material, RubblePresetsRef.ROOF_MAX_CHUNKS))
+	var voxel_share: float = float(RubblePresetsRef.ROOF_VOXEL_SHARE_OF.get(material, RubblePresetsRef.ROOF_VOXEL_SHARE))
+	var max_voxels: int = int(RubblePresetsRef.ROOF_MAX_VOXELS_OF.get(material, RubblePresetsRef.ROOF_MAX_VOXELS))
+	var sub_share: float = float(RubblePresetsRef.ROOF_SUB_SHARE_OF.get(material, RubblePresetsRef.ROOF_SUB_SHARE))
+	var max_subs: int = int(RubblePresetsRef.ROOF_MAX_SUBS_OF.get(material, RubblePresetsRef.ROOF_MAX_SUBS))
+	var up_share: float = float(RubblePresetsRef.ROOF_UP_SHARE_OF.get(material, RubblePresetsRef.ROOF_UP_SHARE))
+	var max_up: int = int(RubblePresetsRef.ROOF_MAX_UP_OF.get(material, RubblePresetsRef.ROOF_MAX_UP))
+	var soot_range: Vector2 = RubblePresetsRef.ROOF_SOOT_OF.get(material, RubblePresetsRef.ROOF_SOOT)
 	var ground: int = _voxel_board.ground_plane_level()
 	var destroyed: Dictionary = {}   ## Vector3i(x, y, level) -> cell
 	for c: Dictionary in cells:
@@ -5970,12 +5991,12 @@ func spawn_blast_roof_rubble(cells: Array, epicentre: Vector2) -> int:
 	var hash01 := func(tag: String, k: Vector3i) -> float:
 		return float(FacadeSampler._fnv1a_hash("ROOFPIECE|%s|%d,%d,%d" % [tag, k.x, k.y, k.z]) % 1000) / 1000.0
 	for k: Vector3i in destroyed:
-		if posmod(k.x, 2) != 0 or posmod(k.y, 2) != 0 or posmod(k.z - ground, 2) != 0 or chunks.size() >= RubblePresetsRef.ROOF_MAX_CHUNKS:
+		if posmod(k.x, 2) != 0 or posmod(k.y, 2) != 0 or posmod(k.z - ground, 2) != 0 or chunks.size() >= max_chunks:
 			continue
 		var whole: bool = true
 		for d: Vector3i in [Vector3i(1, 0, 0), Vector3i(0, 1, 0), Vector3i(1, 1, 0), Vector3i(0, 0, 1), Vector3i(1, 0, 1), Vector3i(0, 1, 1), Vector3i(1, 1, 1)]:
 			whole = whole and destroyed.has(k + d)
-		if not whole or float(hash01.call("chunk", k)) >= RubblePresetsRef.ROOF_CHUNK_SHARE:
+		if not whole or float(hash01.call("chunk", k)) >= chunk_share:
 			continue
 		chunks.append(Vector3i(floori(k.x / 2.0), floori((k.z - ground) / 2.0), floori(k.y / 2.0)))
 		for d: Vector3i in [Vector3i.ZERO, Vector3i(1, 0, 0), Vector3i(0, 1, 0), Vector3i(1, 1, 0), Vector3i(0, 0, 1), Vector3i(1, 0, 1), Vector3i(0, 1, 1), Vector3i(1, 1, 1)]:
@@ -5984,26 +6005,33 @@ func spawn_blast_roof_rubble(cells: Array, epicentre: Vector2) -> int:
 		if taken.has(k):
 			continue
 		var roll: float = hash01.call("voxel", k)
-		if roll < RubblePresetsRef.ROOF_VOXEL_SHARE and float(hash01.call("up", k)) < RubblePresetsRef.ROOF_UP_SHARE \
-				and ups.size() < RubblePresetsRef.ROOF_MAX_UP:
+		if roll < voxel_share and float(hash01.call("up", k)) < up_share and ups.size() < max_up:
 			ups.append(Vector3i(k.x, k.z - ground, k.y))
-		elif roll < RubblePresetsRef.ROOF_VOXEL_SHARE and voxels.size() < RubblePresetsRef.ROOF_MAX_VOXELS:
+		elif roll < voxel_share and voxels.size() < max_voxels:
 			voxels.append(Vector3i(k.x, k.z - ground, k.y))
-		elif roll < RubblePresetsRef.ROOF_VOXEL_SHARE + RubblePresetsRef.ROOF_SUB_SHARE and subs.size() < RubblePresetsRef.ROOF_MAX_SUBS:
+		## A voxel's roll past the voxel cap also lands here while there is room (concrete was judged with it); a material with no crumbling
+		## blocks (`sub_share` 0, cardboard) never gets one.
+		elif sub_share > 0.0 and roll < voxel_share + sub_share and subs.size() < max_subs:
 			var c: Dictionary = (destroyed[k] as Dictionary).duplicate()
 			c["shade_level"] = ground   ## its own cell is the open sky's after the blast: read the light where it ends up
-			c["soot"] = lerpf(RubblePresetsRef.ROOF_SOOT.x, RubblePresetsRef.ROOF_SOOT.y, float(hash01.call("soot", k)))
+			c["soot"] = lerpf(soot_range.x, soot_range.y, float(hash01.call("soot", k)))
 			subs.append(c)
-	var material: String = String(cells[0]["material"])
 	var seed: String = "roof|%d,%d" % [roundi(epicentre.x), roundi(epicentre.y)]
 	var total: int = _spawn_roof_pieces(chunks, 2, material, epicentre, RubblePresetsRef.ROOF_WEIGHT_CHUNK, seed + "|chunk")
 	total += _spawn_roof_pieces(voxels, 1, material, epicentre, RubblePresetsRef.ROOF_WEIGHT_VOXEL, seed + "|voxel")
-	total += _spawn_roof_pieces(ups, 1, material, epicentre, 1.0, seed + "|up", RubblePresetsRef.ROOF_UP_PUSH)
+	total += _spawn_roof_pieces(ups, 1, material, epicentre, 1.0, seed + "|up",
+		RubblePresetsRef.ROOF_UP_PUSH_OF.get(material, RubblePresetsRef.ROOF_UP_PUSH))
 	if not subs.is_empty():
 		total += spawn_shot_rubble(subs, Vector3.DOWN, seed)
-	var trickles: int = _roof_rim_trickles(destroyed, material, seed)
-	print_debug("[BLAST-RUBBLE] roof: %d destroyed voxel(s) -> %d chunk(s), %d voxel(s), %d up, %d crumbling block(s); %d piece(s), %d rim trickle(s)"
-		% [cells.size(), chunks.size(), voxels.size(), ups.size(), subs.size(), total, trickles])
+	var rim_splinters: int = 0
+	if RubblePresetsRef.SPLINTERS.has(material):
+		rim_splinters = _roof_rim_splinters(destroyed, material, seed, soot_range)
+	var trickles: int = 0
+	if not RubblePresetsRef.NO_DUST.has(material):
+		trickles = _roof_rim_trickles(destroyed, material, seed,
+			int(RubblePresetsRef.ROOF_RIM_TRICKLES_OF.get(material, RubblePresetsRef.ROOF_RIM_TRICKLES)))
+	print_debug("[BLAST-RUBBLE] roof %s: %d destroyed voxel(s) -> %d chunk(s), %d voxel(s), %d up, %d crumbling block(s); %d piece(s), %d rim splinter(s), %d rim trickle(s)"
+		% [material, cells.size(), chunks.size(), voxels.size(), ups.size(), subs.size(), total, rim_splinters, trickles])
 	return total
 
 
@@ -6018,8 +6046,9 @@ func _spawn_roof_pieces(lattice: Array, size: int, material: String, epicentre: 
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var shade := PackedFloat32Array()
 	var zones := PackedInt32Array()
+	var soot_range: Vector2 = RubblePresetsRef.ROOF_SOOT_OF.get(material, RubblePresetsRef.ROOF_SOOT)
 	for p: Vector3i in lattice:
-		var soot: float = lerpf(RubblePresetsRef.ROOF_SOOT.x, RubblePresetsRef.ROOF_SOOT.y,
+		var soot: float = lerpf(soot_range.x, soot_range.y,
 			float(FacadeSampler._fnv1a_hash("ROOFSOOT|%s|%d,%d,%d" % [seed, p.x, p.y, p.z]) % 1000) / 1000.0)
 		shade.append(float(live.call("face_shade", p.x * size, p.z * size, ground, false, false)) * soot)
 		zones.append(0)
@@ -6040,10 +6069,12 @@ func _spawn_roof_pieces(lattice: Array, size: int, material: String, epicentre: 
 	var edges: Dictionary = _movement_edge_set()
 	var cross := func(from: Vector2i, to: Vector2i) -> bool:
 		return not WallEdgeData.is_edge_blocked(from, to, edges)
-	var sim := PropFragmentSim.new({"cells": lattice, "zones": zones, "origin": Vector3.ZERO, "voxel": unit * float(size),
+	var params: Dictionary = {"cells": lattice, "zones": zones, "origin": Vector3.ZERO, "voxel": unit * float(size),
 		"blast": (epicentre + Vector2(0.5, 0.5)) * unit, "weight": weight, "seed": seed, "wave_delay": 0.0, "carve": false, "char": false,
-		"stack": stack, "solid": solid, "can_cross": cross, "shade": shade, "jitter": RUBBLE_JITTER,
-		"push_speed": push.x, "push_up": push.y})
+		"stack": stack, "solid": solid, "can_cross": cross, "shade": shade, "jitter": float(RubblePresetsRef.JITTER_OF.get(material, RUBBLE_JITTER)),
+		"push_speed": push.x, "push_up": push.y}
+	params.merge(RubblePresetsRef.ROOF_FALL_OF.get(material, {}))   ## a light material glides down (gravity, terminal speed, sway)
+	var sim := PropFragmentSim.new(params)
 	var zone_materials: Array = [material]
 	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)
 	var landed_so_far: Array = []
@@ -6056,8 +6087,9 @@ func _spawn_roof_pieces(lattice: Array, size: int, material: String, epicentre: 
 
 
 ## Dust trickling from the hole's rim while the mass comes down: the standing voxels of the roof's LOWER layer beside a destroyed one, up to
-## `RubblePresets.ROOF_RIM_TRICKLES` in hashed order, each after its own delay in `ROOF_RIM_DELAY`. The bullet hole's trickle, from the underside.
-func _roof_rim_trickles(destroyed: Dictionary, material: String, seed: String) -> int:
+## `limit` (`RubblePresets.ROOF_RIM_TRICKLES`, per material) in hashed order, each after its own delay in `ROOF_RIM_DELAY`. The bullet hole's
+## trickle, from the underside.
+func _roof_rim_trickles(destroyed: Dictionary, material: String, seed: String, limit: int) -> int:
 	var store: VoxelStore = VoxelStore.active
 	if store == null or destroyed.is_empty():
 		return 0
@@ -6074,7 +6106,7 @@ func _roof_rim_trickles(destroyed: Dictionary, material: String, seed: String) -
 				rim[n] = FacadeSampler._fnv1a_hash("ROOFRIM|%s|%d,%d" % [seed, n.x, n.y])
 	var picked: Array = rim.keys()
 	picked.sort_custom(func(a: Vector3i, b: Vector3i) -> bool: return int(rim[a]) < int(rim[b]))
-	picked = picked.slice(0, RubblePresetsRef.ROOF_RIM_TRICKLES)
+	picked = picked.slice(0, limit)
 	var span: Vector2 = RubblePresetsRef.ROOF_RIM_DELAY
 	for i in range(picked.size()):
 		var n: Vector3i = picked[i]
@@ -6082,6 +6114,59 @@ func _roof_rim_trickles(destroyed: Dictionary, material: String, seed: String) -
 		_blast_trickle_after({"grid_pos": Vector2i(n.x, n.y), "level": n.z, "material": material,
 			"carved_side": Voxel.CarvedSide.BOTTOM, "delay": lerpf(span.x, span.y, t01)})
 	return picked.size()
+
+
+## Wood and plywood (Director, 2026-10-14): the hole's rim is SPLINTERED. Of every destroyed voxel beside a standing roof voxel (same level), the
+## shot's sub-voxel cubes on the face toward that neighbour stay where they were, attached to it (`RubblePresets.ROOF_RIM_SPLINTERS`: the first
+## layer of cubes, then a sparser second one), so the rim reads ragged and nothing hangs loose in the middle of the hole. Sooted like the rest of
+## the roof's pieces, lit as the standing voxel they cling to; saved as a rubble pile (div 4). Returns the cubes placed.
+func _roof_rim_splinters(destroyed: Dictionary, material: String, seed: String, soot_range: Vector2) -> int:
+	var live: Node = board3d()
+	var store: VoxelStore = VoxelStore.active
+	if live == null or store == null or destroyed.is_empty():
+		return 0
+	var ground: int = _voxel_board.ground_plane_level()
+	var div: int = RubblePresetsRef.DIVISION
+	var top: int = div - 1
+	var chance: Vector2 = RubblePresetsRef.ROOF_RIM_SPLINTERS
+	var jitter_amp: float = float(RubblePresetsRef.JITTER_OF.get(material, RUBBLE_JITTER))
+	var flat: bool = not bool(RubblePresetsRef.FLY_TEXTURED_OF.get(material, false))
+	var staying: Array = []
+	var keys: Array = destroyed.keys()
+	keys.sort()   ## a stable order, so the cap keeps the same cubes on every run
+	for k: Vector3i in keys:
+		for d: Vector3i in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]:
+			var n: Vector3i = k + d
+			if destroyed.has(n) or not store.has_cell(n.x, n.y, n.z):
+				continue
+			var shade: float = float(live.call("face_shade", n.x, n.y, n.z, d.x != 0, false))
+			var face_hash: int = FacadeSampler._fnv1a_hash("ROOFRIMSPL|%s|%d,%d,%d|%d,%d" % [seed, k.x, k.y, k.z, d.x, d.y])   ## one string hash per face
+			for depth in range(2):
+				## The cubes of k's block that touch n: x = top on the +x side, 0 on the -x side (likewise y); `u` runs along the rim.
+				for u in range(div):
+					for b in range(div):
+						var a: int = (top - depth if d.x > 0 else depth) if d.x != 0 else u
+						var cc: int = (top - depth if d.y > 0 else depth) if d.y != 0 else u
+						var h: int = PropFragmentSim._mix(face_hash, (depth * div + u) * div + b)
+						if float(h % 1000) / 1000.0 >= (chance.x if depth == 0 else chance.y):
+							continue
+						var soot: float = lerpf(soot_range.x, soot_range.y, float((h >> 10) % 1000) / 1000.0)
+						var j: float = 1.0 + (float((h >> 20) % 1000) / 1000.0 - 0.5) * 2.0 * jitter_amp
+						staying.append({"column": Vector2i(k.x * div + a, k.y * div + cc), "level": (k.z - ground) * div + b, "zone": 0,
+							"flat": flat, "mult": shade * soot * j})
+	if staying.is_empty():
+		return 0
+	var cap: int = RubblePresetsRef.ROOF_RIM_SPLINTERS_MAX
+	if staying.size() > cap:
+		## Thinned evenly round the whole rim, never cut off at one side of it.
+		var thinned: Array = []
+		var stride: float = float(staying.size()) / float(cap)
+		for i in range(cap):
+			thinned.append(staying[int(float(i) * stride)])
+		staying = thinned
+	_base_rubble_piles.append({"y0": 0.0, "zone_materials": [material], "records": _rubble_base_records(staying), "div": div})
+	live.call("spawn_prop_pile", staying, 0.0, [material], div, true)
+	return staying.size()
 
 
 ## A landed chunk's record as the board voxels it covers (a pile is saved at one division: whole voxels).
@@ -6178,6 +6263,10 @@ func _spawn_shot_rubble_impl(cells: Array, push_dir: Vector3, seed: String, forw
 	## Director 2026-10-14: a BLAST's blocks (wall, door, roof: their seeds start "blast|", "breach|", "roof|", carried through every split)
 	## keep the struck face's shade, with no artificial lightening of the inside; only a shot's blocks ramp to the fresh lift.
 	var blast_made: bool = seed.begins_with("blast|") or seed.begins_with("breach|") or seed.begins_with("roof|")
+	## A ROOF's block (Director, 2026-10-14) is picked by `spawn_blast_roof_rubble`'s own share, so it never skips itself as a plain hole; its cubes
+	## that would STAY would hang in the middle of the hole (the splintered rim is `_roof_rim_splinters`'), so they are gone; and every cube
+	## keeps the facade (no face of a falling roof block is "behind" another: flat cubes read as light patches in the pile).
+	var roof_made: bool = seed.begins_with("roof|")
 	var staying: Array = []   ## splinter mode: the cubes that stay in the hole, as pile records
 	var ground: int = _voxel_board.ground_plane_level()
 	var div: int = RubblePresetsRef.DIVISION
@@ -6199,7 +6288,7 @@ func _spawn_shot_rubble_impl(cells: Array, push_dir: Vector3, seed: String, forw
 			zone_materials.append(mat)
 		var gp: Vector2i = c["grid_pos"]
 		var lv: int = int(c["level"])
-		if splinters and not forward and not RubblePresetsRef.block_kept(mat, gp, lv):
+		if splinters and not forward and not roof_made and not RubblePresetsRef.block_kept(mat, gp, lv):
 			continue   ## a plain empty hole: no block for this voxel
 		var variant: int = RubblePresetsRef.variant_of(gp, lv)
 		var h: int = FacadeSampler._fnv1a_hash("RUBBLE|%d,%d,%d" % [gp.x, gp.y, lv])
@@ -6213,7 +6302,7 @@ func _spawn_shot_rubble_impl(cells: Array, push_dir: Vector3, seed: String, forw
 					var outward: float = clampf(0.5 + off.dot(back) / maxf(reach * 2.0, 0.001), 0.0, 1.0)
 					var h01: float = float(PropFragmentSim._mix(h, (a * div + b) * div + cc) % 1000) / 1000.0
 					var cube_shade: float = face * lerpf(1.0, fresh_lift, 1.0 - outward)
-					var cube_flat: bool = outward <= RUBBLE_TEXTURED_OUTWARD
+					var cube_flat: bool = outward <= RUBBLE_TEXTURED_OUTWARD and not roof_made
 					if thrown and (forward or RubblePresetsRef.splinter_role(mat, gp, lv, a, b, cc, x_normal) == RubblePresetsRef.FLY):
 						## Born in the air at the impact, never seen seated in the hole: a point on the ramp (the end of it read too light, the middle is Director 2026-10-12's), flat like the chips.
 						var lift_t: float = 1.0 if blast_made else float(live.call("fresh_lift_textured", mat))
@@ -6222,7 +6311,7 @@ func _spawn_shot_rubble_impl(cells: Array, push_dir: Vector3, seed: String, forw
 					var fine := Vector3i(gp.x * div + a, (lv - ground) * div + b, gp.y * div + cc)
 					if thrown:
 						var role: int = RubblePresetsRef.forward_role(gp, lv, a, b, cc) if forward else RubblePresetsRef.splinter_role(mat, gp, lv, a, b, cc, x_normal)
-						if role == RubblePresetsRef.GONE:
+						if role == RubblePresetsRef.GONE or (role == RubblePresetsRef.STAY and roof_made):
 							continue
 						if role == RubblePresetsRef.STAY:
 							staying.append({"column": Vector2i(fine.x, fine.z), "level": fine.y, "zone": z, "flat": cube_flat,

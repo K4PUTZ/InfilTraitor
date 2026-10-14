@@ -6281,6 +6281,51 @@ func _finish_fire_char() -> void:
 	_fire_char_pending.clear()
 
 
+## ROOF RF-2 (Director, 2026-10-14): a soft roof's SAG (`WorldDelta.roof_sag`). Each sagging voxel (and the cloth hanging under it, `fill`) is a cube
+## that drops straight down from where the roof was and stops `drop` levels lower: the fragment machine with no push, no slump and each column's
+## target as its `stack`, paced by the material's `gravity`. The cubes stay as a rubble pile (div 1, saved and laid back like any other).
+func sag_roof(cells: Array) -> int:
+	var live: Node = board3d()
+	if live == null or _voxel_board == null or cells.is_empty():
+		return 0
+	var ground: int = _voxel_board.ground_plane_level()
+	var by_material: Dictionary = {}
+	for c: Dictionary in cells:
+		var group: Array = by_material.get(String(c["material"]), [])
+		group.append(c)
+		by_material[String(c["material"])] = group
+	var total: int = 0
+	for material: String in by_material:
+		var row: Dictionary = RubblePresetsRef.ROOF_SAG_OF.get(material, {})
+		var lattice: Array = []
+		var shade := PackedFloat32Array()
+		var zones := PackedInt32Array()
+		var stack: Dictionary = {}
+		for c: Dictionary in by_material[material]:
+			var gp: Vector2i = c["grid_pos"]
+			var rel: int = int(c["level"]) - ground
+			var target: int = maxi(rel - int(c["drop"]), 0)
+			stack[gp] = target
+			var soot: float = lerpf(RubblePresetsRef.ROOF_SOOT.y, 1.0,
+				float(FacadeSampler._fnv1a_hash("ROOFSAG|%d,%d" % [gp.x, gp.y]) % 1000) / 1000.0)
+			var tone: float = float(live.call("face_shade", gp.x, gp.y, ground, false, false)) * soot
+			for n in range(1 + int(c["fill"])):
+				lattice.append(Vector3i(gp.x, rel, gp.y))
+				shade.append(tone)
+				zones.append(0)
+		var sim := PropFragmentSim.new({"cells": lattice, "zones": zones, "origin": Vector3.ZERO,
+			"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS), "blast": Vector2.ZERO, "weight": 0.0, "seed": "sag|" + material,
+			"wave_delay": 0.0, "carve": false, "char": false, "stack": stack, "slump": false, "shade": shade, "jitter": RUBBLE_JITTER,
+			"gravity": float(row.get("gravity", 1.0)), "max_time": 4.0})
+		var zone_materials: Array = [material]
+		var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)
+		node.settled.connect(func(records: Array) -> void:
+			_base_rubble_piles.append({"y0": 0.0, "zone_materials": zone_materials, "records": _rubble_base_records(records), "div": 1}))
+		total += sim.count
+	print_debug("[ROOF-SAG] %d cube(s) lowered" % total)
+	return total
+
+
 ## A landed chunk's record as the board voxels it covers (a pile is saved at one division: whole voxels).
 func _roof_records_as_voxels(records: Array, size: int) -> Array:
 	if size == 1:

@@ -171,6 +171,16 @@ static var ROOF_RIM_BITS_MAX: int = 320
 static var ROOF_MAX_ISLAND: int = 800
 static var ROOF_ISLAND_PUSH: Vector2 = Vector2(0.2, 0.0)
 static var ROOF_WEIGHT_ISLAND: float = 0.3
+## The SAG of a soft roof that is still held but not enough (Director, 2026-10-14: "o pano é mais 'líquido' e cai praticamente todo, sustentado
+## pelas pontas, enquanto o papelão ainda tem uma certa rigidez"). After the blast, a standing voxel of such a roof drops
+## `k` x (its distance to the nearest support)^`pow` levels, faded out with its distance to the hole (0 past `reach` voxels), at most `max`
+## levels and never below the floor; under one level it stays. `fill`: the column also hangs a curtain down to its neighbour nearer the
+## support, so cloth reads as one sheet, not stepped tiles. `gravity` paces the drop (`PropFragmentSim`).
+static var ROOF_SAG_OF: Dictionary = {
+	"fabric": {"k": 0.9, "pow": 1.25, "reach": 14.0, "max": 64, "gravity": 0.45, "fill": true},
+	"cardboard": {"k": 0.35, "pow": 1.0, "reach": 7.0, "max": 5, "gravity": 0.9, "fill": false},
+}
+static var ROOF_SAG_MAX_CUBES: int = 1400
 ## The roof's FIRE (Director, 2026-10-14: cardboard "queimasse mais tempo e mais longe, e pode deixar com bastante fuligem, porque nesse caso o
 ## fogo efetivamente chegou na face superior"; fabric the same). On a roof of these materials the fire does not stop at the hole's burning edge:
 ## it creeps OUTWARD across the roof up to `ROOF_FIRE_SPREAD_OF` voxels, one ring every `ROOF_FIRE_STEP_S`; ring k catches at `ROOF_FIRE_CHANCE`^k

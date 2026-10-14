@@ -240,6 +240,9 @@ var blast_roof_rubble: Array = []
 ## after the commit (`Room.char_after_fire`), as its flame dies, never in the commit: the fire spreads first and the black catches up with it
 ## (Director, 2026-10-14).
 var fire_char: Array = []
+## ... and the soft roof voxels that SAG (`DetonationPlanBuilder._roof_sag`): {grid_pos, level, material, drop (levels), fill (cubes hung under
+## it)}. Destroyed on the Delta; `Room.sag_roof` lowers them as cosmetic cubes.
+var roof_sag: Array = []
 var blast_source_gu: Vector2i = Vector2i.ZERO
 
 ## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — WHICH VOXELS THE FIRE ATE.
@@ -422,6 +425,8 @@ func commit(room = null, defer_rain: bool = false) -> void:
 			room.spawn_blast_breaches(blast_breaches)
 		if not blast_roof_rubble.is_empty() and room.has_method("spawn_blast_roof_rubble"):
 			room.spawn_blast_roof_rubble(blast_roof_rubble, blast_epicentre)
+		if not roof_sag.is_empty() and room.has_method("sag_roof"):
+			room.sag_roof(roof_sag)
 		if not fire_char.is_empty() and room.has_method("char_after_fire"):
 			room.char_after_fire(fire_char)
 		t = _split("blast rubble", t)

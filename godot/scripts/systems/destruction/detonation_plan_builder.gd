@@ -1308,6 +1308,7 @@ static func _roof_islands(s: Dictionary) -> void:
 				reached[key] = true
 				queue.append(key)
 				break
+	var seeds: Array = queue.duplicate()   ## the HELD voxels, before the walk appends the ones they hold
 	var head: int = 0
 	while head < queue.size():
 		var key: Vector3i = queue[head]
@@ -1324,10 +1325,90 @@ static func _roof_islands(s: Dictionary) -> void:
 		var v: Voxel = remaining[key][0]
 		entries.append(BlastCalculatorClass.damage_entry(v, Voxel.DamageState.DESTROYED, true, Voxel.CarvedSide.BOTTOM))
 		delta.blast_roof_rubble.append({"grid_pos": v.grid_pos, "level": int(v.level), "material": String(remaining[key][1]), "island": true})
-	if entries.is_empty():
+	if not entries.is_empty():
+		delta.add_damage(entries)
+		print_debug("[ROOF-BLAST] %d roof voxel(s) lost every support and fall (of %d standing in reach)" % [entries.size(), remaining.size()])
+	_roof_sag(s, remaining, reached, seeds)
+
+
+## ROOF RF-2 (Director, 2026-10-14): a SOFT roof (`RubblePresets.ROOF_SAG_OF`: fabric, cardboard) that is still held SAGS where the hole left it
+## without enough support. Two lateral walks over its standing voxels (same level, 4 neighbours): the distance to the nearest HELD voxel (`seeds`:
+## the ones touching a wall's top, a block, an unreached roof) and to the hole. drop = k x d_support^pow x (1 - d_hole / reach), capped; a voxel
+## that drops a level or more is destroyed on the Delta and proposed on `delta.roof_sag` with how many cubes hang under it (`fill`, cloth).
+static func _roof_sag(s: Dictionary, remaining: Dictionary, reached: Dictionary, seeds: Array) -> void:
+	var delta: WorldDelta = s["delta"]
+	var sag_table: Dictionary = RubblePresetsRef.ROOF_SAG_OF
+	var soft: Dictionary = {}   ## key -> material
+	for key: Vector3i in reached:
+		var material: String = String(remaining[key][1])
+		if sag_table.has(material):
+			soft[key] = material
+	if soft.is_empty():
 		return
+	var lateral: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]
+	var hole: Dictionary = {}
+	for c: Dictionary in delta.blast_roof_rubble:
+		var gp: Vector2i = c["grid_pos"]
+		hole[Vector3i(gp.x, gp.y, int(c["level"]))] = true
+	var walk := func(sources: Array) -> Dictionary:
+		var dist: Dictionary = {}
+		var q: Array = []
+		for k: Vector3i in sources:
+			if soft.has(k) and not dist.has(k):
+				dist[k] = 0
+				q.append(k)
+		var head: int = 0
+		while head < q.size():
+			var k: Vector3i = q[head]
+			head += 1
+			for d: Vector3i in lateral:
+				var n: Vector3i = k + d
+				if soft.has(n) and not dist.has(n):
+					dist[n] = int(dist[k]) + 1
+					q.append(n)
+		return dist
+	var d_support: Dictionary = walk.call(seeds)
+	var rim: Array = []
+	for k: Vector3i in soft:
+		for d: Vector3i in lateral:
+			if hole.has(k + d):
+				rim.append(k)
+				break
+	var d_hole: Dictionary = walk.call(rim)
+	var ground: int = (s["voxel_board"] as VoxelBoardClass).ground_plane_level() if s.get("voxel_board") != null else GeometryCoords.PLAYABLE_LEVEL
+	var drops: Dictionary = {}
+	for k: Vector3i in soft:
+		if not d_support.has(k) or not d_hole.has(k):
+			continue
+		var row: Dictionary = sag_table[soft[k]]
+		var fade: float = 1.0 - float(d_hole[k]) / float(row["reach"])
+		if fade <= 0.0:
+			continue
+		var drop: int = mini(int(floor(float(row["k"]) * pow(float(d_support[k]), float(row["pow"])) * fade)), int(row["max"]))
+		drop = mini(drop, k.z - ground)
+		if drop >= 1:
+			drops[k] = drop
+	if drops.is_empty():
+		return
+	var entries: Array = []
+	var cubes: int = 0
+	for k: Vector3i in drops:
+		var material: String = soft[k]
+		var fill: int = 0
+		if bool(sag_table[material]["fill"]):
+			for d: Vector3i in lateral:
+				var n: Vector3i = k + d
+				var nd: int = int(drops.get(n, 0)) if soft.has(n) else -1
+				if nd >= 0 and nd < int(drops[k]):
+					fill = maxi(fill, int(drops[k]) - nd - 1)
+		cubes += 1 + fill
+		if cubes > RubblePresetsRef.ROOF_SAG_MAX_CUBES:
+			fill = 0
+		var v: Voxel = remaining[k][0]
+		entries.append(BlastCalculatorClass.damage_entry(v, Voxel.DamageState.DESTROYED, true, Voxel.CarvedSide.BOTTOM))
+		delta.roof_sag.append({"grid_pos": v.grid_pos, "level": int(v.level), "material": material, "drop": int(drops[k]), "fill": fill})
 	delta.add_damage(entries)
-	print_debug("[ROOF-BLAST] %d roof voxel(s) lost every support and fall (of %d standing in reach)" % [entries.size(), remaining.size()])
+	print_debug("[ROOF-SAG] %d soft roof voxel(s) sag (deepest %d levels), %d cube(s) with the hanging fill" % [entries.size(), drops.values().max(), cubes])
 
 
 ## D2's floor gate: unlocked from a GU's second blast onward, threaded through

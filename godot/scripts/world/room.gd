@@ -6205,8 +6205,40 @@ var _fire_char_pending: Dictionary = {}   ## id -> {"cells": Array sorted by `at
 var _fire_char_ids: int = 0
 
 
+## Director 2026-10-14 ("muito forte e muito viva, parece um animal se movimentando"): each cell darkens in a LADDER of soot tones over
+## `CHAR_FADE_S` (from tone `CHAR_FADE_FROM`), as its ember fades out, instead of jumping to black; a SOFT material's cell ends at the darkest
+## soot tone (not CHAR) and the band's edge is FEATHERED: fewer burnt neighbours, a lighter final tone (`CHAR_FEATHER`).
+static var CHAR_FADE_S: float = 1.4
+static var CHAR_FADE_FROM: int = 3   ## the lightest soot tone (4 is clean, 5 CHAR)
+static var CHAR_FEATHER: Array = [[7, 0], [5, 1], [3, 2], [0, 3]]   ## [burnt neighbours of 8 at least, final tone]
+
+
 func char_after_fire(cells: Array) -> void:
-	var sorted: Array = cells.duplicate()
+	var burnt: Dictionary = {}
+	for c: Dictionary in cells:
+		var gp: Vector2i = c["grid_pos"]
+		burnt[Vector3i(gp.x, gp.y, int(c["level"]))] = true
+	var steps: Array = []
+	for c: Dictionary in cells:
+		var gp: Vector2i = c["grid_pos"]
+		var level: int = int(c["level"])
+		var final: int = BlastCalculator.FACE_SOOT_CHAR
+		if bool(c.get("soft", false)):
+			var n: int = 0
+			for dx in range(-1, 2):
+				for dy in range(-1, 2):
+					if (dx != 0 or dy != 0) and burnt.has(Vector3i(gp.x + dx, gp.y + dy, level)):
+						n += 1
+			for row: Array in CHAR_FEATHER:
+				if n >= int(row[0]):
+					final = int(row[1])
+					break
+		var tones: Array = range(CHAR_FADE_FROM, final, -1) if final != BlastCalculator.FACE_SOOT_CHAR else range(CHAR_FADE_FROM, -1, -1)
+		tones.append(final)
+		for k in range(tones.size()):
+			steps.append({"grid_pos": gp, "level": level, "tone": int(tones[k]),
+				"at": float(c["at"]) + CHAR_FADE_S * float(k) / float(maxi(tones.size() - 1, 1))})
+	var sorted: Array = steps
 	sorted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
 	_fire_char_ids += 1
 	var id: int = _fire_char_ids
@@ -6235,7 +6267,9 @@ func _char_roof_cells(cells: Array) -> void:
 		var level: int = int(c["level"])
 		if not writes.has(level):
 			writes[level] = {}
-		(writes[level] as Dictionary)[c["grid_pos"]] = BlastCalculator.FACE_SOOT_CHAR
+		var tone: int = int(c.get("tone", BlastCalculator.FACE_SOOT_CHAR))
+		var cur: Dictionary = writes[level]
+		cur[c["grid_pos"]] = mini(int(cur.get(c["grid_pos"], tone)), tone) if tone != BlastCalculator.FACE_SOOT_CHAR else tone
 	_paint_soot(stamp_soot(writes), "roof fire")
 
 

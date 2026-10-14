@@ -2864,8 +2864,12 @@ static var FIRE_CHAR_LAG_S: float = 1.6
 
 
 static func _mark_charred(s: Dictionary, voxel: Voxel, lit_at: float = 0.0, flammability: float = 1.0) -> void:
+	## A SOFT material (cardboard, fabric: `RubblePresets.NO_DUST`) ends feathered soot, not the full black (Director, 2026-10-14).
+	var cid: int = voxel.container_id()
+	var holder = instance_from_id(cid) if cid != 0 else null
+	var soft: bool = holder != null and "material" in holder and RubblePresetsRef.NO_DUST.has(String(holder.material))
 	(s["delta"] as WorldDelta).fire_char.append({"grid_pos": voxel.grid_pos, "level": voxel.level,
-		"at": lit_at + FIRE_CHAR_LAG_S * maxf(flammability, 0.3)})
+		"at": lit_at + FIRE_CHAR_LAG_S * maxf(flammability, 0.3), "soft": soft})
 
 
 ## E-EMBER-02 (Director, 2026-08-13): *"os voxels também se propagam para cima,

@@ -1,6 +1,6 @@
 # ROOF MASTER PLAN — destroyed roofs
 
-> **Status: 🟡 v0.24, 2026-10-14 — RF-1 steps 1-4 BUILT; RF-S built and closed for concrete, brick, stone, wood, plywood, cardboard and fabric, for SHOTS (v0.15-v0.19) and EXPLOSIONS (v0.20); RF-2: a blast under an OPAQUE roof opens a hole and drops its rubble, CONCRETE judged (v0.21), and since v0.22 PER MATERIAL (stone heavier, wood / plywood splinters + a splintered rim, cardboard flaps that glide; v0.23: crumbs on the masonry rims, stone's long dust, a fire that creeps across cardboard / fabric roofs and chars them); cardboard, fabric AND PLYWOOD are one layer in roofs and walls (sessions `RESUMO_SESSAO_2026-10-14_ROOF_RF2.md`, `RESUMO_SESSAO_2026-10-14_ROOF_RF2_MATERIALS.md`). v0.24: unsupported roof islands fall, the char follows the fire. NEXT (Director): judge v0.24; re-check the GLASS roof (Director: "rever o telhado de vidro depois"); metal and fabric's sag (Q5), step 5 (the roof shot).**  *"Faltam os telhados destruídos na engine. Vamos colocar
+> **Status: 🟡 v0.25, 2026-10-14 — RF-1 steps 1-4 BUILT; RF-S built and closed for concrete, brick, stone, wood, plywood, cardboard and fabric, for SHOTS (v0.15-v0.19) and EXPLOSIONS (v0.20); RF-2: a blast under an OPAQUE roof opens a hole and drops its rubble, CONCRETE judged (v0.21), and since v0.22 PER MATERIAL (stone heavier, wood / plywood splinters + a splintered rim, cardboard flaps that glide; v0.23: crumbs on the masonry rims, stone's long dust, a fire that creeps across cardboard / fabric roofs and chars them); cardboard, fabric AND PLYWOOD are one layer in roofs and walls (sessions `RESUMO_SESSAO_2026-10-14_ROOF_RF2.md`, `RESUMO_SESSAO_2026-10-14_ROOF_RF2_MATERIALS.md`). v0.24: unsupported roof islands fall, the char follows the fire. NEXT (Director): judge v0.24; re-check the GLASS roof (Director: "rever o telhado de vidro depois"); metal and fabric's sag (Q5), step 5 (the roof shot).**  *"Faltam os telhados destruídos na engine. Vamos colocar
 > eles na frente do modelo, porque acho que é uma das últimas coisas que falta destruir. […] Vamos iniciar os trabalhos pelo telhado
 > de vidro, os demais seguem ele como modelo, adaptando para cada tipo de material com suas características específicas."*
 >
@@ -115,6 +115,10 @@ What a BLAST does to each opaque roof is built (v0.22, `RubblePresets.ROOF_*_OF`
 8. **Q6 — the gameplay side of the light:** detection does not consume light yet (`LIGHT_MASTER_PLAN` status). This plan changes the VISUAL light; the tactical effect waits on that link. Confirm it stays visual here.
 
 ## 5. Records
+- 2026-10-14 v0.25 — **The after-fire soot softened** (Director: "muito forte e muito viva, parece um animal se movimentando"): `Room.char_after_fire`
+  walks each cell down a LADDER of soot tones over `CHAR_FADE_S` 1.4 s (from tone 3) as its ember fades, instead of jumping to black; a SOFT
+  material's cell (cardboard, fabric: `_mark_charred` flags `soft`) ends at a feathered soot tone, not CHAR: 7+ burnt neighbours of 8 -> tone 0,
+  5+ -> 1, 3+ -> 2, else 3 (`CHAR_FEATHER`). Hard materials (wood) still end CHARRED, now faded in. `verify.py` smoke PASSED.
 - 2026-10-14 v0.24 — **Second review, built.** **Stone** differs more from concrete: hole r 3.2 (10 x 8 voxels, 78 destroyed), at most 5 chunks /
   12 voxels / 2 crumbling blocks, and a dust SHOWER: the lower layer up to 4 voxels from the hole trickles too (`ROOF_DUST_REACH_OF`), 120 trickles
   over 2.6 s. **The char follows the fire, for every material that burns** (Director: "o fogo se espalha primeiro, e a fuligem vai alcançando ele

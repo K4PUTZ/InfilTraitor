@@ -96,9 +96,9 @@ func _awning(room: Node, layout: Dictionary, roof: Dictionary) -> void:
 	var only_back_edges: bool = true
 	for i in range(nx):
 		for j in range(nz):
-			if pins[i * nz + j] == 1 and i > 1 and j > 1:
+			if pins[i * nz + j] == 1 and i > 2 and j > 2:   ## the margin (0.5 GU) beside a wall, plus the ledge it rests on
 				only_back_edges = false
-	_check(pins.count(1) >= 15 and pins.count(1) <= 60 and only_back_edges, "%d x %d nodes, %d pinned, all on the west or north edge" % [nx, nz, pins.count(1)])
+	_check(pins.count(1) >= 15 and pins.count(1) <= 70 and only_back_edges, "%d x %d nodes, %d pinned, all on the west or north edge" % [nx, nz, pins.count(1)])
 	_check(pins[(nx - 1) * nz + (nz - 1)] == 0, "the free corner node is not pinned")
 	_check((params["boxes"] as Array).size() >= 8, "%d wall box(es) within reach" % (params["boxes"] as Array).size())
 	var sim := SoftSheetSim.new(params)
@@ -129,6 +129,17 @@ func _awning(room: Node, layout: Dictionary, roof: Dictionary) -> void:
 	## Between the nodes (one per 1/3 GU) the skin can still cut a wall's corner a hair. Measured 2026-10-16 on this map: 391 of 4623 samples were inside a standing
 	## voxel before the sheet knew the walls AS BUILT (8.5%); now 4 are deeper than 0.03 GU (0.09%) and 13 graze a surface.
 	_check(inside <= int(float(samples) * 0.002), "the skin goes deeper than 0.03 GU into a standing voxel in %d of %d samples (limit 0.2%%), %d grazing a surface" % [inside, samples, grazing])
+	## Both walls alike (Director, 2026-10-16: the north-east had a dark slit the north-west did not): the cloth beside a wall that holds it lies FLAT at the
+	## support's height out to the margin, then falls. 2 voxels in from each wall the skin is within 0.03 GU of the pinned height, 8 voxels in it has fallen.
+	for wall_name in ["west", "north"]:
+		var wx2: float = (float(x0) + (2.0 if wall_name == "west" else 12.0)) * 0.125
+		var wz2: float = (float(z0) + (12.0 if wall_name == "west" else 3.0)) * 0.125
+		var near: Vector3 = _catmull(sim, nx, nz, clampf((wx2 - sim.origin.x) / sim.hx, 0.0, float(nx - 1) - 1.0e-4), clampf((wz2 - sim.origin.z) / sim.hz, 0.0, float(nz - 1) - 1.0e-4))
+		var wx8: float = (float(x0) + (8.0 if wall_name == "west" else 12.0)) * 0.125
+		var wz8: float = (float(z0) + (12.0 if wall_name == "west" else 9.0)) * 0.125
+		var deep: Vector3 = _catmull(sim, nx, nz, clampf((wx8 - sim.origin.x) / sim.hx, 0.0, float(nx - 1) - 1.0e-4), clampf((wz8 - sim.origin.z) / sim.hz, 0.0, float(nz - 1) - 1.0e-4))
+		_check(absf(near.y - float(params["origin"].y)) < 0.03 and deep.y < float(params["origin"].y) - 0.2,
+			"%s wall: flat at %.3f two voxels in (pinned %.3f), fallen to %.3f eight voxels in" % [wall_name, near.y, float(params["origin"].y), deep.y])
 	var corner: Vector3 = sim.node_position(nx - 1, nz - 1)
 	_check(sim.is_settled() and guard < 600, "it settles (%d steps, %.1f s simulated)" % [guard, sim.time])
 	_check(corner.y < 0.5, "the free corner fell from %.2f to %.2f GU (the lab's awning reached the floor)" % [float(params["origin"].y), corner.y])

@@ -48,6 +48,7 @@ static func collect(room: Node, roof: Dictionary) -> Dictionary:
 		hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
 	var grid: ClaimGrid = ClaimGrid.of_store(store)
 	var held: Dictionary = {}
+	var held_below: Dictionary = {}   ## column -> true: a support UNDER the roof (a post's head, a wall's top), no side to lock toward: the margin goes all round it
 	var held_dirs: Dictionary = {}   ## column -> Array of Vector2i: the horizontal offsets at which a support stands (a wall BESIDE the roof; a post or wall top under it has none)
 	var ground: int = room._voxel_board.ground_plane_level()
 	var grounded: Dictionary = {}   ## Vector3i -> bool, shared by every candidate support (a wall is asked once per voxel, not once per roof voxel)
@@ -60,11 +61,13 @@ static func collect(room: Node, roof: Dictionary) -> Dictionary:
 			var other: Voxel = grid.voxel_at(n)
 			if other != null and VoxelStore.damage_of(other) != Voxel.DamageState.DESTROYED and _is_grounded(grid, n, keys, ground, grounded):
 				held[Vector2i(key.x, key.y)] = true
+				if d.z < 0:
+					held_below[Vector2i(key.x, key.y)] = true
 				if d.z == 0:
 					var dirs: Array = held_dirs.get(Vector2i(key.x, key.y), [])
 					dirs.append(Vector2i(d.x, d.y))
 					held_dirs[Vector2i(key.x, key.y)] = dirs
-	return {"voxels": voxels, "columns": columns, "held": held, "held_dirs": held_dirs, "level": low, "x0": lo.x, "z0": lo.y, "w": hi.x - lo.x + 1, "d": hi.y - lo.y + 1, "material": material}
+	return {"voxels": voxels, "columns": columns, "held": held, "held_dirs": held_dirs, "held_below": held_below, "level": low, "x0": lo.x, "z0": lo.y, "w": hi.x - lo.x + 1, "d": hi.y - lo.y + 1, "material": material}
 
 
 ## A support HOLDS the roof only while it stands on the ground: a post whose foot a blast took is a stump of floating voxels still touching the roof, and
@@ -167,7 +170,7 @@ static func sim_params(info: Dictionary, row: Dictionary, ground_level: int, blo
 				var j1: int = mini(int(floor((cz + 0.5 * hz - origin.z) / hz + 1.0e-6)), nz - 1)
 				for i in range(nx):
 					var away: float = s * (origin.x + float(i) * hx - face_x)
-					if away >= -1.0e-6 and away <= margin + 1.0e-6:
+					if away <= margin + 1.0e-6:   ## no lower bound: a node BEHIND the wall's face (the sheet's rectangle starts a voxel before the first roof column) is held too
 						for jj in range(j0, j1 + 1):
 							pins[i * nz + jj] = 1
 			else:
@@ -177,9 +180,20 @@ static func sim_params(info: Dictionary, row: Dictionary, ground_level: int, blo
 				var i1: int = mini(int(floor((cx + 0.5 * hx - origin.x) / hx + 1.0e-6)), nx - 1)
 				for j in range(nz):
 					var away: float = s * (origin.z + float(j) * hz - face_z)
-					if away >= -1.0e-6 and away <= margin + 1.0e-6:
+					if away <= margin + 1.0e-6:   ## no lower bound: a node BEHIND the wall's face (the sheet's rectangle starts a voxel before the first roof column) is held too
 						for ii in range(i0, i1 + 1):
 							pins[ii * nz + j] = 1
+	## ... and all round a support UNDER the roof (a post's head, a wall's top): the cloth lies on it flat out to the margin, in every direction.
+	var held_below: Dictionary = info.get("held_below", {})
+	for c: Vector2i in held_below:
+		var bx0: float = float(c.x) * unit
+		var bz0: float = float(c.y) * unit
+		for i in range(nx):
+			var dx: float = maxf(maxf(bx0 - (origin.x + float(i) * hx), (origin.x + float(i) * hx) - (bx0 + unit)), 0.0)
+			for j in range(nz):
+				var dz: float = maxf(maxf(bz0 - (origin.z + float(j) * hz), (origin.z + float(j) * hz) - (bz0 + unit)), 0.0)
+				if maxf(dx, dz) <= margin + 1.0e-6:
+					pins[i * nz + j] = 1
 	var reach: float = maxf(span_x, span_z) + 1.0
 	var boxes: Array = []
 	for b: Dictionary in blocks:

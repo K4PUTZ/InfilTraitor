@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**303 scripts · 91392 lines total** (under `godot/scripts/`)
+**303 scripts · 91417 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -5185,7 +5185,7 @@ extends `SceneTree` · 204 lines
 
 ### `roof_sheet_release_selftest.gd`
 
-extends `SceneTree` · 158 lines
+extends `SceneTree` · 169 lines
 
 `godot/scripts/tools/roof_sheet_release_selftest.gd`
 
@@ -6262,7 +6262,7 @@ extends `Node` · 252 lines
 
 ### `roof_sheet_release.gd`
 
-`class_name RoofSheetRelease` · extends `RefCounted` · 193 lines
+`class_name RoofSheetRelease` · extends `RefCounted` · 207 lines
 
 `godot/scripts/world/roof_sheet_release.gd`
 

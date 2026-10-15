@@ -185,8 +185,6 @@ static var ROOF_SAG_MAX_CUBES: int = 1400
 ## this share of its shade (its char was planned for later: it carries it down).
 static var ROOF_SAG_DELAY_S: float = 0.6
 static var ROOF_SAG_CHAR_TONE: float = 0.4
-## ... reached over this many seconds while the roof bends, from exactly the tone the voxel showed (no jump; Director, 2026-10-14).
-static var ROOF_SAG_CHAR_S: float = 1.5
 ## The sag PEELS from the free end (Director, 2026-10-14: "o voxel mais longe do ponto de apoio inicia o mergulho, os próximos do lado dele
 ## acompanham, puxam os seguintes"): a cube leaves this many seconds after the farthest one per voxel it is nearer the support.
 static var ROOF_SAG_PEEL_S: float = 0.035

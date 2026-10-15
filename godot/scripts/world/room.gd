@@ -6306,54 +6306,12 @@ func sag_roof(cells: Array) -> void:
 		if v == null or v.damage_state == Voxel.DamageState.DESTROYED:
 			continue
 		voxels.append(v)
-		shades[Vector3i(gp.x, gp.y, level)] = float(live.call("top_shade", gp.x, gp.y, level))   ## exactly what the roof showed
+		var tone: float = float(live.call("face_shade", gp.x, gp.y, level, false, true))
+		if bool(c.get("char", false)):
+			tone *= RubblePresetsRef.ROOF_SAG_CHAR_TONE
+		shades[Vector3i(gp.x, gp.y, level)] = tone
 	if voxels.is_empty():
 		return
-	var by_material: Dictionary = {}
-	for c: Dictionary in cells:
-		var gp: Vector2i = c["grid_pos"]
-		if not shades.has(Vector3i(gp.x, gp.y, int(c["level"]))):
-			continue
-		var group: Array = by_material.get(String(c["material"]), [])
-		group.append(c)
-		by_material[String(c["material"])] = group
-	var total: int = 0
-	var ready: Array = []
-	for material: String in by_material:
-		var row: Dictionary = RubblePresetsRef.ROOF_SAG_OF.get(material, {})
-		var lattice: Array = []
-		var shade := PackedFloat32Array()
-		var zones := PackedInt32Array()
-		var stack: Dictionary = {}
-		var release := PackedFloat32Array()
-		var char_to := PackedFloat32Array()
-		var far: int = 0
-		for c: Dictionary in by_material[material]:
-			far = maxi(far, int(c.get("d", 0)))
-		for c: Dictionary in by_material[material]:
-			var gp: Vector2i = c["grid_pos"]
-			var rel: int = int(c["level"]) - ground
-			stack[gp] = maxi(rel - int(c["drop"]), 0)
-			var peel: float = RubblePresetsRef.ROOF_SAG_PEEL_S * float(far - int(c.get("d", 0)))   ## the free end first
-			var tone: float = float(shades[Vector3i(gp.x, gp.y, int(c["level"]))])
-			for n in range(1 + int(c["fill"])):
-				lattice.append(Vector3i(gp.x, rel, gp.y))
-				shade.append(tone)
-				zones.append(0)
-				release.append(peel)
-				char_to.append(RubblePresetsRef.ROOF_SAG_CHAR_TONE if bool(c.get("char", false)) else 1.0)
-		var sim := PropFragmentSim.new({"hold": 1.0e6, "release": release, "cells": lattice, "zones": zones, "origin": Vector3.ZERO,
-			"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS), "blast": Vector2.ZERO, "weight": 0.0, "seed": "sag|" + material,
-			"wave_delay": 0.0, "carve": false, "char": true, "char_to": char_to, "char_time": RubblePresetsRef.ROOF_SAG_CHAR_S,
-			"stack": stack, "slump": false, "shade": shade, "jitter": 0.0,
-			"gravity": float(row.get("gravity", 1.0)), "max_time": 4.0})
-		var zone_materials: Array = [material]
-		var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)
-		node.visible = false   ## prepared before the voxels go; shown and released in the step the chunks swap (no frame with neither)
-		ready.append([node, sim])
-		node.settled.connect(func(records: Array) -> void:
-			_base_rubble_piles.append({"y0": 0.0, "zone_materials": zone_materials, "records": _rubble_base_records(records), "div": 1}))
-		total += sim.count
 	for v: Voxel in voxels:
 		v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
 		record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state, v.damage_is_blast, v.damage_carved_side,
@@ -6373,19 +6331,49 @@ func sag_roof(cells: Array) -> void:
 		return
 	live.on_shot_commit(voxels)
 	_destruction_render_busy = false
-	## Shown as the board's commit is asked for: until the chunks swap the cubes sit exactly on the voxels they replace (one drawn frame of
-	## neither read as a flash), and they are released when the swap is done.
-	for pair: Array in ready:
-		if is_instance_valid(pair[0]):
-			(pair[0] as Node3D).visible = true
 	while is_instance_valid(live) and bool(live.call("remesh_pending")):
 		await live.remesh_committed
 	if not is_instance_valid(live):
 		return
-	for pair: Array in ready:
-		if is_instance_valid(pair[0]):
-			(pair[1] as PropFragmentSim).hold = (pair[1] as PropFragmentSim).time
-			(pair[1] as PropFragmentSim).wave_time = (pair[1] as PropFragmentSim).time   ## the burnt tone ramps from the release
+	var by_material: Dictionary = {}
+	for c: Dictionary in cells:
+		var gp: Vector2i = c["grid_pos"]
+		if not shades.has(Vector3i(gp.x, gp.y, int(c["level"]))):
+			continue
+		var group: Array = by_material.get(String(c["material"]), [])
+		group.append(c)
+		by_material[String(c["material"])] = group
+	var total: int = 0
+	for material: String in by_material:
+		var row: Dictionary = RubblePresetsRef.ROOF_SAG_OF.get(material, {})
+		var lattice: Array = []
+		var shade := PackedFloat32Array()
+		var zones := PackedInt32Array()
+		var stack: Dictionary = {}
+		var release := PackedFloat32Array()
+		var far: int = 0
+		for c: Dictionary in by_material[material]:
+			far = maxi(far, int(c.get("d", 0)))
+		for c: Dictionary in by_material[material]:
+			var gp: Vector2i = c["grid_pos"]
+			var rel: int = int(c["level"]) - ground
+			stack[gp] = maxi(rel - int(c["drop"]), 0)
+			var peel: float = RubblePresetsRef.ROOF_SAG_PEEL_S * float(far - int(c.get("d", 0)))   ## the free end first
+			var tone: float = float(shades[Vector3i(gp.x, gp.y, int(c["level"]))])
+			for n in range(1 + int(c["fill"])):
+				lattice.append(Vector3i(gp.x, rel, gp.y))
+				shade.append(tone)
+				zones.append(0)
+				release.append(peel)
+		var sim := PropFragmentSim.new({"release": release, "cells": lattice, "zones": zones, "origin": Vector3.ZERO,
+			"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS), "blast": Vector2.ZERO, "weight": 0.0, "seed": "sag|" + material,
+			"wave_delay": 0.0, "carve": false, "char": false, "stack": stack, "slump": false, "shade": shade, "jitter": RUBBLE_JITTER,
+			"gravity": float(row.get("gravity", 1.0)), "max_time": 4.0})
+		var zone_materials: Array = [material]
+		var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)
+		node.settled.connect(func(records: Array) -> void:
+			_base_rubble_piles.append({"y0": 0.0, "zone_materials": zone_materials, "records": _rubble_base_records(records), "div": 1}))
+		total += sim.count
 	print_debug("[ROOF-SAG] %d voxel(s) off the board, %d cube(s) lowered, %.1f s after the blast" % [voxels.size(), total, RubblePresetsRef.ROOF_SAG_DELAY_S])
 
 

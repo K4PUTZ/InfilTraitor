@@ -2086,31 +2086,6 @@ func face_shade(x: int, y: int, level: int, x_normal: bool, with_soot: bool = tr
 	return _tone[slot] * light * soot
 
 
-## ROOF RF-2 (2026-10-14): the shade a voxel's TOP face draws with (`OPAQUE_SHADER` face 0: the top tone, the cell's light, its top soot ring
-## `code / 36`), so a cube that takes over a roof voxel seen from above starts as it was (the side tone read darker: a visible jump).
-func top_shade(x: int, y: int, level: int) -> float:
-	var board: VoxelBoard = _room._voxel_board if _room != null else null
-	if board == null or _tone.size() < 3 or _light_ladder.is_empty():
-		return 1.0
-	var light: float = _light_ladder[clampi(board.cell_bucket_at(level, Vector2i(x, y)), 0, _light_ladder.size() - 1)]
-	## The board draws the soot plane FILTERED across neighbouring cells (the soft halo round a hole); one cell's ring alone read as a hard
-	## black square beside it (Director, 2026-10-14: "a fuligem fica super preta de um frame pro outro"), so the 3x3 around it is averaged.
-	var soot: float = 0.0
-	for dx in range(-1, 2):
-		for dy in range(-1, 2):
-			soot += _top_soot_mult(board, x + dx, y + dy, level)
-	return _tone[0] * light * soot / 9.0
-
-
-func _top_soot_mult(board: VoxelBoard, x: int, y: int, level: int) -> float:
-	var ring: int = int(float(board.cell_soot_at(level, Vector2i(x, y))) / 36.0)
-	if ring <= 3 and _soot_mult.size() > ring:
-		return _soot_mult[ring]
-	if ring == 5:
-		return (BoardLook.SOOT_CHAR_MIN + BoardLook.SOOT_CHAR_MAX) * 0.5
-	return 1.0
-
-
 func on_shot_commit(touched: Array) -> void:
 	_commit_touched(touched, "shot", true)
 

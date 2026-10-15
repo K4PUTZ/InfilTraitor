@@ -1308,7 +1308,6 @@ static func _roof_islands(s: Dictionary) -> void:
 				reached[key] = true
 				queue.append(key)
 				break
-	var seeds: Array = queue.duplicate()   ## the HELD voxels, before the walk appends the ones they hold
 	var head: int = 0
 	while head < queue.size():
 		var key: Vector3i = queue[head]
@@ -1328,28 +1327,53 @@ static func _roof_islands(s: Dictionary) -> void:
 	if not entries.is_empty():
 		delta.add_damage(entries)
 		print_debug("[ROOF-BLAST] %d roof voxel(s) lost every support and fall (of %d standing in reach)" % [entries.size(), remaining.size()])
-	_roof_sag(s, remaining, reached, seeds)
 
 
 ## ROOF RF-2 (Director, 2026-10-14): a SOFT roof (`RubblePresets.ROOF_SAG_OF`: fabric, cardboard) that is still held SAGS where the hole left it
-## without enough support. Two lateral walks over its standing voxels (same level, 4 neighbours): the distance to the nearest HELD voxel (`seeds`:
-## the ones touching a wall's top, a block, an unreached roof) and to the hole. drop = k x d_support^pow x (1 - d_hole / reach), capped; a voxel
-## that drops a level or more is destroyed on the Delta and proposed on `delta.roof_sag` with how many cubes hang under it (`fill`, cloth).
-static func _roof_sag(s: Dictionary, remaining: Dictionary, reached: Dictionary, seeds: Array) -> void:
+## without enough support. It runs AFTER the fire (end of PHASE_BURN: Director, "a explosão tem que acontecer inteira num primeiro tempo, e assim
+## que ela termina entra em ação a gravidade"), so the hole includes what the fire ate and the fire and its soot land on the whole roof first.
+## Two lateral walks over the soft roof's standing voxels (same level, 4 neighbours): the distance to the nearest HELD voxel (touching a standing
+## claim that is not soft roof: a wall's top, a block, an unreached roof) and to the hole. drop = k x d_support^pow x (1 - d_hole / reach),
+## capped. A voxel that drops a level or more is NOT destroyed here: it is proposed on `delta.roof_sag` (with the cubes that hang under it,
+## `fill`, and whether its fire chars it, `char`) and `Room.sag_roof` takes it off the board a moment after the blast. Its ember and its late
+## char are dropped from the plan: the cube carries its burnt tone down.
+static func _roof_sag(s: Dictionary) -> void:
 	var delta: WorldDelta = s["delta"]
 	var sag_table: Dictionary = RubblePresetsRef.ROOF_SAG_OF
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		return
+	var slab_registry: SlabRegistry = s["slab_registry"]
 	var soft: Dictionary = {}   ## key -> material
-	for key: Vector3i in reached:
-		var material: String = String(remaining[key][1])
-		if sag_table.has(material):
-			soft[key] = material
+	var voxel_of: Dictionary = {}
+	for id in s["roof_ids"]:
+		var roof: Slab = slab_registry.get_slab(id)
+		if roof == null or roof.pane_id != "" or not sag_table.has(roof.material):
+			continue
+		for v in roof.voxels:
+			if delta.state_of(v) != Voxel.DamageState.DESTROYED:
+				var k := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+				soft[k] = roof.material
+				voxel_of[k] = v
 	if soft.is_empty():
 		return
 	var lateral: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]
+	var grid: ClaimGrid = ClaimGrid.of_store(store)
+	var seeds: Array = []
+	for k: Vector3i in soft:
+		for d: Vector3i in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+			if soft.has(k + d):
+				continue
+			var other: Voxel = grid.voxel_at(k + d)
+			if other != null and delta.state_of(other) != Voxel.DamageState.DESTROYED:
+				seeds.append(k)
+				break
 	var hole: Dictionary = {}
 	for c: Dictionary in delta.blast_roof_rubble:
 		var gp: Vector2i = c["grid_pos"]
 		hole[Vector3i(gp.x, gp.y, int(c["level"]))] = true
+	for key: Vector3i in s.get("burnt", {}):
+		hole[key] = true
 	var walk := func(sources: Array) -> Dictionary:
 		var dist: Dictionary = {}
 		var q: Array = []
@@ -1390,7 +1414,10 @@ static func _roof_sag(s: Dictionary, remaining: Dictionary, reached: Dictionary,
 			drops[k] = drop
 	if drops.is_empty():
 		return
-	var entries: Array = []
+	var charred: Dictionary = {}
+	for c: Dictionary in delta.fire_char:
+		var gp: Vector2i = c["grid_pos"]
+		charred[Vector3i(gp.x, gp.y, int(c["level"]))] = bool(c.get("soft", false))
 	var cubes: int = 0
 	for k: Vector3i in drops:
 		var material: String = soft[k]
@@ -1404,11 +1431,19 @@ static func _roof_sag(s: Dictionary, remaining: Dictionary, reached: Dictionary,
 		cubes += 1 + fill
 		if cubes > RubblePresetsRef.ROOF_SAG_MAX_CUBES:
 			fill = 0
-		var v: Voxel = remaining[k][0]
-		entries.append(BlastCalculatorClass.damage_entry(v, Voxel.DamageState.DESTROYED, true, Voxel.CarvedSide.BOTTOM))
-		delta.roof_sag.append({"grid_pos": v.grid_pos, "level": int(v.level), "material": material, "drop": int(drops[k]), "fill": fill})
-	delta.add_damage(entries)
-	print_debug("[ROOF-SAG] %d soft roof voxel(s) sag (deepest %d levels), %d cube(s) with the hanging fill" % [entries.size(), drops.values().max(), cubes])
+		var v: Voxel = voxel_of[k]
+		delta.roof_sag.append({"grid_pos": v.grid_pos, "level": int(v.level), "material": material, "drop": int(drops[k]), "fill": fill,
+			"char": charred.has(k)})
+	## The sagging cells' embers and late char leave the plan (the cube carries the burnt tone).
+	delta.fire_char = delta.fire_char.filter(func(c: Dictionary) -> bool:
+		var gp: Vector2i = c["grid_pos"]
+		return not drops.has(Vector3i(gp.x, gp.y, int(c["level"]))))
+	var ember_by_ring: Dictionary = s["waves"]["ember"]
+	for ring in ember_by_ring.keys():
+		ember_by_ring[ring] = (ember_by_ring[ring] as Array).filter(func(e: Dictionary) -> bool:
+			var cell: Vector2i = e["cell"]
+			return not drops.has(Vector3i(cell.x, cell.y, int(e["level"]))))
+	print_debug("[ROOF-SAG] %d soft roof voxel(s) will sag after the blast (deepest %d levels), %d cube(s) with the hanging fill" % [drops.size(), drops.values().max(), cubes])
 
 
 ## D2's floor gate: unlocked from a GU's second blast onward, threaded through
@@ -2678,6 +2713,7 @@ static func _phase_burn(s: Dictionary) -> void:
 	_build_ember_wave(s)
 	_commit_burn_to_delta(s)
 	_mark_burnt_embers(s)
+	_roof_sag(s)
 	_enter_phase(s, PHASE_SOOT)
 
 

@@ -178,9 +178,13 @@ static var ROOF_WEIGHT_ISLAND: float = 0.3
 ## support, so cloth reads as one sheet, not stepped tiles. `gravity` paces the drop (`PropFragmentSim`).
 static var ROOF_SAG_OF: Dictionary = {
 	"fabric": {"k": 0.9, "pow": 1.25, "reach": 14.0, "max": 64, "gravity": 0.45, "fill": true},
-	"cardboard": {"k": 0.35, "pow": 1.0, "reach": 7.0, "max": 5, "gravity": 0.9, "fill": false},
+	"cardboard": {"k": 0.35, "pow": 1.0, "reach": 7.0, "max": 5, "gravity": 0.9, "fill": true},   ## fill: no gap at the bend
 }
 static var ROOF_SAG_MAX_CUBES: int = 1400
+## The sag starts this long after the blast's commit (the explosion first, then gravity), and a cube whose voxel the fire charred keeps
+## this share of its shade (its char was planned for later: it carries it down).
+static var ROOF_SAG_DELAY_S: float = 0.6
+static var ROOF_SAG_CHAR_TONE: float = 0.4
 ## The roof's FIRE (Director, 2026-10-14: cardboard "queimasse mais tempo e mais longe, e pode deixar com bastante fuligem, porque nesse caso o
 ## fogo efetivamente chegou na face superior"; fabric the same). On a roof of these materials the fire does not stop at the hole's burning edge:
 ## it creeps OUTWARD across the roof up to `ROOF_FIRE_SPREAD_OF` voxels, one ring every `ROOF_FIRE_STEP_S`; ring k catches at `ROOF_FIRE_CHANCE`^k

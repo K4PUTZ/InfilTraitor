@@ -185,9 +185,6 @@ static var ROOF_SAG_MAX_CUBES: int = 1400
 ## this share of its shade (its char was planned for later: it carries it down).
 static var ROOF_SAG_DELAY_S: float = 0.6
 static var ROOF_SAG_CHAR_TONE: float = 0.4
-## The sag PEELS from the free end (Director, 2026-10-14: "o voxel mais longe do ponto de apoio inicia o mergulho, os próximos do lado dele
-## acompanham, puxam os seguintes"): a cube leaves this many seconds after the farthest one per voxel it is nearer the support.
-static var ROOF_SAG_PEEL_S: float = 0.035
 ## The roof's FIRE (Director, 2026-10-14: cardboard "queimasse mais tempo e mais longe, e pode deixar com bastante fuligem, porque nesse caso o
 ## fogo efetivamente chegou na face superior"; fabric the same). On a roof of these materials the fire does not stop at the hole's burning edge:
 ## it creeps OUTWARD across the roof up to `ROOF_FIRE_SPREAD_OF` voxels, one ring every `ROOF_FIRE_STEP_S`; ring k catches at `ROOF_FIRE_CHANCE`^k

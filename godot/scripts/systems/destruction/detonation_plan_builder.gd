@@ -1433,7 +1433,7 @@ static func _roof_sag(s: Dictionary) -> void:
 			fill = 0
 		var v: Voxel = voxel_of[k]
 		delta.roof_sag.append({"grid_pos": v.grid_pos, "level": int(v.level), "material": material, "drop": int(drops[k]), "fill": fill,
-			"char": charred.has(k), "d": int(d_support[k])})
+			"char": charred.has(k)})
 	## The sagging cells' embers and late char leave the plan (the cube carries the burnt tone).
 	delta.fire_char = delta.fire_char.filter(func(c: Dictionary) -> bool:
 		var gp: Vector2i = c["grid_pos"]

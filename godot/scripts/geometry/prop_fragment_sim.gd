@@ -94,6 +94,8 @@ var _gravity: float = 1.0      ## a multiplier on GRAVITY
 var _fall_max: float = 0.0     ## the terminal fall speed, GU/s (0 = none)
 var _sway: float = 0.0         ## the side-to-side glide of a falling fragment, GU/s (0 = none)
 var _max_time: float = MAX_SIM_TIME
+var _char_time: float = CHAR_TIME
+var _char_free: bool = false   ## `char_to` given: the ramp ignores the weight
 var _slump_on: bool = true   ## false: a landed cube stays on its column (a roof's sag keeps its shape)
 
 
@@ -125,6 +127,10 @@ func _init(p: Dictionary) -> void:
 	var push_dir: Vector3 = p.get("push_dir", Vector3.ZERO)
 	var carve: bool = bool(p.get("carve", true))
 	var charred: bool = bool(p.get("char", true))
+	## ROOF RF-2: `char_to` (PackedFloat32Array per fragment) is the tone each one darkens to over `char_time` seconds from the wave, whatever the
+	## weight (a sagging roof: it starts as the voxel it replaces and reaches its burnt tone while it bends).
+	var char_to: PackedFloat32Array = p.get("char_to", PackedFloat32Array())
+	_char_free = not char_to.is_empty()
 	hold = float(p.get("hold", 0.0))
 	var vanish: PackedByteArray = p.get("vanish", PackedByteArray())
 	var shade: PackedFloat32Array = p.get("shade", PackedFloat32Array())
@@ -141,6 +147,7 @@ func _init(p: Dictionary) -> void:
 	_sway = float(p.get("sway", 0.0))
 	_max_time = float(p.get("max_time", MAX_SIM_TIME))
 	_slump_on = bool(p.get("slump", true))
+	_char_time = float(p.get("char_time", CHAR_TIME))
 	var pre: Dictionary = p.get("stack", {})
 	for col in pre:
 		_stack[col] = int(pre[col])
@@ -177,6 +184,8 @@ func _init(p: Dictionary) -> void:
 		state[i] = State.FALLING
 		vanish_at[i] = -1.0
 		tone[i] = BoardLook.char_mult(_h01(i, P_TONE)) if charred else 1.0
+		if i < char_to.size():
+			tone[i] = char_to[i]
 		jitter[i] = (1.0 - jitter_amp) + 2.0 * jitter_amp * _h01(i, P_JIT)
 		if i < shade.size():
 			jitter[i] *= shade[i]
@@ -295,14 +304,14 @@ func vanished_count() -> int:
 
 ## 0 = its own colour, 1 = fully charred (the multiplier `tone[i]` applies at 1).
 func char_amount(i: int) -> float:
-	var ramp: float = clampf((time - wave_time) / CHAR_TIME, 0.0, 1.0)
-	return ramp * clampf(weight * 1.15, 0.0, 1.0)
+	var ramp: float = clampf((time - wave_time) / _char_time, 0.0, 1.0)
+	return ramp if _char_free else ramp * clampf(weight * 1.15, 0.0, 1.0)
 
 
 ## True once the charring ramp has run its course. Every carved fragment has vanished by then (`vanish_at` is within 0.06 s of the wave),
 ## so a landed fragment can no longer be moved by one vanishing under it: its row is final.
 func char_finished() -> bool:
-	return time - wave_time >= CHAR_TIME
+	return time - wave_time >= _char_time
 
 
 func rotation_of(i: int) -> Basis:

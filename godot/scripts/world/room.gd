@@ -6281,65 +6281,16 @@ func _finish_fire_char() -> void:
 	_fire_char_pending.clear()
 
 
-## ROOF RF-2 (Director, 2026-10-14): a soft roof's SAG (`WorldDelta.roof_sag`), a moment AFTER the blast (`RubblePresets.ROOF_SAG_DELAY_S`: the
-## explosion first, then gravity). The voxels leave the board the way the glass collapse's do (destroyed, base-recorded, the dirty passes, the
-## board's commit), and in the frame the chunks swap each one (and the cloth hanging under it, `fill`) becomes a cube that drops straight down and
-## stops `drop` levels lower: the fragment machine with no push, no slump and each column's target as its `stack`, paced by the material's
-## `gravity`. A cube wears its voxel's shade WITH the soot already on it, darker where the fire was to char it (`ROOF_SAG_CHAR_TONE`), and stays
-## as a rubble pile (div 1, saved and laid back like any other).
-func sag_roof(cells: Array) -> void:
-	await get_tree().create_timer(RubblePresetsRef.ROOF_SAG_DELAY_S).timeout
+## ROOF RF-2 (Director, 2026-10-14): a soft roof's SAG (`WorldDelta.roof_sag`). Each sagging voxel (and the cloth hanging under it, `fill`) is a cube
+## that drops straight down from where the roof was and stops `drop` levels lower: the fragment machine with no push, no slump and each column's
+## target as its `stack`, paced by the material's `gravity`. The cubes stay as a rubble pile (div 1, saved and laid back like any other).
+func sag_roof(cells: Array) -> int:
 	var live: Node = board3d()
-	var store: VoxelStore = VoxelStore.active
-	if live == null or _voxel_board == null or store == null or cells.is_empty():
-		return
+	if live == null or _voxel_board == null or cells.is_empty():
+		return 0
 	var ground: int = _voxel_board.ground_plane_level()
-	var voxels: Array[Voxel] = []
-	var shades: Dictionary = {}   ## Vector3i -> the cube's shade, read before the voxel goes (its soot is on the plane now)
-	for c: Dictionary in cells:
-		var gp: Vector2i = c["grid_pos"]
-		var level: int = int(c["level"])
-		var claim: int = store.last_claim_at(gp.x, gp.y, level)
-		if claim < 0:
-			continue
-		var v: Voxel = store.voxel_of(claim)
-		if v == null or v.damage_state == Voxel.DamageState.DESTROYED:
-			continue
-		voxels.append(v)
-		var tone: float = float(live.call("face_shade", gp.x, gp.y, level, false, true))
-		if bool(c.get("char", false)):
-			tone *= RubblePresetsRef.ROOF_SAG_CHAR_TONE
-		shades[Vector3i(gp.x, gp.y, level)] = tone
-	if voxels.is_empty():
-		return
-	for v: Voxel in voxels:
-		v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
-		record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state, v.damage_is_blast, v.damage_carved_side,
-			v.damage_variant, v.damage_substrate, v)
-		_quiet_destroy[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
-	bump_world_revision()
-	while _destruction_render_busy:
-		await get_tree().process_frame
-		if not is_instance_valid(_voxel_board):
-			return
-	_destruction_render_busy = true
-	await _voxel_board.process_dirty_async(_edge_registry)
-	if is_instance_valid(_voxel_board):
-		await _voxel_board.process_dirty_slabs_async(_slab_registry)
-	if not is_instance_valid(self) or not is_instance_valid(_voxel_board) or not is_instance_valid(live):
-		_destruction_render_busy = false
-		return
-	live.on_shot_commit(voxels)
-	_destruction_render_busy = false
-	while is_instance_valid(live) and bool(live.call("remesh_pending")):
-		await live.remesh_committed
-	if not is_instance_valid(live):
-		return
 	var by_material: Dictionary = {}
 	for c: Dictionary in cells:
-		var gp: Vector2i = c["grid_pos"]
-		if not shades.has(Vector3i(gp.x, gp.y, int(c["level"]))):
-			continue
 		var group: Array = by_material.get(String(c["material"]), [])
 		group.append(c)
 		by_material[String(c["material"])] = group
@@ -6353,8 +6304,11 @@ func sag_roof(cells: Array) -> void:
 		for c: Dictionary in by_material[material]:
 			var gp: Vector2i = c["grid_pos"]
 			var rel: int = int(c["level"]) - ground
-			stack[gp] = maxi(rel - int(c["drop"]), 0)
-			var tone: float = float(shades[Vector3i(gp.x, gp.y, int(c["level"]))])
+			var target: int = maxi(rel - int(c["drop"]), 0)
+			stack[gp] = target
+			var soot: float = lerpf(RubblePresetsRef.ROOF_SOOT.y, 1.0,
+				float(FacadeSampler._fnv1a_hash("ROOFSAG|%d,%d" % [gp.x, gp.y]) % 1000) / 1000.0)
+			var tone: float = float(live.call("face_shade", gp.x, gp.y, ground, false, false)) * soot
 			for n in range(1 + int(c["fill"])):
 				lattice.append(Vector3i(gp.x, rel, gp.y))
 				shade.append(tone)
@@ -6368,7 +6322,8 @@ func sag_roof(cells: Array) -> void:
 		node.settled.connect(func(records: Array) -> void:
 			_base_rubble_piles.append({"y0": 0.0, "zone_materials": zone_materials, "records": _rubble_base_records(records), "div": 1}))
 		total += sim.count
-	print_debug("[ROOF-SAG] %d voxel(s) off the board, %d cube(s) lowered, %.1f s after the blast" % [voxels.size(), total, RubblePresetsRef.ROOF_SAG_DELAY_S])
+	print_debug("[ROOF-SAG] %d cube(s) lowered" % total)
+	return total
 
 
 ## A landed chunk's record as the board voxels it covers (a pile is saved at one division: whole voxels).

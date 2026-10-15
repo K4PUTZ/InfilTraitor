@@ -1,6 +1,6 @@
 # ROOF MASTER PLAN — destroyed roofs
 
-> **Status: 🟡 v0.28, 2026-10-14 — RF-1 steps 1-4 BUILT; RF-S built and closed for concrete, brick, stone, wood, plywood, cardboard and fabric, for SHOTS (v0.15-v0.19) and EXPLOSIONS (v0.20); RF-2: a blast under an OPAQUE roof opens a hole and drops its rubble, CONCRETE judged (v0.21), and since v0.22 PER MATERIAL (stone heavier, wood / plywood splinters + a splintered rim, cardboard flaps that glide; v0.23: crumbs on the masonry rims, stone's long dust, a fire that creeps across cardboard / fabric roofs and chars them); cardboard, fabric AND PLYWOOD are one layer in roofs and walls (sessions `RESUMO_SESSAO_2026-10-14_ROOF_RF2.md`, `RESUMO_SESSAO_2026-10-14_ROOF_RF2_MATERIALS.md`). v0.24: unsupported roof islands fall, the char follows the fire. NEXT (Director): judge v0.24; re-check the GLASS roof (Director: "rever o telhado de vidro depois"); metal and fabric's sag (Q5), step 5 (the roof shot).**  *"Faltam os telhados destruídos na engine. Vamos colocar
+> **Status: 🟡 v0.27, 2026-10-14 — RF-1 steps 1-4 BUILT; RF-S built and closed for concrete, brick, stone, wood, plywood, cardboard and fabric, for SHOTS (v0.15-v0.19) and EXPLOSIONS (v0.20); RF-2: a blast under an OPAQUE roof opens a hole and drops its rubble, CONCRETE judged (v0.21), and since v0.22 PER MATERIAL (stone heavier, wood / plywood splinters + a splintered rim, cardboard flaps that glide; v0.23: crumbs on the masonry rims, stone's long dust, a fire that creeps across cardboard / fabric roofs and chars them); cardboard, fabric AND PLYWOOD are one layer in roofs and walls (sessions `RESUMO_SESSAO_2026-10-14_ROOF_RF2.md`, `RESUMO_SESSAO_2026-10-14_ROOF_RF2_MATERIALS.md`). v0.24: unsupported roof islands fall, the char follows the fire. NEXT (Director): judge v0.24; re-check the GLASS roof (Director: "rever o telhado de vidro depois"); metal and fabric's sag (Q5), step 5 (the roof shot).**  *"Faltam os telhados destruídos na engine. Vamos colocar
 > eles na frente do modelo, porque acho que é uma das últimas coisas que falta destruir. […] Vamos iniciar os trabalhos pelo telhado
 > de vidro, os demais seguem ele como modelo, adaptando para cada tipo de material com suas características específicas."*
 >
@@ -115,13 +115,6 @@ What a BLAST does to each opaque roof is built (v0.22, `RubblePresets.ROOF_*_OF`
 8. **Q6 — the gameplay side of the light:** detection does not consume light yet (`LIGHT_MASTER_PLAN` status). This plan changes the VISUAL light; the tactical effect waits on that link. Confirm it stays visual here.
 
 ## 5. Records
-- 2026-10-14 v0.28 — **The sag reordered** (Director, on a marked-up frame of v0.27: fire and soot in the wrong place, the hole's edge clean, a
-  GAP at the bend; "a explosão tem que acontecer inteira num primeiro tempo, e assim que ela termina entra em ação a gravidade"). `_roof_sag` now
-  runs at the END of PHASE_BURN (the fire and its soot are planned on the whole roof first; the hole counts what the fire ate) and does NOT
-  destroy: it proposes `delta.roof_sag` (+ `char`), drops those cells' embers and late char from the plan, and `Room.sag_roof` takes the voxels off
-  the board `ROOF_SAG_DELAY_S` 0.6 s after the commit the way the glass collapse does (destroyed, base-recorded, dirty passes, board commit, wait
-  for the remesh), then lowers cubes wearing the voxel's shade WITH its soot, x `ROOF_SAG_CHAR_TONE` 0.4 where the fire was to char it.
-  Cardboard fills its bend too. Bench: cardboard 189 voxels, fabric 360 voxels / 599 cubes. Not done: a save during the 0.6 s keeps the roof flat.
 - 2026-10-14 v0.27 — **Soft roofs SAG (fabric, cardboard; Q5's fabric half, first pass)** (Director: "o pano é mais 'líquido' e cai
   praticamente todo, sustentado pelas pontas, enquanto o papelão ainda tem uma certa rigidez"). `DetonationPlanBuilder._roof_sag`, after the
   islands: two lateral walks over the soft roof's standing voxels, to the nearest HELD voxel (touching a wall top / block / unreached roof) and to the

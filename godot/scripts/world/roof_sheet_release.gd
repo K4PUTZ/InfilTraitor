@@ -162,6 +162,17 @@ static func sim_params(info: Dictionary, row: Dictionary, ground_level: int, blo
 	for c: Vector2i in held_dirs:
 		for dir in held_dirs[c]:
 			var off: Vector2i = dir
+			## A side support is a WALL only when the same side holds a run of columns (3 or more): the end face of a wall, or its corner, touches one or
+			## two columns and must not lock a margin out along the wall's line, into the air (Director, 2026-10-16: the corner at the wall's end).
+			var perp := Vector2i(0, 1) if off.x != 0 else Vector2i(1, 0)
+			var run: int = 1
+			for sign_ in [-1, 1]:
+				var k: int = 1
+				while held_dirs.has(c + perp * sign_ * k) and (held_dirs[c + perp * sign_ * k] as Array).has(off):
+					run += 1
+					k += 1
+			if run < 3:
+				continue
 			var s: float = -1.0 if (off.x > 0 or off.y > 0) else 1.0   ## the sheet runs away from the wall
 			if off.x != 0:
 				var face_x: float = float(c.x + (1 if off.x > 0 else 0)) * unit
@@ -186,6 +197,15 @@ static func sim_params(info: Dictionary, row: Dictionary, ground_level: int, blo
 	## ... and all round a support UNDER the roof (a post's head, a wall's top): the cloth lies on it flat out to the margin, in every direction.
 	var held_below: Dictionary = info.get("held_below", {})
 	for c: Vector2i in held_below:
+		## A ledge that is part of a wall's attachment (a side support within 2 voxels) already has its margin, beside the wall: all round it would put a
+		## flat tab of cloth in the air past the wall's END (the corner Director pointed at, 2026-10-16: the vertical and the horizontal support counted twice).
+		var part_of_a_wall: bool = false
+		for dx in range(-2, 3):
+			for dz in range(-2, 3):
+				if held_dirs.has(c + Vector2i(dx, dz)):
+					part_of_a_wall = true
+		if part_of_a_wall:
+			continue
 		var bx0: float = float(c.x) * unit
 		var bz0: float = float(c.y) * unit
 		for i in range(nx):

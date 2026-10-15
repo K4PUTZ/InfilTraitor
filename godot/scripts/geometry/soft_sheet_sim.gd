@@ -147,6 +147,19 @@ func is_inside_solid(p: Vector3) -> bool:
 	return _solid_cell(p.x, p.y, p.z)
 
 
+## True when a standing voxel is within `radius` GU of the point horizontally, at its height or just below (a selftest asks it of every pinned node: a pin
+## with nothing near it hangs in the air).
+func has_solid_near(p: Vector3, radius: float) -> bool:
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var steps: int = int(ceil(radius / unit))
+	for dx in range(-steps, steps + 1):
+		for dz in range(-steps, steps + 1):
+			for dy in [-2, -1, 0, 1]:
+				if _solid_cell(p.x + float(dx) * unit, p.y + float(dy) * unit, p.z + float(dz) * unit):
+					return true
+	return false
+
+
 ## True when the point is inside a standing voxel AND still inside one `depth` GU away in every direction: it is DEEP in the wall, not grazing its surface
 ## (a spline between nodes overshoots a hair at a corner; that is not a cloth through a wall).
 func is_deep_in_solid(p: Vector3, depth: float) -> bool:

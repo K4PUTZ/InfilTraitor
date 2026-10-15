@@ -101,6 +101,24 @@ func _awning(room: Node, layout: Dictionary, roof: Dictionary) -> void:
 	_check(pins.count(1) >= 15 and pins.count(1) <= 70 and only_back_edges, "%d x %d nodes, %d pinned, all on the west or north edge" % [nx, nz, pins.count(1)])
 	_check(pins[(nx - 1) * nz + (nz - 1)] == 0, "the free corner node is not pinned")
 	_check((params["boxes"] as Array).size() >= 8, "%d wall box(es) within reach" % (params["boxes"] as Array).size())
+	var sim0 := SoftSheetSim.new(params)
+	var hovering: int = 0
+	for node in range(nx * nz):
+		if sim0.pinned[node] == 1 and not sim0.has_solid_near(Vector3(sim0.pos[node * 3], sim0.pos[node * 3 + 1], sim0.pos[node * 3 + 2]), 0.75):
+			hovering += 1
+	## The lock stops where the walls stop (Director, 2026-10-16: a flat tab of cloth stood in the air past the wall's end, the corner he pointed at): no pinned node
+	## is farther past the last held column than half a node.
+	var held_x_max: float = 0.0
+	var held_z_max: float = 0.0
+	for hc: Vector2i in held:
+		held_x_max = maxf(held_x_max, float(hc.x + 1) * 0.125)
+		held_z_max = maxf(held_z_max, float(hc.y + 1) * 0.125)
+	var past_end: int = 0
+	for node in range(nx * nz):
+		if sim0.pinned[node] == 1 and (sim0.pos[node * 3] > held_x_max + 0.5 * sim0.hx + 1.0e-3 or sim0.pos[node * 3 + 2] > held_z_max + 0.5 * sim0.hz + 1.0e-3):
+			past_end += 1
+	_check(past_end == 0, "no pinned node stands past the end of the walls that hold the cloth (%d past)" % past_end)
+	_check(hovering == 0, "every pinned node has a support within 0.75 GU (the lock never ends in the air past a wall's end): %d hover" % hovering)
 	var sim := SoftSheetSim.new(params)
 	var guard: int = 0
 	while not sim.is_settled() and guard < 600:

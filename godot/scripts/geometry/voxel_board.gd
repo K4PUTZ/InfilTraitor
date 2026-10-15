@@ -570,6 +570,7 @@ func apply_light_field(field) -> void:
 		return
 	if field == null:
 		return
+	finish_light_apply_job()
 	## RENDER3D R3D-3 step 5 — no opaque tile is ever placed, so the pass walks the STORE's occupancy
 	## (`_apply_light_field_pass_store()`); the tile-walking pass went with the 2D board (R3D-END).
 	_apply_light_field_pass_store(field)
@@ -756,6 +757,7 @@ func apply_light_field_cells(field, cells: Dictionary) -> void:
 		return
 	if field == null:
 		return
+	finish_light_apply_job()
 	_apply_cells_seen = 0
 	_apply_cells_written = 0
 	## The field's stale set plus every cell written behind its back. Unioned into
@@ -775,11 +777,64 @@ func apply_light_field_cells(field, cells: Dictionary) -> void:
 	_externally_written.clear()
 
 
+## ROOF_MASTER_PLAN v0.30 — `apply_light_field_cells()` as a JOB over frames. A cloth roof that lets go moves the light of 22 000 cells (~590 ms on the Moto, all
+## of it the write of the planes: the field itself is 76 ms), and one frame cannot hold that. `begin_light_apply_job()` takes the same set the synchronous
+## apply would write; `step_light_apply_job(budget_us)` writes cells until the budget is spent and answers whether any are left. Anything else that writes
+## the planes through the light (`apply_light_field*`) finishes the job first, so two writers never interleave.
+var _apply_job: Dictionary = {}
+
+
+func begin_light_apply_job(field, cells: Dictionary) -> void:
+	finish_light_apply_job()
+	if LIGHT_DISABLED or field == null:
+		return
+	var visit: Dictionary = {}
+	for k in cells.keys():
+		visit[k] = true
+	for k in _externally_written.keys():
+		visit[k] = true
+	_externally_written.clear()
+	_apply_job = {"field": field, "keys": visit.keys(), "next": 0}
+
+
+## True while cells are left. `budget_us` <= 0 runs the whole job.
+func step_light_apply_job(budget_us: int) -> bool:
+	if _apply_job.is_empty():
+		return false
+	var field = _apply_job["field"]
+	var keys: Array = _apply_job["keys"]
+	var i: int = int(_apply_job["next"])
+	var t0: int = Time.get_ticks_usec()
+	while i < keys.size():
+		var key: Vector3i = keys[i]
+		_write_cell_bucket(key.z, Vector2i(key.x, key.y), field.bucket_for(Vector2i(key.x, key.y), key.z))
+		i += 1
+		if budget_us > 0 and (i & 63) == 0 and Time.get_ticks_usec() - t0 >= budget_us:
+			break
+	_apply_job["next"] = i
+	flush_cell_soot()
+	if i >= keys.size():
+		field.clear_stale_accum()
+		_apply_job = {}
+		return false
+	return true
+
+
+func finish_light_apply_job() -> void:
+	while step_light_apply_job(0):
+		pass
+
+
+func light_apply_job_pending() -> bool:
+	return not _apply_job.is_empty()
+
+
 func apply_light_field_gus(field, gus: Array) -> void:
 	if LIGHT_DISABLED:
 		return
 	if field == null or gus.is_empty():
 		return
+	finish_light_apply_job()
 	var gu_set: Dictionary = {}
 	for gu in gus:
 		gu_set[gu] = true

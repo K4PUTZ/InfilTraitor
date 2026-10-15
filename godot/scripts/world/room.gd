@@ -4259,6 +4259,9 @@ func scenario_skylight_hit() -> bool:
 
 ## ROOF_MASTER_PLAN v0.28 — the DEV event of the bending study: every soft roof of the map lets go under GRAVITY ALONE (no blast, no fire). Each becomes a
 ## cloth hanging from whatever held it (`release_roof_sheet`). Until a blast or a fire releases a roof, this is how one is released.
+## The budget of one frame's slice of a light apply job (`VoxelBoard.begin_light_apply_job`): about a third of the 33 ms frame.
+const LIGHT_APPLY_SLICE_US: int = 10000
+
 ## ROOF_MASTER_PLAN v0.30 (Director, 2026-10-16: "um poste de madeira segurando o toldo; a granada fura/queima o toldo e remove o poste, e o pano cai").
 ## A soft roof stays a voxel slab, held where something stands against it, until a blast takes one of those supports away: `soft_roof_supports()` is read
 ## BEFORE the blast's damage is committed and `release_soft_roofs_after_blast()` AFTER; a roof held by fewer columns than before lets go (`release_roof_sheet`: what the blast left of it, hole included, becomes the cloth). A roof held only by walls the blast did not touch stays.
@@ -4287,6 +4290,8 @@ func soft_roof_supports() -> Dictionary:
 
 
 func release_soft_roofs_after_blast(before: Dictionary) -> void:
+	if str(_dev_flag("SOFT_SHEET_RELEASE", "1")) == "0":
+		return   ## the A/B: the blast alone, the cloth stays up (`soft_sheet_scenario.py --extra SOFT_SHEET_RELEASE=0`)
 	for key in before:
 		var entry: Dictionary = before[key]
 		var info: Dictionary = RoofSheetRelease.collect(self, entry["roof"])
@@ -4465,20 +4470,27 @@ func release_roof_sheet(roof: Dictionary) -> bool:
 	## The light the roof kept out (R-D4: a destroyed roof voxel transmits the lamps above) reaches the floor under it. ⚠️ ~630 ms on the Moto and
 	## the SAME with a narrower scope (measured 2026-10-15: the repaint rebuilds the field, it does not scale with the GUs): the release frame's cost
 	## until the plan's sliced light path takes this over (plan v0.28, open).
-	_repaint_voxel_light_buckets_scoped(shot_repaint_scope(gus.keys()))
-	_destruction_render_busy = false
-	var t_light: int = Time.get_ticks_usec()
+	_repaint_voxel_light_buckets_scoped(shot_repaint_scope(gus.keys()), true)
+	var t_field: int = Time.get_ticks_usec()
+	## The cloth appears the moment the chunks swap; the light the roof kept out is written AFTER, a slice a frame (the planes are ~590 ms on the Moto).
 	while is_instance_valid(live) and bool(live.call("remesh_pending")):
 		await live.remesh_committed
 	if not is_instance_valid(sheet):
+		_destruction_render_busy = false
 		return false
 	sheet.reveal()
 	if _cloth_flaps != null and is_instance_valid(_cloth_flaps):
 		_cloth_flaps.follow(sheet)
-	print("[SOFT-SHEET] %s roof released: %d voxel(s) (%d held), %d x %d nodes (%d pinned): sim built %.1f ms, skin %.1f ms, destroy + dirty pass %.1f ms, board commit %.1f ms, light repaint %.1f ms, remesh wait %.1f ms"
+	var t_reveal: int = Time.get_ticks_usec()
+	while _voxel_board.step_light_apply_job(LIGHT_APPLY_SLICE_US):
+		await get_tree().process_frame
+		if not is_instance_valid(self) or not is_instance_valid(_voxel_board):
+			return false
+	_destruction_render_busy = false
+	print("[SOFT-SHEET] %s roof released: %d voxel(s) (%d held), %d x %d nodes (%d pinned): sim built %.1f ms, skin %.1f ms, destroy + dirty pass %.1f ms, board commit %.1f ms, light field %.1f ms, remesh wait %.1f ms, light planes written over the next %.0f ms in slices"
 		% [material, voxels.size(), (info["held"] as Dictionary).size(), sim.nx, sim.nz, (params["pins"] as PackedByteArray).count(1),
 		float(t_sim - t0) / 1000.0, float(t_skin - t_sim) / 1000.0, float(t_commit - t_skin) / 1000.0, float(t_board - t_commit) / 1000.0,
-		float(t_light - t_board) / 1000.0, float(Time.get_ticks_usec() - t_light) / 1000.0])
+		float(t_field - t_board) / 1000.0, float(t_reveal - t_field) / 1000.0, float(Time.get_ticks_usec() - t_reveal) / 1000.0])
 	return true
 
 
@@ -7205,7 +7217,7 @@ func _vfx_smoke_color_for_material(material_id: String) -> Color:
 ## design — so the scope must be generous, and the soot reach is why it is.
 ## SOOT-STAMP (2026-09-22): a pure LIGHT repaint. The field does not take soot and
 ## no apply writes the soot plane any more; a shot's soot is `apply_shot_soot()`.
-func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
+func _repaint_voxel_light_buckets_scoped(gus: Array, sliced: bool = false) -> void:
 	## ABLATION — see VoxelBoard.LIGHT_DISABLED. Gated HERE, above the
 	## delegation to the map-wide sibling, so the scoped path cannot reach it and
 	## pay a full repaint on an ablation run.
@@ -7247,7 +7259,9 @@ func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
 	## precondition is gone.
 	var stale_path: bool = _voxel_light_field.has_stale_subset()
 	var _stale_n: int = _voxel_light_field.stale_cells().size()
-	if stale_path:
+	if stale_path and sliced:
+		_voxel_board.begin_light_apply_job(_voxel_light_field, _voxel_light_field.stale_cells())   ## the caller drives it over the next frames
+	elif stale_path:
 		_voxel_board.apply_light_field_cells(_voxel_light_field,
 			_voxel_light_field.stale_cells())
 	else:

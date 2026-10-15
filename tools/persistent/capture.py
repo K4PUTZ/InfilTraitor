@@ -70,7 +70,7 @@ def run_godot(map_id, scenario, window, shape, extra=(), seed=1, timeout=600, en
         OVERRIDE.unlink(missing_ok=True)
     log = proc.stdout + proc.stderr
     for line in log.splitlines():
-        if any(t in line for t in ("[TAKE]", "[RAIL]", "[CAPTURE]", "[FRAME-CHECK]", "[GLASS-COLLAPSE]", "[BLAST-RUBBLE]", "-PASSAGE]", "[SHOT-RUBBLE]", "[ROOF-BLAST]", "[ROOF-FIRE]", "[ROOF-SAG]", "ABORT", "SCRIPT ERROR")):
+        if any(t in line for t in ("[TAKE]", "[RAIL]", "[CAPTURE]", "[FRAME-CHECK]", "[GLASS-COLLAPSE]", "[BLAST-RUBBLE]", "-PASSAGE]", "[SHOT-RUBBLE]", "[ROOF-BLAST]", "[ROOF-FIRE]", "ABORT", "SCRIPT ERROR")):
             print("  " + line.strip())
     if proc.returncode != 0 or "ABORT" in log or "SCRIPT ERROR" in log:
         sys.exit("[CAPTURE] the Godot run failed (exit %d); see the lines above" % proc.returncode)

@@ -94,7 +94,6 @@ var _gravity: float = 1.0      ## a multiplier on GRAVITY
 var _fall_max: float = 0.0     ## the terminal fall speed, GU/s (0 = none)
 var _sway: float = 0.0         ## the side-to-side glide of a falling fragment, GU/s (0 = none)
 var _max_time: float = MAX_SIM_TIME
-var _slump_on: bool = true   ## false: a landed cube stays on its column (a roof's sag keeps its shape)
 
 
 ## `p`: cells (Array[Vector3i]), zones (PackedInt32Array), origin (Vector3), blast (Vector2, world X/Z), weight (0..1),
@@ -111,7 +110,6 @@ var _slump_on: bool = true   ## false: a landed cube stays on its column (a roof
 ## With `push_dir` the fragments leave AGAINST it (the reaction to the impact).
 ## ROOF RF-2 (all optional): gravity (a multiplier), fall_max (terminal fall speed, GU/s), sway (a falling fragment glides side to side
 ## along its own hashed axis, GU/s) and max_time (seconds before whatever is still in the air is put on its column): a light piece glides down.
-## slump (default true): false keeps every landed cube on its own column (with `stack` as per-column targets: a roof's sag).
 func _init(p: Dictionary) -> void:
 	var cells: Array = p["cells"]
 	var zones: PackedInt32Array = p.get("zones", PackedInt32Array())
@@ -140,7 +138,6 @@ func _init(p: Dictionary) -> void:
 	_fall_max = float(p.get("fall_max", 0.0))
 	_sway = float(p.get("sway", 0.0))
 	_max_time = float(p.get("max_time", MAX_SIM_TIME))
-	_slump_on = bool(p.get("slump", true))
 	var pre: Dictionary = p.get("stack", {})
 	for col in pre:
 		_stack[col] = int(pre[col])
@@ -357,8 +354,7 @@ func _land(i: int, col: Vector2i) -> void:
 	vel[i] = Vector3.ZERO
 	euler[i] = Vector3.ZERO
 	state[i] = State.LANDED
-	if _slump_on:
-		_slump(i)
+	_slump(i)
 
 
 ## A cube that landed two or more above a neighbouring column slides down to it (the pile collapses instead of standing in a spike).

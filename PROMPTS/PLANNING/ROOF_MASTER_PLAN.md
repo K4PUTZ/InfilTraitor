@@ -1,6 +1,6 @@
 # ROOF MASTER PLAN — destroyed roofs
 
-> **Status: 🟡 v0.27, 2026-10-14 — RF-1 steps 1-4 BUILT; RF-S built and closed for concrete, brick, stone, wood, plywood, cardboard and fabric, for SHOTS (v0.15-v0.19) and EXPLOSIONS (v0.20); RF-2: a blast under an OPAQUE roof opens a hole and drops its rubble, CONCRETE judged (v0.21), and since v0.22 PER MATERIAL (stone heavier, wood / plywood splinters + a splintered rim, cardboard flaps that glide; v0.23: crumbs on the masonry rims, stone's long dust, a fire that creeps across cardboard / fabric roofs and chars them); cardboard, fabric AND PLYWOOD are one layer in roofs and walls (sessions `RESUMO_SESSAO_2026-10-14_ROOF_RF2.md`, `RESUMO_SESSAO_2026-10-14_ROOF_RF2_MATERIALS.md`). v0.24: unsupported roof islands fall, the char follows the fire. NEXT (Director): judge v0.24; re-check the GLASS roof (Director: "rever o telhado de vidro depois"); metal and fabric's sag (Q5), step 5 (the roof shot).**  *"Faltam os telhados destruídos na engine. Vamos colocar
+> **Status: 🟡 v0.26, 2026-10-14 — RF-1 steps 1-4 BUILT; RF-S built and closed for concrete, brick, stone, wood, plywood, cardboard and fabric, for SHOTS (v0.15-v0.19) and EXPLOSIONS (v0.20); RF-2: a blast under an OPAQUE roof opens a hole and drops its rubble, CONCRETE judged (v0.21), and since v0.22 PER MATERIAL (stone heavier, wood / plywood splinters + a splintered rim, cardboard flaps that glide; v0.23: crumbs on the masonry rims, stone's long dust, a fire that creeps across cardboard / fabric roofs and chars them); cardboard, fabric AND PLYWOOD are one layer in roofs and walls (sessions `RESUMO_SESSAO_2026-10-14_ROOF_RF2.md`, `RESUMO_SESSAO_2026-10-14_ROOF_RF2_MATERIALS.md`). v0.24: unsupported roof islands fall, the char follows the fire. NEXT (Director): judge v0.24; re-check the GLASS roof (Director: "rever o telhado de vidro depois"); metal and fabric's sag (Q5), step 5 (the roof shot).**  *"Faltam os telhados destruídos na engine. Vamos colocar
 > eles na frente do modelo, porque acho que é uma das últimas coisas que falta destruir. […] Vamos iniciar os trabalhos pelo telhado
 > de vidro, os demais seguem ele como modelo, adaptando para cada tipo de material com suas características específicas."*
 >
@@ -115,16 +115,6 @@ What a BLAST does to each opaque roof is built (v0.22, `RubblePresets.ROOF_*_OF`
 8. **Q6 — the gameplay side of the light:** detection does not consume light yet (`LIGHT_MASTER_PLAN` status). This plan changes the VISUAL light; the tactical effect waits on that link. Confirm it stays visual here.
 
 ## 5. Records
-- 2026-10-14 v0.27 — **Soft roofs SAG (fabric, cardboard; Q5's fabric half, first pass)** (Director: "o pano é mais 'líquido' e cai
-  praticamente todo, sustentado pelas pontas, enquanto o papelão ainda tem uma certa rigidez"). `DetonationPlanBuilder._roof_sag`, after the
-  islands: two lateral walks over the soft roof's standing voxels, to the nearest HELD voxel (touching a wall top / block / unreached roof) and to the
-  hole; drop = k x d_support^pow x (1 - d_hole / reach), capped, never below the floor (`RubblePresets.ROOF_SAG_OF`: fabric k 0.9, pow 1.25, reach
-  14, no cap, gravity 0.45, a hanging FILL down to the neighbour nearer the support so it reads as one sheet; cardboard k 0.35, pow 1, reach 7, at
-  most 5 levels, no fill). The sagging voxels are destroyed on the Delta (`delta.roof_sag`) and `Room.sag_roof` lowers them as cubes through
-  `PropFragmentSim` (no push, `slump` false, each column's target as its `stack`), kept as a rubble pile. Bench: fabric 426 voxels / 684 cubes,
-  deepest 16 levels (a curtain from the back walls to the floor); cardboard 232, at most 5 levels. First run showed nothing: the HELD seeds were
-  read after the walk had appended every reached voxel (distance 0 everywhere). Not done: the creeping fire and its char stop at the sagged part
-  (destroyed before PHASE_BURN), the cubes are stepped (no bent mesh), the Moto cost of ~700 cubes is unmeasured. `verify.py` smoke PASSED.
 - 2026-10-14 v0.26 — **RF-1 step 6 BUILT: the skylight's support** (Director: "tira o frame de concreto, e vamos testar numa slab mais larga de
   vidro"). ROOF_LAB room A's roof is now a 6x6 GLASS roof (no frame). Before: the grenade left glass strips along the two FRONT edges, over walls
   that are gone, and `[GLASS-COLLAPSE] every pane voxel stands` (`GlassSupport` skipped `PANE_HORIZONTAL`). Now a horizontal pane voxel walks with

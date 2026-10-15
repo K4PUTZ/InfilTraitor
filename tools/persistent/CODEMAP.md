@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 89415 lines total** (under `godot/scripts/`)
+**295 scripts · 89270 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -902,7 +902,7 @@ extends `Node3D` · 3414 lines
 
 ### `prop_fragment_sim.gd`
 
-`class_name PropFragmentSim` · extends `RefCounted` · 475 lines
+`class_name PropFragmentSim` · extends `RefCounted` · 471 lines
 
 `godot/scripts/geometry/prop_fragment_sim.gd`
 
@@ -2342,7 +2342,7 @@ extends `RefCounted` · 37 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 3667 lines
+`class_name DetonationPlanBuilder` · 3586 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2563,7 +2563,7 @@ extends `RefCounted` · 37 lines
 
 ### `rubble_presets.gd`
 
-`class_name RubblePresets` · extends `RefCounted` · 281 lines
+`class_name RubblePresets` · extends `RefCounted` · 271 lines
 
 `godot/scripts/systems/destruction/rubble_presets.gd`
 
@@ -3269,7 +3269,7 @@ extends `Node` · 236 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 460 lines
+`class_name WorldDelta` · extends `RefCounted` · 455 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -3302,7 +3302,6 @@ extends `Node` · 236 lines
 - `var blast_trickles: Array = []`
 - `var blast_roof_rubble: Array = []`
 - `var fire_char: Array = []`
-- `var roof_sag: Array = []`
 - `var blast_source_gu: Vector2i = Vector2i.ZERO`
 - `var burnt_cells: Dictionary = {}`
 - `var light_field = null`
@@ -6127,7 +6126,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11253 lines
+extends `Node2D` · 11208 lines
 
 `godot/scripts/world/room.gd`
 

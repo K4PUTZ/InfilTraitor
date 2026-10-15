@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**301 scripts · 90505 lines total** (under `godot/scripts/`)
+**301 scripts · 90666 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3430 lines
+extends `Node3D` · 3472 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1144,7 +1144,7 @@ extends `Node3D` · 3430 lines
 
 ### `soft_sheet3d.gd`
 
-`class_name SoftSheet3D` · extends `Node3D` · 298 lines
+`class_name SoftSheet3D` · extends `Node3D` · 337 lines
 
 `godot/scripts/geometry/soft_sheet3d.gd`
 
@@ -1158,6 +1158,8 @@ extends `Node3D` · 3430 lines
 
 **Public API**
 - `func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary) -> void:`
+- `func is_settled() -> bool:`
+- `func scorch(at: Vector3, radius: float, strength: float) -> int:`
 
 ---
 
@@ -2618,7 +2620,7 @@ extends `RefCounted` · 37 lines
 
 ### `rubble_presets.gd`
 
-`class_name RubblePresets` · extends `RefCounted` · 271 lines
+`class_name RubblePresets` · extends `RefCounted` · 272 lines
 
 `godot/scripts/systems/destruction/rubble_presets.gd`
 
@@ -3334,7 +3336,7 @@ extends `Node` · 236 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 455 lines
+`class_name WorldDelta` · extends `RefCounted` · 461 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -6225,7 +6227,7 @@ extends `Node` · 252 lines
 
 ### `roof_sheet_release.gd`
 
-`class_name RoofSheetRelease` · extends `RefCounted` · 97 lines
+`class_name RoofSheetRelease` · extends `RefCounted` · 128 lines
 
 `godot/scripts/world/roof_sheet_release.gd`
 
@@ -6238,7 +6240,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11292 lines
+extends `Node2D` · 11334 lines
 
 `godot/scripts/world/room.gd`
 

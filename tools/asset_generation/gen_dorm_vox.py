@@ -138,7 +138,15 @@ def bin_():
     return m
 
 
-OBJECTS = {"bed_single": bed, "nightstand": nightstand, "locker": locker, "bookshelf": bookshelf,
+def post_wood():
+    """0.2 x 0.2 x 3.2 m: a one-voxel plywood post that holds an awning at the top of a two-storey wall (ROOF_LAB room C); one voxel wide so a
+    grenade takes it."""
+    m = Model(1, 1, 16)
+    m.box(0, 0, 0, 0, 0, 15, 5)
+    return m
+
+
+OBJECTS = {"post_wood": post_wood, "bed_single": bed, "nightstand": nightstand, "locker": locker, "bookshelf": bookshelf,
            "desk": desk, "chair": chair, "bin": bin_}
 
 if __name__ == "__main__":

@@ -133,15 +133,16 @@ static var ROOF_RIM_DELAY: Vector2 = Vector2(0.1, 1.1)
 ##   plywood   — wood's, far more pieces (in proportion to its wider hole), darker and more varied, like its shot (`JITTER_OF`);
 ##   cardboard — light flaps that glide down (`ROOF_FALL_OF`: gravity, terminal speed, sway), more of them blown up onto the roof, no dust
 ##               (`NO_DUST`), no chunks or crumbling blocks; the fire spreads across the roof and chars it (`ROOF_FIRE_*`, fabric too).
-## Cardboard, fabric and plywood roofs are ONE layer (`RoomBuilder`), so they never make a 2x2x2 chunk anyway. Fabric keeps the defaults
-## until its sag is designed (Q5).
-static var ROOF_CHUNK_SHARE_OF: Dictionary = {"stone": 0.8, "wood": 0.0, "plywood": 0.0, "cardboard": 0.0}
+## Cardboard, fabric and plywood roofs are ONE layer (`RoomBuilder`), so they never make a 2x2x2 chunk anyway.
+##   fabric    — a cloth sheds NO fragment at all (Director, 2026-10-16: "pano não pode soltar fragmentos, ainda mais voxels quadrados"): the hole's
+##               middle just disintegrates; its ragged rim is a set of flaps that rise and fall (`Room.spawn_cloth_flaps`), the fire goes on.
+static var ROOF_CHUNK_SHARE_OF: Dictionary = {"stone": 0.8, "wood": 0.0, "plywood": 0.0, "cardboard": 0.0, "fabric": 0.0}
 static var ROOF_MAX_CHUNKS_OF: Dictionary = {"stone": 5}
-static var ROOF_VOXEL_SHARE_OF: Dictionary = {"stone": 0.25, "wood": 0.12, "plywood": 0.35, "cardboard": 0.45}
+static var ROOF_VOXEL_SHARE_OF: Dictionary = {"stone": 0.25, "wood": 0.12, "plywood": 0.35, "cardboard": 0.45, "fabric": 0.0}
 static var ROOF_MAX_VOXELS_OF: Dictionary = {"stone": 12, "wood": 30, "plywood": 120, "cardboard": 120}
-static var ROOF_SUB_SHARE_OF: Dictionary = {"stone": 0.06, "wood": 0.3, "plywood": 0.15, "cardboard": 0.0}
+static var ROOF_SUB_SHARE_OF: Dictionary = {"stone": 0.06, "wood": 0.3, "plywood": 0.15, "cardboard": 0.0, "fabric": 0.0}
 static var ROOF_MAX_SUBS_OF: Dictionary = {"stone": 2, "wood": 20, "plywood": 16}
-static var ROOF_UP_SHARE_OF: Dictionary = {"stone": 0.0, "cardboard": 0.35}
+static var ROOF_UP_SHARE_OF: Dictionary = {"stone": 0.0, "cardboard": 0.35, "fabric": 0.0}
 static var ROOF_MAX_UP_OF: Dictionary = {"cardboard": 30}
 ## A light piece's kick upward is smaller, or it would rise metres under its low gravity.
 static var ROOF_UP_PUSH_OF: Dictionary = {"cardboard": Vector2(0.7, 2.2)}

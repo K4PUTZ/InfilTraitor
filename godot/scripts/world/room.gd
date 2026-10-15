@@ -4259,6 +4259,47 @@ func scenario_skylight_hit() -> bool:
 
 ## ROOF_MASTER_PLAN v0.28 — the DEV event of the bending study: every soft roof of the map lets go under GRAVITY ALONE (no blast, no fire). Each becomes a
 ## cloth hanging from whatever held it (`release_roof_sheet`). Until a blast or a fire releases a roof, this is how one is released.
+## ROOF_MASTER_PLAN v0.30 (Director, 2026-10-16: "um poste de madeira segurando o toldo; a granada fura/queima o toldo e remove o poste, e o pano cai").
+## A soft roof stays a voxel slab, held where something stands against it, until a blast takes one of those supports away: `soft_roof_supports()` is read
+## BEFORE the blast's damage is committed and `release_soft_roofs_after_blast()` AFTER; a roof held by fewer columns than before lets go (`release_roof_sheet`: what the blast left of it, hole included, becomes the cloth). A roof held only by walls the blast did not touch stays.
+## The cloths this room let go (`SoftSheet3D`), for the soot a later blast leaves on the ones that have come to rest.
+var _soft_sheets: Array = []
+
+
+## A blast at `epicentre` (a board voxel cell) after a cloth has settled only blackens it: the cloth is scenery, it neither tears nor burns again.
+func scorch_soft_sheets(epicentre: Vector2) -> void:
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var at := Vector3((epicentre.x + 0.5) * unit, 0.3, (epicentre.y + 0.5) * unit)
+	for sheet in _soft_sheets:
+		if is_instance_valid(sheet) and (sheet as SoftSheet3D).is_settled():
+			(sheet as SoftSheet3D).scorch(at, 3.0, 0.6)
+
+
+func soft_roof_supports() -> Dictionary:
+	var out: Dictionary = {}
+	for roof: Dictionary in _base_layout.get("roof_instances", []):
+		if not SoftSheetPresets.has(String(roof["material"])):
+			continue
+		var info: Dictionary = RoofSheetRelease.collect(self, roof)
+		if not info.is_empty():
+			out[roof["gu_cell"]] = {"roof": roof, "held": info["held"]}
+	return out
+
+
+func release_soft_roofs_after_blast(before: Dictionary) -> void:
+	for key in before:
+		var entry: Dictionary = before[key]
+		var info: Dictionary = RoofSheetRelease.collect(self, entry["roof"])
+		if info.is_empty():
+			continue
+		## A column the blast destroyed took its support with it as far as the roof is concerned (a post's head, a wall's top), exactly like a support that
+		## went and left its column standing: either way the roof is held by fewer columns than before.
+		var lost: int = (entry["held"] as Dictionary).size() - (info["held"] as Dictionary).size()
+		if lost > 0:
+			print_debug("[SOFT-SHEET] a blast took %d of the %s roof's supports at %s: it lets go" % [lost, String(entry["roof"]["material"]), str(key)])
+			release_roof_sheet(entry["roof"])
+
+
 func scenario_roof_gravity() -> bool:
 	var released: int = 0
 	for roof: Dictionary in _base_layout.get("roof_instances", []):
@@ -4294,6 +4335,7 @@ func release_roof_sheet(roof: Dictionary) -> bool:
 	var level: int = int(info["level"])
 	var voxels: Array = info["voxels"]
 	var sheet := SoftSheet3D.new()
+	_soft_sheets.append(sheet)
 	sheet.name = "SoftSheet_%s_%d_%d" % [material, int(info["x0"]), int(info["z0"])]
 	(live.call("geometry_root") as Node3D).add_child(sheet)
 	sheet.setup(live, sim, {"x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": 2, "mask": info["columns"],

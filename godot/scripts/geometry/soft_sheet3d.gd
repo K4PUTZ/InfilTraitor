@@ -27,6 +27,7 @@ signal settled()
 var _board: Node3D = null
 var _sim: SoftSheetSim = null
 var _mesh_node: MeshInstance3D = null
+var _arrays: Array = []           ## the skin's surface arrays, kept to repaint the vertex colours (`scorch`)
 var _mat: ShaderMaterial = null
 var _image: Image = null
 var _texture: ImageTexture = null
@@ -212,6 +213,43 @@ func _finish() -> void:
 	settled.emit()
 
 
+## True once the cloth has come to rest (and stays out of the simulation for good).
+func is_settled() -> bool:
+	return _done
+
+
+## ROOF_MASTER_PLAN v0.30 (Director, 2026-10-16: a cloth that has fallen does not react to explosions, "o máximo é pintar com mais fuligem"): a later blast
+## at `at` (GU, world: x, y up, z) blackens the skin near it. Distance is to the cloth where it LIES (the settled node positions), not where the roof was;
+## `radius` GU of reach, `strength` the darkest it gets (0..1 of the tone removed at the centre). A no-op for a cloth still falling. Repaints the vertex
+## colours only: the sim, the shader and the node texture are not touched.
+func scorch(at: Vector3, radius: float, strength: float) -> int:
+	if not _done or _arrays.is_empty() or _mesh_node == null:
+		return 0
+	var uvs: PackedVector2Array = _arrays[Mesh.ARRAY_TEX_UV]
+	var colors: PackedColorArray = _arrays[Mesh.ARRAY_COLOR]
+	var touched: int = 0
+	for k in range(colors.size()):
+		var i: int = clampi(roundi(uvs[k].x), 0, _sim.nx - 1)
+		var j: int = clampi(roundi(uvs[k].y), 0, _sim.nz - 1)
+		var n: int = (i * _sim.nz + j) * 3
+		var d: float = Vector3(_sim.pos[n], _sim.pos[n + 1], _sim.pos[n + 2]).distance_to(at)
+		if d >= radius:
+			continue
+		var f: float = 1.0 - d / radius
+		var keep: float = 1.0 - strength * f * f
+		var c: Color = colors[k]
+		colors[k] = Color(c.r * keep, c.g * keep, c.b * keep, c.a)
+		touched += 1
+	if touched == 0:
+		return 0
+	_arrays[Mesh.ARRAY_COLOR] = colors
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, _arrays)
+	mesh.custom_aabb = (_mesh_node.mesh as ArrayMesh).custom_aabb
+	_mesh_node.mesh = mesh
+	return touched
+
+
 ## The node positions `a` of the way through the current step, into the texture (the main-thread path).
 func _upload(a: float) -> void:
 	_sim.positions_lerped(a, _lerped)
@@ -291,6 +329,7 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 	arrays[Mesh.ARRAY_TEX_UV2] = uv2s
 	arrays[Mesh.ARRAY_COLOR] = colors
 	arrays[Mesh.ARRAY_INDEX] = indices
+	_arrays = arrays
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	var reach: float = maxf(float(w), float(d)) * unit + 2.0

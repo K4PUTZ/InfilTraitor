@@ -1287,7 +1287,7 @@ static func _roof_islands(s: Dictionary) -> void:
 	var remaining: Dictionary = {}   ## Vector3i -> [Voxel, material]
 	for id in s["roof_ids"]:
 		var roof: Slab = slab_registry.get_slab(id)
-		if roof == null or roof.pane_id != "":
+		if roof == null or roof.pane_id != "" or SoftSheetPresets.has(roof.material):   ## a soft roof lets go as a CLOTH (`Room.release_soft_roofs_after_blast`)
 			continue
 		for v in roof.voxels:
 			if delta.state_of(v) != Voxel.DamageState.DESTROYED:

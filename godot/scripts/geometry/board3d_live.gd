@@ -458,6 +458,10 @@ var _cut_chunks: Dictionary = {}
 var _chunk_surface_materials: Dictionary = {}
 const SOLID_SUFFIX: String = "#solid"
 var _material_glass: Array[bool] = []
+## ROOF_MASTER_PLAN v0.30 (Director, 2026-10-16: a cloth has no thickness): per claim, 1 = a voxel of a SOFT roof (a ceiling slab of a material that has a
+## `SoftSheetPresets` row). The voxel stays the INDEX (damage, hole, fire, support, light, shots) but is DRAWN as one flat plane, the underside of its
+## level (resting on a wall's top), and hides nothing beside it. Built once per store in `_collect_store`; read-only for the mesher's worker threads.
+var _sheet_claim: PackedByteArray = PackedByteArray()
 var _shader_materials: Array[ShaderMaterial] = []
 ## R3D-PROPS: prop-mesh materials (`prop_mesh3d.gdshader`) kept lit by the same pass as the board's
 ## own materials, without joining `_shader_materials` (which other code indexes 1:1 against
@@ -2282,11 +2286,41 @@ func _chunk_of(key: Vector3i) -> Vector2i:
 ## become visible through a rebuild, but the list must not depend on that.
 ## Reports `_collect()`'s counts from the claims' visible bits; `cells` counts each
 ## occupied cell once, by its owner.
+## `_sheet_claim` for `store`: empty (nothing to look up) when no material of the map is a soft one.
+func _mark_sheet_claims(store: VoxelStore) -> void:
+	_sheet_claim = PackedByteArray()
+	var soft: bool = false
+	for id: String in store.material_ids:
+		if SoftSheetPresets.has(id):
+			soft = true
+			break
+	if not soft:
+		return
+	var of_container := PackedByteArray()
+	of_container.resize(store.container_count())
+	var any: bool = false
+	for ordinal in range(store.container_count()):
+		var container = store.containers[ordinal]
+		if container is Slab and (container as Slab).role == Slab.Role.CEILING and (container as Slab).pane_id == "" and SoftSheetPresets.has((container as Slab).material):
+			of_container[ordinal] = 1
+			any = true
+	if not any:
+		return
+	_sheet_claim.resize(store.claims)
+	var flagged: int = 0
+	for claim in range(store.claims):
+		if of_container[store.claim_container[claim]] == 1:
+			_sheet_claim[claim] = 1
+			flagged += 1
+	print("[SOFT-SHEET] %d roof voxel(s) of soft materials are drawn as one flat plane" % flagged)
+
+
 func _collect_store(store: VoxelStore) -> Dictionary:
 	var tm0: int = Time.get_ticks_usec()
 	_store_material.resize(store.material_ids.size())
 	for i in range(store.material_ids.size()):
 		_store_material[i] = _material(store.material_ids[i])
+	_mark_sheet_claims(store)
 	var tmd: int = Time.get_ticks_usec()
 	if _decal_array == null:
 		_build_decal_catalog()
@@ -2693,6 +2727,14 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 		if owner[cell] != claim:
 			continue
 		var material: int = _store_material[mat[claim]]
+		if not _sheet_claim.is_empty() and _sheet_claim[claim] == 1:
+			## A soft roof is a sheet: one plane, the underside of the voxel (the top of whatever holds it), whatever its neighbours.
+			var sheet_plane := Vector2i(Dir.TOP, level - 1)
+			if not planes.has(sheet_plane):
+				planes[sheet_plane] = {}
+			(planes[sheet_plane] as Dictionary)[Vector2i(x, y)] = material
+			faces += 1
+			continue
 		var glass: bool = _material_glass[material]
 		if glass and GLASS_RIM_ON and pane_of[claim] != 0:
 			var rim: Array = _glass_rim_record(store, claim, cell, x, y, level, material, int(pane_of[claim]) - 1)
@@ -2715,8 +2757,8 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 		for dir: int in dirs:
 			var n: int = cell + steps[dir]
 			var into_hole: bool = false
-			if occ[n]:
-				## Hidden by a neighbour, unless that neighbour is glass and this is not.
+			if occ[n] and (_sheet_claim.is_empty() or _sheet_claim[owner[n]] == 0):
+				## Hidden by a neighbour, unless that neighbour is glass and this is not (a soft roof's voxel hides nothing: it is only a plane).
 				if not (_material_glass[_store_material[mat[owner[n]]]] and not glass):
 					continue
 			elif fresh >= 0:

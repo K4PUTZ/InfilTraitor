@@ -1,0 +1,28 @@
+{
+  "id": "post_wood",
+  "mesh_tier": 0,
+  "vox_model": "res://ASSETS/props/vox/post_wood.vox",
+  "vox_scale": 1,
+  "vox_materials": {
+    "5": "plywood"
+  },
+  "material_zones": {
+    "default": "plywood"
+  },
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "storeys": 2,
+  "gameplay": {
+    "cover": "none",
+    "destructible": true
+  },
+  "tags": [
+    "structure",
+    "voxel-model"
+  ],
+  "slot": "post_wood"
+}

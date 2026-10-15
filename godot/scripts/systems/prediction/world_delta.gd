@@ -365,6 +365,7 @@ func state_of(voxel) -> int:
 func commit(room = null, defer_rain: bool = false) -> void:
 	commit_split.clear()
 	var t: int = Time.get_ticks_usec()
+	var soft_roofs: Dictionary = room.soft_roof_supports() if room != null and room.has_method("soft_roof_supports") and not damage.is_empty() else {}
 	BlastCalculatorClass.commit_damage(damage)
 	t = _split("damage", t)
 	if room != null and not scorch_writes.is_empty():
@@ -441,7 +442,12 @@ func commit(room = null, defer_rain: bool = false) -> void:
 		## (2026-10-11, Director: the cook does only the blast; the walk under the flash was tried and moved out.)
 		if room.has_method("schedule_glass_collapse"):   ## a selftest's room stub has no board to collapse
 			room.schedule_glass_collapse(-1.0)
-		_split("glass collapse", t)
+		t = _split("glass collapse", t)
+		if room.has_method("scorch_soft_sheets") and blast_epicentre != Vector2.ZERO:
+			room.scorch_soft_sheets(blast_epicentre)   ## BEFORE the release: a cloth let go by THIS blast is still falling and takes its tone from the board
+		if not soft_roofs.is_empty():
+			room.release_soft_roofs_after_blast(soft_roofs)
+		_split("soft roofs", t)
 
 
 func _split(label: String, since_usec: int) -> int:

@@ -48,6 +48,8 @@ static func collect(room: Node, roof: Dictionary) -> Dictionary:
 		hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
 	var grid: ClaimGrid = ClaimGrid.of_store(store)
 	var held: Dictionary = {}
+	var ground: int = room._voxel_board.ground_plane_level()
+	var grounded: Dictionary = {}   ## Vector3i -> bool, shared by every candidate support (a wall is asked once per voxel, not once per roof voxel)
 	for v: Voxel in voxels:
 		var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 		for d: Vector3i in NEIGHBOURS:
@@ -55,10 +57,37 @@ static func collect(room: Node, roof: Dictionary) -> Dictionary:
 			if keys.has(n):
 				continue
 			var other: Voxel = grid.voxel_at(n)
-			if other != null and VoxelStore.damage_of(other) != Voxel.DamageState.DESTROYED:
+			if other != null and VoxelStore.damage_of(other) != Voxel.DamageState.DESTROYED and _is_grounded(grid, n, keys, ground, grounded):
 				held[Vector2i(key.x, key.y)] = true
 				break
 	return {"voxels": voxels, "columns": columns, "held": held, "level": low, "x0": lo.x, "z0": lo.y, "w": hi.x - lo.x + 1, "d": hi.y - lo.y + 1, "material": material}
+
+
+## A support HOLDS the roof only while it stands on the ground: a post whose foot a blast took is a stump of floating voxels still touching the roof, and
+## it must not keep holding it. Walks the standing voxels connected to `start` (never the roof's own), downhill first, until one stands at the ground plane or in the floor (not above it); the verdict is memoised for every voxel the walk met, so the walls (thousands of voxels) are walked once.
+static func _is_grounded(grid: ClaimGrid, start: Vector3i, roof_keys: Dictionary, ground: int, memo: Dictionary) -> bool:
+	if memo.has(start):
+		return bool(memo[start])
+	var seen: Dictionary = {start: true}
+	var stack: Array[Vector3i] = [start]
+	var found: bool = false
+	while not stack.is_empty():
+		var k: Vector3i = stack.pop_back()
+		if k.z <= ground or (memo.has(k) and bool(memo[k])):
+			found = true
+			break
+		for d: Vector3i in NEIGHBOURS:   ## the order puts level -1 LAST so it is popped FIRST: the walk goes down
+			var n: Vector3i = k + d
+			if seen.has(n) or roof_keys.has(n):
+				continue
+			var other: Voxel = grid.voxel_at(n)
+			if other == null or VoxelStore.damage_of(other) == Voxel.DamageState.DESTROYED:
+				continue
+			seen[n] = true
+			stack.append(n)
+	for k: Vector3i in seen:
+		memo[k] = found
+	return found
 
 
 ## The `SoftSheetSim` parameters for what `collect()` found. `ground_level` is the board's ground plane (a level is derived, never typed);
@@ -71,7 +100,9 @@ static func sim_params(info: Dictionary, row: Dictionary, ground_level: int, blo
 	var nz: int = SoftSheetPresets.nodes_for(span_z)
 	var hx: float = span_x / float(nx - 1)
 	var hz: float = span_z / float(nz - 1)
-	var y_top: float = float(int(info["level"]) - ground_level + 1) * unit
+	## The cloth rests on the TOP of what held the roof (the roof's lowest face, plus the cloth's own thickness): at the roof's top face it floated one
+	## voxel above the wall and showed a gap there (Director, 2026-10-16).
+	var y_top: float = float(int(info["level"]) - ground_level) * unit + SoftSheetSim.CONTACT_MARGIN
 	var origin := Vector3(float(int(info["x0"])) * unit, y_top, float(int(info["z0"])) * unit)
 	var pins := PackedByteArray()
 	pins.resize(nx * nz)

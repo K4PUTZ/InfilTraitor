@@ -611,6 +611,16 @@
       "roof",
       "detail"
      ]
+    },
+    {
+     "id": "room_c_front",
+     "at": [
+      28.5,
+      9.5
+     ],
+     "tags": [
+      "event"
+     ]
     }
    ],
    "regions": [
@@ -790,6 +800,52 @@
      "length": 420,
      "seed": 1,
      "note": "ROOF_MASTER_PLAN v0.28: room C's fabric awning lets go under gravity alone (no blast): it hangs from its two back walls and its free corner falls to the floor"
+    },
+    {
+     "id": "roof_post",
+     "profile": "engine",
+     "rail": "room_c_rail",
+     "steps": [
+      "throw 0 @room_c_front"
+     ],
+     "at_key": 0,
+     "after_hold": 20,
+     "length": 600,
+     "seed": 1,
+     "note": "ROOF_MASTER_PLAN v0.30: room C's fabric awning is held by its two back walls and a wooden post at its front corner (gu 28,9); a grenade under it burns / punches it and removes the post, so the cloth lets go and falls"
+    },
+    {
+     "id": "roof_post_scorch",
+     "profile": "engine",
+     "rail": "room_c_rail",
+     "steps": [
+      "throw 0 @room_c_front",
+      "wait 400",
+      "throw 0 @room_c_front"
+     ],
+     "at_key": 0,
+     "after_hold": 20,
+     "length": 1000,
+     "seed": 1,
+     "note": "ROOF_MASTER_PLAN v0.30: the post take, then a SECOND grenade on the cloth that has come to rest: it only blackens it (the cloth is scenery)"
+    }
+   ]
+  },
+  "props": {
+   "v": 1,
+   "items": [
+    {
+     "def": "post_wood",
+     "gu": [
+      28,
+      9
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
     }
    ]
   }

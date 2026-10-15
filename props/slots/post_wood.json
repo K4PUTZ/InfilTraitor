@@ -1,0 +1,25 @@
+{
+  "id": "post_wood",
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "max_size": [
+    0.2,
+    0.2,
+    2.0
+  ],
+  "mesh_tier": 0,
+  "gameplay": {
+    "cover": "none",
+    "destructible": true
+  },
+  "default_model": "post_wood",
+  "generic_material": "plywood",
+  "budget": {
+    "max_claims": 40,
+    "max_materials": 1
+  }
+}

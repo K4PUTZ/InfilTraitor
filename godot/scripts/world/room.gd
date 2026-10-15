@@ -3619,6 +3619,8 @@ func material_tints() -> Dictionary:
 ## DIAG-21 — the 3D board over the real registries. The 2D board is hidden, not
 ## removed: every 2D system keeps running, so only its drawing leaves the frame.
 func _start_board3d_live() -> void:
+	if str(_dev_flag("ROOF_FIRE", "1")) == "0":
+		RubblePresetsRef.ROOF_FIRE_SPREAD_OF = {}   ## the A/B: a blast sets no fire creeping across a cardboard / fabric roof (the cloth is judged first, fire and soot after)
 	var existing: Node = get_node_or_null("Board3DLive")
 	if existing != null:
 		## Out of the tree NOW, not at the end of the frame: the new board takes the same name,
@@ -4374,13 +4376,13 @@ func _spawn_cloth_flaps(destroyed: Dictionary, material: String) -> int:
 		var to_centre: Vector2 = mean - boundary
 		var reach: float = to_centre.length()
 		var dir: Vector2 = to_centre / maxf(reach, 0.001)
-		var length_vox: float = minf(lerpf(6.0, 14.0, r0), 0.7 * reach)   ## Director 2026-10-16: smaller but LONGER, and more of them
-		var width_vox: float = lerpf(2.0, 3.0, r1)
+		var length_vox: float = minf(lerpf(2.5, 5.0, r0), 0.7 * reach)   ## Director 2026-10-16: MINIATURES all round the opening (the plates were too big)
+		var width_vox: float = lerpf(1.0, 2.0, r1)
 		flaps.append({
 			"hinge": Vector3(boundary.x * unit, float(int(entry[3]) - ground) * unit + SoftSheetSim.CONTACT_MARGIN, boundary.y * unit),
-			"dir": dir, "length": length_vox * unit, "width": width_vox * unit,
+			"dir": dir, "length": length_vox * unit, "width": width_vox * unit, "segments": 2,
 			"thickness": float((SoftSheetPresets.OF.get(material, {}) as Dictionary).get("thickness", 0.0)), "delay": 0.08 * r2, "rise": lerpf(0.18, 0.28, r0), "fall": lerpf(0.55, 0.9, r1), "tone": tone, "burn": 1.0})
-		i += 1 + int(lerpf(1.0, 3.0, r2))   ## every 2 or 3 rim voxels: the tongues are uneven, with a little torn rim between them
+		i += 1 + int(lerpf(0.0, 2.0, r2))   ## every 1 or 2 rim voxels: a fringe all round the opening, uneven
 	if _cloth_flaps == null or not is_instance_valid(_cloth_flaps):
 		_cloth_flaps = ClothFlaps3D.new()
 		_cloth_flaps.name = "ClothFlaps"

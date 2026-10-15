@@ -98,26 +98,27 @@ func _emit(flap: Dictionary, theta: float, age: float) -> void:
 	var tone: Color = flap["tone"]
 	var thickness: float = float(flap.get("thickness", 0.0))
 	_heat = float(flap["burn"]) * clampf(1.0 - age / 3.0, 0.0, 1.0)
-	var seg_len: float = length / float(SEGMENTS)
+	var segments: int = int(flap.get("segments", SEGMENTS))
+	var seg_len: float = length / float(segments)
 	## The strip's two edges, hinge to tip; the normal of each segment points away from the side the strip faces up.
 	var left: Array[Vector3] = [hinge - across * half]
 	var right: Array[Vector3] = [hinge + across * half]
 	var normals: Array[Vector3] = []
 	var at: Vector3 = hinge
-	for k in range(SEGMENTS):
+	for k in range(segments):
 		## It curls along its length (its tip lags the hinge's lift), and narrows toward the tip: a tongue, not a rectangle.
-		var phi: float = theta + CURL * float(k) / float(SEGMENTS)
+		var phi: float = theta + CURL * float(k) / float(segments)
 		var heading: Vector3 = along * cos(phi) + Vector3.UP * sin(phi)
 		at += heading * seg_len
-		var taper: float = half * (1.0 - 0.45 * float(k + 1) / float(SEGMENTS))
+		var taper: float = half * (1.0 - 0.45 * float(k + 1) / float(segments))
 		left.append(at - across * taper)
 		right.append(at + across * taper)
 		var n: Vector3 = across.cross(heading)
 		normals.append(n if n.y >= 0.0 else -n)
 	var edge_tone := Color(tone.r * 0.55, tone.g * 0.55, tone.b * 0.55, tone.a)
-	for k in range(SEGMENTS):
-		var v0: float = float(k) / float(SEGMENTS)
-		var v1: float = float(k + 1) / float(SEGMENTS)
+	for k in range(segments):
+		var v0: float = float(k) / float(segments)
+		var v1: float = float(k + 1) / float(segments)
 		_quad(left[k], right[k], right[k + 1], left[k + 1], tone, v0, v1)
 		if thickness > 0.0:
 			var drop: Vector3 = normals[k] * thickness
@@ -126,8 +127,8 @@ func _emit(flap: Dictionary, theta: float, age: float) -> void:
 			_quad(left[k], left[k + 1], left[k + 1] - drop, left[k] - drop, edge_tone, v0, v1)
 			_quad(right[k], right[k] - drop, right[k + 1] - drop, right[k + 1], edge_tone, v0, v1)
 	if thickness > 0.0:
-		var tip: Vector3 = normals[SEGMENTS - 1] * thickness
-		_quad(left[SEGMENTS], right[SEGMENTS], right[SEGMENTS] - tip, left[SEGMENTS] - tip, edge_tone, 1.0, 1.0)
+		var tip: Vector3 = normals[segments - 1] * thickness
+		_quad(left[segments], right[segments], right[segments] - tip, left[segments] - tip, edge_tone, 1.0, 1.0)
 
 
 ## Two triangles for the quad a, b, c, d (in order around it).

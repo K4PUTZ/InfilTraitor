@@ -16,8 +16,11 @@ uniform sampler2D facade : filter_nearest_mipmap, repeat_disable;
 uniform float has_facade = 0.0;
 uniform vec3 key_dir = vec3(-0.45, 0.8, 0.4);
 
+uniform float clock = 0.0;   // seconds since the cloth was let go: where the fire that was creeping across the roof has got to
+
 varying vec3 v_world;
 varying vec2 v_rest;
+varying float v_ignite;
 
 // node (i, j) = texel (x = j, y = i): the texture is nz wide and nx tall, the sim's own row-major order (`node_count` = (nx, nz)).
 vec3 node_at(int i, int j) {
@@ -47,6 +50,7 @@ void vertex() {
 	VERTEX = p;
 	v_world = (MODEL_MATRIX * vec4(p, 1.0)).xyz;
 	v_rest = UV2;
+	v_ignite = CUSTOM0.x;   // the second this part of the cloth starts to burn (1e9: never)
 }
 
 void fragment() {
@@ -61,5 +65,10 @@ void fragment() {
 		vec2 fr = mod(v_rest / vec2(64.0, 32.0), 2.0);
 		detail = texture(facade, mix(fr, 2.0 - fr, step(1.0, fr))).r;
 	}
-	ALBEDO = COLOR.rgb * pow(vec3(key * detail), vec3(2.2));
+	// The burn front the roof's fire left unfinished (Director, 2026-10-16: it goes on burning while the cloth comes down): a vertex-smooth ramp from
+	// untouched to black over 1.4 s, glowing while it passes.
+	float b = clamp((clock - v_ignite) / 1.4, 0.0, 1.0);
+	float charred = mix(1.0, 0.2, b);
+	ALBEDO = COLOR.rgb * pow(vec3(key * detail * charred), vec3(2.2));
+	EMISSION = vec3(1.0, 0.36, 0.08) * (b > 0.0 && b < 1.0 ? pow(sin(3.14159 * b), 1.5) : 0.0) * 1.4;
 }

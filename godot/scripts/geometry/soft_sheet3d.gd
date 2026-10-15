@@ -20,6 +20,9 @@ class_name SoftSheet3D
 extends Node3D
 
 const SHADER_PATH := "res://godot/shaders/soft_sheet3d.gdshader"
+## How long a column takes to burn from the first darkening to black (`Room.CHAR_FADE_S`), and the vertex format that carries the second it starts.
+const BURN_SECONDS: float = 1.4
+const CUSTOM_FLAGS: int = Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
 
 ## Emitted once, when the simulation has settled (or hit its time limit).
 signal settled()
@@ -27,6 +30,9 @@ signal settled()
 var _board: Node3D = null
 var _sim: SoftSheetSim = null
 var _mesh_node: MeshInstance3D = null
+var _mask: Dictionary = {}          ## the roof's voxel columns the skin covers (Vector2i -> true)
+var _burn_clock: float = 0.0        ## seconds since `reveal()`: what the shader's burn front reads
+var _burn_end: float = 0.0          ## when the last column has finished burning (0 = nothing burns)
 var _arrays: Array = []           ## the skin's surface arrays, kept to repaint the vertex colours (`scorch`)
 var _mat: ShaderMaterial = null
 var _image: Image = null
@@ -83,6 +89,8 @@ func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary) -> void:
 		if facade != null:
 			_mat.set_shader_parameter("facade", facade)
 			_mat.set_shader_parameter("has_facade", 1.0)
+	_mask = skin["mask"]
+	_mat.set_shader_parameter("clock", 0.0)
 	_mesh_node = MeshInstance3D.new()
 	_mesh_node.mesh = _build_mesh(sim, skin)
 	_mesh_node.material_override = _mat
@@ -111,6 +119,11 @@ func node_positions() -> PackedFloat64Array:
 
 
 func _process(delta: float) -> void:
+	if _burn_end > 0.0:
+		_burn_clock += delta
+		_mat.set_shader_parameter("clock", _burn_clock)
+		if _done and _burn_clock > _burn_end:
+			set_process(false)
 	if _sim == null or _done:
 		return
 	var t0: int = Time.get_ticks_usec()
@@ -197,7 +210,7 @@ func _exit_tree() -> void:
 
 func _finish() -> void:
 	_done = true
-	set_process(false)
+	set_process(_burn_end > _burn_clock)   ## a cloth still burning keeps its clock running after it has come to rest
 	if _threaded:
 		_stop_worker()
 		_step_count = _done_steps
@@ -211,6 +224,34 @@ func _finish() -> void:
 		float(_step_usec) / 1000.0 / maxf(float(_step_count), 1.0), float(_step_worst) / 1000.0,
 		float(_frame_usec) / 1000.0 / maxf(float(_frames), 1.0), _sim.nx * _sim.nz])
 	settled.emit()
+
+
+## Where the cloth is, now, over the world point (x, z) in GU: the bilinear blend of the four nodes around it (the last drawn step). Clamped to the sheet.
+func sample(x: float, z: float) -> Vector3:
+	var fi: float = clampf((x - _sim.origin.x) / _sim.hx, 0.0, float(_sim.nx - 1))
+	var fj: float = clampf((z - _sim.origin.z) / _sim.hz, 0.0, float(_sim.nz - 1))
+	var i0: int = mini(int(fi), _sim.nx - 2)
+	var j0: int = mini(int(fj), _sim.nz - 2)
+	var a: float = fi - float(i0)
+	var b: float = fj - float(j0)
+	var out := Vector3.ZERO
+	for di in range(2):
+		for dj in range(2):
+			var w: float = (a if di == 1 else 1.0 - a) * (b if dj == 1 else 1.0 - b)
+			var n: int = ((i0 + di) * _sim.nz + (j0 + dj)) * 3
+			out += w * Vector3(_lerped[n], _lerped[n + 1], _lerped[n + 2])
+	return out
+
+
+## Whether the skin covers the roof column `cell` (a voxel column): what a fire still creeping across the cloth asks.
+func covers(cell: Vector2i) -> bool:
+	return _mask.has(cell)
+
+
+## Where the cloth is now, over the CENTRE of the roof column `cell`.
+func column_point(cell: Vector2i) -> Vector3:
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	return sample((float(cell.x) + 0.5) * unit, (float(cell.y) + 0.5) * unit)
 
 
 ## True once the cloth has come to rest (and stays out of the simulation for good).
@@ -244,7 +285,7 @@ func scorch(at: Vector3, radius: float, strength: float) -> int:
 		return 0
 	_arrays[Mesh.ARRAY_COLOR] = colors
 	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, _arrays)
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, _arrays, [], {}, CUSTOM_FLAGS)
 	mesh.custom_aabb = (_mesh_node.mesh as ArrayMesh).custom_aabb
 	_mesh_node.mesh = mesh
 	return touched
@@ -293,6 +334,8 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 	var uvs := PackedVector2Array()
 	var uv2s := PackedVector2Array()
 	var colors := PackedColorArray()
+	var ignite := PackedFloat32Array()   ## per vertex: the second its column starts to burn (1e9 = never): CUSTOM0.x, read by the shader's burn front
+	var burn: Dictionary = skin.get("burn", {})
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	for a in range(qa + 1):
 		for b in range(qb + 1):
@@ -304,6 +347,15 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 			uvs.append(Vector2((wx - sim.origin.x) / sim.hx, (wz - sim.origin.z) / sim.hz))
 			uv2s.append(Vector2(float(x0 + ox), float(z0 + oz)))
 			colors.append(colour.call(x0 + mini(ox, w - 1), z0 + mini(oz, d - 1)))
+			var when: float = 1.0e9
+			for dx in range(-1, 1):
+				for dz in range(-1, 1):
+					var cell := Vector2i(x0 + ox + dx, z0 + oz + dz)
+					if burn.has(cell):
+						when = minf(when, float(burn[cell]))
+			ignite.append(when)
+			if when < 1.0e8:
+				_burn_end = maxf(_burn_end, when + BURN_SECONDS)
 	var indices := PackedInt32Array()
 	for a in range(qa):
 		for b in range(qb):
@@ -328,10 +380,11 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 	arrays[Mesh.ARRAY_TEX_UV] = uvs
 	arrays[Mesh.ARRAY_TEX_UV2] = uv2s
 	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_CUSTOM0] = ignite
 	arrays[Mesh.ARRAY_INDEX] = indices
 	_arrays = arrays
 	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, CUSTOM_FLAGS)
 	var reach: float = maxf(float(w), float(d)) * unit + 2.0
 	mesh.custom_aabb = AABB(Vector3(float(x0) * unit - reach, -0.5, float(z0) * unit - reach), Vector3(2.0 * reach + float(w) * unit, y_top + 1.5, 2.0 * reach + float(d) * unit))
 	return mesh

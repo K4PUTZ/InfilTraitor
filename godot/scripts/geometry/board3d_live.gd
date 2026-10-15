@@ -675,7 +675,20 @@ func ceiling_above(p: Vector3) -> float:
 ## The world point at the CENTRE of one face of a voxel (`normal`: the face's outward direction, base coordinates). The one place a
 ## shot's tracer, sparks, chips and dent decal take their impact point from, so the three can never land on different spots
 ## (Director, 2026-10-05: "o traçante, a faísca e o decal estão batendo em 3 pontos diferentes").
+## The cloths this board draws (`SoftSheet3D`), registered by `Room.release_roof_sheet`: a fire still creeping over a roof that has since let go glows ON the cloth.
+var _soft_sheets: Array = []
+
+
+func register_soft_sheet(sheet: Node3D) -> void:
+	_soft_sheets.append(sheet)
+
+
 func voxel_face_point(grid_pos: Vector2i, level: int, normal: Vector3) -> Vector3:
+	if normal == Vector3.UP:
+		for sheet in _soft_sheets:
+			if is_instance_valid(sheet) and (sheet as SoftSheet3D).visible and (sheet as SoftSheet3D).covers(grid_pos):
+				var on_cloth: Vector3 = (sheet as SoftSheet3D).column_point(grid_pos)
+				return Vector3(on_cloth.x, on_cloth.y * VERTICAL_SCALE, on_cloth.z)
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var centre := Vector3((float(grid_pos.x) + 0.5) * unit, (float(level - _ground_level) + 0.5) * unit * VERTICAL_SCALE,
 		(float(grid_pos.y) + 0.5) * unit)

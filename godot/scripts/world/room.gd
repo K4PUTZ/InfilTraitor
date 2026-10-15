@@ -4300,6 +4300,91 @@ func release_soft_roofs_after_blast(before: Dictionary) -> void:
 			release_roof_sheet(entry["roof"])
 
 
+## The ONE node that draws every flap of this room's cloth roofs (`ClothFlaps3D`), made on first use.
+var _cloth_flaps: ClothFlaps3D = null
+
+
+## ROOF_MASTER_PLAN v0.30 (Director, 2026-10-16): a blast through a CLOTH roof disintegrates the middle of the hole with no debris, and the hole's ragged
+## RIM is a ring of tongue-shaped flaps that are thrown up with the explosion and fall back to hang from it (`ClothFlaps3D`). `destroyed`: the hole's
+## voxels, Vector3i(x, y, level) -> cell. Returns the flaps made.
+func _spawn_cloth_flaps(destroyed: Dictionary, material: String) -> int:
+	var live: Node = board3d()
+	var store: VoxelStore = VoxelStore.active
+	if live == null or store == null or destroyed.is_empty():
+		return 0
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var ground: int = _voxel_board.ground_plane_level()
+	var grid: ClaimGrid = ClaimGrid.of_store(store)
+	var hole: Dictionary = {}   ## Vector2i -> level
+	## The whole hole: the voxels the blast listed AND the destroyed ones joined to them (a hole's own ring of already-destroyed voxels is not on the list).
+	var queue: Array[Vector2i] = []
+	for key: Vector3i in destroyed:
+		hole[Vector2i(key.x, key.y)] = key.z
+		queue.append(Vector2i(key.x, key.y))
+	var head: int = 0
+	while head < queue.size() and hole.size() < 2500:   ## a roof already let go is destroyed whole: the walk must not cross it
+		var q: Vector2i = queue[head]
+		head += 1
+		for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = q + d
+			if hole.has(n):
+				continue
+			var other: Voxel = grid.voxel_at(Vector3i(n.x, n.y, int(hole[q])))
+			if other != null and VoxelStore.damage_of(other) == Voxel.DamageState.DESTROYED:
+				hole[n] = hole[q]
+				queue.append(n)
+	var mean := Vector2.ZERO
+	for p: Vector2i in hole:
+		mean += Vector2(p) + Vector2(0.5, 0.5)
+	mean /= float(hole.size())
+	## The rim: a hole voxel with a STANDING roof voxel beside it (4 neighbours), with the boundary point between the two.
+	var rim: Array = []   ## [angle, hole voxel, boundary point (voxels), level]
+	for p: Vector2i in hole:
+		for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = p + d
+			if hole.has(n):
+				continue
+			var other: Voxel = grid.voxel_at(Vector3i(n.x, n.y, int(hole[p])))
+			if other == null or VoxelStore.damage_of(other) == Voxel.DamageState.DESTROYED:
+				continue
+			var boundary: Vector2 = (Vector2(p) + Vector2(n)) * 0.5 + Vector2(0.5, 0.5)
+			rim.append([(boundary - mean).angle(), p, boundary, int(hole[p])])
+			break
+	if rim.is_empty():
+		return 0
+	rim.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	var definition = Registries.get_material_registry().resolve(material)
+	var base: Color = definition.base_color if definition != null else Color(0.8, 0.8, 0.8)
+	var tone: Color = Color(base.r * 0.5, base.g * 0.5, base.b * 0.5, 1.0).srgb_to_linear()
+	var flaps: Array = []
+	var i: int = 0
+	while i < rim.size():
+		var entry: Array = rim[i]
+		var p: Vector2i = entry[1]
+		var h: int = FacadeSampler._fnv1a_hash("CLOTHFLAP|%d,%d" % [p.x, p.y])
+		var r0: float = float(h % 1000) / 1000.0
+		var r1: float = float((h / 1000) % 1000) / 1000.0
+		var r2: float = float((h / 1000000) % 1000) / 1000.0
+		var boundary: Vector2 = entry[2]
+		var to_centre: Vector2 = mean - boundary
+		var reach: float = to_centre.length()
+		var dir: Vector2 = to_centre / maxf(reach, 0.001)
+		var length_vox: float = minf(lerpf(3.0, 9.0, r0), 0.7 * reach)
+		var width_vox: float = lerpf(2.0, 4.5, r1)
+		flaps.append({
+			"hinge": Vector3(boundary.x * unit, float(int(entry[3]) - ground) * unit + SoftSheetSim.CONTACT_MARGIN, boundary.y * unit),
+			"dir": dir, "length": length_vox * unit, "width": width_vox * unit,
+			"delay": 0.08 * r2, "rise": lerpf(0.18, 0.28, r0), "fall": lerpf(0.55, 0.9, r1), "tone": tone, "burn": 1.0})
+		i += 3 + int(lerpf(1.0, 4.0, r2))   ## every few rim voxels: the tongues are uneven, with torn rim between them
+	if _cloth_flaps == null or not is_instance_valid(_cloth_flaps):
+		_cloth_flaps = ClothFlaps3D.new()
+		_cloth_flaps.name = "ClothFlaps"
+		(live.call("geometry_root") as Node3D).add_child(_cloth_flaps)
+	_cloth_flaps.add_flaps(flaps, live.call("material_facade_texture", material))
+	print_debug("[SOFT-SHEET] %d flap(s) on the rim of a %d-voxel hole in the %s roof" % [flaps.size(), hole.size(), material])
+	return flaps.size()
+
+
 func scenario_roof_gravity() -> bool:
 	var released: int = 0
 	for roof: Dictionary in _base_layout.get("roof_instances", []):
@@ -4334,11 +4419,23 @@ func release_roof_sheet(roof: Dictionary) -> bool:
 	var base: Color = definition.base_color if definition != null else Color(0.8, 0.8, 0.8)
 	var level: int = int(info["level"])
 	var voxels: Array = info["voxels"]
+	## What the roof's fire has not burnt yet goes on burning on the cloth: each column's second of ignition, from NOW (`_fire_char_pending`).
+	var burn: Dictionary = {}
+	for id in _fire_char_pending:
+		var fire: Dictionary = _fire_char_pending[id]
+		var now: float = float(fire.get("elapsed", 0.0))
+		var rest: Array = fire["cells"]
+		for k in range(int(fire["next"]), rest.size()):
+			var c: Dictionary = rest[k]
+			var col: Vector2i = c["grid_pos"]
+			if (info["columns"] as Dictionary).has(col):
+				burn[col] = minf(float(burn.get(col, 1.0e9)), maxf(float(c["at"]) - now, 0.0))
 	var sheet := SoftSheet3D.new()
 	_soft_sheets.append(sheet)
+	live.call("register_soft_sheet", sheet)
 	sheet.name = "SoftSheet_%s_%d_%d" % [material, int(info["x0"]), int(info["z0"])]
 	(live.call("geometry_root") as Node3D).add_child(sheet)
-	sheet.setup(live, sim, {"x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": 2, "mask": info["columns"],
+	sheet.setup(live, sim, {"burn": burn, "x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": 2, "mask": info["columns"],
 		"y_top": float(params["origin"].y), "material": material, "threaded": str(_dev_flag("SOFT_SHEET_THREAD", "1")) != "0", "label": "%s %dx%d voxels" % [material, int(info["w"]), int(info["d"])],
 		"color": func(gx: int, gy: int) -> Color:
 			var t: float = float(live.call("top_shade", gx, gy, level))
@@ -4376,6 +4473,8 @@ func release_roof_sheet(roof: Dictionary) -> bool:
 	if not is_instance_valid(sheet):
 		return false
 	sheet.reveal()
+	if _cloth_flaps != null and is_instance_valid(_cloth_flaps):
+		_cloth_flaps.follow(sheet)
 	print("[SOFT-SHEET] %s roof released: %d voxel(s) (%d held), %d x %d nodes (%d pinned): sim built %.1f ms, skin %.1f ms, destroy + dirty pass %.1f ms, board commit %.1f ms, light repaint %.1f ms, remesh wait %.1f ms"
 		% [material, voxels.size(), (info["held"] as Dictionary).size(), sim.nx, sim.nz, (params["pins"] as PackedByteArray).count(1),
 		float(t_sim - t0) / 1000.0, float(t_skin - t_sim) / 1000.0, float(t_commit - t_skin) / 1000.0, float(t_board - t_commit) / 1000.0,
@@ -6110,6 +6209,8 @@ func spawn_blast_roof_rubble(cells: Array, epicentre: Vector2) -> int:
 		var gp: Vector2i = c["grid_pos"]
 		destroyed[Vector3i(gp.x, gp.y, int(c["level"]))] = c
 		_quiet_destroy[Vector3i(gp.x, gp.y, int(c["level"]))] = true
+	if SoftSheetPresets.has(material):
+		return _spawn_cloth_flaps(destroyed, material)   ## a cloth sheds nothing: its hole's middle is gone and the rim becomes flaps
 	## A piece of roof that lost its support (`island`) falls whole, apart from the hole's own pieces.
 	var island: Array = []
 	for c: Dictionary in cells:
@@ -6376,6 +6477,7 @@ func char_after_fire(cells: Array) -> void:
 		if not is_instance_valid(_voxel_board) or not _fire_char_pending.has(id):
 			return   ## a new map, or a save already charred the rest
 		elapsed += get_process_delta_time()
+		fire["elapsed"] = elapsed
 		var start: int = int(fire["next"])
 		var end: int = start
 		while end < sorted.size() and float((sorted[end] as Dictionary)["at"]) <= elapsed:

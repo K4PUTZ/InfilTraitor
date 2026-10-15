@@ -6350,16 +6350,22 @@ func sag_roof(cells: Array) -> void:
 		var shade := PackedFloat32Array()
 		var zones := PackedInt32Array()
 		var stack: Dictionary = {}
+		var release := PackedFloat32Array()
+		var far: int = 0
+		for c: Dictionary in by_material[material]:
+			far = maxi(far, int(c.get("d", 0)))
 		for c: Dictionary in by_material[material]:
 			var gp: Vector2i = c["grid_pos"]
 			var rel: int = int(c["level"]) - ground
 			stack[gp] = maxi(rel - int(c["drop"]), 0)
+			var peel: float = RubblePresetsRef.ROOF_SAG_PEEL_S * float(far - int(c.get("d", 0)))   ## the free end first
 			var tone: float = float(shades[Vector3i(gp.x, gp.y, int(c["level"]))])
 			for n in range(1 + int(c["fill"])):
 				lattice.append(Vector3i(gp.x, rel, gp.y))
 				shade.append(tone)
 				zones.append(0)
-		var sim := PropFragmentSim.new({"cells": lattice, "zones": zones, "origin": Vector3.ZERO,
+				release.append(peel)
+		var sim := PropFragmentSim.new({"release": release, "cells": lattice, "zones": zones, "origin": Vector3.ZERO,
 			"voxel": 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS), "blast": Vector2.ZERO, "weight": 0.0, "seed": "sag|" + material,
 			"wave_delay": 0.0, "carve": false, "char": false, "stack": stack, "slump": false, "shade": shade, "jitter": RUBBLE_JITTER,
 			"gravity": float(row.get("gravity", 1.0)), "max_time": 4.0})

@@ -10,6 +10,10 @@ static var OF: Dictionary = {
 	"fabric": {"lb": 0.12, "k_stretch": 3000.0, "k_shear": 60.0, "drag": 1.0, "thickness": 0.04},
 }
 
+## How far (GU) from a wall that holds a cloth the cloth stays LOCKED flat before it may bend and fall (Director, 2026-10-16: "meia GU"). It is the stretch
+## whose bending met the concrete.
+static var SUPPORT_MARGIN: float = 0.5
+
 ## The grid the sheet is simulated on: about one node per this many GU (a literal node per voxel, 1/8 GU, costs ~0.5 s a step in GDScript; this
 ## is N = 13 on a 4 GU roof, 11.6 ms a step on the desktop). The skin draws the voxel resolution.
 static var NODE_SPACING: float = 1.0 / 3.0

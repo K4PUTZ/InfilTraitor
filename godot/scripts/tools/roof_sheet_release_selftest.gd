@@ -98,7 +98,7 @@ func _awning(room: Node, layout: Dictionary, roof: Dictionary) -> void:
 		for j in range(nz):
 			if pins[i * nz + j] == 1 and i > 1 and j > 1:
 				only_back_edges = false
-	_check(pins.count(1) >= 15 and pins.count(1) <= 30 and only_back_edges, "%d x %d nodes, %d pinned, all on the west or north edge" % [nx, nz, pins.count(1)])
+	_check(pins.count(1) >= 15 and pins.count(1) <= 60 and only_back_edges, "%d x %d nodes, %d pinned, all on the west or north edge" % [nx, nz, pins.count(1)])
 	_check(pins[(nx - 1) * nz + (nz - 1)] == 0, "the free corner node is not pinned")
 	_check((params["boxes"] as Array).size() >= 8, "%d wall box(es) within reach" % (params["boxes"] as Array).size())
 	var sim := SoftSheetSim.new(params)

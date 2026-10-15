@@ -48,6 +48,7 @@ static func collect(room: Node, roof: Dictionary) -> Dictionary:
 		hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
 	var grid: ClaimGrid = ClaimGrid.of_store(store)
 	var held: Dictionary = {}
+	var held_dirs: Dictionary = {}   ## column -> Array of Vector2i: the horizontal offsets at which a support stands (a wall BESIDE the roof; a post or wall top under it has none)
 	var ground: int = room._voxel_board.ground_plane_level()
 	var grounded: Dictionary = {}   ## Vector3i -> bool, shared by every candidate support (a wall is asked once per voxel, not once per roof voxel)
 	for v: Voxel in voxels:
@@ -59,8 +60,11 @@ static func collect(room: Node, roof: Dictionary) -> Dictionary:
 			var other: Voxel = grid.voxel_at(n)
 			if other != null and VoxelStore.damage_of(other) != Voxel.DamageState.DESTROYED and _is_grounded(grid, n, keys, ground, grounded):
 				held[Vector2i(key.x, key.y)] = true
-				break
-	return {"voxels": voxels, "columns": columns, "held": held, "level": low, "x0": lo.x, "z0": lo.y, "w": hi.x - lo.x + 1, "d": hi.y - lo.y + 1, "material": material}
+				if d.z == 0:
+					var dirs: Array = held_dirs.get(Vector2i(key.x, key.y), [])
+					dirs.append(Vector2i(d.x, d.y))
+					held_dirs[Vector2i(key.x, key.y)] = dirs
+	return {"voxels": voxels, "columns": columns, "held": held, "held_dirs": held_dirs, "level": low, "x0": lo.x, "z0": lo.y, "w": hi.x - lo.x + 1, "d": hi.y - lo.y + 1, "material": material}
 
 
 ## A support HOLDS the roof only while it stands on the ground: a post whose foot a blast took is a stump of floating voxels still touching the roof, and
@@ -147,6 +151,35 @@ static func sim_params(info: Dictionary, row: Dictionary, ground_level: int, blo
 		for i in range(i0, i1 + 1):
 			for j in range(j0, j1 + 1):
 				pins[i * nz + j] = 1
+	## ROOF_MASTER_PLAN v0.33 (Director, 2026-10-16): the cloth does not start to bend AT the wall. Beside a wall that holds it, the nodes within
+	## `SUPPORT_MARGIN` of the wall are locked too (flat, at the support's height), and the fall begins past them: the stretch that conflicted with the
+	## concrete is the stretch that no longer bends.
+	var held_dirs: Dictionary = info.get("held_dirs", {})
+	var margin: float = SoftSheetPresets.SUPPORT_MARGIN
+	for c: Vector2i in held_dirs:
+		for dir in held_dirs[c]:
+			var off: Vector2i = dir
+			var s: float = -1.0 if (off.x > 0 or off.y > 0) else 1.0   ## the sheet runs away from the wall
+			if off.x != 0:
+				var face_x: float = float(c.x + (1 if off.x > 0 else 0)) * unit
+				var cz: float = (float(c.y) + 0.5) * unit
+				var j0: int = maxi(int(ceil((cz - 0.5 * hz - origin.z) / hz - 1.0e-6)), 0)
+				var j1: int = mini(int(floor((cz + 0.5 * hz - origin.z) / hz + 1.0e-6)), nz - 1)
+				for i in range(nx):
+					var away: float = s * (origin.x + float(i) * hx - face_x)
+					if away >= -1.0e-6 and away <= margin + 1.0e-6:
+						for jj in range(j0, j1 + 1):
+							pins[i * nz + jj] = 1
+			else:
+				var face_z: float = float(c.y + (1 if off.y > 0 else 0)) * unit
+				var cx: float = (float(c.x) + 0.5) * unit
+				var i0: int = maxi(int(ceil((cx - 0.5 * hx - origin.x) / hx - 1.0e-6)), 0)
+				var i1: int = mini(int(floor((cx + 0.5 * hx - origin.x) / hx + 1.0e-6)), nx - 1)
+				for j in range(nz):
+					var away: float = s * (origin.z + float(j) * hz - face_z)
+					if away >= -1.0e-6 and away <= margin + 1.0e-6:
+						for ii in range(i0, i1 + 1):
+							pins[ii * nz + j] = 1
 	var reach: float = maxf(span_x, span_z) + 1.0
 	var boxes: Array = []
 	for b: Dictionary in blocks:

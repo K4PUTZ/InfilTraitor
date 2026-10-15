@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**303 scripts · 91355 lines total** (under `godot/scripts/`)
+**303 scripts · 91392 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2681,7 +2681,7 @@ extends `RefCounted` · 37 lines
 
 ### `soft_sheet_presets.gd`
 
-`class_name SoftSheetPresets` · extends `RefCounted` · 27 lines
+`class_name SoftSheetPresets` · extends `RefCounted` · 31 lines
 
 `godot/scripts/systems/destruction/soft_sheet_presets.gd`
 
@@ -6262,7 +6262,7 @@ extends `Node` · 252 lines
 
 ### `roof_sheet_release.gd`
 
-`class_name RoofSheetRelease` · extends `RefCounted` · 160 lines
+`class_name RoofSheetRelease` · extends `RefCounted` · 193 lines
 
 `godot/scripts/world/roof_sheet_release.gd`
 

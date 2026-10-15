@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**303 scripts · 91471 lines total** (under `godot/scripts/`)
+**303 scripts · 91478 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -515,7 +515,7 @@ extends `Node3D` · 3485 lines
 
 ### `cloth_flaps3d.gd`
 
-`class_name ClothFlaps3D` · extends `Node3D` · 153 lines
+`class_name ClothFlaps3D` · extends `Node3D` · 155 lines
 
 `godot/scripts/geometry/cloth_flaps3d.gd`
 
@@ -524,6 +524,7 @@ extends `Node3D` · 3485 lines
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/cloth_flap3d.gdshader"`
 - `SEGMENTS` = `5`
+- `TIP_TAPER` = `0.92`
 - `RISE_ANGLE` = `deg_to_rad(68.0)`
 - `HANG_ANGLE` = `deg_to_rad(-78.0)`
 - `CURL` = `-0.6`
@@ -6275,7 +6276,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11453 lines
+extends `Node2D` · 11458 lines
 
 `godot/scripts/world/room.gd`
 

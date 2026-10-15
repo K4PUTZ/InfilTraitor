@@ -9,6 +9,8 @@ extends Node3D
 
 const SHADER_PATH := "res://godot/shaders/cloth_flap3d.gdshader"
 const SEGMENTS: int = 5
+## How much of its width a flap loses by its tip (1 = a point). Director, 2026-10-16: miniatures, "mais triangulares".
+const TIP_TAPER: float = 0.92
 const RISE_ANGLE: float = deg_to_rad(68.0)
 const HANG_ANGLE: float = deg_to_rad(-78.0)
 
@@ -110,7 +112,7 @@ func _emit(flap: Dictionary, theta: float, age: float) -> void:
 		var phi: float = theta + CURL * float(k) / float(segments)
 		var heading: Vector3 = along * cos(phi) + Vector3.UP * sin(phi)
 		at += heading * seg_len
-		var taper: float = half * (1.0 - 0.45 * float(k + 1) / float(segments))
+		var taper: float = half * (1.0 - TIP_TAPER * float(k + 1) / float(segments))   ## a TRIANGLE: the tip is nearly a point
 		left.append(at - across * taper)
 		right.append(at + across * taper)
 		var n: Vector3 = across.cross(heading)

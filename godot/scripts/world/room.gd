@@ -4376,13 +4376,18 @@ func _spawn_cloth_flaps(destroyed: Dictionary, material: String) -> int:
 		var to_centre: Vector2 = mean - boundary
 		var reach: float = to_centre.length()
 		var dir: Vector2 = to_centre / maxf(reach, 0.001)
-		var length_vox: float = minf(lerpf(2.5, 5.0, r0), 0.7 * reach)   ## Director 2026-10-16: MINIATURES all round the opening (the plates were too big)
-		var width_vox: float = lerpf(1.0, 2.0, r1)
-		flaps.append({
-			"hinge": Vector3(boundary.x * unit, float(int(entry[3]) - ground) * unit + SoftSheetSim.CONTACT_MARGIN, boundary.y * unit),
-			"dir": dir, "length": length_vox * unit, "width": width_vox * unit, "segments": 2,
-			"thickness": float((SoftSheetPresets.OF.get(material, {}) as Dictionary).get("thickness", 0.0)), "delay": 0.08 * r2, "rise": lerpf(0.18, 0.28, r0), "fall": lerpf(0.55, 0.9, r1), "tone": tone, "burn": 1.0})
-		i += 1 + int(lerpf(0.0, 2.0, r2))   ## every 1 or 2 rim voxels: a fringe all round the opening, uneven
+		var length_vox: float = minf(lerpf(1.5, 3.0, r0), 0.7 * reach)   ## Director 2026-10-16: MINIATURES all round the opening, smaller still, short and triangular
+		var width_vox: float = lerpf(1.0, 1.6, r1)
+		## Two tongues to a rim voxel, side by side along the rim (a dense fringe, not a few plates), each its own size.
+		var tangent := Vector2(-dir.y, dir.x)
+		for side in range(2):
+			var at_rim: Vector2 = boundary + tangent * (float(side) - 0.5) * 0.5
+			var shrink: float = lerpf(0.75, 1.0, float((h / (7 + side)) % 100) / 100.0)
+			flaps.append({
+				"hinge": Vector3(at_rim.x * unit, float(int(entry[3]) - ground) * unit + SoftSheetSim.CONTACT_MARGIN, at_rim.y * unit),
+				"dir": dir, "length": length_vox * shrink * unit, "width": width_vox * shrink * unit, "segments": 2,
+				"thickness": float((SoftSheetPresets.OF.get(material, {}) as Dictionary).get("thickness", 0.0)) * 0.75, "delay": 0.08 * r2, "rise": lerpf(0.18, 0.28, r0), "fall": lerpf(0.55, 0.9, r1), "tone": tone, "burn": 1.0})
+		i += 1 + (1 if r2 > 0.75 else 0)   ## nearly every rim voxel (now and then one is skipped): a dense fringe all round the opening
 	if _cloth_flaps == null or not is_instance_valid(_cloth_flaps):
 		_cloth_flaps = ClothFlaps3D.new()
 		_cloth_flaps.name = "ClothFlaps"

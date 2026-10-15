@@ -8,20 +8,20 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**295 scripts · 89270 lines total** (under `godot/scripts/`)
+**301 scripts · 90505 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — actor_pose.gd, agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
+- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_sim.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, layout_overlay3d.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
-- **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, capture_framer_selftest.gd, circle_field_octagon_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, pane_frame_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_light_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
+- **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, soft_sheet_presets.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
+- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, capture_framer_selftest.gd, circle_field_octagon_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, pane_frame_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_light_selftest.gd, roof_occlusion_selftest.gd, roof_sheet_release_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soft_sheet_sim_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, options_panel.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
-- **world/** — room_builder.gd, agent_shot_controller.gd, capture_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compass.gd, map_compiler.gd, map_envelope.gd, map_geometry.gd, map_layout.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
+- **world/** — room_builder.gd, agent_shot_controller.gd, capture_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compass.gd, map_compiler.gd, map_envelope.gd, map_geometry.gd, map_layout.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, roof_sheet_release.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3414 lines
+extends `Node3D` · 3430 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1139,6 +1139,61 @@ extends `Node3D` · 3414 lines
 `godot/scripts/geometry/slice_generator.gd`
 
 > Geometry Module — Slice Generator: creates Slices and Voxels from Edges Port from room.gd _place_wall_voxels() and _voxel_slice_positions() logic
+
+---
+
+### `soft_sheet3d.gd`
+
+`class_name SoftSheet3D` · extends `Node3D` · 298 lines
+
+`godot/scripts/geometry/soft_sheet3d.gd`
+
+> SoftSheet3D — a soft roof (cloth) falling under gravity: the draw of one `SoftSheetSim`, in ONE draw call. ROOF_MASTER_PLAN v0.28. The simulation owns a COARSE node grid; this node uploads its positions every frame as a tiny float texture (one texel a node, `nodes`) and a fine mesh (a vertex per `step` voxels) is put on the bicubic surface through them in the vertex shader (`soft_sheet3d.gdshader`): the cost per frame is the sim's step plus ~170 texels, never a skinned mesh in GDScript. The mesh covers the roof's voxel columns (a column the roof did not have is not drawn), its colour is the tone each roof voxel had at the release (the board's light and soot, baked in), its texture the material's facade mapped as the board maps a roof's top face. It is HIDDEN until `reveal()`: the roof's voxels leave the board in a remesh a frame or two after the sheet is built, and the cloth must appear in the very frame the chunks swap (`Room.release_roof_sheet`), or the roof would show twice or not at all. THREADED (`skin.threaded`, the dev flag `SOFT_SHEET_THREAD`): ONE long task on the `WorkerThreadPool` steps the sim back to back for as long as real time is owed (the main thread says how many steps real time has earned; the worker publishes a copy of each finished step under a mutex), and the frame draws the last published step interpolated over one step. The frame never waits for the sim; if a step costs more than its own simulated time (the Moto: 35 ms against 33 ms with 6 iterations) the cloth falls in slow motion, the frame rate does not move. Off, the steps run in `_process`. COST IS MEASURED HERE: every step the sim runs is timed, and when it settles one `[SOFT-SHEET]` line says how many, how long each took on average and at worst (the number the Moto round reads), and how many frames the cloth was alive.
+
+**Signals**
+- `signal settled()`
+
+**Constants / tuning**
+- `SHADER_PATH` = `"res://godot/shaders/soft_sheet3d.gdshader"`
+
+**Public API**
+- `func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary) -> void:`
+
+---
+
+### `soft_sheet_sim.gd`
+
+`class_name SoftSheetSim` · extends `RefCounted` · 432 lines
+
+`godot/scripts/geometry/soft_sheet_sim.gd`
+
+> SoftSheetSim — a roof of cloth as a grid of nodes under gravity, as pure deterministic maths. ROOF_MASTER_PLAN v0.28 (the bending study, `tools/research/cloth_lab/`): one node per grid point, three springs (STRETCH keeps the lengths, SHEAR keeps the diagonals, BEND resists three nodes in a row leaving a straight line), solved with PROJECTIVE DYNAMICS (Bouaziz et al. 2014), implicit Euler. The bend energy `1/2 w |a - 2b + c|^2` is quadratic in the positions, so a stiff bend is solved exactly in a GLOBAL linear step (one fixed banded matrix, factored once); only the lengths are iterated, locally. XPBD was tried first and is WRONG for bending (a 65-node strip came out 60x too soft); the lab's `validate_pd.py` holds the proof, and the selftest holds the same two gates (a clamped strip against the exact discrete beam, a hung chain against the catenary). SPACE. World units are GU (1.0 = one game unit; the board voxel is 1/8), y up, `origin` = the world position of node (0, 0), nodes at `origin + (i * hx, 0, j * hz)` at rest (the sheet is flat and horizontal when it is released: a roof). Mass density is 1, so a node weighs `hx * hz` and `GRAVITY` is the only force. The material is ONE length, `lb` = the elastogravity length `(B / weight-per-area)^(1/3)`: canvas ~ 0.12 GU. NODES ARE COARSE (about one per 0.33 GU): a literal node per voxel costs ~0.5 s a step in GDScript; the skin (`SoftSheet3D`) draws the voxel resolution. No Godot object is touched here: it runs on any thread. FIXED STEPS (`STEP`, 1/30 s of SIMULATED time): `advance(delta)` runs whole steps, so the result at a given simulated time does not depend on the frame rate (the draw interpolates between the last two steps, `positions_lerped`). No randomness anywhere: the same sheet falls the same way.
+
+**Constants / tuning**
+- `MAX_STEPS_PER_ADVANCE` = `2`
+
+**Public vars**
+- `var nx: int = 0`
+- `var nz: int = 0`
+- `var hx: float = 0.125`
+- `var hz: float = 0.125`
+- `var origin: Vector3 = Vector3.ZERO`
+- `var time: float = 0.0`
+- `var floor_y: float = 0.0`
+- `var pos: PackedFloat64Array = PackedFloat64Array()`
+- `var prev: PackedFloat64Array = PackedFloat64Array()`
+- `var vel: PackedFloat64Array = PackedFloat64Array()`
+- `var pinned: PackedByteArray = PackedByteArray()`
+
+**Public API**
+- `func node_index(i: int, j: int) -> int:`
+- `func node_position(i: int, j: int) -> Vector3:`
+- `func advance(delta: float) -> int:`
+- `func alpha() -> float:`
+- `func is_settled() -> bool:`
+- `func steps_run() -> int:`
+- `func positions_lerped(a: float, out: PackedFloat32Array) -> void:`
+- `func step() -> void:`
 
 ---
 
@@ -2601,6 +2656,16 @@ extends `RefCounted` · 37 lines
 
 ---
 
+### `soft_sheet_presets.gd`
+
+`class_name SoftSheetPresets` · extends `RefCounted` · 26 lines
+
+`godot/scripts/systems/destruction/soft_sheet_presets.gd`
+
+> SoftSheetPresets — the numbers a soft roof falls with, per material (ROOF_MASTER_PLAN v0.28; the lab that fixed them is `tools/research/cloth_lab/`). Tuned by eye on the awning of ROOF_LAB, like every other `*Presets` table: `var`, so a calibration can move them.
+
+---
+
 ### `weapon_def.gd`
 
 `class_name WeaponDef` · 119 lines
@@ -3449,14 +3514,14 @@ extends `Node` · 143 lines
 
 ### `scenario_runner.gd`
 
-extends `Node` · 743 lines
+extends `Node` · 745 lines
 
 `godot/scripts/systems/scenario_runner.gd`
 
-> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) throw <index> <x,y>                  RETIRE-2: dev grenade #index THROWN to the GU x,y through the real throw (the agent's release, the arc, the landing hop, the roll, the fuse, the blast); returns at once, so follow it with `frames`/`capture_at` aim <x,y>                            RETIRE-2D: the grenade targeting preview on a GU (the perimeter, the dome, the arc, the shrapnel rays, the footprint and the virtual grenade), as a player aiming; stays open canvas_check <name>                  RETIRE-2D: prints `[CANVAS-CHECK] <name> examined=N canvas=M <names>`: how many overlays that have a 3D target there are, and which of them are painting the 2D canvas instead capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read container_stats <name>               R3D-CLAIMS C2: prints how many released containers were converted back to full `Voxel` objects and how many single handles were made (`VoxelContainer.Stats`) probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points needs that guard to exist (GLASS has none: the step aborts the scenario) reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` view_mode dev|light|heat|numbers|ruler   flips one analysis aid, through the same toggles the HUD and the F-keys reach (the dev overlays under a camera yaw need a scenario to switch them on; call it again to flip it back) pick_check <name>                    touch picking in the CURRENT view: the centre of every on-screen cell goes through the real pick (`_screen_to_tile`) and must come back as that cell (or the standing prop that covers it); prints `[PICK-CHECK]` (tools/persistent/pick_gate.py reads it) world_check <name>                   the maths the air overlays (tracer, throw arc, aim dome, lamps) stand on, in the CURRENT view: where `WorldCanvas3D.lift()` puts fixed points (world state, must not move with the view) and whether `screen_axes()` is what the camera really does to a grid step; prints `[WORLD-CHECK]` (tools/persistent/world_gate.py) relight                              R3D-13: the map-wide light repaint on the CURRENT world, in place — what a rotation or a restore runs, without either (a probe before and after names what the incremental light left different from a full relight) passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
+> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) throw <index> <x,y>                  RETIRE-2: dev grenade #index THROWN to the GU x,y through the real throw (the agent's release, the arc, the landing hop, the roll, the fuse, the blast); returns at once, so follow it with `frames`/`capture_at` aim <x,y>                            RETIRE-2D: the grenade targeting preview on a GU (the perimeter, the dome, the arc, the shrapnel rays, the footprint and the virtual grenade), as a player aiming; stays open canvas_check <name>                  RETIRE-2D: prints `[CANVAS-CHECK] <name> examined=N canvas=M <names>`: how many overlays that have a 3D target there are, and which of them are painting the 2D canvas instead capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read container_stats <name>               R3D-CLAIMS C2: prints how many released containers were converted back to full `Voxel` objects and how many single handles were made (`VoxelContainer.Stats`) probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points needs that guard to exist (GLASS has none: the step aborts the scenario) reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` view_mode dev|light|heat|numbers|ruler   flips one analysis aid, through the same toggles the HUD and the F-keys reach (the dev overlays under a camera yaw need a scenario to switch them on; call it again to flip it back) pick_check <name>                    touch picking in the CURRENT view: the centre of every on-screen cell goes through the real pick (`_screen_to_tile`) and must come back as that cell (or the standing prop that covers it); prints `[PICK-CHECK]` (tools/persistent/pick_gate.py reads it) world_check <name>                   the maths the air overlays (tracer, throw arc, aim dome, lamps) stand on, in the CURRENT view: where `WorldCanvas3D.lift()` puts fixed points (world state, must not move with the view) and whether `screen_axes()` is what the camera really does to a grid step; prints `[WORLD-CHECK]` (tools/persistent/world_gate.py) relight                              R3D-13: the map-wide light repaint on the CURRENT world, in place — what a rotation or a restore runs, without either (a probe before and after names what the incremental light left different from a full relight) roof_gravity                         ROOF_MASTER_PLAN v0.28: every soft roof (fabric) lets go under gravity alone and becomes a cloth hanging from what held it (`Room.scenario_roof_gravity`) passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
 
 **Constants / tuning**
-- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1, "container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "decal_wall": 2, "skylight_hit": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1, }`
+- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1, "container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "decal_wall": 2, "skylight_hit": 0, "roof_gravity": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1, }`
 - `CELL_TOKENS` = `{"throw": [2], "aim": [1], "centre": [1], "place_guard": [2], "decal_wall": [2], "occ_bench": [1, 2]}`
 - `FRAME_MODES` = `["wide", "detail", "fit"]`
 - `VIEWS` = `["N", "E", "S", "W"]`
@@ -5081,6 +5146,26 @@ extends `SceneTree` · 204 lines
 
 ---
 
+### `roof_sheet_release_selftest.gd`
+
+extends `SceneTree` · 114 lines
+
+`godot/scripts/tools/roof_sheet_release_selftest.gd`
+
+> Selftest — RoofSheetRelease on the REAL ROOF_LAB map (ROOF_MASTER_PLAN v0.28): room C's FABRIC awning is found whole, held where its two back walls are and free where nothing stands, and the sheet it becomes falls the way the lab's awning did. A synthetic fixture cannot answer this: the first capture of the feature had the awning on the board's own exterior wall (held on three sides, so it hung flat), which only the real data showed.
+
+**Constants / tuning**
+- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
+- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+- `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+---
+
 ### `roof_slab_selftest.gd`
 
 extends `SceneTree` · 308 lines
@@ -5207,6 +5292,20 @@ extends `SceneTree` · 210 lines
 **Constants / tuning**
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
+
+---
+
+### `soft_sheet_sim_selftest.gd`
+
+extends `SceneTree` · 166 lines
+
+`godot/scripts/tools/soft_sheet_sim_selftest.gd`
+
+> Selftest — SoftSheetSim (ROOF_MASTER_PLAN v0.28): the engine's port of the lab's Projective Dynamics sheet answers the two analytic gates the lab was validated on (a clamped strip against the EXACT DISCRETE beam, a hung chain against the catenary), is deterministic, never moves a pinned node, never sinks into the floor or a wall, and settles. The reference numbers come from `tools/research/cloth_lab/validate_pd.py`.
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
 
 ---
 
@@ -6124,9 +6223,22 @@ extends `Node` · 252 lines
 
 ---
 
+### `roof_sheet_release.gd`
+
+`class_name RoofSheetRelease` · extends `RefCounted` · 97 lines
+
+`godot/scripts/world/roof_sheet_release.gd`
+
+> RoofSheetRelease — what a soft roof IS, to be let go: its voxels, what holds it, the walls it can hang against, and the sheet it becomes. ROOF_MASTER_PLAN v0.28. Pure reads of the room's state (the slab registry, the voxel store, the layout); nothing is written here. `Room.release_roof_sheet()` does the writing: it destroys the voxels this collects, flushes the board and starts the `SoftSheet3D` this describes. The supports are the SAME rule as `DetonationPlanBuilder._roof_islands` (a roof voxel is HELD when a standing voxel that is not part of the roof touches it on one of six faces): a roof resting on a wall's top, against a block, under another roof. Those columns become the sheet's pinned nodes; with none, the whole roof falls.
+
+**Constants / tuning**
+- `NEIGHBOURS` = `[Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]`
+
+---
+
 ### `room.gd`
 
-extends `Node2D` · 11208 lines
+extends `Node2D` · 11292 lines
 
 `godot/scripts/world/room.gd`
 

@@ -4,13 +4,13 @@
  "id": "ROOF_LAB",
  "meta": {
   "title": "Roof Lab",
-  "description": "ROOF_MASTER_PLAN RF-1 step 1 fixture (2026-10-11). Two 3x3 rooms of 2-storey concrete block rings, each with a door on its south side and its own lamp inside: room A (interior gu 5..9 x 4..8) under a CONCRETE roof with a 3x3 GLASS SKYLIGHT in its centre (gu 6..8 x 5..7; R-D5: the glass in the roof's lower layer, the upper layer empty), room B (interior gu 15..17 x 6..8) under a CONCRETE roof (the stages after glass; since 2026-10-14 only its two back walls x 14 / y 5 stand and its roof is 4x4, gu 15..18 x 6..9, so a blast's hole above and the rubble below are both in view: take `roof_blast`). A larger lamp outside stands for the hall / outdoor light above the roofs (R-D1). The agent starts outside, south of the rooms, so the roofs stay drawn. Dev fixture, not a level. The agent starts INSIDE room A (the reveal opens its roof) so the floor's light under the skylight can be judged. Since 2026-10-14 room A follows room B's model: its front walls (x 10, y 9) are gone, its roof is 6x6 (gu 5..10 x 4..9) with a 4x4 skylight (gu 6..9 x 5..8)."
+  "description": "ROOF_MASTER_PLAN RF-1 step 1 fixture (2026-10-11). Two 3x3 rooms of 2-storey concrete block rings, each with a door on its south side and its own lamp inside: room A (interior gu 5..9 x 4..8) under a CONCRETE roof with a 3x3 GLASS SKYLIGHT in its centre (gu 6..8 x 5..7; R-D5: the glass in the roof's lower layer, the upper layer empty), room B (interior gu 15..17 x 6..8) under a CONCRETE roof (the stages after glass; since 2026-10-14 only its two back walls x 14 / y 5 stand and its roof is 4x4, gu 15..18 x 6..9, so a blast's hole above and the rubble below are both in view: take `roof_blast`). A larger lamp outside stands for the hall / outdoor light above the roofs (R-D1). The agent starts outside, south of the rooms, so the roofs stay drawn. Dev fixture, not a level. The agent starts INSIDE room A (the reveal opens its roof) so the floor's light under the skylight can be judged. Since 2026-10-14 room A follows room B's model: its front walls (x 10, y 9) are gone, its roof is 6x6 (gu 5..10 x 4..9) with a 4x4 skylight (gu 6..9 x 5..8). Since 2026-10-15 room C (roof gu 25..28 x 6..9, FABRIC, back walls x 24 / y 5; the board is 32 wide so its free edges have floor around them, not the exterior wall) is the soft-roof bench: take `roof_gravity` (the bending study, ROOF_MASTER_PLAN v0.28)."
  },
  "sections": {
   "board": {
    "v": 1,
    "inner_size": [
-    24,
+    32,
     16
    ],
    "buffer": 5,
@@ -50,6 +50,13 @@
      "height_class": 4,
      "radius": 14,
      "intensity": 1.1
+    },
+    {
+     "x": 26,
+     "y": 7,
+     "height_class": 2,
+     "radius": 4,
+     "intensity": 0.9
     }
    ]
   },
@@ -315,6 +322,110 @@
       1,
       1
      ]
+    },
+    {
+     "comment": "room C ring 24,5",
+     "gu": [
+      24,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room C ring 24,6",
+     "gu": [
+      24,
+      6
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room C ring 24,7",
+     "gu": [
+      24,
+      7
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room C ring 24,8",
+     "gu": [
+      24,
+      8
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room C ring 24,9",
+     "gu": [
+      24,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room C ring 25,5",
+     "gu": [
+      25,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room C ring 26,5",
+     "gu": [
+      26,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room C ring 27,5",
+     "gu": [
+      27,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
     }
    ]
   },
@@ -370,6 +481,20 @@
      ],
      "storeys": 2,
      "material": "concrete",
+     "kind": "flat"
+    },
+    {
+     "comment": "room C: a 4x4 FABRIC roof (an awning) on room B's model, held by its two back walls x 24 / y 5 (the free east and south edges have nothing under them): take `roof_gravity` lets it go under gravity alone (ROOF_MASTER_PLAN v0.28)",
+     "gu": [
+      25,
+      6
+     ],
+     "size": [
+      4,
+      4
+     ],
+     "storeys": 2,
+     "material": "fabric",
      "kind": "flat"
     }
    ]
@@ -469,6 +594,23 @@
      "tags": [
       "event"
      ]
+    },
+    {
+     "id": "fabric_roof",
+     "at": [
+      27.0,
+      8.0,
+      2.0
+     ],
+     "extent": [
+      4.0,
+      4.0,
+      0.5
+     ],
+     "tags": [
+      "roof",
+      "detail"
+     ]
     }
    ],
    "regions": [
@@ -526,6 +668,24 @@
      "tags": [
       "roof"
      ]
+    },
+    {
+     "id": "room_c",
+     "box": {
+      "min": [
+       24,
+       5,
+       0
+      ],
+      "max": [
+       29,
+       10,
+       2
+      ]
+     },
+     "tags": [
+      "roof"
+     ]
     }
    ],
    "objectives": []
@@ -563,6 +723,17 @@
        "target": "@skylight",
        "view": "N",
        "hold": 200
+      }
+     ]
+    },
+    {
+     "id": "room_c_rail",
+     "keys": [
+      {
+       "frame": "wide",
+       "target": "@room_c",
+       "view": "N",
+       "hold": 600
       }
      ]
     }
@@ -606,6 +777,19 @@
      "length": 160,
      "seed": 1,
      "note": "ROOF RF-1 step 3c: the dev hit on the skylight (a round hole at its centre, a craze field over the rest) until the blast and the shot reach skylights"
+    },
+    {
+     "id": "roof_gravity",
+     "profile": "engine",
+     "rail": "room_c_rail",
+     "steps": [
+      "roof_gravity"
+     ],
+     "at_key": 0,
+     "after_hold": 20,
+     "length": 420,
+     "seed": 1,
+     "note": "ROOF_MASTER_PLAN v0.28: room C's fabric awning lets go under gravity alone (no blast): it hangs from its two back walls and its free corner falls to the floor"
     }
    ]
   }

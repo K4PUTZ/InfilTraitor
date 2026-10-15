@@ -4257,6 +4257,90 @@ func scenario_skylight_hit() -> bool:
 	return true
 
 
+## ROOF_MASTER_PLAN v0.28 — the DEV event of the bending study: every soft roof of the map lets go under GRAVITY ALONE (no blast, no fire). Each becomes a
+## cloth hanging from whatever held it (`release_roof_sheet`). Until a blast or a fire releases a roof, this is how one is released.
+func scenario_roof_gravity() -> bool:
+	var released: int = 0
+	for roof: Dictionary in _base_layout.get("roof_instances", []):
+		if SoftSheetPresets.has(String(roof["material"])) and bool(await release_roof_sheet(roof)):
+			released += 1
+	if released == 0:
+		push_error("[Room] roof_gravity: this map has no soft roof (materials with a SoftSheetPresets row: %s)" % str(SoftSheetPresets.OF.keys()))
+	return released > 0
+
+
+## ROOF_MASTER_PLAN v0.28 — a soft roof (`roof`: one entry of the layout's `roof_instances`) becomes a CLOTH. Its voxels leave the board like a pane's
+## in the glass collapse (destroyed, base-recorded, the dirty pass, the board's commit, the light repainted where the roof stood), and a `SoftSheet3D` that was
+## built BEFORE they went (so it takes the roof's own tone) appears in the step the chunks swap and falls from whatever held the roof
+## (`RoofSheetRelease`: the voxels beside a wall's top, a block, another roof). The sheet is not saved: a checkpoint restore forgets it (open, plan v0.28).
+func release_roof_sheet(roof: Dictionary) -> bool:
+	var live: Node = board3d()
+	var store: VoxelStore = VoxelStore.active
+	var material: String = String(roof["material"])
+	var row: Dictionary = SoftSheetPresets.OF.get(material, {})
+	if live == null or store == null or _voxel_board == null or row.is_empty():
+		push_error("[Room] release_roof_sheet: no board, store or SoftSheetPresets row for '%s'" % material)
+		return false
+	var info: Dictionary = RoofSheetRelease.collect(self, roof)
+	if info.is_empty():
+		push_warning("[Room] release_roof_sheet: the %s roof at %s has nothing standing" % [material, str(roof["gu_cell"])])
+		return false
+	var t0: int = Time.get_ticks_usec()
+	var params: Dictionary = RoofSheetRelease.sim_params(info, row, _voxel_board.ground_plane_level(), _base_layout.get("solid_block_instances", []))
+	var sim := SoftSheetSim.new(params)
+	var t_sim: int = Time.get_ticks_usec()
+	var definition = Registries.get_material_registry().resolve(material)
+	var base: Color = definition.base_color if definition != null else Color(0.8, 0.8, 0.8)
+	var level: int = int(info["level"])
+	var voxels: Array = info["voxels"]
+	var sheet := SoftSheet3D.new()
+	sheet.name = "SoftSheet_%s_%d_%d" % [material, int(info["x0"]), int(info["z0"])]
+	(live.call("geometry_root") as Node3D).add_child(sheet)
+	sheet.setup(live, sim, {"x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": 2, "mask": info["columns"],
+		"y_top": float(params["origin"].y), "material": material, "threaded": str(_dev_flag("SOFT_SHEET_THREAD", "1")) != "0", "label": "%s %dx%d voxels" % [material, int(info["w"]), int(info["d"])],
+		"color": func(gx: int, gy: int) -> Color:
+			var t: float = float(live.call("top_shade", gx, gy, level))
+			return Color(base.r * t, base.g * t, base.b * t, 1.0).srgb_to_linear()})
+	var t_skin: int = Time.get_ticks_usec()
+	## The roof goes: DESTROYED and base-recorded (the checkpoint and the damage replay read the base), the footprint's GUs for the light.
+	var gus: Dictionary = {}
+	for v: Voxel in voxels:
+		_quiet_destroy[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true   ## the cloth takes them: no per-voxel puff of smoke and dust
+		v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+		record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state, v.damage_is_blast, v.damage_carved_side, v.damage_variant, v.damage_substrate, v)
+		gus[Vector2i(v.grid_pos.x >> 3, v.grid_pos.y >> 3)] = true
+	bump_world_revision()
+	while _destruction_render_busy:
+		await get_tree().process_frame
+		if not is_instance_valid(self) or not is_instance_valid(_voxel_board):
+			return false
+	_destruction_render_busy = true
+	await _voxel_board.process_dirty_slabs_async(_slab_registry)
+	if not is_instance_valid(self) or not is_instance_valid(_voxel_board) or not is_instance_valid(live) or not is_instance_valid(sheet):
+		_destruction_render_busy = false
+		return false
+	await get_tree().process_frame
+	var t_commit: int = Time.get_ticks_usec()
+	live.on_shot_commit(voxels)
+	var t_board: int = Time.get_ticks_usec()
+	## The light the roof kept out (R-D4: a destroyed roof voxel transmits the lamps above) reaches the floor under it. ⚠️ ~630 ms on the Moto and
+	## the SAME with a narrower scope (measured 2026-10-15: the repaint rebuilds the field, it does not scale with the GUs): the release frame's cost
+	## until the plan's sliced light path takes this over (plan v0.28, open).
+	_repaint_voxel_light_buckets_scoped(shot_repaint_scope(gus.keys()))
+	_destruction_render_busy = false
+	var t_light: int = Time.get_ticks_usec()
+	while is_instance_valid(live) and bool(live.call("remesh_pending")):
+		await live.remesh_committed
+	if not is_instance_valid(sheet):
+		return false
+	sheet.reveal()
+	print("[SOFT-SHEET] %s roof released: %d voxel(s) (%d held), %d x %d nodes (%d pinned): sim built %.1f ms, skin %.1f ms, destroy + dirty pass %.1f ms, board commit %.1f ms, light repaint %.1f ms, remesh wait %.1f ms"
+		% [material, voxels.size(), (info["held"] as Dictionary).size(), sim.nx, sim.nz, (params["pins"] as PackedByteArray).count(1),
+		float(t_sim - t0) / 1000.0, float(t_skin - t_sim) / 1000.0, float(t_commit - t_skin) / 1000.0, float(t_board - t_commit) / 1000.0,
+		float(t_light - t_board) / 1000.0, float(Time.get_ticks_usec() - t_light) / 1000.0])
+	return true
+
+
 func scenario_relight() -> bool:
 	_repaint_voxel_light_buckets(false)
 	for _f in range(10):

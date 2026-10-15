@@ -1,6 +1,6 @@
 # ROOF MASTER PLAN — destroyed roofs
 
-> **Status: 🟡 v0.28, 2026-10-15 — THE BENDING STUDY IS DONE (record v0.28, lab `tools/research/cloth_lab/`): the model, its validation, the awning under gravity only, the cost; the engine port waits for the Director's sign-off. (v0.27, 2026-10-14 — RF-1 steps 1-4 and 6 BUILT (the skylight's support, v0.26); RF-S built and closed for seven materials, shots and explosions; **RF-2 (a blast under a roof) CLOSED by the Director (2026-10-14)**: the hole and its rubble per material, crumbs / splinters on the rim, stone's dust shower, a fire that creeps across cardboard / fabric roofs, the char that follows the flames, unsupported islands that fall (opaque and glass). The soft roofs' SAG was tried and REVERTED (v0.27 record). NEXT (Director): **a dedicated bending engine for soft roofs (fabric, cardboard)**, then metal (Q5) and step 5 (the roof shot).**)
+> **Status: 🟡 v0.29, 2026-10-15 — THE BENDING ENGINE'S FIRST SLICE IS IN THE GAME (record v0.29): `SoftSheetSim` + `SoftSheet3D`, a FABRIC awning lets go under gravity alone (ROOF_LAB room C, take `roof_gravity`), the Moto measured (a step is 24 ms, on a worker thread the frame does not feel it). NEXT: the release frame's light (630 ms on the Moto), cardboard's crease, then the blast hole. (v0.28, the study: `tools/research/cloth_lab/`. v0.27, 2026-10-14 — RF-1 steps 1-4 and 6 BUILT (the skylight's support, v0.26); RF-S built and closed for seven materials, shots and explosions; **RF-2 (a blast under a roof) CLOSED by the Director (2026-10-14)**: the hole and its rubble per material, crumbs / splinters on the rim, stone's dust shower, a fire that creeps across cardboard / fabric roofs, the char that follows the flames, unsupported islands that fall (opaque and glass). The soft roofs' SAG was tried and REVERTED (v0.27 record). NEXT (Director): **a dedicated bending engine for soft roofs (fabric, cardboard)**, then metal (Q5) and step 5 (the roof shot).**)
 > eles na frente do modelo, porque acho que é uma das últimas coisas que falta destruir. […] Vamos iniciar os trabalhos pelo telhado
 > de vidro, os demais seguem ele como modelo, adaptando para cada tipo de material com suas características específicas."*
 >
@@ -115,6 +115,39 @@ What a BLAST does to each opaque roof is built (v0.22, `RubblePresets.ROOF_*_OF`
 8. **Q6 — the gameplay side of the light:** detection does not consume light yet (`LIGHT_MASTER_PLAN` status). This plan changes the VISUAL light; the tactical effect waits on that link. Confirm it stays visual here.
 
 ## 5. Records
+- 2026-10-15 v0.29 — **THE BENDING ENGINE, FIRST SLICE (Director: "porte o motor de dobra para a engine, começando pelo pano com gravidade só (sem explosão) na ROOF_LAB, e meça o Moto").**
+  **Built:** `SoftSheetSim` (`godot/scripts/geometry/soft_sheet_sim.gd`: the lab's Projective Dynamics sheet, a banded Cholesky factored once, fixed 1/30 s steps, deterministic, no scene
+  access: it runs on any thread; `soft_sheet_sim_selftest` 12/12 holds the lab's own numbers to the digit: cantilever +6.5 / +2.4 / +1.0%, catenary +1.3%, the awning's mean height 1.683 against the lab's 1.682);
+  `SoftSheetPresets` (the fabric row: lb 0.12, k_stretch 3000, k_shear 60, drag 1; one node per 1/3 GU); `SoftSheet3D` (ONE draw call: the node grid is a 13 x 14 float texture and the vertex
+  shader `soft_sheet3d.gdshader` puts a fine mesh, a vertex per two voxels, on the bicubic Catmull-Rom surface through it; COLOR is the roof voxel's own tone baked at the release
+  (`Board3DLive.top_shade`: the top face's light bucket x soot ring), the facade is mapped as the board maps a roof's top, two-sided, no Godot light); `RoofSheetRelease` (which voxels, what holds them
+  by `_roof_islands`' rule, which blocks are walls the cloth cannot enter); `Room.release_roof_sheet` / `scenario_roof_gravity` (the voxels leave as the glass collapse's do: destroyed, base-recorded,
+  the slab dirty pass, the board's commit, the light repainted, `_quiet_destroy` so no puff of dust per voxel; the cloth, built BEFORE they go, appears in the step the chunks swap); the scenario step
+  `roof_gravity`; ROOF_LAB **room C** (a 4 x 4 fabric awning on room B's model, back walls x 24 / y 5, the board widened to 32 GU) and its take `roof_gravity`; `tools/persistent/soft_sheet_scenario.py`
+  (the Moto round); `roof_sheet_release_selftest` (the REAL map: 1098 voxels, 58 held columns on the two back walls' edges and none on the free two thirds, 23 pinned nodes, the free corner reaches the floor).
+  **Seen on the way:** (1) the first capture had the awning ON THE BOARD'S OWN EXTERIOR WALL (inner 24 wide, the roof's east edge at the border): the walls held it on three sides, it hung flat and the held-by
+  count (`(0,0,1) SLICE_28_11_SE`) named the cause; only the real map showed it (the selftest now pins held / free on the real data). (2) A roof slab's voxels reach ONE voxel past its GU on the free edges (a 33 x 34
+  rectangle for 4 x 4 GU: the rim). (3) A thin roof is one level of voxels (level 96), so the whole awning is one sheet of 1098 columns. (4) The board's destroy puffs: 1098 destroyed voxels without
+  `_quiet_destroy` threw a white speckle of dust over the roof for a second.
+  **Moto g04s (release APK, the same scenario, 4 s of fall, `soft_sheet_scenario.py`; desktop editor binary in brackets):**
+
+  | | sim, one step | the node's cost on the MAIN thread a frame | frames | the cloth's pace |
+  |---|---|---|---|---|
+  | main thread, 6 iterations, capped 30 | 34.5 ms (7.9) | 69 ms | 77 frames, ~13 fps | 5.2 s simulated in 5.9 s |
+  | worker thread, 6 iterations, capped 30 | 35.4 ms | 0.54 ms | 230 frames in 7.8 s, 29.5 fps | **1.5x slow motion** (a step takes 35 ms against its 33 ms of game time, and was started once a frame) |
+  | main thread, **4 iterations**, uncapped | 24.0 ms (5.4) | 19.3 ms | 179 frames in 4.8 s, 37 fps | real time |
+  | **worker thread, 4 iterations, capped 30** | **23.8 ms** (5.9) | **0.50 ms** | **139 frames in 4.8 s, 29 fps** | **real time** (4.8 s in 4.8 s) |
+  | **worker thread, 4 iterations, uncapped** | 24.1 ms | 0.45 ms | 293 frames in 4.8 s, 61 fps | real time |
+
+  So: **a step is ~4.4x the desktop's on the Moto (the 4-5x estimate held); on the main thread the cloth costs a frame 19 ms and the frame rate falls from 61 to 37; on ONE worker task that steps
+  back to back it costs the frame 0.5 ms and the cloth keeps real time with 28% headroom** (24 of 33 ms). 4 iterations instead of 6 cost 0.01 GU of shape (RMS 0.069 against 0.059 at the lab's reference,
+  `convergence.py`) and 11 ms of step. The worker is `SOFT_SHEET_THREAD` (default ON, `0` = the main-thread control). The one-time costs: the sim's factorisation 30 ms and the skin 31-47 ms on the Moto.
+  **THE RELEASE FRAME IS THE PROBLEM, not the fall: on the Moto the roof's departure costs destroy + dirty pass 75 ms, board commit 14 ms and the LIGHT REPAINT 630 ms** (`_repaint_voxel_light_buckets_scoped`;
+  desktop 121-130 ms), the same with a footprint-only scope (measured: it rebuilds the field, it does not scale with the GUs). The cloth is revealed after it, so the fall is not hurt; the freeze is. NEXT: slice it
+  like the blast's plan does, or skip it when no lamp stands above the roof (room C has only its own lamp, under the roof, so the repaint probably changes nothing here: NOT verified).
+  **Open:** the sheet is not saved (a checkpoint restore forgets it, a map reload is fine; rotation is camera-only and the cloth rotates with the world, checked in the E view); roofs are rectangles (a hole from a
+  blast is the next slice: a mask on the skin, nodes under the hole freed); only block walls are colliders (no prop, no edge wall, no self-collision); no shadow under the cloth; its light is the release's (baked), it
+  does not dim over a darker floor; cardboard and the crease are not ported (`SoftSheetSim` has no plasticity yet); the PSS and the Galaxy were not measured.
 - 2026-10-15 v0.28 — **THE BENDING STUDY (Director: "estudar melhor como funciona a animação de tecidos e de semi-rígidos com o papelão", and "aplicar a
   gravidade no toldo de pano sem a explosão"). Research only: nothing in `godot/` changed.** Lab: `tools/research/cloth_lab/` (README there; figures
   `mechanism.png`, `regimes.png`; clips and contact sheets in `videos/cloth_study/`, git-ignored). **What was learned:**

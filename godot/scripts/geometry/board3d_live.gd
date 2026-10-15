@@ -2086,6 +2086,22 @@ func face_shade(x: int, y: int, level: int, x_normal: bool, with_soot: bool = tr
 	return _tone[slot] * light * soot
 
 
+## ROOF_MASTER_PLAN v0.28 — the shade the TOP face of a voxel draws with, as `OPAQUE_SHADER` computes it for face 0 (the top tone x the cell's
+## light bucket x the soot ring of the top, the base-6 code's first digit), so a soft roof's skin takes over exactly the look of the roof it replaces.
+func top_shade(x: int, y: int, level: int) -> float:
+	var board: VoxelBoard = _room._voxel_board if _room != null else null
+	if board == null or _tone.size() < 3 or _light_ladder.is_empty():
+		return 1.0
+	var light: float = _light_ladder[clampi(board.cell_bucket_at(level, Vector2i(x, y)), 0, _light_ladder.size() - 1)]
+	var ring: int = int(float(board.cell_soot_at(level, Vector2i(x, y))) / 36.0)
+	var soot: float = 1.0
+	if ring <= 3 and _soot_mult.size() > ring:
+		soot = _soot_mult[ring]
+	elif ring == 5:
+		soot = (BoardLook.SOOT_CHAR_MIN + BoardLook.SOOT_CHAR_MAX) * 0.5
+	return _tone[0] * light * soot
+
+
 func on_shot_commit(touched: Array) -> void:
 	_commit_touched(touched, "shot", true)
 

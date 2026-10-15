@@ -240,6 +240,7 @@ git checkout HEAD~1 -- godot/resources/tilesets/tileset_blocks.tres
 **Purpose:** the cloth / cardboard bending study (ROOF_MASTER_PLAN v0.28): a numpy Projective Dynamics sheet, the analytic gates, the awning scenes of ROOF_LAB room B under gravity only, and a GDScript cost benchmark (`bench_pd.gd.txt`).
 **Status:** 🔬 research, not engine code. Read [`research/cloth_lab/README.md`](research/cloth_lab/README.md).
 **Usage:** `cd tools/research/cloth_lab && python3 validate_pd.py` (gates, ~2 s) · `python3 run_awning.py fabric_post 6` (one scene, a video and a contact sheet to `out/`).
+**The engine's slice** (ROOF_MASTER_PLAN v0.29) has its own persistent runner: `python3 tools/persistent/soft_sheet_scenario.py --device ZF524T5TG5` (the Moto round of the fabric awning: `[SOFT-SHEET]` cost lines + `bench_analyze.py` segments; `--thread 0` = the main-thread control, `--uncapped` = MAX_FPS 0).
 
 ---
 

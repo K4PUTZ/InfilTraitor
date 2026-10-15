@@ -71,6 +71,8 @@
 ##                                        in place — what a rotation or a restore runs, without
 ##                                        either (a probe before and after names what the
 ##                                        incremental light left different from a full relight)
+##   roof_gravity                         ROOF_MASTER_PLAN v0.28: every soft roof (fabric) lets go under gravity alone and
+##                                        becomes a cloth hanging from what held it (`Room.scenario_roof_gravity`)
 ##   passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a
 ##                                        count and a digest
 ##   occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps>
@@ -97,7 +99,7 @@ const ARITY: Dictionary = {
 	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
 	"container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "decal_wall": 2,
-	"skylight_hit": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1,
+	"skylight_hit": 0, "roof_gravity": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1,
 }
 ## CAPTURE_RAILS §7.5 — the cell arguments an `@id` may name, by op and token index (0 = the op). `substitute_anchors()` turns each
 ## into the anchor's raw ground cell BEFORE parsing, so the event and the camera read the same anchor.
@@ -481,7 +483,7 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "Room has no scenario_passages()")
 			if not bool(room.call("scenario_passages", str(step["name"]))):
 				return _fail(step, "no passages were computed (see the error above)")
-		"shoot", "reload", "save_restore", "perspective", "relight", "view_mode", "skylight_hit":
+		"shoot", "reload", "save_restore", "perspective", "relight", "view_mode", "skylight_hit", "roof_gravity":
 			var method: String = "scenario_" + str(step["op"])
 			if not room.has_method(method):
 				return _fail(step, "Room has no %s()" % method)

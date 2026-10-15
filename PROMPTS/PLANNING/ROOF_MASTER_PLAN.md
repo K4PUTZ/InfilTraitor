@@ -1,6 +1,6 @@
 # ROOF MASTER PLAN — destroyed roofs
 
-> **Status: 🟡 v0.26, 2026-10-14 — RF-1 steps 1-4 BUILT; RF-S built and closed for concrete, brick, stone, wood, plywood, cardboard and fabric, for SHOTS (v0.15-v0.19) and EXPLOSIONS (v0.20); RF-2: a blast under an OPAQUE roof opens a hole and drops its rubble, CONCRETE judged (v0.21), and since v0.22 PER MATERIAL (stone heavier, wood / plywood splinters + a splintered rim, cardboard flaps that glide; v0.23: crumbs on the masonry rims, stone's long dust, a fire that creeps across cardboard / fabric roofs and chars them); cardboard, fabric AND PLYWOOD are one layer in roofs and walls (sessions `RESUMO_SESSAO_2026-10-14_ROOF_RF2.md`, `RESUMO_SESSAO_2026-10-14_ROOF_RF2_MATERIALS.md`). v0.24: unsupported roof islands fall, the char follows the fire. NEXT (Director): judge v0.24; re-check the GLASS roof (Director: "rever o telhado de vidro depois"); metal and fabric's sag (Q5), step 5 (the roof shot).**  *"Faltam os telhados destruídos na engine. Vamos colocar
+> **Status: 🟡 v0.27, 2026-10-14 — RF-1 steps 1-4 and 6 BUILT (the skylight's support, v0.26); RF-S built and closed for seven materials, shots and explosions; **RF-2 (a blast under a roof) CLOSED by the Director (2026-10-14)**: the hole and its rubble per material, crumbs / splinters on the rim, stone's dust shower, a fire that creeps across cardboard / fabric roofs, the char that follows the flames, unsupported islands that fall (opaque and glass). The soft roofs' SAG was tried and REVERTED (v0.27 record). NEXT (Director): **a dedicated bending engine for soft roofs (fabric, cardboard)**, then metal (Q5) and step 5 (the roof shot).**
 > eles na frente do modelo, porque acho que é uma das últimas coisas que falta destruir. […] Vamos iniciar os trabalhos pelo telhado
 > de vidro, os demais seguem ele como modelo, adaptando para cada tipo de material com suas características específicas."*
 >
@@ -115,6 +115,15 @@ What a BLAST does to each opaque roof is built (v0.22, `RubblePresets.ROOF_*_OF`
 8. **Q6 — the gameplay side of the light:** detection does not consume light yet (`LIGHT_MASTER_PLAN` status). This plan changes the VISUAL light; the tactical effect waits on that link. Confirm it stays visual here.
 
 ## 5. Records
+- 2026-10-14 v0.27 — **RF-2 CLOSED; the SAG tried and REVERTED** (Director: "tá esquisito isso. Vamos reverter para o último estado sem as
+  dobras, e finalizar a etapa de destruição do telhado com explosões. Na próxima sessão a gente se dedica a fazer essa engine da dobra"). Four
+  commits (`e4606eca`, `19f89d58`, `4b809850`, `c172b377`) reverted; the code equals `9f8145a7`. **What the attempt taught the next one:**
+  (1) the order is the blast, its fire and soot on the WHOLE roof, and only then gravity (a sag computed before PHASE_BURN put the fire on the wrong
+  side and left the hole's edge clean); (2) the free end dives first and pulls the rest toward the support (a per-cube release by distance);
+  (3) a voxel-lattice sag reads as STEPS and gaps: the Director wants a real bend, which the board cannot draw (an axis-aligned grid) but free
+  cubes can (`PropFragmentSim` already rotates fragments in flight): a hinged plate / cloth model with per-cube rotation, and pile records that keep
+  it; (4) a cube that replaces a roof voxel must take the TOP face's tone and the soot plane FILTERED across cells, ramp any burnt tone, and be
+  shown before the voxel leaves, or the swap reads as a black jump (measured: mean-luminance steps of the roof region, frame by frame).
 - 2026-10-14 v0.26 — **RF-1 step 6 BUILT: the skylight's support** (Director: "tira o frame de concreto, e vamos testar numa slab mais larga de
   vidro"). ROOF_LAB room A's roof is now a 6x6 GLASS roof (no frame). Before: the grenade left glass strips along the two FRONT edges, over walls
   that are gone, and `[GLASS-COLLAPSE] every pane voxel stands` (`GlassSupport` skipped `PANE_HORIZONTAL`). Now a horizontal pane voxel walks with

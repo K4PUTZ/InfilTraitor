@@ -49,9 +49,14 @@ Stone smaller (10 x 8, fewer pieces) with a dust shower around the opening (120 
 flames (`WorldDelta.fire_char`, `Room.char_after_fire`, lag 1.6 s x flammability); a roof piece the hole cut off from every support falls whole
 (`DetonationPlanBuilder._roof_islands`: cardboard's front tip, 55 voxels). Clips: `videos/roof_materials/clip_{cardboard,stone}_v4.mp4`.
 
-## 7. NEXT
-1. The Director judges the v0.23 round (the clips above): is stone's dust enough from this camera, do the rim crumbs read as crumbs.
-2. Re-check the GLASS roof (Director). The roof support runs in the blast only (a shot, and a crossfade like the glass collapse, are not built).
+## 7. Later the same day (v0.25-v0.27)
+Built and kept: the after-fire soot fades in feathered (v0.25); ROOF_LAB room A on room B's model, then a 6x6 GLASS roof (no frame), and the
+skylight's support: unsupported glass falls crossfaded (v0.26, `GlassSupport` walks horizontal panes). Tried and REVERTED: the soft roofs' sag
+(four commits; lessons in ROOF_MASTER_PLAN v0.27). **RF-2 (roof destruction by blasts) is CLOSED by the Director.**
+
+## 8. NEXT
+1. A dedicated BENDING ENGINE for soft roofs (fabric, cardboard): read ROOF_MASTER_PLAN v0.27's lessons first.
+2. The opaque roof support runs in the blast only (a shot does not run it; no crossfade like the glass collapse).
 3. Metal (Q5) and fabric's sag; then step 5 (the roof shot).
 4. Owed: the Moto cost of a roof blast per material (wood's splinter blocks hash a string per cube in `splinter_role`, 5 blocks per frame;
    cardboard's 150 gliding pieces run up to 4 s; the creeping fire's 119 embers and a soot upload per frame for 2.1 s); `_movement_edge_set()`

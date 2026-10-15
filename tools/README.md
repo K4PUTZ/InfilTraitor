@@ -235,7 +235,11 @@ git checkout HEAD~1 -- godot/resources/tilesets/tileset_blocks.tres
 
 **Sandbox for new tooling development. Not guaranteed to be stable.**
 
-*Currently empty. Add new experimental tools here before promoting to Persistent.*
+### research/cloth_lab/
+
+**Purpose:** the cloth / cardboard bending study (ROOF_MASTER_PLAN v0.28): a numpy Projective Dynamics sheet, the analytic gates, the awning scenes of ROOF_LAB room B under gravity only, and a GDScript cost benchmark (`bench_pd.gd.txt`).
+**Status:** 🔬 research, not engine code. Read [`research/cloth_lab/README.md`](research/cloth_lab/README.md).
+**Usage:** `cd tools/research/cloth_lab && python3 validate_pd.py` (gates, ~2 s) · `python3 run_awning.py fabric_post 6` (one scene, a video and a contact sheet to `out/`).
 
 ---
 

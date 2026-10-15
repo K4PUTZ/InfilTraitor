@@ -1,0 +1,251 @@
+## Throwaway prototype: the lab's Projective Dynamics sheet in GDScript, to MEASURE its cost (not engine code).
+## Fabric awning of ROOF_LAB room B (4x4 GU, 2 GU up), pinned on the west edge + north edge to x=18 + a corner patch (or not).
+## Run: Godot --headless --path <project> --script <this file>   (prints ms per step for several grid sizes)
+extends SceneTree
+
+const G: float = 8.0
+const DT: float = 1.0 / 30.0
+
+var n: int
+var nodes: int
+var h: float
+var P: PackedFloat64Array          # 3 per node
+var V: PackedFloat64Array
+var pinned: PackedByteArray
+var free_of: PackedInt32Array      # node -> free index (-1 pinned)
+var free_nodes: PackedInt32Array
+var nf: int
+var bw: int
+var L: PackedFloat64Array          # banded Cholesky, row-major (bw + 1) per free row, column offset (col - row + bw)
+# constraints: nodes (up to 3), coefficients, weight, rest (>0: projection to a length; 0: target zero)
+var c_n: PackedInt32Array
+var c_a: PackedInt32Array
+var c_b: PackedInt32Array
+var c_c: PackedInt32Array
+var c_w: PackedFloat64Array
+var c_rest: PackedFloat64Array
+var c_kind: PackedByteArray        # 0 edge, 1 bend
+var mass: float
+var k_stretch: float = 3000.0
+var k_shear: float = 60.0
+var k_bend: float
+
+
+func _init() -> void:
+	for size in [7, 9, 11, 13, 17]:
+		_bench(size, true)
+	quit()
+
+
+func _bench(size: int, post: bool) -> void:
+	n = size
+	nodes = n * n
+	h = 4.0 / float(n - 1)
+	mass = h * h
+	var lb: float = 0.12
+	k_bend = G * lb * lb * lb / (h * h)
+	P = PackedFloat64Array()
+	P.resize(nodes * 3)
+	V = PackedFloat64Array()
+	V.resize(nodes * 3)
+	pinned = PackedByteArray()
+	pinned.resize(nodes)
+	for i in range(n):
+		for j in range(n):
+			var id: int = i * n + j
+			P[id * 3] = 15.0 + float(i) * h
+			P[id * 3 + 1] = 2.0
+			P[id * 3 + 2] = 6.0 + float(j) * h
+			if i == 0 or (j == 0 and 15.0 + float(i) * h <= 18.0 + 1e-6):
+				pinned[id] = 1
+			if post and i >= n - 2 and j >= n - 2:
+				pinned[id] = 1
+	_constraints()
+	var t0: int = Time.get_ticks_usec()
+	_factor()
+	var t_factor: float = float(Time.get_ticks_usec() - t0) / 1000.0
+	var steps: int = 30
+	t0 = Time.get_ticks_usec()
+	for _s in range(steps):
+		_step(6)
+	var t_step: float = float(Time.get_ticks_usec() - t0) / 1000.0 / float(steps)
+	var low: float = 9.0
+	for id in range(nodes):
+		low = minf(low, P[id * 3 + 1])
+	print("N=%2d (%3d nodes, %3d free, band %2d): factor %6.2f ms once | %6.2f ms per step (6 PD iterations, dt 1/30) | lowest y after %d steps %.3f" % [n, nodes, nf, bw, t_factor, t_step, steps, low])
+
+
+func _add(kind: int, a: int, b: int, c: int, w: float, rest: float) -> void:
+	c_kind.append(kind)
+	c_a.append(a)
+	c_b.append(b)
+	c_c.append(c)
+	c_w.append(w)
+	c_rest.append(rest)
+
+
+func _constraints() -> void:
+	c_kind = PackedByteArray()
+	c_a = PackedInt32Array()
+	c_b = PackedInt32Array()
+	c_c = PackedInt32Array()
+	c_w = PackedFloat64Array()
+	c_rest = PackedFloat64Array()
+	for i in range(n):
+		for j in range(n):
+			var id: int = i * n + j
+			if i + 1 < n:
+				_add(0, id, id + n, -1, k_stretch, h)
+			if j + 1 < n:
+				_add(0, id, id + 1, -1, k_stretch, h)
+			if i + 1 < n and j + 1 < n:
+				_add(0, id, id + n + 1, -1, k_shear, h * sqrt(2.0))
+				_add(0, id + n, id + 1, -1, k_shear, h * sqrt(2.0))
+			if i + 2 < n:
+				_add(1, id, id + n, id + 2 * n, k_bend, 0.0)
+			if j + 2 < n:
+				_add(1, id, id + 1, id + 2, k_bend, 0.0)
+
+
+func _factor() -> void:
+	free_of = PackedInt32Array()
+	free_of.resize(nodes)
+	free_nodes = PackedInt32Array()
+	for id in range(nodes):
+		if pinned[id] == 1:
+			free_of[id] = -1
+		else:
+			free_of[id] = free_nodes.size()
+			free_nodes.append(id)
+	nf = free_nodes.size()
+	bw = 2 * n
+	var A := PackedFloat64Array()
+	A.resize(nf * (bw + 1))
+	var inertia: float = mass / (DT * DT)
+	for r in range(nf):
+		A[r * (bw + 1) + bw] += inertia
+	for c in range(c_w.size()):
+		var ids: Array = [c_a[c], c_b[c]]
+		var co: Array = [1.0, -1.0]
+		if c_kind[c] == 1:
+			ids = [c_a[c], c_b[c], c_c[c]]
+			co = [1.0, -2.0, 1.0]
+		for p in range(ids.size()):
+			var rp: int = free_of[ids[p]]
+			if rp < 0:
+				continue
+			for q in range(ids.size()):
+				var rq: int = free_of[ids[q]]
+				if rq < 0 or rq > rp:
+					continue
+				A[rp * (bw + 1) + (rq - rp + bw)] += c_w[c] * co[p] * co[q]
+	# banded Cholesky (lower): row r holds columns r-bw .. r
+	L = A
+	for i in range(nf):
+		var j0: int = maxi(0, i - bw)
+		for j in range(j0, i + 1):
+			var s: float = L[i * (bw + 1) + (j - i + bw)]
+			var k0: int = maxi(maxi(0, i - bw), maxi(0, j - bw))
+			for k in range(k0, j):
+				s -= L[i * (bw + 1) + (k - i + bw)] * L[j * (bw + 1) + (k - j + bw)]
+			if i == j:
+				L[i * (bw + 1) + bw] = sqrt(s)
+			else:
+				L[i * (bw + 1) + (j - i + bw)] = s / L[j * (bw + 1) + bw]
+
+
+func _solve(rhs: PackedFloat64Array) -> void:
+	# in place: L y = rhs, then L^T x = y
+	for i in range(nf):
+		var s: float = rhs[i]
+		for k in range(maxi(0, i - bw), i):
+			s -= L[i * (bw + 1) + (k - i + bw)] * rhs[k]
+		rhs[i] = s / L[i * (bw + 1) + bw]
+	for i in range(nf - 1, -1, -1):
+		var s2: float = rhs[i]
+		for k in range(i + 1, mini(nf, i + bw + 1)):
+			s2 -= L[k * (bw + 1) + (i - k + bw)] * rhs[k]
+		rhs[i] = s2 / L[i * (bw + 1) + bw]
+
+
+func _step(iters: int) -> void:
+	var inertia: float = mass / (DT * DT)
+	var s := PackedFloat64Array()
+	s.resize(nodes * 3)
+	for id in range(nodes):
+		if pinned[id] == 1:
+			for d in range(3):
+				s[id * 3 + d] = P[id * 3 + d]
+		else:
+			s[id * 3] = P[id * 3] + DT * V[id * 3]
+			s[id * 3 + 1] = P[id * 3 + 1] + DT * V[id * 3 + 1] - DT * DT * G
+			s[id * 3 + 2] = P[id * 3 + 2] + DT * V[id * 3 + 2]
+	var X := s.duplicate()
+	var rx := PackedFloat64Array()
+	var ry := PackedFloat64Array()
+	var rz := PackedFloat64Array()
+	rx.resize(nf)
+	ry.resize(nf)
+	rz.resize(nf)
+	for _it in range(iters):
+		for r in range(nf):
+			var id: int = free_nodes[r]
+			rx[r] = inertia * s[id * 3]
+			ry[r] = inertia * s[id * 3 + 1]
+			rz[r] = inertia * s[id * 3 + 2]
+		for c in range(c_w.size()):
+			var a: int = c_a[c]
+			var b: int = c_b[c]
+			var w: float = c_w[c]
+			if c_kind[c] == 0:
+				var dx: float = X[a * 3] - X[b * 3]
+				var dy: float = X[a * 3 + 1] - X[b * 3 + 1]
+				var dz: float = X[a * 3 + 2] - X[b * 3 + 2]
+				var l: float = maxf(sqrt(dx * dx + dy * dy + dz * dz), 1e-12)
+				var f: float = c_rest[c] / l
+				var px: float = dx * f
+				var py: float = dy * f
+				var pz: float = dz * f
+				# energy 1/2 w |x_a - x_b - p|^2 ; pinned partners move to the right-hand side
+				var ra: int = free_of[a]
+				var rb: int = free_of[b]
+				if ra >= 0:
+					rx[ra] += w * (px + (X[b * 3] if rb < 0 else 0.0))
+					ry[ra] += w * (py + (X[b * 3 + 1] if rb < 0 else 0.0))
+					rz[ra] += w * (pz + (X[b * 3 + 2] if rb < 0 else 0.0))
+				if rb >= 0:
+					rx[rb] += w * (-px - (X[a * 3] if ra < 0 else 0.0) * -1.0)
+					ry[rb] += w * (-py - (X[a * 3 + 1] if ra < 0 else 0.0) * -1.0)
+					rz[rb] += w * (-pz - (X[a * 3 + 2] if ra < 0 else 0.0) * -1.0)
+			else:
+				var cc: int = c_c[c]
+				var ids: Array = [a, b, cc]
+				var co: Array = [1.0, -2.0, 1.0]
+				for p in range(3):
+					var rp: int = free_of[ids[p]]
+					if rp < 0:
+						continue
+					for q in range(3):
+						var rq: int = free_of[ids[q]]
+						if rq >= 0:
+							continue
+						var cf: float = w * co[p] * co[q]
+						rx[rp] -= cf * X[ids[q] * 3]
+						ry[rp] -= cf * X[ids[q] * 3 + 1]
+						rz[rp] -= cf * X[ids[q] * 3 + 2]
+		_solve(rx)
+		_solve(ry)
+		_solve(rz)
+		for r in range(nf):
+			var id2: int = free_nodes[r]
+			X[id2 * 3] = rx[r]
+			X[id2 * 3 + 1] = ry[r]
+			X[id2 * 3 + 2] = rz[r]
+	for id in range(nodes):
+		if pinned[id] == 1:
+			continue
+		if X[id * 3 + 1] < 0.01:
+			X[id * 3 + 1] = 0.01
+		for d in range(3):
+			V[id * 3 + d] = (X[id * 3 + d] - P[id * 3 + d]) / DT * exp(-1.0 * DT)
+			P[id * 3 + d] = X[id * 3 + d]

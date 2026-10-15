@@ -1,6 +1,6 @@
 # ROOF MASTER PLAN — destroyed roofs
 
-> **Status: 🟡 v0.27, 2026-10-14 — RF-1 steps 1-4 and 6 BUILT (the skylight's support, v0.26); RF-S built and closed for seven materials, shots and explosions; **RF-2 (a blast under a roof) CLOSED by the Director (2026-10-14)**: the hole and its rubble per material, crumbs / splinters on the rim, stone's dust shower, a fire that creeps across cardboard / fabric roofs, the char that follows the flames, unsupported islands that fall (opaque and glass). The soft roofs' SAG was tried and REVERTED (v0.27 record). NEXT (Director): **a dedicated bending engine for soft roofs (fabric, cardboard)**, then metal (Q5) and step 5 (the roof shot).**
+> **Status: 🟡 v0.28, 2026-10-15 — THE BENDING STUDY IS DONE (record v0.28, lab `tools/research/cloth_lab/`): the model, its validation, the awning under gravity only, the cost; the engine port waits for the Director's sign-off. (v0.27, 2026-10-14 — RF-1 steps 1-4 and 6 BUILT (the skylight's support, v0.26); RF-S built and closed for seven materials, shots and explosions; **RF-2 (a blast under a roof) CLOSED by the Director (2026-10-14)**: the hole and its rubble per material, crumbs / splinters on the rim, stone's dust shower, a fire that creeps across cardboard / fabric roofs, the char that follows the flames, unsupported islands that fall (opaque and glass). The soft roofs' SAG was tried and REVERTED (v0.27 record). NEXT (Director): **a dedicated bending engine for soft roofs (fabric, cardboard)**, then metal (Q5) and step 5 (the roof shot).**)
 > eles na frente do modelo, porque acho que é uma das últimas coisas que falta destruir. […] Vamos iniciar os trabalhos pelo telhado
 > de vidro, os demais seguem ele como modelo, adaptando para cada tipo de material com suas características específicas."*
 >
@@ -115,6 +115,35 @@ What a BLAST does to each opaque roof is built (v0.22, `RubblePresets.ROOF_*_OF`
 8. **Q6 — the gameplay side of the light:** detection does not consume light yet (`LIGHT_MASTER_PLAN` status). This plan changes the VISUAL light; the tactical effect waits on that link. Confirm it stays visual here.
 
 ## 5. Records
+- 2026-10-15 v0.28 — **THE BENDING STUDY (Director: "estudar melhor como funciona a animação de tecidos e de semi-rígidos com o papelão", and "aplicar a
+  gravidade no toldo de pano sem a explosão"). Research only: nothing in `godot/` changed.** Lab: `tools/research/cloth_lab/` (README there; figures
+  `mechanism.png`, `regimes.png`; clips and contact sheets in `videos/cloth_study/`, git-ignored). **What was learned:**
+  (1) **The model is the Director's own idea**: one node per voxel, springs between them. Three springs: stretch (length kept), shear (diagonals; cloth soft,
+  cardboard stiff) and BEND (`a - 2b + c` of three nodes in a row; energy `1/2 (B/h^2)|lap|^2`). B is one number per material, given as a LENGTH, the
+  elastogravity length `lb = (B / weight-per-area)^(1/3)`: canvas ~ 0.12 GU, corrugated cardboard ~ 0.7 GU. The CREASE (cardboard) is plasticity: the rest
+  curvature follows the measured one past `yield_kappa` (signed along the sheet's normal; an unsigned magnitude zig-zagged into pleats).
+  (2) **XPBD (the obvious choice) is wrong for bending**: one Gauss-Seidel pass per substep left a clamped 65-node strip 60x too soft (2000-65000% off the
+  analytic beam) while the same code hangs a catenary within 0.4%. Red-before-green: `validate.py` prints the failure. **Projective Dynamics** solves the
+  quadratic bend energy exactly in a global banded step and iterates only the local projections: cantilever vs the exact discrete beam +6.5% / +2.5% / +1.0%
+  (9 / 17 / 33 nodes), catenary +1.2-1.5% (`validate_pd.py`). Trap: a stretch weight above ~1e4 LOCKS the iteration (k 1e5, 100 iterations: still 5x soft);
+  3000 (~1% strain) converges in 12.
+  (3) **The physics is regime-by-span, not by material** (`regimes.png`): `L / lb` far below 1: a rigid plate; 1-3: the clean parabola-like curve the Director
+  pictured (a diving board); far above 3: a curtain bending only at its support. **At ROOF_LAB's 4 GU span, cardboard (L/lb 5.7) and cloth both HANG**; the
+  parabola lives at 1-2 GU spans (or, at 4 GU, with a support: below).
+  (4) **The awning under gravity only** (room B's roof, gu 15..19 x 6..10, 2 GU up, held on the west edge and the north edge to x = 18): fabric without a
+  post falls from the free end first (~0.7 s to the floor) and hangs from both walls, the free corner lying on the floor (12% of the nodes); **with a
+  pinned corner (the post) it settles as a catenary pouch 1.03 GU above the floor**, sections along the diagonal are clean catenaries. Cardboard (lb 0.7,
+  crease at radius 0.83 GU) stays nearly flat near the walls and folds along ONE crease line, the tip hanging (the plate is stiff where it is held on two
+  edges); elastic-only the same fold is a smooth knee; with the post it is a gentle dish (lowest 1.55 GU), no crease.
+  (5) **Cost** (`bench_pd.gd.txt`, GDScript, desktop editor binary, banded Cholesky, 6 PD iterations, dt 1/30): N=7 2.0 ms, 9 4.1, 11 7.3, 13 11.6, 17 24.9 per
+  step; the literal voxel grid (33 x 33) would be ~0.5 s per step. A coarse grid with a bicubic skin is enough: N=13 vs the N=33 reference RMS 0.06-0.10 GU
+  (under one voxel), worst 0.19-0.20 GU; N=9 RMS 0.10-0.18, worst 0.34-0.36 (the crease blurs). **The Moto factor is NOT measured (estimate 4-5x: owed).**
+  **Proposed, unbuilt, needs the Director's sign-off:** `SoftSheetSim` (pure, deterministic, fixed steps, like `PropFragmentSim`), a coarse grid (N ~ 13) with a
+  33 x 33 voxel-sized skin mesh (`SoftSheet3D`, the facade texture, lit by the board's cell planes like props and actors); the sim off the main thread or inside the
+  plan (a `PredictionCache` phase) so it never costs a frame; released when a roof's voxels lose their support (the walk of `_roof_islands` gives the pins);
+  order from the v0.27 lessons (blast, fire, soot, THEN gravity; the soot read as the skin's vertex colour); the settled sheet persists as its node positions.
+  **Limits of the lab:** no self-collision (fabric lying on itself interpenetrates), the post is a pin not a collider, drag and the crease radius are tuning
+  knobs (no measurement of real cardboard was made), implicit Euler damps (the fall is a little syrupy), the renders are PIL not Godot.
 - 2026-10-14 v0.27 — **RF-2 CLOSED; the SAG tried and REVERTED** (Director: "tá esquisito isso. Vamos reverter para o último estado sem as
   dobras, e finalizar a etapa de destruição do telhado com explosões. Na próxima sessão a gente se dedica a fazer essa engine da dobra"). Four
   commits (`e4606eca`, `19f89d58`, `4b809850`, `c172b377`) reverted; the code equals `9f8145a7`. **What the attempt taught the next one:**

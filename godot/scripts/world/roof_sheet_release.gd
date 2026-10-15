@@ -90,9 +90,40 @@ static func _is_grounded(grid: ClaimGrid, start: Vector3i, roof_keys: Dictionary
 	return found
 
 
+## ROOF_MASTER_PLAN v0.31 (Director, 2026-10-16: the cloth went THROUGH the wall's top; "falta a colisão entre os materiais"): what the cloth must not enter, read
+## from the voxels that really stand around the roof (a wall's voxels reach past its GU, and its cap rows past that: the layout's boxes know only the GU)
+## as an OCCUPANCY GRID the sim can answer by cell: a standing voxel that is not the roof's own, `pad` voxels around the roof's rectangle, from the ground
+## plane to a little above the roof. A grid, not boxes: adjacent boxes with margins push a node from one into the next and it never gets out.
+## Returns {bits (1 = solid), x0, y0 (voxel columns), l0 (a level), w, h, nl}.
+static func solid_grid(info: Dictionary, ground_level: int, pad: int = 6) -> Dictionary:
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		return {}
+	var roof: Dictionary = {}
+	for v: Voxel in info["voxels"]:
+		roof[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
+	var x_lo: int = maxi(int(info["x0"]) - pad, store.x0)
+	var x_hi: int = mini(int(info["x0"]) + int(info["w"]) + pad, store.x0 + store.w - 1)
+	var y_lo: int = maxi(int(info["z0"]) - pad, store.y0)
+	var y_hi: int = mini(int(info["z0"]) + int(info["d"]) + pad, store.y0 + store.h - 1)
+	var l_lo: int = maxi(ground_level, store.l0)
+	var l_hi: int = mini(int(info["level"]) + 2, store.l0 + store.nl - 1)
+	var w: int = x_hi - x_lo + 1
+	var h: int = y_hi - y_lo + 1
+	var nl: int = l_hi - l_lo + 1
+	var bits := PackedByteArray()
+	bits.resize(w * h * nl)
+	for level in range(l_lo, l_hi + 1):
+		for y in range(y_lo, y_hi + 1):
+			for x in range(x_lo, x_hi + 1):
+				if store.occ[store.cell_index(x, y, level)] != 0 and not roof.has(Vector3i(x, y, level)):
+					bits[((level - l_lo) * h + (y - y_lo)) * w + (x - x_lo)] = 1
+	return {"bits": bits, "x0": x_lo, "y0": y_lo, "l0": l_lo, "w": w, "h": h, "nl": nl}
+
+
 ## The `SoftSheetSim` parameters for what `collect()` found. `ground_level` is the board's ground plane (a level is derived, never typed);
 ## `blocks` the layout's solid blocks, of which the ones within the cloth's reach become walls it cannot enter.
-static func sim_params(info: Dictionary, row: Dictionary, ground_level: int, blocks: Array) -> Dictionary:
+static func sim_params(info: Dictionary, row: Dictionary, ground_level: int, blocks: Array, solid: Dictionary = {}) -> Dictionary:
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var span_x: float = float(int(info["w"])) * unit
 	var span_z: float = float(int(info["d"])) * unit
@@ -125,4 +156,5 @@ static func sim_params(info: Dictionary, row: Dictionary, ground_level: int, blo
 		if box.position.x > origin.x + span_x + reach or box.end.x < origin.x - reach or box.position.z > origin.z + span_z + reach or box.end.z < origin.z - reach:
 			continue
 		boxes.append(box)
-	return {"nx": nx, "nz": nz, "hx": hx, "hz": hz, "origin": origin, "material": row, "pins": pins, "floor_y": 0.0, "boxes": boxes}
+	return {"nx": nx, "nz": nz, "hx": hx, "hz": hz, "origin": origin, "material": row, "pins": pins, "floor_y": 0.0, "boxes": boxes,
+		"solid": solid, "ground_level": ground_level}

@@ -96,28 +96,48 @@ func _emit(flap: Dictionary, theta: float, age: float) -> void:
 	var length: float = float(flap["length"])
 	var half: float = 0.5 * float(flap["width"])
 	var tone: Color = flap["tone"]
+	var thickness: float = float(flap.get("thickness", 0.0))
 	_heat = float(flap["burn"]) * clampf(1.0 - age / 3.0, 0.0, 1.0)
-	var prev_l: Vector3 = hinge - across * half
-	var prev_r: Vector3 = hinge + across * half
-	var at: Vector3 = hinge
 	var seg_len: float = length / float(SEGMENTS)
+	## The strip's two edges, hinge to tip; the normal of each segment points away from the side the strip faces up.
+	var left: Array[Vector3] = [hinge - across * half]
+	var right: Array[Vector3] = [hinge + across * half]
+	var normals: Array[Vector3] = []
+	var at: Vector3 = hinge
 	for k in range(SEGMENTS):
-		## The strip curls along its length (its tip lags the hinge's lift), and narrows toward the tip: a tongue, not a rectangle.
+		## It curls along its length (its tip lags the hinge's lift), and narrows toward the tip: a tongue, not a rectangle.
 		var phi: float = theta + CURL * float(k) / float(SEGMENTS)
-		at += (along * cos(phi) + Vector3.UP * sin(phi)) * seg_len
+		var heading: Vector3 = along * cos(phi) + Vector3.UP * sin(phi)
+		at += heading * seg_len
 		var taper: float = half * (1.0 - 0.45 * float(k + 1) / float(SEGMENTS))
-		var cur_l: Vector3 = at - across * taper
-		var cur_r: Vector3 = at + across * taper
+		left.append(at - across * taper)
+		right.append(at + across * taper)
+		var n: Vector3 = across.cross(heading)
+		normals.append(n if n.y >= 0.0 else -n)
+	var edge_tone := Color(tone.r * 0.55, tone.g * 0.55, tone.b * 0.55, tone.a)
+	for k in range(SEGMENTS):
 		var v0: float = float(k) / float(SEGMENTS)
 		var v1: float = float(k + 1) / float(SEGMENTS)
-		_vertex(prev_l, tone, v0)
-		_vertex(prev_r, tone, v0)
-		_vertex(cur_r, tone, v1)
-		_vertex(prev_l, tone, v0)
-		_vertex(cur_r, tone, v1)
-		_vertex(cur_l, tone, v1)
-		prev_l = cur_l
-		prev_r = cur_r
+		_quad(left[k], right[k], right[k + 1], left[k + 1], tone, v0, v1)
+		if thickness > 0.0:
+			var drop: Vector3 = normals[k] * thickness
+			## the underside and the two long edges: a flap has a thickness, it is not a sheet of paper (ROOF_MASTER_PLAN v0.31, C2)
+			_quad(left[k] - drop, left[k + 1] - drop, right[k + 1] - drop, right[k] - drop, edge_tone, v0, v1)
+			_quad(left[k], left[k + 1], left[k + 1] - drop, left[k] - drop, edge_tone, v0, v1)
+			_quad(right[k], right[k] - drop, right[k + 1] - drop, right[k + 1], edge_tone, v0, v1)
+	if thickness > 0.0:
+		var tip: Vector3 = normals[SEGMENTS - 1] * thickness
+		_quad(left[SEGMENTS], right[SEGMENTS], right[SEGMENTS] - tip, left[SEGMENTS] - tip, edge_tone, 1.0, 1.0)
+
+
+## Two triangles for the quad a, b, c, d (in order around it).
+func _quad(a: Vector3, b: Vector3, c: Vector3, d: Vector3, tone: Color, v0: float, v1: float) -> void:
+	_vertex(a, tone, v0)
+	_vertex(b, tone, v0)
+	_vertex(c, tone, v1)
+	_vertex(a, tone, v0)
+	_vertex(c, tone, v1)
+	_vertex(d, tone, v1)
 
 
 ## How far (radians) the strip's far end bends past its hinge's angle: negative = toward the ground, so a tab in the air and one hanging both droop at the tip.

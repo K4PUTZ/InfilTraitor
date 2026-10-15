@@ -21,6 +21,8 @@ uniform float clock = 0.0;   // seconds since the cloth was let go: where the fi
 varying vec3 v_world;
 varying vec2 v_rest;
 varying float v_ignite;
+varying float v_skirt;
+uniform float thickness = 0.0;   // GU: how far the skirt hangs below the cloth (its visible edge)
 
 // node (i, j) = texel (x = j, y = i): the texture is nz wide and nx tall, the sim's own row-major order (`node_count` = (nx, nz)).
 vec3 node_at(int i, int j) {
@@ -33,8 +35,9 @@ vec4 catmull_weights(float f) {
 	return vec4(-0.5 * f3 + f2 - 0.5 * f, 1.5 * f3 - 2.5 * f2 + 1.0, -1.5 * f3 + 2.0 * f2 + 0.5 * f, 0.5 * f3 - 0.5 * f2);
 }
 
-void vertex() {
-	vec2 st = clamp(UV, vec2(0.0), vec2(node_count) - vec2(1.0));
+// The surface through the nodes at node coordinates `st` (Catmull-Rom).
+vec3 surface_at(vec2 st_in) {
+	vec2 st = clamp(st_in, vec2(0.0), vec2(node_count) - vec2(1.0));
 	ivec2 i0 = min(ivec2(floor(st)), node_count - ivec2(2));
 	vec2 f = st - vec2(i0);
 	vec4 wi = catmull_weights(f.x);
@@ -47,10 +50,26 @@ void vertex() {
 		}
 		p += wi[a] * row;
 	}
+	return p;
+}
+
+void vertex() {
+	vec3 p = surface_at(UV);
+	// A SKIRT vertex (CUSTOM0.y = 1) hangs `thickness` below the cloth along its normal: the cloth has an edge instead of being a sheet of paper.
+	if (CUSTOM0.y > 0.5 && thickness > 0.0) {
+		vec3 du = surface_at(UV + vec2(0.1, 0.0)) - surface_at(UV - vec2(0.1, 0.0));
+		vec3 dv = surface_at(UV + vec2(0.0, 0.1)) - surface_at(UV - vec2(0.0, 0.1));
+		vec3 n = normalize(cross(dv, du));
+		if (n.y < 0.0) {
+			n = -n;
+		}
+		p -= n * thickness;
+	}
 	VERTEX = p;
 	v_world = (MODEL_MATRIX * vec4(p, 1.0)).xyz;
 	v_rest = UV2;
 	v_ignite = CUSTOM0.x;   // the second this part of the cloth starts to burn (1e9: never)
+	v_skirt = CUSTOM0.y;
 }
 
 void fragment() {
@@ -69,6 +88,6 @@ void fragment() {
 	// untouched to black over 1.4 s, glowing while it passes.
 	float b = clamp((clock - v_ignite) / 1.4, 0.0, 1.0);
 	float charred = mix(1.0, 0.2, b);
-	ALBEDO = COLOR.rgb * pow(vec3(key * detail * charred), vec3(2.2));
+	ALBEDO = COLOR.rgb * pow(vec3(key * detail * charred * mix(1.0, 0.55, v_skirt)), vec3(2.2));
 	EMISSION = vec3(1.0, 0.36, 0.08) * (b > 0.0 && b < 1.0 ? pow(sin(3.14159 * b), 1.5) : 0.0) * 1.4;
 }

@@ -22,7 +22,7 @@ extends Node3D
 const SHADER_PATH := "res://godot/shaders/soft_sheet3d.gdshader"
 ## How long a column takes to burn from the first darkening to black (`Room.CHAR_FADE_S`), and the vertex format that carries the second it starts.
 const BURN_SECONDS: float = 1.4
-const CUSTOM_FLAGS: int = Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
+const CUSTOM_FLAGS: int = Mesh.ARRAY_CUSTOM_RG_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
 
 ## Emitted once, when the simulation has settled (or hit its time limit).
 signal settled()
@@ -91,6 +91,7 @@ func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary) -> void:
 			_mat.set_shader_parameter("has_facade", 1.0)
 	_mask = skin["mask"]
 	_mat.set_shader_parameter("clock", 0.0)
+	_mat.set_shader_parameter("thickness", float(skin.get("thickness", 0.0)))
 	_mesh_node = MeshInstance3D.new()
 	_mesh_node.mesh = _build_mesh(sim, skin)
 	_mesh_node.material_override = _mat
@@ -334,7 +335,7 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 	var uvs := PackedVector2Array()
 	var uv2s := PackedVector2Array()
 	var colors := PackedColorArray()
-	var ignite := PackedFloat32Array()   ## per vertex: the second its column starts to burn (1e9 = never): CUSTOM0.x, read by the shader's burn front
+	var ignite := PackedFloat32Array()   ## per vertex, 2 floats: the second its column starts to burn (1e9 = never) and 1 for a SKIRT vertex: CUSTOM0.xy, read by the shader
 	var burn: Dictionary = skin.get("burn", {})
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	for a in range(qa + 1):
@@ -354,9 +355,11 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 					if burn.has(cell):
 						when = minf(when, float(burn[cell]))
 			ignite.append(when)
+			ignite.append(0.0)
 			if when < 1.0e8:
 				_burn_end = maxf(_burn_end, when + BURN_SECONDS)
 	var indices := PackedInt32Array()
+	var covered_quads: Dictionary = {}
 	for a in range(qa):
 		for b in range(qb):
 			var covered: bool = false
@@ -374,6 +377,39 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 			var i01: int = a * (qb + 1) + b + 1
 			var i11: int = (a + 1) * (qb + 1) + b + 1
 			indices.append_array([i00, i10, i11, i00, i11, i01])
+			covered_quads[Vector2i(a, b)] = true
+	## The SKIRT (ROOF_MASTER_PLAN v0.31, Director: "não ficar parecendo uma folha de papel"): along every boundary of the skin (the hole's rim, the free edges) a strip
+	## whose far side the vertex shader hangs `thickness` below the cloth along its normal, so the cloth shows an edge. Same UV / colour as the vertex it copies.
+	var edges: Array = []   ## [top vertex index, top vertex index] per boundary edge
+	for q: Vector2i in covered_quads:
+		var v00: int = q.x * (qb + 1) + q.y
+		var v10: int = (q.x + 1) * (qb + 1) + q.y
+		var v01: int = q.x * (qb + 1) + q.y + 1
+		var v11: int = (q.x + 1) * (qb + 1) + q.y + 1
+		if not covered_quads.has(q + Vector2i(-1, 0)):
+			edges.append([v00, v01])
+		if not covered_quads.has(q + Vector2i(1, 0)):
+			edges.append([v10, v11])
+		if not covered_quads.has(q + Vector2i(0, -1)):
+			edges.append([v00, v10])
+		if not covered_quads.has(q + Vector2i(0, 1)):
+			edges.append([v01, v11])
+	var copies: Dictionary = {}
+	for edge in edges:
+		var tops: Array = edge
+		var lows: Array = []
+		for t in tops:
+			var vi: int = int(t)
+			if not copies.has(vi):
+				copies[vi] = verts.size()
+				verts.append(verts[vi])
+				uvs.append(uvs[vi])
+				uv2s.append(uv2s[vi])
+				colors.append(colors[vi])
+				ignite.append(ignite[vi * 2])
+				ignite.append(1.0)
+			lows.append(int(copies[vi]))
+		indices.append_array([int(tops[0]), int(tops[1]), int(lows[1]), int(tops[0]), int(lows[1]), int(lows[0])])
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts

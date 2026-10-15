@@ -12,7 +12,7 @@ func _init() -> void:
 	print("=".repeat(70) + "\n")
 	var flaps := ClothFlaps3D.new()
 	var flap: Dictionary = {"hinge": Vector3(2.0, 2.0, 3.0), "dir": Vector2(1.0, 0.0), "length": 0.5, "width": 0.25, "delay": 0.0, "rise": 0.25, "fall": 0.7,
-		"tone": Color(0.3, 0.3, 0.3), "burn": 1.0}
+		"tone": Color(0.3, 0.3, 0.3), "burn": 1.0, "thickness": 0.04}
 	_check(is_zero_approx(flaps._angle(flap, -0.1)) and is_zero_approx(flaps._angle(flap, 0.0)), "before its start a flap lies flat on the roof plane")
 	var peak: float = -99.0
 	var peak_at: float = 0.0
@@ -31,7 +31,9 @@ func _init() -> void:
 	flaps._process(0.5)
 	var surface_arrays: Array = (flaps._mesh as ImmediateMesh).surface_get_arrays(0)
 	var verts: PackedVector3Array = surface_arrays[Mesh.ARRAY_VERTEX]
-	_check(verts.size() == ClothFlaps3D.SEGMENTS * 6, "one flap is %d quads = %d vertices (got %d)" % [ClothFlaps3D.SEGMENTS, ClothFlaps3D.SEGMENTS * 6, verts.size()])
+	## the top (SEGMENTS quads), the underside and the two long edges (3 more per segment) and the tip: 6 vertices a quad
+	var quads: int = ClothFlaps3D.SEGMENTS * 4 + 1
+	_check(verts.size() == quads * 6, "one flap with thickness is %d quads = %d vertices (got %d)" % [quads, quads * 6, verts.size()])
 	var far: float = 0.0
 	for v in verts:
 		far = maxf(far, Vector2(v.x - 2.0, v.z - 3.0).length())

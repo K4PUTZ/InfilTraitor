@@ -19,3 +19,6 @@ Resume point for the next session. Plan: `PROMPTS/PLANNING/ROOF_MASTER_PLAN.md` 
 
 ## Traps
 New class_name needs `godot --headless --path . --import`; `capture.py` drops print lines whose tag it does not know; `blast_roof_rubble` lists only the newly destroyed voxels; `Voxel.DamageState.DESTROYED` is 2; macOS `sed -i ''`; zsh errors on unmatched globs.
+
+## Update (same day, later): RF-C C1, C2, C3 built
+The "gap" was the cloth going THROUGH the walls' tops (the walls as built are bigger than the layout's GU boxes); `RoofSheetRelease.solid_grid` + `SoftSheetSim._solid_exit` / ledge pins fixed it (391 -> 4 of 4623 skin samples, selftest). Thickness: a skirt on every boundary (`thickness` 0.04 GU). Flaps: 2-3 voxels wide, 6-14 long, 15 on the lab's hole. Record: ROOF_MASTER_PLAN v0.32. NEXT: C4 (sim build 75 ms, skin 15 ms, light field 146 ms on the Moto, all to a worker), then RF-G (R-D12).

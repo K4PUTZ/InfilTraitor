@@ -88,7 +88,8 @@ func _awning(room: Node, layout: Dictionary, roof: Dictionary) -> void:
 			far += 1
 	_check(held.size() >= 50 and held.size() <= 80, "%d held column(s): the two back walls' edges (west %d, north %d)" % [held.size(), west, north])
 	_check(far == 0, "nothing holds the far two thirds: the east and south edges are FREE (%d held there)" % far)
-	var params: Dictionary = RoofSheetRelease.sim_params(info, SoftSheetPresets.OF["fabric"], room._voxel_board.ground_plane_level(), layout["solid_block_instances"])
+	var params: Dictionary = RoofSheetRelease.sim_params(info, SoftSheetPresets.OF["fabric"], room._voxel_board.ground_plane_level(), layout["solid_block_instances"],
+		RoofSheetRelease.solid_grid(info, room._voxel_board.ground_plane_level()))
 	var nx: int = int(params["nx"])
 	var nz: int = int(params["nz"])
 	var pins: PackedByteArray = params["pins"]
@@ -105,6 +106,29 @@ func _awning(room: Node, layout: Dictionary, roof: Dictionary) -> void:
 	while not sim.is_settled() and guard < 600:
 		sim.step()
 		guard += 1
+	## The cloth does not enter a wall (Director, 2026-10-16: it went through the wall's top): sample the SKIN the shader draws (Catmull-Rom through the nodes)
+	## on a lattice of 1/16 GU over the whole sheet and count the samples inside a standing voxel's box, the voxels that really stand (a wall's pass its GU).
+	var inside: int = 0
+	var grazing: int = 0
+	var samples: int = 0
+	var steps_x: int = int(float(nx - 1) * sim.hx / 0.0625)
+	var steps_z: int = int(float(nz - 1) * sim.hz / 0.0625)
+	for a in range(steps_x + 1):
+		for b in range(steps_z + 1):
+			var p: Vector3 = _catmull(sim, nx, nz, minf(float(a) * 0.0625 / sim.hx, float(nx - 1) - 1.0e-4), minf(float(b) * 0.0625 / sim.hz, float(nz - 1) - 1.0e-4))
+			samples += 1
+			if sim.is_inside_solid(p):
+				grazing += 1
+			if sim.is_deep_in_solid(p, 0.03):
+				inside += 1
+	var nodes_in: int = 0
+	for node in range(nx * nz):
+		if sim.is_inside_solid(Vector3(sim.pos[node * 3], sim.pos[node * 3 + 1], sim.pos[node * 3 + 2])):
+			nodes_in += 1
+	_check(nodes_in == 0, "no node of the sheet is inside a standing voxel (%d of %d)" % [nodes_in, nx * nz])
+	## Between the nodes (one per 1/3 GU) the skin can still cut a wall's corner a hair. Measured 2026-10-16 on this map: 391 of 4623 samples were inside a standing
+	## voxel before the sheet knew the walls AS BUILT (8.5%); now 4 are deeper than 0.03 GU (0.09%) and 13 graze a surface.
+	_check(inside <= int(float(samples) * 0.002), "the skin goes deeper than 0.03 GU into a standing voxel in %d of %d samples (limit 0.2%%), %d grazing a surface" % [inside, samples, grazing])
 	var corner: Vector3 = sim.node_position(nx - 1, nz - 1)
 	_check(sim.is_settled() and guard < 600, "it settles (%d steps, %.1f s simulated)" % [guard, sim.time])
 	_check(corner.y < 0.5, "the free corner fell from %.2f to %.2f GU (the lab's awning reached the floor)" % [float(params["origin"].y), corner.y])
@@ -112,3 +136,23 @@ func _awning(room: Node, layout: Dictionary, roof: Dictionary) -> void:
 	for node in range(nx * nz):
 		lowest = minf(lowest, sim.pos[node * 3 + 1])
 	_check(lowest >= SoftSheetSim.CONTACT_MARGIN - 1.0e-9, "no node sank into the floor (lowest %.3f)" % lowest)
+
+
+func _catmull(sim: SoftSheetSim, nx: int, nz: int, fi: float, fj: float) -> Vector3:
+	var i0: int = mini(int(floor(fi)), nx - 2)
+	var j0: int = mini(int(floor(fj)), nz - 2)
+	var wi: Array = _weights(fi - float(i0))
+	var wj: Array = _weights(fj - float(j0))
+	var out := Vector3.ZERO
+	for ia in range(4):
+		var row := Vector3.ZERO
+		for jb in range(4):
+			row += float(wj[jb]) * sim.node_position(clampi(i0 + ia - 1, 0, nx - 1), clampi(j0 + jb - 1, 0, nz - 1))
+		out += float(wi[ia]) * row
+	return out
+
+
+func _weights(f: float) -> Array:
+	var f2: float = f * f
+	var f3: float = f2 * f
+	return [-0.5 * f3 + f2 - 0.5 * f, 1.5 * f3 - 2.5 * f2 + 1.0, -1.5 * f3 + 2.0 * f2 + 0.5 * f, 0.5 * f3 - 0.5 * f2]

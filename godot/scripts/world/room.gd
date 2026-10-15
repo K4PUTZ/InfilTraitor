@@ -4374,13 +4374,13 @@ func _spawn_cloth_flaps(destroyed: Dictionary, material: String) -> int:
 		var to_centre: Vector2 = mean - boundary
 		var reach: float = to_centre.length()
 		var dir: Vector2 = to_centre / maxf(reach, 0.001)
-		var length_vox: float = minf(lerpf(3.0, 9.0, r0), 0.7 * reach)
-		var width_vox: float = lerpf(2.0, 4.5, r1)
+		var length_vox: float = minf(lerpf(6.0, 14.0, r0), 0.7 * reach)   ## Director 2026-10-16: smaller but LONGER, and more of them
+		var width_vox: float = lerpf(2.0, 3.0, r1)
 		flaps.append({
 			"hinge": Vector3(boundary.x * unit, float(int(entry[3]) - ground) * unit + SoftSheetSim.CONTACT_MARGIN, boundary.y * unit),
 			"dir": dir, "length": length_vox * unit, "width": width_vox * unit,
-			"delay": 0.08 * r2, "rise": lerpf(0.18, 0.28, r0), "fall": lerpf(0.55, 0.9, r1), "tone": tone, "burn": 1.0})
-		i += 3 + int(lerpf(1.0, 4.0, r2))   ## every few rim voxels: the tongues are uneven, with torn rim between them
+			"thickness": float((SoftSheetPresets.OF.get(material, {}) as Dictionary).get("thickness", 0.0)), "delay": 0.08 * r2, "rise": lerpf(0.18, 0.28, r0), "fall": lerpf(0.55, 0.9, r1), "tone": tone, "burn": 1.0})
+		i += 1 + int(lerpf(1.0, 3.0, r2))   ## every 2 or 3 rim voxels: the tongues are uneven, with a little torn rim between them
 	if _cloth_flaps == null or not is_instance_valid(_cloth_flaps):
 		_cloth_flaps = ClothFlaps3D.new()
 		_cloth_flaps.name = "ClothFlaps"
@@ -4417,7 +4417,8 @@ func release_roof_sheet(roof: Dictionary) -> bool:
 		push_warning("[Room] release_roof_sheet: the %s roof at %s has nothing standing" % [material, str(roof["gu_cell"])])
 		return false
 	var t0: int = Time.get_ticks_usec()
-	var params: Dictionary = RoofSheetRelease.sim_params(info, row, _voxel_board.ground_plane_level(), _base_layout.get("solid_block_instances", []))
+	var params: Dictionary = RoofSheetRelease.sim_params(info, row, _voxel_board.ground_plane_level(), _base_layout.get("solid_block_instances", []),
+		RoofSheetRelease.solid_grid(info, _voxel_board.ground_plane_level()))
 	var sim := SoftSheetSim.new(params)
 	var t_sim: int = Time.get_ticks_usec()
 	var definition = Registries.get_material_registry().resolve(material)
@@ -4440,7 +4441,7 @@ func release_roof_sheet(roof: Dictionary) -> bool:
 	live.call("register_soft_sheet", sheet)
 	sheet.name = "SoftSheet_%s_%d_%d" % [material, int(info["x0"]), int(info["z0"])]
 	(live.call("geometry_root") as Node3D).add_child(sheet)
-	sheet.setup(live, sim, {"burn": burn, "x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": 2, "mask": info["columns"],
+	sheet.setup(live, sim, {"thickness": float(row.get("thickness", 0.0)), "burn": burn, "x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": 2, "mask": info["columns"],
 		"y_top": float(params["origin"].y), "material": material, "threaded": str(_dev_flag("SOFT_SHEET_THREAD", "1")) != "0", "label": "%s %dx%d voxels" % [material, int(info["w"]), int(info["d"])],
 		"color": func(gx: int, gy: int) -> Color:
 			var t: float = float(live.call("top_shade", gx, gy, level))

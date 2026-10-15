@@ -33,6 +33,8 @@ static var SETTLE_TIME: float = 0.6
 ## How far above the floor / outside a box the cloth rests (its thickness), and how much of a node's sideways travel the floor takes.
 static var CONTACT_MARGIN: float = 0.01
 static var BOX_MARGIN: float = 0.02
+## How many voxels a node is looked for a way out through, at most.
+const SOLID_REACH: int = 8
 static var FLOOR_FRICTION: float = 0.6
 
 var nx: int = 0
@@ -55,6 +57,8 @@ var _gravity: float = 8.0
 var _mass: float = 0.015625
 var _drag: float = 1.0
 var _boxes: Array = []   ## AABB, GU
+var _solid: Dictionary = {}   ## the standing voxels around the roof, a grid (`RoofSheetRelease.solid_grid`): the walls AS BUILT, which pass their GU
+var _ground_level: int = 0
 var _acc: float = 0.0
 var _quiet: float = 0.0
 var _steps: int = 0
@@ -97,6 +101,8 @@ func _init(p: Dictionary) -> void:
 	origin = p["origin"]
 	floor_y = float(p.get("floor_y", 0.0))
 	_boxes = p.get("boxes", [])
+	_solid = p.get("solid", {})
+	_ground_level = int(p.get("ground_level", 0))
 	_dt = float(p.get("dt", STEP))
 	_iterations = int(p.get("iterations", ITERATIONS))
 	_gravity = float(p.get("gravity", GRAVITY))
@@ -119,9 +125,131 @@ func _init(p: Dictionary) -> void:
 	if p.has("initial"):
 		pos = p["initial"]
 		assert(pos.size() == n * 3)
+	_move_pins_out_of_boxes()
 	prev = pos.duplicate()
 	_build_constraints(float(row.get("k_stretch", 3000.0)), float(row.get("k_shear", 60.0)), _gravity * pow(float(row.get("lb", 0.12)), 3.0))
 	_factor()
+
+
+## True when the grid knows the walls at this horizontal place (it covers it from the ground to above the roof): there it is the authority, and the layout's
+## GU boxes (which know neither a wall's lip nor its cap rows) stand aside, or they push a node back into the wall the grid just took it out of.
+func _grid_covers(x: float, z: float) -> bool:
+	if _solid.is_empty():
+		return false
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var cx: int = int(floor(x / unit)) - int(_solid["x0"])
+	var cy: int = int(floor(z / unit)) - int(_solid["y0"])
+	return cx >= 0 and cy >= 0 and cx < int(_solid["w"]) and cy < int(_solid["h"])
+
+
+## True when the point (GU) is inside a standing voxel of the grid (a selftest asks it of the skin).
+func is_inside_solid(p: Vector3) -> bool:
+	return _solid_cell(p.x, p.y, p.z)
+
+
+## True when the point is inside a standing voxel AND still inside one `depth` GU away in every direction: it is DEEP in the wall, not grazing its surface
+## (a spline between nodes overshoots a hair at a corner; that is not a cloth through a wall).
+func is_deep_in_solid(p: Vector3, depth: float) -> bool:
+	if not _solid_cell(p.x, p.y, p.z):
+		return false
+	for d: Vector3 in [Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, -1, 0), Vector3(0, 0, 1), Vector3(0, 0, -1)]:
+		var q: Vector3 = p + d * depth
+		if not _solid_cell(q.x, q.y, q.z):
+			return false
+	return true
+
+
+## Whether the point (GU) is inside a standing voxel of the grid, and the cell it is in (voxel x, y, level); outside the grid nothing is solid.
+func _solid_cell(x: float, y: float, z: float) -> bool:
+	if _solid.is_empty():
+		return false
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var cx: int = int(floor(x / unit)) - int(_solid["x0"])
+	var cy: int = int(floor(z / unit)) - int(_solid["y0"])
+	var cl: int = int(floor(y / unit)) + _ground_level - int(_solid["l0"])
+	if cx < 0 or cy < 0 or cl < 0 or cx >= int(_solid["w"]) or cy >= int(_solid["h"]) or cl >= int(_solid["nl"]):
+		return false
+	return (_solid["bits"] as PackedByteArray)[(cl * int(_solid["h"]) + cy) * int(_solid["w"]) + cx] == 1
+
+
+## Where a point that is inside a standing voxel comes out: through the nearest face, a cell at a time (at most `SOLID_REACH` cells), and `BOX_MARGIN` beyond
+## it; the point itself when it is not inside one (or finds no way out). `horizontal_only` for a pinned node, which leaves a wall sideways (never up over its
+## top: it is held at the support's edge, where the cloth really leaves it) and through the side that faces the sheet (`toward`).
+func _solid_exit(start: Vector3, horizontal_only: bool, toward: Vector2) -> Vector3:
+	if not _solid_cell(start.x, start.y, start.z):
+		return start
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var dirs: Array[Vector3] = [Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1), Vector3(0, 0, -1)]
+	if not horizontal_only:
+		dirs.append(Vector3(0, 1, 0))
+		dirs.append(Vector3(0, -1, 0))
+	var best_d: float = 1.0e9
+	var best: Vector3 = start
+	for d: Vector3 in dirs:
+		if horizontal_only and ((d.x != 0.0 and (d.x > 0.0) != (start.x < toward.x)) or (d.z != 0.0 and (d.z > 0.0) != (start.z < toward.y))):
+			continue   ## the wrong side: through the wall, not out of it
+		var p: Vector3 = start
+		var travelled: float = 0.0
+		for _k in range(SOLID_REACH):
+			var cell_lo := Vector3(floor(p.x / unit), floor(p.y / unit), floor(p.z / unit)) * unit
+			var to_face: float
+			if d.x != 0.0:
+				to_face = (cell_lo.x + unit - p.x) if d.x > 0.0 else (p.x - cell_lo.x)
+			elif d.y != 0.0:
+				to_face = (cell_lo.y + unit - p.y) if d.y > 0.0 else (p.y - cell_lo.y)
+			else:
+				to_face = (cell_lo.z + unit - p.z) if d.z > 0.0 else (p.z - cell_lo.z)
+			p += d * (to_face + 1.0e-4)
+			travelled += to_face + 1.0e-4
+			if not _solid_cell(p.x, p.y, p.z):
+				break
+		if _solid_cell(p.x, p.y, p.z):
+			continue
+		if travelled < best_d:
+			best_d = travelled
+			best = p + d * BOX_MARGIN
+	return best
+
+
+## A pinned node is held at the roof's own rectangle, which is where the wall's voxels may reach (a wall's voxels pass the GU it was drawn in, and its cap
+## rows pass that): a node buried in a wall made the chord to the first free node cut the wall's corner, so the cloth went THROUGH the wall's top (Director,
+## 2026-10-16). A pinned node that starts inside a standing voxel is held at that wall's NEAREST SIDE instead.
+func _move_pins_out_of_boxes() -> void:
+	var centre := Vector2(origin.x + 0.5 * float(nx - 1) * hx, origin.z + 0.5 * float(nz - 1) * hz)
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	for node in range(nx * nz):
+		if pinned[node] != 1:
+			continue
+		var o: int = node * 3
+		for _round in range(6):
+			var from := Vector3(pos[o], pos[o + 1], pos[o + 2])
+			var out: Vector3 = _solid_exit(from, true, centre)
+			if out == from:
+				break
+			pos[o] = out.x
+			pos[o + 1] = out.y
+			pos[o + 2] = out.z
+		## A roof that rests on a LEDGE (the wall's lip a voxel past its GU, under the roof's first row): the cloth leaves the ledge's outer corner, not the
+		## roof's rectangle, or the chord to the first free node cuts the lip. Along each axis the wall holds from behind, slide to the edge of what is below.
+		for axis in range(2):
+			var s: float = 1.0 if (pos[o] if axis == 0 else pos[o + 2]) < (centre.x if axis == 0 else centre.y) else -1.0
+			var step := Vector3(s * unit if axis == 0 else 0.0, 0.0, s * unit if axis == 1 else 0.0)
+			var at := Vector3(pos[o], pos[o + 1], pos[o + 2])
+			if not _solid_cell(at.x - step.x * 0.5, at.y, at.z - step.z * 0.5):
+				continue   ## nothing behind it on this axis: not held from this side
+			for _k in range(SOLID_REACH):
+				if not _solid_cell(at.x, at.y - unit * 0.6, at.z):
+					break   ## nothing under it: this is the ledge's edge (or it never stood on one)
+				## to the far face of the cell below, along the axis
+				var coord: float = at.x if axis == 0 else at.z
+				var far: float = (floor(coord / unit) + (1.0 if s > 0.0 else 0.0)) * unit
+				far += s * 1.0e-4
+				if axis == 0:
+					at.x = far
+				else:
+					at.z = far
+			pos[o] = at.x
+			pos[o + 2] = at.z
 
 
 func node_index(i: int, j: int) -> int:
@@ -253,6 +381,12 @@ func _collide() -> void:
 			_xs[o + 1] = lo_y
 			_xs[o] += FLOOR_FRICTION * (prev[o] - _xs[o])
 			_xs[o + 2] += FLOOR_FRICTION * (prev[o + 2] - _xs[o + 2])
+		var out: Vector3 = _solid_exit(Vector3(_xs[o], _xs[o + 1], _xs[o + 2]), false, Vector2.ZERO)
+		_xs[o] = out.x
+		_xs[o + 1] = out.y
+		_xs[o + 2] = out.z
+		if _grid_covers(_xs[o], _xs[o + 2]):
+			continue
 		for box: AABB in _boxes:
 			var lx: float = box.position.x - BOX_MARGIN
 			var ly: float = box.position.y - BOX_MARGIN

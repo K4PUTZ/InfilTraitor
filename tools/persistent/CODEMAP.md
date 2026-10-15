@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**303 scripts · 91085 lines total** (under `godot/scripts/`)
+**303 scripts · 91355 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -515,7 +515,7 @@ extends `Node3D` · 3485 lines
 
 ### `cloth_flaps3d.gd`
 
-`class_name ClothFlaps3D` · extends `Node3D` · 132 lines
+`class_name ClothFlaps3D` · extends `Node3D` · 152 lines
 
 `godot/scripts/geometry/cloth_flaps3d.gd`
 
@@ -1165,7 +1165,7 @@ extends `Node3D` · 3485 lines
 
 ### `soft_sheet3d.gd`
 
-`class_name SoftSheet3D` · extends `Node3D` · 390 lines
+`class_name SoftSheet3D` · extends `Node3D` · 426 lines
 
 `godot/scripts/geometry/soft_sheet3d.gd`
 
@@ -1177,7 +1177,7 @@ extends `Node3D` · 3485 lines
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/soft_sheet3d.gdshader"`
 - `BURN_SECONDS` = `1.4`
-- `CUSTOM_FLAGS` = `Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT`
+- `CUSTOM_FLAGS` = `Mesh.ARRAY_CUSTOM_RG_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT`
 
 **Public API**
 - `func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary) -> void:`
@@ -1191,7 +1191,7 @@ extends `Node3D` · 3485 lines
 
 ### `soft_sheet_sim.gd`
 
-`class_name SoftSheetSim` · extends `RefCounted` · 432 lines
+`class_name SoftSheetSim` · extends `RefCounted` · 566 lines
 
 `godot/scripts/geometry/soft_sheet_sim.gd`
 
@@ -1199,6 +1199,7 @@ extends `Node3D` · 3485 lines
 
 **Constants / tuning**
 - `MAX_STEPS_PER_ADVANCE` = `2`
+- `SOLID_REACH` = `8`
 
 **Public vars**
 - `var nx: int = 0`
@@ -1212,16 +1213,6 @@ extends `Node3D` · 3485 lines
 - `var prev: PackedFloat64Array = PackedFloat64Array()`
 - `var vel: PackedFloat64Array = PackedFloat64Array()`
 - `var pinned: PackedByteArray = PackedByteArray()`
-
-**Public API**
-- `func node_index(i: int, j: int) -> int:`
-- `func node_position(i: int, j: int) -> Vector3:`
-- `func advance(delta: float) -> int:`
-- `func alpha() -> float:`
-- `func is_settled() -> bool:`
-- `func steps_run() -> int:`
-- `func positions_lerped(a: float, out: PackedFloat32Array) -> void:`
-- `func step() -> void:`
 
 ---
 
@@ -2690,7 +2681,7 @@ extends `RefCounted` · 37 lines
 
 ### `soft_sheet_presets.gd`
 
-`class_name SoftSheetPresets` · extends `RefCounted` · 26 lines
+`class_name SoftSheetPresets` · extends `RefCounted` · 27 lines
 
 `godot/scripts/systems/destruction/soft_sheet_presets.gd`
 
@@ -4071,7 +4062,7 @@ extends `SceneTree` · 53 lines
 
 ### `cloth_flaps_selftest.gd`
 
-extends `SceneTree` · 50 lines
+extends `SceneTree` · 52 lines
 
 `godot/scripts/tools/cloth_flaps_selftest.gd`
 
@@ -5194,7 +5185,7 @@ extends `SceneTree` · 204 lines
 
 ### `roof_sheet_release_selftest.gd`
 
-extends `SceneTree` · 114 lines
+extends `SceneTree` · 158 lines
 
 `godot/scripts/tools/roof_sheet_release_selftest.gd`
 
@@ -6271,7 +6262,7 @@ extends `Node` · 252 lines
 
 ### `roof_sheet_release.gd`
 
-`class_name RoofSheetRelease` · extends `RefCounted` · 128 lines
+`class_name RoofSheetRelease` · extends `RefCounted` · 160 lines
 
 `godot/scripts/world/roof_sheet_release.gd`
 
@@ -6284,7 +6275,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11450 lines
+extends `Node2D` · 11451 lines
 
 `godot/scripts/world/room.gd`
 

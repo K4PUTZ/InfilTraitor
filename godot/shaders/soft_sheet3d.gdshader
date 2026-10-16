@@ -79,17 +79,7 @@ void vertex() {
 	v_final = CUSTOM1.y;   // the tone it ends: 1 clean, 0 black (a soft material ends a soot grey, not black)
 }
 
-// A smooth value noise on a lattice (bilinear, smoothstepped), so a fire front and its soot are ragged and soft, never squares.
-float hash21(vec2 p) {
-	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
-
-float vnoise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	f = f * f * (3.0 - 2.0 * f);
-	return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x), mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
-}
+uniform sampler2D noise_tex : filter_linear, repeat_enable;   // 64 x 64 smooth value noise, 3 channels (SoftSheet3D builds it once): one fetch, not a dozen hashes (Mali)
 
 void fragment() {
 	vec3 n = normalize(cross(dFdx(v_world), dFdy(v_world)));
@@ -107,14 +97,15 @@ void fragment() {
 	// the fire spreads a little from the opening (`settle_clock`), goes out, and the soot is what stays. Each is a vertex-smooth ramp over 1.4 s:
 	// untouched -> glowing -> soot (`v_final`).
 	// The front is ragged: the ramp is pushed by a soft noise over the cloth's rest coordinates (3 voxels a feature), then smoothed again.
-	float rag = (vnoise(v_rest * 0.33) * 0.65 + vnoise(v_rest * 0.9 + 17.0) * 0.35 - 0.5) * 1.1;
+	vec3 nz = texture(noise_tex, v_rest * 0.012).rgb;
+	float rag = (nz.r * 0.65 + nz.g * 0.35 - 0.5) * 1.1;
 	float ba = clamp((clock - v_ignite) / 1.7 + rag * 0.5, 0.0, 1.0);
 	float bb = clamp((settle_clock - v_delay) / 1.7 + rag * 0.5, 0.0, 1.0) * step(0.0, settle_clock);
 	// WHERE it burns is a separate, ragged mask (the weight of the vertex plus noise), so a part on the edge of the burning area still finishes and goes out.
 	float ma = smoothstep(0.3, 0.8, v_weight.x + rag * 0.45);
 	float mb = smoothstep(0.3, 0.8, v_weight.y + rag * 0.45);
 	float b = max(ba * ma, bb * mb);
-	float soot_patch = 0.8 + 0.2 * vnoise(v_rest * 0.55 + 5.0);
+	float soot_patch = 0.8 + 0.2 * nz.b;
 	float sooted = mix(1.0, v_final * soot_patch, smoothstep(0.0, 1.0, b));
 	float flicker = 0.75 + 0.25 * sin(clock * 37.0 + v_rest.x * 0.9 + v_rest.y * 0.7) * sin(settle_clock * 29.0 + v_rest.y * 1.1);
 	vec3 cloth = COLOR.rgb * pow(vec3(key * detail * sooted * mix(1.0, 0.55, v_skirt)), vec3(2.2));

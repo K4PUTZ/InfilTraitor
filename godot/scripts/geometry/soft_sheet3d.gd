@@ -94,6 +94,7 @@ func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary) -> void:
 	_mask = skin["mask"]
 	_mat.set_shader_parameter("clock", 0.0)
 	_mat.set_shader_parameter("settle_clock", -1.0)
+	_mat.set_shader_parameter("noise_tex", noise_texture())
 	_mat.set_shader_parameter("thickness", float(skin.get("thickness", 0.0)))
 	_mesh_node = MeshInstance3D.new()
 	_mesh_node.mesh = _build_mesh(sim, skin)
@@ -260,6 +261,53 @@ func covers(cell: Vector2i) -> bool:
 func column_point(cell: Vector2i) -> Vector3:
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	return sample((float(cell.x) + 0.5) * unit, (float(cell.y) + 0.5) * unit)
+
+
+## One 64 x 64 RGB texture of smooth value noise for the shader's ragged fire fronts and soot patches, built once per run (lattice of 8 cells, wrapping).
+static var _noise_texture: ImageTexture = null
+
+
+static func noise_texture() -> ImageTexture:
+	if _noise_texture != null:
+		return _noise_texture
+	var image := Image.create(64, 64, false, Image.FORMAT_RGB8)
+	var cells: Array = [8, 5, 11]   ## per channel: how many lattice cells across (a different scale each, so the channels differ)
+	var lattices: Array = []
+	for ch in range(3):
+		var n: int = int(cells[ch])
+		var g: PackedFloat32Array = PackedFloat32Array()
+		g.resize(n * n)
+		for k in range(n * n):
+			g[k] = float(FacadeSampler._fnv1a_hash("CLOTHNOISE|%d|%d" % [ch, k]) % 1000) / 1000.0
+		lattices.append(g)
+	for y in range(64):
+		for x in range(64):
+			var color := Color()
+			for ch in range(3):
+				var n: int = int(cells[ch])
+				var g: PackedFloat32Array = lattices[ch]
+				var fx: float = float(x) / 64.0 * float(n)
+				var fy: float = float(y) / 64.0 * float(n)
+				var ix: int = int(floor(fx))
+				var iy: int = int(floor(fy))
+				var tx: float = fx - float(ix)
+				var ty: float = fy - float(iy)
+				tx = tx * tx * (3.0 - 2.0 * tx)
+				ty = ty * ty * (3.0 - 2.0 * ty)
+				var v00: float = g[(iy % n) * n + (ix % n)]
+				var v10: float = g[(iy % n) * n + ((ix + 1) % n)]
+				var v01: float = g[((iy + 1) % n) * n + (ix % n)]
+				var v11: float = g[((iy + 1) % n) * n + ((ix + 1) % n)]
+				var v: float = lerpf(lerpf(v00, v10, tx), lerpf(v01, v11, tx), ty)
+				if ch == 0:
+					color.r = v
+				elif ch == 1:
+					color.g = v
+				else:
+					color.b = v
+			image.set_pixel(x, y, color)
+	_noise_texture = ImageTexture.create_from_image(image)
+	return _noise_texture
 
 
 ## True once the cloth has come to rest (and stays out of the simulation for good).

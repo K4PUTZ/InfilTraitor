@@ -1,5 +1,8 @@
 # MATERIALS_MASTER_PLAN
-## The materials milestone — burn, breach, see through, and flow — v1.3
+## The materials milestone — burn, breach, see through, and flow — v1.4
+
+> 🏁 **2026-10-17 — THE SOFT MATERIALS ARE DONE, AND THE MATERIALS PART IS CLOSING (Director: "estamos finalizando a parte de materiais").** Cloth and cardboard are SHEETS now, roofs AND walls: a `SoftSheet3D` drawn at rest from the first frame over a sim that was settled at load on a worker, the voxels staying the index (light, support, damage); a blast that takes a support wakes that very sim, a blast or a shot that only cuts a hole redraws the skin with the opening (cloth: flaps; cardboard: a torn ragged edge and its old debris; a little soot on a shot's hole); **cloth touching cloth is SEWN** (`SoftSheetGroup`: a roof and the walls hung from it fall as one piece); cardboard is PLATES that fold along creases. The **quitanda** (a stall: two plywood posts, a roof, panels on three sides) is the bench (`MARKET_LAB`; PLAYGROUND's cardboard and fabric trios became quitandas). A half-thickness panel may now `blocks` (a wall of a thin material that stops movement, sight and rounds). Per-material shot and blast videos for the nine PLAYGROUND materials: `tools/persistent/material_videos.py`. The numbers (Moto g04s and Galaxy A16: the load waits 0 ms for the workers, a release batch is ~210-260 ms on the main thread, the fall window ~34-36 ms/frame) and every decision are in `ROOF_MASTER_PLAN` v0.41-v0.44; the engine record is `docs/ARCHITECTURE.md` §0.5. **What the materials part still owes:** **M6, FLUIDS** (below, scoped by the Director today) and maybe GASES; metal (`ROOF_MASTER_PLAN` Q5) and the roof shot (its step 5); a rail / counter for the quitanda's frame and walls of cardboard that fold as plates; the soft materials' persistence across a checkpoint; a handle-free `collect` and a cache of the settled positions when a level carries many cloths (tents).
+
 
 > ⏭️ **2026-10-12 — ONE-LAYER MATERIALS and per-material shot behaviour (Director; `ROOF_MASTER_PLAN` v0.17-v0.19, `docs/ARCHITECTURE.md` §0.4).** Glass, cardboard and fabric are ONE layer in every situation and the COMPILER enforces it (`EdgeExtractor.is_thin_material`: a solid block / divider keeps its OUTER shell, `side: "inner"` overrides; windows and frames default to the INNER GU, `side` on `panels` is next). Plywood stayed two slices until **2026-10-14, when it joined them (Director: "teto e paredes"); a roof of cardboard, fabric or plywood is one layer too, the lower one** (`ROOF_MASTER_PLAN` v0.22). What a shot leaves per material (rubble, splinters, stamps, tear, punch-out) is `RubblePresets` + `ShotPunchTable.TEAR_SIZE`; explosions inherit it next.
 
@@ -105,7 +108,7 @@ Nine materials exist. Five arrived on 2026-08-21 and render correctly
 | **M3** | Fire that consumes and opens passages | **Large.** The milestone's centre |
 | **M4** | Glass: seeing through it, and breaking it non-locally | ✅ **CLOSED 2026-09-06** — the whole `GLASS_MASTER_PLAN` (v1.44), not just §18. Nothing left in it is glass render or physics; see that plan's §10.1 for the row-by-row of what remains and who owns it. The one item still on M4's own plate is **`plastic`** (the black screen backing, below) |
 | **M5** | Voxel props — the thing these materials are actually for | Medium, blocked on renderer v2 |
-| **M6** | Fluids (water/lava) | **Research first, unscoped** |
+| **M6** | **Fluids: water, lava, sewer, quicksand** (Director, 2026-10-17: quicksand is ORDINARY `earth` as the base, made into a trap by a behaviour, not a new material); **gases** maybe, later | **Research first.** The list is scoped (§6), the design is not |
 
 The ordering is not arbitrary: **M2 before M3** because a burning wall's
 intermediate states are marks, and building fire against materials that cannot
@@ -1030,6 +1033,16 @@ What the study has to come back with, so it is not an open-ended read:
    still water that reflects light.
 
 No task list until the study lands.
+
+### 2026-10-17 — what the Director added to M6's scope
+
+*"ainda vai ficar faltando fluídos (água, lava, sewer, areia movediça (usar terra normal como base pra fazer armadilhas)), e talvez gases."*
+The fluids M6 has to cover are therefore **water, lava, sewer and quicksand**, and **gases** are a maybe. Two things changed since this section was written, and the study should start from them:
+
+- **The renderer it was written against is gone.** The "TileSet rebuild per frame that mints" worry (item 3 above) is history: the board is a 3D mesh over a packed `VoxelStore` (`RENDER3D_MASTER_PLAN`), and a surface that moves is already a solved shape here: `SoftSheetSim` + `SoftSheet3D` draw a dynamic surface as ONE node over a node texture, with the sim on a worker thread (`ROOF_MASTER_PLAN` v0.28-v0.43). A height-field fluid (item 1's second shape) can ride the same machinery (a coarse node grid in the sim, a fine skin in the vertex shader); a per-voxel cellular automaton would have to write the store, and every writer of the store is audited (`CLAUDE.md` rule 8).
+- **Quicksand is not a fluid.** It is the existing `earth` ground with a trap rule on top (an agent that stands on it sinks and loses movement; how deep, how fast, whether it is visible, whether a rope / another agent frees it are the design). That makes it the cheapest first slice and the one that tests the "floor behaviour" seam (`SURFACES_MASTER_PLAN`: surfaces, tags, `surfaces/rules.json`) without any flow.
+
+The open questions for the study stay the four above, plus: whether **sewer** is water with a smell/noise rule (an audio-detection surface: `NoiseSystem`) or its own thing; whether **lava** is a hazard that also lights (`LIGHT_MASTER_PLAN`: a light source from a material) and burns what it touches (`MATERIALS` M3 fire); and whether **gases** are a separate layer at all (a per-GU concentration plane read by detection and fire) or a later milestone. No design is ratified; no code exists.
 
 ---
 

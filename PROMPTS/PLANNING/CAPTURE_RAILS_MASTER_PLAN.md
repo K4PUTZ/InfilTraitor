@@ -1,6 +1,8 @@
 # CAPTURE_RAILS_MASTER_PLAN
 ## The map's spatial anchors in GU, and a capture system that frames them by itself — v0.3 (planning, nothing built)
 
+> 🎞️ **2026-10-17 — the takes grew a bench per material.** New map `MARKET_LAB` (40 x 18 GU, two quitandas far apart: takes `quitanda_fabric_blast`, `quitanda_cardboard_blast`, `quitanda_fabric_corner_blast`, `quitanda_shot`); PLAYGROUND has `shot_<m>` and `blast_<m>` for the nine materials (concrete, metal, stone, wood, brick, cardboard, fabric, plywood, glass), recorded by `tools/persistent/material_videos.py` (it sets `SHOT_AGENT_CELL` / `SHOT_GUARD_CELL`, which a take cannot carry yet: a take-level `env` would remove the script). `capture.py` prints `[SOFT-SHEET]`, `[STRUCT]`, `[GLASS-SHATTER]`, `[GLASS-OPENING]` too. Two traps found on the way: an id may not be both a POI and a take (ids are unique across `layout` and `capture`), and a POI off the 1/8 lattice fails the whole map load (and a failed map load leaves the window open: `capture.py` hangs until its timeout); a rail from "behind" is hidden by PLAYGROUND's north wall (use MARKET_LAB).
+
 > **2026-10-10, later (Director): everyday captures back to a small window** — `engine` renders 1280×720 (H.264 crf 24), the new `showcase` profile is the same at 1920×1080 (crf 18) for a video worth keeping (`capture.py --profile showcase`; an explicit `--profile` also overrides a take's own).
 >
 > **✅ CR-1 to CR-6 BUILT 2026-10-10 (the retirement of the old capture actions waits for the Director, CR-5; CR-7 parked).** §10's rows

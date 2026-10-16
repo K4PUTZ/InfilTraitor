@@ -80,6 +80,18 @@ R3D-ACTORS (live skinned actors, D64), R3D-ROT (camera-only rotation), R3D-WORLD
 
 **One-layer materials** (glass family, cardboard, fabric, and plywood since 2026-10-14): `EdgeExtractor.is_thin_material` gives a solid block or divider a single slice, in the OUTER GU (`side: "inner"` overrides); the corner columns still come from `JunctionResolver`, whose rule already asks for the outer cell of the elbow. A ROOF of one of them is one layer too, the lower one (`RoomBuilder`, as a skylight's glass).
 
+### 0.5 Soft materials: cloth and cardboard are SHEETS (2026-10-17, `ROOF_MASTER_PLAN` v0.41-v0.43)
+
+A roof or a wall of `fabric` or `cardboard` (`SoftSheetPresets.OF`) is not drawn by the board. The voxels stay the index of everything (light, support, damage, collision, shots: `VoxelStore`); the board's mesher leaves out the claims a sheet draws (`Board3DLive._sheet_claim` 2, from `Room.soft_sheet_voxels`), and a **`SoftSheet3D`** draws them: one node, one draw call, a coarse node grid in a float texture and a fine skin put on the bicubic surface through it in the vertex shader (`soft_sheet3d.gdshader`).
+
+- **Born at rest.** `Room._begin_resting_sheets` (before the board is built) finds every soft roof (`RoofSheetRelease.collect`, the layout's `roof_instances`) and every soft wall plane (`wall_entities`: soft, non-glass `Slice` voxels grouped by plane and connectivity), builds a `SoftSheetSim` for each and sends `settle_now()` to the worker pool; `_finish_resting_sheets` (when the board stands) shows each at rest. The cutaway hides a resting sheet with its roof / the columns it ghosts.
+- **`SoftSheetSim`** — Projective Dynamics on a grid (stretch, shear, bend; banded Cholesky factored once), fixed 1/30 s steps, any orientation (`basis_u` / `basis_v`: a wall hangs along `u`, down `v`), contacts held ON a 0.02 GU margin of what stands (`_hold_off_solid`) with the push-out taken out of the velocity (`_push`); cardboard is PLATES (`plate` / `crease`: the bend is weak only at the creases).
+- **What lets go.** `Room.soft_roof_supports()` is read before a blast commits and `release_soft_roofs_after_blast()` after: the sheets that lost a support are decided on paper (each that goes counts as gone for the next), prepared against the same final world and finished in ONE batch (`_release_prepare` / `_release_group` / `_release_finish`); the cloth falls from its resting positions. A blast or a shot that only cut a hole redraws the skin (`_swap_resting_sheet`, via `Board3DLive.shot_touched` for shots), with the opening's rim: flaps for cloth (`ClothFlaps3D`), a torn edge for cardboard, fire and soot from the shader.
+- **Seams.** Sheets one blast lets go are stepped together by a **`SoftSheetGroup`**, which also owns the worker; a seam ties a boundary node of one sheet to the nearest point of another's boundary (position-based, mass-weighted), so a quitanda's roof and walls fall as one piece; a node sewn to a cloth that stays is pinned.
+- **Switches:** `SOFT_REST=0` (the flat plane as before), `SOFT_WALLS=0`, `SOFT_SHEET_RELEASE=0`, `SOFT_SHEET_THREAD=0`, `ROOF_FIRE=0`. Benches: ROOF_LAB rooms C (cloth) and D (cardboard), `MARKET_LAB`, PLAYGROUND's quitandas. Costs: `PERFORMANCE_BUDGET_MASTER_PLAN` top block.
+
+---
+
 ## How to read this document
 
 Each system is tagged with an explicit status:

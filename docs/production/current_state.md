@@ -1,12 +1,24 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-10-15 · **Branch:** claude/r3d-actors-y5r8hs
+**Version:** 0.9.107 · **Updated:** 2026-10-16 · **Branch:** claude/r3d-actors-y5r8hs
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
 
 ---
+
+## Where the project stands — 2026-10-17 (the soft materials are done: cloth and cardboard roofs and walls are sheets, sewn; the quitanda)
+
+- **A cloth or cardboard roof or wall is a `SoftSheet3D` from the first frame**: a sim settled at load on a worker thread, drawn at rest over voxels that stay the index of light, support, damage and shots. A blast that takes a support wakes that very sim; a blast or a shot that only cuts a hole redraws the skin with the opening (cloth: tongues; cardboard: a torn ragged edge and the debris it already shed; a little soot on a shot's hole).
+- **Cloth touching cloth is sewn** (`SoftSheetGroup`): a stall's roof and the walls hung from it fall as one piece. Cardboard is plates that fold along creases. What had no support falls (R-D12: props and posts).
+- **The quitanda** (two plywood posts, a roof, panels on three sides) is the bench: `MARKET_LAB` (takes `quitanda_*`) and PLAYGROUND (its cardboard and fabric trios became quitandas). A half-thickness `panel` may now `blocks` (it stops movement, sight and rounds); before, a round passed through any panel.
+- **Measured on both handsets:** the load waits 0 ms for the sheets' workers (Moto 172 ms, Galaxy 189 ms in all); a quitanda release is ONE main-thread batch of ~210-260 ms (Moto 256 + 22 + 66, Galaxy 211 + 9 + 29); the fall window is 35.6 / 34.1 ms per frame. **Not measured:** PSS with many cloths (the collect keeps `Voxel` objects, ~1 MB per 4x4 GU awning).
+- **The rattle after a fall is gone**: contacts are held on a margin and the push-out is no longer a velocity; the cloth now settles by itself (it never did before the 12 s limit).
+- **Videos:** a shot and an explosion on each of the nine PLAYGROUND materials, `python3 tools/persistent/material_videos.py`. **Glass:** the fall without support is right; the opening at the impact is regular and was left as it is (Director).
+- **Not built:** fluids (water, lava, sewer, quicksand on `earth`) and maybe gases: `MATERIALS_MASTER_PLAN` v1.4 §6 (research first, no design). Metal and the roof shot (`ROOF_MASTER_PLAN` Q5, step 5); a rail / counter for the quitanda's frame; walls of cardboard that fold as plates; persistence of a let-go cloth across a checkpoint.
+- Records: `ROOF_MASTER_PLAN` v0.41-v0.44, `MATERIALS_MASTER_PLAN` v1.4, `docs/ARCHITECTURE.md` §0.5, `PROMPTS/RESUMO_SESSAO_2026-10-17_SOFT_SHEETS.md` (and `..._2026-10-15_BENDING_ENGINE`, `..._2026-10-16_CLOTH_ROOF`).
+- **Next (Director):** M6, the fluids study, then A1b and the stealth loop as ordered in the roadmap.
 
 ## Where the project stands — 2026-10-14 (RF-2: a blast under an opaque roof opens a hole and drops its rubble)
 
@@ -529,6 +541,9 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-13_RF_S_EXPLOSIONS.md
 - RESUMO_SESSAO_2026-10-14_ROOF_RF2.md
 - RESUMO_SESSAO_2026-10-14_ROOF_RF2_MATERIALS.md
+- RESUMO_SESSAO_2026-10-15_BENDING_ENGINE.md
+- RESUMO_SESSAO_2026-10-16_CLOTH_ROOF.md
+- RESUMO_SESSAO_2026-10-17_SOFT_SHEETS.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -536,8 +551,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 217
-- Test scripts: 80
+- GDScript modules: 220
+- Test scripts: 82
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 32

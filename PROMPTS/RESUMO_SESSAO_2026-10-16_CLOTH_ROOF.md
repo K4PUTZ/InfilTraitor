@@ -1,24 +1,19 @@
-# Session summary — 2026-10-16: the cloth roof (flat plane, post, flaps, fire, sliced light)
+# Session summary — 2026-10-16: the cloth roof as a material, fire and soot on it, and what has no support falls (G1)
 
-Resume point for the next session. Plan: `PROMPTS/PLANNING/ROOF_MASTER_PLAN.md` v0.30 (the record has the decisions, the Moto numbers and the open list).
+Resume point for the next session. Plan: `PROMPTS/PLANNING/ROOF_MASTER_PLAN.md` v0.40 (R-D11, R-D12, stages RF-C and RF-G, the records v0.30 to v0.40 carry every decision, number and trap). Lab: ROOF_LAB room C, takes `roof_gravity`, `roof_post`, `roof_post_scorch`.
 
-## What is true now
-- A soft roof (fabric) is drawn as ONE flat plane per voxel (underside of its level); the voxels stay the index. The cloth's sim rests on the same plane, so the hand-over is flush.
-- ROOF_LAB room C: a 1-voxel plywood post (`post_wood`) at gu (28, 9) holds the awning with the two back walls. Take `roof_post`: the grenade takes the post and the roof's hole; the cloth lets go and falls; take `roof_post_scorch` adds a second grenade on the settled cloth (not yet watched to the end: the run was interrupted).
-- A blast that leaves a soft roof held by fewer (grounded) columns releases it (`Room.soft_roof_supports` / `release_soft_roofs_after_blast`, hooks in `WorldDelta.commit`).
-- No fragments from cloth; the hole's rim is flaps (`ClothFlaps3D`); the fire's unfinished cells keep burning on the falling cloth (shader burn front); embers ride the cloth; a settled cloth only soots (`SoftSheet3D.scorch`).
-- The release's light planes are sliced (`VoxelBoard.begin_light_apply_job`). Moto: the release costs ~7 ms/frame over the blast alone (53.5 vs 46.5 ms/frame in the fall window); still on one frame: sim build 45 ms, skin 35 ms, light field 102 ms.
-- Commits: bc930c91, d512a7d7 and this session's last one, all on `main`. Verified: `verify.py` smoke PASSED (lint, invariants, codemap, selftests incl. new `cloth_flaps_selftest`, smoke boot), desktop captures (`Screenshots/takes/roof_post_*.png`, `videos/ROOF_LAB_roof_post.mp4`), Moto APK.
+## What is true now (all on `main`, last commit 48ef1bf5; `verify.py full` PASSED in 650 s with G1 ON)
+- **A cloth roof is one flat plane** (its voxels stay the index; `Board3DLive._sheet_claim`), resting on what holds it; `SoftSheetSim` is the cloth when a blast takes a support (`Room.soft_roof_supports` / `release_soft_roofs_after_blast`, the support = a GROUNDED path of voxels: `StructuralSupport.is_grounded`).
+- **The cloth collides with the walls as built** (`RoofSheetRelease.solid_grid` + `SoftSheetSim._solid_exit`: ledge pins, a 0.5 GU locked flat margin beside every support, none past a wall's end): 391 -> 0 skin samples inside a wall (selftest on the real map).
+- **A thickness** (a skirt, `thickness` 0.04 GU), **flaps** (50 miniature triangular tongues round the opening, `ClothFlaps3D`), **fire and soot on the cloth** (`soft_sheet3d.gdshader`: the edge and the flaps burn in the explosion, the fire spreads a little where the cloth parks, goes out, a soft haze of soot stays; noise is one 64x64 texture).
+- **The post** is a 1-voxel plywood column (`post_wood`, `gen_dorm_vox.py`); **R-D12 G1**: after a blast the prop voxels with no support fall in a short cascade (`StructuralSupport`, `Room.schedule_structural_support`; dev flags `STRUCT_GRAVITY`, `STRUCT_GRAVITY_SCALE`, `STRUCT_CASCADE_S`; `[STRUCT]` lines in `capture.py`).
+- Dev flags: `SOFT_SHEET_RELEASE=0` (the blast alone), `ROOF_FIRE=0` (no creeping roof fire), `SOFT_SHEET_THREAD`.
+- Moto g04s (`soft_sheet_scenario.py --blast`, `--extra K=V`): `fall` window 59.1 ms/frame, render GPU 24.2 ms against 45.7 / 18.6 for the same blast with no release; the release's main-thread pieces: sim build 75 ms, skin 56 ms, light field 100 ms.
 
-## NEXT (Director to choose)
-1. Build the sim and the skin off the main thread (the remaining ~180 ms hitch on the Moto).
-2. Watch `roof_post_scorch` to its end and judge the soot on the settled cloth.
-3. Cardboard: plasticity / crease (signed), a cardboard row, a cardboard awning.
-4. A floating stump of a half-destroyed post (needs "an unsupported prop remainder falls"); the flaps' tone following the rim's soot; flaps and floor.
-5. Persistence of a let-go cloth across a checkpoint; prop / edge-wall colliders; shadow; Galaxy A16 and PSS.
+## NEXT (in the order recommended; the Director said "na ordem que achar mais apropriada")
+1. **C4 + the Moto:** build the sim, the skin and the light field off the main thread (worker, like `GlassSupport`); a LEAN cloth shader swapped in when the fires are out (a never-taken branch costs on the Mali, a swap does not: the cloth is +5.6 ms GPU); measure G1 on the Moto (a crowded map asks hundreds of voxels).
+2. **RF-G G2:** fold `_roof_islands`, the glass collapse and the cloth's held rule into `StructuralSupport` (the plan then owns the destruction and the aim preview shows the fall); then G3 walls. Open questions in the plan: a per-material sideways glue, an `anchored` attribute (a shelf), what a falling piece does to an actor.
+3. Smaller: a held cloth roof (NOT let go) has no fire now (the old creeping fire is off for fabric); the flaps' tone follows the rim's soot; cardboard (the signed crease, a row, an awning); persistence of a let-go cloth across a checkpoint; prop / edge-wall colliders and a shadow; Galaxy A16 and PSS; the `STRUCT_GRAVITY_SCALE` duration is not timed; the pixel gate has a hair of run-to-run noise in GLASS g1.
 
-## Traps
-New class_name needs `godot --headless --path . --import`; `capture.py` drops print lines whose tag it does not know; `blast_roof_rubble` lists only the newly destroyed voxels; `Voxel.DamageState.DESTROYED` is 2; macOS `sed -i ''`; zsh errors on unmatched globs.
-
-## Update (same day, later): RF-C C1, C2, C3 built
-The "gap" was the cloth going THROUGH the walls' tops (the walls as built are bigger than the layout's GU boxes); `RoofSheetRelease.solid_grid` + `SoftSheetSim._solid_exit` / ledge pins fixed it (391 -> 4 of 4623 skin samples, selftest). Thickness: a skirt on every boundary (`thickness` 0.04 GU). Flaps: 2-3 voxels wide, 6-14 long, 15 on the lab's hole. Record: ROOF_MASTER_PLAN v0.32. NEXT: C4 (sim build 75 ms, skin 15 ms, light field 146 ms on the Moto, all to a worker), then RF-G (R-D12).
+## Traps (each cost an iteration; the full list is in the plan's records)
+`render_mode unshaded` ignores `EMISSION` (add the fire to `ALBEDO`); a "never" sentinel (1e9) interpolated across a quad made the chequerboard (use a weight + a finite time); the soot the blast stamps on a roof plane is 1/8 GU squares (`top_shade(..., soot_amount)`); `ARRAY_CUSTOM1` needs its own format flag; adjacent GU boxes with margins fight (use the voxel grid); the layout's boxes know neither a wall's lip nor its cap rows; `blast_roof_rubble` lists only the newly destroyed voxels; `Voxel.DamageState.DESTROYED` is 2; a new `class_name` needs `godot --headless --path . --import`; `capture.py` prints only tags it knows (`[SOFT-SHEET]`, `[STRUCT]`, ...); macOS `sed -i ''`; `verify.py look` needs a baseline taken at the previous HEAD (`--baseline`).

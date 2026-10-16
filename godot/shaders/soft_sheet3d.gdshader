@@ -102,8 +102,8 @@ void fragment() {
 	float ba = clamp((clock - v_ignite) / 1.7 + rag * 0.5, 0.0, 1.0);
 	float bb = clamp((settle_clock - v_delay) / 1.7 + rag * 0.5, 0.0, 1.0) * step(0.0, settle_clock);
 	// WHERE it burns is a separate, ragged mask (the weight of the vertex plus noise), so a part on the edge of the burning area still finishes and goes out.
-	float ma = smoothstep(0.3, 0.8, v_weight.x + rag * 0.45);
-	float mb = smoothstep(0.3, 0.8, v_weight.y + rag * 0.45);
+	float ma = smoothstep(0.15, 0.9, v_weight.x + rag * 0.55);
+	float mb = smoothstep(0.15, 0.9, v_weight.y + rag * 0.55);
 	float b = max(ba * ma, bb * mb);
 	float soot_patch = 0.8 + 0.2 * nz.b;
 	float sooted = mix(1.0, v_final * soot_patch, smoothstep(0.0, 1.0, b));

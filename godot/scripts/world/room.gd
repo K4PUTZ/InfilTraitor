@@ -4452,7 +4452,7 @@ func release_roof_sheet(roof: Dictionary) -> bool:
 			ring_of[c] = 0
 			frontier.append(c)
 	var ring: int = 0
-	while not frontier.is_empty() and ring < 7:
+	while not frontier.is_empty() and ring < 14:
 		ring += 1
 		var next: Array = []
 		for c: Vector2i in frontier:
@@ -4465,12 +4465,12 @@ func release_roof_sheet(roof: Dictionary) -> bool:
 	for c: Vector2i in ring_of:
 		var r: int = int(ring_of[c])
 		var h: float = float(FacadeSampler._fnv1a_hash("CLOTHFIRE|%d,%d" % [c.x, c.y]) % 1000) / 1000.0
-		if r <= 2:
-			burn[c] = 0.05 + 0.15 * float(r) + 0.1 * h
-			soot_final[c] = lerpf(0.42, 0.6, float(r) / 2.0)
-		if r >= 1 and h < pow(0.9, float(r)):
-			burn_b[c] = 0.3 * float(r) + 0.2 * h
-			soot_final[c] = minf(float(soot_final.get(c, 1.0)), lerpf(0.45, 0.75, float(r) / 7.0))
+		if r <= 3:
+			burn[c] = 0.05 + 0.12 * float(r) + 0.1 * h
+			soot_final[c] = lerpf(0.55, 0.72, float(r) / 3.0)   ## Director 2026-10-16: not so black, a wider feather
+		if r >= 1 and r <= 9 and h < pow(0.93, float(r)):
+			burn_b[c] = 0.28 * float(r) + 0.2 * h
+			soot_final[c] = minf(float(soot_final.get(c, 1.0)), lerpf(0.6, 0.85, float(r) / 9.0))
 	var sheet := SoftSheet3D.new()
 	_soft_sheets.append(sheet)
 	live.call("register_soft_sheet", sheet)
@@ -4484,6 +4484,8 @@ func release_roof_sheet(roof: Dictionary) -> bool:
 			var near: int = int(ring_of.get(Vector2i(gx, gy), 99))
 			var soot_amount: float = clampf(float(near - 2) / 3.0, 0.0, 1.0)
 			var t: float = float(live.call("top_shade", gx, gy, level, soot_amount))
+			## a very soft haze of soot over the whole zone round an opening (14 columns), so no gap is left between the burnt marks and the cloth's edge
+			t *= 1.0 - 0.22 * pow(clampf(1.0 - float(near) / 14.0, 0.0, 1.0), 1.5)
 			return Color(base.r * t, base.g * t, base.b * t, 1.0).srgb_to_linear()})
 	var t_skin: int = Time.get_ticks_usec()
 	## The roof goes: DESTROYED and base-recorded (the checkpoint and the damage replay read the base), the footprint's GUs for the light.

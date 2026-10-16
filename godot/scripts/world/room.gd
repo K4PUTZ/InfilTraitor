@@ -4264,6 +4264,100 @@ func scenario_skylight_hit() -> bool:
 ## The budget of one frame's slice of a light apply job (`VoxelBoard.begin_light_apply_job`): about a third of the 33 ms frame.
 const LIGHT_APPLY_SLICE_US: int = 10000
 
+## ROOF_MASTER_PLAN R-D12 (Director, 2026-10-16: "todo elemento do mundo sem sustentação cai") G1: after a blast, the PROP voxels it touched that no longer stand on the
+## ground through standing voxels (`StructuralSupport`: full glue, any material) FALL, in a short cascade from where something broke: the stump a one-voxel post leaves is
+## the case. Switches (dev flags): `STRUCT_GRAVITY` (0 = off, as before), `STRUCT_GRAVITY_SCALE` (the fall's gravity, 1.0), `STRUCT_CASCADE_S` (0.04 s a step, at most 0.6 s).
+## What falls is DESTROYED and base-recorded (a checkpoint restores it) and its pieces settle into the persistent rubble piles (`_base_rubble_piles`).
+func schedule_structural_support(touched: Array) -> void:
+	if str(_dev_flag("STRUCT_GRAVITY", "1")) == "0" or _voxel_board == null or touched.is_empty():
+		return
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		return
+	var blocks_by_id: Dictionary = {}
+	for block: PropBlock in _voxel_board.prop_blocks():
+		blocks_by_id[block.get_instance_id()] = block
+	var affected: Dictionary = {}   ## instance id -> PropBlock
+	var broken: Dictionary = {}
+	for v: Voxel in touched:
+		if v.damage_state == Voxel.DamageState.DESTROYED:
+			broken[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
+		var block: Variant = blocks_by_id.get(v.container_id())
+		if block != null:
+			affected[(block as PropBlock).get_instance_id()] = block
+	if affected.is_empty():
+		return
+	var ground: int = _voxel_board.ground_plane_level()
+	var seeds: Array = []
+	var block_of: Dictionary = {}
+	for id in affected:
+		var block: PropBlock = affected[id]
+		for v: Voxel in block.voxels:
+			if v.damage_state != Voxel.DamageState.DESTROYED:
+				var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+				seeds.append(key)
+				block_of[key] = block
+	var t0: int = Time.get_ticks_usec()
+	var loose: Dictionary = StructuralSupport.unsupported(ClaimGrid.of_store(store), ground, seeds, broken)
+	print_debug("[STRUCT] %d prop voxel(s) asked, %d with no support (%.2f ms)" % [seeds.size(), loose.size(), float(Time.get_ticks_usec() - t0) / 1000.0])
+	if loose.is_empty():
+		return
+	_structural_fall(loose, block_of)
+
+
+func _structural_fall(loose: Dictionary, block_of: Dictionary) -> void:
+	var step: float = maxf(float(_dev_flag("STRUCT_CASCADE_S", "0.04")), 0.001)
+	var scale: float = float(_dev_flag("STRUCT_GRAVITY_SCALE", "1.0"))
+	var steps_max: int = int(round(0.6 / step))
+	var buckets: Dictionary = {}   ## step index -> Array of Vector3i
+	for key: Vector3i in loose:
+		var i: int = mini(int(loose[key]), steps_max)
+		var group: Array = buckets.get(i, [])
+		group.append(key)
+		buckets[i] = group
+	var order: Array = buckets.keys()
+	order.sort()
+	var ground: int = _voxel_board.ground_plane_level()
+	var t_prev: float = 0.0
+	var fallen: int = 0
+	for idx in order:
+		var at: float = float(idx) * step
+		if at > t_prev:
+			await get_tree().create_timer(at - t_prev, false).timeout
+			t_prev = at
+		var live: Node = board3d()
+		var store: VoxelStore = VoxelStore.active
+		if not is_instance_valid(self) or live == null or store == null or _voxel_board == null:
+			return
+		var grid: ClaimGrid = ClaimGrid.of_store(store)
+		var voxels: Array = []
+		var by_material: Dictionary = {}
+		var centre := Vector2.ZERO
+		for key: Vector3i in buckets[idx]:
+			var v: Voxel = grid.voxel_at(key)
+			if v == null or VoxelStore.damage_of(v) == Voxel.DamageState.DESTROYED:
+				continue
+			_quiet_destroy[key] = true
+			v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+			record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state, v.damage_is_blast, v.damage_carved_side, v.damage_variant, v.damage_substrate, v)
+			voxels.append(v)
+			centre += Vector2(key.x, key.y)
+			var material: String = (block_of[key] as PropBlock).material
+			var group: Array = by_material.get(material, [])
+			group.append(Vector3i(key.x, key.z - ground, key.y))
+			by_material[material] = group
+		if voxels.is_empty():
+			continue
+		fallen += voxels.size()
+		centre /= float(voxels.size())
+		bump_world_revision()
+		live.on_shot_commit(voxels)
+		_release_destroyed_prop_cells()
+		for material: String in by_material:
+			_spawn_roof_pieces(by_material[material], 1, material, centre, 1.0, "struct|%d|%d" % [idx, voxels.size()], Vector2(0.1, 0.0), scale)
+	print_debug("[STRUCT] %d unsupported prop voxel(s) fell in %d step(s) of %.2f s (gravity x%.2f)" % [fallen, order.size(), step, scale])
+
+
 ## ROOF_MASTER_PLAN v0.30 (Director, 2026-10-16: "um poste de madeira segurando o toldo; a granada fura/queima o toldo e remove o poste, e o pano cai").
 ## A soft roof stays a voxel slab, held where something stands against it, until a blast takes one of those supports away: `soft_roof_supports()` is read
 ## BEFORE the blast's damage is committed and `release_soft_roofs_after_blast()` AFTER; a roof held by fewer columns than before lets go (`release_roof_sheet`: what the blast left of it, hole included, becomes the cloth). A roof held only by walls the blast did not touch stays.
@@ -6335,7 +6429,7 @@ func spawn_blast_roof_rubble(cells: Array, epicentre: Vector2) -> int:
 
 ## One family of roof pieces, `size` board voxels on a side (1 a voxel, 2 a chunk), in that lattice: x, level above the ground, y.
 func _spawn_roof_pieces(lattice: Array, size: int, material: String, epicentre: Vector2, weight: float, seed: String,
-		push: Vector2 = RubblePresetsRef.ROOF_PUSH) -> int:
+		push: Vector2 = RubblePresetsRef.ROOF_PUSH, gravity_scale: float = 1.0) -> int:
 	var live: Node = board3d()
 	var store: VoxelStore = VoxelStore.active
 	if lattice.is_empty() or live == null or store == null:
@@ -6372,6 +6466,7 @@ func _spawn_roof_pieces(lattice: Array, size: int, material: String, epicentre: 
 		"stack": stack, "solid": solid, "can_cross": cross, "shade": shade, "jitter": float(RubblePresetsRef.JITTER_OF.get(material, RUBBLE_JITTER)),
 		"push_speed": push.x, "push_up": push.y}
 	params.merge(RubblePresetsRef.ROOF_FALL_OF.get(material, {}))   ## a light material glides down (gravity, terminal speed, sway)
+	params["gravity"] = float(params.get("gravity", 1.0)) * gravity_scale   ## `STRUCT_GRAVITY_SCALE` (R-D12): the strength of the fall
 	var sim := PropFragmentSim.new(params)
 	var zone_materials: Array = [material]
 	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials, true)

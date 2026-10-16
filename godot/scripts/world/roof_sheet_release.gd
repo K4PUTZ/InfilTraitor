@@ -70,31 +70,9 @@ static func collect(room: Node, roof: Dictionary) -> Dictionary:
 	return {"voxels": voxels, "columns": columns, "held": held, "held_dirs": held_dirs, "held_below": held_below, "level": low, "x0": lo.x, "z0": lo.y, "w": hi.x - lo.x + 1, "d": hi.y - lo.y + 1, "material": material}
 
 
-## A support HOLDS the roof only while it stands on the ground: a post whose foot a blast took is a stump of floating voxels still touching the roof, and
-## it must not keep holding it. Walks the standing voxels connected to `start` (never the roof's own), downhill first, until one stands at the ground plane or in the floor (not above it); the verdict is memoised for every voxel the walk met, so the walls (thousands of voxels) are walked once.
+## A support HOLDS the roof only while it stands on the ground (`StructuralSupport.is_grounded`, R-D12: the walk a post without a foot fails).
 static func _is_grounded(grid: ClaimGrid, start: Vector3i, roof_keys: Dictionary, ground: int, memo: Dictionary) -> bool:
-	if memo.has(start):
-		return bool(memo[start])
-	var seen: Dictionary = {start: true}
-	var stack: Array[Vector3i] = [start]
-	var found: bool = false
-	while not stack.is_empty():
-		var k: Vector3i = stack.pop_back()
-		if k.z <= ground or (memo.has(k) and bool(memo[k])):
-			found = true
-			break
-		for d: Vector3i in NEIGHBOURS:   ## the order puts level -1 LAST so it is popped FIRST: the walk goes down
-			var n: Vector3i = k + d
-			if seen.has(n) or roof_keys.has(n):
-				continue
-			var other: Voxel = grid.voxel_at(n)
-			if other == null or VoxelStore.damage_of(other) == Voxel.DamageState.DESTROYED:
-				continue
-			seen[n] = true
-			stack.append(n)
-	for k: Vector3i in seen:
-		memo[k] = found
-	return found
+	return StructuralSupport.is_grounded(grid, start, roof_keys, ground, memo)
 
 
 ## ROOF_MASTER_PLAN v0.31 (Director, 2026-10-16: the cloth went THROUGH the wall's top; "falta a colisão entre os materiais"): what the cloth must not enter, read

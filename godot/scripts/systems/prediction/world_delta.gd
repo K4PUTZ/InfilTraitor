@@ -447,6 +447,8 @@ func commit(room = null, defer_rain: bool = false) -> void:
 			room.scorch_soft_sheets(blast_epicentre)   ## BEFORE the release: a cloth let go by THIS blast is still falling and takes its tone from the board
 		if not soft_roofs.is_empty():
 			room.release_soft_roofs_after_blast(soft_roofs)
+		if room.has_method("schedule_structural_support"):
+			room.schedule_structural_support(touched_voxels)   ## R-D12 (G1): what a blast left with no support falls
 		_split("soft roofs", t)
 
 

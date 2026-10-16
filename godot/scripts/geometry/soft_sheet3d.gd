@@ -43,6 +43,7 @@ var _lerped: PackedFloat32Array = PackedFloat32Array()
 var _texels: PackedFloat32Array = PackedFloat32Array()
 var _done: bool = false
 var _resting: bool = false          ## drawn at rest from the load (`show_at_rest`), not yet cut or let go
+var _xy: Dictionary = {}            ## a wall's voxel columns (board x, y), empty for a roof
 var _gus: Dictionary = {}           ## the roof GUs the skin covers (made on first use)
 var _label: String = ""
 
@@ -54,17 +55,11 @@ var _frames: int = 0
 var _frame_usec: int = 0
 var _real_seconds: float = 0.0
 
-# threaded mode
+# threaded mode: the worker lives in the sheet's `SoftSheetGroup` (a lone sheet is a group of one; sheets sewn together share one)
 var _threaded: bool = false
-var _task: int = -1
-var _mutex: Mutex = Mutex.new()
-var _stop: bool = false          ## guarded by `_mutex`: the worker's way out
-var _owed_steps: int = 0         ## guarded: how many steps real time has earned so far
-var _done_steps: int = 0         ## guarded: how many the worker has finished
-var _worker_usec: int = 0        ## guarded: the time they took
-var _worker_worst: int = 0       ## guarded
-var _worker_settled: bool = false   ## guarded
-var _pub_prev: PackedFloat64Array = PackedFloat64Array()   ## guarded: the last finished step's two ends
+var _group: SoftSheetGroup = null
+var _index: int = 0              ## this sheet's place in the group
+var _pub_prev: PackedFloat64Array = PackedFloat64Array()   ## the last finished step's two ends, this sheet's copy
 var _pub_pos: PackedFloat64Array = PackedFloat64Array()
 var _seen_steps: int = 0         ## main thread only: the step count the last frame drew
 var _front_age: float = 0.0      ## main thread only: game seconds since a new step first showed
@@ -73,9 +68,14 @@ var _front_age: float = 0.0      ## main thread only: game seconds since a new s
 ## `skin`: x0, z0 (the first voxel column), w, d (voxel columns), step (voxels per skin quad), mask (Dictionary Vector2i(gx, gy) -> true),
 ## color (Callable(gx, gy) -> Color, linear, alpha 1: the material colour times the roof voxel's tone), y_top (GU: the roof's top face),
 ## material (id of the facade), label.
-func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary) -> void:
+func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary, group: SoftSheetGroup = null) -> void:
 	_board = board
 	_sim = sim
+	if group == null:
+		group = SoftSheetGroup.new()
+		group.add(sim)
+	_group = group
+	_index = group.index_of(sim)
 	_label = String(skin.get("label", ""))
 	_threaded = bool(skin.get("threaded", false))
 	_pub_prev = sim.pos.duplicate()
@@ -94,6 +94,8 @@ func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary) -> void:
 			_mat.set_shader_parameter("facade", facade)
 			_mat.set_shader_parameter("has_facade", 1.0)
 	_mask = skin["mask"]
+	_xy = skin.get("xy", {})
+	_gus = skin.get("gus", {})   ## a wall names its GUs itself (its mask is in the sheet's own (along, down) cells, not board columns)
 	_mat.set_shader_parameter("clock", 0.0)
 	_mat.set_shader_parameter("settle_clock", -1.0)
 	_mat.set_shader_parameter("noise_tex", noise_texture())
@@ -113,19 +115,26 @@ func reveal() -> void:
 	visible = true
 	set_process(true)
 	if _threaded:
-		_task = WorkerThreadPool.add_task(_worker_loop, false, "SoftSheet")
+		_group.start()   ## once, whichever sheet of the group is revealed first
 
 
 ## ROOF_MASTER_PLAN v0.41 (Director, 2026-10-16: the cloth is part of the world from the first frame, not a flat plane until the blast): the sheet is drawn AT REST,
 ## from a sim that `SoftSheetSim.settle_now()` already brought to rest. Nothing steps, nothing is uploaded again; `burning` runs the shader's clocks for the
 ## cloth a blast has just cut a hole in (the opening's edge burns, the fire spreads a little, soot stays), exactly as when a fallen cloth parks.
-func show_at_rest(burning: bool = false) -> void:
+func show_at_rest(burning: bool = false, finished: bool = false) -> void:
 	_resting = true
 	_done = true
 	visible = true
 	_upload(0.0)
 	_settle_clock = 0.0 if (burning and _burn_b_end > 0.0) else -1.0
 	set_process(burning and (_burn_end > 0.0 or _burn_b_end > 0.0))
+	if finished and burning:
+		## a cloth that already burned and was cut again (a bullet): its fires are out and the soot is what stays, not the fire again from the start
+		_burn_clock = _burn_end + 2.0
+		_settle_clock = _burn_b_end + 2.0
+		_mat.set_shader_parameter("clock", _burn_clock)
+		_mat.set_shader_parameter("settle_clock", _settle_clock)
+		set_process(false)
 	if is_instance_valid(_board):
 		_board.call("sheet_reveal_state", self)   ## the agent may already be under this roof
 
@@ -156,6 +165,18 @@ func covers_any_gu(gus: Dictionary) -> bool:
 	return false
 
 
+## A WALL sheet (a vertical one) and the board columns its voxels stand in: the cutaway ghosts those, and the cloth hides with them.
+func is_wall() -> bool:
+	return not _xy.is_empty()
+
+
+func covers_any_column(columns: Dictionary) -> bool:
+	for column: Vector2i in _xy:
+		if columns.has(column):
+			return true
+	return false
+
+
 func is_done() -> bool:
 	return _done
 
@@ -181,14 +202,14 @@ func _process(delta: float) -> void:
 	if _threaded:
 		_process_threaded(delta)
 	else:
-		var ran: int = _sim.advance(delta)
+		var ran: int = _group.advance(delta) if _index == 0 else 0   ## the first sheet steps the whole group
 		var spent: int = Time.get_ticks_usec() - t0
 		if ran > 0:
 			_step_usec += spent
 			_step_count += ran
 			_step_worst = maxi(_step_worst, spent / ran)
-		_upload(_sim.alpha())
-		if _sim.is_settled():
+		_upload(_group.alpha())
+		if _group.is_settled():
 			_finish()
 	_frames += 1
 	_frame_usec += Time.get_ticks_usec() - t0
@@ -197,13 +218,14 @@ func _process(delta: float) -> void:
 ## One frame with the sim on a worker: tell it how many steps the GAME's time has earned (the sum of the frames' deltas, not the wall clock: a
 ## frame-by-frame capture runs at a fixed delta however long a frame takes to render), draw what it last published.
 func _process_threaded(delta: float) -> void:
-	_mutex.lock()
-	_owed_steps = int(_real_seconds / SoftSheetSim.STEP)
-	var prev: PackedFloat64Array = _pub_prev
-	var pos: PackedFloat64Array = _pub_pos
-	var done: int = _done_steps
-	var finished: bool = _worker_settled
-	_mutex.unlock()
+	_group.owe(_real_seconds)
+	var snap: Dictionary = _group.snapshot()
+	var prev: PackedFloat64Array = (snap["prev"] as Array)[_index]
+	var pos: PackedFloat64Array = (snap["pos"] as Array)[_index]
+	_pub_prev = prev
+	_pub_pos = pos
+	var done: int = int(snap["done"])
+	var finished: bool = bool(snap["finished"])
 	if done != _seen_steps:
 		_seen_steps = done
 		_front_age = 0.0
@@ -214,48 +236,9 @@ func _process_threaded(delta: float) -> void:
 		_finish()
 
 
-## The worker: step while steps are owed, publish a copy of each, rest when caught up. Touches the sim and the guarded fields only.
-func _worker_loop() -> void:
-	while true:
-		_mutex.lock()
-		var stop: bool = _stop
-		var owed: bool = _done_steps < _owed_steps
-		_mutex.unlock()
-		if stop:
-			return
-		if not owed:
-			OS.delay_usec(2000)
-			continue
-		var t0: int = Time.get_ticks_usec()
-		_sim.step()
-		var spent: int = Time.get_ticks_usec() - t0
-		var prev: PackedFloat64Array = _sim.prev.duplicate()
-		var pos: PackedFloat64Array = _sim.pos.duplicate()
-		var settled_now: bool = _sim.is_settled()
-		_mutex.lock()
-		_pub_prev = prev
-		_pub_pos = pos
-		_done_steps += 1
-		_worker_usec += spent
-		_worker_worst = maxi(_worker_worst, spent)
-		_worker_settled = settled_now
-		_mutex.unlock()
-		if settled_now:
-			return
-
-
-func _stop_worker() -> void:
-	if _task == -1:
-		return
-	_mutex.lock()
-	_stop = true
-	_mutex.unlock()
-	WorkerThreadPool.wait_for_task_completion(_task)
-	_task = -1
-
-
 func _exit_tree() -> void:
-	_stop_worker()
+	if _group != null:
+		_group.stop()
 
 
 func _finish() -> void:
@@ -263,15 +246,17 @@ func _finish() -> void:
 	_settle_clock = 0.0 if _burn_b_end > 0.0 else -1.0
 	set_process(_burn_end > _burn_clock or _burn_b_end > 0.0)   ## a cloth still burning, or about to catch where it parks, keeps its clocks running after it has come to rest
 	if _threaded:
-		_stop_worker()
-		_step_count = _done_steps
-		_step_usec = _worker_usec
-		_step_worst = _worker_worst
+		_group.stop()
+		var snap: Dictionary = _group.snapshot()
+		_step_count = int(snap["done"])
+		_step_usec = int(snap["usec"])
+		_step_worst = int(snap["worst"])
+		_pub_pos = (snap["pos"] as Array)[_index]
 		_upload_arrays(_pub_pos, _pub_pos, 0.0)
 	else:
 		_upload(0.0)
 	print("[SOFT-SHEET] %s settled after %d step(s), %.1f s simulated in %.1f s of real time, %d drawn frame(s), %s: sim %.2f ms a step on average, %.2f ms at worst; this node %.2f ms a frame on the main thread (%d nodes)"
-		% [_label, _step_count, _sim.time, _real_seconds, _frames, "worker thread" if _threaded else "main thread",
+		% [_label, _step_count, _group.sim_time(), _real_seconds, _frames, "worker thread" if _threaded else "main thread",
 		float(_step_usec) / 1000.0 / maxf(float(_step_count), 1.0), float(_step_worst) / 1000.0,
 		float(_frame_usec) / 1000.0 / maxf(float(_frames), 1.0), _sim.nx * _sim.nz])
 	settled.emit()
@@ -426,6 +411,7 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 	var mask: Dictionary = skin["mask"]
 	var colour: Callable = skin["color"]
 	var y_top: float = float(skin["y_top"])
+	var plane: Dictionary = skin.get("plane", {})
 	var qa: int = int(ceil(float(w) / float(step)))
 	var qb: int = int(ceil(float(d) / float(step)))
 	var verts := PackedVector3Array()
@@ -442,10 +428,12 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 		for b in range(qb + 1):
 			var ox: int = mini(a * step, w)
 			var oz: int = mini(b * step, d)
-			var wx: float = float(x0 + ox) * unit
-			var wz: float = float(z0 + oz) * unit
-			verts.append(Vector3(wx, y_top, wz))
-			uvs.append(Vector2((wx - sim.origin.x) / sim.hx, (wz - sim.origin.z) / sim.hz))
+			if plane.is_empty():
+				verts.append(Vector3(float(x0 + ox) * unit, y_top, float(z0 + oz) * unit))
+			else:
+				## a WALL: the lattice lies in the sheet's own plane, `plane.eu` along the wall and `plane.ev` down it (one voxel step each, in GU)
+				verts.append((plane["origin"] as Vector3) + (plane["eu"] as Vector3) * float(ox) + (plane["ev"] as Vector3) * float(oz))
+			uvs.append(Vector2(float(ox) * unit / sim.hx, float(oz) * unit / sim.hz))
 			uv2s.append(Vector2(float(x0 + ox), float(z0 + oz)))
 			colors.append(colour.call(x0 + mini(ox, w - 1), z0 + mini(oz, d - 1)))
 			## Per vertex the 4 columns around it say how much of it burns (a WEIGHT, 0..1, interpolated: a time of "never" like 1e9 cannot be, it made a
@@ -545,5 +533,8 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, CUSTOM_FLAGS)
 	var reach: float = maxf(float(w), float(d)) * unit + 2.0
-	mesh.custom_aabb = AABB(Vector3(float(x0) * unit - reach, -0.5, float(z0) * unit - reach), Vector3(2.0 * reach + float(w) * unit, y_top + 1.5, 2.0 * reach + float(d) * unit))
+	if plane.is_empty():
+		mesh.custom_aabb = AABB(Vector3(float(x0) * unit - reach, -0.5, float(z0) * unit - reach), Vector3(2.0 * reach + float(w) * unit, y_top + 1.5, 2.0 * reach + float(d) * unit))
+	else:
+		mesh.custom_aabb = AABB((plane["origin"] as Vector3) - Vector3(reach, reach + 2.0, reach), Vector3(2.0 * reach, 2.0 * reach + 3.0, 2.0 * reach))
 	return mesh

@@ -16,6 +16,8 @@ func _init() -> void:
 	_test_catenary()
 	_test_determinism()
 	_test_awning()
+	_test_wall()
+	_test_group()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -39,6 +41,104 @@ func _check(ok: bool, m: String) -> void:
 
 ## A clamped strip of `n` nodes, 0.5 GU long, `lb` 1 GU, small load: the tip drop against the exact discrete beam (the lab's linear solve of
 ## the same energy: 0.00705 at 9 nodes, 0.00746 at 17, 0.00764 at 33). The lab's own run at these settings: +6.5% / +2.5% / +1.0%.
+## ROOF_MASTER_PLAN v0.43: a VERTICAL sheet (a wall of cloth: `basis_u` along it, `basis_v` DOWN, row 0 its top). Hung from its top row it stays a flat curtain;
+## cut loose from all but one corner it falls along its own plane and, because the free nodes start a hair out of plane, FOLDS into a pile on the floor instead of
+## staying a line (a perfectly planar sheet cannot buckle: the symmetry hides it); it settles, and nothing goes through the floor.
+func _wall_sim(pins: Callable) -> SoftSheetSim:
+	var nx: int = 10
+	var nz: int = 7
+	var p := PackedByteArray()
+	p.resize(nx * nz)
+	for i in range(nx):
+		for j in range(nz):
+			p[i * nz + j] = 1 if bool(pins.call(i, j, nx, nz)) else 0
+	return SoftSheetSim.new({"nx": nx, "nz": nz, "hx": 3.0 / 9.0, "hz": 1.8 / 6.0, "origin": Vector3(10.0, 1.9, 5.0), "material": _fabric, "pins": p, "floor_y": 0.0,
+		"basis_u": Vector3(1, 0, 0), "basis_v": Vector3(0, -1, 0)})
+
+
+func _test_wall() -> void:
+	print("[wall] a vertical sheet: hangs, falls, folds")
+	var hung: SoftSheetSim = _wall_sim(func(_i: int, j: int, _nx: int, _nz: int) -> bool: return j == 0)
+	var steps: int = hung.settle_now()
+	var out_of_plane: float = 0.0
+	var drop: float = 0.0
+	for node in range(10 * 7):
+		out_of_plane = maxf(out_of_plane, absf(hung.pos[node * 3 + 2] - 5.0))
+		drop = maxf(drop, 1.9 - hung.pos[node * 3 + 1])
+	_check(out_of_plane < 0.05, "hung from its top row it stays a curtain: %.3f GU out of plane after %d step(s)" % [out_of_plane, steps])
+	_check(drop > 1.75 and drop < 2.0, "...hanging its whole height: the bottom is %.2f GU below the top (1.80 long, a little stretch)" % drop)
+	var sides: SoftSheetSim = _wall_sim(func(i: int, _j: int, nx: int, _nz: int) -> bool: return i == 0 or i == nx - 1)
+	sides.settle_now()
+	var lowest_mid: float = 9.0
+	for j in range(7):
+		lowest_mid = minf(lowest_mid, sides.pos[(5 * 7 + j) * 3 + 1])
+	_check(lowest_mid >= 0.0, "held only along its two sides it does not go through the floor (lowest middle node %.2f)" % lowest_mid)
+	var fall: SoftSheetSim = _wall_sim(func(i: int, j: int, _nx: int, _nz: int) -> bool: return i == 0 and j == 0)
+	var guard: int = 0
+	while not fall.is_settled() and guard < 600:
+		fall.step()
+		guard += 1
+	var z_lo: float = 99.0
+	var z_hi: float = -99.0
+	var y_hi: float = -99.0
+	var y_lo: float = 99.0
+	for node in range(10 * 7):
+		z_lo = minf(z_lo, fall.pos[node * 3 + 2])
+		z_hi = maxf(z_hi, fall.pos[node * 3 + 2])
+		y_hi = maxf(y_hi, fall.pos[node * 3 + 1])
+		y_lo = minf(y_lo, fall.pos[node * 3 + 1])
+	_check(fall.is_settled() and fall.time < 11.9, "loose but for one corner it settles by itself (%d step(s), %.1f s)" % [guard, fall.time])
+	_check(y_lo >= SoftSheetSim.CONTACT_MARGIN - 1.0e-9, "no node under the floor (lowest %.3f)" % y_lo)
+	_check(z_hi - z_lo > 0.03, "it FOLDED: the pile is %.2f GU deep out of the wall's plane (a planar fall would stay a line)" % (z_hi - z_lo))
+
+
+## ROOF_MASTER_PLAN v0.43: cloth touching cloth is SEWN. A roof (a 3 x 2 GU sheet, held on one side only) and a wall that hangs from its free edge: stepped separately the wall
+## lets go of the roof's edge and falls to the floor on its own; in a SoftSheetGroup the seam keeps the wall's top row on the roof's rim, so the wall hangs from the roof
+## and the roof is held UP by what is sewn to it.
+func _test_group() -> void:
+	print("[group] a roof and a wall sewn along its edge")
+	var rnx: int = 10
+	var rnz: int = 7
+	var rpins := PackedByteArray()
+	rpins.resize(rnx * rnz)
+	for j in range(rnz):
+		rpins[0 * rnz + j] = 1   ## the roof's x = 10 side is held
+	rpins[(rnx - 1) * rnz] = 1   ## and its two far corners (two posts)
+	rpins[(rnx - 1) * rnz + rnz - 1] = 1
+	var roof := SoftSheetSim.new({"nx": rnx, "nz": rnz, "hx": 3.0 / 9.0, "hz": 2.0 / 6.0, "origin": Vector3(10.0, 2.0, 5.0), "material": _fabric, "pins": rpins, "floor_y": 0.0})
+	## the wall hangs from the roof's far edge (x = 13), 3 GU of it, 1.8 GU tall; nothing but the seam holds it
+	var wnx: int = 7
+	var wnz: int = 7
+	var wall := SoftSheetSim.new({"nx": wnx, "nz": wnz, "hx": 2.0 / 6.0, "hz": 1.8 / 6.0, "origin": Vector3(13.0, 2.0, 5.0), "material": _fabric, "pins": PackedByteArray(),
+		"floor_y": 0.0, "basis_u": Vector3(0, 0, 1), "basis_v": Vector3(0, -1, 0)})
+	var group := SoftSheetGroup.new()
+	group.add(roof)
+	group.add(wall)
+	var n_seams: int = group.sew()
+	_check(n_seams >= wnx, "the wall's boundary is sewn to the roof's rim: %d seam node(s)" % n_seams)
+	var guard: int = 0
+	while not group.is_settled() and guard < 400:
+		group.step()
+		guard += 1
+	var worst_gap: float = 0.0
+	for seam: Dictionary in group.seams:
+		var pb := Vector3(wall.pos[int(seam["nb"]) * 3], wall.pos[int(seam["nb"]) * 3 + 1], wall.pos[int(seam["nb"]) * 3 + 2])
+		var k0 := Vector3(roof.pos[int(seam["k0"]) * 3], roof.pos[int(seam["k0"]) * 3 + 1], roof.pos[int(seam["k0"]) * 3 + 2])
+		var k1 := Vector3(roof.pos[int(seam["k1"]) * 3], roof.pos[int(seam["k1"]) * 3 + 1], roof.pos[int(seam["k1"]) * 3 + 2])
+		worst_gap = maxf(worst_gap, pb.distance_to(k0.lerp(k1, float(seam["t"]))))
+	_check(worst_gap < 0.02, "after %d step(s) every seam is closed to within %.4f GU" % [guard, worst_gap])
+	var wall_mid: float = wall.pos[(3 * wnz) * 3 + 1]   ## the middle of the wall's top row, between the roof's two posts
+	_check(wall_mid > 0.5, "the wall hangs from the roof's rim: the middle of its top edge is %.2f GU up, not on the floor" % wall_mid)
+	## the control: the same two sheets WITHOUT the seam, the wall lets go
+	var roof2 := SoftSheetSim.new({"nx": rnx, "nz": rnz, "hx": 3.0 / 9.0, "hz": 2.0 / 6.0, "origin": Vector3(10.0, 2.0, 5.0), "material": _fabric, "pins": rpins.duplicate(), "floor_y": 0.0})
+	var wall2 := SoftSheetSim.new({"nx": wnx, "nz": wnz, "hx": 2.0 / 6.0, "hz": 1.8 / 6.0, "origin": Vector3(13.0, 2.0, 5.0), "material": _fabric, "pins": PackedByteArray(),
+		"floor_y": 0.0, "basis_u": Vector3(0, 0, 1), "basis_v": Vector3(0, -1, 0)})
+	for _k in range(120):
+		roof2.step()
+		wall2.step()
+	_check(wall2.pos[(3 * wnz) * 3 + 1] < 0.5, "control: unsewn, the same wall falls to the floor alone (top edge middle at %.2f GU)" % wall2.pos[(3 * wnz) * 3 + 1])
+
+
 func _test_cantilever() -> void:
 	print("[cantilever] a clamped strip vs the exact discrete beam")
 	var exact: Dictionary = {9: 0.00705, 17: 0.00746, 33: 0.00764}

@@ -7,6 +7,10 @@
 ## is WRONG for bending (a 65-node strip came out 60x too soft); the lab's `validate_pd.py` holds the proof, and the selftest holds the same
 ## two gates (a clamped strip against the exact discrete beam, a hung chain against the catenary).
 ##
+## ORIENTATION (ROOF_MASTER_PLAN v0.43): the sheet need not be a horizontal roof. `basis_u` / `basis_v` (unit vectors, default +x / +z) say where node index `i` and `j`
+## run; a VERTICAL wall hangs with `basis_u` along the wall and `basis_v` pointing DOWN, so row 0 is its top. Gravity is still -y: for a wall it lies in the sheet's plane, so
+## a perfectly planar sheet could never buckle (symmetry); the free nodes of an oriented sheet start a hair out of plane (`BUCKLE_SEED`), deterministically.
+##
 ## SPACE. World units are GU (1.0 = one game unit; the board voxel is 1/8), y up, `origin` = the world position of node (0, 0), nodes at
 ## `origin + (i * hx, 0, j * hz)` at rest (the sheet is flat and horizontal when it is released: a roof). Mass density is 1, so a node weighs
 ## `hx * hz` and `GRAVITY` is the only force. The material is ONE length, `lb` = the elastogravity length `(B / weight-per-area)^(1/3)`: canvas
@@ -36,12 +40,17 @@ static var BOX_MARGIN: float = 0.02
 ## How many voxels a node is looked for a way out through, at most.
 const SOLID_REACH: int = 8
 static var FLOOR_FRICTION: float = 0.6
+## How far (GU) a free node of an oriented sheet starts out of its plane, so a cloth that falls along its own plane folds instead of staying a line.
+static var BUCKLE_SEED: float = 0.006
 
 var nx: int = 0
 var nz: int = 0
 var hx: float = 0.125
 var hz: float = 0.125
 var origin: Vector3 = Vector3.ZERO
+var basis_u: Vector3 = Vector3(1, 0, 0)   ## where node index i runs (unit)
+var basis_v: Vector3 = Vector3(0, 0, 1)   ## where node index j runs (unit)
+var oriented: bool = false                ## a basis was given (a wall): the pins are where the caller put them, and the free nodes start a hair out of plane
 var time: float = 0.0
 var floor_y: float = 0.0
 
@@ -116,18 +125,27 @@ func _init(p: Dictionary) -> void:
 	pinned.resize(n)
 	pos.resize(n * 3)
 	vel.resize(n * 3)
+	if p.has("basis_u"):
+		basis_u = (p["basis_u"] as Vector3).normalized()
+		basis_v = (p["basis_v"] as Vector3).normalized()
+		oriented = true
+	var plane_normal: Vector3 = basis_u.cross(basis_v).normalized()
 	for i in range(nx):
 		for j in range(nz):
 			var o: int = (i * nz + j) * 3
-			pos[o] = origin.x + float(i) * hx
-			pos[o + 1] = origin.y
-			pos[o + 2] = origin.z + float(j) * hz
+			var at: Vector3 = origin + basis_u * (float(i) * hx) + basis_v * (float(j) * hz)
+			if oriented and (not p.has("pins") or (p["pins"] as PackedByteArray).size() <= i * nz + j or (p["pins"] as PackedByteArray)[i * nz + j] != 1):
+				var jitter: float = fposmod(sin(float(i) * 12.9898 + float(j) * 78.233) * 43758.5453, 1.0)
+				at += plane_normal * ((jitter - 0.5) * 2.0 * BUCKLE_SEED)
+			pos[o] = at.x
+			pos[o + 1] = at.y
+			pos[o + 2] = at.z
 	## A sheet that starts somewhere else than flat (a selftest's chain 3.2 GU between pins for a 4.0 GU length; a roof that is not flat): the rest
 	## LENGTHS stay `hx` / `hz`, only the start moves.
 	if p.has("initial"):
 		pos = p["initial"]
 		assert(pos.size() == n * 3)
-	else:
+	elif not oriented:
 		_move_pins_out_of_boxes()   ## a given start (a cloth at rest that a blast wakes) already has its pins where they were put
 	prev = pos.duplicate()
 	_build_constraints(float(row.get("k_stretch", 3000.0)), float(row.get("k_shear", 60.0)), _gravity * pow(float(row.get("lb", 0.12)), 3.0), int(row.get("plate", 0)), float(row.get("crease", 1.0)))
@@ -328,7 +346,7 @@ func steps_run() -> int:
 ## same steps the fall runs, back to back, until nothing moves faster than `speed` GU/s for `hold` seconds (a little looser than `is_settled()`: the eye cannot
 ## tell 0.15 GU/s from rest, and every second saved here is a second of load on the handset) or `max_seconds` of simulated time. No Godot object is touched: it
 ## runs on a worker. Returns the steps run.
-func settle_now(max_seconds: float = 6.0, speed: float = 0.15, hold: float = 0.3) -> int:
+func settle_now(max_seconds: float = 6.0, speed: float = 0.10, hold: float = 0.4) -> int:
 	var run: int = 0
 	var quiet: float = 0.0
 	while time < max_seconds:

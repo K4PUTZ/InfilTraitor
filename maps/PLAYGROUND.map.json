@@ -239,54 +239,6 @@
         },
         {
           "gu": [
-            26,
-            2
-          ],
-          "material": "cardboard",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            27,
-            2
-          ],
-          "material": "cardboard",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            28,
-            2
-          ],
-          "material": "cardboard",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            30,
-            2
-          ],
-          "material": "fabric",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            31,
-            2
-          ],
-          "material": "fabric",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            32,
-            2
-          ],
-          "material": "fabric",
-          "storeys": 2
-        },
-        {
-          "gu": [
             34,
             2
           ],
@@ -324,6 +276,58 @@
           "vox_offset": [
             0,
             0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "post_wood",
+          "gu": [
+            26,
+            3
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            7
+          ],
+          "rot": 0
+        },
+        {
+          "def": "post_wood",
+          "gu": [
+            28,
+            3
+          ],
+          "storey": 0,
+          "vox_offset": [
+            7,
+            7
+          ],
+          "rot": 0
+        },
+        {
+          "def": "post_wood",
+          "gu": [
+            30,
+            3
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            7
+          ],
+          "rot": 0
+        },
+        {
+          "def": "post_wood",
+          "gu": [
+            32,
+            3
+          ],
+          "storey": 0,
+          "vox_offset": [
+            7,
+            7
           ],
           "rot": 0
         }
@@ -661,6 +665,146 @@
           "material": "glass",
           "storeys": 2,
           "comment": "glass box, inner pane"
+        },
+        {
+          "gu": [
+            26,
+            2
+          ],
+          "face": "NE",
+          "material": "cardboard",
+          "storeys": 2,
+          "comment": "cardboard quitanda, back"
+        },
+        {
+          "gu": [
+            27,
+            2
+          ],
+          "face": "NE",
+          "material": "cardboard",
+          "storeys": 2,
+          "comment": "cardboard quitanda, back"
+        },
+        {
+          "gu": [
+            28,
+            2
+          ],
+          "face": "NE",
+          "material": "cardboard",
+          "storeys": 2,
+          "comment": "cardboard quitanda, back"
+        },
+        {
+          "gu": [
+            26,
+            2
+          ],
+          "face": "NW",
+          "material": "cardboard",
+          "storeys": 2,
+          "comment": "cardboard quitanda, west side"
+        },
+        {
+          "gu": [
+            28,
+            2
+          ],
+          "face": "SE",
+          "material": "cardboard",
+          "storeys": 2,
+          "comment": "cardboard quitanda, east side"
+        },
+        {
+          "gu": [
+            26,
+            3
+          ],
+          "face": "NW",
+          "material": "cardboard",
+          "storeys": 2,
+          "comment": "cardboard quitanda, west side"
+        },
+        {
+          "gu": [
+            28,
+            3
+          ],
+          "face": "SE",
+          "material": "cardboard",
+          "storeys": 2,
+          "comment": "cardboard quitanda, east side"
+        },
+        {
+          "gu": [
+            30,
+            2
+          ],
+          "face": "NE",
+          "material": "fabric",
+          "storeys": 2,
+          "comment": "fabric quitanda, back"
+        },
+        {
+          "gu": [
+            31,
+            2
+          ],
+          "face": "NE",
+          "material": "fabric",
+          "storeys": 2,
+          "comment": "fabric quitanda, back"
+        },
+        {
+          "gu": [
+            32,
+            2
+          ],
+          "face": "NE",
+          "material": "fabric",
+          "storeys": 2,
+          "comment": "fabric quitanda, back"
+        },
+        {
+          "gu": [
+            30,
+            2
+          ],
+          "face": "NW",
+          "material": "fabric",
+          "storeys": 2,
+          "comment": "fabric quitanda, west side"
+        },
+        {
+          "gu": [
+            32,
+            2
+          ],
+          "face": "SE",
+          "material": "fabric",
+          "storeys": 2,
+          "comment": "fabric quitanda, east side"
+        },
+        {
+          "gu": [
+            30,
+            3
+          ],
+          "face": "NW",
+          "material": "fabric",
+          "storeys": 2,
+          "comment": "fabric quitanda, west side"
+        },
+        {
+          "gu": [
+            32,
+            3
+          ],
+          "face": "SE",
+          "material": "fabric",
+          "storeys": 2,
+          "comment": "fabric quitanda, east side"
         }
       ],
       "v": 1
@@ -681,6 +825,34 @@
           "material": "glass",
           "kind": "flat",
           "comment": "the old block's glass roof"
+        },
+        {
+          "gu": [
+            26,
+            2
+          ],
+          "size": [
+            3,
+            2
+          ],
+          "storeys": 2,
+          "material": "cardboard",
+          "kind": "flat",
+          "comment": "the cardboard QUITANDA (ROOF_MASTER_PLAN v0.43): a roof on two plywood posts, panels on three sides, the front open; it replaced the wall trio of blocks"
+        },
+        {
+          "gu": [
+            30,
+            2
+          ],
+          "size": [
+            3,
+            2
+          ],
+          "storeys": 2,
+          "material": "fabric",
+          "kind": "flat",
+          "comment": "the fabric QUITANDA (ROOF_MASTER_PLAN v0.43): a roof on two plywood posts, panels on three sides, the front open; it replaced the wall trio of blocks"
         }
       ]
     },

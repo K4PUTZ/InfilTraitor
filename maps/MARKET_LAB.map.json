@@ -1,0 +1,479 @@
+{
+ "format": "infiltraitor-map",
+ "schema_version": 3,
+ "id": "MARKET_LAB",
+ "meta": {
+  "title": "Market Lab",
+  "description": "ROOF_MASTER_PLAN v0.43 fixture (2026-10-17): wide open concrete floor with QUITANDAS, market stalls of two plywood posts, a roof and panels on three sides (the front open), each one far from the others and from any wall: fabric at gu x 8, cardboard at gu x 24. Takes `quitanda_fabric` / `quitanda_cardboard` throw a grenade at the open front. Dev fixture, not a level."
+ },
+ "sections": {
+  "board": {
+   "v": 1,
+   "inner_size": [
+    40,
+    18
+   ],
+   "buffer": 5,
+   "floor_tile": "floor_SE"
+  },
+  "actors": {
+   "v": 1,
+   "agent_start": [
+    4,
+    15
+   ],
+   "guards": []
+  },
+  "legacy_compiler": {
+   "v": 1,
+   "wall_height": 1,
+   "access_points": [],
+   "dividers": [],
+   "lights": [
+    {
+     "x": 9,
+     "y": 8,
+     "height_class": 2,
+     "radius": 5,
+     "intensity": 0.9
+    },
+    {
+     "x": 25,
+     "y": 8,
+     "height_class": 2,
+     "radius": 5,
+     "intensity": 0.9
+    },
+    {
+     "x": 16,
+     "y": 7,
+     "height_class": 4,
+     "radius": 18,
+     "intensity": 1.1
+    }
+   ]
+  },
+  "blocks": {
+   "v": 2,
+   "items": []
+  },
+  "floor_zones": {
+   "v": 2,
+   "items": [
+    {
+     "gu": [
+      0,
+      0
+     ],
+     "size": [
+      40,
+      18
+     ],
+     "material": "concrete"
+    }
+   ]
+  },
+  "damage_materials": {
+   "v": 1,
+   "materials": [
+    "concrete",
+    "glass"
+   ]
+  },
+  "roofs": {
+   "v": 1,
+   "items": [
+    {
+     "comment": "quitanda fabric: a 3x2 fabric roof on two plywood posts and fabric panels on three sides",
+     "gu": [
+      8,
+      6
+     ],
+     "size": [
+      3,
+      2
+     ],
+     "storeys": 2,
+     "material": "fabric",
+     "kind": "flat"
+    },
+    {
+     "comment": "quitanda cardboard: a 3x2 cardboard roof on two plywood posts and cardboard panels on three sides",
+     "gu": [
+      24,
+      6
+     ],
+     "size": [
+      3,
+      2
+     ],
+     "storeys": 2,
+     "material": "cardboard",
+     "kind": "flat"
+    }
+   ]
+  },
+  "panels": {
+   "v": 1,
+   "items": [
+    {
+     "gu": [
+      8,
+      6
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      9,
+      6
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      10,
+      6
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      8,
+      6
+     ],
+     "face": "NW",
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      10,
+      6
+     ],
+     "face": "SE",
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      8,
+      7
+     ],
+     "face": "NW",
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      10,
+      7
+     ],
+     "face": "SE",
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      24,
+      6
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      25,
+      6
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      26,
+      6
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      24,
+      6
+     ],
+     "face": "NW",
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      26,
+      6
+     ],
+     "face": "SE",
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      24,
+      7
+     ],
+     "face": "NW",
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      26,
+      7
+     ],
+     "face": "SE",
+     "material": "cardboard",
+     "storeys": 2
+    }
+   ]
+  },
+  "props": {
+   "v": 1,
+   "items": [
+    {
+     "def": "post_wood",
+     "gu": [
+      8,
+      7
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      10,
+      7
+     ],
+     "storey": 0,
+     "vox_offset": [
+      7,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      24,
+      7
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      26,
+      7
+     ],
+     "storey": 0,
+     "vox_offset": [
+      7,
+      7
+     ],
+     "rot": 0
+    }
+   ]
+  },
+  "layout": {
+   "v": 1,
+   "poi": [
+    {
+     "id": "quitanda_fabric",
+     "at": [
+      9.5,
+      7.0,
+      1.0
+     ],
+     "extent": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "quitanda_fabric_front",
+     "at": [
+      9.5,
+      8.25
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "quitanda_cardboard",
+     "at": [
+      25.5,
+      7.0,
+      1.0
+     ],
+     "extent": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "quitanda_cardboard_front",
+     "at": [
+      25.5,
+      8.25
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "quitanda_fabric_corner",
+     "at": [
+      7.0,
+      9.0
+     ],
+     "tags": [
+      "event"
+     ]
+    }
+   ],
+   "regions": [
+    {
+     "id": "stall_fabric",
+     "box": {
+      "min": [
+       6,
+       4,
+       0
+      ],
+      "max": [
+       13,
+       11,
+       2
+      ]
+     },
+     "tags": [
+      "roof"
+     ]
+    },
+    {
+     "id": "stall_cardboard",
+     "box": {
+      "min": [
+       22,
+       4,
+       0
+      ],
+      "max": [
+       29,
+       11,
+       2
+      ]
+     },
+     "tags": [
+      "roof"
+     ]
+    }
+   ],
+   "objectives": []
+  },
+  "capture": {
+   "v": 1,
+   "rails": [
+    {
+     "id": "stall_fabric_rail",
+     "keys": [
+      {
+       "frame": "detail",
+       "target": "@quitanda_fabric",
+       "view": "N",
+       "hold": 600
+      }
+     ]
+    },
+    {
+     "id": "stall_cardboard_rail",
+     "keys": [
+      {
+       "frame": "detail",
+       "target": "@quitanda_cardboard",
+       "view": "N",
+       "hold": 600
+      }
+     ]
+    }
+   ],
+   "takes": [
+    {
+     "id": "quitanda_fabric_blast",
+     "profile": "engine",
+     "rail": "stall_fabric_rail",
+     "steps": [
+      "throw 0 @quitanda_fabric_front"
+     ],
+     "at_key": 0,
+     "after_hold": 20,
+     "length": 800,
+     "seed": 1,
+     "note": "ROOF_MASTER_PLAN v0.43: a grenade at the open front of the fabric quitanda takes its posts; the roof and the panels lose their hold and fall"
+    },
+    {
+     "id": "quitanda_cardboard_blast",
+     "profile": "engine",
+     "rail": "stall_cardboard_rail",
+     "steps": [
+      "throw 0 @quitanda_cardboard_front"
+     ],
+     "at_key": 0,
+     "after_hold": 20,
+     "length": 800,
+     "seed": 1,
+     "note": "ROOF_MASTER_PLAN v0.43: a grenade at the open front of the cardboard quitanda takes its posts; the roof and the panels lose their hold and fall"
+    },
+    {
+     "id": "quitanda_fabric_corner_blast",
+     "profile": "engine",
+     "rail": "stall_fabric_rail",
+     "steps": [
+      "throw 0 @quitanda_fabric_corner"
+     ],
+     "at_key": 0,
+     "after_hold": 20,
+     "length": 800,
+     "seed": 1,
+     "note": "ROOF_MASTER_PLAN v0.43: a grenade OUTSIDE the front-left post: it takes the post (and not the whole stall), so what is sewn to it sags and falls along the seams"
+    }
+   ]
+  }
+ }
+}

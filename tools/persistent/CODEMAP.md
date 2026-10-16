@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**305 scripts · 92207 lines total** (under `godot/scripts/`)
+**306 scripts · 92966 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — actor_pose.gd, agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_sim.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
+- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_sim.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, layout_overlay3d.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
 - **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, soft_sheet_presets.gd, structural_support.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3502 lines
+extends `Node3D` · 3514 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1167,7 +1167,7 @@ extends `Node3D` · 3502 lines
 
 ### `soft_sheet3d.gd`
 
-`class_name SoftSheet3D` · extends `Node3D` · 549 lines
+`class_name SoftSheet3D` · extends `Node3D` · 540 lines
 
 `godot/scripts/geometry/soft_sheet3d.gd`
 
@@ -1182,17 +1182,31 @@ extends `Node3D` · 3502 lines
 - `CUSTOM_FLAGS` = `(Mesh.ARRAY_CUSTOM_RG_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT)`
 
 **Public API**
-- `func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary) -> void:`
+- `func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary, group: SoftSheetGroup = null) -> void:`
+
+---
+
+### `soft_sheet_group.gd`
+
+`class_name SoftSheetGroup` · extends `RefCounted` · 262 lines
+
+`godot/scripts/geometry/soft_sheet_group.gd`
+
+> SoftSheetGroup — the cloths one blast lets go, stepped TOGETHER and stitched where they touch. ROOF_MASTER_PLAN v0.43 (Director, 2026-10-17: "pano em contato com pano gruda (costura)"): a quitanda's roof and its three walls are one piece of cloth sewn along the seams, not four sheets that fall on their own. Each sheet keeps its own `SoftSheetSim` (a grid, its own banded factor); the group steps them all, and after every step projects the SEAMS: a boundary node of one sheet is tied to the nearest point of another sheet's boundary (a node, or a point between two), so the two edges stay one edge. Position-based, mass-weighted, a node that is pinned never moves; the correction is also given to the velocity, so a seam carries the momentum of what hangs from it. A seam is a Gauss-Seidel coupling between solves, not part of one: it lags by a fraction of a step, which the stiff stitching and two relaxation rounds keep below a centimetre. THE WORKER lives here (it used to live in `SoftSheet3D`): ONE long task on the `WorkerThreadPool` steps the whole group back to back for as long as real time is owed and publishes a copy of every sheet's last step under a mutex; each `SoftSheet3D` draws its own sheet's copy. A lone sheet is a group of one.
+
+**Public vars**
+- `var sims: Array = []`
+- `var seams: Array = []`
 
 ---
 
 ### `soft_sheet_sim.gd`
 
-`class_name SoftSheetSim` · extends `RefCounted` · 661 lines
+`class_name SoftSheetSim` · extends `RefCounted` · 679 lines
 
 `godot/scripts/geometry/soft_sheet_sim.gd`
 
-> SoftSheetSim — a roof of cloth as a grid of nodes under gravity, as pure deterministic maths. ROOF_MASTER_PLAN v0.28 (the bending study, `tools/research/cloth_lab/`): one node per grid point, three springs (STRETCH keeps the lengths, SHEAR keeps the diagonals, BEND resists three nodes in a row leaving a straight line), solved with PROJECTIVE DYNAMICS (Bouaziz et al. 2014), implicit Euler. The bend energy `1/2 w |a - 2b + c|^2` is quadratic in the positions, so a stiff bend is solved exactly in a GLOBAL linear step (one fixed banded matrix, factored once); only the lengths are iterated, locally. XPBD was tried first and is WRONG for bending (a 65-node strip came out 60x too soft); the lab's `validate_pd.py` holds the proof, and the selftest holds the same two gates (a clamped strip against the exact discrete beam, a hung chain against the catenary). SPACE. World units are GU (1.0 = one game unit; the board voxel is 1/8), y up, `origin` = the world position of node (0, 0), nodes at `origin + (i * hx, 0, j * hz)` at rest (the sheet is flat and horizontal when it is released: a roof). Mass density is 1, so a node weighs `hx * hz` and `GRAVITY` is the only force. The material is ONE length, `lb` = the elastogravity length `(B / weight-per-area)^(1/3)`: canvas ~ 0.12 GU. NODES ARE COARSE (about one per 0.33 GU): a literal node per voxel costs ~0.5 s a step in GDScript; the skin (`SoftSheet3D`) draws the voxel resolution. No Godot object is touched here: it runs on any thread. FIXED STEPS (`STEP`, 1/30 s of SIMULATED time): `advance(delta)` runs whole steps, so the result at a given simulated time does not depend on the frame rate (the draw interpolates between the last two steps, `positions_lerped`). No randomness anywhere: the same sheet falls the same way.
+> SoftSheetSim — a roof of cloth as a grid of nodes under gravity, as pure deterministic maths. ROOF_MASTER_PLAN v0.28 (the bending study, `tools/research/cloth_lab/`): one node per grid point, three springs (STRETCH keeps the lengths, SHEAR keeps the diagonals, BEND resists three nodes in a row leaving a straight line), solved with PROJECTIVE DYNAMICS (Bouaziz et al. 2014), implicit Euler. The bend energy `1/2 w |a - 2b + c|^2` is quadratic in the positions, so a stiff bend is solved exactly in a GLOBAL linear step (one fixed banded matrix, factored once); only the lengths are iterated, locally. XPBD was tried first and is WRONG for bending (a 65-node strip came out 60x too soft); the lab's `validate_pd.py` holds the proof, and the selftest holds the same two gates (a clamped strip against the exact discrete beam, a hung chain against the catenary). ORIENTATION (ROOF_MASTER_PLAN v0.43): the sheet need not be a horizontal roof. `basis_u` / `basis_v` (unit vectors, default +x / +z) say where node index `i` and `j` run; a VERTICAL wall hangs with `basis_u` along the wall and `basis_v` pointing DOWN, so row 0 is its top. Gravity is still -y: for a wall it lies in the sheet's plane, so a perfectly planar sheet could never buckle (symmetry); the free nodes of an oriented sheet start a hair out of plane (`BUCKLE_SEED`), deterministically. SPACE. World units are GU (1.0 = one game unit; the board voxel is 1/8), y up, `origin` = the world position of node (0, 0), nodes at `origin + (i * hx, 0, j * hz)` at rest (the sheet is flat and horizontal when it is released: a roof). Mass density is 1, so a node weighs `hx * hz` and `GRAVITY` is the only force. The material is ONE length, `lb` = the elastogravity length `(B / weight-per-area)^(1/3)`: canvas ~ 0.12 GU. NODES ARE COARSE (about one per 0.33 GU): a literal node per voxel costs ~0.5 s a step in GDScript; the skin (`SoftSheet3D`) draws the voxel resolution. No Godot object is touched here: it runs on any thread. FIXED STEPS (`STEP`, 1/30 s of SIMULATED time): `advance(delta)` runs whole steps, so the result at a given simulated time does not depend on the frame rate (the draw interpolates between the last two steps, `positions_lerped`). No randomness anywhere: the same sheet falls the same way.
 
 **Constants / tuning**
 - `MAX_STEPS_PER_ADVANCE` = `2`
@@ -1204,6 +1218,9 @@ extends `Node3D` · 3502 lines
 - `var hx: float = 0.125`
 - `var hz: float = 0.125`
 - `var origin: Vector3 = Vector3.ZERO`
+- `var basis_u: Vector3 = Vector3(1, 0, 0)`
+- `var basis_v: Vector3 = Vector3(0, 0, 1)`
+- `var oriented: bool = false`
 - `var time: float = 0.0`
 - `var floor_y: float = 0.0`
 - `var pos: PackedFloat64Array = PackedFloat64Array()`
@@ -5344,7 +5361,7 @@ extends `SceneTree` · 210 lines
 
 ### `soft_sheet_sim_selftest.gd`
 
-extends `SceneTree` · 166 lines
+extends `SceneTree` · 266 lines
 
 `godot/scripts/tools/soft_sheet_sim_selftest.gd`
 
@@ -6289,7 +6306,7 @@ extends `Node` · 252 lines
 
 ### `roof_sheet_release.gd`
 
-`class_name RoofSheetRelease` · extends `RefCounted` · 205 lines
+`class_name RoofSheetRelease` · extends `RefCounted` · 372 lines
 
 `godot/scripts/world/roof_sheet_release.gd`
 
@@ -6302,7 +6319,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11758 lines
+extends `Node2D` · 11967 lines
 
 `godot/scripts/world/room.gd`
 

@@ -689,8 +689,11 @@ func register_soft_sheet(sheet: Node3D) -> void:
 var _roof_gus_open: Dictionary = {}
 
 
+var _cut_columns_open: Dictionary = {}
+
+
 func sheet_reveal_state(sheet: SoftSheet3D) -> void:
-	sheet.set_revealed(sheet.covers_any_gu(_roof_gus_open))
+	sheet.set_revealed(sheet.covers_any_column(_cut_columns_open) if sheet.is_wall() else sheet.covers_any_gu(_roof_gus_open))
 
 
 func voxel_face_point(grid_pos: Vector2i, level: int, normal: Vector3) -> Vector3:
@@ -1030,6 +1033,7 @@ func on_occlusion(occ_set) -> void:
 		material.set_shader_parameter("roof_on", 1 if not roof_gus.is_empty() else 0)
 	_update_cut_chunks(columns, roof_gus)
 	_roof_gus_open = roof_gus
+	_cut_columns_open = columns
 	for sheet in _soft_sheets:
 		if is_instance_valid(sheet) and (sheet as SoftSheet3D).is_resting():
 			sheet_reveal_state(sheet as SoftSheet3D)   ## a cloth at rest hides with its roof
@@ -2133,7 +2137,12 @@ func top_shade(x: int, y: int, level: int, soot_amount: float = 1.0) -> float:
 	return _tone[0] * light * lerpf(1.0, soot, soot_amount)   ## `soot_amount` < 1: a cloth's own fire (the shader) draws the soot near an opening, not this plane's squares
 
 
+## The voxels a shot (or any single commit: a collapse, a release) just touched, for what draws them in its own way: a cloth sheet that has to show the hole.
+signal shot_touched(touched: Array)
+
+
 func on_shot_commit(touched: Array) -> void:
+	shot_touched.emit(touched)
 	_commit_touched(touched, "shot", true)
 
 
@@ -2330,6 +2339,9 @@ func _mark_sheet_claims(store: VoxelStore) -> void:
 		var container = store.containers[ordinal]
 		if container is Slab and (container as Slab).role == Slab.Role.CEILING and (container as Slab).pane_id == "" and SoftSheetPresets.has((container as Slab).material):
 			of_container[ordinal] = 1
+			any = true
+		elif container is Slice and (container as Slice).pane_id == "" and SoftSheetPresets.has((container as Slice).material) and _room != null and bool(_room.get("soft_roofs_rest")) and bool(_room.get("soft_walls_rest")):
+			of_container[ordinal] = 1   ## a soft WALL (v0.43): drawn by its `SoftSheet3D` too, or not marked at all (a flat voxel wall as always)
 			any = true
 	if not any:
 		return

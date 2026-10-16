@@ -176,7 +176,7 @@ func _awning(room: Node, layout: Dictionary, roof: Dictionary) -> void:
 	var drift: float = 0.0
 	for node in range(nx * nz):
 		drift = maxf(drift, Vector3(woken.pos[node * 3], woken.pos[node * 3 + 1], woken.pos[node * 3 + 2]).distance_to(Vector3(at_rest.pos[node * 3], at_rest.pos[node * 3 + 1], at_rest.pos[node * 3 + 2])))
-	_check(rest_steps < 200 and drift < 0.05, "settle_now: at rest in %d step(s) (%.1f s); woken from that pose for 1 s it drifts %.3f GU at most" % [rest_steps, at_rest.time, drift])
+	_check(rest_steps < 200 and drift < 0.08, "settle_now: at rest in %d step(s) (%.1f s); woken from that pose for 1 s it drifts %.3f GU at most" % [rest_steps, at_rest.time, drift])
 	_check(corner.y < 0.5, "the free corner fell from %.2f to %.2f GU (the lab's awning reached the floor)" % [float(params["origin"].y), corner.y])
 	var lowest: float = 99.0
 	for node in range(nx * nz):

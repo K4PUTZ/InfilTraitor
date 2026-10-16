@@ -13,7 +13,8 @@ const NEIGHBOURS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vect
 ## The roof entity `roof` ({gu_cell, size, storeys, material}, the layout's own) as a sheet to release, or {} when it has nothing standing.
 ## Keys: voxels (Array of Voxel), columns (Dictionary Vector2i -> true), held (Dictionary Vector2i -> true), level (the roof's lowest level), x0, z0, w, d
 ## (voxel columns), material.
-static func collect(room: Node, roof: Dictionary) -> Dictionary:
+## `ignore`: voxels (Vector3i x, y, level) to treat as already gone when deciding what holds the sheet (the other cloths one blast is letting go in the same batch).
+static func collect(room: Node, roof: Dictionary, ignore: Dictionary = {}) -> Dictionary:
 	var slabs: SlabRegistry = room._slab_registry
 	var store: VoxelStore = VoxelStore.active
 	if slabs == null or store == null:
@@ -52,14 +53,18 @@ static func collect(room: Node, roof: Dictionary) -> Dictionary:
 	var held_dirs: Dictionary = {}   ## column -> Array of Vector2i: the horizontal offsets at which a support stands (a wall BESIDE the roof; a post or wall top under it has none)
 	var ground: int = room._voxel_board.ground_plane_level()
 	var grounded: Dictionary = {}   ## Vector3i -> bool, shared by every candidate support (a wall is asked once per voxel, not once per roof voxel)
+	var walk_keys: Dictionary = keys
+	if not ignore.is_empty():
+		walk_keys = keys.duplicate()
+		walk_keys.merge(ignore)
 	for v: Voxel in voxels:
 		var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 		for d: Vector3i in NEIGHBOURS:
 			var n: Vector3i = key + d
-			if keys.has(n):
+			if keys.has(n) or ignore.has(n):
 				continue
 			var other: Voxel = grid.voxel_at(n)
-			if other != null and VoxelStore.damage_of(other) != Voxel.DamageState.DESTROYED and _is_grounded(grid, n, keys, ground, grounded):
+			if other != null and VoxelStore.damage_of(other) != Voxel.DamageState.DESTROYED and _is_grounded(grid, n, walk_keys, ground, grounded):
 				held[Vector2i(key.x, key.y)] = true
 				if d.z < 0:
 					held_below[Vector2i(key.x, key.y)] = true
@@ -68,6 +73,168 @@ static func collect(room: Node, roof: Dictionary) -> Dictionary:
 					dirs.append(Vector2i(d.x, d.y))
 					held_dirs[Vector2i(key.x, key.y)] = dirs
 	return {"voxels": voxels, "columns": columns, "held": held, "held_dirs": held_dirs, "held_below": held_below, "level": low, "x0": lo.x, "z0": lo.y, "w": hi.x - lo.x + 1, "d": hi.y - lo.y + 1, "material": material}
+
+
+## ROOF_MASTER_PLAN v0.43 — VERTICAL sheets. A wall of cloth or cardboard (a half-thickness panel, a block's one-layer shell) is a plane of voxels at one coordinate `w`
+## along an axis, `nu` voxels long and `levels` tall. `wall_entities()` finds them once, at load: every standing voxel of a soft, non-glass `Slice`, grouped by (axis, w,
+## material) and by 4-connectedness in (along, level); an entity keeps its ORIGINAL rectangle (a hole can split a wall in two: it is still one cloth). `collect_wall()` is what
+## stands of it now, as an info dictionary with the roofs' keys (voxels, columns, held, level, x0, z0, w, d, material) plus `plane`: the cloth lattice's origin and one-voxel steps
+## in GU. Its cells are (along, down) = Vector2i(u - u0, top level - level), so row 0 is the top; the sim's node `j` runs down the same way.
+static func wall_entities(room: Node) -> Array:
+	var out: Array = []
+	var edges: EdgeRegistry = room._edge_registry
+	if edges == null:
+		return out
+	var cells: Dictionary = {}   ## Vector3i(axis, w, material hash) -> {Vector2i(u, level) -> Voxel}
+	var materials: Dictionary = {}
+	for slice: Slice in edges.all_slices():
+		if not SoftSheetPresets.has(slice.material) or slice.pane_id != "":
+			continue
+		var voxels: Array = slice.voxels
+		if voxels.is_empty():
+			continue
+		var lo := Vector2i(1 << 30, 1 << 30)
+		var hi := Vector2i(-(1 << 30), -(1 << 30))
+		for v: Voxel in voxels:
+			lo = Vector2i(mini(lo.x, v.grid_pos.x), mini(lo.y, v.grid_pos.y))
+			hi = Vector2i(maxi(hi.x, v.grid_pos.x), maxi(hi.y, v.grid_pos.y))
+		var axis: int = 0 if hi.x == lo.x else (1 if hi.y == lo.y else -1)   ## 0: the plane is x = const (the wall runs along y); 1: y = const
+		if axis < 0:
+			continue   ## a slice more than one voxel thick is not a sheet
+		var mid: int = materials.get(slice.material, materials.size())
+		materials[slice.material] = mid
+		var key := Vector3i(axis, lo.x if axis == 0 else lo.y, mid)
+		var plane: Dictionary = cells.get(key, {})
+		for v: Voxel in voxels:
+			plane[Vector2i(v.grid_pos.y if axis == 0 else v.grid_pos.x, v.level)] = v
+		cells[key] = plane
+	for key: Vector3i in cells:
+		var plane: Dictionary = cells[key]
+		var material: String = ""
+		for m: String in materials:
+			if int(materials[m]) == key.z:
+				material = m
+		var seen: Dictionary = {}
+		for start: Vector2i in plane:
+			if seen.has(start):
+				continue
+			var component: Array = []
+			var stack: Array[Vector2i] = [start]
+			seen[start] = true
+			while not stack.is_empty():
+				var c: Vector2i = stack.pop_back()
+				component.append(c)
+				for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					if plane.has(c + d) and not seen.has(c + d):
+						seen[c + d] = true
+						stack.append(c + d)
+			var lo_c := Vector2i(1 << 30, 1 << 30)
+			var hi_c := Vector2i(-(1 << 30), -(1 << 30))
+			var voxels: Array = []
+			for c: Vector2i in component:
+				lo_c = Vector2i(mini(lo_c.x, c.x), mini(lo_c.y, c.y))
+				hi_c = Vector2i(maxi(hi_c.x, c.x), maxi(hi_c.y, c.y))
+				voxels.append(plane[c])
+			out.append({"kind": "wall", "material": material, "axis": key.x, "w": key.y, "u0": lo_c.x, "nu": hi_c.x - lo_c.x + 1, "lo": lo_c.y, "hi": hi_c.y,
+				"id": "wall|%d|%d|%d|%d|%d|%s" % [key.x, key.y, lo_c.x, lo_c.y, hi_c.y, material], "voxels": voxels})
+	return out
+
+
+static func collect_wall(room: Node, entity: Dictionary, ignore: Dictionary = {}) -> Dictionary:
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		return {}
+	var axis: int = int(entity["axis"])
+	var w: int = int(entity["w"])
+	var u0: int = int(entity["u0"])
+	var hi_level: int = int(entity["hi"])
+	var voxels: Array = []
+	var columns: Dictionary = {}
+	var keys: Dictionary = {}
+	for v: Voxel in entity["voxels"]:
+		if VoxelStore.damage_of(v) == Voxel.DamageState.DESTROYED:
+			continue
+		voxels.append(v)
+		var u: int = v.grid_pos.y if axis == 0 else v.grid_pos.x
+		columns[Vector2i(u - u0, hi_level - v.level)] = true
+		keys[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
+	if voxels.is_empty():
+		return {}
+	var grid: ClaimGrid = ClaimGrid.of_store(store)
+	var ground: int = room._voxel_board.ground_plane_level()
+	var grounded: Dictionary = {}
+	var held: Dictionary = {}
+	var walk_keys: Dictionary = keys
+	if not ignore.is_empty():
+		walk_keys = keys.duplicate()
+		walk_keys.merge(ignore)
+	## What holds a hanging sheet: a standing, grounded voxel that is not its own beside it (a post, a perpendicular wall), in front of or behind it, or ABOVE it (a
+	## roof, a rail). NOT below: the floor under the bottom row is where the cloth hangs to, not what holds it.
+	var dirs: Array[Vector3i] = [Vector3i(0, 0, 1)]
+	if axis == 0:
+		dirs.append_array([Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(1, 0, 0), Vector3i(-1, 0, 0)])
+	else:
+		dirs.append_array([Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0)])
+	for v: Voxel in voxels:
+		var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+		for d: Vector3i in dirs:
+			var n: Vector3i = key + d
+			if keys.has(n) or ignore.has(n):
+				continue
+			var other: Voxel = grid.voxel_at(n)
+			if other != null and VoxelStore.damage_of(other) != Voxel.DamageState.DESTROYED and _is_grounded(grid, n, walk_keys, ground, grounded):
+				var u: int = key.y if axis == 0 else key.x
+				held[Vector2i(u - u0, hi_level - key.z)] = true
+				break
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var top_y: float = float(hi_level + 1 - ground) * unit
+	var nu: int = int(entity["nu"])
+	var levels: int = hi_level - int(entity["lo"]) + 1
+	var origin: Vector3
+	var eu: Vector3
+	if axis == 0:   ## x = const: the wall runs along voxel y, which is world z
+		origin = Vector3((float(w) + 0.5) * unit, top_y, float(u0) * unit)
+		eu = Vector3(0, 0, unit)
+	else:
+		origin = Vector3(float(u0) * unit, top_y, (float(w) + 0.5) * unit)
+		eu = Vector3(unit, 0, 0)
+	var lo_v := Vector2i(1 << 30, 1 << 30)
+	var hi_v := Vector2i(-(1 << 30), -(1 << 30))
+	for v: Voxel in voxels:
+		lo_v = Vector2i(mini(lo_v.x, v.grid_pos.x), mini(lo_v.y, v.grid_pos.y))
+		hi_v = Vector2i(maxi(hi_v.x, v.grid_pos.x), maxi(hi_v.y, v.grid_pos.y))
+	return {"kind": "wall", "voxels": voxels, "columns": columns, "held": held, "held_dirs": {}, "held_below": {}, "level": hi_level, "x0": lo_v.x, "z0": lo_v.y,
+		"w": hi_v.x - lo_v.x + 1, "d": hi_v.y - lo_v.y + 1, "material": String(entity["material"]), "nu": nu, "levels": levels, "axis": axis, "wc": w, "u0": u0,
+		"plane": {"origin": origin, "eu": eu, "ev": Vector3(0, -unit, 0)}}
+
+
+## The sim parameters of a wall (see `sim_params` for a roof): the lattice runs along the wall (`basis_u`) and DOWN it (`basis_v`); a node is pinned where a support
+## stands against the cell it lies in. No locked margin: a post is one voxel, the cloth is tied to it, not laid on a wall's top.
+static func sim_params_wall(info: Dictionary, row: Dictionary, ground_level: int, solid: Dictionary = {}) -> Dictionary:
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var span_u: float = float(int(info["nu"])) * unit
+	var span_v: float = float(int(info["levels"])) * unit
+	var nx: int = SoftSheetPresets.nodes_for(span_u)
+	var nz: int = SoftSheetPresets.nodes_for(span_v)
+	var hx: float = span_u / float(nx - 1)
+	var hz: float = span_v / float(nz - 1)
+	var plane: Dictionary = info["plane"]
+	var origin: Vector3 = plane["origin"]
+	var eu: Vector3 = (plane["eu"] as Vector3).normalized()
+	var pins := PackedByteArray()
+	pins.resize(nx * nz)
+	for c: Vector2i in info["held"]:
+		var cu: float = (float(c.x) + 0.5) * unit
+		var cv: float = (float(c.y) + 0.5) * unit
+		var i0: int = maxi(int(ceil((cu - 0.5 * hx) / hx - 1.0e-6)), 0)
+		var i1: int = mini(int(floor((cu + 0.5 * hx) / hx + 1.0e-6)), nx - 1)
+		var j0: int = maxi(int(ceil((cv - 0.5 * hz) / hz - 1.0e-6)), 0)
+		var j1: int = mini(int(floor((cv + 0.5 * hz) / hz + 1.0e-6)), nz - 1)
+		for i in range(i0, i1 + 1):
+			for j in range(j0, j1 + 1):
+				pins[i * nz + j] = 1
+	return {"nx": nx, "nz": nz, "hx": hx, "hz": hz, "origin": origin, "material": row, "pins": pins, "floor_y": 0.0, "boxes": [], "solid": solid, "ground_level": ground_level,
+		"basis_u": eu, "basis_v": Vector3(0, -1, 0)}
 
 
 ## A support HOLDS the roof only while it stands on the ground (`StructuralSupport.is_grounded`, R-D12: the walk a post without a foot fails).

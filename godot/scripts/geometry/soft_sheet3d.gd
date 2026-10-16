@@ -42,6 +42,8 @@ var _texture: ImageTexture = null
 var _lerped: PackedFloat32Array = PackedFloat32Array()
 var _texels: PackedFloat32Array = PackedFloat32Array()
 var _done: bool = false
+var _resting: bool = false          ## drawn at rest from the load (`show_at_rest`), not yet cut or let go
+var _gus: Dictionary = {}           ## the roof GUs the skin covers (made on first use)
 var _label: String = ""
 
 # the cost, for the handset round
@@ -112,6 +114,46 @@ func reveal() -> void:
 	set_process(true)
 	if _threaded:
 		_task = WorkerThreadPool.add_task(_worker_loop, false, "SoftSheet")
+
+
+## ROOF_MASTER_PLAN v0.41 (Director, 2026-10-16: the cloth is part of the world from the first frame, not a flat plane until the blast): the sheet is drawn AT REST,
+## from a sim that `SoftSheetSim.settle_now()` already brought to rest. Nothing steps, nothing is uploaded again; `burning` runs the shader's clocks for the
+## cloth a blast has just cut a hole in (the opening's edge burns, the fire spreads a little, soot stays), exactly as when a fallen cloth parks.
+func show_at_rest(burning: bool = false) -> void:
+	_resting = true
+	_done = true
+	visible = true
+	_upload(0.0)
+	_settle_clock = 0.0 if (burning and _burn_b_end > 0.0) else -1.0
+	set_process(burning and (_burn_end > 0.0 or _burn_b_end > 0.0))
+	if is_instance_valid(_board):
+		_board.call("sheet_reveal_state", self)   ## the agent may already be under this roof
+
+
+## A cloth shown at rest from the load (not yet cut by a blast, nor let go): the cutaway hides it with its roof (`set_revealed`).
+func is_resting() -> bool:
+	return _resting
+
+
+func sim() -> SoftSheetSim:
+	return _sim
+
+
+## The cutaway opened the roof this cloth is (the agent is under it): a resting cloth hides while its roof is revealed, as the voxel roof did.
+func set_revealed(revealed: bool) -> void:
+	if _resting:
+		visible = not revealed
+
+
+## The roof GUs (a GU = 8 x 8 voxel columns) this cloth covers: what the cutaway's revealed set is compared with.
+func covers_any_gu(gus: Dictionary) -> bool:
+	if _gus.is_empty():
+		for column: Vector2i in _mask:
+			_gus[Vector2i(column.x >> 3, column.y >> 3)] = true
+	for gu: Vector2i in _gus:
+		if gus.has(gu):
+			return true
+	return false
 
 
 func is_done() -> bool:

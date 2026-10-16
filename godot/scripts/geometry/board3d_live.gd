@@ -462,6 +462,8 @@ var _material_glass: Array[bool] = []
 ## `SoftSheetPresets` row). The voxel stays the INDEX (damage, hole, fire, support, light, shots) but is DRAWN as one flat plane, the underside of its
 ## level (resting on a wall's top), and hides nothing beside it. Built once per store in `_collect_store`; read-only for the mesher's worker threads.
 var _sheet_claim: PackedByteArray = PackedByteArray()
+## ROOF_MASTER_PLAN v0.41: the room draws every soft roof as a `SoftSheet3D` at rest from the load (`Room.soft_roofs_rest`), so the mesher draws no flat plane for it.
+var _sheet_is_drawn: bool = false
 var _shader_materials: Array[ShaderMaterial] = []
 ## R3D-PROPS: prop-mesh materials (`prop_mesh3d.gdshader`) kept lit by the same pass as the board's
 ## own materials, without joining `_shader_materials` (which other code indexes 1:1 against
@@ -681,6 +683,14 @@ var _soft_sheets: Array = []
 
 func register_soft_sheet(sheet: Node3D) -> void:
 	_soft_sheets.append(sheet)
+
+
+## The roof GUs the cutaway has open now (last `on_occlusion`), for a cloth that appears while the agent stands under its roof.
+var _roof_gus_open: Dictionary = {}
+
+
+func sheet_reveal_state(sheet: SoftSheet3D) -> void:
+	sheet.set_revealed(sheet.covers_any_gu(_roof_gus_open))
 
 
 func voxel_face_point(grid_pos: Vector2i, level: int, normal: Vector3) -> Vector3:
@@ -1019,6 +1029,10 @@ func on_occlusion(occ_set) -> void:
 		material.set_shader_parameter("occ_on", 1 if not occ_set.is_empty() else 0)
 		material.set_shader_parameter("roof_on", 1 if not roof_gus.is_empty() else 0)
 	_update_cut_chunks(columns, roof_gus)
+	_roof_gus_open = roof_gus
+	for sheet in _soft_sheets:
+		if is_instance_valid(sheet) and (sheet as SoftSheet3D).is_resting():
+			sheet_reveal_state(sheet as SoftSheet3D)   ## a cloth at rest hides with its roof
 	last_occ_usec[0] = Time.get_ticks_usec() - oc0
 	_rebuild_occlusion_lines(occ_set)
 
@@ -2319,13 +2333,14 @@ func _mark_sheet_claims(store: VoxelStore) -> void:
 			any = true
 	if not any:
 		return
+	_sheet_is_drawn = _room != null and bool(_room.get("soft_roofs_rest"))
 	_sheet_claim.resize(store.claims)
 	var flagged: int = 0
 	for claim in range(store.claims):
 		if of_container[store.claim_container[claim]] == 1:
 			_sheet_claim[claim] = 1
 			flagged += 1
-	print("[SOFT-SHEET] %d roof voxel(s) of soft materials are drawn as one flat plane" % flagged)
+	print("[SOFT-SHEET] %d roof voxel(s) of soft materials are drawn as %s" % [flagged, "a cloth at rest (SoftSheet3D)" if _sheet_is_drawn else "one flat plane"])
 
 
 func _collect_store(store: VoxelStore) -> Dictionary:
@@ -2741,6 +2756,8 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 			continue
 		var material: int = _store_material[mat[claim]]
 		if not _sheet_claim.is_empty() and _sheet_claim[claim] == 1:
+			if _sheet_is_drawn:
+				continue   ## the room's `SoftSheet3D` draws this roof: the voxel stays the index (light, support, damage), the board draws nothing for it
 			## A soft roof is a sheet: one plane, the underside of the voxel (the top of whatever holds it), whatever its neighbours.
 			var sheet_plane := Vector2i(Dir.TOP, level - 1)
 			if not planes.has(sheet_plane):

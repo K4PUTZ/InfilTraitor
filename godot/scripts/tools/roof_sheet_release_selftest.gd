@@ -159,7 +159,21 @@ func _awning(room: Node, layout: Dictionary, roof: Dictionary) -> void:
 		_check(absf(near.y - float(params["origin"].y)) < 0.03 and deep.y < float(params["origin"].y) - 0.2,
 			"%s wall: flat at %.3f two voxels in (pinned %.3f), fallen to %.3f eight voxels in" % [wall_name, near.y, float(params["origin"].y), deep.y])
 	var corner: Vector3 = sim.node_position(nx - 1, nz - 1)
-	_check(sim.is_settled() and guard < 600, "it settles (%d steps, %.1f s simulated)" % [guard, sim.time])
+	## It really comes to rest (Director, 2026-10-16: zones of the cloth kept moving long after the fall). Before the contact held a node ON the wall's margin, a node
+	## beside a wall's end slid into it, was popped out 0.02 GU and slid in again: this map never settled before the 12 s limit (361 steps); now it does in ~5 s.
+	_check(sim.is_settled() and sim.time < 8.0, "it settles by itself, not at the time limit (%d steps, %.1f s simulated; the limit is %.0f s)" % [guard, sim.time, SoftSheetSim.MAX_SIM_TIME])
+	## A cloth brought to rest for the load (`settle_now`) is still when it is woken: started from those positions it moves less than a centimetre in a second.
+	var at_rest := SoftSheetSim.new(params)
+	var rest_steps: int = at_rest.settle_now()
+	var woken_params: Dictionary = params.duplicate()
+	woken_params["initial"] = at_rest.pos.duplicate()
+	var woken := SoftSheetSim.new(woken_params)
+	for _k in range(30):
+		woken.step()
+	var drift: float = 0.0
+	for node in range(nx * nz):
+		drift = maxf(drift, Vector3(woken.pos[node * 3], woken.pos[node * 3 + 1], woken.pos[node * 3 + 2]).distance_to(Vector3(at_rest.pos[node * 3], at_rest.pos[node * 3 + 1], at_rest.pos[node * 3 + 2])))
+	_check(rest_steps < 200 and drift < 0.05, "settle_now: at rest in %d step(s) (%.1f s); woken from that pose for 1 s it drifts %.3f GU at most" % [rest_steps, at_rest.time, drift])
 	_check(corner.y < 0.5, "the free corner fell from %.2f to %.2f GU (the lab's awning reached the floor)" % [float(params["origin"].y), corner.y])
 	var lowest: float = 99.0
 	for node in range(nx * nz):

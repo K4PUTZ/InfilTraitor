@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**305 scripts · 91831 lines total** (under `godot/scripts/`)
+**305 scripts · 92124 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3485 lines
+extends `Node3D` · 3502 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1167,7 +1167,7 @@ extends `Node3D` · 3485 lines
 
 ### `soft_sheet3d.gd`
 
-`class_name SoftSheet3D` · extends `Node3D` · 507 lines
+`class_name SoftSheet3D` · extends `Node3D` · 549 lines
 
 `godot/scripts/geometry/soft_sheet3d.gd`
 
@@ -1183,17 +1183,12 @@ extends `Node3D` · 3485 lines
 
 **Public API**
 - `func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary) -> void:`
-- `func sample(x: float, z: float) -> Vector3:`
-- `func covers(cell: Vector2i) -> bool:`
-- `func column_point(cell: Vector2i) -> Vector3:`
-- `func is_settled() -> bool:`
-- `func scorch(at: Vector3, radius: float, strength: float) -> int:`
 
 ---
 
 ### `soft_sheet_sim.gd`
 
-`class_name SoftSheetSim` · extends `RefCounted` · 579 lines
+`class_name SoftSheetSim` · extends `RefCounted` · 659 lines
 
 `godot/scripts/geometry/soft_sheet_sim.gd`
 
@@ -5200,7 +5195,7 @@ extends `SceneTree` · 204 lines
 
 ### `roof_sheet_release_selftest.gd`
 
-extends `SceneTree` · 187 lines
+extends `SceneTree` · 201 lines
 
 `godot/scripts/tools/roof_sheet_release_selftest.gd`
 
@@ -6307,7 +6302,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11587 lines
+extends `Node2D` · 11727 lines
 
 `godot/scripts/world/room.gd`
 

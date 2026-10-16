@@ -3629,6 +3629,7 @@ func _start_board3d_live() -> void:
 		remove_child(existing)
 		existing.queue_free()
 	_voxel_board.visible = false
+	_begin_resting_sheets()   ## the cloth roofs settle on workers while the board is built (`Board3DLive` reads `soft_roofs_rest` to leave their flat plane out)
 	var live: Node3D = Board3DLiveClass.new()
 	live.name = "Board3DLive"
 	add_child(live)
@@ -3644,6 +3645,7 @@ func _start_board3d_live() -> void:
 	var ta2: int = Time.get_ticks_usec()
 	_attach_ground_overlays(live)
 	live.call("_diag_step", "j ground overlays attached")
+	_finish_resting_sheets(live)
 	print("[LOAD-SPLIT] board attach: actors %.0f ms, vfx %.0f, ground overlays %.0f" % [float(ta1 - ta0) / 1000.0,
 		float(ta2 - ta1) / 1000.0, float(Time.get_ticks_usec() - ta2) / 1000.0])
 	if _dev_flag("PICK_CHECK", "0") == "1":
@@ -4364,6 +4366,178 @@ func _structural_fall(loose: Dictionary, block_of: Dictionary) -> void:
 ## The cloths this room let go (`SoftSheet3D`), for the soot a later blast leaves on the ones that have come to rest.
 var _soft_sheets: Array = []
 
+## ROOF_MASTER_PLAN v0.41 (Director, 2026-10-16: "o jogo já começar com a gravidade ligada, de forma que o pano já nasce apoiado nos elementos do mundo"): a cloth roof
+## is not a flat plane until a blast; it is a `SoftSheet3D` drawn AT REST from the first frame, over a sim `SoftSheetSim.settle_now()` has already brought to rest on
+## what holds it (the walls' tops, the post's head). The voxels stay the index (light, support, damage) and the board draws nothing for them (`Board3DLive._sheet_is_drawn`).
+## A blast that takes a support wakes THAT sim (`release_roof_sheet` starts from its positions); a blast that only cuts a hole swaps the skin (`_swap_resting_sheet`).
+## `SOFT_REST=0` is the A/B: the flat plane again.
+var soft_roofs_rest: bool = false
+var _resting_sheets: Dictionary = {}   ## the roof's gu_cell -> {"sheet": SoftSheet3D at rest, "extent": {x0, z0, w, d}: the roof's rectangle as it was built (a hole can shrink what `collect` finds)}
+var _resting_jobs: Array = []          ## [{"roof", "info", "sim", "task", "usec", "steps"}]: the sims being brought to rest on workers while the board builds
+
+
+## Called right before the board is built: collects every soft roof, builds its sim and sends the settling to the worker pool (it runs while the board meshes).
+func _begin_resting_sheets() -> void:
+	_drain_resting_jobs()
+	soft_roofs_rest = false
+	_resting_sheets.clear()
+	if str(_dev_flag("SOFT_REST", "1")) == "0" or _voxel_board == null or VoxelStore.active == null:
+		return
+	var ground: int = _voxel_board.ground_plane_level()
+	for roof: Dictionary in _base_layout.get("roof_instances", []):
+		var material: String = String(roof["material"])
+		if not SoftSheetPresets.has(material):
+			continue
+		var info: Dictionary = RoofSheetRelease.collect(self, roof)
+		if info.is_empty():
+			continue
+		var params: Dictionary = RoofSheetRelease.sim_params(info, SoftSheetPresets.OF[material], ground, _base_layout.get("solid_block_instances", []),
+			RoofSheetRelease.solid_grid(info, ground))
+		var job: Dictionary = {"roof": roof, "info": info, "sim": SoftSheetSim.new(params), "usec": 0, "steps": 0}
+		job["task"] = WorkerThreadPool.add_task(_rest_job_run.bind(job), false, "SoftSheetRest")
+		_resting_jobs.append(job)
+	soft_roofs_rest = not _resting_jobs.is_empty()
+
+
+## The worker's half: the sim only (no Godot object is touched), the result back in the job dictionary the main thread reads after the task completes.
+func _rest_job_run(job: Dictionary) -> void:
+	var t0: int = Time.get_ticks_usec()
+	job["steps"] = (job["sim"] as SoftSheetSim).settle_now()
+	job["usec"] = Time.get_ticks_usec() - t0
+
+
+func _drain_resting_jobs() -> void:
+	for job: Dictionary in _resting_jobs:
+		WorkerThreadPool.wait_for_task_completion(int(job["task"]))
+	_resting_jobs.clear()
+
+
+## Called when the board stands: waits for the workers, builds every cloth's skin and shows it at rest.
+func _finish_resting_sheets(live: Node) -> void:
+	var t0: int = Time.get_ticks_usec()
+	var waited: int = 0
+	for job: Dictionary in _resting_jobs:
+		var w0: int = Time.get_ticks_usec()
+		WorkerThreadPool.wait_for_task_completion(int(job["task"]))
+		waited += Time.get_ticks_usec() - w0
+	var shown: int = 0
+	for job: Dictionary in _resting_jobs:
+		var roof: Dictionary = job["roof"]
+		var info: Dictionary = job["info"]
+		var sim: SoftSheetSim = job["sim"]
+		var skin: Dictionary = _cloth_skin(info, String(roof["material"]), sim.origin.y, live, false)
+		var sheet := SoftSheet3D.new()
+		_soft_sheets.append(sheet)
+		live.call("register_soft_sheet", sheet)
+		sheet.name = "SoftSheetRest_%s_%d_%d" % [String(roof["material"]), int(info["x0"]), int(info["z0"])]
+		(live.call("geometry_root") as Node3D).add_child(sheet)
+		sheet.setup(live, sim, skin)
+		sheet.show_at_rest(false)
+		_resting_sheets[roof["gu_cell"]] = {"sheet": sheet, "extent": {"x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"])}}
+		shown += 1
+		print("[SOFT-SHEET] %s roof at %s shown AT REST from the load: %d x %d nodes settled in %d step(s), %.0f ms on a worker" % [String(roof["material"]), str(roof["gu_cell"]),
+			sim.nx, sim.nz, int(job["steps"]), float(int(job["usec"])) / 1000.0])
+	if shown > 0:
+		print("[SOFT-SHEET] %d cloth(s) at rest: the load waited %.0f ms for the workers, %.0f ms in all" % [shown, float(waited) / 1000.0, float(Time.get_ticks_usec() - t0) / 1000.0])
+	_resting_jobs.clear()
+
+
+## The skin parameters `SoftSheet3D.setup()` takes, for the roof `info` found (`collect`): its columns (the mask: a hole is a column that is not there), the colour each
+## column takes from the board's light and soot, and, with `fire`, the burn / soot a blast's opening leaves on it. `info`'s rectangle is the roof's own.
+func _cloth_skin(info: Dictionary, material: String, y_top: float, live: Node, fire: bool) -> Dictionary:
+	var row: Dictionary = SoftSheetPresets.OF.get(material, {})
+	var definition = Registries.get_material_registry().resolve(material)
+	var base: Color = definition.base_color if definition != null else Color(0.8, 0.8, 0.8)
+	var level: int = int(info["level"])
+	var burn: Dictionary = {}
+	var burn_b: Dictionary = {}
+	var soot_final: Dictionary = {}
+	var ring_of: Dictionary = {}
+	if fire:
+		## FIRE on the cloth (Director, 2026-10-16): the edge of the opening burns while the cloth comes down (the rim and 2 columns in: A), and when it parks the fire
+		## spreads a little from the opening, up to 7 columns, thinning out (B: `burn_b`, seconds AFTER it parks), goes out and leaves soot (`soot_final`: grey, nearer
+		## the opening darker). Nothing burns when no opening was cut (a release by gravity alone).
+		var frontier: Array = []
+		for c: Vector2i in _cloth_rim_columns:
+			if (info["columns"] as Dictionary).has(c):
+				ring_of[c] = 0
+				frontier.append(c)
+		var ring: int = 0
+		while not frontier.is_empty() and ring < 14:
+			ring += 1
+			var next: Array = []
+			for c: Vector2i in frontier:
+				for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var n: Vector2i = c + d
+					if not ring_of.has(n) and (info["columns"] as Dictionary).has(n):
+						ring_of[n] = ring
+						next.append(n)
+			frontier = next
+		for c: Vector2i in ring_of:
+			var r: int = int(ring_of[c])
+			var h: float = float(FacadeSampler._fnv1a_hash("CLOTHFIRE|%d,%d" % [c.x, c.y]) % 1000) / 1000.0
+			if r <= 3:
+				burn[c] = 0.05 + 0.12 * float(r) + 0.1 * h
+				soot_final[c] = lerpf(0.55, 0.72, float(r) / 3.0)   ## Director 2026-10-16: not so black, a wider feather
+			if r >= 1 and r <= 9 and h < pow(0.93, float(r)):
+				burn_b[c] = 0.28 * float(r) + 0.2 * h
+				soot_final[c] = minf(float(soot_final.get(c, 1.0)), lerpf(0.6, 0.85, float(r) / 9.0))
+	return {"thickness": float(row.get("thickness", 0.0)), "burn": burn, "burn_b": burn_b, "soot_final": soot_final, "x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": 2, "mask": info["columns"],
+		"y_top": y_top, "material": material, "threaded": str(_dev_flag("SOFT_SHEET_THREAD", "1")) != "0", "label": "%s %dx%d voxels" % [material, int(info["w"]), int(info["d"])],
+		"color": func(gx: int, gy: int) -> Color:
+			## Near an opening the soot the blast stamped on the roof's plane is a ring of squares (1/8 GU): not baked, the cloth's fire is drawn by its shader (ragged,
+			## soft) from the opening; farther away the plane's soot stays, faded in over 3 columns.
+			var near: int = int(ring_of.get(Vector2i(gx, gy), 99))
+			var soot_amount: float = clampf(float(near - 2) / 3.0, 0.0, 1.0)
+			var t: float = float(live.call("top_shade", gx, gy, level, soot_amount))
+			## a very soft haze of soot over the whole zone round an opening (14 columns), so no gap is left between the burnt marks and the cloth's edge
+			t *= 1.0 - 0.22 * pow(clampf(1.0 - float(near) / 14.0, 0.0, 1.0), 1.5)
+			return Color(base.r * t, base.g * t, base.b * t, 1.0).srgb_to_linear()}
+
+
+## The cloth at rest of this roof, or null.
+func _resting_sheet_of(roof: Dictionary) -> SoftSheet3D:
+	var entry: Dictionary = _resting_sheets.get(roof["gu_cell"], {})
+	var sheet: Variant = entry.get("sheet")
+	return sheet as SoftSheet3D if sheet != null and is_instance_valid(sheet) else null
+
+
+## A blast cut a hole in a cloth that stays up (every support still stands): the same settled sim is drawn again with the hole as a missing column and the opening's fire.
+func _swap_resting_sheet(roof: Dictionary, info: Dictionary) -> void:
+	var old: SoftSheet3D = _resting_sheet_of(roof)
+	var live: Node = board3d()
+	if old == null or live == null:
+		return
+	var entry: Dictionary = _resting_sheets[roof["gu_cell"]]
+	var ext: Dictionary = entry["extent"]
+	var shaped: Dictionary = info.duplicate()
+	for k: String in ext:
+		shaped[k] = ext[k]
+	var sim: SoftSheetSim = old.sim()
+	var material: String = String(roof["material"])
+	var sheet := SoftSheet3D.new()
+	_soft_sheets.append(sheet)
+	live.call("register_soft_sheet", sheet)
+	sheet.name = old.name
+	(live.call("geometry_root") as Node3D).add_child(sheet)
+	sheet.setup(live, sim, _cloth_skin(shaped, material, sim.origin.y, live, true))
+	sheet.show_at_rest(true)
+	entry["sheet"] = sheet
+	_soft_sheets.erase(old)
+	old.queue_free()
+	if _cloth_flaps != null and is_instance_valid(_cloth_flaps):
+		_cloth_flaps.follow(sheet)
+	print_debug("[SOFT-SHEET] a blast cut a hole in the %s roof at %s: the cloth stays up, drawn again with the opening" % [material, str(roof["gu_cell"])])
+
+
+## The cloth at rest is replaced by the one that falls (`release_roof_sheet`): same place in the same frame.
+func _drop_resting_sheet(roof: Dictionary) -> void:
+	var old: SoftSheet3D = _resting_sheet_of(roof)
+	if old != null:
+		_soft_sheets.erase(old)
+		old.queue_free()
+	_resting_sheets.erase(roof["gu_cell"])
+
 
 ## A blast at `epicentre` (a board voxel cell) after a cloth has settled only blackens it: the cloth is scenery, it neither tears nor burns again.
 func scorch_soft_sheets(epicentre: Vector2) -> void:
@@ -4381,7 +4555,7 @@ func soft_roof_supports() -> Dictionary:
 			continue
 		var info: Dictionary = RoofSheetRelease.collect(self, roof)
 		if not info.is_empty():
-			out[roof["gu_cell"]] = {"roof": roof, "held": info["held"]}
+			out[roof["gu_cell"]] = {"roof": roof, "held": info["held"], "count": (info["voxels"] as Array).size()}
 	return out
 
 
@@ -4399,6 +4573,8 @@ func release_soft_roofs_after_blast(before: Dictionary) -> void:
 		if lost > 0:
 			print_debug("[SOFT-SHEET] a blast took %d of the %s roof's supports at %s: it lets go" % [lost, String(entry["roof"]["material"]), str(key)])
 			release_roof_sheet(entry["roof"])
+		elif (info["voxels"] as Array).size() < int(entry["count"]):
+			_swap_resting_sheet(entry["roof"], info)   ## a hole, and every support still stands: the cloth stays up with its opening
 
 
 ## The ONE node that draws every flap of this room's cloth roofs (`ClothFlaps3D`), made on first use.
@@ -4501,7 +4677,7 @@ func _spawn_cloth_flaps(destroyed: Dictionary, material: String) -> int:
 func scenario_roof_gravity() -> bool:
 	var released: int = 0
 	for roof: Dictionary in _base_layout.get("roof_instances", []):
-		if SoftSheetPresets.has(String(roof["material"])) and bool(await release_roof_sheet(roof)):
+		if SoftSheetPresets.has(String(roof["material"])) and bool(await release_roof_sheet(roof, false)):   ## the bench lets the cloth go from FLAT (the fall the Moto cost round measures)
 			released += 1
 	if released == 0:
 		push_error("[Room] roof_gravity: this map has no soft roof (materials with a SoftSheetPresets row: %s)" % str(SoftSheetPresets.OF.keys()))
@@ -4512,7 +4688,7 @@ func scenario_roof_gravity() -> bool:
 ## in the glass collapse (destroyed, base-recorded, the dirty pass, the board's commit, the light repainted where the roof stood), and a `SoftSheet3D` that was
 ## built BEFORE they went (so it takes the roof's own tone) appears in the step the chunks swap and falls from whatever held the roof
 ## (`RoofSheetRelease`: the voxels beside a wall's top, a block, another roof). The sheet is not saved: a checkpoint restore forgets it (open, plan v0.28).
-func release_roof_sheet(roof: Dictionary) -> bool:
+func release_roof_sheet(roof: Dictionary, from_rest: bool = true) -> bool:
 	var live: Node = board3d()
 	var store: VoxelStore = VoxelStore.active
 	var material: String = String(roof["material"])
@@ -4525,62 +4701,25 @@ func release_roof_sheet(roof: Dictionary) -> bool:
 		push_warning("[Room] release_roof_sheet: the %s roof at %s has nothing standing" % [material, str(roof["gu_cell"])])
 		return false
 	var t0: int = Time.get_ticks_usec()
+	## A cloth that stood at rest wakes where it lay: the sim starts from its positions, on the roof's own rectangle (what a hole left of it can be smaller).
+	var resting: SoftSheet3D = _resting_sheet_of(roof) if from_rest else null
+	if resting != null:
+		var extent: Dictionary = (_resting_sheets[roof["gu_cell"]] as Dictionary)["extent"]
+		for k: String in extent:
+			info[k] = extent[k]
 	var params: Dictionary = RoofSheetRelease.sim_params(info, row, _voxel_board.ground_plane_level(), _base_layout.get("solid_block_instances", []),
 		RoofSheetRelease.solid_grid(info, _voxel_board.ground_plane_level()))
+	if resting != null:
+		params["initial"] = resting.sim().pos.duplicate()
 	var sim := SoftSheetSim.new(params)
 	var t_sim: int = Time.get_ticks_usec()
-	var definition = Registries.get_material_registry().resolve(material)
-	var base: Color = definition.base_color if definition != null else Color(0.8, 0.8, 0.8)
-	var level: int = int(info["level"])
 	var voxels: Array = info["voxels"]
-	## FIRE on the cloth (Director, 2026-10-16): the edge of the opening burns while the cloth comes down (the rim and 2 columns in: A), and when it parks the fire
-	## spreads a little from the opening, up to 7 columns, thinning out (B: `burn_b`, seconds AFTER it parks), goes out and leaves soot (`soot_final`: grey, nearer
-	## the opening darker). Nothing burns when no opening was cut (a release by gravity alone).
-	var burn: Dictionary = {}
-	var burn_b: Dictionary = {}
-	var soot_final: Dictionary = {}
-	var ring_of: Dictionary = {}
-	var frontier: Array = []
-	for c: Vector2i in _cloth_rim_columns:
-		if (info["columns"] as Dictionary).has(c):
-			ring_of[c] = 0
-			frontier.append(c)
-	var ring: int = 0
-	while not frontier.is_empty() and ring < 14:
-		ring += 1
-		var next: Array = []
-		for c: Vector2i in frontier:
-			for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-				var n: Vector2i = c + d
-				if not ring_of.has(n) and (info["columns"] as Dictionary).has(n):
-					ring_of[n] = ring
-					next.append(n)
-		frontier = next
-	for c: Vector2i in ring_of:
-		var r: int = int(ring_of[c])
-		var h: float = float(FacadeSampler._fnv1a_hash("CLOTHFIRE|%d,%d" % [c.x, c.y]) % 1000) / 1000.0
-		if r <= 3:
-			burn[c] = 0.05 + 0.12 * float(r) + 0.1 * h
-			soot_final[c] = lerpf(0.55, 0.72, float(r) / 3.0)   ## Director 2026-10-16: not so black, a wider feather
-		if r >= 1 and r <= 9 and h < pow(0.93, float(r)):
-			burn_b[c] = 0.28 * float(r) + 0.2 * h
-			soot_final[c] = minf(float(soot_final.get(c, 1.0)), lerpf(0.6, 0.85, float(r) / 9.0))
 	var sheet := SoftSheet3D.new()
 	_soft_sheets.append(sheet)
 	live.call("register_soft_sheet", sheet)
 	sheet.name = "SoftSheet_%s_%d_%d" % [material, int(info["x0"]), int(info["z0"])]
 	(live.call("geometry_root") as Node3D).add_child(sheet)
-	sheet.setup(live, sim, {"thickness": float(row.get("thickness", 0.0)), "burn": burn, "burn_b": burn_b, "soot_final": soot_final, "x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": 2, "mask": info["columns"],
-		"y_top": float(params["origin"].y), "material": material, "threaded": str(_dev_flag("SOFT_SHEET_THREAD", "1")) != "0", "label": "%s %dx%d voxels" % [material, int(info["w"]), int(info["d"])],
-		"color": func(gx: int, gy: int) -> Color:
-			## Near an opening the soot the blast stamped on the roof's plane is a ring of squares (1/8 GU): not baked, the cloth's fire is drawn by its shader (ragged,
-			## soft) from the opening; farther away the plane's soot stays, faded in over 3 columns.
-			var near: int = int(ring_of.get(Vector2i(gx, gy), 99))
-			var soot_amount: float = clampf(float(near - 2) / 3.0, 0.0, 1.0)
-			var t: float = float(live.call("top_shade", gx, gy, level, soot_amount))
-			## a very soft haze of soot over the whole zone round an opening (14 columns), so no gap is left between the burnt marks and the cloth's edge
-			t *= 1.0 - 0.22 * pow(clampf(1.0 - float(near) / 14.0, 0.0, 1.0), 1.5)
-			return Color(base.r * t, base.g * t, base.b * t, 1.0).srgb_to_linear()})
+	sheet.setup(live, sim, _cloth_skin(info, material, float(params["origin"].y), live, true))
 	var t_skin: int = Time.get_ticks_usec()
 	## The roof goes: DESTROYED and base-recorded (the checkpoint and the damage replay read the base), the footprint's GUs for the light.
 	var gus: Dictionary = {}
@@ -4614,6 +4753,7 @@ func release_roof_sheet(roof: Dictionary) -> bool:
 	if not is_instance_valid(sheet):
 		_destruction_render_busy = false
 		return false
+	_drop_resting_sheet(roof)   ## the cloth at rest gives way to the one that falls, in the very frame the chunks swap
 	sheet.reveal()
 	if _cloth_flaps != null and is_instance_valid(_cloth_flaps):
 		_cloth_flaps.follow(sheet)

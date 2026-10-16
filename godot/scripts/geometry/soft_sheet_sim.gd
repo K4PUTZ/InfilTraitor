@@ -61,6 +61,8 @@ var _solid: Dictionary = {}   ## the standing voxels around the roof, a grid (`R
 var _ground_level: int = 0
 var _acc: float = 0.0
 var _quiet: float = 0.0
+var _fastest: float = 0.0   ## the speed (GU/s) of the fastest free node after the last step
+var _push: PackedFloat64Array = PackedFloat64Array()   ## per node, 3 floats: how far the last `_collide()` moved it OUT of something (its contact normal), which is not a velocity
 var _steps: int = 0
 
 # constraints (every one is `w/2 |c_a x_a + c_b x_b (+ c_c x_c) - target|^2`)
@@ -92,7 +94,7 @@ var _inertia_z: PackedFloat64Array = PackedFloat64Array()
 ## `p`: nx, nz (ints >= 1), hx, hz (GU), origin (Vector3), material ({lb, k_stretch, k_shear, drag}), pins (PackedByteArray, 1 = held by
 ## a wall, size nx * nz; at least one), floor_y (GU, default 0), boxes (Array of AABB: the walls the cloth cannot enter).
 ## Optional: dt, iterations, gravity (a selftest compares against the lab's 1/60 and 12), initial (PackedFloat64Array, 3 per node: the start
-## positions, when the sheet does not start flat on the grid).
+## positions, when the sheet does not start flat on the grid: a cloth already at rest, `settle_now()`'s result, that a blast then wakes; the pinned nodes are NOT moved).
 func _init(p: Dictionary) -> void:
 	nx = int(p["nx"])
 	nz = int(p["nz"])
@@ -125,7 +127,8 @@ func _init(p: Dictionary) -> void:
 	if p.has("initial"):
 		pos = p["initial"]
 		assert(pos.size() == n * 3)
-	_move_pins_out_of_boxes()
+	else:
+		_move_pins_out_of_boxes()   ## a given start (a cloth at rest that a blast wakes) already has its pins where they were put
 	prev = pos.duplicate()
 	_build_constraints(float(row.get("k_stretch", 3000.0)), float(row.get("k_shear", 60.0)), _gravity * pow(float(row.get("lb", 0.12)), 3.0))
 	_factor()
@@ -224,6 +227,29 @@ func _solid_exit(start: Vector3, horizontal_only: bool, toward: Vector2) -> Vect
 	return best
 
 
+## A node that is NOT inside a standing voxel but closer than `BOX_MARGIN` to one is put back on the margin's surface, along the face it is nearest to. The
+## contact lives at the margin, not at the voxel: a node that only left a wall when it was already inside it slid in (the cloth's tension pulls it toward the wall
+## it hangs against), popped out 0.02 GU, slid in again, and a tongue of cloth beside a wall's end rattled for ten seconds after the fall (ROOF_MASTER_PLAN v0.41).
+## Held ON the margin, with the velocity into the wall removed (`step`), it lies still.
+func _hold_off_solid(start: Vector3) -> Vector3:
+	if _solid.is_empty():
+		return start
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var p: Vector3 = start
+	for d: Vector3 in [Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(0, -1, 0)]:
+		var q: Vector3 = p + d * BOX_MARGIN
+		if _solid_cell(p.x, p.y, p.z) or not _solid_cell(q.x, q.y, q.z):
+			continue
+		## the face of q's cell that looks back at the node: for d = +axis the cell's low face, for d = -axis its high face
+		var axis_q: float = q.x if d.x != 0.0 else (q.y if d.y != 0.0 else q.z)
+		var cell_lo: float = floor(axis_q / unit) * unit
+		var face: float = cell_lo if (d.x + d.y + d.z) > 0.0 else cell_lo + unit
+		var axis_p: float = p.x if d.x != 0.0 else (p.y if d.y != 0.0 else p.z)
+		var gap: float = absf(face - axis_p)
+		p -= d * maxf(BOX_MARGIN - gap, 0.0)
+	return p
+
+
 ## A pinned node is held at the roof's own rectangle, which is where the wall's voxels may reach (a wall's voxels pass the GU it was drawn in, and its cap
 ## rows pass that): a node buried in a wall made the chord to the first free node cut the wall's corner, so the cloth went THROUGH the wall's top (Director,
 ## 2026-10-16). A pinned node that starts inside a standing voxel is held at that wall's NEAREST SIDE instead.
@@ -298,6 +324,26 @@ func steps_run() -> int:
 	return _steps
 
 
+## A cloth that is part of the world from the first frame (ROOF_MASTER_PLAN v0.41, Director 2026-10-16: "o pano já nasce apoiado nos elementos do mundo"): the
+## same steps the fall runs, back to back, until nothing moves faster than `speed` GU/s for `hold` seconds (a little looser than `is_settled()`: the eye cannot
+## tell 0.15 GU/s from rest, and every second saved here is a second of load on the handset) or `max_seconds` of simulated time. No Godot object is touched: it
+## runs on a worker. Returns the steps run.
+func settle_now(max_seconds: float = 6.0, speed: float = 0.15, hold: float = 0.3) -> int:
+	var run: int = 0
+	var quiet: float = 0.0
+	while time < max_seconds:
+		step()
+		run += 1
+		quiet = quiet + _dt if _fastest < speed else 0.0
+		if quiet >= hold:
+			break
+	for k in range(vel.size()):
+		vel[k] = 0.0   ## at rest: what is left is below the eye, and a cloth that is shown still must wake from still
+	prev = pos.duplicate()
+	_quiet = 0.0
+	return run
+
+
 ## The positions `alpha` of the way from the last step's start to its end, 3 floats per node, into `out` (resized).
 func positions_lerped(a: float, out: PackedFloat32Array) -> void:
 	out.resize(pos.size())
@@ -367,9 +413,26 @@ func step() -> void:
 		if pinned[node] == 1:
 			continue
 		var o4: int = node * 3
-		var vx: float = (_xs[o4] - pos[o4]) / dt * damp
-		var vy: float = (_xs[o4 + 1] - pos[o4 + 1]) / dt * damp
-		var vz: float = (_xs[o4 + 2] - pos[o4 + 2]) / dt * damp
+		## A contact takes the push-out OUT of the velocity (the cloth does not bounce off what it lies against: read as a displacement the push was a velocity
+		## of 0.5-0.9 GU/s away from the wall, the next step pulled the cloth back in, and a tongue of cloth beside a wall's end rattled for ten seconds,
+		## ROOF_MASTER_PLAN v0.41) and the part of the motion that still goes INTO the contact is stopped.
+		var vx: float = (_xs[o4] - _push[o4] - pos[o4]) / dt
+		var vy: float = (_xs[o4 + 1] - _push[o4 + 1] - pos[o4 + 1]) / dt
+		var vz: float = (_xs[o4 + 2] - _push[o4 + 2] - pos[o4 + 2]) / dt
+		var push_sq: float = _push[o4] * _push[o4] + _push[o4 + 1] * _push[o4 + 1] + _push[o4 + 2] * _push[o4 + 2]
+		if push_sq > 1.0e-12:
+			var inv: float = 1.0 / sqrt(push_sq)
+			var nxv: float = _push[o4] * inv
+			var nyv: float = _push[o4 + 1] * inv
+			var nzv: float = _push[o4 + 2] * inv
+			var into: float = vx * nxv + vy * nyv + vz * nzv
+			if into < 0.0:
+				vx -= into * nxv
+				vy -= into * nyv
+				vz -= into * nzv
+		vx *= damp
+		vy *= damp
+		vz *= damp
 		vel[o4] = vx
 		vel[o4 + 1] = vy
 		vel[o4 + 2] = vz
@@ -379,7 +442,8 @@ func step() -> void:
 		pos[o4 + 2] = _xs[o4 + 2]
 	time += dt
 	_steps += 1
-	_quiet = _quiet + dt if sqrt(fastest) < SETTLE_SPEED else 0.0
+	_fastest = sqrt(fastest)
+	_quiet = _quiet + dt if _fastest < SETTLE_SPEED else 0.0
 
 
 ## The floor and the walls: a node inside is put back out along the way of least penetration; the floor also takes part of the sideways
@@ -390,16 +454,27 @@ func _collide() -> void:
 		if pinned[node] == 1:
 			continue
 		var o: int = node * 3
+		_push[o] = 0.0
+		_push[o + 1] = 0.0
+		_push[o + 2] = 0.0
 		if _xs[o + 1] < lo_y:
+			_push[o + 1] = lo_y - _xs[o + 1]
 			_xs[o + 1] = lo_y
 			_xs[o] += FLOOR_FRICTION * (prev[o] - _xs[o])
 			_xs[o + 2] += FLOOR_FRICTION * (prev[o + 2] - _xs[o + 2])
-		var out: Vector3 = _solid_exit(Vector3(_xs[o], _xs[o + 1], _xs[o + 2]), false, Vector2.ZERO)
+		var cur := Vector3(_xs[o], _xs[o + 1], _xs[o + 2])
+		var out: Vector3 = _solid_exit(cur, false, Vector2.ZERO)
+		if out == cur:
+			out = _hold_off_solid(cur)
+		_push[o] += out.x - _xs[o]
+		_push[o + 1] += out.y - _xs[o + 1]
+		_push[o + 2] += out.z - _xs[o + 2]
 		_xs[o] = out.x
 		_xs[o + 1] = out.y
 		_xs[o + 2] = out.z
 		if _grid_covers(_xs[o], _xs[o + 2]):
 			continue
+		var before_boxes := Vector3(_xs[o], _xs[o + 1], _xs[o + 2])
 		for box: AABB in _boxes:
 			var lx: float = box.position.x - BOX_MARGIN
 			var ly: float = box.position.y - BOX_MARGIN
@@ -442,6 +517,9 @@ func _collide() -> void:
 				3: _xs[o] = ux
 				4: _xs[o + 1] = uy
 				_: _xs[o + 2] = uz
+		_push[o] += _xs[o] - before_boxes.x
+		_push[o + 1] += _xs[o + 1] - before_boxes.y
+		_push[o + 2] += _xs[o + 2] - before_boxes.z
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------
@@ -500,6 +578,8 @@ func _factor() -> void:
 	_rhs_const.resize(_nf * 3)
 	_rhs_const.fill(0.0)
 	_xs.resize(n * 3)
+	_push.resize(n * 3)
+	_push.fill(0.0)
 	_rx.resize(_nf)
 	_ry.resize(_nf)
 	_rz.resize(_nf)

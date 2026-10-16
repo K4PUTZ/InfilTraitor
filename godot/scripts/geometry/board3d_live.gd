@@ -2105,7 +2105,7 @@ func face_shade(x: int, y: int, level: int, x_normal: bool, with_soot: bool = tr
 
 ## ROOF_MASTER_PLAN v0.28 — the shade the TOP face of a voxel draws with, as `OPAQUE_SHADER` computes it for face 0 (the top tone x the cell's
 ## light bucket x the soot ring of the top, the base-6 code's first digit), so a soft roof's skin takes over exactly the look of the roof it replaces.
-func top_shade(x: int, y: int, level: int) -> float:
+func top_shade(x: int, y: int, level: int, soot_amount: float = 1.0) -> float:
 	var board: VoxelBoard = _room._voxel_board if _room != null else null
 	if board == null or _tone.size() < 3 or _light_ladder.is_empty():
 		return 1.0
@@ -2116,7 +2116,7 @@ func top_shade(x: int, y: int, level: int) -> float:
 		soot = _soot_mult[ring]
 	elif ring == 5:
 		soot = (BoardLook.SOOT_CHAR_MIN + BoardLook.SOOT_CHAR_MAX) * 0.5
-	return _tone[0] * light * soot
+	return _tone[0] * light * lerpf(1.0, soot, soot_amount)   ## `soot_amount` < 1: a cloth's own fire (the shader) draws the soot near an opening, not this plane's squares
 
 
 func on_shot_commit(touched: Array) -> void:

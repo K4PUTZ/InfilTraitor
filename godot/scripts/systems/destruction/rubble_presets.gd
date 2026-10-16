@@ -178,7 +178,9 @@ static var ROOF_WEIGHT_ISLAND: float = 0.3
 ## (a miss ends that branch, so the front is ragged); every voxel it reaches ends CHARRED and `ROOF_FIRE_EMBER_SHARE` of them glow, `ROOF_FIRE_LIFE`
 ## times longer than an edge ember. It consumes nothing (the hole stays the blast's and its burnt edge's). The top layer takes the ring's full
 ## soot (`ROOF_TOP_SOOT_LIFT_OF` 0: the fire reached the face that looks at the sky).
-static var ROOF_FIRE_SPREAD_OF: Dictionary = {"cardboard": 6, "fabric": 6}
+## (fabric is NOT here since 2026-10-16: a cloth's fire is the cloth's own, burning the flaps and the edge of the opening while it falls and spreading a little where it
+## parks: `Room.release_roof_sheet`, `soft_sheet3d.gdshader`)
+static var ROOF_FIRE_SPREAD_OF: Dictionary = {"cardboard": 6}
 static var ROOF_FIRE_STEP_S: float = 0.35
 static var ROOF_FIRE_CHANCE: float = 0.88
 static var ROOF_FIRE_EMBER_SHARE: float = 0.55

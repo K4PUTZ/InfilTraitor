@@ -4309,6 +4309,8 @@ func release_soft_roofs_after_blast(before: Dictionary) -> void:
 
 ## The ONE node that draws every flap of this room's cloth roofs (`ClothFlaps3D`), made on first use.
 var _cloth_flaps: ClothFlaps3D = null
+## The standing columns along the edge of every opening a blast cut in a cloth roof: where the cloth burns while it comes down and where the fire spreads from when it parks.
+var _cloth_rim_columns: Dictionary = {}
 
 
 ## ROOF_MASTER_PLAN v0.30 (Director, 2026-10-16): a blast through a CLOTH roof disintegrates the middle of the hole with no debris, and the hole's ragged
@@ -4359,6 +4361,11 @@ func _spawn_cloth_flaps(destroyed: Dictionary, material: String) -> int:
 			break
 	if rim.is_empty():
 		return 0
+	for entry_r: Array in rim:
+		## the standing column beside the hole voxel (the boundary lies half way between the two): the cloth's own edge of this opening
+		var hv: Vector2i = entry_r[1]
+		var bp: Vector2 = entry_r[2]
+		_cloth_rim_columns[Vector2i(roundi(2.0 * (bp.x - 0.5) - float(hv.x)), roundi(2.0 * (bp.y - 0.5) - float(hv.y)))] = true
 	rim.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
 	var definition = Registries.get_material_registry().resolve(material)
 	var base: Color = definition.base_color if definition != null else Color(0.8, 0.8, 0.8)
@@ -4432,26 +4439,51 @@ func release_roof_sheet(roof: Dictionary) -> bool:
 	var base: Color = definition.base_color if definition != null else Color(0.8, 0.8, 0.8)
 	var level: int = int(info["level"])
 	var voxels: Array = info["voxels"]
-	## What the roof's fire has not burnt yet goes on burning on the cloth: each column's second of ignition, from NOW (`_fire_char_pending`).
+	## FIRE on the cloth (Director, 2026-10-16): the edge of the opening burns while the cloth comes down (the rim and 2 columns in: A), and when it parks the fire
+	## spreads a little from the opening, up to 7 columns, thinning out (B: `burn_b`, seconds AFTER it parks), goes out and leaves soot (`soot_final`: grey, nearer
+	## the opening darker). Nothing burns when no opening was cut (a release by gravity alone).
 	var burn: Dictionary = {}
-	for id in _fire_char_pending:
-		var fire: Dictionary = _fire_char_pending[id]
-		var now: float = float(fire.get("elapsed", 0.0))
-		var rest: Array = fire["cells"]
-		for k in range(int(fire["next"]), rest.size()):
-			var c: Dictionary = rest[k]
-			var col: Vector2i = c["grid_pos"]
-			if (info["columns"] as Dictionary).has(col):
-				burn[col] = minf(float(burn.get(col, 1.0e9)), maxf(float(c["at"]) - now, 0.0))
+	var burn_b: Dictionary = {}
+	var soot_final: Dictionary = {}
+	var ring_of: Dictionary = {}
+	var frontier: Array = []
+	for c: Vector2i in _cloth_rim_columns:
+		if (info["columns"] as Dictionary).has(c):
+			ring_of[c] = 0
+			frontier.append(c)
+	var ring: int = 0
+	while not frontier.is_empty() and ring < 7:
+		ring += 1
+		var next: Array = []
+		for c: Vector2i in frontier:
+			for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var n: Vector2i = c + d
+				if not ring_of.has(n) and (info["columns"] as Dictionary).has(n):
+					ring_of[n] = ring
+					next.append(n)
+		frontier = next
+	for c: Vector2i in ring_of:
+		var r: int = int(ring_of[c])
+		var h: float = float(FacadeSampler._fnv1a_hash("CLOTHFIRE|%d,%d" % [c.x, c.y]) % 1000) / 1000.0
+		if r <= 2:
+			burn[c] = 0.05 + 0.15 * float(r) + 0.1 * h
+			soot_final[c] = lerpf(0.42, 0.6, float(r) / 2.0)
+		if r >= 1 and h < pow(0.9, float(r)):
+			burn_b[c] = 0.3 * float(r) + 0.2 * h
+			soot_final[c] = minf(float(soot_final.get(c, 1.0)), lerpf(0.45, 0.75, float(r) / 7.0))
 	var sheet := SoftSheet3D.new()
 	_soft_sheets.append(sheet)
 	live.call("register_soft_sheet", sheet)
 	sheet.name = "SoftSheet_%s_%d_%d" % [material, int(info["x0"]), int(info["z0"])]
 	(live.call("geometry_root") as Node3D).add_child(sheet)
-	sheet.setup(live, sim, {"thickness": float(row.get("thickness", 0.0)), "burn": burn, "x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": 2, "mask": info["columns"],
+	sheet.setup(live, sim, {"thickness": float(row.get("thickness", 0.0)), "burn": burn, "burn_b": burn_b, "soot_final": soot_final, "x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": 2, "mask": info["columns"],
 		"y_top": float(params["origin"].y), "material": material, "threaded": str(_dev_flag("SOFT_SHEET_THREAD", "1")) != "0", "label": "%s %dx%d voxels" % [material, int(info["w"]), int(info["d"])],
 		"color": func(gx: int, gy: int) -> Color:
-			var t: float = float(live.call("top_shade", gx, gy, level))
+			## Near an opening the soot the blast stamped on the roof's plane is a ring of squares (1/8 GU): not baked, the cloth's fire is drawn by its shader (ragged,
+			## soft) from the opening; farther away the plane's soot stays, faded in over 3 columns.
+			var near: int = int(ring_of.get(Vector2i(gx, gy), 99))
+			var soot_amount: float = clampf(float(near - 2) / 3.0, 0.0, 1.0)
+			var t: float = float(live.call("top_shade", gx, gy, level, soot_amount))
 			return Color(base.r * t, base.g * t, base.b * t, 1.0).srgb_to_linear()})
 	var t_skin: int = Time.get_ticks_usec()
 	## The roof goes: DESTROYED and base-recorded (the checkpoint and the damage replay read the base), the footprint's GUs for the light.

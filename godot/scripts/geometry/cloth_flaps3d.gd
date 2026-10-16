@@ -11,6 +11,8 @@ const SHADER_PATH := "res://godot/shaders/cloth_flap3d.gdshader"
 const SEGMENTS: int = 5
 ## How much of its width a flap loses by its tip (1 = a point). Director, 2026-10-16: miniatures, "mais triangulares".
 const TIP_TAPER: float = 0.92
+## How long a flap glows (Director, 2026-10-16: fire on the flaps and the edge during the explosion).
+const HEAT_SECONDS: float = 3.5
 const RISE_ANGLE: float = deg_to_rad(68.0)
 const HANG_ANGLE: float = deg_to_rad(-78.0)
 
@@ -53,6 +55,8 @@ func follow(sheet: SoftSheet3D) -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
+	if _mat != null:
+		_mat.set_shader_parameter("clock", _time)
 	var moving: bool = false
 	_mesh.clear_surfaces()
 	_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -99,7 +103,7 @@ func _emit(flap: Dictionary, theta: float, age: float) -> void:
 	var half: float = 0.5 * float(flap["width"])
 	var tone: Color = flap["tone"]
 	var thickness: float = float(flap.get("thickness", 0.0))
-	_heat = float(flap["burn"]) * clampf(1.0 - age / 3.0, 0.0, 1.0)
+	_heat = float(flap["burn"]) * pow(clampf(1.0 - age / HEAT_SECONDS, 0.0, 1.0), 0.8)   ## they burn while they are thrown and while they fall, and go out
 	var segments: int = int(flap.get("segments", SEGMENTS))
 	var seg_len: float = length / float(segments)
 	## The strip's two edges, hinge to tip; the normal of each segment points away from the side the strip faces up.

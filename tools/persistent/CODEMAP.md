@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**303 scripts · 91478 lines total** (under `godot/scripts/`)
+**303 scripts · 91549 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -515,7 +515,7 @@ extends `Node3D` · 3485 lines
 
 ### `cloth_flaps3d.gd`
 
-`class_name ClothFlaps3D` · extends `Node3D` · 155 lines
+`class_name ClothFlaps3D` · extends `Node3D` · 159 lines
 
 `godot/scripts/geometry/cloth_flaps3d.gd`
 
@@ -525,6 +525,7 @@ extends `Node3D` · 3485 lines
 - `SHADER_PATH` = `"res://godot/shaders/cloth_flap3d.gdshader"`
 - `SEGMENTS` = `5`
 - `TIP_TAPER` = `0.92`
+- `HEAT_SECONDS` = `3.5`
 - `RISE_ANGLE` = `deg_to_rad(68.0)`
 - `HANG_ANGLE` = `deg_to_rad(-78.0)`
 - `CURL` = `-0.6`
@@ -1166,7 +1167,7 @@ extends `Node3D` · 3485 lines
 
 ### `soft_sheet3d.gd`
 
-`class_name SoftSheet3D` · extends `Node3D` · 426 lines
+`class_name SoftSheet3D` · extends `Node3D` · 459 lines
 
 `godot/scripts/geometry/soft_sheet3d.gd`
 
@@ -1178,7 +1179,7 @@ extends `Node3D` · 3485 lines
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/soft_sheet3d.gdshader"`
 - `BURN_SECONDS` = `1.4`
-- `CUSTOM_FLAGS` = `Mesh.ARRAY_CUSTOM_RG_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT`
+- `CUSTOM_FLAGS` = `(Mesh.ARRAY_CUSTOM_RG_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT)`
 
 **Public API**
 - `func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary) -> void:`
@@ -2642,7 +2643,7 @@ extends `RefCounted` · 37 lines
 
 ### `rubble_presets.gd`
 
-`class_name RubblePresets` · extends `RefCounted` · 272 lines
+`class_name RubblePresets` · extends `RefCounted` · 274 lines
 
 `godot/scripts/systems/destruction/rubble_presets.gd`
 
@@ -6276,7 +6277,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11458 lines
+extends `Node2D` · 11490 lines
 
 `godot/scripts/world/room.gd`
 

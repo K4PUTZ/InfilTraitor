@@ -22,7 +22,7 @@ extends Node3D
 const SHADER_PATH := "res://godot/shaders/soft_sheet3d.gdshader"
 ## How long a column takes to burn from the first darkening to black (`Room.CHAR_FADE_S`), and the vertex format that carries the second it starts.
 const BURN_SECONDS: float = 1.4
-const CUSTOM_FLAGS: int = Mesh.ARRAY_CUSTOM_RG_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
+const CUSTOM_FLAGS: int = (Mesh.ARRAY_CUSTOM_RG_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT)
 
 ## Emitted once, when the simulation has settled (or hit its time limit).
 signal settled()
@@ -33,6 +33,8 @@ var _mesh_node: MeshInstance3D = null
 var _mask: Dictionary = {}          ## the roof's voxel columns the skin covers (Vector2i -> true)
 var _burn_clock: float = 0.0        ## seconds since `reveal()`: what the shader's burn front reads
 var _burn_end: float = 0.0          ## when the last column has finished burning (0 = nothing burns)
+var _settle_clock: float = -1.0    ## seconds since the cloth came to rest (-1 before): what the fire that spreads over it when it parks reads
+var _burn_b_end: float = 0.0        ## how long after it parks the last of that fire is out (0 = none)
 var _arrays: Array = []           ## the skin's surface arrays, kept to repaint the vertex colours (`scorch`)
 var _mat: ShaderMaterial = null
 var _image: Image = null
@@ -91,6 +93,7 @@ func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary) -> void:
 			_mat.set_shader_parameter("has_facade", 1.0)
 	_mask = skin["mask"]
 	_mat.set_shader_parameter("clock", 0.0)
+	_mat.set_shader_parameter("settle_clock", -1.0)
 	_mat.set_shader_parameter("thickness", float(skin.get("thickness", 0.0)))
 	_mesh_node = MeshInstance3D.new()
 	_mesh_node.mesh = _build_mesh(sim, skin)
@@ -123,8 +126,11 @@ func _process(delta: float) -> void:
 	if _burn_end > 0.0:
 		_burn_clock += delta
 		_mat.set_shader_parameter("clock", _burn_clock)
-		if _done and _burn_clock > _burn_end:
-			set_process(false)
+	if _done and _burn_b_end > 0.0:
+		_settle_clock += delta
+		_mat.set_shader_parameter("settle_clock", _settle_clock)
+	if _done and _burn_clock > _burn_end and _settle_clock > _burn_b_end:
+		set_process(false)
 	if _sim == null or _done:
 		return
 	var t0: int = Time.get_ticks_usec()
@@ -211,7 +217,8 @@ func _exit_tree() -> void:
 
 func _finish() -> void:
 	_done = true
-	set_process(_burn_end > _burn_clock)   ## a cloth still burning keeps its clock running after it has come to rest
+	_settle_clock = 0.0 if _burn_b_end > 0.0 else -1.0
+	set_process(_burn_end > _burn_clock or _burn_b_end > 0.0)   ## a cloth still burning, or about to catch where it parks, keeps its clocks running after it has come to rest
 	if _threaded:
 		_stop_worker()
 		_step_count = _done_steps
@@ -337,6 +344,9 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 	var colors := PackedColorArray()
 	var ignite := PackedFloat32Array()   ## per vertex, 2 floats: the second its column starts to burn (1e9 = never) and 1 for a SKIRT vertex: CUSTOM0.xy, read by the shader
 	var burn: Dictionary = skin.get("burn", {})
+	var burn_b: Dictionary = skin.get("burn_b", {})   ## column -> seconds AFTER the cloth parks that it catches
+	var soot_final: Dictionary = skin.get("soot_final", {})   ## column -> the tone it ends (1 = clean, 0 = black)
+	var custom1 := PackedFloat32Array()
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	for a in range(qa + 1):
 		for b in range(qb + 1):
@@ -348,14 +358,34 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 			uvs.append(Vector2((wx - sim.origin.x) / sim.hx, (wz - sim.origin.z) / sim.hz))
 			uv2s.append(Vector2(float(x0 + ox), float(z0 + oz)))
 			colors.append(colour.call(x0 + mini(ox, w - 1), z0 + mini(oz, d - 1)))
+			## Per vertex the 4 columns around it say how much of it burns (a WEIGHT, 0..1, interpolated: a time of "never" like 1e9 cannot be, it made a
+			## chequerboard of the lattice), when it starts, and the tone it ends.
 			var when: float = 1.0e9
+			var delay_b: float = 1.0e9
+			var final_tone: float = 1.0
+			var n_a: int = 0
+			var n_b: int = 0
 			for dx in range(-1, 1):
 				for dz in range(-1, 1):
-					var cell := Vector2i(x0 + ox + dx, z0 + oz + dz)
-					if burn.has(cell):
-						when = minf(when, float(burn[cell]))
-			ignite.append(when)
+					var cell_v := Vector2i(x0 + ox + dx, z0 + oz + dz)
+					if burn.has(cell_v):
+						when = minf(when, float(burn[cell_v]))
+						n_a += 1
+					if burn_b.has(cell_v):
+						delay_b = minf(delay_b, float(burn_b[cell_v]))
+						n_b += 1
+					if soot_final.has(cell_v):
+						final_tone = minf(final_tone, float(soot_final[cell_v]))
+			ignite.append(when if n_a > 0 else 0.0)
 			ignite.append(0.0)
+			custom1.append(delay_b if n_b > 0 else 0.0)
+			custom1.append(final_tone)
+			custom1.append(float(n_a) / 4.0)
+			custom1.append(float(n_b) / 4.0)
+			if n_a > 0:
+				_burn_end = maxf(_burn_end, when + BURN_SECONDS)
+			if n_b > 0:
+				_burn_b_end = maxf(_burn_b_end, delay_b + BURN_SECONDS)
 			if when < 1.0e8:
 				_burn_end = maxf(_burn_end, when + BURN_SECONDS)
 	var indices := PackedInt32Array()
@@ -408,6 +438,8 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 				colors.append(colors[vi])
 				ignite.append(ignite[vi * 2])
 				ignite.append(1.0)
+				for q in range(4):
+					custom1.append(custom1[vi * 4 + q])
 			lows.append(int(copies[vi]))
 		indices.append_array([int(tops[0]), int(tops[1]), int(lows[1]), int(tops[0]), int(lows[1]), int(lows[0])])
 	var arrays: Array = []
@@ -417,6 +449,7 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 	arrays[Mesh.ARRAY_TEX_UV2] = uv2s
 	arrays[Mesh.ARRAY_COLOR] = colors
 	arrays[Mesh.ARRAY_CUSTOM0] = ignite
+	arrays[Mesh.ARRAY_CUSTOM1] = custom1
 	arrays[Mesh.ARRAY_INDEX] = indices
 	_arrays = arrays
 	var mesh := ArrayMesh.new()

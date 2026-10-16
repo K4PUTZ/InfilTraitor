@@ -16,12 +16,16 @@ uniform sampler2D facade : filter_nearest_mipmap, repeat_disable;
 uniform float has_facade = 0.0;
 uniform vec3 key_dir = vec3(-0.45, 0.8, 0.4);
 
+uniform float settle_clock = -1.0;   // seconds since the cloth came to rest (-1 before): the fire that spreads where it parks
 uniform float clock = 0.0;   // seconds since the cloth was let go: where the fire that was creeping across the roof has got to
 
 varying vec3 v_world;
 varying vec2 v_rest;
 varying float v_ignite;
 varying float v_skirt;
+varying float v_delay;
+varying float v_final;
+varying vec2 v_weight;
 uniform float thickness = 0.0;   // GU: how far the skirt hangs below the cloth (its visible edge)
 
 // node (i, j) = texel (x = j, y = i): the texture is nz wide and nx tall, the sim's own row-major order (`node_count` = (nx, nz)).
@@ -70,6 +74,21 @@ void vertex() {
 	v_rest = UV2;
 	v_ignite = CUSTOM0.x;   // the second this part of the cloth starts to burn (1e9: never)
 	v_skirt = CUSTOM0.y;
+	v_delay = CUSTOM1.x;   // the second AFTER it parks that this part catches (1e9: never)
+	v_weight = CUSTOM1.zw;   // how much of this vertex burns in the explosion's fire (x) and in the fire where it parks (y)
+	v_final = CUSTOM1.y;   // the tone it ends: 1 clean, 0 black (a soft material ends a soot grey, not black)
+}
+
+// A smooth value noise on a lattice (bilinear, smoothstepped), so a fire front and its soot are ragged and soft, never squares.
+float hash21(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float vnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x), mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
 void fragment() {
@@ -84,10 +103,23 @@ void fragment() {
 		vec2 fr = mod(v_rest / vec2(64.0, 32.0), 2.0);
 		detail = texture(facade, mix(fr, 2.0 - fr, step(1.0, fr))).r;
 	}
-	// The burn front the roof's fire left unfinished (Director, 2026-10-16: it goes on burning while the cloth comes down): a vertex-smooth ramp from
-	// untouched to black over 1.4 s, glowing while it passes.
-	float b = clamp((clock - v_ignite) / 1.4, 0.0, 1.0);
-	float charred = mix(1.0, 0.2, b);
-	ALBEDO = COLOR.rgb * pow(vec3(key * detail * charred * mix(1.0, 0.55, v_skirt)), vec3(2.2));
-	EMISSION = vec3(1.0, 0.36, 0.08) * (b > 0.0 && b < 1.0 ? pow(sin(3.14159 * b), 1.5) : 0.0) * 1.4;
+	// FIRE on the cloth (Director, 2026-10-16): the edge of the opening and the flaps burn while the cloth comes down (`clock`, from the release); when it parks
+	// the fire spreads a little from the opening (`settle_clock`), goes out, and the soot is what stays. Each is a vertex-smooth ramp over 1.4 s:
+	// untouched -> glowing -> soot (`v_final`).
+	// The front is ragged: the ramp is pushed by a soft noise over the cloth's rest coordinates (3 voxels a feature), then smoothed again.
+	float rag = (vnoise(v_rest * 0.33) * 0.65 + vnoise(v_rest * 0.9 + 17.0) * 0.35 - 0.5) * 1.1;
+	float ba = clamp((clock - v_ignite) / 1.7 + rag * 0.5, 0.0, 1.0);
+	float bb = clamp((settle_clock - v_delay) / 1.7 + rag * 0.5, 0.0, 1.0) * step(0.0, settle_clock);
+	// WHERE it burns is a separate, ragged mask (the weight of the vertex plus noise), so a part on the edge of the burning area still finishes and goes out.
+	float ma = smoothstep(0.3, 0.8, v_weight.x + rag * 0.45);
+	float mb = smoothstep(0.3, 0.8, v_weight.y + rag * 0.45);
+	float b = max(ba * ma, bb * mb);
+	float soot_patch = 0.8 + 0.2 * vnoise(v_rest * 0.55 + 5.0);
+	float sooted = mix(1.0, v_final * soot_patch, smoothstep(0.0, 1.0, b));
+	float flicker = 0.75 + 0.25 * sin(clock * 37.0 + v_rest.x * 0.9 + v_rest.y * 0.7) * sin(settle_clock * 29.0 + v_rest.y * 1.1);
+	vec3 cloth = COLOR.rgb * pow(vec3(key * detail * sooted * mix(1.0, 0.55, v_skirt)), vec3(2.2));
+	// the flame is a band that sweeps through each part as it chars (peak at ~1/3 burnt), gone when it is soot
+	float glow = (exp(-pow((ba - 0.3) / 0.22, 2.0)) * step(0.001, ba) * (1.0 - step(0.999, ba)) * ma * 1.6 + exp(-pow((bb - 0.3) / 0.22, 2.0)) * step(0.001, bb) * (1.0 - step(0.999, bb)) * mb * 1.5);
+	// `unshaded` ignores EMISSION: the fire is added to the colour itself
+	ALBEDO = cloth + vec3(1.0, 0.36, 0.08) * glow * flicker * 0.3;
 }

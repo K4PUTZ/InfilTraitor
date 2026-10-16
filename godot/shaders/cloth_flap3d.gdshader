@@ -6,6 +6,7 @@ render_mode unshaded, cull_disabled;
 
 uniform sampler2D facade : filter_nearest_mipmap, repeat_disable;
 uniform float has_facade = 0.0;
+uniform float clock = 0.0;
 uniform vec3 key_dir = vec3(-0.45, 0.8, 0.4);
 
 varying vec3 v_world;
@@ -28,6 +29,9 @@ void fragment() {
 		vec2 fr = mod(v_rest / vec2(64.0, 32.0), 2.0);
 		detail = texture(facade, mix(fr, 2.0 - fr, step(1.0, fr))).r;
 	}
-	ALBEDO = COLOR.rgb * pow(vec3(key * detail), vec3(2.2));
-	EMISSION = vec3(1.0, 0.35, 0.08) * UV.x * COLOR.a;
+	vec3 cloth = COLOR.rgb * pow(vec3(key * detail), vec3(2.2));
+	// the tip burns hottest; the whole strip flickers as it goes
+	float flicker = 0.7 + 0.3 * sin(clock * 41.0 + v_world.x * 57.0 + v_world.z * 43.0) * sin(clock * 23.0 + v_world.y * 71.0);
+	// `unshaded` ignores EMISSION: the fire is added to the colour itself
+	ALBEDO = cloth + vec3(1.0, 0.36, 0.08) * (0.25 + 0.75 * UV.x) * COLOR.a * 0.7 * flicker;
 }

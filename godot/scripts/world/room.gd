@@ -4438,9 +4438,15 @@ func _on_shot_touched(touched: Array) -> void:
 		var info: Dictionary = _sheet_collect(entity)
 		if info.is_empty() or (info["voxels"] as Array).size() >= int(entry["count"]):
 			continue
-		if info.has("plane"):
-			info["blast_cells"] = entry.get("blast_cells", {})
-		_swap_resting_sheet(entity, info, bool(entry["burned"]), bool(entry["burned"]))
+		var burned: bool = bool(entry["burned"])
+		if info.has("plane") or not burned:
+			## the cells missing from the cloth now (against how it stood at load): a wall's rim comes from them, and so does a SHOT's soot on a roof
+			var missing: Dictionary = entry.get("blast_cells", {}).duplicate()
+			for c: Vector2i in entry["rest_columns"]:
+				if not (info["columns"] as Dictionary).has(c):
+					missing[c] = true
+			info["blast_cells"] = missing
+		_swap_resting_sheet(entity, info, true, true, not burned)   ## finished: the soot is there at once, no fire to watch (a bullet starts none)
 
 
 ## Called when the board stands: waits for the workers, builds every cloth's skin and shows it at rest.
@@ -4468,7 +4474,7 @@ func _finish_resting_sheets(live: Node) -> void:
 		(live.call("geometry_root") as Node3D).add_child(sheet)
 		sheet.setup(live, sim, skin)
 		sheet.show_at_rest(false)
-		_resting_sheets[_sheet_key(roof)] = {"sheet": sheet, "count": (info["voxels"] as Array).size(), "burned": false, "extent": {"x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"])}}
+		_resting_sheets[_sheet_key(roof)] = {"sheet": sheet, "rest_columns": (info["columns"] as Dictionary).duplicate(), "count": (info["voxels"] as Array).size(), "burned": false, "extent": {"x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"])}}
 		_sheet_entity_by_key[_sheet_key(roof)] = roof
 		for v: Voxel in info["voxels"]:
 			_sheet_of_voxel[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = _sheet_key(roof)
@@ -4482,7 +4488,8 @@ func _finish_resting_sheets(live: Node) -> void:
 
 ## The skin parameters `SoftSheet3D.setup()` takes, for the roof `info` found (`collect`): its columns (the mask: a hole is a column that is not there), the colour each
 ## column takes from the board's light and soot, and, with `fire`, the burn / soot a blast's opening leaves on it. `info`'s rectangle is the roof's own.
-func _cloth_skin(info: Dictionary, material: String, y_top: float, live: Node, fire: bool) -> Dictionary:
+## `soot_only` (a shot's hole): no flames and no spreading, a little soot on the cloth beside the opening, from the cells the shot took (`info.blast_cells`, a roof's too).
+func _cloth_skin(info: Dictionary, material: String, y_top: float, live: Node, fire: bool, soot_only: bool = false) -> Dictionary:
 	var row: Dictionary = SoftSheetPresets.OF.get(material, {})
 	var definition = Registries.get_material_registry().resolve(material)
 	var base: Color = definition.base_color if definition != null else Color(0.8, 0.8, 0.8)
@@ -4498,7 +4505,7 @@ func _cloth_skin(info: Dictionary, material: String, y_top: float, live: Node, f
 		## the opening darker). Nothing burns when no opening was cut (a release by gravity alone).
 		var frontier: Array = []
 		var rim_seed: Dictionary = {}
-		if info.has("plane"):
+		if info.has("plane") or soot_only:
 			## a WALL: its opening is the cells THIS blast took out of the cloth; the rim is the cloth beside them
 			for b: Vector2i in info.get("blast_cells", {}):
 				for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
@@ -4515,6 +4522,10 @@ func _cloth_skin(info: Dictionary, material: String, y_top: float, live: Node, f
 		var spread_rings: int = int(row.get("spread_rings", 9))
 		var spread_keep: float = float(row.get("spread_keep", 0.93))
 		var darkest: float = float(row.get("soot", 0.55))
+		if soot_only:
+			burn_rings = 1
+			spread_rings = 0
+			darkest = 0.8   ## Director 2026-10-17: "um pouquinho de fuligem nas bordas do buraco" 
 		while not frontier.is_empty() and ring < maxi(14, spread_rings + 2):
 			ring += 1
 			var next: Array = []
@@ -4620,7 +4631,7 @@ func _resting_sheet_of(roof: Dictionary) -> SoftSheet3D:
 
 
 ## A blast cut a hole in a cloth that stays up (every support still stands): the same settled sim is drawn again with the hole as a missing column and the opening's fire.
-func _swap_resting_sheet(roof: Dictionary, info: Dictionary, fire: bool = true, finished: bool = false) -> void:
+func _swap_resting_sheet(roof: Dictionary, info: Dictionary, fire: bool = true, finished: bool = false, soot_only: bool = false) -> void:
 	var old: SoftSheet3D = _resting_sheet_of(roof)
 	var live: Node = board3d()
 	if old == null or live == null:
@@ -4638,11 +4649,11 @@ func _swap_resting_sheet(roof: Dictionary, info: Dictionary, fire: bool = true, 
 	live.call("register_soft_sheet", sheet)
 	sheet.name = old.name
 	(live.call("geometry_root") as Node3D).add_child(sheet)
-	sheet.setup(live, sim, _cloth_skin(shaped, material, sim.origin.y, live, fire))
+	sheet.setup(live, sim, _cloth_skin(shaped, material, sim.origin.y, live, fire, soot_only))
 	sheet.show_at_rest(fire, finished)
 	entry["sheet"] = sheet
 	entry["count"] = (info["voxels"] as Array).size()
-	if fire:
+	if fire and not soot_only:
 		entry["burned"] = true
 	_soft_sheets.erase(old)
 	old.queue_free()

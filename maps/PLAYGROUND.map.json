@@ -870,139 +870,698 @@
         }
       ]
     },
-   "capture": {"v": 1, "rails": [{"id": "wood_rail", "keys": [{"frame": "detail", "target": "@wood_wall", "view": "N", "hold": 300}]}, {"id": "plywood_rail", "keys": [{"frame": "detail", "target": "@plywood_wall", "view": "N", "hold": 300}]}, {"id": "brick_rail", "keys": [{"frame": "detail", "target": "@brick_wall", "view": "N", "hold": 300}]}, {"id": "cardboard_rail", "keys": [{"frame": "detail", "target": "@cardboard_wall", "view": "N", "hold": 300}]}, {"id": "fabric_rail", "keys": [{"frame": "detail", "target": "@fabric_wall", "view": "N", "hold": 300}]}, {"id": "stone_rail", "keys": [{"frame": "detail", "target": "@stone_wall", "view": "N", "hold": 300}]}, {"id": "concrete_rail", "keys": [{"frame": "detail", "target": "@concrete_wall", "view": "N", "hold": 300}]}], "takes": [{"id": "blast_wood", "profile": "engine", "rail": "wood_rail", "steps": ["throw 0 @wood_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the wood wall"}, {"id": "blast_plywood", "profile": "engine", "rail": "plywood_rail", "steps": ["throw 0 @plywood_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the plywood wall"}, {"id": "shot_plywood", "profile": "engine", "rail": "plywood_rail", "steps": ["shoot 0"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S: the shotgun reference on plywood (INFILTRAITOR_SHOT_AGENT_CELL=40,11 INFILTRAITOR_SHOT_GUARD_CELL=40,9)"}, {"id": "blast_brick", "profile": "engine", "rail": "brick_rail", "steps": ["throw 0 @brick_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the brick wall"}, {"id": "blast_cardboard", "profile": "engine", "rail": "cardboard_rail", "steps": ["throw 0 @cardboard_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the cardboard wall"}, {"id": "blast_fabric", "profile": "engine", "rail": "fabric_rail", "steps": ["throw 0 @fabric_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the fabric wall"}, {"id": "blast_stone", "profile": "engine", "rail": "stone_rail", "steps": ["throw 0 @stone_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the stone wall"}, {"id": "shot_stone", "profile": "engine", "rail": "stone_rail", "steps": ["shoot 0"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S: shotgun on stone (INFILTRAITOR_SHOT_AGENT_CELL=18,11 INFILTRAITOR_SHOT_GUARD_CELL=18,9)"}, {"id": "shot_concrete", "profile": "engine", "rail": "concrete_rail", "steps": ["shoot 0"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S: a shotgun round into the concrete wall, the reference for blast_concrete (run with INFILTRAITOR_SHOT_AGENT_CELL=8,11 INFILTRAITOR_SHOT_GUARD_CELL=8,9)"}, {"id": "blast_concrete", "profile": "engine", "rail": "concrete_rail", "steps": ["throw 0 @concrete_front"], "at_key": 0, "after_hold": 20, "length": 300, "seed": 1, "note": "RF-S explosions: a grenade in front of the concrete wall"}]},
+   "capture": {
+      "v": 1,
+      "rails": [
+        {
+          "id": "wood_rail",
+          "keys": [
+            {
+              "frame": "detail",
+              "target": "@wood_wall",
+              "view": "N",
+              "hold": 300
+            }
+          ]
+        },
+        {
+          "id": "plywood_rail",
+          "keys": [
+            {
+              "frame": "detail",
+              "target": "@plywood_wall",
+              "view": "N",
+              "hold": 300
+            }
+          ]
+        },
+        {
+          "id": "brick_rail",
+          "keys": [
+            {
+              "frame": "detail",
+              "target": "@brick_wall",
+              "view": "N",
+              "hold": 300
+            }
+          ]
+        },
+        {
+          "id": "cardboard_rail",
+          "keys": [
+            {
+              "frame": "detail",
+              "target": "@cardboard_wall",
+              "view": "N",
+              "hold": 300
+            }
+          ]
+        },
+        {
+          "id": "fabric_rail",
+          "keys": [
+            {
+              "frame": "detail",
+              "target": "@fabric_wall",
+              "view": "N",
+              "hold": 300
+            }
+          ]
+        },
+        {
+          "id": "stone_rail",
+          "keys": [
+            {
+              "frame": "detail",
+              "target": "@stone_wall",
+              "view": "N",
+              "hold": 300
+            }
+          ]
+        },
+        {
+          "id": "concrete_rail",
+          "keys": [
+            {
+              "frame": "detail",
+              "target": "@concrete_wall",
+              "view": "N",
+              "hold": 300
+            }
+          ]
+        },
+        {
+          "id": "metal_rail",
+          "keys": [
+            {
+              "frame": "detail",
+              "target": "@metal_wall",
+              "view": "N",
+              "hold": 300
+            }
+          ]
+        },
+        {
+          "id": "glass_rail",
+          "keys": [
+            {
+              "frame": "detail",
+              "target": "@glass_wall",
+              "view": "N",
+              "hold": 300
+            }
+          ]
+        }
+      ],
+      "takes": [
+        {
+          "id": "blast_wood",
+          "profile": "engine",
+          "rail": "wood_rail",
+          "steps": [
+            "throw 0 @wood_front"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "RF-S explosions: a grenade in front of the wood wall"
+        },
+        {
+          "id": "blast_plywood",
+          "profile": "engine",
+          "rail": "plywood_rail",
+          "steps": [
+            "throw 0 @plywood_front"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "RF-S explosions: a grenade in front of the plywood wall"
+        },
+        {
+          "id": "shot_plywood",
+          "profile": "engine",
+          "rail": "plywood_rail",
+          "steps": [
+            "shoot 0"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "RF-S: the shotgun reference on plywood (INFILTRAITOR_SHOT_AGENT_CELL=40,11 INFILTRAITOR_SHOT_GUARD_CELL=40,9)"
+        },
+        {
+          "id": "blast_brick",
+          "profile": "engine",
+          "rail": "brick_rail",
+          "steps": [
+            "throw 0 @brick_front"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "RF-S explosions: a grenade in front of the brick wall"
+        },
+        {
+          "id": "blast_cardboard",
+          "profile": "engine",
+          "rail": "cardboard_rail",
+          "steps": [
+            "throw 0 @cardboard_front"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "RF-S explosions: a grenade in front of the cardboard wall"
+        },
+        {
+          "id": "blast_fabric",
+          "profile": "engine",
+          "rail": "fabric_rail",
+          "steps": [
+            "throw 0 @fabric_front"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "RF-S explosions: a grenade in front of the fabric wall"
+        },
+        {
+          "id": "blast_stone",
+          "profile": "engine",
+          "rail": "stone_rail",
+          "steps": [
+            "throw 0 @stone_front"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "RF-S explosions: a grenade in front of the stone wall"
+        },
+        {
+          "id": "shot_stone",
+          "profile": "engine",
+          "rail": "stone_rail",
+          "steps": [
+            "shoot 0"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "RF-S: shotgun on stone (INFILTRAITOR_SHOT_AGENT_CELL=18,11 INFILTRAITOR_SHOT_GUARD_CELL=18,9)"
+        },
+        {
+          "id": "shot_concrete",
+          "profile": "engine",
+          "rail": "concrete_rail",
+          "steps": [
+            "shoot 0"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "RF-S: a shotgun round into the concrete wall, the reference for blast_concrete (run with INFILTRAITOR_SHOT_AGENT_CELL=8,11 INFILTRAITOR_SHOT_GUARD_CELL=8,9)"
+        },
+        {
+          "id": "blast_concrete",
+          "profile": "engine",
+          "rail": "concrete_rail",
+          "steps": [
+            "throw 0 @concrete_front"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "RF-S explosions: a grenade in front of the concrete wall"
+        },
+        {
+          "id": "shot_metal",
+          "profile": "engine",
+          "rail": "metal_rail",
+          "steps": [
+            "shoot 0"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "material videos (2026-10-17): shot on metal; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=13,11 INFILTRAITOR_SHOT_GUARD_CELL=13,9 (tools/persistent/material_videos.py sets them)"
+        },
+        {
+          "id": "blast_metal",
+          "profile": "engine",
+          "rail": "metal_rail",
+          "steps": [
+            "throw 0 @metal_front"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "material videos (2026-10-17): blast on metal; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=13,11 INFILTRAITOR_SHOT_GUARD_CELL=13,9 (tools/persistent/material_videos.py sets them)"
+        },
+        {
+          "id": "shot_wood",
+          "profile": "engine",
+          "rail": "wood_rail",
+          "steps": [
+            "shoot 0"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "material videos (2026-10-17): shot on wood; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=23,11 INFILTRAITOR_SHOT_GUARD_CELL=23,9 (tools/persistent/material_videos.py sets them)"
+        },
+        {
+          "id": "shot_brick",
+          "profile": "engine",
+          "rail": "brick_rail",
+          "steps": [
+            "shoot 0"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "material videos (2026-10-17): shot on brick; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=28,11 INFILTRAITOR_SHOT_GUARD_CELL=28,9 (tools/persistent/material_videos.py sets them)"
+        },
+        {
+          "id": "shot_cardboard",
+          "profile": "engine",
+          "rail": "cardboard_rail",
+          "steps": [
+            "shoot 0"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "material videos (2026-10-17): shot on cardboard; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=32,11 INFILTRAITOR_SHOT_GUARD_CELL=32,9 (tools/persistent/material_videos.py sets them); the back wall is hit through the open front, in shadow: MARKET_LAB's take quitanda_shot films it from behind"
+        },
+        {
+          "id": "shot_fabric",
+          "profile": "engine",
+          "rail": "fabric_rail",
+          "steps": [
+            "shoot 0"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "material videos (2026-10-17): shot on fabric; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=36,11 INFILTRAITOR_SHOT_GUARD_CELL=36,9 (tools/persistent/material_videos.py sets them); the back wall is hit through the open front, in shadow: MARKET_LAB's take quitanda_shot films it from behind"
+        },
+        {
+          "id": "shot_glass",
+          "profile": "engine",
+          "rail": "glass_rail",
+          "steps": [
+            "shoot 0"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "material videos (2026-10-17): shot on glass; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=44,11 INFILTRAITOR_SHOT_GUARD_CELL=44,9 (tools/persistent/material_videos.py sets them)"
+        },
+        {
+          "id": "blast_glass",
+          "profile": "engine",
+          "rail": "glass_rail",
+          "steps": [
+            "throw 0 @glass_front"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 300,
+          "seed": 1,
+          "note": "material videos (2026-10-17): blast on glass; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=44,11 INFILTRAITOR_SHOT_GUARD_CELL=44,9 (tools/persistent/material_videos.py sets them)"
+        }
+      ]
+    },
    "layout": {
-    "v": 1,
-    "poi": [
-     {"id": "plywood_wall", "at": [35.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
-     {"id": "plywood_front", "at": [35.5, 4.5], "tags": ["event"]},
-     {"id": "brick_wall", "at": [23.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
-     {"id": "brick_front", "at": [23.5, 4.5], "tags": ["event"]},
-     {"id": "cardboard_wall", "at": [27.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
-     {"id": "cardboard_front", "at": [27.5, 4.5], "tags": ["event"]},
-     {"id": "fabric_wall", "at": [31.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
-     {"id": "fabric_front", "at": [31.5, 4.5], "tags": ["event"]},
-     {"id": "stone_wall", "at": [13.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
-     {"id": "stone_front", "at": [13.5, 4.5], "tags": ["event"]},
-     {"id": "wood_wall", "at": [18.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
-     {"id": "concrete_wall", "at": [3.0, 3.0, 1.0], "extent": [6.0, 4.0, 1.5], "tags": ["detail"]},
-     {"id": "wood_front", "at": [18.5, 4.5], "tags": ["event"]},
-     {"id": "concrete_front", "at": [3.5, 4.5], "tags": ["event"]},
-     {
-      "id": "throw_material_row",
-      "at": [
-       20.5,
-       5.5
+      "v": 1,
+      "poi": [
+        {
+          "id": "plywood_wall",
+          "at": [
+            35.0,
+            3.0,
+            1.0
+          ],
+          "extent": [
+            6.0,
+            4.0,
+            1.5
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "plywood_front",
+          "at": [
+            35.5,
+            4.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
+          "id": "brick_wall",
+          "at": [
+            23.0,
+            3.0,
+            1.0
+          ],
+          "extent": [
+            6.0,
+            4.0,
+            1.5
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "brick_front",
+          "at": [
+            23.5,
+            4.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
+          "id": "cardboard_wall",
+          "at": [
+            27.0,
+            3.0,
+            1.0
+          ],
+          "extent": [
+            6.0,
+            4.0,
+            1.5
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "cardboard_front",
+          "at": [
+            27.5,
+            4.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
+          "id": "fabric_wall",
+          "at": [
+            31.0,
+            3.0,
+            1.0
+          ],
+          "extent": [
+            6.0,
+            4.0,
+            1.5
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "fabric_front",
+          "at": [
+            31.5,
+            4.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
+          "id": "stone_wall",
+          "at": [
+            13.0,
+            3.0,
+            1.0
+          ],
+          "extent": [
+            6.0,
+            4.0,
+            1.5
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "stone_front",
+          "at": [
+            13.5,
+            4.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
+          "id": "wood_wall",
+          "at": [
+            18.0,
+            3.0,
+            1.0
+          ],
+          "extent": [
+            6.0,
+            4.0,
+            1.5
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "concrete_wall",
+          "at": [
+            3.0,
+            3.0,
+            1.0
+          ],
+          "extent": [
+            6.0,
+            4.0,
+            1.5
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "wood_front",
+          "at": [
+            18.5,
+            4.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
+          "id": "concrete_front",
+          "at": [
+            3.5,
+            4.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
+          "id": "throw_material_row",
+          "at": [
+            20.5,
+            5.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
+          "id": "pane_se",
+          "at": [
+            26.0,
+            8.5,
+            1.0
+          ],
+          "tags": [
+            "glass",
+            "detail"
+          ]
+        },
+        {
+          "id": "pane_sw",
+          "at": [
+            29.5,
+            9.0,
+            1.0
+          ],
+          "tags": [
+            "glass",
+            "detail"
+          ]
+        },
+        {
+          "id": "fabric_panel",
+          "at": [
+            34.0,
+            8.5,
+            0.5
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "crate",
+          "at": [
+            20.5,
+            15.5,
+            0.5
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "metal_wall",
+          "at": [
+            8.0,
+            3.0,
+            1.0
+          ],
+          "extent": [
+            6.0,
+            4.0,
+            1.5
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "metal_front",
+          "at": [
+            8.5,
+            4.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
+          "id": "glass_wall",
+          "at": [
+            39.0,
+            3.0,
+            1.0
+          ],
+          "extent": [
+            6.0,
+            4.0,
+            1.5
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "glass_front",
+          "at": [
+            39.5,
+            4.5
+          ],
+          "tags": [
+            "event"
+          ]
+        }
       ],
-      "tags": [
-       "event"
-      ]
-     },
-     {
-      "id": "pane_se",
-      "at": [
-       26.0,
-       8.5,
-       1.0
+      "regions": [
+        {
+          "id": "material_row",
+          "box": {
+            "min": [
+              2,
+              2,
+              0
+            ],
+            "max": [
+              37,
+              3,
+              2
+            ]
+          },
+          "tags": [
+            "wide"
+          ]
+        },
+        {
+          "id": "glass_box",
+          "box": {
+            "min": [
+              38,
+              2,
+              0
+            ],
+            "max": [
+              41,
+              3,
+              2.5
+            ]
+          },
+          "tags": [
+            "glass"
+          ]
+        },
+        {
+          "id": "panel_row",
+          "box": {
+            "min": [
+              24,
+              7,
+              0
+            ],
+            "max": [
+              35,
+              10,
+              2
+            ]
+          },
+          "tags": [
+            "glass"
+          ]
+        }
       ],
-      "tags": [
-       "glass",
-       "detail"
-      ]
-     },
-     {
-      "id": "pane_sw",
-      "at": [
-       29.5,
-       9.0,
-       1.0
-      ],
-      "tags": [
-       "glass",
-       "detail"
-      ]
-     },
-     {
-      "id": "fabric_panel",
-      "at": [
-       34.0,
-       8.5,
-       0.5
-      ],
-      "tags": [
-       "detail"
-      ]
-     },
-     {
-      "id": "crate",
-      "at": [
-       20.5,
-       15.5,
-       0.5
-      ],
-      "tags": [
-       "detail"
-      ]
-     }
-    ],
-    "regions": [
-     {
-      "id": "material_row",
-      "box": {
-       "min": [
-        2,
-        2,
-        0
-       ],
-       "max": [
-        37,
-        3,
-        2
-       ]
-      },
-      "tags": [
-       "wide"
-      ]
-     },
-     {
-      "id": "glass_box",
-      "box": {
-       "min": [
-        38,
-        2,
-        0
-       ],
-       "max": [
-        41,
-        3,
-        2.5
-       ]
-      },
-      "tags": [
-       "glass"
-      ]
-     },
-     {
-      "id": "panel_row",
-      "box": {
-       "min": [
-        24,
-        7,
-        0
-       ],
-       "max": [
-        35,
-        10,
-        2
-       ]
-      },
-      "tags": [
-       "glass"
-      ]
-     }
-    ],
-    "objectives": []
-   }
+      "objectives": []
+    }
   },
   "description": "One short wall per material for destruction testing. The four calibrated blocks (concrete/metal/stone/wood) sit at gu x=2/7/12/17 with one guard each at a different distance. 2026-08-21 (MAT-BLOCK-01): brick, cardboard, fabric, plywood and glass are now REAL BLOCKS at gu x=22/26/30/34/38, y=2, 3 wide, 2 storeys, each with a matching 3x3 floor zone at y=4 so the same facade is exercised on the SLAB path too (D34). They were reserved open floor until the Director delivered the five facades; the step is 4 rather than the reserved layout's 5 because a fifth material (plywood/madeirite) was added and five 3-wide blocks at step 5 would run past the 44-wide board. GLASS IS PLACED DELIBERATELY: ROOF_BAKE_LEAK_2026-08-17.md pulled it back to reserved after 520 roof voxels came up with no baked lookup entry, and the cause was that glass had no facade at all rather than a missing roof family — placing it now is the test of that diagnosis. Its DESTRUCTION rule (the non-local pane break) is still deferred. Weapon bench and floor grenades retired 2026-08-17: firing goes through the agent himself (WEAPON_MASTER_PLAN 6c, built 2026-08-19). 2026-08-19, Director: ONE GUARD PER MATERIAL WALL, each at a DIFFERENT distance from its own wall (concrete 2 GU, metal 4, stone 6, wood 9) - shooting each one tests a different impact angle and travel distance against a different material. Routes are deliberately 2 cells: they exist because _spawn_guards() skips anything shorter. Agent at (10,15) so all four are in front of him. Board enlarged and a light added over the guard's patrol area 2026-08-17. Rebuilt from scratch 2026-07-22, replaces the old District A-F showcase map."
 }

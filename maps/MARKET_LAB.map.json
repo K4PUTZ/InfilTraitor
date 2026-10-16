@@ -19,10 +19,21 @@
   "actors": {
    "v": 1,
    "agent_start": [
-    4,
-    15
+    9,
+    11
    ],
-   "guards": []
+   "guards": [
+    [
+     [
+      9,
+      3
+     ],
+     [
+      10,
+      3
+     ]
+    ]
+   ]
   },
   "legacy_compiler": {
    "v": 1,
@@ -123,7 +134,8 @@
      ],
      "face": "NE",
      "material": "fabric",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     },
     {
      "gu": [
@@ -132,7 +144,8 @@
      ],
      "face": "NE",
      "material": "fabric",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     },
     {
      "gu": [
@@ -141,7 +154,8 @@
      ],
      "face": "NE",
      "material": "fabric",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     },
     {
      "gu": [
@@ -150,7 +164,8 @@
      ],
      "face": "NW",
      "material": "fabric",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     },
     {
      "gu": [
@@ -159,7 +174,8 @@
      ],
      "face": "SE",
      "material": "fabric",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     },
     {
      "gu": [
@@ -168,7 +184,8 @@
      ],
      "face": "NW",
      "material": "fabric",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     },
     {
      "gu": [
@@ -177,7 +194,8 @@
      ],
      "face": "SE",
      "material": "fabric",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     },
     {
      "gu": [
@@ -186,7 +204,8 @@
      ],
      "face": "NE",
      "material": "cardboard",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     },
     {
      "gu": [
@@ -195,7 +214,8 @@
      ],
      "face": "NE",
      "material": "cardboard",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     },
     {
      "gu": [
@@ -204,7 +224,8 @@
      ],
      "face": "NE",
      "material": "cardboard",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     },
     {
      "gu": [
@@ -213,7 +234,8 @@
      ],
      "face": "NW",
      "material": "cardboard",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     },
     {
      "gu": [
@@ -222,7 +244,8 @@
      ],
      "face": "SE",
      "material": "cardboard",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     },
     {
      "gu": [
@@ -231,7 +254,8 @@
      ],
      "face": "NW",
      "material": "cardboard",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     },
     {
      "gu": [
@@ -240,7 +264,8 @@
      ],
      "face": "SE",
      "material": "cardboard",
-     "storeys": 2
+     "storeys": 2,
+     "blocks": true
     }
    ]
   },
@@ -431,6 +456,17 @@
        "hold": 600
       }
      ]
+    },
+    {
+     "id": "stall_fabric_back_rail",
+     "keys": [
+      {
+       "frame": "detail",
+       "target": "@quitanda_fabric",
+       "view": "S",
+       "hold": 600
+      }
+     ]
     }
    ],
    "takes": [
@@ -472,6 +508,23 @@
      "length": 800,
      "seed": 1,
      "note": "ROOF_MASTER_PLAN v0.43: a grenade OUTSIDE the front-left post: it takes the post (and not the whole stall), so what is sewn to it sags and falls along the seams"
+    },
+    {
+     "id": "quitanda_shot",
+     "profile": "engine",
+     "rail": "stall_fabric_back_rail",
+     "steps": [
+      "shoot 0",
+      "wait 1",
+      "shoot 0",
+      "wait 1",
+      "shoot 0"
+     ],
+     "at_key": 0,
+     "after_hold": 20,
+     "length": 500,
+     "seed": 1,
+     "note": "ROOF_MASTER_PLAN v0.43: three shots from the open front through the fabric quitanda's back wall (its panels `blocks`) at a guard behind it: each hole shows in the cloth"
     }
    ]
   }

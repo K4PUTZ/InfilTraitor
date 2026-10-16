@@ -4374,6 +4374,7 @@ var _soft_sheets: Array = []
 ## A blast that takes a support wakes THAT sim (`release_roof_sheet` starts from its positions); a blast that only cuts a hole swaps the skin (`_swap_resting_sheet`).
 ## `SOFT_REST=0` is the A/B: the flat plane again.
 var soft_roofs_rest: bool = false
+var soft_sheet_voxels: Dictionary = {}   ## Vector3i voxel -> true: the voxels a resting `SoftSheet3D` draws (the board leaves them out)
 var soft_walls_rest: bool = false   ## the walls too (`SOFT_WALLS=0`: the flat voxel walls as before)
 var _resting_sheets: Dictionary = {}   ## the roof's gu_cell -> {"sheet": SoftSheet3D at rest, "extent": {x0, z0, w, d}: the roof's rectangle as it was built (a hole can shrink what `collect` finds)}
 var _resting_jobs: Array = []          ## [{"roof", "info", "sim", "task", "usec", "steps"}]: the sims being brought to rest on workers while the board builds
@@ -4397,6 +4398,10 @@ func _begin_resting_sheets() -> void:
 		var job: Dictionary = {"roof": roof, "info": info, "sim": SoftSheetSim.new(params), "usec": 0, "steps": 0}
 		job["task"] = WorkerThreadPool.add_task(_rest_job_run.bind(job), false, "SoftSheetRest")
 		_resting_jobs.append(job)
+	soft_sheet_voxels.clear()
+	for job: Dictionary in _resting_jobs:
+		for v: Voxel in (job["info"] as Dictionary)["voxels"]:
+			soft_sheet_voxels[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
 	soft_roofs_rest = not _resting_jobs.is_empty()
 	soft_walls_rest = soft_roofs_rest and not _soft_walls.is_empty()
 

@@ -674,7 +674,8 @@
           "face": "NE",
           "material": "cardboard",
           "storeys": 2,
-          "comment": "cardboard quitanda, back"
+          "comment": "cardboard quitanda, back",
+          "blocks": true
         },
         {
           "gu": [
@@ -684,7 +685,8 @@
           "face": "NE",
           "material": "cardboard",
           "storeys": 2,
-          "comment": "cardboard quitanda, back"
+          "comment": "cardboard quitanda, back",
+          "blocks": true
         },
         {
           "gu": [
@@ -694,7 +696,8 @@
           "face": "NE",
           "material": "cardboard",
           "storeys": 2,
-          "comment": "cardboard quitanda, back"
+          "comment": "cardboard quitanda, back",
+          "blocks": true
         },
         {
           "gu": [
@@ -704,7 +707,8 @@
           "face": "NW",
           "material": "cardboard",
           "storeys": 2,
-          "comment": "cardboard quitanda, west side"
+          "comment": "cardboard quitanda, west side",
+          "blocks": true
         },
         {
           "gu": [
@@ -714,7 +718,8 @@
           "face": "SE",
           "material": "cardboard",
           "storeys": 2,
-          "comment": "cardboard quitanda, east side"
+          "comment": "cardboard quitanda, east side",
+          "blocks": true
         },
         {
           "gu": [
@@ -724,7 +729,8 @@
           "face": "NW",
           "material": "cardboard",
           "storeys": 2,
-          "comment": "cardboard quitanda, west side"
+          "comment": "cardboard quitanda, west side",
+          "blocks": true
         },
         {
           "gu": [
@@ -734,7 +740,8 @@
           "face": "SE",
           "material": "cardboard",
           "storeys": 2,
-          "comment": "cardboard quitanda, east side"
+          "comment": "cardboard quitanda, east side",
+          "blocks": true
         },
         {
           "gu": [
@@ -744,7 +751,8 @@
           "face": "NE",
           "material": "fabric",
           "storeys": 2,
-          "comment": "fabric quitanda, back"
+          "comment": "fabric quitanda, back",
+          "blocks": true
         },
         {
           "gu": [
@@ -754,7 +762,8 @@
           "face": "NE",
           "material": "fabric",
           "storeys": 2,
-          "comment": "fabric quitanda, back"
+          "comment": "fabric quitanda, back",
+          "blocks": true
         },
         {
           "gu": [
@@ -764,7 +773,8 @@
           "face": "NE",
           "material": "fabric",
           "storeys": 2,
-          "comment": "fabric quitanda, back"
+          "comment": "fabric quitanda, back",
+          "blocks": true
         },
         {
           "gu": [
@@ -774,7 +784,8 @@
           "face": "NW",
           "material": "fabric",
           "storeys": 2,
-          "comment": "fabric quitanda, west side"
+          "comment": "fabric quitanda, west side",
+          "blocks": true
         },
         {
           "gu": [
@@ -784,7 +795,8 @@
           "face": "SE",
           "material": "fabric",
           "storeys": 2,
-          "comment": "fabric quitanda, east side"
+          "comment": "fabric quitanda, east side",
+          "blocks": true
         },
         {
           "gu": [
@@ -794,7 +806,8 @@
           "face": "NW",
           "material": "fabric",
           "storeys": 2,
-          "comment": "fabric quitanda, west side"
+          "comment": "fabric quitanda, west side",
+          "blocks": true
         },
         {
           "gu": [
@@ -804,7 +817,8 @@
           "face": "SE",
           "material": "fabric",
           "storeys": 2,
-          "comment": "fabric quitanda, east side"
+          "comment": "fabric quitanda, east side",
+          "blocks": true
         }
       ],
       "v": 1

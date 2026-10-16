@@ -363,6 +363,13 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 	var panel_instances: Array[Dictionary] = []
 	for panel: Dictionary in spec.get("panels", []):
 		var panel_gu: Vector2i = Vector2i(panel.get("gu", Vector2i.ZERO))
+		## ROOF_MASTER_PLAN v0.43: a panel that `blocks` is a WALL of a thin material (a cloth or cardboard side of a stall), not a curtain one walks through: it blocks movement,
+		## sight and a round's way like any wall edge (a panel never did: only glass has its own path). Off by default: every panel authored before keeps being passed through.
+		if bool(panel.get("blocks", false)):
+			var toward: Dictionary = {"NW": Vector2i(-1, 0), "NE": Vector2i(0, -1), "SE": Vector2i(1, 0), "SW": Vector2i(0, 1)}
+			var delta: Vector2i = toward.get(String(panel.get("face", "")).to_upper(), Vector2i.ZERO)
+			if delta != Vector2i.ZERO:
+				blocked_edges.append({"from": panel_gu + offset, "to": panel_gu + offset + delta})
 		panel_instances.append({
 			"gu_cell": panel_gu + offset,
 			"face": String(panel.get("face", "")),

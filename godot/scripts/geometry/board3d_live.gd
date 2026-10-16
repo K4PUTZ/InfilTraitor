@@ -2340,19 +2340,27 @@ func _mark_sheet_claims(store: VoxelStore) -> void:
 		if container is Slab and (container as Slab).role == Slab.Role.CEILING and (container as Slab).pane_id == "" and SoftSheetPresets.has((container as Slab).material):
 			of_container[ordinal] = 1
 			any = true
-		elif container is Slice and (container as Slice).pane_id == "" and SoftSheetPresets.has((container as Slice).material) and _room != null and bool(_room.get("soft_roofs_rest")) and bool(_room.get("soft_walls_rest")):
-			of_container[ordinal] = 1   ## a soft WALL (v0.43): drawn by its `SoftSheet3D` too, or not marked at all (a flat voxel wall as always)
+		elif container is Slice and (container as Slice).pane_id == "" and SoftSheetPresets.has((container as Slice).material) and _room != null and bool(_room.get("soft_walls_rest")):
+			of_container[ordinal] = 1   ## a soft WALL (v0.43): a candidate for its `SoftSheet3D`; a wall voxel the room does not give a sheet is drawn as ever
 			any = true
 	if not any:
 		return
 	_sheet_is_drawn = _room != null and bool(_room.get("soft_roofs_rest"))
+	var drawn_by_sheet: Dictionary = (_room.get("soft_sheet_voxels") as Dictionary) if _sheet_is_drawn else {}
 	_sheet_claim.resize(store.claims)
 	var flagged: int = 0
+	var by_sheet: int = 0
 	for claim in range(store.claims):
 		if of_container[store.claim_container[claim]] == 1:
-			_sheet_claim[claim] = 1
+			## 1: a soft roof drawn as one flat plane (as ever); 2: a voxel the room's `SoftSheet3D` draws, so the board draws nothing for it. A soft voxel that no sheet
+			## covers (a block's own roof) keeps the flat plane: it must not vanish.
+			if _sheet_is_drawn and drawn_by_sheet.has(Vector3i(store.xyz[claim * 3], store.xyz[claim * 3 + 1], store.xyz[claim * 3 + 2])):
+				_sheet_claim[claim] = 2
+				by_sheet += 1
+			else:
+				_sheet_claim[claim] = 1
 			flagged += 1
-	print("[SOFT-SHEET] %d roof voxel(s) of soft materials are drawn as %s" % [flagged, "a cloth at rest (SoftSheet3D)" if _sheet_is_drawn else "one flat plane"])
+	print("[SOFT-SHEET] %d voxel(s) of soft materials: %d drawn by a cloth at rest (SoftSheet3D), %d as one flat plane" % [flagged, by_sheet, flagged - by_sheet])
 
 
 func _collect_store(store: VoxelStore) -> Dictionary:
@@ -2767,9 +2775,9 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 		if owner[cell] != claim:
 			continue
 		var material: int = _store_material[mat[claim]]
-		if not _sheet_claim.is_empty() and _sheet_claim[claim] == 1:
-			if _sheet_is_drawn:
-				continue   ## the room's `SoftSheet3D` draws this roof: the voxel stays the index (light, support, damage), the board draws nothing for it
+		if not _sheet_claim.is_empty() and _sheet_claim[claim] != 0:
+			if _sheet_claim[claim] == 2:
+				continue   ## the room's `SoftSheet3D` draws this: the voxel stays the index (light, support, damage), the board draws nothing for it
 			## A soft roof is a sheet: one plane, the underside of the voxel (the top of whatever holds it), whatever its neighbours.
 			var sheet_plane := Vector2i(Dir.TOP, level - 1)
 			if not planes.has(sheet_plane):

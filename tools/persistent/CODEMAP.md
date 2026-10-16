@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**306 scripts · 92973 lines total** (under `godot/scripts/`)
+**306 scripts · 92993 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3514 lines
+extends `Node3D` · 3522 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -6205,7 +6205,7 @@ extends `Node` · 252 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 636 lines
+`class_name MapCompiler` · extends `RefCounted` · 643 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -6319,7 +6319,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11974 lines
+extends `Node2D` · 11979 lines
 
 `godot/scripts/world/room.gd`
 

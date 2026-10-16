@@ -4929,7 +4929,7 @@ func _release_prepare(roof: Dictionary, from_rest: bool, blast_cells: Dictionary
 		v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
 		record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state, v.damage_is_blast, v.damage_carved_side, v.damage_variant, v.damage_substrate, v)
 		gus[Vector2i(v.grid_pos.x >> 3, v.grid_pos.y >> 3)] = true
-	return {"roof": roof, "info": info, "sheet": sheet, "sim": sim, "skin": skin, "params": params, "voxels": voxels, "gus": gus, "material": material, "t0": t0, "t_sim": t_sim, "t_skin": t_skin}
+	return {"rested": resting != null, "roof": roof, "info": info, "sheet": sheet, "sim": sim, "skin": skin, "params": params, "voxels": voxels, "gus": gus, "material": material, "t0": t0, "t_sim": t_sim, "t_skin": t_skin}
 
 
 ## The cloths one blast lets go are SEWN: the sheets are set up in one `SoftSheetGroup`, stepped together, with a seam wherever their edges touch (the roof first, then the
@@ -4980,7 +4980,14 @@ func _release_finish(jobs: Array) -> bool:
 	_repaint_voxel_light_buckets_scoped(shot_repaint_scope(gus.keys()), true)
 	var t_field: int = Time.get_ticks_usec()
 	## The cloth appears the moment the chunks swap; the light the roof kept out is written AFTER, a slice a frame (the planes are ~590 ms on the Moto).
-	while is_instance_valid(live) and bool(live.call("remesh_pending")):
+	## A cloth that stood at rest is drawn by its own node, not by the board's chunks: nothing in the remesh shows it, so it falls at once. Only a roof the board still drew as a
+	## flat plane (SOFT_REST=0, the bench's flat start) has to wait for the chunks to swap. (The first version waited for them: 5.7 s on the Moto after a quitanda, with the cloth
+	## standing there untouched while the blast played.)
+	var must_wait: bool = false
+	for job: Dictionary in jobs:
+		if not bool(job["rested"]):
+			must_wait = true
+	while must_wait and is_instance_valid(live) and bool(live.call("remesh_pending")):
 		await live.remesh_committed
 	for job: Dictionary in jobs:
 		if not is_instance_valid(job["sheet"]):

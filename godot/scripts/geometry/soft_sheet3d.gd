@@ -423,6 +423,7 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 	var burn_b: Dictionary = skin.get("burn_b", {})   ## column -> seconds AFTER the cloth parks that it catches
 	var soot_final: Dictionary = skin.get("soot_final", {})   ## column -> the tone it ends (1 = clean, 0 = black)
 	var custom1 := PackedFloat32Array()
+	var has_fire: bool = not (burn.is_empty() and burn_b.is_empty() and soot_final.is_empty())   ## a cloth at rest, untouched, has none: its vertices need no neighbour walk
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	for a in range(qa + 1):
 		for b in range(qb + 1):
@@ -443,7 +444,7 @@ func _build_mesh(sim: SoftSheetSim, skin: Dictionary) -> ArrayMesh:
 			var final_tone: float = 1.0
 			var n_a: int = 0
 			var n_b: int = 0
-			for dx in range(-1, 1):
+			for dx in range(-1 if has_fire else 0, 1 if has_fire else 0):
 				for dz in range(-1, 1):
 					var cell_v := Vector2i(x0 + ox + dx, z0 + oz + dz)
 					if burn.has(cell_v):

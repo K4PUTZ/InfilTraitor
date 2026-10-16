@@ -4476,26 +4476,38 @@ func _finish_resting_sheets(live: Node) -> void:
 		if job.has("cache_key"):
 			SoftSheetRestCache.store(String(job["cache_key"]), (job["sim"] as SoftSheetSim).pos.duplicate())
 	SoftSheetRestCache.flush()
+	soft_sheet_voxels = {}   ## only the board's first mesh reads it (`_mark_sheet_claims`): the next load builds it again
 	var shown: int = 0
+	var skin_usec: int = 0
+	var setup_usec: int = 0
+	var show_usec: int = 0
 	for job: Dictionary in _resting_jobs:
 		var roof: Dictionary = job["roof"]
 		var info: Dictionary = job["info"]
 		var sim: SoftSheetSim = job["sim"]
+		var ts0: int = Time.get_ticks_usec()
 		var skin: Dictionary = _cloth_skin(info, String(roof["material"]), sim.origin.y, live, false)
+		skin_usec += Time.get_ticks_usec() - ts0
 		var sheet := SoftSheet3D.new()
 		_soft_sheets.append(sheet)
 		live.call("register_soft_sheet", sheet)
 		sheet.name = "SoftSheetRest_%s_%d_%d_%s" % [String(roof["material"]), int(info["x0"]), int(info["z0"]), "wall" if info.has("plane") else "roof"]
 		(live.call("geometry_root") as Node3D).add_child(sheet)
+		var ts1: int = Time.get_ticks_usec()
 		sheet.setup(live, sim, skin)
+		setup_usec += Time.get_ticks_usec() - ts1
+		var ts2: int = Time.get_ticks_usec()
 		sheet.show_at_rest(false)
-		_resting_sheets[_sheet_key(roof)] = {"sheet": sheet, "rest_columns": (info["columns"] as Dictionary).duplicate(), "count": (info["keys"] as Dictionary).size(), "burned": false, "extent": {"x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"])}}
+		show_usec += Time.get_ticks_usec() - ts2
+		_resting_sheets[_sheet_key(roof)] = {"sheet": sheet, "rest_columns": info["columns"], "count": (info["keys"] as Dictionary).size(), "burned": false, "extent": {"x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"])}}
 		_sheet_entity_by_key[_sheet_key(roof)] = roof
 		for key: Vector3i in info["keys"]:
 			_sheet_of_voxel[key] = _sheet_key(roof)
 		shown += 1
 		print("[SOFT-SHEET] %s %s at %s shown AT REST from the load (%s): %d x %d nodes settled in %d step(s), %.0f ms on a worker" % [String(roof["material"]), "wall" if info.has("plane") else "roof", str(_sheet_key(roof)),
 			"from the cache" if bool(job["cached"]) else "settled now", sim.nx, sim.nz, int(job["steps"]), float(int(job["usec"])) / 1000.0])
+	if shown > 0:
+		print("[SOFT-SHEET] on the main thread: skin dictionaries %.0f ms, SoftSheet3D.setup (mesh, texture, material) %.0f ms, show_at_rest %.0f ms, for %d cloth(s)" % [float(skin_usec) / 1000.0, float(setup_usec) / 1000.0, float(show_usec) / 1000.0, shown])
 	print("[SOFT-SHEET] voxel handles after the sheets: %d container(s) turned back into objects (%d voxels), %d single handle(s) made" % [VoxelContainer.Stats.converted, VoxelContainer.Stats.converted_voxels, VoxelContainer.Stats.handles])
 	if shown > 0:
 		print("[SOFT-SHEET] %d cloth(s) at rest (%d from the cache, %d settled now): the load waited %.0f ms for the workers, %.0f ms in all" % [shown, SoftSheetRestCache.hits, SoftSheetRestCache.misses, float(waited) / 1000.0, float(Time.get_ticks_usec() - t0) / 1000.0])
@@ -4580,7 +4592,7 @@ func _cloth_skin(info: Dictionary, material: String, y_top: float, live: Node, f
 			gus[Vector2i(key.x >> 3, key.y >> 3)] = true
 			xy[Vector2i(key.x, key.y)] = true
 		return {"xy": xy, "thickness": float(row.get("thickness", 0.0)), "burn": burn, "burn_b": burn_b, "soot_final": soot_final, "x0": 0, "z0": 0, "w": int(info["nu"]), "d": int(info["levels"]),
-			"step": int(row.get("skin_step", 2)), "mask": mask, "plane": info["plane"], "gus": gus, "y_top": y_top, "material": material,
+			"step": int(row.get("skin_step", 2)) if (fire or soot_only) else 2, "mask": mask, "plane": info["plane"], "gus": gus, "y_top": y_top, "material": material,
 			"threaded": str(_dev_flag("SOFT_SHEET_THREAD", "1")) != "0", "label": "%s wall %dx%d voxels" % [material, int(info["nu"]), int(info["levels"])],
 			"color": func(gx: int, gz: int) -> Color:
 				var near_w: int = int(ring_of.get(Vector2i(gx, gz), 99))
@@ -4594,7 +4606,7 @@ func _cloth_skin(info: Dictionary, material: String, y_top: float, live: Node, f
 					tone = maxf(tone, float(live.call("top_shade", cx, cy, lvl, soot_w)))
 				tone *= 1.0 - 0.22 * pow(clampf(1.0 - float(near_w) / 14.0, 0.0, 1.0), 1.5)
 				return Color(base.r * tone, base.g * tone, base.b * tone, 1.0).srgb_to_linear()}
-	return {"thickness": float(row.get("thickness", 0.0)), "burn": burn, "burn_b": burn_b, "soot_final": soot_final, "x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": int(row.get("skin_step", 2)), "mask": mask,
+	return {"thickness": float(row.get("thickness", 0.0)), "burn": burn, "burn_b": burn_b, "soot_final": soot_final, "x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": int(row.get("skin_step", 2)) if (fire or soot_only) else 2, "mask": mask,
 		"y_top": y_top, "material": material, "threaded": str(_dev_flag("SOFT_SHEET_THREAD", "1")) != "0", "label": "%s %dx%d voxels" % [material, int(info["w"]), int(info["d"])],
 		"color": func(gx: int, gy: int) -> Color:
 			## Near an opening the soot the blast stamped on the roof's plane is a ring of squares (1/8 GU): not baked, the cloth's fire is drawn by its shader (ragged,

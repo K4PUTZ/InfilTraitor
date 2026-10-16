@@ -130,7 +130,7 @@ func _init(p: Dictionary) -> void:
 	else:
 		_move_pins_out_of_boxes()   ## a given start (a cloth at rest that a blast wakes) already has its pins where they were put
 	prev = pos.duplicate()
-	_build_constraints(float(row.get("k_stretch", 3000.0)), float(row.get("k_shear", 60.0)), _gravity * pow(float(row.get("lb", 0.12)), 3.0))
+	_build_constraints(float(row.get("k_stretch", 3000.0)), float(row.get("k_shear", 60.0)), _gravity * pow(float(row.get("lb", 0.12)), 3.0), int(row.get("plate", 0)), float(row.get("crease", 1.0)))
 	_factor()
 
 
@@ -525,7 +525,9 @@ func _collide() -> void:
 # ---------------------------------------------------------------------------------------------------------------------------------
 # the system: built once
 
-func _build_constraints(k_stretch: float, k_shear: float, bend: float) -> void:
+## `plate` > 0 (cardboard): the bend resists everywhere EXCEPT at the creases, the nodes whose index along the axis is a multiple of `plate`, where it is only `crease`
+## of the full stiffness: a plate of `plate` intervals stays flat and the sheet folds along the lines between plates, not node by node like cloth.
+func _build_constraints(k_stretch: float, k_shear: float, bend: float, plate: int = 0, crease: float = 1.0) -> void:
 	for i in range(nx):
 		for j in range(nz):
 			var id: int = i * nz + j
@@ -539,9 +541,9 @@ func _build_constraints(k_stretch: float, k_shear: float, bend: float) -> void:
 				_add_edge(id + nz, id + 1, k_shear, diagonal)
 			if bend > 0.0:
 				if i + 2 < nx:
-					_add_bend(id, id + nz, id + 2 * nz, bend * hz / (hx * hx * hx))
+					_add_bend(id, id + nz, id + 2 * nz, bend * hz / (hx * hx * hx) * (crease if plate > 0 and (i + 1) % plate == 0 else 1.0))
 				if j + 2 < nz:
-					_add_bend(id, id + 1, id + 2, bend * hx / (hz * hz * hz))
+					_add_bend(id, id + 1, id + 2, bend * hx / (hz * hz * hz) * (crease if plate > 0 and (j + 1) % plate == 0 else 1.0))
 
 
 func _add_edge(a: int, b: int, w: float, rest: float) -> void:

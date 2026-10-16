@@ -43,6 +43,9 @@ func _init() -> void:
 	_check(fabric.size() == 1, "ROOF_LAB has exactly one fabric roof (room C): found %d" % fabric.size())
 	if fabric.size() == 1:
 		_awning(room, layout, fabric[0])
+	for roof: Dictionary in layout["roof_instances"]:
+		if String(roof["material"]) == "cardboard":
+			_cardboard(room, layout, roof, fabric.size() == 1)
 	VoxelStore.active = null
 	room.queue_free()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -179,6 +182,47 @@ func _awning(room: Node, layout: Dictionary, roof: Dictionary) -> void:
 	for node in range(nx * nz):
 		lowest = minf(lowest, sim.pos[node * 3 + 1])
 	_check(lowest >= SoftSheetSim.CONTACT_MARGIN - 1.0e-9, "no node sank into the floor (lowest %.3f)" % lowest)
+
+
+## ROOF_MASTER_PLAN v0.42: cardboard is PLATES, not nodes. On the same walls a cardboard awning sags far less than the cloth one (stiff between creases), it settles,
+## and its plates stay flat: along a row of the sheet the bend between two nodes of one plate is small, at a crease it is allowed to be large.
+func _cardboard(room: Node, layout: Dictionary, roof: Dictionary, with_cloth: bool) -> void:
+	var info: Dictionary = RoofSheetRelease.collect(room, roof)
+	_check(not info.is_empty(), "cardboard: collect() finds the roof")
+	if info.is_empty():
+		return
+	var ground: int = room._voxel_board.ground_plane_level()
+	var params: Dictionary = RoofSheetRelease.sim_params(info, SoftSheetPresets.OF["cardboard"], ground, layout["solid_block_instances"], RoofSheetRelease.solid_grid(info, ground))
+	var sim := SoftSheetSim.new(params)
+	var steps: int = sim.settle_now()
+	var lowest: float = 99.0
+	for node in range(sim.nx * sim.nz):
+		lowest = minf(lowest, sim.pos[node * 3 + 1])
+	var top: float = float(params["origin"].y)
+	_check(steps < 200 and sim.time < 8.0, "cardboard settles in %d step(s), %.1f s" % [steps, sim.time])
+	## the cloth on the same kind of walls hangs to ~1 GU below its supports (the awning check above); the plates hold it up
+	_check(lowest > top - 1.2, "cardboard sags %.2f GU at most (supports at %.2f, lowest node %.2f)" % [top - lowest, top, lowest])
+	## Plate rigidity: the mean bend angle between consecutive node pairs of a row inside a plate is at most a third of the one across creases
+	var inside: float = 0.0
+	var across: float = 0.0
+	var n_in: int = 0
+	var n_cr: int = 0
+	var plate: int = int(SoftSheetPresets.OF["cardboard"]["plate"])
+	for j in range(sim.nz):
+		for i in range(1, sim.nx - 1):
+			var a: Vector3 = sim.node_position(i - 1, j)
+			var b: Vector3 = sim.node_position(i, j)
+			var c: Vector3 = sim.node_position(i + 1, j)
+			var turn: float = (b - a).angle_to(c - b)
+			if i % plate == 0:
+				across += turn
+				n_cr += 1
+			else:
+				inside += turn
+				n_in += 1
+	var mean_in: float = inside / float(maxi(n_in, 1))
+	var mean_cr: float = across / float(maxi(n_cr, 1))
+	_check(mean_in < mean_cr, "cardboard bends at its creases (mean turn %.3f rad at a crease node, %.3f inside a plate)" % [mean_cr, mean_in])
 
 
 func _catmull(sim: SoftSheetSim, nx: int, nz: int, fi: float, fj: float) -> Vector3:

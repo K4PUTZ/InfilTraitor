@@ -57,6 +57,13 @@
      "height_class": 2,
      "radius": 4,
      "intensity": 0.9
+    },
+    {
+     "x": 26,
+     "y": 13,
+     "height_class": 2,
+     "radius": 4,
+     "intensity": 0.9
     }
    ]
   },
@@ -426,6 +433,110 @@
       1,
       1
      ]
+    },
+    {
+     "comment": "room D ring 24,11",
+     "gu": [
+      24,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room D ring 24,12",
+     "gu": [
+      24,
+      12
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room D ring 24,13",
+     "gu": [
+      24,
+      13
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room D ring 24,14",
+     "gu": [
+      24,
+      14
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room D ring 24,15",
+     "gu": [
+      24,
+      15
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room D ring 25,11",
+     "gu": [
+      25,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room D ring 26,11",
+     "gu": [
+      26,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "room D ring 27,11",
+     "gu": [
+      27,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2,
+     "size": [
+      1,
+      1
+     ]
     }
    ]
   },
@@ -495,6 +606,20 @@
      ],
      "storeys": 2,
      "material": "fabric",
+     "kind": "flat"
+    },
+    {
+     "comment": "room D: a 4x4 CARDBOARD roof (a rigid awning of plates) on room C's model, held by its two back walls x 24 / y 11 and a plywood post at its front corner (gu 28,15): take `roof_cardboard` (ROOF_MASTER_PLAN v0.42)",
+     "gu": [
+      25,
+      12
+     ],
+     "size": [
+      4,
+      4
+     ],
+     "storeys": 2,
+     "material": "cardboard",
      "kind": "flat"
     }
    ]
@@ -621,6 +746,33 @@
      "tags": [
       "event"
      ]
+    },
+    {
+     "id": "cardboard_roof",
+     "at": [
+      27.0,
+      14.0,
+      2.0
+     ],
+     "extent": [
+      4.0,
+      4.0,
+      0.5
+     ],
+     "tags": [
+      "roof",
+      "detail"
+     ]
+    },
+    {
+     "id": "room_d_front",
+     "at": [
+      28.5,
+      15.5
+     ],
+     "tags": [
+      "event"
+     ]
     }
    ],
    "regions": [
@@ -696,6 +848,24 @@
      "tags": [
       "roof"
      ]
+    },
+    {
+     "id": "room_d",
+     "box": {
+      "min": [
+       24,
+       11,
+       0
+      ],
+      "max": [
+       29,
+       16,
+       2
+      ]
+     },
+     "tags": [
+      "roof"
+     ]
     }
    ],
    "objectives": []
@@ -743,6 +913,17 @@
        "frame": "wide",
        "target": "@room_c",
        "view": "N",
+       "hold": 600
+      }
+     ]
+    },
+    {
+     "id": "room_d_rail",
+     "keys": [
+      {
+       "frame": "wide",
+       "target": "@room_d",
+       "view": "E",
        "hold": 600
       }
      ]
@@ -828,6 +1009,19 @@
      "length": 1000,
      "seed": 1,
      "note": "ROOF_MASTER_PLAN v0.30: the post take, then a SECOND grenade on the cloth that has come to rest: it only blackens it (the cloth is scenery)"
+    },
+    {
+     "id": "roof_cardboard",
+     "profile": "engine",
+     "rail": "room_d_rail",
+     "steps": [
+      "throw 0 @room_d_front"
+     ],
+     "at_key": 0,
+     "after_hold": 20,
+     "length": 700,
+     "seed": 1,
+     "note": "ROOF_MASTER_PLAN v0.42: room D's cardboard awning (plates) is held by its two back walls and a post at its front corner (gu 28,15); a grenade under it cuts an irregular hole, throws and drops the pieces the roof already shed, removes the post, and the plates fall hinged along their creases"
     }
    ]
   },
@@ -839,6 +1033,19 @@
      "gu": [
       28,
       9
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      28,
+      15
      ],
      "storey": 0,
      "vox_offset": [

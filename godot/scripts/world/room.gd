@@ -3619,6 +3619,8 @@ func material_tints() -> Dictionary:
 ## DIAG-21 — the 3D board over the real registries. The 2D board is hidden, not
 ## removed: every 2D system keeps running, so only its drawing leaves the frame.
 func _start_board3d_live() -> void:
+	for soft_material: String in SoftSheetPresets.OF:
+		RubblePresetsRef.ROOF_FIRE_SPREAD_OF.erase(soft_material)   ## a cloth / cardboard roof is a sheet now: its fire is the sheet's shader (`_cloth_skin`), not the voxels'
 	if str(_dev_flag("ROOF_FIRE", "1")) == "0":
 		RubblePresetsRef.ROOF_FIRE_SPREAD_OF = {}   ## the A/B: a blast sets no fire creeping across a cardboard / fabric roof (the cloth is judged first, fire and soot after)
 	var existing: Node = get_node_or_null("Board3DLive")
@@ -4453,6 +4455,7 @@ func _cloth_skin(info: Dictionary, material: String, y_top: float, live: Node, f
 	var burn_b: Dictionary = {}
 	var soot_final: Dictionary = {}
 	var ring_of: Dictionary = {}
+	var mask: Dictionary = info["columns"]
 	if fire:
 		## FIRE on the cloth (Director, 2026-10-16): the edge of the opening burns while the cloth comes down (the rim and 2 columns in: A), and when it parks the fire
 		## spreads a little from the opening, up to 7 columns, thinning out (B: `burn_b`, seconds AFTER it parks), goes out and leaves soot (`soot_final`: grey, nearer
@@ -4463,7 +4466,11 @@ func _cloth_skin(info: Dictionary, material: String, y_top: float, live: Node, f
 				ring_of[c] = 0
 				frontier.append(c)
 		var ring: int = 0
-		while not frontier.is_empty() and ring < 14:
+		var burn_rings: int = int(row.get("burn_rings", 3))
+		var spread_rings: int = int(row.get("spread_rings", 9))
+		var spread_keep: float = float(row.get("spread_keep", 0.93))
+		var darkest: float = float(row.get("soot", 0.55))
+		while not frontier.is_empty() and ring < maxi(14, spread_rings + 2):
 			ring += 1
 			var next: Array = []
 			for c: Vector2i in frontier:
@@ -4476,13 +4483,21 @@ func _cloth_skin(info: Dictionary, material: String, y_top: float, live: Node, f
 		for c: Vector2i in ring_of:
 			var r: int = int(ring_of[c])
 			var h: float = float(FacadeSampler._fnv1a_hash("CLOTHFIRE|%d,%d" % [c.x, c.y]) % 1000) / 1000.0
-			if r <= 3:
-				burn[c] = 0.05 + 0.12 * float(r) + 0.1 * h
-				soot_final[c] = lerpf(0.55, 0.72, float(r) / 3.0)   ## Director 2026-10-16: not so black, a wider feather
-			if r >= 1 and r <= 9 and h < pow(0.93, float(r)):
-				burn_b[c] = 0.28 * float(r) + 0.2 * h
-				soot_final[c] = minf(float(soot_final.get(c, 1.0)), lerpf(0.6, 0.85, float(r) / 9.0))
-	return {"thickness": float(row.get("thickness", 0.0)), "burn": burn, "burn_b": burn_b, "soot_final": soot_final, "x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": 2, "mask": info["columns"],
+			if r <= burn_rings:
+				burn[c] = 0.05 + 0.12 * float(r) * 3.0 / float(burn_rings) + 0.1 * h
+				soot_final[c] = lerpf(darkest, lerpf(darkest, 1.0, 0.55), float(r) / float(burn_rings))   ## Director 2026-10-16: not so black, a wider feather
+			if r >= 1 and r <= spread_rings and h < pow(spread_keep, float(r)):
+				burn_b[c] = 0.28 * float(r) * 9.0 / float(spread_rings) + 0.2 * h
+				soot_final[c] = minf(float(soot_final.get(c, 1.0)), lerpf(lerpf(darkest, 1.0, 0.15), 0.85, float(r) / float(spread_rings)))
+		## A TORN edge (cardboard): the columns beside the opening are missing by chance, fewer the farther in, so the rim is a ragged line and not a tidy 1-voxel staircase.
+		var ragged: float = float(row.get("ragged", 0.0))
+		if ragged > 0.0:
+			mask = mask.duplicate()
+			for c: Vector2i in ring_of:
+				var rr: int = int(ring_of[c])
+				if rr <= 2 and float(FacadeSampler._fnv1a_hash("CARDTEAR|%d,%d" % [c.x, c.y]) % 1000) / 1000.0 < ragged / float(rr + 1):
+					mask.erase(c)
+	return {"thickness": float(row.get("thickness", 0.0)), "burn": burn, "burn_b": burn_b, "soot_final": soot_final, "x0": int(info["x0"]), "z0": int(info["z0"]), "w": int(info["w"]), "d": int(info["d"]), "step": int(row.get("skin_step", 2)), "mask": mask,
 		"y_top": y_top, "material": material, "threaded": str(_dev_flag("SOFT_SHEET_THREAD", "1")) != "0", "label": "%s %dx%d voxels" % [material, int(info["w"]), int(info["d"])],
 		"color": func(gx: int, gy: int) -> Color:
 			## Near an opening the soot the blast stamped on the roof's plane is a ring of squares (1/8 GU): not baked, the cloth's fire is drawn by its shader (ragged,
@@ -4586,13 +4601,12 @@ var _cloth_rim_columns: Dictionary = {}
 ## ROOF_MASTER_PLAN v0.30 (Director, 2026-10-16): a blast through a CLOTH roof disintegrates the middle of the hole with no debris, and the hole's ragged
 ## RIM is a ring of tongue-shaped flaps that are thrown up with the explosion and fall back to hang from it (`ClothFlaps3D`). `destroyed`: the hole's
 ## voxels, Vector3i(x, y, level) -> cell. Returns the flaps made.
-func _spawn_cloth_flaps(destroyed: Dictionary, material: String) -> int:
-	var live: Node = board3d()
+## The opening a blast cut in a cloth roof: its whole hole, its mean, and its RIM (a hole voxel with a standing roof voxel beside it, with the boundary point between
+## the two). The standing column beside every rim voxel is remembered (`_cloth_rim_columns`): where the cloth burns and where its fire spreads from. {} when there is no rim.
+func _cloth_hole_rim(destroyed: Dictionary) -> Dictionary:
 	var store: VoxelStore = VoxelStore.active
-	if live == null or store == null or destroyed.is_empty():
-		return 0
-	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
-	var ground: int = _voxel_board.ground_plane_level()
+	if store == null or destroyed.is_empty():
+		return {}
 	var grid: ClaimGrid = ClaimGrid.of_store(store)
 	var hole: Dictionary = {}   ## Vector2i -> level
 	## The whole hole: the voxels the blast listed AND the destroyed ones joined to them (a hole's own ring of already-destroyed voxels is not on the list).
@@ -4630,12 +4644,27 @@ func _spawn_cloth_flaps(destroyed: Dictionary, material: String) -> int:
 			rim.append([(boundary - mean).angle(), p, boundary, int(hole[p])])
 			break
 	if rim.is_empty():
-		return 0
+		return {}
 	for entry_r: Array in rim:
 		## the standing column beside the hole voxel (the boundary lies half way between the two): the cloth's own edge of this opening
 		var hv: Vector2i = entry_r[1]
 		var bp: Vector2 = entry_r[2]
 		_cloth_rim_columns[Vector2i(roundi(2.0 * (bp.x - 0.5) - float(hv.x)), roundi(2.0 * (bp.y - 0.5) - float(hv.y)))] = true
+	return {"rim": rim, "mean": mean, "hole": hole}
+
+
+func _spawn_cloth_flaps(destroyed: Dictionary, material: String) -> int:
+	var live: Node = board3d()
+	if live == null or VoxelStore.active == null or destroyed.is_empty():
+		return 0
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var ground: int = _voxel_board.ground_plane_level()
+	var found: Dictionary = _cloth_hole_rim(destroyed)
+	if found.is_empty():
+		return 0
+	var rim: Array = found["rim"]
+	var mean: Vector2 = found["mean"]
+	var hole: Dictionary = found["hole"]
 	rim.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
 	var definition = Registries.get_material_registry().resolve(material)
 	var base: Color = definition.base_color if definition != null else Color(0.8, 0.8, 0.8)
@@ -6498,7 +6527,9 @@ func spawn_blast_roof_rubble(cells: Array, epicentre: Vector2) -> int:
 		destroyed[Vector3i(gp.x, gp.y, int(c["level"]))] = c
 		_quiet_destroy[Vector3i(gp.x, gp.y, int(c["level"]))] = true
 	if SoftSheetPresets.has(material):
-		return _spawn_cloth_flaps(destroyed, material)   ## a cloth sheds nothing: its hole's middle is gone and the rim becomes flaps
+		if bool(SoftSheetPresets.OF[material].get("flaps", true)):
+			return _spawn_cloth_flaps(destroyed, material)   ## a cloth sheds nothing: its hole's middle is gone and the rim becomes flaps
+		_cloth_hole_rim(destroyed)   ## cardboard (v0.42): no tongues, the opening's edge is torn ragged (`_cloth_skin`); the pieces it sheds are the roof's own (below)
 	## A piece of roof that lost its support (`island`) falls whole, apart from the hole's own pieces.
 	var island: Array = []
 	for c: Dictionary in cells:

@@ -6,8 +6,14 @@ extends RefCounted
 ## Per material: `lb` the bend length in GU (the span at which a strip of it sags a lot: canvas ~ 0.12, corrugated cardboard ~ 0.7), `k_stretch`
 ## (about 1% strain under the roof's own weight; ABOVE ~1e4 the solver locks), `k_shear` (cloth gives, cardboard does not), `drag` (1/s), `thickness` (GU: the
 ## visible edge of the cloth, 0.04 = 6 cm: a cloth is a few millimetres, but it must show an edge at the play zoom, ROOF_MASTER_PLAN v0.31 C2).
+## Optional keys (ROOF_MASTER_PLAN v0.42, cardboard): `plate` (nodes per plate along an axis: the sheet is stiff inside a plate and bends only at the CREASES between
+## plates, every `plate` nodes) with `crease` (the crease's bend stiffness as a share of the plate's); `flaps` (false: the hole's rim is NOT the cloth's tongues, it is torn
+## ragged: `ragged`, the share of columns beside the opening that are missing); `skin_step` (voxels per skin quad); `burn_rings` / `spread_rings` / `spread_keep` (how far the
+## edge burns while it falls, how far the fire spreads where it parks, and how fast that thins out) and `soot` (the darkest tone round the opening).
 static var OF: Dictionary = {
 	"fabric": {"lb": 0.12, "k_stretch": 3000.0, "k_shear": 60.0, "drag": 1.0, "thickness": 0.04},
+	"cardboard": {"lb": 0.7, "k_stretch": 3000.0, "k_shear": 600.0, "drag": 1.5, "thickness": 0.05, "plate": 3, "crease": 0.004, "flaps": false, "ragged": 0.5,
+		"skin_step": 1, "burn_rings": 5, "spread_rings": 14, "spread_keep": 0.96, "soot": 0.38},
 }
 
 ## How far (GU) from a wall that holds a cloth the cloth stays LOCKED flat before it may bend and fall (Director, 2026-10-16: "meia GU"). It is the stretch

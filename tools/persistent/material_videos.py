@@ -16,8 +16,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-CENTRE_X = {"concrete": 3, "metal": 8, "stone": 13, "wood": 18, "brick": 23, "cardboard": 27, "fabric": 31, "plywood": 35, "glass": 39}
-BUFFER = 5
+MATERIALS = {"concrete": 3, "metal": 8, "stone": 13, "wood": 18, "brick": 23, "cardboard": 27, "fabric": 31, "plywood": 35, "glass": 39}
 
 
 def main() -> int:
@@ -26,16 +25,12 @@ def main() -> int:
     ap.add_argument("--events", default="shot,blast", help="shot, blast or both")
     ap.add_argument("--map", default="PLAYGROUND")
     args = ap.parse_args()
-    materials = [m for m in CENTRE_X if not args.only or m in args.only.split(",")]
+    materials = [m for m in MATERIALS if not args.only or m in args.only.split(",")]
     failed = []
     for material in materials:
         for event in args.events.split(","):
             take = "%s_%s" % (event, material)
             env = dict(os.environ)
-            if event == "shot":
-                x = CENTRE_X[material] + BUFFER
-                env["INFILTRAITOR_SHOT_AGENT_CELL"] = "%d,11" % x
-                env["INFILTRAITOR_SHOT_GUARD_CELL"] = "%d,9" % x
             print("[MATERIAL-VIDEOS] %s ..." % take, flush=True)
             r = subprocess.run([sys.executable, str(ROOT / "tools/persistent/capture.py"), "--map", args.map, "--take", take],
                                env=env, capture_output=True, text=True)

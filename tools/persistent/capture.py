@@ -53,6 +53,18 @@ OVERRIDE = ROOT / "override.cfg"
 OVERRIDE_MARK = "; written by tools/persistent/capture.py — deleted when the run ends"
 
 
+def take_env(map_id, take_id):
+    """A take may carry `env` ({"SHOT_AGENT_CELL": "40,11", ...}): dev flags its events need (a shot wants the agent and the guard put in front of the wall).
+    Every key gets the INFILTRAITOR_ prefix the game reads."""
+    path = ROOT / "maps" / ("%s.map.json" % map_id)
+    if not path.exists():
+        return {}
+    for t in json.loads(path.read_text()).get("sections", {}).get("capture", {}).get("takes", []):
+        if t.get("id") == take_id:
+            return {"INFILTRAITOR_" + k: str(v) for k, v in (t.get("env") or {}).items()}
+    return {}
+
+
 def run_godot(map_id, scenario, window, shape, extra=(), seed=1, timeout=600, env_extra=None):
     env = dict(os.environ, **(env_extra or {}), INFILTRAITOR_MAP=map_id, INFILTRAITOR_SCENARIO=scenario, INFILTRAITOR_RNG_SEED=str(seed),
                INFILTRAITOR_CAPTURE_WINDOW_FIXED="1", INFILTRAITOR_CAPTURE_SHAPE=shape)
@@ -205,7 +217,8 @@ def main() -> int:
             with tempfile.TemporaryDirectory(prefix="take_") as tmp:
                 frames = Path(tmp) / "f.png"
                 movie_log = run_godot(args.map, "take %s; quit" % args.take, window, shape,
-                                      extra=("--write-movie", str(frames), "--fixed-fps", "60"), seed=args.seed, timeout=1800)
+                                      extra=("--write-movie", str(frames), "--fixed-fps", "60"), seed=args.seed, timeout=1800,
+                                      env_extra=take_env(args.map, args.take))
                 pngs = sorted(Path(tmp).glob("f*.png"))
                 if not pngs:
                     sys.exit("[CAPTURE] Movie Maker wrote no frame")

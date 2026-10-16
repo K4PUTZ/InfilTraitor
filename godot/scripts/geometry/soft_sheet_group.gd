@@ -106,7 +106,16 @@ static func pin_to_statics(initial: PackedFloat64Array, nx: int, nz: int, pins: 
 		ring.append(i * nz + nz - 1)
 	for j in range(nz - 2, 0, -1):
 		ring.append(j)
+	var box := AABB(_node(initial, 0), Vector3.ZERO)   ## where this sheet is: a static one that is nowhere near is not even looked at (a level with forty cloths)
+	for n in range(nx * nz):
+		box = box.expand(_node(initial, n))
+	box = box.grow(tol)
 	for other: SoftSheetSim in statics:
+		var box_o := AABB(_node(other.pos, 0), Vector3.ZERO)
+		for n in range(other.nx * other.nz):
+			box_o = box_o.expand(_node(other.pos, n))
+		if not box.intersects(box_o):
+			continue
 		var ring_o: PackedInt32Array = boundary_nodes(other)
 		for n in ring:
 			if pins[n] == 1:

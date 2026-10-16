@@ -11,9 +11,12 @@ const NEIGHBOURS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vect
 
 
 ## The roof entity `roof` ({gu_cell, size, storeys, material}, the layout's own) as a sheet to release, or {} when it has nothing standing.
-## Keys: voxels (Array of Voxel), columns (Dictionary Vector2i -> true), held (Dictionary Vector2i -> true), level (the roof's lowest level), x0, z0, w, d
+## Keys: claims (PackedInt32Array), keys (Dictionary Vector3i -> true: x, y, level), columns (Dictionary Vector2i -> true), held (Dictionary Vector2i -> true), level (the roof's lowest level), x0, z0, w, d
 ## (voxel columns), material.
 ## `ignore`: voxels (Vector3i x, y, level) to treat as already gone when deciding what holds the sheet (the other cloths one blast is letting go in the same batch).
+## HANDLE-FREE (ROOF_MASTER_PLAN v0.45): the roof's voxels are CLAIMS of the store (`claims`, and `keys` Vector3i -> true), never `Voxel` objects: asking a slab for its
+## `voxels` turns the whole container back into objects (~1 KB each on the Moto, kept for good: 14 MB for ten stalls). A `Voxel` handle is made only for what a release
+## destroys (`Room._release_prepare`).
 static func collect(room: Node, roof: Dictionary, ignore: Dictionary = {}) -> Dictionary:
 	var slabs: SlabRegistry = room._slab_registry
 	var store: VoxelStore = VoxelStore.active
@@ -23,7 +26,7 @@ static func collect(room: Node, roof: Dictionary, ignore: Dictionary = {}) -> Di
 	var origin: Vector2i = roof["gu_cell"]
 	var size: Vector2i = roof["size"]
 	var base_level: int = GeometryCoords.storey_level_base(int(roof["storeys"]))
-	var voxels: Array = []
+	var claims := PackedInt32Array()
 	var columns: Dictionary = {}
 	var keys: Dictionary = {}
 	var low: int = 1 << 30
@@ -33,14 +36,19 @@ static func collect(room: Node, roof: Dictionary, ignore: Dictionary = {}) -> Di
 				var slab: Slab = slabs.get_slab(Slab.make_id(origin + Vector2i(dx, dy), Slab.Role.CEILING, base_level + level_offset))
 				if slab == null or slab.material != material or slab.pane_id != "":
 					continue
-				for v: Voxel in slab.voxels:
-					if VoxelStore.damage_of(v) == Voxel.DamageState.DESTROYED:
+				var first: int = slab.claim_offset()
+				if first < 0:
+					continue
+				for i in range(slab.voxel_count()):
+					var claim: int = first + i
+					if ((store.state[claim] >> 1) & 3) == Voxel.DamageState.DESTROYED:
 						continue
-					voxels.append(v)
-					columns[Vector2i(v.grid_pos.x, v.grid_pos.y)] = true
-					keys[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
-					low = mini(low, v.level)
-	if voxels.is_empty():
+					var k: int = claim * 3
+					claims.append(claim)
+					columns[Vector2i(store.xyz[k], store.xyz[k + 1])] = true
+					keys[Vector3i(store.xyz[k], store.xyz[k + 1], store.xyz[k + 2])] = true
+					low = mini(low, store.xyz[k + 2])
+	if claims.is_empty():
 		return {}
 	var lo := Vector2i(1 << 30, 1 << 30)
 	var hi := Vector2i(-(1 << 30), -(1 << 30))
@@ -57,14 +65,13 @@ static func collect(room: Node, roof: Dictionary, ignore: Dictionary = {}) -> Di
 	if not ignore.is_empty():
 		walk_keys = keys.duplicate()
 		walk_keys.merge(ignore)
-	for v: Voxel in voxels:
-		var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+	for key: Vector3i in keys:
 		for d: Vector3i in NEIGHBOURS:
 			var n: Vector3i = key + d
 			if keys.has(n) or ignore.has(n):
 				continue
-			var other: Voxel = grid.voxel_at(n)
-			if other != null and VoxelStore.damage_of(other) != Voxel.DamageState.DESTROYED and _is_grounded(grid, n, walk_keys, ground, grounded):
+			var dmg: int = grid.damage_at(n)
+			if dmg > -1 and dmg != Voxel.DamageState.DESTROYED and _is_grounded(grid, n, walk_keys, ground, grounded):
 				held[Vector2i(key.x, key.y)] = true
 				if d.z < 0:
 					held_below[Vector2i(key.x, key.y)] = true
@@ -72,7 +79,7 @@ static func collect(room: Node, roof: Dictionary, ignore: Dictionary = {}) -> Di
 					var dirs: Array = held_dirs.get(Vector2i(key.x, key.y), [])
 					dirs.append(Vector2i(d.x, d.y))
 					held_dirs[Vector2i(key.x, key.y)] = dirs
-	return {"voxels": voxels, "columns": columns, "held": held, "held_dirs": held_dirs, "held_below": held_below, "level": low, "x0": lo.x, "z0": lo.y, "w": hi.x - lo.x + 1, "d": hi.y - lo.y + 1, "material": material}
+	return {"claims": claims, "keys": keys, "columns": columns, "held": held, "held_dirs": held_dirs, "held_below": held_below, "level": low, "x0": lo.x, "z0": lo.y, "w": hi.x - lo.x + 1, "d": hi.y - lo.y + 1, "material": material}
 
 
 ## ROOF_MASTER_PLAN v0.43 — VERTICAL sheets. A wall of cloth or cardboard (a half-thickness panel, a block's one-layer shell) is a plane of voxels at one coordinate `w`
@@ -82,22 +89,25 @@ static func collect(room: Node, roof: Dictionary, ignore: Dictionary = {}) -> Di
 ## in GU. Its cells are (along, down) = Vector2i(u - u0, top level - level), so row 0 is the top; the sim's node `j` runs down the same way.
 static func wall_entities(room: Node) -> Array:
 	var out: Array = []
-	var edges: EdgeRegistry = room._edge_registry
-	if edges == null:
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
 		return out
-	var cells: Dictionary = {}   ## Vector3i(axis, w, material hash) -> {Vector2i(u, level) -> Voxel}
+	var cells: Dictionary = {}   ## Vector3i(axis, w, material id) -> {Vector2i(u, level) -> claim}
 	var materials: Dictionary = {}
-	for slice: Slice in edges.all_slices():
-		if not SoftSheetPresets.has(slice.material) or slice.pane_id != "":
+	for ci in range(store.container_count()):
+		var slice: Slice = store.containers[ci] as Slice
+		if slice == null or not SoftSheetPresets.has(slice.material) or slice.pane_id != "":
 			continue
-		var voxels: Array = slice.voxels
-		if voxels.is_empty():
+		var first: int = slice.claim_offset()
+		var count: int = slice.voxel_count()
+		if first < 0 or count == 0:
 			continue
 		var lo := Vector2i(1 << 30, 1 << 30)
 		var hi := Vector2i(-(1 << 30), -(1 << 30))
-		for v: Voxel in voxels:
-			lo = Vector2i(mini(lo.x, v.grid_pos.x), mini(lo.y, v.grid_pos.y))
-			hi = Vector2i(maxi(hi.x, v.grid_pos.x), maxi(hi.y, v.grid_pos.y))
+		for claim in range(first, first + count):
+			var k: int = claim * 3
+			lo = Vector2i(mini(lo.x, store.xyz[k]), mini(lo.y, store.xyz[k + 1]))
+			hi = Vector2i(maxi(hi.x, store.xyz[k]), maxi(hi.y, store.xyz[k + 1]))
 		var axis: int = 0 if hi.x == lo.x else (1 if hi.y == lo.y else -1)   ## 0: the plane is x = const (the wall runs along y); 1: y = const
 		if axis < 0:
 			continue   ## a slice more than one voxel thick is not a sheet
@@ -105,8 +115,9 @@ static func wall_entities(room: Node) -> Array:
 		materials[slice.material] = mid
 		var key := Vector3i(axis, lo.x if axis == 0 else lo.y, mid)
 		var plane: Dictionary = cells.get(key, {})
-		for v: Voxel in voxels:
-			plane[Vector2i(v.grid_pos.y if axis == 0 else v.grid_pos.x, v.level)] = v
+		for claim in range(first, first + count):
+			var k: int = claim * 3
+			plane[Vector2i(store.xyz[k + 1] if axis == 0 else store.xyz[k], store.xyz[k + 2])] = claim
 		cells[key] = plane
 	for key: Vector3i in cells:
 		var plane: Dictionary = cells[key]
@@ -130,13 +141,13 @@ static func wall_entities(room: Node) -> Array:
 						stack.append(c + d)
 			var lo_c := Vector2i(1 << 30, 1 << 30)
 			var hi_c := Vector2i(-(1 << 30), -(1 << 30))
-			var voxels: Array = []
+			var claims := PackedInt32Array()
 			for c: Vector2i in component:
 				lo_c = Vector2i(mini(lo_c.x, c.x), mini(lo_c.y, c.y))
 				hi_c = Vector2i(maxi(hi_c.x, c.x), maxi(hi_c.y, c.y))
-				voxels.append(plane[c])
+				claims.append(int(plane[c]))
 			out.append({"kind": "wall", "material": material, "axis": key.x, "w": key.y, "u0": lo_c.x, "nu": hi_c.x - lo_c.x + 1, "lo": lo_c.y, "hi": hi_c.y,
-				"id": "wall|%d|%d|%d|%d|%d|%s" % [key.x, key.y, lo_c.x, lo_c.y, hi_c.y, material], "voxels": voxels})
+				"id": "wall|%d|%d|%d|%d|%d|%s" % [key.x, key.y, lo_c.x, lo_c.y, hi_c.y, material], "claims": claims})
 	return out
 
 
@@ -148,17 +159,25 @@ static func collect_wall(room: Node, entity: Dictionary, ignore: Dictionary = {}
 	var w: int = int(entity["w"])
 	var u0: int = int(entity["u0"])
 	var hi_level: int = int(entity["hi"])
-	var voxels: Array = []
+	var claims := PackedInt32Array()
 	var columns: Dictionary = {}
 	var keys: Dictionary = {}
-	for v: Voxel in entity["voxels"]:
-		if VoxelStore.damage_of(v) == Voxel.DamageState.DESTROYED:
+	var lo_v := Vector2i(1 << 30, 1 << 30)
+	var hi_v := Vector2i(-(1 << 30), -(1 << 30))
+	for claim: int in entity["claims"]:
+		if ((store.state[claim] >> 1) & 3) == Voxel.DamageState.DESTROYED:
 			continue
-		voxels.append(v)
-		var u: int = v.grid_pos.y if axis == 0 else v.grid_pos.x
-		columns[Vector2i(u - u0, hi_level - v.level)] = true
-		keys[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
-	if voxels.is_empty():
+		var k: int = claim * 3
+		var x: int = store.xyz[k]
+		var y: int = store.xyz[k + 1]
+		var level: int = store.xyz[k + 2]
+		claims.append(claim)
+		var u: int = y if axis == 0 else x
+		columns[Vector2i(u - u0, hi_level - level)] = true
+		keys[Vector3i(x, y, level)] = true
+		lo_v = Vector2i(mini(lo_v.x, x), mini(lo_v.y, y))
+		hi_v = Vector2i(maxi(hi_v.x, x), maxi(hi_v.y, y))
+	if claims.is_empty():
 		return {}
 	var grid: ClaimGrid = ClaimGrid.of_store(store)
 	var ground: int = room._voxel_board.ground_plane_level()
@@ -175,14 +194,13 @@ static func collect_wall(room: Node, entity: Dictionary, ignore: Dictionary = {}
 		dirs.append_array([Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(1, 0, 0), Vector3i(-1, 0, 0)])
 	else:
 		dirs.append_array([Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0)])
-	for v: Voxel in voxels:
-		var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+	for key: Vector3i in keys:
 		for d: Vector3i in dirs:
 			var n: Vector3i = key + d
 			if keys.has(n) or ignore.has(n):
 				continue
-			var other: Voxel = grid.voxel_at(n)
-			if other != null and VoxelStore.damage_of(other) != Voxel.DamageState.DESTROYED and _is_grounded(grid, n, walk_keys, ground, grounded):
+			var dmg: int = grid.damage_at(n)
+			if dmg > -1 and dmg != Voxel.DamageState.DESTROYED and _is_grounded(grid, n, walk_keys, ground, grounded):
 				var u: int = key.y if axis == 0 else key.x
 				held[Vector2i(u - u0, hi_level - key.z)] = true
 				break
@@ -198,12 +216,7 @@ static func collect_wall(room: Node, entity: Dictionary, ignore: Dictionary = {}
 	else:
 		origin = Vector3(float(u0) * unit, top_y, (float(w) + 0.5) * unit)
 		eu = Vector3(unit, 0, 0)
-	var lo_v := Vector2i(1 << 30, 1 << 30)
-	var hi_v := Vector2i(-(1 << 30), -(1 << 30))
-	for v: Voxel in voxels:
-		lo_v = Vector2i(mini(lo_v.x, v.grid_pos.x), mini(lo_v.y, v.grid_pos.y))
-		hi_v = Vector2i(maxi(hi_v.x, v.grid_pos.x), maxi(hi_v.y, v.grid_pos.y))
-	return {"kind": "wall", "voxels": voxels, "columns": columns, "held": held, "held_dirs": {}, "held_below": {}, "level": hi_level, "x0": lo_v.x, "z0": lo_v.y,
+	return {"kind": "wall", "claims": claims, "keys": keys, "columns": columns, "held": held, "held_dirs": {}, "held_below": {}, "level": hi_level, "x0": lo_v.x, "z0": lo_v.y,
 		"w": hi_v.x - lo_v.x + 1, "d": hi_v.y - lo_v.y + 1, "material": String(entity["material"]), "nu": nu, "levels": levels, "axis": axis, "wc": w, "u0": u0,
 		"plane": {"origin": origin, "eu": eu, "ev": Vector3(0, -unit, 0)}}
 
@@ -251,9 +264,7 @@ static func solid_grid(info: Dictionary, ground_level: int, pad: int = 6) -> Dic
 	var store: VoxelStore = VoxelStore.active
 	if store == null:
 		return {}
-	var roof: Dictionary = {}
-	for v: Voxel in info["voxels"]:
-		roof[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
+	var roof: Dictionary = info["keys"]
 	var x_lo: int = maxi(int(info["x0"]) - pad, store.x0)
 	var x_hi: int = mini(int(info["x0"]) + int(info["w"]) + pad, store.x0 + store.w - 1)
 	var y_lo: int = maxi(int(info["z0"]) - pad, store.y0)
@@ -265,11 +276,19 @@ static func solid_grid(info: Dictionary, ground_level: int, pad: int = 6) -> Dic
 	var nl: int = l_hi - l_lo + 1
 	var bits := PackedByteArray()
 	bits.resize(w * h * nl)
+	## A row of the store's grid that holds nothing (most of them: the air round a stall) is skipped in one call; the roof's own voxels are cleared afterwards.
 	for level in range(l_lo, l_hi + 1):
 		for y in range(y_lo, y_hi + 1):
+			var base: int = store.cell_index(x_lo, y, level)
+			if store.occ.slice(base, base + w).count(0) == w:
+				continue
+			var row: int = ((level - l_lo) * h + (y - y_lo)) * w - x_lo
 			for x in range(x_lo, x_hi + 1):
-				if store.occ[store.cell_index(x, y, level)] != 0 and not roof.has(Vector3i(x, y, level)):
-					bits[((level - l_lo) * h + (y - y_lo)) * w + (x - x_lo)] = 1
+				if store.occ[base + x - x_lo] != 0:
+					bits[row + x] = 1
+	for key: Vector3i in roof:
+		if key.x >= x_lo and key.x <= x_hi and key.y >= y_lo and key.y <= y_hi and key.z >= l_lo and key.z <= l_hi:
+			bits[((key.z - l_lo) * h + (key.y - y_lo)) * w + (key.x - x_lo)] = 0
 	return {"bits": bits, "x0": x_lo, "y0": y_lo, "l0": l_lo, "w": w, "h": h, "nl": nl}
 
 

@@ -342,6 +342,15 @@ func steps_run() -> int:
 	return _steps
 
 
+## A result read back from `SoftSheetRestCache`: the node positions of a cloth settled before, at rest (no velocity).
+func restore(positions: PackedFloat64Array) -> void:
+	assert(positions.size() == pos.size())
+	pos = positions.duplicate()
+	prev = pos.duplicate()
+	for k in range(vel.size()):
+		vel[k] = 0.0
+
+
 ## A cloth that is part of the world from the first frame (ROOF_MASTER_PLAN v0.41, Director 2026-10-16: "o pano já nasce apoiado nos elementos do mundo"): the
 ## same steps the fall runs, back to back, until nothing moves faster than `speed` GU/s for `hold` seconds (a little looser than `is_settled()`: the eye cannot
 ## tell 0.15 GU/s from rest, and every second saved here is a second of load on the handset) or `max_seconds` of simulated time. No Godot object is touched: it

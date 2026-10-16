@@ -66,7 +66,7 @@ func _awning(room: Node, layout: Dictionary, roof: Dictionary) -> void:
 	_check(not info.is_empty(), "collect() finds the awning")
 	if info.is_empty():
 		return
-	var voxels: Array = info["voxels"]
+	var voxels: Array = (info["keys"] as Dictionary).keys()   ## Vector3i x, y, level: a sheet is claims, no `Voxel` object
 	var x0: int = int(info["x0"])
 	var z0: int = int(info["z0"])
 	var w: int = int(info["w"])
@@ -74,8 +74,8 @@ func _awning(room: Node, layout: Dictionary, roof: Dictionary) -> void:
 	_check(voxels.size() >= 1024 and voxels.size() <= 1200, "%d roof voxel(s): the 4 x 4 GU roof (1024) plus the rim voxels its free edges own" % voxels.size())
 	_check(w >= 32 and w <= 34 and d >= 32 and d <= 34, "the sheet covers %d x %d voxel columns" % [w, d])
 	var level_ok: bool = true
-	for v: Voxel in voxels:
-		if v.level != int(info["level"]):
+	for v: Vector3i in voxels:
+		if v.z != int(info["level"]):
 			level_ok = false
 	_check(level_ok, "one layer: every voxel is at level %d (a fabric roof is built thin)" % int(info["level"]))
 	var held: Dictionary = info["held"]

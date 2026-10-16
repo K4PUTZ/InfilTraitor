@@ -1,0 +1,1517 @@
+{
+ "format": "infiltraitor-map",
+ "schema_version": 3,
+ "id": "MARKET_STRESS",
+ "meta": {
+  "title": "Market Stress",
+  "description": "ROOF_MASTER_PLAN v0.45 stress fixture (2026-10-17): TEN quitandas (a 3x2 roof of fabric or cardboard on two plywood posts, panels on three sides) in two rows, to measure what many cloths cost in load time, PSS and a release on the handsets. Take-less; run `soft_sheet_scenario.py --extra MAP=MARKET_STRESS`. Dev fixture, not a level."
+ },
+ "sections": {
+  "board": {
+   "v": 1,
+   "inner_size": [
+    48,
+    24
+   ],
+   "buffer": 5,
+   "floor_tile": "floor_SE"
+  },
+  "actors": {
+   "v": 1,
+   "agent_start": [
+    2,
+    22
+   ],
+   "guards": []
+  },
+  "legacy_compiler": {
+   "v": 1,
+   "wall_height": 1,
+   "access_points": [],
+   "dividers": [],
+   "lights": [
+    {
+     "x": 4,
+     "y": 6,
+     "height_class": 2,
+     "radius": 5,
+     "intensity": 0.9
+    },
+    {
+     "x": 13,
+     "y": 6,
+     "height_class": 2,
+     "radius": 5,
+     "intensity": 0.9
+    },
+    {
+     "x": 22,
+     "y": 6,
+     "height_class": 2,
+     "radius": 5,
+     "intensity": 0.9
+    },
+    {
+     "x": 31,
+     "y": 6,
+     "height_class": 2,
+     "radius": 5,
+     "intensity": 0.9
+    },
+    {
+     "x": 40,
+     "y": 6,
+     "height_class": 2,
+     "radius": 5,
+     "intensity": 0.9
+    },
+    {
+     "x": 4,
+     "y": 15,
+     "height_class": 2,
+     "radius": 5,
+     "intensity": 0.9
+    },
+    {
+     "x": 13,
+     "y": 15,
+     "height_class": 2,
+     "radius": 5,
+     "intensity": 0.9
+    },
+    {
+     "x": 22,
+     "y": 15,
+     "height_class": 2,
+     "radius": 5,
+     "intensity": 0.9
+    },
+    {
+     "x": 31,
+     "y": 15,
+     "height_class": 2,
+     "radius": 5,
+     "intensity": 0.9
+    },
+    {
+     "x": 40,
+     "y": 15,
+     "height_class": 2,
+     "radius": 5,
+     "intensity": 0.9
+    },
+    {
+     "x": 24,
+     "y": 12,
+     "height_class": 4,
+     "radius": 24,
+     "intensity": 1.1
+    }
+   ]
+  },
+  "blocks": {
+   "v": 2,
+   "items": []
+  },
+  "floor_zones": {
+   "v": 2,
+   "items": [
+    {
+     "gu": [
+      0,
+      0
+     ],
+     "size": [
+      48,
+      24
+     ],
+     "material": "concrete"
+    }
+   ]
+  },
+  "damage_materials": {
+   "v": 1,
+   "materials": [
+    "concrete",
+    "glass"
+   ]
+  },
+  "roofs": {
+   "v": 1,
+   "items": [
+    {
+     "gu": [
+      3,
+      5
+     ],
+     "size": [
+      3,
+      2
+     ],
+     "storeys": 2,
+     "material": "fabric",
+     "kind": "flat"
+    },
+    {
+     "gu": [
+      12,
+      5
+     ],
+     "size": [
+      3,
+      2
+     ],
+     "storeys": 2,
+     "material": "cardboard",
+     "kind": "flat"
+    },
+    {
+     "gu": [
+      21,
+      5
+     ],
+     "size": [
+      3,
+      2
+     ],
+     "storeys": 2,
+     "material": "fabric",
+     "kind": "flat"
+    },
+    {
+     "gu": [
+      30,
+      5
+     ],
+     "size": [
+      3,
+      2
+     ],
+     "storeys": 2,
+     "material": "cardboard",
+     "kind": "flat"
+    },
+    {
+     "gu": [
+      39,
+      5
+     ],
+     "size": [
+      3,
+      2
+     ],
+     "storeys": 2,
+     "material": "fabric",
+     "kind": "flat"
+    },
+    {
+     "gu": [
+      3,
+      14
+     ],
+     "size": [
+      3,
+      2
+     ],
+     "storeys": 2,
+     "material": "cardboard",
+     "kind": "flat"
+    },
+    {
+     "gu": [
+      12,
+      14
+     ],
+     "size": [
+      3,
+      2
+     ],
+     "storeys": 2,
+     "material": "fabric",
+     "kind": "flat"
+    },
+    {
+     "gu": [
+      21,
+      14
+     ],
+     "size": [
+      3,
+      2
+     ],
+     "storeys": 2,
+     "material": "cardboard",
+     "kind": "flat"
+    },
+    {
+     "gu": [
+      30,
+      14
+     ],
+     "size": [
+      3,
+      2
+     ],
+     "storeys": 2,
+     "material": "fabric",
+     "kind": "flat"
+    },
+    {
+     "gu": [
+      39,
+      14
+     ],
+     "size": [
+      3,
+      2
+     ],
+     "storeys": 2,
+     "material": "cardboard",
+     "kind": "flat"
+    }
+   ]
+  },
+  "panels": {
+   "v": 1,
+   "items": [
+    {
+     "gu": [
+      3,
+      5
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      4,
+      5
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      5,
+      5
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      3,
+      5
+     ],
+     "face": "NW",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      5,
+      5
+     ],
+     "face": "SE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      3,
+      6
+     ],
+     "face": "NW",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      5,
+      6
+     ],
+     "face": "SE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      12,
+      5
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      13,
+      5
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      14,
+      5
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      12,
+      5
+     ],
+     "face": "NW",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      14,
+      5
+     ],
+     "face": "SE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      12,
+      6
+     ],
+     "face": "NW",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      14,
+      6
+     ],
+     "face": "SE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      21,
+      5
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      22,
+      5
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      23,
+      5
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      21,
+      5
+     ],
+     "face": "NW",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      23,
+      5
+     ],
+     "face": "SE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      21,
+      6
+     ],
+     "face": "NW",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      23,
+      6
+     ],
+     "face": "SE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      30,
+      5
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      31,
+      5
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      32,
+      5
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      30,
+      5
+     ],
+     "face": "NW",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      32,
+      5
+     ],
+     "face": "SE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      30,
+      6
+     ],
+     "face": "NW",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      32,
+      6
+     ],
+     "face": "SE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      39,
+      5
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      40,
+      5
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      41,
+      5
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      39,
+      5
+     ],
+     "face": "NW",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      41,
+      5
+     ],
+     "face": "SE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      39,
+      6
+     ],
+     "face": "NW",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      41,
+      6
+     ],
+     "face": "SE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      3,
+      14
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      4,
+      14
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      5,
+      14
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      3,
+      14
+     ],
+     "face": "NW",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      5,
+      14
+     ],
+     "face": "SE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      3,
+      15
+     ],
+     "face": "NW",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      5,
+      15
+     ],
+     "face": "SE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      12,
+      14
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      13,
+      14
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      14,
+      14
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      12,
+      14
+     ],
+     "face": "NW",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      14,
+      14
+     ],
+     "face": "SE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      12,
+      15
+     ],
+     "face": "NW",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      14,
+      15
+     ],
+     "face": "SE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      21,
+      14
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      22,
+      14
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      23,
+      14
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      21,
+      14
+     ],
+     "face": "NW",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      23,
+      14
+     ],
+     "face": "SE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      21,
+      15
+     ],
+     "face": "NW",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      23,
+      15
+     ],
+     "face": "SE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      30,
+      14
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      31,
+      14
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      32,
+      14
+     ],
+     "face": "NE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      30,
+      14
+     ],
+     "face": "NW",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      32,
+      14
+     ],
+     "face": "SE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      30,
+      15
+     ],
+     "face": "NW",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      32,
+      15
+     ],
+     "face": "SE",
+     "material": "fabric",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      39,
+      14
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      40,
+      14
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      41,
+      14
+     ],
+     "face": "NE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      39,
+      14
+     ],
+     "face": "NW",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      41,
+      14
+     ],
+     "face": "SE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      39,
+      15
+     ],
+     "face": "NW",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    },
+    {
+     "gu": [
+      41,
+      15
+     ],
+     "face": "SE",
+     "material": "cardboard",
+     "storeys": 2,
+     "blocks": true
+    }
+   ]
+  },
+  "props": {
+   "v": 1,
+   "items": [
+    {
+     "def": "post_wood",
+     "gu": [
+      3,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      5,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      7,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      12,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      14,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      7,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      21,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      23,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      7,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      30,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      32,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      7,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      39,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      41,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      7,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      3,
+      15
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      5,
+      15
+     ],
+     "storey": 0,
+     "vox_offset": [
+      7,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      12,
+      15
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      14,
+      15
+     ],
+     "storey": 0,
+     "vox_offset": [
+      7,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      21,
+      15
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      23,
+      15
+     ],
+     "storey": 0,
+     "vox_offset": [
+      7,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      30,
+      15
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      32,
+      15
+     ],
+     "storey": 0,
+     "vox_offset": [
+      7,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      39,
+      15
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      7
+     ],
+     "rot": 0
+    },
+    {
+     "def": "post_wood",
+     "gu": [
+      41,
+      15
+     ],
+     "storey": 0,
+     "vox_offset": [
+      7,
+      7
+     ],
+     "rot": 0
+    }
+   ]
+  },
+  "layout": {
+   "v": 1,
+   "poi": [
+    {
+     "id": "stall_1",
+     "at": [
+      4.5,
+      6.0,
+      1.0
+     ],
+     "extent": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "stall_1_front",
+     "at": [
+      4.5,
+      7.25
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "stall_2",
+     "at": [
+      13.5,
+      6.0,
+      1.0
+     ],
+     "extent": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "stall_2_front",
+     "at": [
+      13.5,
+      7.25
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "stall_3",
+     "at": [
+      22.5,
+      6.0,
+      1.0
+     ],
+     "extent": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "stall_3_front",
+     "at": [
+      22.5,
+      7.25
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "stall_4",
+     "at": [
+      31.5,
+      6.0,
+      1.0
+     ],
+     "extent": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "stall_4_front",
+     "at": [
+      31.5,
+      7.25
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "stall_5",
+     "at": [
+      40.5,
+      6.0,
+      1.0
+     ],
+     "extent": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "stall_5_front",
+     "at": [
+      40.5,
+      7.25
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "stall_6",
+     "at": [
+      4.5,
+      15.0,
+      1.0
+     ],
+     "extent": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "stall_6_front",
+     "at": [
+      4.5,
+      16.25
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "stall_7",
+     "at": [
+      13.5,
+      15.0,
+      1.0
+     ],
+     "extent": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "stall_7_front",
+     "at": [
+      13.5,
+      16.25
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "stall_8",
+     "at": [
+      22.5,
+      15.0,
+      1.0
+     ],
+     "extent": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "stall_8_front",
+     "at": [
+      22.5,
+      16.25
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "stall_9",
+     "at": [
+      31.5,
+      15.0,
+      1.0
+     ],
+     "extent": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "stall_9_front",
+     "at": [
+      31.5,
+      16.25
+     ],
+     "tags": [
+      "event"
+     ]
+    },
+    {
+     "id": "stall_10",
+     "at": [
+      40.5,
+      15.0,
+      1.0
+     ],
+     "extent": [
+      5.0,
+      4.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "stall_10_front",
+     "at": [
+      40.5,
+      16.25
+     ],
+     "tags": [
+      "event"
+     ]
+    }
+   ],
+   "regions": [],
+   "objectives": []
+  },
+  "capture": {
+   "v": 1,
+   "rails": [],
+   "takes": []
+  }
+ }
+}

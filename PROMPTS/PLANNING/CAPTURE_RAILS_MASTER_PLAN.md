@@ -373,6 +373,7 @@ take runs.
   `aim @big_pane`. The substitution resolves `@id` to the anchor's ground cell (a point's GU; a box's centre). **The event and the
   camera read the SAME anchor, so they cannot point at different places** — the fix for both of the 2026-10-10 mistakes.
 - **`at_key` / `after_hold`**: the steps fire when key `at_key` starts holding, plus `after_hold` frames.
+- **`env`** (2026-10-17, optional): `{"SHOT_AGENT_CELL": "40,11", ...}`, dev flags the take's events need (a shot puts the agent and the guard in front of the wall). `capture.py` passes each as `INFILTRAITOR_<key>` to the Godot run; the map validator accepts the field and checks it is an object; the engine ignores it. `PLAYGROUND`'s `shot_<material>` takes carry theirs.
 - **`length`** in frames; **`seed`** goes to `INFILTRAITOR_RNG_SEED` (the effects use `randf_range()`).
 - **Default takes, for ANY map, with no authored data:** `overview` (`wide @map`, one key per view N/E/S/W with the profile's turn),
   `region:<id>` (`wide` on a region, then `detail` on every `detail`-tagged POI inside it) and `poi:<id>` (`detail`). A map

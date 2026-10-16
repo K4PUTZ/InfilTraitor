@@ -529,7 +529,8 @@ static func _check_tags(row: Dictionary, what: String, errors: Array) -> void:
 # `ScenarioRunner` when the take runs (one parser; headless map tools cannot load it).
 
 const KEY_FIELDS: Array[String] = ["frame", "target", "view", "move", "hold", "ease", "turn", "follow", "centre", "zoom"]
-const TAKE_FIELDS: Array[String] = ["id", "profile", "rail", "steps", "at_key", "after_hold", "length", "seed", "note"]
+## `env` (2026-10-17): dev flags the take's events need, `{"SHOT_AGENT_CELL": "40,11"}`; `tools/persistent/capture.py` hands them to the game as `INFILTRAITOR_<key>` (the engine itself ignores the field).
+const TAKE_FIELDS: Array[String] = ["id", "profile", "rail", "steps", "at_key", "after_hold", "length", "seed", "note", "env"]
 const FRAME_MODES: Array[String] = ["wide", "detail", "fit", "explicit"]
 const EASES: Array[String] = ["linear", "in_out", "out"]
 const TURNS: Array[String] = ["cut", "orbit"]
@@ -569,6 +570,8 @@ static func validate_capture(section: Dictionary, layout_section: Dictionary, er
 		for f in t.keys():
 			if not TAKE_FIELDS.has(str(f)):
 				errors.append("capture.takes '%s': unknown field '%s'" % [id, f])
+		if t.has("env") and not (t["env"] is Dictionary):
+			errors.append("capture.takes '%s'.env must be an object of dev flags" % id)
 		var rid: String = str(t.get("rail", ""))
 		if not rail_ids.has(rid) and not (rid == "overview" or rid.begins_with("region:") or rid.begins_with("poi:")):
 			errors.append("capture.takes '%s': rail '%s' is not a rail of this map (nor overview / region:<id> / poi:<id>)" % [id, rid])

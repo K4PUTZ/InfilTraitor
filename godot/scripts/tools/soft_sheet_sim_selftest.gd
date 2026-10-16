@@ -18,6 +18,7 @@ func _init() -> void:
 	_test_awning()
 	_test_wall()
 	_test_group()
+	_test_rest_cache()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -137,6 +138,37 @@ func _test_group() -> void:
 		roof2.step()
 		wall2.step()
 	_check(wall2.pos[(3 * wnz) * 3 + 1] < 0.5, "control: unsewn, the same wall falls to the floor alone (top edge middle at %.2f GU)" % wall2.pos[(3 * wnz) * 3 + 1])
+
+
+## ROOF_MASTER_PLAN v0.45: a settled cloth is read back from the cache instead of simulated. The key must change with anything that changes the result (a pin, a material
+## number, the grid) and a restored sim must be the settled one, at rest.
+func _test_rest_cache() -> void:
+	print("[rest cache] the key and the restore")
+	var pins := PackedByteArray()
+	pins.resize(10 * 7)
+	for j in range(7):
+		pins[j] = 1
+	var params: Dictionary = {"nx": 10, "nz": 7, "hx": 3.0 / 9.0, "hz": 1.8 / 6.0, "origin": Vector3(10.0, 1.9, 5.0), "material": _fabric, "pins": pins, "floor_y": 0.0,
+		"basis_u": Vector3(1, 0, 0), "basis_v": Vector3(0, -1, 0)}
+	var key: String = SoftSheetRestCache.key_of(params)
+	_check(key == SoftSheetRestCache.key_of(params.duplicate(true)), "the same setup has the same key (a key that moved between runs would never hit)")
+	var other_pins: PackedByteArray = pins.duplicate()
+	other_pins[20] = 1
+	var changed: Dictionary = params.duplicate()
+	changed["pins"] = other_pins
+	_check(key != SoftSheetRestCache.key_of(changed), "one more pinned node is another key")
+	var stiffer: Dictionary = params.duplicate()
+	stiffer["material"] = {"lb": 0.7, "k_stretch": 3000.0, "k_shear": 600.0, "drag": 1.5}
+	_check(key != SoftSheetRestCache.key_of(stiffer), "another material is another key")
+	var a := SoftSheetSim.new(params)
+	a.settle_now()
+	var b := SoftSheetSim.new(params)
+	b.restore(a.pos)
+	var same: bool = true
+	for k in range(a.pos.size()):
+		if a.pos[k] != b.pos[k] or b.vel[k] != 0.0:
+			same = false
+	_check(same, "a restored sim holds the settled positions, with no velocity")
 
 
 func _test_cantilever() -> void:

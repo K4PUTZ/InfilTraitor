@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**306 scripts · 93004 lines total** (under `godot/scripts/`)
+**307 scripts · 93201 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — actor_pose.gd, agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_sim.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
+- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_rest_cache.gd, soft_sheet_sim.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, layout_overlay3d.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
 - **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, soft_sheet_presets.gd, structural_support.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
@@ -1188,7 +1188,7 @@ extends `Node3D` · 3522 lines
 
 ### `soft_sheet_group.gd`
 
-`class_name SoftSheetGroup` · extends `RefCounted` · 262 lines
+`class_name SoftSheetGroup` · extends `RefCounted` · 271 lines
 
 `godot/scripts/geometry/soft_sheet_group.gd`
 
@@ -1200,9 +1200,23 @@ extends `Node3D` · 3522 lines
 
 ---
 
+### `soft_sheet_rest_cache.gd`
+
+`class_name SoftSheetRestCache` · extends `RefCounted` · 83 lines
+
+`godot/scripts/geometry/soft_sheet_rest_cache.gd`
+
+> SoftSheetRestCache — the settled node positions of the cloths at rest, kept between runs (ROOF_MASTER_PLAN v0.45). A cloth that stands in the world from the first frame is settled at load (`SoftSheetSim.settle_now`, 80-350 ms of worker time each on the handsets). The result is a pure function of the sheet's setup (its grid, its pins, the walls round it, the material's numbers and the sim's own version), so it is computed once per device and read back afterwards: a level with many cloths (tents) loads without simulating any of them. A key that no longer matches (a map edit, a preset change, a new sim) simply misses and the sheet is settled again: nothing is ever invalidated by hand. `SOFT_REST_CACHE=0` turns it off. The file is a cache, never state: delete it freely.
+
+**Constants / tuning**
+- `SIM_VERSION` = `3`
+- `PATH` = `"user://soft_sheet_rest_v1.bin"`
+
+---
+
 ### `soft_sheet_sim.gd`
 
-`class_name SoftSheetSim` · extends `RefCounted` · 679 lines
+`class_name SoftSheetSim` · extends `RefCounted` · 688 lines
 
 `godot/scripts/geometry/soft_sheet_sim.gd`
 
@@ -3291,7 +3305,7 @@ extends `Node` · 236 lines
 
 ### `claim_grid.gd`
 
-`class_name ClaimGrid` · extends `RefCounted` · 64 lines
+`class_name ClaimGrid` · extends `RefCounted` · 74 lines
 
 `godot/scripts/systems/prediction/claim_grid.gd`
 
@@ -3299,6 +3313,12 @@ extends `Node` · 236 lines
 
 **Public API**
 - `func put(key: Vector3i, voxel: Voxel) -> void:`
+- `func damage_at(key: Vector3i) -> int:`
+- `func has(key: Vector3i) -> bool:`
+- `func claim_at(key: Vector3i) -> int:`
+- `func size() -> int:`
+- `func is_empty() -> bool:`
+- `func is_store_backed() -> bool:`
 
 ---
 
@@ -5361,7 +5381,7 @@ extends `SceneTree` · 210 lines
 
 ### `soft_sheet_sim_selftest.gd`
 
-extends `SceneTree` · 266 lines
+extends `SceneTree` · 298 lines
 
 `godot/scripts/tools/soft_sheet_sim_selftest.gd`
 
@@ -6242,7 +6262,7 @@ extends `Node` · 252 lines
 
 ### `map_layout.gd`
 
-`class_name MapLayout` · extends `RefCounted` · 628 lines
+`class_name MapLayout` · extends `RefCounted` · 631 lines
 
 `godot/scripts/world/maps/map_layout.gd`
 
@@ -6306,7 +6326,7 @@ extends `Node` · 252 lines
 
 ### `roof_sheet_release.gd`
 
-`class_name RoofSheetRelease` · extends `RefCounted` · 372 lines
+`class_name RoofSheetRelease` · extends `RefCounted` · 391 lines
 
 `godot/scripts/world/roof_sheet_release.gd`
 
@@ -6319,7 +6339,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11990 lines
+extends `Node2D` · 12022 lines
 
 `godot/scripts/world/room.gd`
 

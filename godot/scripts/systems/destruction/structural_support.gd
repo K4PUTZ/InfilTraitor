@@ -29,8 +29,8 @@ static func is_grounded(grid: ClaimGrid, start: Vector3i, skip: Dictionary, grou
 			var n: Vector3i = k + d
 			if seen.has(n) or skip.has(n):
 				continue
-			var other: Voxel = grid.voxel_at(n)
-			if other == null or VoxelStore.damage_of(other) == Voxel.DamageState.DESTROYED:
+			var dmg: int = grid.damage_at(n)
+			if dmg < 0 or dmg == Voxel.DamageState.DESTROYED:
 				continue
 			seen[n] = true
 			stack.append(n)
@@ -45,8 +45,8 @@ static func unsupported(grid: ClaimGrid, ground: int, seeds: Array, broken: Dict
 	var memo: Dictionary = {}
 	var loose: Dictionary = {}
 	for key: Vector3i in seeds:
-		var voxel: Voxel = grid.voxel_at(key)
-		if voxel == null or VoxelStore.damage_of(voxel) == Voxel.DamageState.DESTROYED:
+		var dmg: int = grid.damage_at(key)
+		if dmg < 0 or dmg == Voxel.DamageState.DESTROYED:
 			continue
 		if not is_grounded(grid, key, {}, ground, memo):
 			loose[key] = -1

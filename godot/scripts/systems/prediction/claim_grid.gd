@@ -38,6 +38,16 @@ func voxel_at(key: Vector3i) -> Voxel:
 	return null if claim < 0 else _store.voxel_of(claim)
 
 
+## The damage state at a cell (`Voxel.DamageState`), or -1 when nothing is there: answered from the store's packed state, no `Voxel` handle made (a walk over a roof's
+## neighbours made thousands of them, ~1 KB each, kept for good).
+func damage_at(key: Vector3i) -> int:
+	if _store == null:
+		var v: Voxel = _dict.get(key)
+		return -1 if v == null else VoxelStore.damage_of(v)
+	var claim: int = _store.last_claim_at(key.x, key.y, key.z)
+	return -1 if claim < 0 else ((_store.state[claim] >> 1) & 3)
+
+
 func has(key: Vector3i) -> bool:
 	if _store == null:
 		return _dict.has(key)

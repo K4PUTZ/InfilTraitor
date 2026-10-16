@@ -1011,7 +1011,11 @@
           "after_hold": 20,
           "length": 300,
           "seed": 1,
-          "note": "RF-S: the shotgun reference on plywood (INFILTRAITOR_SHOT_AGENT_CELL=40,11 INFILTRAITOR_SHOT_GUARD_CELL=40,9)"
+          "note": "RF-S: the shotgun reference on plywood (INFILTRAITOR_SHOT_AGENT_CELL=40,11 INFILTRAITOR_SHOT_GUARD_CELL=40,9)",
+          "env": {
+            "SHOT_AGENT_CELL": "40,11",
+            "SHOT_GUARD_CELL": "40,9"
+          }
         },
         {
           "id": "blast_brick",
@@ -1076,7 +1080,11 @@
           "after_hold": 20,
           "length": 300,
           "seed": 1,
-          "note": "RF-S: shotgun on stone (INFILTRAITOR_SHOT_AGENT_CELL=18,11 INFILTRAITOR_SHOT_GUARD_CELL=18,9)"
+          "note": "RF-S: shotgun on stone (INFILTRAITOR_SHOT_AGENT_CELL=18,11 INFILTRAITOR_SHOT_GUARD_CELL=18,9)",
+          "env": {
+            "SHOT_AGENT_CELL": "18,11",
+            "SHOT_GUARD_CELL": "18,9"
+          }
         },
         {
           "id": "shot_concrete",
@@ -1089,7 +1097,11 @@
           "after_hold": 20,
           "length": 300,
           "seed": 1,
-          "note": "RF-S: a shotgun round into the concrete wall, the reference for blast_concrete (run with INFILTRAITOR_SHOT_AGENT_CELL=8,11 INFILTRAITOR_SHOT_GUARD_CELL=8,9)"
+          "note": "RF-S: a shotgun round into the concrete wall, the reference for blast_concrete (run with INFILTRAITOR_SHOT_AGENT_CELL=8,11 INFILTRAITOR_SHOT_GUARD_CELL=8,9)",
+          "env": {
+            "SHOT_AGENT_CELL": "8,11",
+            "SHOT_GUARD_CELL": "8,9"
+          }
         },
         {
           "id": "blast_concrete",
@@ -1115,7 +1127,11 @@
           "after_hold": 20,
           "length": 300,
           "seed": 1,
-          "note": "material videos (2026-10-17): shot on metal; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=13,11 INFILTRAITOR_SHOT_GUARD_CELL=13,9 (tools/persistent/material_videos.py sets them)"
+          "note": "material videos (2026-10-17): shot on metal; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=13,11 INFILTRAITOR_SHOT_GUARD_CELL=13,9 (tools/persistent/material_videos.py sets them)",
+          "env": {
+            "SHOT_AGENT_CELL": "13,11",
+            "SHOT_GUARD_CELL": "13,9"
+          }
         },
         {
           "id": "blast_metal",
@@ -1141,7 +1157,11 @@
           "after_hold": 20,
           "length": 300,
           "seed": 1,
-          "note": "material videos (2026-10-17): shot on wood; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=23,11 INFILTRAITOR_SHOT_GUARD_CELL=23,9 (tools/persistent/material_videos.py sets them)"
+          "note": "material videos (2026-10-17): shot on wood; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=23,11 INFILTRAITOR_SHOT_GUARD_CELL=23,9 (tools/persistent/material_videos.py sets them)",
+          "env": {
+            "SHOT_AGENT_CELL": "23,11",
+            "SHOT_GUARD_CELL": "23,9"
+          }
         },
         {
           "id": "shot_brick",
@@ -1154,7 +1174,11 @@
           "after_hold": 20,
           "length": 300,
           "seed": 1,
-          "note": "material videos (2026-10-17): shot on brick; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=28,11 INFILTRAITOR_SHOT_GUARD_CELL=28,9 (tools/persistent/material_videos.py sets them)"
+          "note": "material videos (2026-10-17): shot on brick; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=28,11 INFILTRAITOR_SHOT_GUARD_CELL=28,9 (tools/persistent/material_videos.py sets them)",
+          "env": {
+            "SHOT_AGENT_CELL": "28,11",
+            "SHOT_GUARD_CELL": "28,9"
+          }
         },
         {
           "id": "shot_cardboard",
@@ -1167,7 +1191,11 @@
           "after_hold": 20,
           "length": 300,
           "seed": 1,
-          "note": "material videos (2026-10-17): shot on cardboard; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=32,11 INFILTRAITOR_SHOT_GUARD_CELL=32,9 (tools/persistent/material_videos.py sets them); the back wall is hit through the open front, in shadow: MARKET_LAB's take quitanda_shot films it from behind"
+          "note": "material videos (2026-10-17): shot on cardboard; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=32,11 INFILTRAITOR_SHOT_GUARD_CELL=32,9 (tools/persistent/material_videos.py sets them); the back wall is hit through the open front, in shadow: MARKET_LAB's take quitanda_shot films it from behind",
+          "env": {
+            "SHOT_AGENT_CELL": "32,11",
+            "SHOT_GUARD_CELL": "32,9"
+          }
         },
         {
           "id": "shot_fabric",
@@ -1180,7 +1208,11 @@
           "after_hold": 20,
           "length": 300,
           "seed": 1,
-          "note": "material videos (2026-10-17): shot on fabric; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=36,11 INFILTRAITOR_SHOT_GUARD_CELL=36,9 (tools/persistent/material_videos.py sets them); the back wall is hit through the open front, in shadow: MARKET_LAB's take quitanda_shot films it from behind"
+          "note": "material videos (2026-10-17): shot on fabric; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=36,11 INFILTRAITOR_SHOT_GUARD_CELL=36,9 (tools/persistent/material_videos.py sets them); the back wall is hit through the open front, in shadow: MARKET_LAB's take quitanda_shot films it from behind",
+          "env": {
+            "SHOT_AGENT_CELL": "36,11",
+            "SHOT_GUARD_CELL": "36,9"
+          }
         },
         {
           "id": "shot_glass",
@@ -1193,7 +1225,11 @@
           "after_hold": 20,
           "length": 300,
           "seed": 1,
-          "note": "material videos (2026-10-17): shot on glass; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=44,11 INFILTRAITOR_SHOT_GUARD_CELL=44,9 (tools/persistent/material_videos.py sets them)"
+          "note": "material videos (2026-10-17): shot on glass; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=44,11 INFILTRAITOR_SHOT_GUARD_CELL=44,9 (tools/persistent/material_videos.py sets them)",
+          "env": {
+            "SHOT_AGENT_CELL": "44,11",
+            "SHOT_GUARD_CELL": "44,9"
+          }
         },
         {
           "id": "blast_glass",

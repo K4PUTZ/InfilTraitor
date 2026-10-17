@@ -4380,6 +4380,7 @@ func _structural_fall(loose: Dictionary, material_of: Dictionary, blocks_by_id: 
 	var t_prev: float = 0.0
 	var fallen: int = 0
 	var walls_fell: Dictionary = {}   ## the GUs a wall / roof / slab voxel fell from (their light is repainted once, at the end)
+	var worst: Dictionary = {"destroy": 0, "commit": 0, "pieces": 0, "repaint": 0}   ## the longest main-thread stretch of each part of a step (usec): what a frame of the fall can cost
 	for idx in order:
 		var at: float = float(idx) * step
 		if at > t_prev:
@@ -4394,6 +4395,7 @@ func _structural_fall(loose: Dictionary, material_of: Dictionary, blocks_by_id: 
 		var by_material: Dictionary = {}
 		var centre := Vector2.ZERO
 		var structure: bool = false   ## a voxel of a slice / slab / column (not a prop's): the board's dirty passes run
+		var t_destroy: int = Time.get_ticks_usec()
 		for key: Vector3i in buckets[idx]:
 			var v: Voxel = grid.voxel_at(key)
 			if v == null or VoxelStore.damage_of(v) == Voxel.DamageState.DESTROYED:
@@ -4410,6 +4412,7 @@ func _structural_fall(loose: Dictionary, material_of: Dictionary, blocks_by_id: 
 			var group: Array = by_material.get(material, [])
 			group.append(Vector3i(key.x, key.z - ground, key.y))
 			by_material[material] = group
+		worst["destroy"] = maxi(int(worst["destroy"]), Time.get_ticks_usec() - t_destroy)
 		if voxels.is_empty():
 			continue
 		fallen += voxels.size()
@@ -4426,13 +4429,20 @@ func _structural_fall(loose: Dictionary, material_of: Dictionary, blocks_by_id: 
 			_destruction_render_busy = false
 			if not is_instance_valid(self) or not is_instance_valid(live) or epoch != _map_epoch:
 				return
+		var t_commit: int = Time.get_ticks_usec()
 		live.on_shot_commit(voxels)
 		_release_destroyed_prop_cells()
+		var t_pieces: int = Time.get_ticks_usec()
+		worst["commit"] = maxi(int(worst["commit"]), t_pieces - t_commit)
 		for material: String in by_material:
 			_spawn_roof_pieces(by_material[material], 1, material, centre, 1.0, "struct|%d|%d" % [idx, voxels.size()], Vector2(0.1, 0.0), scale)
+		worst["pieces"] = maxi(int(worst["pieces"]), Time.get_ticks_usec() - t_pieces)
 	if not walls_fell.is_empty() and is_instance_valid(self) and _voxel_board != null:
+		var t_repaint: int = Time.get_ticks_usec()
 		_repaint_voxel_light_buckets_scoped(_light_reach_scope(walls_fell.keys()), true)   ## what a wall that fell stopped keeping out
-	print_debug("[STRUCT] %d unsupported voxel(s) fell in %d step(s) of %.2f s (gravity x%.2f)" % [fallen, order.size(), step, scale])
+		worst["repaint"] = Time.get_ticks_usec() - t_repaint
+	print("[STRUCT] %d unsupported voxel(s) fell in %d step(s) of %.2f s (gravity x%.2f); longest main-thread stretch: destroy %.1f ms, board commit %.1f ms, pieces %.1f ms, light repaint %.1f ms"
+		% [fallen, order.size(), step, scale, float(worst["destroy"]) / 1000.0, float(worst["commit"]) / 1000.0, float(worst["pieces"]) / 1000.0, float(worst["repaint"]) / 1000.0])
 
 
 ## ROOF_MASTER_PLAN v0.30 (Director, 2026-10-16: "um poste de madeira segurando o toldo; a granada fura/queima o toldo e remove o poste, e o pano cai").

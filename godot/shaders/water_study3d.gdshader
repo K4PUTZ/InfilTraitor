@@ -35,6 +35,7 @@ uniform vec4 crack_color : source_color = vec4(1.0, 0.55, 0.1, 1.0);
 uniform float crack_scale = 3.2;        // plates per GU
 uniform vec4 scum_rim_color : source_color = vec4(0.0);   // alpha 0 = a clump's rim is dark; else it glows this colour (a hot rock edge)
 uniform float stipple_alive = 0.42;     // a stipple cell holds a dot when its hash is above this: higher = fewer dots
+uniform float oil_cut = 0.64;           // slick zone threshold: lower = the film covers more
 uniform float oil = 0.0;                // sparse iridescent slicks, scattered zones that drift slowly
 uniform float rain = 0.0;               // 0 off .. 1 heavy: concentric rings from random drops, independent of the flow
 uniform float dot_cells = 11.0;          // stipple cells per GU
@@ -325,7 +326,7 @@ void fragment() {
 		// oil slicks: a low-frequency mask picks a few scattered zones (soft edges); inside, a thin-film rainbow that slowly swirls
 		vec2 op = p - flow_dir * t * flow_speed * 0.35;
 		float zone = vnoise(op * 1.7 + vec2(7.0, 3.0));
-		float mask = smoothstep(0.64, 0.84, zone) * oil;
+		float mask = smoothstep(oil_cut, oil_cut + 0.2, zone) * oil;
 		float film = vnoise(op * 4.0 + zone * 3.0 + vec2(t * 0.15, 0.0)) + 0.4 * vnoise(op * 8.0 - t * 0.1);
 		vec3 rainbow = mix(vec3(0.35), 0.5 + 0.5 * cos(6.2832 * (film + vec3(0.0, 0.33, 0.67))), 0.5);
 		col.rgb = mix(col.rgb, mix(col.rgb * 0.4, rainbow * 0.6, 0.45), mask * 0.8);

@@ -48,6 +48,24 @@ const KINDS: Dictionary = {
 			"detail_strength": 0.5, "flow_speed": 0.07,
 			"deep_color": Color(0.55, 0.08, 0.02, 0.98), "shallow_color": Color(0.95, 0.3, 0.04, 0.98), "light_color": Color(1.0, 0.75, 0.25, 1.0),
 			"scum_color": Color(0.06, 0.05, 0.045, 1.0), "scum_top_color": Color(0.16, 0.12, 0.1, 1.0), "scum_rim_color": Color(1.0, 0.42, 0.06, 1.0)},
+	## Crude oil: near black and glossy, a wide iridescent film, big slow dark bubbles.
+	"petroleo": {"mode": 2, "bubble_amount": 0.0, "pop_bubbles": 0.6, "oil": 1.0, "oil_cut": 0.45, "detail_strength": 0.35, "flow_speed": 0.06,
+			"deep_color": Color(0.012, 0.012, 0.018, 0.98), "shallow_color": Color(0.06, 0.06, 0.085, 0.96), "light_color": Color(0.55, 0.6, 0.72, 1.0)},
+	## Acid: sickly bright yellow-green, translucent, fizzing (a stipple of fast small dots), pulsing glow, foam at the curbs.
+	"acido": {"mode": 3, "bubble_amount": 1.0, "glow": 0.6, "stipple_alive": 0.45, "detail_strength": 0.75, "flow_speed": 0.2,
+			"deep_color": Color(0.3, 0.5, 0.04, 0.8), "shallow_color": Color(0.68, 0.9, 0.1, 0.68), "light_color": Color(0.96, 1.0, 0.55, 1.0)},
+	## Mud / swamp: thick brown, slow, leaves and weed afloat, small heavy bubbles.
+	"lama": {"mode": 2, "bubble_amount": 0.0, "pop_bubbles": 0.8, "scum": 1.0, "scum_cut": 0.62, "scum_scale": 3.5, "detail_strength": 0.4, "flow_speed": 0.04,
+			"deep_color": Color(0.22, 0.15, 0.08, 0.99), "shallow_color": Color(0.38, 0.27, 0.14, 0.98), "light_color": Color(0.62, 0.52, 0.32, 1.0),
+			"scum_color": Color(0.2, 0.25, 0.07, 1.0), "scum_top_color": Color(0.36, 0.4, 0.12, 1.0)},
+	## Cryogenic: icy blue, floes of pale ice with bright cold cracks, a mist of froth, caustics in the open water.
+	"criogenico": {"mode": 2, "bubble_amount": 0.0, "crust": 0.55, "crack_scale": 2.6, "froth": 0.5, "caustics": 0.6, "detail_strength": 0.5, "flow_speed": 0.05,
+			"deep_color": Color(0.05, 0.3, 0.55, 0.78), "shallow_color": Color(0.35, 0.72, 0.9, 0.6), "light_color": Color(0.88, 0.97, 1.0, 1.0),
+			"crust_color": Color(0.7, 0.86, 0.94, 1.0), "crack_color": Color(0.55, 0.92, 1.0, 1.0)},
+	## Quicksand (LOOK only: the trap is `earth` plus a rule, not a fluid): wet sand, almost still, grains, slow bubbles, soft ripples.
+	"areia_movedica": {"mode": 3, "bubble_amount": 0.0, "pop_bubbles": 0.7, "stipple_alive": 0.6, "detail_strength": 0.5, "flow_speed": 0.02,
+			"deep_color": Color(0.6, 0.47, 0.26, 0.99), "shallow_color": Color(0.76, 0.63, 0.37, 0.98), "light_color": Color(0.92, 0.82, 0.58, 1.0),
+			"dirt_color": Color(0.42, 0.3, 0.15, 1.0)},
 	"clean": {"mode": 2, "deep_color": Color(0.05, 0.3, 0.38, 0.3), "shallow_color": Color(0.3, 0.64, 0.7, 0.18), "light_color": Color(0.9, 1.0, 1.0, 1.0)},
 }
 
@@ -79,7 +97,7 @@ func attach(board: Node3D, rect: Rect2, level: int, kind: String, flow: Vector2,
 	material.shader = SHADER
 	material.set_shader_parameter("mode", int(look["mode"]))
 	material.set_shader_parameter("rain", clampf(rain, 0.0, 1.0))
-	for key: String in ["bubble_amount", "caustics", "depth_shade", "detail_strength", "scum", "flow_speed", "stipple_alive", "oil", "scum_cut", "scum_scale", "froth", "junk", "junk_skip", "pop_bubbles", "glow", "crust", "crack_scale"]:
+	for key: String in ["bubble_amount", "caustics", "depth_shade", "detail_strength", "scum", "flow_speed", "stipple_alive", "oil", "scum_cut", "scum_scale", "froth", "junk", "junk_skip", "pop_bubbles", "glow", "crust", "crack_scale", "oil_cut"]:
 		if look.has(key):
 			material.set_shader_parameter(key, look[key])
 	for key: String in ["deep_color", "shallow_color", "light_color", "dirt_color", "scum_color", "scum_top_color", "scum_rim_color", "crust_color", "crack_color"]:

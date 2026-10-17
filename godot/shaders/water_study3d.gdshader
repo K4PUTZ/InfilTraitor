@@ -37,6 +37,10 @@ uniform vec4 scum_rim_color : source_color = vec4(0.0);   // alpha 0 = a clump's
 uniform float stipple_alive = 0.42;     // a stipple cell holds a dot when its hash is above this: higher = fewer dots
 uniform float oil_cut = 0.64;           // slick zone threshold: lower = the film covers more
 uniform float oil = 0.0;                // sparse iridescent slicks, scattered zones that drift slowly
+uniform float time_scale = 1.0;         // 0 = frozen (ice), 1 = the usual pace, 2 = twice as fast: the whole animation, not the flow alone
+uniform float foam_amount = 1.0;        // the foam along the curbs
+uniform float ring_amount = 1.0;        // the ring ripples of the surface look
+uniform float wave_amount = 1.0;        // the bands and glints of the surface look
 uniform float rain = 0.0;               // 0 off .. 1 heavy: concentric rings from random drops, independent of the flow
 uniform float dot_cells = 11.0;          // stipple cells per GU
 
@@ -246,7 +250,7 @@ float rain_rings(vec2 p, float t) {
 void fragment() {
 	vec2 p = lp;
 	float edge = min(min(p.x - rect_min.x, rect_max.x - p.x), min(p.y - rect_min.y, rect_max.y - p.y));
-	float t = TIME * 0.6;   // the whole set slower
+	float t = TIME * 0.6 * time_scale;   // the whole set slower
 	float soft = detail_strength;      // how strong the details are (the Director's pass: softer, the bed shows through)
 	float along = dot(p, flow_dir);
 	float across_d = min(p.x - rect_min.x, rect_max.x - p.x);   // distance to the nearest curb
@@ -255,14 +259,14 @@ void fragment() {
 	if (mode >= 2) {
 		float warp = vnoise(vec2(p.x * 3.0, along * 1.3 - t * flow_speed * 1.4));
 		float bands = 0.5 + 0.5 * sin((along - t * flow_speed) * 10.0 + warp * 5.5 + sin(p.x * 8.0 + t) * 0.7);
-		float shade = clamp(bands * 0.55 + warp * 0.35 + (1.0 - clamp(across_d * 2.2, 0.0, 1.0)) * 0.25, 0.0, 1.0);
+		float shade = clamp(bands * 0.55 * wave_amount + warp * 0.35 + (1.0 - clamp(across_d * 2.2, 0.0, 1.0)) * 0.25, 0.0, 1.0);
 		col = mix(deep_color, shallow_color, shade);
 		float foam = smoothstep(0.16, 0.0, across_d) * (0.35 + 0.65 * vnoise(p * 15.0 - flow_dir * t * 2.0));
-		col.rgb = mix(col.rgb, light_color.rgb, foam * 0.75 * soft);
-		col.a = max(col.a, foam * 0.9 * soft);
+		col.rgb = mix(col.rgb, light_color.rgb, foam * 0.75 * soft * foam_amount);
+		col.a = max(col.a, foam * 0.9 * soft * foam_amount);
 		float glints = smoothstep(0.82, 1.0, bands) * smoothstep(0.55, 0.85, warp);
-		col.rgb = mix(col.rgb, light_color.rgb, glints * 0.45 * soft);
-		float ring = rings(p, t);
+		col.rgb = mix(col.rgb, light_color.rgb, glints * 0.45 * soft * wave_amount);
+		float ring = rings(p, t) * ring_amount;
 		float bub = bubbles(p, t) * bubble_amount;
 		col.rgb = mix(col.rgb, light_color.rgb, clamp(ring * 0.8 + bub, 0.0, 1.0) * soft);
 		col.a = max(col.a, clamp(ring * 0.85 + bub, 0.0, 1.0) * soft);

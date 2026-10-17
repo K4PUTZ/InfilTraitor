@@ -1,0 +1,51 @@
+{
+  "id": "biohazard",
+  "note": "Biohazard waste: dark blood-red and murky, chunks of gore (red flesh with pale fat) afloat, a lot of white-pink froth, few bubbles.",
+  "params": {
+    "mode": 3,
+    "detail_strength": 0.8,
+    "scum": 1.0,
+    "scum_cut": 0.64,
+    "scum_scale": 4.2,
+    "froth": 1.0,
+    "flow_speed": 0.12,
+    "stipple_alive": 0.82,
+    "bubble_amount": 0.5,
+    "deep_color": [
+      0.24,
+      0.015,
+      0.02,
+      0.94
+    ],
+    "shallow_color": [
+      0.46,
+      0.04,
+      0.05,
+      0.88
+    ],
+    "light_color": [
+      0.98,
+      0.86,
+      0.84,
+      1.0
+    ],
+    "dirt_color": [
+      0.1,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "scum_color": [
+      0.5,
+      0.07,
+      0.08,
+      1.0
+    ],
+    "scum_top_color": [
+      0.93,
+      0.76,
+      0.7,
+      1.0
+    ]
+  }
+}

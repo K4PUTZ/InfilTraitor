@@ -955,26 +955,7 @@
      ]
     }
    ],
-   "regions": [
-    {
-     "id": "water",
-     "box": {
-      "min": [
-       11,
-       3,
-       0
-      ],
-      "max": [
-       13,
-       9,
-       0.25
-      ]
-     },
-     "tags": [
-      "water"
-     ]
-    }
-   ]
+   "regions": []
   },
   "capture": {
    "v": 1,
@@ -1002,6 +983,24 @@
      "length": 240,
      "seed": 1,
      "note": "M6 water study: the channel with the WATER_STUDY look (INFILTRAITOR_WATER_STUDY=0..3)"
+    }
+   ]
+  },
+  "liquids": {
+   "v": 1,
+   "items": [
+    {
+     "zone": [
+      11,
+      3,
+      2,
+      6
+     ],
+     "kind": "caribe",
+     "flow": [
+      0,
+      1
+     ]
     }
    ]
   }

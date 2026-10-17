@@ -140,6 +140,11 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 	if ground_vents_section.get("items", []).size() > 0:
 		runtime["ground_vents"] = ground_vents_section["items"]
 
+	# --- Liquids (M6): bodies of water / lava / sewage over a rectangle of floor ---------------------
+	var liquids_section = sections.get("liquids", {})
+	if liquids_section.get("items", []).size() > 0:
+		runtime["liquids"] = liquids_section["items"]
+
 	# --- Ground scatter (R3D-SURFACES SM-2): organic floor marks per zone -------------------------
 	var ground_scatter_section = sections.get("ground_scatter", {})
 	if ground_scatter_section.get("items", []).size() > 0:

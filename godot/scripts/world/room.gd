@@ -6,6 +6,7 @@ const ScenarioDrawRef = preload("res://godot/scripts/systems/scenario_draw.gd") 
 const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.gd")
 ## G4-3 — preloaded rather than used by `class_name`: this file is parsed
 ## before the global class cache exists in a headless lint run.
+const LiquidRegistryRef = preload("res://godot/scripts/systems/liquid_registry.gd")  ## M6: the liquids a map may place
 const WaterStudy3DRef = preload("res://godot/scripts/geometry/water_study3d.gd")  ## M6 water study (dev flag WATER_STUDY)
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
 const SurfaceRulesRef = preload("res://godot/scripts/systems/surface_rules.gd")  ## R3D-SURFACES: floor tags and patch rules
@@ -141,7 +142,7 @@ var _slab_registry: SlabRegistry = null
 @warning_ignore("unused_private_class_variable")
 var _junction_columns: Array = []             ## Array of JunctionResolver.JunctionColumn
 var _voxel_board: VoxelBoard = null     ## Voxel rendering engine
-var _water_study: RefCounted = null        ## M6 water study sheet (dev flag), see WaterStudy3D
+var _liquid_sheets: Array = []             ## M6: one WaterStudy3D per `liquids` body, see _attach_liquids()
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
 ## SM-2 — a scatter covering more than this many LAYERS of its zones gets a loud warning (not a refusal). Moto: ~2.4 ms per layer over a full screen of zone.
 const GROUND_SCATTER_LAYER_BUDGET: float = 1.5
@@ -3811,21 +3812,9 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 				push_warning("[GroundScatter] the scatter covers %.2f layers of its zones, past the budget of %.1f (about %.1f ms per layer over a full screen on the Moto; a warning, not a cap, SURFACES_MASTER_PLAN §7.0)"
 						% [layers, GROUND_SCATTER_LAYER_BUDGET, 2.4])
 		_ground_decals.attach(live, decal_instances, GeometryCoords.FLOOR_TOP_LEVEL, floor_tags_of)
-		## M6 water study (dev only): `WATER_STUDY=<kind>` (see WaterStudy3D.KINDS; `waste`, `clean`) lays one flat sheet over the map's region `water`, flowing along `water_flow`'s
-		## direction (a region's long axis), in that look; `WATER_RAIN=<0..1>` adds rain rings. Nothing is simulated.
-		var water_mode: String = _dev_flag("WATER_STUDY", "")
-		if water_mode != "" and map_layout != null:
-			var water: Dictionary = map_layout.resolve("water", self)
-			if bool(water.get("ok", false)):
-				var box: AABB = water["box"] if water.has("box") else AABB()
-				if _water_study == null:
-					_water_study = WaterStudy3DRef.new()
-				var long_y: bool = box.size.z >= box.size.x
-				_water_study.attach(live, Rect2(Vector2(box.position.x, box.position.z), Vector2(box.size.x, box.size.z)),
-						GeometryCoords.FLOOR_TOP_LEVEL, water_mode, Vector2(0.0, 1.0) if long_y else Vector2(1.0, 0.0),
-						float(_dev_flag("WATER_RAIN", "0")))
-			else:
-				push_error("[Room] WATER_STUDY is set but this map has no `water` region: %s" % str(water))
+		## M6 liquids: every body the map's `liquids` section declares, drawn as a flat sheet in its look (`LiquidRegistry`). Dev A/B:
+		## `WATER_STUDY=<liquid id>` makes every body that liquid, `WATER_RAIN=<0..1>` sets every body's rain. Cosmetic, never saved.
+		_attach_liquids(live)
 		## R3D-SURFACES transitions — a feathered overlay where two organic grounds (a `photo` floor) meet.
 		if _ground_transitions == null:
 			_ground_transitions = GroundTransitions3DRef.new()
@@ -9300,6 +9289,26 @@ func _recompute_occlusion() -> void:
 ## the project's established idiom for exactly that (see `Localization`), and the
 ## fallback here is the literal pre-DIAG-01 expression, so a `--script` context
 ## behaves precisely as it did before this seam existed.
+## M6: lays one sheet per body of the map's `liquids` section. A control table is resolved by `LiquidRegistry` (the liquid's file plus the body's
+## overrides); an unknown liquid is a loud error and the body is skipped.
+func _attach_liquids(live: Node3D) -> void:
+	for sheet in _liquid_sheets:
+		sheet.detach()
+	_liquid_sheets.clear()
+	var forced_kind: String = _dev_flag("WATER_STUDY", "")
+	var forced_rain: String = _dev_flag("WATER_RAIN", "")
+	for body: Dictionary in _base_layout.get("liquid_instances", []):
+		var kind: String = forced_kind if forced_kind != "" else String(body["kind"])
+		var overrides: Dictionary = (body["overrides"] as Dictionary).duplicate()
+		overrides["rain"] = float(forced_rain) if forced_rain != "" else float(body["rain"])
+		var params: Dictionary = LiquidRegistryRef.resolve(kind, overrides)
+		if params.is_empty():
+			continue
+		var sheet = WaterStudy3DRef.new()
+		sheet.attach(live, body["rect"], GeometryCoords.FLOOR_TOP_LEVEL, params, body["flow"])
+		_liquid_sheets.append(sheet)
+
+
 func _dev_flag(flag_name: String, fallback: String = "") -> String:
 	var flags: Node = get_node_or_null("/root/DevFlags")
 	if flags == null:

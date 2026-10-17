@@ -1,0 +1,42 @@
+{
+  "id": "esgoto",
+  "note": "Sewage: brown and murky (the bed does not show), a green scum drifting on it, big bubbles, dark specks of dirt, slow and thick.",
+  "params": {
+    "mode": 3,
+    "detail_strength": 0.9,
+    "scum": 1.0,
+    "flow_speed": 0.14,
+    "stipple_alive": 0.72,
+    "oil": 1.0,
+    "deep_color": [
+      0.22,
+      0.14,
+      0.06,
+      0.93
+    ],
+    "shallow_color": [
+      0.38,
+      0.27,
+      0.12,
+      0.88
+    ],
+    "light_color": [
+      0.72,
+      0.64,
+      0.38,
+      1.0
+    ],
+    "dirt_color": [
+      0.1,
+      0.06,
+      0.02,
+      1.0
+    ],
+    "scum_color": [
+      0.24,
+      0.34,
+      0.1,
+      1.0
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "caribe",
+  "note": "Caribbean shallows: very clear, light blue-green, no bubbles; the channel shows its own depth (the curbs' shade on the water, deeper blue in the middle) and the sun's caustics on the bed.",
+  "params": {
+    "mode": 2,
+    "bubble_amount": 0.0,
+    "caustics": 1.0,
+    "depth_shade": 1.0,
+    "deep_color": [
+      0.0,
+      0.52,
+      0.78,
+      0.26
+    ],
+    "shallow_color": [
+      0.3,
+      0.92,
+      0.96,
+      0.1
+    ],
+    "light_color": [
+      0.95,
+      1.0,
+      1.0,
+      1.0
+    ]
+  }
+}

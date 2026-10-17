@@ -13,6 +13,7 @@ static func register_all(registry) -> void:
 	register_material_tints(registry)
 	register_ground_scatter(registry)
 	register_ground_vents(registry)
+	register_liquids(registry)
 	register_floor_openings(registry)
 	register_damage_materials(registry)
 	register_panels(registry)
@@ -193,6 +194,24 @@ static func register_ground_vents(registry) -> void:
 	var SectionOwner = registry.SectionOwner
 	registry.register(SectionOwner.new(
 		"ground_vents",
+		1,
+		func(fragment: Dictionary) -> Dictionary:
+			return { "items": fragment.get("items", []) },
+		func(raw: Dictionary) -> Dictionary:
+			return { "items": raw.get("items", []) },
+		{},
+		func() -> Dictionary:
+			return { "items": [] }
+	))
+
+## liquids (M6, 2026-10-17): a body of liquid over a rectangle of floor. `{zone: [x, y, w, h], kind, flow?, rain?, overrides?}` -- `zone` in GU
+## (inner coordinates, whole or fractional), `kind` a liquid of `liquids/<id>.json` (`LiquidRegistry`), `flow` a direction `[dx, dy]` (default
+## the zone's long axis, +), `rain` 0..1 (weather on this body), `overrides` a table of the liquid's controls (`LiquidRegistry.PARAMS`: more
+## bubbles, faster, more foam, another colour). Cosmetic for now (nothing saves it); gameplay (`FluidPlane`) comes later.
+static func register_liquids(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	registry.register(SectionOwner.new(
+		"liquids",
 		1,
 		func(fragment: Dictionary) -> Dictionary:
 			return { "items": fragment.get("items", []) },

@@ -1,0 +1,51 @@
+{
+  "id": "lava_viscous",
+  "note": "Viscous lava: thick red-orange, slow, charred rock afloat with hot edges, slow heavy bubbles.",
+  "params": {
+    "mode": 2,
+    "bubble_amount": 0.0,
+    "pop_bubbles": 0.9,
+    "scum": 1.0,
+    "scum_cut": 0.64,
+    "scum_scale": 2.8,
+    "glow": 0.7,
+    "detail_strength": 0.5,
+    "flow_speed": 0.07,
+    "deep_color": [
+      0.55,
+      0.08,
+      0.02,
+      0.98
+    ],
+    "shallow_color": [
+      0.95,
+      0.3,
+      0.04,
+      0.98
+    ],
+    "light_color": [
+      1.0,
+      0.75,
+      0.25,
+      1.0
+    ],
+    "scum_color": [
+      0.06,
+      0.05,
+      0.045,
+      1.0
+    ],
+    "scum_top_color": [
+      0.16,
+      0.12,
+      0.1,
+      1.0
+    ],
+    "scum_rim_color": [
+      1.0,
+      0.42,
+      0.06,
+      1.0
+    ]
+  }
+}

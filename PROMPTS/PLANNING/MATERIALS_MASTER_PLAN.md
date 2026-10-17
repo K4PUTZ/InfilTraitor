@@ -1083,6 +1083,8 @@ Bench: `maps/PIPE_LAB.map.json` (two grated half-buried pipes in the long walls,
 
 **Open questions for the Director** (nothing is built until these are answered): turn-ticked state with a continuous look, as proposed? are liquids ever lethal, or only slowing and revealing? may the agent swim a deep channel? is the pipe's rate fixed per map or can the player cut it (a valve, a grate)?
 
+**Director's answers to the study (2026-10-17) and what they changed.** (1) Liquids loop in REAL TIME, never waiting on the turn, so the scenery lives (ice and a few others are frozen: `time_scale` 0); the turn-ticked `FluidPlane` is the gameplay truth only. (2) Each liquid will get its own effect: many LETHAL, others crossable; to be defined per liquid. (3) Few aquatic zones in a game: mostly decoration and blocked paths, but basic movement animations ON and IN water are to be authored so those zones are playable. (4) The player may modify the flow (valves, grates). **Built the same day: designer controls.** A liquid is `liquids/<id>.json` (`LiquidRegistry`, 18 files, `PARAMS` = the controls with range and description); a map places it with the `liquids` section and may override any control per body (more / fewer bubbles, speed, foam, colours ...), which is also the seam for procedural variation. Pinned by `liquid_registry_selftest`.
+
 ---
 
 ## 7. Task order, one list

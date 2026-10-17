@@ -243,6 +243,22 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		ground_vent_instances.append({"at": Vector2(float(vent_at[0]), float(vent_at[1])) + Vector2(offset), "kind": vent_kind,
 			"depth": "shaft" if String(vent.get("depth", "floor")) == "shaft" else "floor"})
 
+	## --- liquids (M6): `zone` [x, y, w, h] in GU, shifted by the buffer; the kind and the overrides are checked by `LiquidRegistry` when the body is drawn ---
+	var liquid_instances: Array = []
+	for body in spec.get("liquids", []):
+		var zone = body.get("zone", null)
+		var liquid_kind: String = String(body.get("kind", ""))
+		if not (zone is Array) or zone.size() != 4 or liquid_kind.is_empty() or float(zone[2]) <= 0.0 or float(zone[3]) <= 0.0:
+			push_error("[MapCompiler] liquids: %s needs `zone` [x, y, w, h] with a positive size and a `kind`; skipped" % str(body))
+			continue
+		var rect := Rect2(Vector2(float(zone[0]), float(zone[1])) + Vector2(offset), Vector2(float(zone[2]), float(zone[3])))
+		var flow_raw = body.get("flow", null)
+		var flow := Vector2(0.0, 1.0) if rect.size.y >= rect.size.x else Vector2(1.0, 0.0)
+		if flow_raw is Array and flow_raw.size() == 2 and (float(flow_raw[0]) != 0.0 or float(flow_raw[1]) != 0.0):
+			flow = Vector2(float(flow_raw[0]), float(flow_raw[1])).normalized()
+		liquid_instances.append({"rect": rect, "kind": liquid_kind, "flow": flow, "rain": clampf(float(body.get("rain", 0.0)), 0.0, 1.0),
+			"overrides": (body.get("overrides", {}) as Dictionary) if body.get("overrides", {}) is Dictionary else {}})
+
 	## --- ground_scatter (R3D-SURFACES SM-2): zones in raw GU (the buffer applied, like every position); expanded later, in `GroundScatter` ---
 	var ground_scatter_items: Array = []
 	for item in spec.get("ground_scatter", []):
@@ -404,6 +420,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"ground_decal_instances": ground_decal_instances,  ## R3D-SURFACES S2: floor marks, offset-adjusted, base grid only (never rotated)
 		"damage_materials":  damage_materials,  ## D13: map's declared damage-atom-bake material list
 		"floor_opening_instances": floor_opening_instances,  ## R3D-SURFACES SM-6b: real openings through the floor (raw GU), carved by SlabGenerator
+		"liquid_instances": liquid_instances,  ## M6: bodies of liquid (raw GU rect, kind, flow, rain, overrides), cosmetic
 		"ground_vent_instances": ground_vent_instances,  ## R3D-SURFACES SM-6: floor vents (raw GU), a cosmetic plume each
 		"layout":           _compile_layout(spec, offset),  ## CAPTURE_RAILS CR-1: the map's anchors (raw GU), read by `MapLayout.load_compiled()`
 		"capture":          _compile_capture(spec, offset),  ## CAPTURE_RAILS CR-3: rails and takes (dev only); explicit centres shifted

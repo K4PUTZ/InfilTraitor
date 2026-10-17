@@ -21,6 +21,8 @@ uniform float detail_strength = 0.55;   // how strong rings / bubbles / dots / f
 uniform float scum = 0.0;               // floating clumps (algae, rubbish) that drift with the flow and bob
 uniform vec4 scum_color : source_color = vec4(0.27, 0.45, 0.1, 1.0);
 uniform vec4 dirt_color : source_color = vec4(0.0);   // alpha 0 = the stipple dots take `light_color`; else they are specks of this colour
+uniform float stipple_alive = 0.42;     // a stipple cell holds a dot when its hash is above this: higher = fewer dots
+uniform float oil = 0.0;                // sparse iridescent slicks, scattered zones that drift slowly
 uniform float rain = 0.0;               // 0 off .. 1 heavy: concentric rings from random drops, independent of the flow
 uniform float dot_cells = 11.0;          // stipple cells per GU
 
@@ -58,7 +60,7 @@ float stipple(vec2 p, float t) {
 	vec2 f = vec2(fract(q), fract(c));
 	vec2 r = h22(id);
 	vec2 centre = vec2(0.5) + 0.3 * vec2(sin(t * 1.3 + r.x * 6.2832), cos(t * 1.1 + r.y * 6.2832));
-	float alive = step(0.42, r.x);
+	float alive = step(stipple_alive, r.x);
 	float radius = mix(0.14, 0.3, h21(id + 7.0)) * (0.65 + 0.35 * sin(t * 2.2 + r.y * 9.0));
 	return alive * step(length(f - centre), radius);
 }
@@ -154,13 +156,23 @@ void fragment() {
 		vec2 sp = p - flow_dir * t * flow_speed * 0.6;
 		float n = vnoise(sp * 6.0) * 0.65 + vnoise(sp * 17.0 + 3.0) * 0.35;
 		float bob = 0.015 * sin(t * 1.4 + n * 20.0);
-		float body = smoothstep(0.62 + bob, 0.66 + bob, n) * scum;
-		float rim = smoothstep(0.58, 0.62, n) * (1.0 - smoothstep(0.62, 0.68, n)) * scum;
+		float body = smoothstep(0.6 + bob, 0.7 + bob, n) * scum;
+		float rim = smoothstep(0.54, 0.62, n) * (1.0 - smoothstep(0.62, 0.72, n)) * scum;
 		float top = smoothstep(0.7, 0.82, n);
 		vec3 lump = mix(scum_color.rgb * 0.7, scum_color.rgb * 1.5, top);
 		col.rgb = mix(col.rgb, scum_color.rgb * 0.3, rim * 0.7);
 		col.rgb = mix(col.rgb, lump, body);
 		col.a = max(col.a, max(body * 0.95, rim * 0.6));
+	}
+	if (oil > 0.0) {
+		// oil slicks: a low-frequency mask picks a few scattered zones (soft edges); inside, a thin-film rainbow that slowly swirls
+		vec2 op = p - flow_dir * t * flow_speed * 0.35;
+		float zone = vnoise(op * 1.7 + vec2(7.0, 3.0));
+		float mask = smoothstep(0.64, 0.84, zone) * oil;
+		float film = vnoise(op * 4.0 + zone * 3.0 + vec2(t * 0.15, 0.0)) + 0.4 * vnoise(op * 8.0 - t * 0.1);
+		vec3 rainbow = mix(vec3(0.35), 0.5 + 0.5 * cos(6.2832 * (film + vec3(0.0, 0.33, 0.67))), 0.5);
+		col.rgb = mix(col.rgb, mix(col.rgb * 0.4, rainbow * 0.6, 0.45), mask * 0.8);
+		col.a = max(col.a, mask * 0.9);
 	}
 	if (depth_shade > 0.0) {
 		// depth: shallow turquoise at the curbs, deep blue in the middle; and each curb throws a soft shade onto the water on the side

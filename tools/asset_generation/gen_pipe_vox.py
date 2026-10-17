@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""gen_pipe_vox.py — the PIPE_LAB objects as MagicaVoxel `.vox` files: a big half-buried drain pipe with a grated mouth, and the two curbs
+of a concrete channel.
+
+Same conventions as `gen_dorm_vox.py` (1 voxel = 0.2 m, 8 voxels = 1 GU = a storey; x, y horizontal, z UP; the colour index is mapped to a
+registry material by the prop's JSON `vox_materials`). Reproducible byte for byte.
+
+A voxel prop is ONE GU of footprint and `rot` is not applied to it (PROP_PIPELINE_PLAN, PP4 limits), so a 2 x 2 GU pipe is FOUR one-GU
+pieces and each pipe is authored already facing its way (map x = vox x, map y = vox y).
+
+PIPE (16 x 16 x 8 voxels): a circle of outer radius 8 centred on the FLOOR plane, so only its upper half stands ("semi-buried"); the shell is
+2 voxels thick, the bore radius 6. Along its length u: u = 15 is the MOUTH (open to the room), u = 0 the back, against the wall (closed by a
+plug). Grating bars every 2 voxels close the bore 1 voxel behind the mouth, so nothing passes. `pipe_n_<ix><iy>` stands on the north wall
+(mouth faces +y), `pipe_s_<ix><iy>` on the south wall (mouth faces -y); ix across (map x), iy from the wall side (north) / the mouth side (south).
+CURBS (8 x 8 x 2): `curb_lo` has its rail at vox x 0-1, `curb_hi` at x 6-7: placed side by side they bound a 2 GU channel along y.
+
+Usage:  python3 tools/asset_generation/gen_pipe_vox.py [--out ASSETS/props/vox]
+"""
+import argparse
+import math
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from gen_dorm_vox import Model, write_vox  # noqa: E402
+
+SHELL, BARS, PLUG = 1, 2, 3
+
+
+def pipe_cell(v: int, u: int, z: int):
+    """The colour index of the whole pipe at across v, along u (0 back .. 15 mouth), height z; None = empty."""
+    r = math.hypot(v - 7.5, z + 0.5)        # distance from the pipe's axis, which lies in the floor plane
+    if r > 8.0:
+        return None
+    if r >= 6.0:
+        return SHELL
+    if u <= 1:
+        return PLUG                         # the back of the bore
+    if u == 14 and v % 2 == 0:
+        return BARS                         # grating, 1 voxel behind the mouth
+    return None
+
+
+def pipe_piece(ix: int, iy: int, south: bool) -> Model:
+    m = Model(8, 8, 8)
+    for x in range(8):
+        for y in range(8):
+            gy = 8 * iy + y
+            u = 15 - gy if south else gy
+            for z in range(8):
+                idx = pipe_cell(8 * ix + x, u, z)
+                if idx:
+                    m.set(x, y, z, idx)
+    return m
+
+
+def curb(hi: bool) -> Model:
+    m = Model(8, 8, 2)
+    m.box(6 if hi else 0, 0, 0, 7 if hi else 1, 7, 1, 1)
+    return m
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", default="ASSETS/props/vox")
+    out = ap.parse_args().out
+    models = {"curb_lo": curb(False), "curb_hi": curb(True)}
+    for side, south in (("n", False), ("s", True)):
+        for ix in range(2):
+            for iy in range(2):
+                models["pipe_%s_%d%d" % (side, ix, iy)] = pipe_piece(ix, iy, south)
+    for name, model in models.items():
+        print("%s: %d voxels" % (name, write_vox(model, os.path.join(out, name + ".vox"))))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

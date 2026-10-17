@@ -1,0 +1,961 @@
+{
+ "format": "infiltraitor-map",
+ "schema_version": 3,
+ "id": "PIPE_LAB",
+ "meta": {
+  "title": "Pipe Lab",
+  "description": "Static bench for the M6 water study (2026-10-17): two grated, half-buried drain pipes in opposite long walls (north A, south B) and a concrete channel between them along y. Water will run from A into B once the study picks a mechanism; none yet. Dev fixture, not a level. Pipe voxels: tools/asset_generation/gen_pipe_vox.py."
+ },
+ "sections": {
+  "board": {
+   "v": 1,
+   "inner_size": [
+    24,
+    12
+   ],
+   "buffer": 5,
+   "floor_tile": "floor_SE"
+  },
+  "actors": {
+   "v": 1,
+   "agent_start": [
+    4,
+    6
+   ],
+   "guards": []
+  },
+  "legacy_compiler": {
+   "v": 1,
+   "wall_height": 1,
+   "access_points": [],
+   "dividers": [],
+   "lights": [
+    {
+     "x": 12,
+     "y": 3,
+     "height_class": 4,
+     "radius": 9,
+     "intensity": 1.0
+    },
+    {
+     "x": 12,
+     "y": 8,
+     "height_class": 4,
+     "radius": 9,
+     "intensity": 1.0
+    },
+    {
+     "x": 6,
+     "y": 6,
+     "height_class": 4,
+     "radius": 10,
+     "intensity": 0.8
+    }
+   ]
+  },
+  "blocks": {
+   "v": 2,
+   "items": [
+    {
+     "gu": [
+      0,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      1
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      2
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      3
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      4
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      6
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      7
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      8
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      10
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      1,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      1,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      2,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      2,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      3,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      3,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      4,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      4,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      5,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      5,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      6,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      6,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      7,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      7,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      8,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      8,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      9,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      9,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      10,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      10,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      11,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      11,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      12,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      12,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      13,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      13,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      15,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      15,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      16,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      16,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      17,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      17,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      18,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      18,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      19,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      19,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      20,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      20,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      21,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      21,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      22,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      22,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      1
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      2
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      3
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      4
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      6
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      7
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      8
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      10
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    }
+   ]
+  },
+  "floor_zones": {
+   "v": 2,
+   "items": [
+    {
+     "gu": [
+      0,
+      0
+     ],
+     "size": [
+      24,
+      12
+     ],
+     "material": "concrete"
+    },
+    {
+     "gu": [
+      11,
+      3
+     ],
+     "size": [
+      2,
+      6
+     ],
+     "material": "stone"
+    }
+   ]
+  },
+  "damage_materials": {
+   "v": 1,
+   "materials": [
+    "concrete",
+    "steel_plate_rust",
+    "steel_dark",
+    "stone"
+   ]
+  },
+  "props": {
+   "v": 1,
+   "items": [
+    {
+     "def": "pipe_n_00",
+     "gu": [
+      11,
+      1
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "pipe_s_00",
+     "gu": [
+      11,
+      9
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "pipe_n_01",
+     "gu": [
+      11,
+      2
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "pipe_s_01",
+     "gu": [
+      11,
+      10
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "pipe_n_10",
+     "gu": [
+      12,
+      1
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "pipe_s_10",
+     "gu": [
+      12,
+      9
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "pipe_n_11",
+     "gu": [
+      12,
+      2
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "pipe_s_11",
+     "gu": [
+      12,
+      10
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "curb_lo",
+     "gu": [
+      11,
+      3
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "curb_hi",
+     "gu": [
+      12,
+      3
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "curb_lo",
+     "gu": [
+      11,
+      4
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "curb_hi",
+     "gu": [
+      12,
+      4
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "curb_lo",
+     "gu": [
+      11,
+      5
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "curb_hi",
+     "gu": [
+      12,
+      5
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "curb_lo",
+     "gu": [
+      11,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "curb_hi",
+     "gu": [
+      12,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "curb_lo",
+     "gu": [
+      11,
+      7
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "curb_hi",
+     "gu": [
+      12,
+      7
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "curb_lo",
+     "gu": [
+      11,
+      8
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "curb_hi",
+     "gu": [
+      12,
+      8
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    }
+   ]
+  },
+  "layout": {
+   "v": 1,
+   "poi": [
+    {
+     "id": "pipe_a",
+     "at": [
+      12.0,
+      2.0,
+      0.5
+     ],
+     "extent": [
+      3.0,
+      3.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "pipe_b",
+     "at": [
+      12.0,
+      10.0,
+      0.5
+     ],
+     "extent": [
+      3.0,
+      3.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "channel",
+     "at": [
+      12.0,
+      6.0,
+      0.0
+     ],
+     "extent": [
+      2.0,
+      6.0,
+      0.5
+     ],
+     "tags": [
+      "detail"
+     ]
+    }
+   ],
+   "regions": []
+  }
+ }
+}

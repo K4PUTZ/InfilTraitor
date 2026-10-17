@@ -1,0 +1,25 @@
+{
+  "id": "channel_curb",
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "max_size": [
+    1.6,
+    1.6,
+    0.4
+  ],
+  "mesh_tier": 0,
+  "gameplay": {
+    "cover": "none",
+    "destructible": true
+  },
+  "default_model": "curb_lo",
+  "generic_material": "concrete",
+  "budget": {
+    "max_claims": 200,
+    "max_materials": 2
+  }
+}

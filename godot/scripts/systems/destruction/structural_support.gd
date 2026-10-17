@@ -47,6 +47,9 @@ const BUDGET: int = 1920   ## divisible by every reach in use (6, 8, 12, 16, 24,
 ## (the world was stable before the event: only what the event reached can have lost its support). Vertically the walk goes `UP_MARGIN` levels past the highest asked voxel.
 const LATERAL_MARGIN: int = 100
 const UP_MARGIN: int = 40
+## The walk gives up (nothing falls, and it says so) past this many standing voxels found round the asked ones: a whole map is ~240 000 and the dictionaries that hold them are
+## ~25 MB each on the handset. The audit of an intact map (`struct_audit`) lifts it.
+const MAX_FOUND: int = 120000
 
 static var _step_cost_cache: Dictionary = {}   ## material id -> int
 
@@ -60,7 +63,7 @@ static func step_cost(material: String) -> int:
 ## Among `seeds` (Array of Vector3i: standing voxels to ask about) the ones with no support: key -> how many steps they are from where something was just broken
 ## (`broken`: Dictionary Vector3i -> true, the cells destroyed by the event that asked), the order of a short cascade. A seed that is not standing is ignored.
 ## `report_all`: also name every other standing voxel the walk found around the seeds that is loose (the universal pass: a wall with its foot gone, not only the asked ones).
-static func unsupported(grid: ClaimGrid, ground: int, seeds: Array, broken: Dictionary, report_all: bool = false) -> Dictionary:
+static func unsupported(grid: ClaimGrid, ground: int, seeds: Array, broken: Dictionary, report_all: bool = false, max_found: int = MAX_FOUND) -> Dictionary:
 	var loose: Dictionary = {}
 	if seeds.is_empty():
 		return loose
@@ -90,6 +93,9 @@ static func unsupported(grid: ClaimGrid, ground: int, seeds: Array, broken: Dict
 	var asked: Array[Vector3i] = []
 	asked.assign(cost_of.keys())
 	while not stack.is_empty():
+		if cost_of.size() > max_found:
+			push_warning("[StructuralSupport] more than %d standing voxels found round %d asked: the walk gives up and nothing falls" % [max_found, seeds.size()])
+			return {}
 		var k: Vector3i = stack.pop_back()
 		if k.z <= ground or grid.anchored.has(k):
 			sources.append(k)

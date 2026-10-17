@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**307 scripts · 93919 lines total** (under `godot/scripts/`)
+**307 scripts · 94149 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1203,7 +1203,7 @@ extends `Node3D` · 3522 lines
 
 ### `soft_sheet_rest_cache.gd`
 
-`class_name SoftSheetRestCache` · extends `RefCounted` · 83 lines
+`class_name SoftSheetRestCache` · extends `RefCounted` · 116 lines
 
 `godot/scripts/geometry/soft_sheet_rest_cache.gd`
 
@@ -1212,12 +1212,13 @@ extends `Node3D` · 3522 lines
 **Constants / tuning**
 - `SIM_VERSION` = `3`
 - `PATH` = `"user://soft_sheet_rest_v1.bin"`
+- `MAX_ENTRIES` = `512`
 
 ---
 
 ### `soft_sheet_sim.gd`
 
-`class_name SoftSheetSim` · extends `RefCounted` · 731 lines
+`class_name SoftSheetSim` · extends `RefCounted` · 759 lines
 
 `godot/scripts/geometry/soft_sheet_sim.gd`
 
@@ -1226,6 +1227,7 @@ extends `Node3D` · 3522 lines
 **Constants / tuning**
 - `MAX_STEPS_PER_ADVANCE` = `2`
 - `SOLID_REACH` = `8`
+- `DIVERGED_SPEED` = `200.0`
 
 **Public vars**
 - `var nx: int = 0`
@@ -1242,6 +1244,7 @@ extends `Node3D` · 3522 lines
 - `var prev: PackedFloat64Array = PackedFloat64Array()`
 - `var vel: PackedFloat64Array = PackedFloat64Array()`
 - `var pinned: PackedByteArray = PackedByteArray()`
+- `var diverged: bool = false`
 
 **Public API**
 - `func make_kinematic(nodes: PackedInt32Array) -> void:`
@@ -2645,7 +2648,7 @@ extends `RefCounted` · 37 lines
 
 ### `material_resistance_table.gd`
 
-`class_name MaterialResistanceTable` · 277 lines
+`class_name MaterialResistanceTable` · 289 lines
 
 `godot/scripts/systems/destruction/material_resistance_table.gd`
 
@@ -2723,7 +2726,7 @@ extends `RefCounted` · 37 lines
 
 ### `structural_support.gd`
 
-`class_name StructuralSupport` · extends `RefCounted` · 163 lines
+`class_name StructuralSupport` · extends `RefCounted` · 169 lines
 
 `godot/scripts/systems/destruction/structural_support.gd`
 
@@ -3555,7 +3558,7 @@ extends `Node` · 143 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 338 lines
+`class_name SaveState` · extends `RefCounted` · 344 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -5228,7 +5231,7 @@ extends `SceneTree` · 204 lines
 
 ### `roof_sheet_release_selftest.gd`
 
-extends `SceneTree` · 245 lines
+extends `SceneTree` · 278 lines
 
 `godot/scripts/tools/roof_sheet_release_selftest.gd`
 
@@ -5377,7 +5380,7 @@ extends `SceneTree` · 210 lines
 
 ### `soft_sheet_sim_selftest.gd`
 
-extends `SceneTree` · 298 lines
+extends `SceneTree` · 329 lines
 
 `godot/scripts/tools/soft_sheet_sim_selftest.gd`
 
@@ -5416,7 +5419,7 @@ extends `Node` · 104 lines
 
 ### `structural_support_selftest.gd`
 
-extends `SceneTree` · 142 lines
+extends `SceneTree` · 152 lines
 
 `godot/scripts/tools/structural_support_selftest.gd`
 
@@ -6322,7 +6325,7 @@ extends `Node` · 252 lines
 
 ### `roof_sheet_release.gd`
 
-`class_name RoofSheetRelease` · extends `RefCounted` · 391 lines
+`class_name RoofSheetRelease` · extends `RefCounted` · 449 lines
 
 `godot/scripts/world/roof_sheet_release.gd`
 
@@ -6335,7 +6338,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12397 lines
+extends `Node2D` · 12410 lines
 
 `godot/scripts/world/room.gd`
 

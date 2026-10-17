@@ -10,6 +10,8 @@ extends RefCounted
 ## Bump when `SoftSheetSim`'s behaviour changes (a stale result would be a cloth that rests where the old sim put it).
 const SIM_VERSION: int = 3
 const PATH := "user://soft_sheet_rest_v1.bin"
+## A level of tents is dozens of cloths; a cache that grows for ever across map edits is a leak on the handset's storage. The oldest entries go first.
+const MAX_ENTRIES: int = 512
 
 static var _entries: Dictionary = {}   ## key String -> PackedFloat64Array (3 floats per node)
 static var _loaded: bool = false
@@ -51,7 +53,15 @@ static func lookup(key: String) -> PackedFloat64Array:
 
 static func store(key: String, positions: PackedFloat64Array) -> void:
 	_load()
+	if positions.is_empty() or positions.size() % 3 != 0:
+		return
+	for f: float in positions:
+		if not is_finite(f):
+			return   ## a diverged sim is never remembered
+	_entries.erase(key)   ## re-inserted last: the oldest entry is the first key
 	_entries[key] = positions
+	while _entries.size() > MAX_ENTRIES:
+		_entries.erase(_entries.keys()[0])
 	_dirty = true
 
 
@@ -59,12 +69,18 @@ static func store(key: String, positions: PackedFloat64Array) -> void:
 static func flush() -> void:
 	if not _dirty:
 		return
-	var file: FileAccess = FileAccess.open(PATH, FileAccess.WRITE)
+	## Written beside and renamed over: a crash or a full disk mid-write leaves the old file whole, never half of a new one.
+	var temp: String = PATH + ".tmp"
+	var file: FileAccess = FileAccess.open(temp, FileAccess.WRITE)
 	if file == null:
-		push_warning("[SoftSheetRestCache] cannot write %s (%s): the cache stays in memory" % [PATH, error_string(FileAccess.get_open_error())])
+		push_warning("[SoftSheetRestCache] cannot write %s (%s): the cache stays in memory" % [temp, error_string(FileAccess.get_open_error())])
 		return
 	file.store_var(_entries)
 	file.close()
+	var err: int = DirAccess.rename_absolute(ProjectSettings.globalize_path(temp), ProjectSettings.globalize_path(PATH))
+	if err != OK:
+		push_warning("[SoftSheetRestCache] cannot move %s over %s (%s): the cache stays in memory" % [temp, PATH, error_string(err)])
+		return
 	_dirty = false
 
 
@@ -77,7 +93,24 @@ static func _load() -> void:
 	var file: FileAccess = FileAccess.open(PATH, FileAccess.READ)
 	if file == null:
 		return
-	var data: Variant = file.get_var()
+	var data: Variant = file.get_var()   ## no objects: a file cannot carry a script
 	file.close()
-	if data is Dictionary:
-		_entries = data
+	if not (data is Dictionary):
+		push_warning("[SoftSheetRestCache] %s is not a cache (a %s): ignored, it is rebuilt" % [PATH, type_string(typeof(data))])
+		return
+	var dropped: int = 0
+	for key: Variant in (data as Dictionary):
+		var value: Variant = (data as Dictionary)[key]
+		var good: bool = typeof(key) == TYPE_STRING and value is PackedFloat64Array and not (value as PackedFloat64Array).is_empty() and (value as PackedFloat64Array).size() % 3 == 0
+		if good:
+			for f: float in (value as PackedFloat64Array):
+				if not is_finite(f):
+					good = false
+					break
+		if good:
+			_entries[key] = value
+		else:
+			dropped += 1
+	if dropped > 0:
+		push_warning("[SoftSheetRestCache] %d malformed entr(ies) of %s dropped" % [dropped, PATH])
+		_dirty = true

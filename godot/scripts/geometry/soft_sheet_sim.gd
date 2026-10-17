@@ -71,6 +71,9 @@ var _ground_level: int = 0
 var _acc: float = 0.0
 var _quiet: float = 0.0
 var _kinematic: bool = false   ## some pinned nodes are driven from outside (`make_kinematic`)
+## No cloth moves like this (GU/s): over it the step is judged a divergence. `diverged` stays true for the sim's life (the sheet is drawn where it last was).
+const DIVERGED_SPEED: float = 200.0
+var diverged: bool = false
 var _fastest: float = 0.0   ## the speed (GU/s) of the fastest free node after the last step
 var _push: PackedFloat64Array = PackedFloat64Array()   ## per node, 3 floats: how far the last `_collide()` moved it OUT of something (its contact normal), which is not a velocity
 var _steps: int = 0
@@ -384,12 +387,21 @@ func steps_run() -> int:
 
 
 ## A result read back from `SoftSheetRestCache`: the node positions of a cloth settled before, at rest (no velocity).
-func restore(positions: PackedFloat64Array) -> void:
-	assert(positions.size() == pos.size())
+## Returns false (and leaves the sim as it is) for positions that are not this sheet's: a wrong size or a non-finite number (a stale cache entry, a hand-edited or corrupt
+## save) must never become the cloth's shape.
+func restore(positions: PackedFloat64Array) -> bool:
+	if positions.size() != pos.size():
+		push_warning("[SoftSheetSim] restore: %d floats given for a sheet of %d: left as it is" % [positions.size(), pos.size()])
+		return false
+	for f: float in positions:
+		if not is_finite(f):
+			push_warning("[SoftSheetSim] restore: a non-finite position: left as it is")
+			return false
 	pos = positions.duplicate()
 	prev = pos.duplicate()
 	for k in range(vel.size()):
 		vel[k] = 0.0
+	return true
 
 
 ## A cloth that is part of the world from the first frame (ROOF_MASTER_PLAN v0.41, Director 2026-10-16: "o pano já nasce apoiado nos elementos do mundo"): the
@@ -506,13 +518,29 @@ func step() -> void:
 		vel[o4] = vx
 		vel[o4 + 1] = vy
 		vel[o4 + 2] = vz
-		fastest = maxf(fastest, vx * vx + vy * vy + vz * vz)
+		var speed_sq: float = vx * vx + vy * vy + vz * vz
+		if not is_finite(speed_sq):
+			fastest = INF   ## `maxf` would swallow a NaN: the divergence check below must see it
+		else:
+			fastest = maxf(fastest, speed_sq)
 		pos[o4] = _xs[o4]
 		pos[o4 + 1] = _xs[o4 + 1]
 		pos[o4 + 2] = _xs[o4 + 2]
 	time += dt
 	_steps += 1
 	_fastest = sqrt(fastest)
+	## A sim that blew up (a non-finite number, or a node faster than anything a cloth does) is put back where the step began and stopped: a NaN in the vertex buffer is a
+	## broken mesh and a bounding box that never culls, and the worker would go on stepping it for ever.
+	if not is_finite(_fastest) or _fastest > DIVERGED_SPEED:
+		if not diverged:
+			push_warning("[SoftSheetSim] a %dx%d sheet diverged at t = %.2f s (fastest node %s GU/s): stopped where the step began" % [nx, nz, time, str(_fastest)])
+		diverged = true
+		pos = prev.duplicate()
+		for k in range(vel.size()):
+			vel[k] = 0.0
+		_fastest = 0.0
+		_quiet = SETTLE_TIME
+		return
 	_quiet = _quiet + dt if _fastest < SETTLE_SPEED else 0.0
 
 

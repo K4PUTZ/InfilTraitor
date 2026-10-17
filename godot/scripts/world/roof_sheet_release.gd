@@ -389,3 +389,61 @@ static func sim_params(info: Dictionary, row: Dictionary, ground_level: int, blo
 		boxes.append(box)
 	return {"nx": nx, "nz": nz, "hx": hx, "hz": hz, "origin": origin, "material": row, "pins": pins, "floor_y": 0.0, "boxes": boxes,
 		"solid": solid, "ground_level": ground_level}
+
+
+## What is wrong with a saved cloth record (`Room._cloth_record`), or "" when it can be laid down: a save is a file a player's disk, a crash or an older build may have
+## damaged, and a missing key or a wrong-sized array in the middle of a load would stop the whole load (a script error on a Dictionary read), so a bad record is named and skipped.
+static func cloth_record_error(rec: Variant) -> String:
+	if not (rec is Dictionary):
+		return "not a dictionary (%s)" % type_string(typeof(rec))
+	var r: Dictionary = rec
+	for k: String in ["batch", "material", "key", "nx", "nz", "hx", "hz", "origin", "pins", "extent", "boxes", "columns", "missing"]:
+		if not r.has(k):
+			return "no '%s'" % k
+	if not SoftSheetPresets.OF.has(String(r["material"])):
+		return "no SoftSheetPresets row for '%s'" % String(r["material"])
+	var nx: int = int(r["nx"])
+	var nz: int = int(r["nz"])
+	if nx < 2 or nz < 2 or nx > 512 or nz > 512 or nx * nz > 40000:
+		return "a %d x %d grid" % [nx, nz]
+	for k: String in ["hx", "hz"]:
+		if typeof(r[k]) not in [TYPE_FLOAT, TYPE_INT] or not is_finite(float(r[k])) or float(r[k]) <= 0.0:
+			return "'%s' is not a positive number" % k
+	if not _numbers(r["origin"], 3) or not _numbers(r["extent"], 5):
+		return "origin / extent are not 3 / 5 numbers"
+	if not (r["pins"] is Array):
+		return "pins is not an array"
+	for b: Variant in r["boxes"]:
+		if not _numbers(b, 6):
+			return "a box is not 6 numbers"
+	for k: String in ["columns", "missing"]:
+		if not (r[k] is Array):
+			return "'%s' is not an array" % k
+		for c: Variant in r[k]:
+			if not _numbers(c, 2):
+				return "a %s entry is not 2 numbers" % k
+	if r.has("pos"):
+		if not (r["pos"] is Array) or (r["pos"] as Array).size() != nx * nz * 3:
+			return "pos holds %d numbers for %d nodes" % [(r["pos"] as Array).size() if r["pos"] is Array else -1, nx * nz]
+		for f: Variant in r["pos"]:
+			if typeof(f) not in [TYPE_FLOAT, TYPE_INT] or not is_finite(float(f)):
+				return "pos has a non-finite number"
+	if r.has("plane"):
+		var p: Variant = r["plane"]
+		if not (p is Dictionary) or not _numbers((p as Dictionary).get("origin"), 3) or not _numbers((p as Dictionary).get("eu"), 3) or not _numbers((p as Dictionary).get("ev"), 3):
+			return "a malformed plane"
+		for k: String in ["axis", "wc", "u0", "nu", "levels", "basis_u", "basis_v"]:
+			if not r.has(k):
+				return "a wall without '%s'" % k
+		if not _numbers(r["basis_u"], 3) or not _numbers(r["basis_v"], 3):
+			return "a wall's basis is not 3 numbers"
+	return ""
+
+
+static func _numbers(value: Variant, count: int) -> bool:
+	if not (value is Array) or (value as Array).size() != count:
+		return false
+	for f: Variant in value:
+		if typeof(f) not in [TYPE_FLOAT, TYPE_INT] or not is_finite(float(f)):
+			return false
+	return true

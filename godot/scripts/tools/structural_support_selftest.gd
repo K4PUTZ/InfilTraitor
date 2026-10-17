@@ -15,6 +15,7 @@ func _init() -> void:
 	_rule()
 	_overlay()
 	_reach()
+	_cap()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -140,3 +141,12 @@ func _reach() -> void:
 	for c: Vector3i in shelf:
 		grid3.anchored[c] = true
 	_check(StructuralSupport.unsupported(grid3, GROUND, shelf, {}).is_empty(), "the same shelf, anchored by design, stays")
+
+
+## The walk gives up past its cap, saying so, and nothing falls (a bounded cost on the handset).
+func _cap() -> void:
+	var grid := ClaimGrid.empty()
+	var floating: Array = _column(5, 5, GROUND + 1, GROUND + 30)
+	_put(grid, floating)
+	_check(StructuralSupport.unsupported(grid, GROUND, floating, {}).size() == 30, "30 floating voxels are all loose under the default cap")
+	_check(StructuralSupport.unsupported(grid, GROUND, floating, {}, false, 10).is_empty(), "past the cap (10 found) the walk gives up and nothing falls")

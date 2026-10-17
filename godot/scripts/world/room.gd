@@ -2308,7 +2308,13 @@ const WHISTLE_RADIUS := 3
 
 ## Loads (or reloads) the given map into the already-initialized room. Safe to call
 ## after _ready() — used by _ready() itself and by the F2 debug panel.
+## Counts the maps this room has loaded: a coroutine that outlives a reload (a fall in its cascade, a walk on a worker) compares it and gives up instead of writing the NEW map with
+## the OLD map's keys.
+var _map_epoch: int = 0
+
+
 func load_map(new_map_id: String, new_seed: int = 0) -> void:
+	_map_epoch += 1
 	## §13.2 — a new board means new Voxel objects; every key the index holds
 	## points at the old ones. FIRST, before anything can consult it.
 	map_id = new_map_id
@@ -4287,6 +4293,7 @@ func schedule_structural_support(touched: Array) -> void:
 	var store: VoxelStore = VoxelStore.active
 	if store == null:
 		return
+	var epoch: int = _map_epoch
 	var universal: bool = str(_dev_flag("STRUCT_UNIVERSAL", "1")) != "0"
 	var blocks_by_id: Dictionary = {}
 	for block: PropBlock in _voxel_board.prop_blocks():
@@ -4316,7 +4323,7 @@ func schedule_structural_support(touched: Array) -> void:
 	var t0: int = Time.get_ticks_usec()
 	var main_usec: int = t0 - t_main0   ## what the main thread paid before the walk went to the worker
 	## G3: the universal pass asks about every standing voxel that touches a cell this event destroyed (the worker derives them), and the walk names the whole piece that lost its hold.
-	var holder: Array = [{}, 0, 0]
+	var holder: Array = [null, 0, 0]   ## the answer stays null if the worker's script failed: told, not taken for "nothing is loose"
 	var task: int = WorkerThreadPool.add_task(func() -> void:
 		var w0: int = Time.get_ticks_usec()
 		if universal:
@@ -4335,9 +4342,12 @@ func schedule_structural_support(touched: Array) -> void:
 			WorkerThreadPool.wait_for_task_completion(task)
 			return
 	WorkerThreadPool.wait_for_task_completion(task)
-	var loose: Dictionary = holder[0]
-	if VoxelStore.active != store:
+	if epoch != _map_epoch or VoxelStore.active != store:
 		return   ## the map was reloaded under the walk
+	if not (holder[0] is Dictionary):
+		push_error("[Room] structural support: the walk on the worker gave no answer (see the script error above): nothing falls this time")
+		return
+	var loose: Dictionary = holder[0]
 	var live_grid: ClaimGrid = ClaimGrid.of_store(store)
 	## Cloth and glass keep their own rules (a cloth lets go as a sheet, a pane collapses by `GlassSupport`'s cantilever).
 	for key: Vector3i in loose.keys():
@@ -4351,10 +4361,10 @@ func schedule_structural_support(touched: Array) -> void:
 	var material_of: Dictionary = {}
 	for key: Vector3i in loose:
 		material_of[key] = live_grid.material_at(key)
-	_structural_fall(loose, material_of, blocks_by_id)
+	_structural_fall(loose, material_of, blocks_by_id, epoch)
 
 
-func _structural_fall(loose: Dictionary, material_of: Dictionary, blocks_by_id: Dictionary) -> void:
+func _structural_fall(loose: Dictionary, material_of: Dictionary, blocks_by_id: Dictionary, epoch: int) -> void:
 	var step: float = maxf(float(_dev_flag("STRUCT_CASCADE_S", "0.04")), 0.001)
 	var scale: float = float(_dev_flag("STRUCT_GRAVITY_SCALE", "1.0"))
 	var steps_max: int = int(round(0.6 / step))
@@ -4377,7 +4387,7 @@ func _structural_fall(loose: Dictionary, material_of: Dictionary, blocks_by_id: 
 			t_prev = at
 		var live: Node = board3d()
 		var store: VoxelStore = VoxelStore.active
-		if not is_instance_valid(self) or live == null or store == null or _voxel_board == null:
+		if not is_instance_valid(self) or epoch != _map_epoch or live == null or store == null or _voxel_board == null:
 			return
 		var grid: ClaimGrid = ClaimGrid.of_store(store)
 		var voxels: Array = []
@@ -4414,7 +4424,7 @@ func _structural_fall(loose: Dictionary, material_of: Dictionary, blocks_by_id: 
 			await _voxel_board.process_dirty_slabs_async(_slab_registry)
 			await _voxel_board.process_dirty_async(_edge_registry)
 			_destruction_render_busy = false
-			if not is_instance_valid(self) or not is_instance_valid(live):
+			if not is_instance_valid(self) or not is_instance_valid(live) or epoch != _map_epoch:
 				return
 		live.on_shot_commit(voxels)
 		_release_destroyed_prop_cells()
@@ -4465,13 +4475,16 @@ func _begin_resting_sheets() -> void:
 			job["cache_key"] = SoftSheetRestCache.key_of(params)
 			var cached: PackedFloat64Array = SoftSheetRestCache.lookup(String(job["cache_key"]))
 			if cached.size() == (job["sim"] as SoftSheetSim).pos.size():
-				(job["sim"] as SoftSheetSim).restore(cached)
-				job["cached"] = true
+				job["cached"] = (job["sim"] as SoftSheetSim).restore(cached)
 		if not bool(job["cached"]):
 			job["task"] = WorkerThreadPool.add_task(_rest_job_run.bind(job), false, "SoftSheetRest")
 		_resting_jobs.append(job)
 	var by_batch: Dictionary = {}   ## release number -> the saved cloths of that release, laid down again together
 	for rec: Dictionary in _base_cloths:
+		var why: String = RoofSheetRelease.cloth_record_error(rec)
+		if not why.is_empty():
+			push_warning("[Room] a saved cloth is not restored: %s" % why)
+			continue
 		var fallen: Dictionary = _fallen_job(rec, ground)
 		if not fallen.is_empty():
 			var list: Array = by_batch.get(int(rec.get("batch", 0)), [])
@@ -4577,7 +4590,7 @@ func _fallen_job(rec: Dictionary, ground: int) -> Dictionary:
 	var sim := SoftSheetSim.new(params)
 	var frozen: bool = bool(rec.get("settled", false)) and not initial.is_empty()
 	if frozen:
-		sim.restore(params["initial"])   ## it had come to rest: it is laid down exactly there
+		frozen = sim.restore(params["initial"])   ## it had come to rest: it is laid down exactly there (a record that does not fit falls and settles again)
 	return {"rec": rec, "sim": sim, "frozen": frozen}
 
 
@@ -5171,7 +5184,7 @@ func scenario_struct_audit() -> bool:
 			row[1] = maxi(int(row[1]), k.z)
 			standing[String(m)] = row
 	var t0: int = Time.get_ticks_usec()
-	var loose: Dictionary = StructuralSupport.unsupported(grid, _voxel_board.ground_plane_level(), seeds, {})
+	var loose: Dictionary = StructuralSupport.unsupported(grid, _voxel_board.ground_plane_level(), seeds, {}, false, 1 << 30)   ## the whole map: no cap
 	var by_material: Dictionary = {}
 	var lo := Vector3i(1 << 30, 1 << 30, 1 << 30)
 	var hi := Vector3i(-(1 << 30), -(1 << 30), -(1 << 30))

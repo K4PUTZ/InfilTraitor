@@ -46,6 +46,7 @@ func _init() -> void:
 	for roof: Dictionary in layout["roof_instances"]:
 		if String(roof["material"]) == "cardboard":
 			_cardboard(room, layout, roof, fabric.size() == 1)
+	_records()
 	VoxelStore.active = null
 	room.queue_free()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -243,3 +244,35 @@ func _weights(f: float) -> Array:
 	var f2: float = f * f
 	var f3: float = f2 * f
 	return [-0.5 * f3 + f2 - 0.5 * f, 1.5 * f3 - 2.5 * f2 + 1.0, -1.5 * f3 + 2.0 * f2 + 0.5 * f, 0.5 * f3 - 0.5 * f2]
+
+
+## A saved cloth record is checked before it is laid down (the materials audit, 2026-10-17): a good one passes, every kind of damage is named.
+func _records() -> void:
+	var n: int = 4
+	var good: Dictionary = {"batch": 1, "material": "fabric", "key": "k", "nx": n, "nz": n, "hx": 0.1, "hz": 0.1, "origin": [1.0, 2.0, 3.0], "pins": [1, 0, 0, 1],
+		"extent": [0, 0, 1, 1, 80], "boxes": [[0, 0, 0, 1, 1, 1]], "columns": [[0, 0]], "missing": [], "pos": []}
+	for i in range(n * n * 3):
+		(good["pos"] as Array).append(float(i) * 0.01)
+	_check(RoofSheetRelease.cloth_record_error(good) == "", "a well-formed cloth record passes")
+	var cases: Array = [["not a dictionary", 42], ["a missing key", "nx"], ["an unknown material", "material"], ["a 1x1 grid", "nz"], ["a NaN origin", "origin"],
+		["a ragged pos", "pos"], ["a box of 5 numbers", "boxes"], ["a negative size", "hx"]]
+	for c: Array in cases:
+		var bad: Variant = good.duplicate(true)
+		match String(c[0]):
+			"not a dictionary":
+				bad = 42
+			"a missing key":
+				(bad as Dictionary).erase("nx")
+			"an unknown material":
+				bad["material"] = "unobtainium"
+			"a 1x1 grid":
+				bad["nz"] = 1
+			"a NaN origin":
+				bad["origin"] = [NAN, 0.0, 0.0]
+			"a ragged pos":
+				bad["pos"] = [1.0, 2.0]
+			"a box of 5 numbers":
+				bad["boxes"] = [[0, 0, 0, 1, 1]]
+			"a negative size":
+				bad["hx"] = -0.1
+		_check(RoofSheetRelease.cloth_record_error(bad) != "", "a bad record is refused: %s -> %s" % [c[0], RoofSheetRelease.cloth_record_error(bad)])

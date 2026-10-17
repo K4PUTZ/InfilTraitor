@@ -254,7 +254,13 @@ static func restore(room, data: Dictionary) -> bool:
 			rubble_materials.append(String(zm))
 		room._base_rubble_piles.append({"y0": float(rp[0]), "zone_materials": rubble_materials, "records": rubble_records,
 			"div": int(rp[3])})
-	room._base_cloths = (data.get("cloths", []) as Array).duplicate(true)
+	room._base_cloths = []
+	for rec: Variant in data.get("cloths", []):
+		var why: String = RoofSheetRelease.cloth_record_error(rec)
+		if why.is_empty():
+			room._base_cloths.append((rec as Dictionary).duplicate(true))
+		else:
+			push_warning("[SaveState] a saved cloth is skipped: %s" % why)
 	room._base_debris.clear()
 	for dd in data.get("debris", []):
 		room._base_debris[String(dd[0])] = {"base": Vector2(float(dd[1]), float(dd[2])), "level": int(dd[3]),

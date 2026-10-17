@@ -19,6 +19,7 @@ func _init() -> void:
 	_test_wall()
 	_test_group()
 	_test_rest_cache()
+	_test_guards()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -296,3 +297,33 @@ func _test_awning() -> void:
 	_check(sim.is_settled() and guard < 600, "it settled after %d steps (%.1f s simulated)" % [guard, sim.time])
 	_check(mean > 1.58 and mean < 1.78, "mean height %.3f GU (lab: 1.682 at N=13, 1.646 at the reference)" % mean)
 	_check(low > 0.95 and low < 1.30, "lowest node %.3f GU (lab reference 1.03: a pouch, not the floor)" % low)
+
+
+## The protections (the materials audit, 2026-10-17): a restore that does not fit is refused, a cache never keeps a bad entry, a sim that blows up stops where it was.
+func _test_guards() -> void:
+	var sim: SoftSheetSim = _awning()
+	var before: PackedFloat64Array = sim.pos.duplicate()
+	_check(not sim.restore(PackedFloat64Array([1.0, 2.0, 3.0])), "restore refuses a wrong-sized array")
+	var nan_pos: PackedFloat64Array = before.duplicate()
+	nan_pos[10] = NAN
+	_check(not sim.restore(nan_pos), "restore refuses a non-finite number")
+	_check(sim.pos == before, "a refused restore leaves the sheet as it was")
+	_check(sim.restore(before), "restore takes its own positions")
+	SoftSheetRestCache.store("selftest-bad-nan", nan_pos)
+	SoftSheetRestCache.store("selftest-bad-size", PackedFloat64Array([1.0, 2.0]))
+	_check(SoftSheetRestCache.lookup("selftest-bad-nan").is_empty() and SoftSheetRestCache.lookup("selftest-bad-size").is_empty(), "the rest cache keeps neither a non-finite nor a ragged entry")
+	for i in range(SoftSheetRestCache.MAX_ENTRIES + 20):
+		SoftSheetRestCache.store("selftest-cap-%d" % i, before)
+	_check(SoftSheetRestCache._entries.size() <= SoftSheetRestCache.MAX_ENTRIES, "the rest cache is capped at %d entries (%d)" % [SoftSheetRestCache.MAX_ENTRIES, SoftSheetRestCache._entries.size()])
+	_check(SoftSheetRestCache.lookup("selftest-cap-0").is_empty() and not SoftSheetRestCache.lookup("selftest-cap-%d" % (SoftSheetRestCache.MAX_ENTRIES + 19)).is_empty(), "the oldest entries go first")
+	for k in range(SoftSheetRestCache.MAX_ENTRIES + 20):
+		SoftSheetRestCache._entries.erase("selftest-cap-%d" % k)   ## the tests leave nothing in the cache (and nothing is flushed)
+	SoftSheetRestCache._dirty = false
+	## a sim given a node that is not a number: the step stops it where it began
+	var blown: SoftSheetSim = _awning()
+	blown.vel[63] = NAN   ## node 21 (a free one: pinned nodes ignore their velocity)
+	var held: PackedFloat64Array = blown.pos.duplicate()
+	blown.step()
+	_check(blown.diverged, "a sim fed a NaN diverges")
+	_check(blown.pos == held, "and stays where the step began")
+	_check(blown.is_settled(), "and reads as settled (so its worker stops)")

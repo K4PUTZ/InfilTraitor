@@ -213,6 +213,18 @@ static func is_combustible(material: String) -> bool:
 	return flammability(material) > 0.0
 
 
+## A numeric column of a row: a string, a NaN or a number outside [lo, hi] is reported with its row (`load_errors`) and the default stands, never a silent 0 or a NaN in a formula.
+static func _number(row: Dictionary, key: String, default: float, id: String, lo: float = -INF, hi: float = INF) -> float:
+	if not row.has(key):
+		return default
+	var raw: Variant = row[key]
+	if typeof(raw) not in [TYPE_FLOAT, TYPE_INT] or not is_finite(float(raw)) or float(raw) < lo or float(raw) > hi:
+		load_errors.append("MaterialResistanceTable: %s.%s = %s is not a number in [%s, %s]: the default %s is used" % [id, key, str(raw), str(lo), str(hi), str(default)])
+		push_error(load_errors[-1])
+		return default
+	return float(raw)
+
+
 static func _row(material: String) -> Dictionary:
 	_ensure_loaded()
 	return _table.get(material, {})
@@ -260,18 +272,18 @@ static func _scan_dir(dir_path: String) -> void:
 					## shape of CLAUDE.md's floor-dent case, and the reason
 					## that print exists at all.
 					_table[id] = {
-						"destroy_factor": float(parsed.get("destroy_factor", DEFAULT_DESTROY_FACTOR)),
-						"dent_factor": float(parsed.get("dent_factor", DEFAULT_DENT_FACTOR)),
-						"crack_factor": float(parsed.get("crack_factor", DEFAULT_CRACK_FACTOR)),
-						"flammability": float(parsed.get("flammability", DEFAULT_FLAMMABILITY)),
-						"burn_consumption": float(parsed.get("burn_consumption", DEFAULT_BURN_CONSUMPTION)),
+						"destroy_factor": _number(parsed, "destroy_factor", DEFAULT_DESTROY_FACTOR, id),
+						"dent_factor": _number(parsed, "dent_factor", DEFAULT_DENT_FACTOR, id),
+						"crack_factor": _number(parsed, "crack_factor", DEFAULT_CRACK_FACTOR, id),
+						"flammability": _number(parsed, "flammability", DEFAULT_FLAMMABILITY, id),
+						"burn_consumption": _number(parsed, "burn_consumption", DEFAULT_BURN_CONSUMPTION, id),
 						## ⚠️ A KEY MISSING FROM THIS LIST IS NOT A COMPILE ERROR AND NOT
 						## A WARNING — the row simply never carries it and every lookup
 						## silently returns the default. This dictionary is the schema, not
 						## the JSON, and that is exactly CLAUDE.md's floor-dent case
 						## (69 dents on a fixture, ZERO on the real map, because only one
 						## material had the row).
-						"smoke_chance": float(parsed.get("smoke_chance", DEFAULT_SMOKE_CHANCE)),
-						"support_reach": float(parsed.get("support_reach", DEFAULT_SUPPORT_REACH)),
+						"smoke_chance": _number(parsed, "smoke_chance", DEFAULT_SMOKE_CHANCE, id),
+						"support_reach": _number(parsed, "support_reach", DEFAULT_SUPPORT_REACH, id, 0.5, 100000.0),
 					}
 		entry = dir.get_next()

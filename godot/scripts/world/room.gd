@@ -4161,6 +4161,13 @@ func scenario_save_restore() -> bool:
 	## A recorded hole's opening is claimed BEFORE the replay flushes, or every hole is cut with the default opening.
 	_claim_base_openings()
 	_reapply_base_damage()
+	var gone: Array = []
+	for _b: PropBlock in _voxel_board.prop_blocks():
+		for _v: Voxel in _b.voxels:
+			if _v.damage_state == Voxel.DamageState.DESTROYED:
+				gone.append(_v)
+	if not gone.is_empty() and board3d() != null:
+		board3d().on_shot_commit(gone)
 	_reapply_base_shattered_props()
 	_release_destroyed_prop_cells()
 	rebuild_soft_sheets()   ## the cloths were built from the undamaged map `load_map` made: a replay that destroyed a stall's voxels must take its cloth with it

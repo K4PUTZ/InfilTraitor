@@ -17,6 +17,10 @@ Resume point. Plans: `PROMPTS/PLANNING/ROOF_MASTER_PLAN.md` v0.41-v0.44 (every d
 ## Later the same day: the performance pass (`ROOF_MASTER_PLAN` v0.45)
 Sheets are claims (no `Voxel` objects), settled positions are cached between runs (`SoftSheetRestCache`, bump `SIM_VERSION` when `SoftSheetSim` changes), a release builds its sims on a worker, cheaper skins at rest, takes may carry `env`. Bench `MARKET_STRESS` (40 sheets). Galaxy A16: load wait 0 ms, release ~100 ms main thread, PSS +15-35 MB over sheets-off. **Owed: the Moto g04s on MARKET_STRESS.** The full gate found and fixed a real bug: the blast's predicted light field overwrote the light a cloth release had repainted (`light_field_usable = false` after a release). `verify.py full` PASSED (597 s); the ground gate's PLAYGROUND `select` digest and the baselines were re-recorded for the quitanda reform.
 
+## Later still: checkpoint persistence (`ROOF_MASTER_PLAN` v0.46)
+
+Let-go cloths survive a save / restore (frozen, sewn, 0 ms); seams are one-way kinematic; the restore now redraws the props its replay destroyed (the posts came back whole before). Moto MARKET_STRESS: PSS 631-635 vs 631 off, load 714 / 330 ms.
+
 ## NEXT
 1. **M6, fluids** (`MATERIALS_MASTER_PLAN` §6): water, lava, sewer, quicksand (ordinary `earth` as the base, a trap rule on top: the cheapest first slice), gases maybe. Research first; the old worries (TileSet rebuild) are history, `SoftSheetSim` + `SoftSheet3D` are the precedent for a dynamic surface on a worker.
 2. Smaller, soft materials: a rail / counter for the quitanda's frame; walls of cardboard that fold as plates; persistence of a let-go cloth across a checkpoint; a per-plate bilinear skin (a crease reads as a soft bend); the roof shot (step 5) and metal (Q5).

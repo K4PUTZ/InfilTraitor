@@ -21,6 +21,19 @@ uniform float detail_strength = 0.55;   // how strong rings / bubbles / dots / f
 uniform float scum = 0.0;               // floating clumps (algae, rubbish) that drift with the flow and bob
 uniform vec4 scum_color : source_color = vec4(0.27, 0.45, 0.1, 1.0);
 uniform vec4 dirt_color : source_color = vec4(0.0);   // alpha 0 = the stipple dots take `light_color`; else they are specks of this colour
+uniform float scum_cut = 0.6;           // clump threshold: higher = sparser clumps
+uniform float scum_scale = 6.0;         // clump size: lower = bigger chunks
+uniform vec4 scum_top_color : source_color = vec4(0.0);   // alpha 0 = the clumps' lit tops are the scum colour brightened; else this colour (white fat on red flesh)
+uniform float froth = 0.0;              // white foam patches: mottled, packed with tiny bubbles
+uniform float junk = 0.0;               // floating rubbish: planks, cardboard, plastic, cans, drifting and turning slowly
+uniform float junk_skip = 0.55;         // a cell holds a piece when its hash is above this: higher = fewer pieces
+uniform float pop_bubbles = 0.0;       // slow bubbles that swell, hold, and burst with a ring (nuclear)
+uniform float glow = 0.0;               // phosphorescence: slow pulsing patches pushed toward light_color
+uniform float crust = 0.0;              // 0..1: how much of the surface is cooled plates (the rest is the molten base showing); lava only
+uniform vec4 crust_color : source_color = vec4(0.07, 0.05, 0.045, 1.0);
+uniform vec4 crack_color : source_color = vec4(1.0, 0.55, 0.1, 1.0);
+uniform float crack_scale = 3.2;        // plates per GU
+uniform vec4 scum_rim_color : source_color = vec4(0.0);   // alpha 0 = a clump's rim is dark; else it glows this colour (a hot rock edge)
 uniform float stipple_alive = 0.42;     // a stipple cell holds a dot when its hash is above this: higher = fewer dots
 uniform float oil = 0.0;                // sparse iridescent slicks, scattered zones that drift slowly
 uniform float rain = 0.0;               // 0 off .. 1 heavy: concentric rings from random drops, independent of the flow
@@ -105,6 +118,108 @@ float caustic_net(vec2 p, float t) {
 	return c;
 }
 
+// Junk: one piece per 0.75 GU cell (when the cell's hash allows), carried by the flow slower than the water, turning slowly. Kinds by hash:
+// plank (long, brown, grain), cardboard (tan square), plastic (small, blue or white), can (grey disc). Hard edges, a darker rim.
+vec4 junk_layer(vec2 p, float t) {
+	vec2 q = p / 0.75 - flow_dir * t * flow_speed * 0.45 / 0.75;
+	vec2 id = floor(q);
+	vec2 f = (fract(q) - 0.5) * 0.75;
+	vec2 r = h22(id + 71.0);
+	if (r.x < junk_skip) {
+		return vec4(0.0);
+	}
+	f -= (r - 0.5) * 0.26;
+	float ang = h21(id + 13.0) * 6.2832 + t * 0.2 * (r.y - 0.5);
+	vec2 g = mat2(vec2(cos(ang), -sin(ang)), vec2(sin(ang), cos(ang))) * f;
+	float kind = h21(id + 5.0);
+	vec2 hs;
+	vec3 c;
+	bool disc = false;
+	if (kind < 0.4) {
+		hs = vec2(0.22, 0.032);
+		c = vec3(0.36, 0.22, 0.1) * (0.85 + 0.3 * sin(g.x * 70.0 + r.y * 9.0) * 0.5);
+	} else if (kind < 0.7) {
+		hs = vec2(0.1, 0.085) * (0.8 + 0.4 * r.y);
+		c = vec3(0.62, 0.47, 0.28);
+	} else if (kind < 0.88) {
+		hs = vec2(0.06, 0.04);
+		c = r.y > 0.5 ? vec3(0.2, 0.4, 0.75) : vec3(0.85, 0.85, 0.8);
+	} else {
+		hs = vec2(0.05);
+		c = vec3(0.55, 0.57, 0.6);
+		disc = true;
+	}
+	hs *= 1.4;
+	vec2 d = abs(g) - hs;
+	float m = disc ? length(g) - hs.x : max(d.x, d.y);
+	float inside = step(m, 0.0);
+	float rim = smoothstep(-0.012, 0.0, m);
+	c *= 1.0 - 0.45 * rim;
+	if (disc) {
+		c = mix(c, vec3(0.8), step(length(g), hs.x * 0.55) * 0.5);
+	}
+	// a soft dark shadow on the water just below-right of the piece
+	float shadow = smoothstep(0.03, 0.0, disc ? length(g - vec2(0.02)) - hs.x : max(abs(g.x - 0.018) - hs.x, abs(g.y - 0.018) - hs.y)) * (1.0 - inside);
+	return vec4(mix(vec3(0.0), c, inside), max(inside, shadow * 0.45));
+}
+
+// Popping bubbles: a 0.5 GU cell holds one bubble on a 3-6 s life: it swells (0..70%), holds and wobbles, then bursts (the last 30%): the
+// disc vanishes and a ring runs outward and fades. Slow on purpose. Returns (disc, rim, ring).
+vec3 pop_bubble(vec2 p, float t) {
+	vec2 q = p / 0.45 - flow_dir * t * flow_speed * 0.5 / 0.45;
+	vec2 id = floor(q);
+	vec2 f = (fract(q) - 0.5) * 0.9;
+	vec2 r = h22(id + 17.0);
+	float life = 3.0 + r.x * 3.0;
+	float k = t / life + r.y * 9.0;
+	float n = floor(k);
+	float ph = fract(k);
+	vec2 r2 = h22(id + n * 2.3 + 41.0);
+	if (r2.x > 0.7) {
+		return vec3(0.0);
+	}
+	f -= (r2 - 0.5) * 0.45;
+	float d = length(f);
+	if (ph < 0.7) {
+		float grow = smoothstep(0.0, 0.7, ph);
+		float rad = (0.04 + 0.075 * r2.y) * (0.15 + 0.85 * grow) * (1.0 + 0.05 * sin(t * 4.0 + r.x * 8.0));
+		float disc = step(d, rad);
+		float rim = disc * step(rad * 0.6, d);
+		return vec3(disc, rim, 0.0);
+	}
+	float b = (ph - 0.7) / 0.3;
+	float rad0 = 0.04 + 0.075 * r2.y;
+	float ring = smoothstep(0.014, 0.0, abs(d - rad0 * (1.0 + b * 1.8))) * (1.0 - b);
+	return vec3(0.0, 0.0, ring);
+}
+
+// Plates: a cellular (Voronoi) field; returns (distance to the nearest point, to the second nearest, the nearest cell's hash). The gap F2-F1
+// is small ON a crack between two plates.
+vec3 plates(vec2 p, float t) {
+	vec2 ip = floor(p);
+	vec2 fp = fract(p);
+	float f1 = 8.0;
+	float f2 = 8.0;
+	float id = 0.0;
+	for (int j = -1; j <= 1; j++) {
+		for (int i = -1; i <= 1; i++) {
+			vec2 g = vec2(float(i), float(j));
+			vec2 o = h22(ip + g);
+			o = 0.5 + 0.38 * sin(t * 0.18 + 6.2832 * o);
+			vec2 d = g + o - fp;
+			float dd = dot(d, d);
+			if (dd < f1) {
+				f2 = f1;
+				f1 = dd;
+				id = h21(ip + g);
+			} else if (dd < f2) {
+				f2 = dd;
+			}
+		}
+	}
+	return vec3(sqrt(f1), sqrt(f2), id);
+}
+
 // Rain: drops land at random places on a 0.4 GU grid; each draws two concentric rings that grow and fade in about a second. `rain` sets
 // how many cells have a drop at once. Not carried by the flow: rain falls where it falls.
 float rain_rings(vec2 p, float t) {
@@ -154,15 +269,57 @@ void fragment() {
 	if (scum > 0.0) {
 		// floating clumps: thresholded noise carried by the flow (slower than the water), a dark rim and a lit top so they read as lumps
 		vec2 sp = p - flow_dir * t * flow_speed * 0.6;
-		float n = vnoise(sp * 6.0) * 0.65 + vnoise(sp * 17.0 + 3.0) * 0.35;
+		float n = vnoise(sp * scum_scale) * 0.65 + vnoise(sp * 17.0 + 3.0) * 0.35;
 		float bob = 0.015 * sin(t * 1.4 + n * 20.0);
-		float body = smoothstep(0.6 + bob, 0.7 + bob, n) * scum;
-		float rim = smoothstep(0.54, 0.62, n) * (1.0 - smoothstep(0.62, 0.72, n)) * scum;
-		float top = smoothstep(0.7, 0.82, n);
-		vec3 lump = mix(scum_color.rgb * 0.7, scum_color.rgb * 1.5, top);
-		col.rgb = mix(col.rgb, scum_color.rgb * 0.3, rim * 0.7);
+		float body = smoothstep(scum_cut + bob, scum_cut + 0.1 + bob, n) * scum;
+		float rim = smoothstep(scum_cut - 0.06, scum_cut + 0.02, n) * (1.0 - smoothstep(scum_cut + 0.02, scum_cut + 0.12, n)) * scum;
+		float top = smoothstep(scum_cut + 0.1, scum_cut + 0.22, n);
+		vec3 lump = mix(scum_color.rgb * 0.7, scum_top_color.a > 0.0 ? scum_top_color.rgb : scum_color.rgb * 1.5, top);
+		col.rgb = mix(col.rgb, scum_rim_color.a > 0.0 ? scum_rim_color.rgb : scum_color.rgb * 0.3, rim * (scum_rim_color.a > 0.0 ? 0.95 : 0.7));
 		col.rgb = mix(col.rgb, lump, body);
 		col.a = max(col.a, max(body * 0.95, rim * 0.6));
+	}
+	if (crust > 0.0) {
+		// cooled plates on the molten base: each plate is dark, mottled and a little lit at its middle by the heat below; the cracks between
+		// them glow and pulse; some plates are missing (a hole shows the base), as many as `crust` leaves
+		vec3 pl = plates(p * crack_scale - flow_dir * t * flow_speed * 0.4 * crack_scale, t);
+		float gap = pl.y - pl.x;
+		float crack = smoothstep(0.12, 0.0, gap);
+		float present = step(pl.z, crust);
+		float mott = 0.65 + 0.7 * vnoise(p * 19.0 + pl.z * 31.0);
+		vec3 plate = crust_color.rgb * (0.6 + 0.8 * pl.z) * mott;
+		plate = mix(plate, crack_color.rgb * 0.35, smoothstep(0.55, 0.0, pl.x) * 0.25);   // warmer toward the plate's middle
+		float pulse = 0.75 + 0.25 * sin(t * 1.6 + pl.z * 12.0);
+		vec3 glowc = crack_color.rgb * pulse * (0.6 + 0.8 * smoothstep(0.12, 0.0, gap));
+		vec3 surf = mix(plate, glowc, crack);
+		col.rgb = mix(col.rgb, surf, present);
+		col.a = max(col.a, present * 0.98);
+	}
+	if (glow > 0.0) {
+		float g = 0.5 + 0.5 * sin(t * 0.9 + vnoise(p * 2.5) * 6.0);
+		float patch_mask = smoothstep(0.35, 0.8, vnoise(p * 3.0 - flow_dir * t * 0.05)) * (0.5 + 0.5 * g);
+		col.rgb = mix(col.rgb, light_color.rgb, patch_mask * 0.55 * glow);
+		col.a = max(col.a, 0.9 * glow * patch_mask);
+	}
+	if (pop_bubbles > 0.0) {
+		vec3 pb = pop_bubble(p, t);
+		col.rgb = mix(col.rgb, light_color.rgb * 0.8 + 0.2, pb.x * 0.35 * pop_bubbles);
+		col.rgb = mix(col.rgb, vec3(0.95, 1.0, 0.9), (pb.y * 0.9 + pb.z * 0.8) * pop_bubbles);
+		col.a = max(col.a, max(pb.x * 0.6, max(pb.y, pb.z)) * pop_bubbles);
+	}
+	if (junk > 0.0) {
+		vec4 j = junk_layer(p, t);
+		col.rgb = mix(col.rgb, j.rgb, j.a * junk);
+		col.a = max(col.a, j.a * junk);
+	}
+	if (froth > 0.0) {
+		// froth: where a slow noise says so, a mottled white mass (tiny bubbles packed together), drifting and breaking up
+		vec2 fp = p - flow_dir * t * flow_speed * 0.5;
+		float zone = smoothstep(0.66, 0.8, vnoise(fp * 4.5 + vec2(2.0, 9.0))) * froth;
+		float speck = step(0.45, vnoise(fp * 38.0 + t * 0.3)) * 0.55 + step(0.62, vnoise(fp * 17.0 - t * 0.2)) * 0.45;
+		float f = zone * (0.45 + 0.55 * speck);
+		col.rgb = mix(col.rgb, light_color.rgb, f * 0.8);
+		col.a = max(col.a, f * 0.9);
 	}
 	if (oil > 0.0) {
 		// oil slicks: a low-frequency mask picks a few scattered zones (soft edges); inside, a thin-film rainbow that slowly swirls

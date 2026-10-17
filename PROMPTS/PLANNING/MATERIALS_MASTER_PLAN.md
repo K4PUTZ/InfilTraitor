@@ -1048,6 +1048,41 @@ The open questions for the study stay the four above, plus: whether **sewer** is
 
 Bench: `maps/PIPE_LAB.map.json` (two grated half-buried pipes in the long walls, A north, B south, a concrete channel between them; the pipe pieces are 1 GU `.vox` props from `tools/asset_generation/gen_pipe_vox.py`, because a voxel prop is one GU and ignores `rot`). Prototype: `WaterStudy3D` + `water_study3d.gdshader`, dev flag `WATER_STUDY=0..3` (0 flat tint, 1 stipple like the occlusion cutaway's dither, 2 surface: bands, edge foam, ring ripples, bubbles, 3 both); `INFILTRAITOR_WATER_STUDY=3 python3 tools/persistent/capture.py --map PIPE_LAB --take water_flow`. **Nothing is simulated: the flow is a scrolling field**, so the looks are judged before a mechanism (height-field on the `SoftSheetSim` machinery vs. per-voxel flow) is picked. Unshaded, so no light yet. **Ratified the same day: `waste` (the combined look, softer, slower; reads as dirty water with bacteria) is the DISCARD / sewer water; `clean` (no stipple, clearer) is tried as pure / treated water; `WATER_RAIN=<0..1>` adds concentric rain rings (prepared, not wired to any weather).** Flag is now `WATER_STUDY=<kind>` (`WaterStudy3D.KINDS`: flat, stipple, surface, waste, clean). The Director's idea that each effect belongs to a different environmental condition is NOT built: today the layers always run together. **Later the same day: rain is available on ANY exposed water (Director); `caribe` added: very clear light blue, no bubbles, caustics on the bed, the curbs' soft shade on the water and deeper blue toward the middle (uniforms `bubble_amount`, `caustics`, `depth_shade`).** **`esgoto` added (brown, murky, floating green scum, bubbles, dirt specks, slow; uniforms `scum`, `scum_color`, `dirt_color`, `detail_strength`).** **Looks ratified one by one on 2026-10-17 (all `WaterStudy3D.KINDS`, look only, nothing simulated): `waste`, `esgoto`, `clean`, `caribe`, `biohazard`, `toxic`, `nuclear` (slow popping bubbles, glow), `lava_gold`, `lava_crust` (Voronoi plates + glowing cracks), `lava_viscous`; rain on any kind. Also built, same day: `petroleo`, `acido`, `lama`, `criogenico`, `areia_movedica` (a look only: its trap rule is `earth` + a rule, not a fluid). Not yet ratified by the Director. NEXT: the mechanism (height-field vs voxel flow) and what each liquid DOES (noise, trail, crossing, fire, corrosion, slowing).** Older: Director's call on the look was open; the mechanism and the gameplay (noise, trail, crossing, A-to-B flow) come after it.
 
+### 2026-10-17 — M6 study v1: the mechanism and what each liquid does (PROPOSAL, nothing ratified)
+
+**Starting facts (read from the repo, not assumed).** The game is turn-based and its gameplay state already lives in per-cell planes (`VoxelBoard` light / soot planes, `NoiseSystem`'s per-tile intensity decayed each turn, the floor `tags` of `surfaces/rules.json`). A voxel is 1/8 GU, so a GU is 64 voxels per layer. `SoftSheetSim` + `SoftSheet3D` already prove one dynamic surface drawn as ONE node over a coarse node grid, sim on a worker. The twelve-plus LOOKS (`WaterStudy3D.KINDS`) are a shader over one flat sheet and need only a rectangle, a flow direction and a depth.
+
+**The two shapes, against this project's constraints.**
+
+| | Per-voxel flow (cellular automaton in the `VoxelStore`) | Cell plane + one sheet (height-field) |
+|---|---|---|
+| State | liquid voxels in the store, 64 cells per GU per layer | one `FluidPlane`: per GU (or half GU) a `kind`, a `level` (0..8 voxels of depth) and a flow vector |
+| Cost | every flow step writes the store: remesh, light and support audits (rule 8), ~64x the cells | a few hundred cells a map; the sheet is one mesh per body |
+| Look | blocky, the shader looks need a surface anyway | the existing looks drop in unchanged (`level` becomes the sheet's height, the kind its shader) |
+| Fit to turns | a CA needs many steps to settle: not deterministic per turn without a budget | equalise / drain a fixed number of rounds per TIC: deterministic, replayable, cheap to predict (`PREDICTION_MASTER_PLAN`) |
+| Verdict | **no** (cost, rule 8, nothing gained: water never occludes or breaks) | **recommended** |
+
+**Recommendation: a `FluidPlane` ticked per TURN (state), drawn continuously (look).** Sources and sinks are the gameplay seam: a pipe emits `rate` voxels of depth per turn, a drain takes `rate`; between them each tick moves depth downhill along the channel (virtual-pipes style, a fixed round count, no randomness). The sheet's shader keeps running in real time, so the scrolling look and the turn-based truth never disagree. The pipe-to-pipe channel of PIPE_LAB is the bench: A emits, B drains, the curbs are walls the plane respects, a breach in a curb (a blast) lets it spill. Rain is a visual layer on any exposed sheet.
+
+**What each liquid DOES (proposal, every row is for the Director to change).** Depth bands: SHALLOW (<= 2 voxels) is walkable, DEEP (> 2) is not walkable without a cost.
+
+| Liquid | Walk | Noise | Trail | Other rule |
+|---|---|---|---|---|
+| clean / caribe | shallow free, deep blocked | splash raises noise on the tile (decays) | wet footprints, fade in N turns | puts out fire; reflects light (later) |
+| waste / esgoto | shallow slows (+1 AP) | splash, plus a SMELL tag guards notice | dirty footprints | hides the agent's scent trail? (open) |
+| biohazard | shallow slows | splash | red footprints that guards read as a clue | contact marks the agent (guards react) |
+| toxic / acid | damage per turn standing in it | splash | corrodes: weakens a material it touches (concrete -> crumbs, metal -> rust) | acid dissolves cloth / cardboard props |
+| nuclear | damage + a status | quiet | glow = the agent is visible in the dark | a light source (`LIGHT_MASTER_PLAN`) |
+| petroleo | slows, slippery (random slide) | splash | black footprints | **burns**: a flame on it spreads over the sheet (reuses fire) |
+| lama | shallow slows a lot, deep traps | LOW (muffled) | deep footprints | like quicksand, softer |
+| lava (gold / crust / viscous) | lethal; crust plates are walkable but break | none | none | light source, ignites what touches it, a hardened crust is a bridge |
+| criogenico | slows, a status that stops AP | splash | frost that guards slip on | freezes water it meets into plates |
+| areia movedica | a TRAP on `earth`: sinks per turn, escape costs AP | none | none | not a fluid: a `FloorBehaviour` rule + this look; the cheapest first slice |
+
+**Order of build.** (1) `FluidPlane` pure + selftest (equalise, source / drain, wall, determinism); (2) the plane drives the PIPE_LAB sheet (A to B, the kinds as skins); (3) walking (shallow / deep, AP cost) and noise; (4) trails; (5) per-liquid rules one by one, fire first (oil), then acid and lava; (6) quicksand through the floor-behaviour seam; (7) the Moto.
+
+**Open questions for the Director** (nothing is built until these are answered): turn-ticked state with a continuous look, as proposed? are liquids ever lethal, or only slowing and revealing? may the agent swim a deep channel? is the pipe's rate fixed per map or can the player cut it (a valve, a grate)?
+
 ---
 
 ## 7. Task order, one list

@@ -17,6 +17,10 @@ uniform float bubble_amount = 1.0;      // 0 = no bubbles
 uniform float caustics = 0.0;           // light networks on the bed, as in clear shallow water
 uniform float depth_shade = 0.0;        // the channel's own depth: the curbs' shade on the water, deeper blue toward the middle
 uniform vec2 shade_dir = vec2(1.0, 0.0); // which way the curbs' shadow falls (local xz, away from the light)
+uniform float detail_strength = 0.55;   // how strong rings / bubbles / dots / foam read (the Director's softened pass: 0.55)
+uniform float scum = 0.0;               // floating clumps (algae, rubbish) that drift with the flow and bob
+uniform vec4 scum_color : source_color = vec4(0.27, 0.45, 0.1, 1.0);
+uniform vec4 dirt_color : source_color = vec4(0.0);   // alpha 0 = the stipple dots take `light_color`; else they are specks of this colour
 uniform float rain = 0.0;               // 0 off .. 1 heavy: concentric rings from random drops, independent of the flow
 uniform float dot_cells = 11.0;          // stipple cells per GU
 
@@ -125,7 +129,7 @@ void fragment() {
 	vec2 p = lp;
 	float edge = min(min(p.x - rect_min.x, rect_max.x - p.x), min(p.y - rect_min.y, rect_max.y - p.y));
 	float t = TIME * 0.6;   // the whole set slower
-	float soft = 0.55;      // how strong the details are (the Director's pass: softer, the bed shows through)
+	float soft = detail_strength;      // how strong the details are (the Director's pass: softer, the bed shows through)
 	float along = dot(p, flow_dir);
 	float across_d = min(p.x - rect_min.x, rect_max.x - p.x);   // distance to the nearest curb
 	vec4 col = deep_color;
@@ -144,6 +148,19 @@ void fragment() {
 		float bub = bubbles(p, t) * bubble_amount;
 		col.rgb = mix(col.rgb, light_color.rgb, clamp(ring * 0.8 + bub, 0.0, 1.0) * soft);
 		col.a = max(col.a, clamp(ring * 0.85 + bub, 0.0, 1.0) * soft);
+	}
+	if (scum > 0.0) {
+		// floating clumps: thresholded noise carried by the flow (slower than the water), a dark rim and a lit top so they read as lumps
+		vec2 sp = p - flow_dir * t * flow_speed * 0.6;
+		float n = vnoise(sp * 6.0) * 0.65 + vnoise(sp * 17.0 + 3.0) * 0.35;
+		float bob = 0.015 * sin(t * 1.4 + n * 20.0);
+		float body = smoothstep(0.62 + bob, 0.66 + bob, n) * scum;
+		float rim = smoothstep(0.58, 0.62, n) * (1.0 - smoothstep(0.62, 0.68, n)) * scum;
+		float top = smoothstep(0.7, 0.82, n);
+		vec3 lump = mix(scum_color.rgb * 0.7, scum_color.rgb * 1.5, top);
+		col.rgb = mix(col.rgb, scum_color.rgb * 0.3, rim * 0.7);
+		col.rgb = mix(col.rgb, lump, body);
+		col.a = max(col.a, max(body * 0.95, rim * 0.6));
 	}
 	if (depth_shade > 0.0) {
 		// depth: shallow turquoise at the curbs, deep blue in the middle; and each curb throws a soft shade onto the water on the side
@@ -168,7 +185,7 @@ void fragment() {
 			// the stipple IS the water: a faint wash in the channel's footprint, the dots on top
 			col = vec4(deep_color.rgb, 0.28);
 		}
-		col.rgb = mix(col.rgb, light_color.rgb, d * soft);
+		col.rgb = mix(col.rgb, dirt_color.a > 0.0 ? dirt_color.rgb : light_color.rgb, d * soft);
 		col.a = max(col.a, d * 0.95 * soft);
 	}
 	if (rain > 0.0) {

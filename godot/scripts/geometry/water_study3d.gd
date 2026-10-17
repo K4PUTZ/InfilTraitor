@@ -18,8 +18,12 @@ const KINDS: Dictionary = {
 	## Caribbean shallows: very clear, light blue-green, no bubbles; the channel shows its own depth (the curbs' shade on the water, deeper
 	## blue in the middle) and the sun's caustics on the bed.
 	"caribe": {"mode": 2, "bubble_amount": 0.0, "caustics": 1.0, "depth_shade": 1.0,
-			"deep": Color(0.0, 0.52, 0.78, 0.26), "shallow": Color(0.3, 0.92, 0.96, 0.1), "light": Color(0.95, 1.0, 1.0, 1.0)},
-	"clean": {"mode": 2, "deep": Color(0.05, 0.3, 0.38, 0.3), "shallow": Color(0.3, 0.64, 0.7, 0.18), "light": Color(0.9, 1.0, 1.0, 1.0)},
+			"deep_color": Color(0.0, 0.52, 0.78, 0.26), "shallow_color": Color(0.3, 0.92, 0.96, 0.1), "light_color": Color(0.95, 1.0, 1.0, 1.0)},
+	## Sewage: brown and murky (the bed does not show), a green scum drifting on it, big bubbles, dark specks of dirt, slow and thick.
+	"esgoto": {"mode": 3, "detail_strength": 0.9, "scum": 1.0, "flow_speed": 0.14,
+			"deep_color": Color(0.22, 0.14, 0.06, 0.93), "shallow_color": Color(0.38, 0.27, 0.12, 0.88), "light_color": Color(0.72, 0.64, 0.38, 1.0),
+			"dirt_color": Color(0.1, 0.06, 0.02, 1.0), "scum_color": Color(0.24, 0.34, 0.1, 1.0)},
+	"clean": {"mode": 2, "deep_color": Color(0.05, 0.3, 0.38, 0.3), "shallow_color": Color(0.3, 0.64, 0.7, 0.18), "light_color": Color(0.9, 1.0, 1.0, 1.0)},
 }
 
 var _node: MeshInstance3D = null
@@ -50,12 +54,12 @@ func attach(board: Node3D, rect: Rect2, level: int, kind: String, flow: Vector2,
 	material.shader = SHADER
 	material.set_shader_parameter("mode", int(look["mode"]))
 	material.set_shader_parameter("rain", clampf(rain, 0.0, 1.0))
-	for key: String in ["bubble_amount", "caustics", "depth_shade"]:
+	for key: String in ["bubble_amount", "caustics", "depth_shade", "detail_strength", "scum", "flow_speed"]:
 		if look.has(key):
 			material.set_shader_parameter(key, look[key])
-	for key: String in ["deep", "shallow", "light"]:
+	for key: String in ["deep_color", "shallow_color", "light_color", "dirt_color", "scum_color"]:
 		if look.has(key):
-			material.set_shader_parameter(key + "_color", look[key])
+			material.set_shader_parameter(key, look[key])
 	material.set_shader_parameter("rect_min", rect.position)
 	material.set_shader_parameter("rect_max", rect.end)
 	material.set_shader_parameter("flow_dir", flow.normalized())

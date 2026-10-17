@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**308 scripts · 94223 lines total** (under `godot/scripts/`)
+**308 scripts · 94242 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1375,15 +1375,16 @@ extends `Node3D` · 3522 lines
 
 ### `water_study3d.gd`
 
-`class_name WaterStudy3D` · extends `RefCounted` · 48 lines
+`class_name WaterStudy3D` · extends `RefCounted` · 66 lines
 
 `godot/scripts/geometry/water_study3d.gd`
 
-> WaterStudy3D — M6 WATER STUDY (2026-10-17): ONE flat sheet over a rectangle of the floor, drawn by `water_study3d.gdshader` in the look the `mode` picks. Dev only (flag `WATER_STUDY=0..3`), nothing simulated and nothing saved: it exists so the Director can judge how water could READ (flat tint / stipple / surface / both) before a mechanism is chosen (`MATERIALS_MASTER_PLAN` §6).
+> WaterStudy3D — M6 WATER STUDY (2026-10-17): ONE flat sheet over a rectangle of the floor, drawn by `water_study3d.gdshader` in the look a KIND picks. Dev only (flag `WATER_STUDY=<kind>`, `WATER_RAIN=<0..1>`), nothing simulated and nothing saved: it exists so the Director can judge how water could READ (flat tint / stipple / surface / both) before a mechanism is chosen (`MATERIALS_MASTER_PLAN` §6).
 
 **Constants / tuning**
 - `SHADER` = `preload("res://godot/shaders/water_study3d.gdshader")`
 - `LIFT` = `0.03`
+- `KINDS` = `{ "flat": {"mode": 0}, "stipple": {"mode": 1}, "surface": {"mode": 2}, "waste": {"mode": 3}, "clean": {"mode": 2, "deep": Color(0.05, 0.3, 0.38, 0.3), "shallow": Color(0.3, 0.64, 0.7, 0.18), "light": Color(0.9, 1.0, 1.0, 1.0)}, }`
 
 ---
 
@@ -6352,7 +6353,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12436 lines
+extends `Node2D` · 12437 lines
 
 `godot/scripts/world/room.gd`
 

@@ -9,9 +9,9 @@ uniform int mode = 3;
 uniform vec2 rect_min = vec2(0.0);       // the channel in the node's local xz (GU)
 uniform vec2 rect_max = vec2(1.0);
 uniform vec2 flow_dir = vec2(0.0, 1.0);  // unit vector, from pipe A to pipe B
-uniform float flow_speed = 0.5;          // GU / s
-uniform vec4 deep_color : source_color = vec4(0.04, 0.2, 0.26, 0.82);
-uniform vec4 shallow_color : source_color = vec4(0.16, 0.46, 0.5, 0.74);
+uniform float flow_speed = 0.3;          // GU / s
+uniform vec4 deep_color : source_color = vec4(0.04, 0.2, 0.26, 0.5);
+uniform vec4 shallow_color : source_color = vec4(0.16, 0.46, 0.5, 0.38);
 uniform vec4 light_color : source_color = vec4(0.78, 0.95, 1.0, 1.0);
 uniform float dot_cells = 11.0;          // stipple cells per GU
 
@@ -84,7 +84,8 @@ float bubbles(vec2 p, float t) {
 void fragment() {
 	vec2 p = lp;
 	float edge = min(min(p.x - rect_min.x, rect_max.x - p.x), min(p.y - rect_min.y, rect_max.y - p.y));
-	float t = TIME;
+	float t = TIME * 0.6;   // the whole set slower
+	float soft = 0.55;      // how strong the details are (the Director's pass: softer, the bed shows through)
 	float along = dot(p, flow_dir);
 	float across_d = min(p.x - rect_min.x, rect_max.x - p.x);   // distance to the nearest curb
 	vec4 col = deep_color;
@@ -95,14 +96,14 @@ void fragment() {
 		float shade = clamp(bands * 0.55 + warp * 0.35 + (1.0 - clamp(across_d * 2.2, 0.0, 1.0)) * 0.25, 0.0, 1.0);
 		col = mix(deep_color, shallow_color, shade);
 		float foam = smoothstep(0.16, 0.0, across_d) * (0.35 + 0.65 * vnoise(p * 15.0 - flow_dir * t * 2.0));
-		col.rgb = mix(col.rgb, light_color.rgb, foam * 0.75);
-		col.a = max(col.a, foam * 0.9);
+		col.rgb = mix(col.rgb, light_color.rgb, foam * 0.75 * soft);
+		col.a = max(col.a, foam * 0.9 * soft);
 		float glints = smoothstep(0.82, 1.0, bands) * smoothstep(0.55, 0.85, warp);
-		col.rgb = mix(col.rgb, light_color.rgb, glints * 0.45);
+		col.rgb = mix(col.rgb, light_color.rgb, glints * 0.45 * soft);
 		float ring = rings(p, t);
 		float bub = bubbles(p, t);
-		col.rgb = mix(col.rgb, light_color.rgb, clamp(ring * 0.8 + bub, 0.0, 1.0));
-		col.a = max(col.a, clamp(ring * 0.85 + bub, 0.0, 1.0));
+		col.rgb = mix(col.rgb, light_color.rgb, clamp(ring * 0.8 + bub, 0.0, 1.0) * soft);
+		col.a = max(col.a, clamp(ring * 0.85 + bub, 0.0, 1.0) * soft);
 	}
 	if (mode == 1 || mode == 3) {
 		float d = stipple(p, t);
@@ -110,8 +111,8 @@ void fragment() {
 			// the stipple IS the water: a faint wash in the channel's footprint, the dots on top
 			col = vec4(deep_color.rgb, 0.28);
 		}
-		col.rgb = mix(col.rgb, light_color.rgb, d);
-		col.a = max(col.a, d * 0.95);
+		col.rgb = mix(col.rgb, light_color.rgb, d * soft);
+		col.a = max(col.a, d * 0.95 * soft);
 	}
 	ALBEDO = col.rgb;
 	ALPHA = col.a * smoothstep(0.0, 0.03, edge);

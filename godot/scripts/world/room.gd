@@ -7,7 +7,8 @@ const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.g
 ## G4-3 — preloaded rather than used by `class_name`: this file is parsed
 ## before the global class cache exists in a headless lint run.
 const LiquidRegistryRef = preload("res://godot/scripts/systems/liquid_registry.gd")  ## M6: the liquids a map may place
-const WaterStudy3DRef = preload("res://godot/scripts/geometry/water_study3d.gd")  ## M6 water study (dev flag WATER_STUDY)
+const LiquidSheet3DRef = preload("res://godot/scripts/geometry/liquid_sheet3d.gd")  ## M6: the sheet of one body of liquid
+const FluidPlaneRef = preload("res://godot/scripts/systems/fluid_plane.gd")  ## M6: the gameplay truth of a body of liquid
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
 const SurfaceRulesRef = preload("res://godot/scripts/systems/surface_rules.gd")  ## R3D-SURFACES: floor tags and patch rules
 const VentEmitterRef = preload("res://godot/scripts/overlays/vent_emitter.gd")  ## R3D-SURFACES SM-6: a plume rising from a floor vent
@@ -142,7 +143,7 @@ var _slab_registry: SlabRegistry = null
 @warning_ignore("unused_private_class_variable")
 var _junction_columns: Array = []             ## Array of JunctionResolver.JunctionColumn
 var _voxel_board: VoxelBoard = null     ## Voxel rendering engine
-var _liquid_sheets: Array = []             ## M6: one WaterStudy3D per `liquids` body, see _attach_liquids()
+var _liquid_sheets: Array = []             ## M6: one LiquidSheet3D per `liquids` body, see _attach_liquids()
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
 ## SM-2 — a scatter covering more than this many LAYERS of its zones gets a loud warning (not a refusal). Moto: ~2.4 ms per layer over a full screen of zone.
 const GROUND_SCATTER_LAYER_BUDGET: float = 1.5
@@ -9293,10 +9294,15 @@ func _recompute_occlusion() -> void:
 ## overrides); an unknown liquid is a loud error and the body is skipped.
 func _attach_liquids(live: Node3D) -> void:
 	for sheet in _liquid_sheets:
-		sheet.detach()
+		if is_instance_valid(sheet):
+			sheet.queue_free()
 	_liquid_sheets.clear()
 	var forced_kind: String = _dev_flag("WATER_STUDY", "")
 	var forced_rain: String = _dev_flag("WATER_RAIN", "")
+	var auto_tick: float = float(_dev_flag("FLUID_AUTO_TICK", "0"))    ## dev: seconds of real time per liquid turn (0 = only the game's turns)
+	var preroll: int = int(_dev_flag("FLUID_PREROLL", "0"))             ## dev: turns of liquid already run when the map opens (a capture)
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var base_y: float = float(GeometryCoords.FLOOR_TOP_LEVEL + 1 - int(live.call("ground_level"))) * unit + LiquidSheet3DRef.LIFT
 	for body: Dictionary in _base_layout.get("liquid_instances", []):
 		var kind: String = forced_kind if forced_kind != "" else String(body["kind"])
 		var overrides: Dictionary = (body["overrides"] as Dictionary).duplicate()
@@ -9304,9 +9310,25 @@ func _attach_liquids(live: Node3D) -> void:
 		var params: Dictionary = LiquidRegistryRef.resolve(kind, overrides)
 		if params.is_empty():
 			continue
-		var sheet = WaterStudy3DRef.new()
-		sheet.attach(live, body["rect"], GeometryCoords.FLOOR_TOP_LEVEL, params, body["flow"])
+		var plane: RefCounted = null
+		if not (body["fluid"] as Dictionary).is_empty():
+			plane = FluidPlaneRef.from_body(body, LiquidRegistryRef.fluidity(kind))
+			for _t in range(preroll):
+				plane.tick()
+		var sheet: MeshInstance3D = LiquidSheet3DRef.new()
+		live.add_child(sheet)
+		sheet.setup(body["rect"], base_y, params, body["flow"], plane)
+		sheet.auto_tick_seconds = auto_tick
+		if plane != null:
+			sheet.snap()
 		_liquid_sheets.append(sheet)
+
+
+## M6: one TURN of every body of liquid (the turn controller's TIC calls it; the sheets ease toward the new depths).
+func tick_liquids() -> void:
+	for sheet in _liquid_sheets:
+		if is_instance_valid(sheet):
+			sheet.tick()
 
 
 func _dev_flag(flag_name: String, fallback: String = "") -> String:

@@ -45,6 +45,7 @@
       "deep": 1.0,
       "recovery": 0.0
     },
-    "footprint": null
+    "footprint": null,
+    "fluidity": 0.0
   }
 }

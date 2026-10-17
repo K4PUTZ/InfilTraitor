@@ -1092,8 +1092,8 @@ Bench: `maps/PIPE_LAB.map.json` (two grated half-buried pipes in the long walls,
 | Step | Task | Done when | Blocked by |
 |---|---|---|---|
 | F0 | ✅ Looks (18 liquids), `LiquidRegistry`, the `liquids` section, `gameplay` data, PIPE_LAB bench | `liquid_registry_selftest` green | done |
-| F1 | **`FluidPlane`**, pure: per GU a kind, a depth (0..8 voxels) and a flow; sources and sinks (a pipe emits `rate` per turn, a drain takes `rate`); walls and curbs stop it; a fixed number of equalise rounds per TIC, no randomness | selftest: equalise, source to drain, wall, determinism, a breach spills | F0 |
-| F2 | The plane DRIVES the sheet: depth is the sheet's height, the kind its skin, real-time looping untouched (ice frozen); PIPE_LAB: A emits, B drains | capture of A to B; Moto frame cost | F1 |
+| F1 | ✅ (2026-10-17) **`FluidPlane`**, pure: per GU a kind, a depth (0..8 voxels) and a flow; sources and sinks (a pipe emits `rate` per turn, a drain takes `rate`); walls and curbs stop it; a fixed number of equalise rounds per TIC, no randomness | selftest: equalise, source to drain, wall, determinism, a breach spills | F0 |
+| F2 | ✅ (2026-10-17; the Moto cost is F8) The plane DRIVES the sheet: depth is the sheet's height, the kind its skin, real-time looping untouched (ice frozen); PIPE_LAB: A emits, B drains | capture of A to B; Moto frame cost | F1 |
 | F3 | **Exposure and wading** (`gameplay.exposure`, `wade_ap`, `noise`, `smell`): the dose per turn by depth, recovery outside, lethal at 1; the first hazard reads from the plane | selftest + a take on PIPE_LAB with a lethal liquid | F2 |
 | F4 | **Footprints** (`gameplay.footprint`: colour, lifetime in turns) through the existing floor-mark path (`FloorPile3D`) | a walked path leaves marks that fade | F3 |
 | F5 | **Per-liquid rules, one by one**: fire first (oil burns and ignites the agent, clean water extinguishes), then acid / toxic corrosion, lava (light source, ignites), cryogenic (freezes neighbours into plates), lama and quicksand traps (`trap`), lava crust plates | each rule has its own take and selftest | F3 |
@@ -1105,6 +1105,8 @@ Bench: `maps/PIPE_LAB.map.json` (two grated half-buried pipes in the long walls,
 | F11 | Gases (maybe), a per-GU concentration plane read by detection and fire | a separate decision | F1 |
 
 Rules for the build: the plane never writes the `VoxelStore` (rule 8); a liquid's behaviour is read from its `gameplay` block, never from its id; a cell's level is derived (rule 9); a new writer of world state bumps `Room.bump_world_revision()` (prediction); the looks stay in real time and never wait for the turn.
+
+**F1 + F2 BUILT (2026-10-17).** `FluidPlane` (godot/scripts/systems/fluid_plane.gd): virtual pipes with momentum on a grid of 0.25 GU cells, depth in voxels, 24 rounds per TIC, the rim ring spills (a body at the brim overflows), a per-cell ceiling stops a source pushing into a full pipe, GRATES (`add_grate`) pass a liquid by `gameplay.fluidity` (below 0.2 nothing, from 0.8 everything); `fluidity` is a new `gameplay` key on every liquid. `LiquidSheet3D` draws the body from the plane (vertex height = depth, vertex alpha = wetness) and eases to each tick; the looks loop in real time. The `liquids` section gained `fluid` (`cell`, `rim`, `walls`, `roofs`, `sources`, `sinks`, `grates`). PIPE_LAB: source in pipe A, drain in pipe B (1.0 against 2.0 in, so the channel fills to the curb and spills), grates at both mouths. Measured on the real map: caribe fills and reaches the curb by turn 100, esgoto (0.55) passes the grates at a lower level, lama (0.15) stays behind the grate. Dev: `FLUID_PREROLL=<turns>` opens a map already run, `FLUID_AUTO_TICK=<seconds>` ticks in real time; `Room.tick_liquids()` is the per-turn hook, NOT yet called by the turn controller (F3). Pinned by `fluid_plane_selftest`.
 
 ---
 

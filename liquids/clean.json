@@ -34,6 +34,7 @@
       ],
       "turns": 3
     },
-    "swim_ap": 1
+    "swim_ap": 1,
+    "fluidity": 1.0
   }
 }

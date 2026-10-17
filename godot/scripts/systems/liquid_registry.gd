@@ -54,7 +54,7 @@ const PARAMS: Dictionary = {
 ## contact and the deeper, the worse), shrinks by `recovery` per turn out of it, and is lethal at 1. Director, 2026-10-17: lethal in the deep,
 ## much less on top.
 const SHALLOW_VOXELS: int = 2
-const GAMEPLAY_KEYS: PackedStringArray = ["wade_ap", "swim_ap", "noise", "smell", "slippery", "exposure", "status", "marks_agent", "footprint",
+const GAMEPLAY_KEYS: PackedStringArray = ["fluidity", "wade_ap", "swim_ap", "noise", "smell", "slippery", "exposure", "status", "marks_agent", "footprint",
 	"flammable", "ignites", "ignites_agent", "extinguishes", "corrodes", "light", "trap", "plates", "freezes_neighbours"]
 
 static var load_errors: Array = []
@@ -113,6 +113,12 @@ static func has(id: String) -> bool:
 static func gameplay(id: String) -> Dictionary:
 	_ensure()
 	return (_rows.get(id, {}) as Dictionary).get("gameplay", {})
+
+
+## How freely the liquid flows, 0 (tar, quicksand) .. 1 (water): `FluidPlane` takes its acceleration and friction from it, and a grate lets
+## only a thin liquid through. A look with no `gameplay` is as fluid as water.
+static func fluidity(id: String) -> float:
+	return float(gameplay(id).get("fluidity", 1.0))
 
 
 static func note(id: String) -> String:

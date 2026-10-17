@@ -45,9 +45,11 @@ uniform float rain = 0.0;               // 0 off .. 1 heavy: concentric rings fr
 uniform float dot_cells = 11.0;          // stipple cells per GU
 
 varying vec2 lp;
+varying float wet;   // the vertex alpha: 0 where the cell is dry, 1 from half a voxel of depth
 
 void vertex() {
 	lp = VERTEX.xz;
+	wet = COLOR.a;
 }
 
 float h21(vec2 p) {
@@ -368,5 +370,5 @@ void fragment() {
 		col.a = max(col.a, drop);
 	}
 	ALBEDO = col.rgb;
-	ALPHA = col.a * smoothstep(0.0, 0.03, edge);
+	ALPHA = col.a * smoothstep(0.0, 0.03, edge) * wet;
 }

@@ -51,6 +51,7 @@
     "plates": {
       "walkable": true,
       "break_after_turns": 3
-    }
+    },
+    "fluidity": 0.05
   }
 }

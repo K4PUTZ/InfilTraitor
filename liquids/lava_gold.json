@@ -35,6 +35,7 @@
     },
     "light": "source",
     "ignites": true,
-    "noise": 0.0
+    "noise": 0.0,
+    "fluidity": 0.9
   }
 }

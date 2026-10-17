@@ -256,7 +256,31 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		var flow := Vector2(0.0, 1.0) if rect.size.y >= rect.size.x else Vector2(1.0, 0.0)
 		if flow_raw is Array and flow_raw.size() == 2 and (float(flow_raw[0]) != 0.0 or float(flow_raw[1]) != 0.0):
 			flow = Vector2(float(flow_raw[0]), float(flow_raw[1])).normalized()
-		liquid_instances.append({"rect": rect, "kind": liquid_kind, "flow": flow, "rain": clampf(float(body.get("rain", 0.0)), 0.0, 1.0),
+		var fluid_raw = body.get("fluid", null)
+		var fluid: Dictionary = {}
+		if fluid_raw is Dictionary:
+			fluid = {"cell": maxf(float(fluid_raw.get("cell", 0.25)), 0.125), "rim": float(fluid_raw.get("rim", 2.0)),
+				"walls": [], "roofs": [], "sources": [], "sinks": [], "grates": []}
+			for kind_key: String in ["walls", "roofs", "sources", "sinks"]:
+				for entry in fluid_raw.get(kind_key, []):
+					var z = entry.get("zone", null)
+					if not (z is Array) or z.size() != 4:
+						push_error("[MapCompiler] liquids.fluid.%s: %s needs `zone` [x, y, w, h]; skipped" % [kind_key, str(entry)])
+						continue
+					var rect_raw := Rect2(Vector2(float(z[0]), float(z[1])) + Vector2(offset), Vector2(float(z[2]), float(z[3])))
+					var packed: Dictionary = {"rect": rect_raw}
+					if kind_key == "walls" or kind_key == "roofs":
+						packed["height"] = float(entry.get("height", 8.0))
+					else:
+						packed["rate"] = float(entry.get("rate", 1.0))
+					(fluid[kind_key] as Array).append(packed)
+			for grate in fluid_raw.get("grates", []):
+				var axis: String = "x" if grate.has("x") else "y"
+				if not grate.has(axis):
+					push_error("[MapCompiler] liquids.fluid.grates: %s needs `x` or `y`; skipped" % str(grate))
+					continue
+				(fluid["grates"] as Array).append({"axis": axis, "at": float(grate[axis]) + float(offset.x if axis == "x" else offset.y)})
+		liquid_instances.append({"fluid": fluid, "rect": rect, "kind": liquid_kind, "flow": flow, "rain": clampf(float(body.get("rain", 0.0)), 0.0, 1.0),
 			"overrides": (body.get("overrides", {}) as Dictionary) if body.get("overrides", {}) is Dictionary else {}})
 
 	## --- ground_scatter (R3D-SURFACES SM-2): zones in raw GU (the buffer applied, like every position); expanded later, in `GroundScatter` ---

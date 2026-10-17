@@ -4163,6 +4163,7 @@ func scenario_save_restore() -> bool:
 	_reapply_base_damage()
 	_reapply_base_shattered_props()
 	_release_destroyed_prop_cells()
+	rebuild_soft_sheets()   ## the cloths were built from the undamaged map `load_map` made: a replay that destroyed a stall's voxels must take its cloth with it
 	## (A rotation no longer relights: R3D-ROT.) This restore relights after its replay, and
 	## `_reapply_base_damage()` says it must run BEFORE the light-field repaint. Without this the restored world was
 	## lit as the undamaged map: 560 intact floor voxels beside PLAYGROUND's two blasts read bucket 3 where the
@@ -4407,6 +4408,26 @@ func _begin_resting_sheets() -> void:
 		if not bool(job["cached"]):
 			job["task"] = WorkerThreadPool.add_task(_rest_job_run.bind(job), false, "SoftSheetRest")
 		_resting_jobs.append(job)
+	var by_batch: Dictionary = {}   ## release number -> the saved cloths of that release, laid down again together
+	for rec: Dictionary in _base_cloths:
+		var fallen: Dictionary = _fallen_job(rec, ground)
+		if not fallen.is_empty():
+			var list: Array = by_batch.get(int(rec.get("batch", 0)), [])
+			list.append(fallen)
+			by_batch[int(rec.get("batch", 0))] = list
+	for batch: int in by_batch:
+		var jobs: Array = by_batch[batch]
+		var group := SoftSheetGroup.new()
+		for sub: Dictionary in jobs:
+			group.add(sub["sim"])
+		var seams: int = group.sew()
+		var whole: Dictionary = {"fallen": true, "jobs": jobs, "group": group, "info": {"keys": {}}, "usec": 0, "steps": 0, "cached": false, "seams": seams, "task": -1}
+		var all_frozen: bool = true
+		for sub: Dictionary in jobs:
+			all_frozen = all_frozen and bool(sub["frozen"])
+		if not all_frozen:
+			whole["task"] = WorkerThreadPool.add_task(_fallen_job_run.bind(whole), false, "SoftSheetFallen")
+		_resting_jobs.append(whole)
 	soft_sheet_voxels.clear()
 	for job: Dictionary in _resting_jobs:
 		for key: Vector3i in (job["info"] as Dictionary)["keys"]:
@@ -4420,6 +4441,161 @@ func _rest_job_run(job: Dictionary) -> void:
 	var t0: int = Time.get_ticks_usec()
 	job["steps"] = (job["sim"] as SoftSheetSim).settle_now()
 	job["usec"] = Time.get_ticks_usec() - t0
+
+
+## The sheets drawn again from the board as it is NOW: after a checkpoint's damage replay (the cloths `load_map` built stood on the undamaged map: a stall a blast had taken
+## would reappear whole, and a hole a shot had made would be closed), then the saved fallen ones on top. Cheap: the settled positions come from the cache.
+## Before a checkpoint is written: where each let-go cloth lies NOW, and whether it has come to rest (a settled one is laid down again without simulating anything).
+func cloths_for_save() -> Array:
+	refresh_cloth_records()
+	return _base_cloths.duplicate(true)
+
+
+func refresh_cloth_records() -> void:
+	var live: Array = []
+	for entry: Dictionary in _cloth_live:
+		var sheet: SoftSheet3D = entry["sheet"] as SoftSheet3D
+		if not is_instance_valid(sheet):
+			continue
+		live.append(entry)
+		var rec: Dictionary = entry["rec"]
+		var pos: Array = []
+		for f in sheet.current_positions():
+			pos.append(f)
+		rec["pos"] = pos
+		rec["settled"] = sheet.is_settled()
+	_cloth_live = live
+
+
+func rebuild_soft_sheets() -> void:
+	_cloth_live.clear()
+	for sheet in _soft_sheets:
+		if is_instance_valid(sheet):
+			(sheet as Node).queue_free()
+	_soft_sheets.clear()
+	_resting_sheets.clear()
+	_cloth_rim_columns.clear()
+	var live: Node = board3d()
+	if live == null:
+		return
+	_begin_resting_sheets()
+	_finish_resting_sheets(live)
+
+
+## A cloth a checkpoint remembers (`rec`, from `_cloth_record`): its sim is rebuilt from where it started, with what held it, and settled on a worker like a cloth at rest.
+func _fallen_job(rec: Dictionary, ground: int) -> Dictionary:
+	var material: String = String(rec["material"])
+	var row: Dictionary = SoftSheetPresets.OF.get(material, {})
+	if row.is_empty():
+		push_warning("[Room] a saved cloth of '%s' has no SoftSheetPresets row: it is not restored" % material)
+		return {}
+	var pins := PackedByteArray()
+	for b in rec["pins"]:
+		pins.append(int(b))
+	var o: Array = rec["origin"]
+	var params: Dictionary = {"nx": int(rec["nx"]), "nz": int(rec["nz"]), "hx": float(rec["hx"]), "hz": float(rec["hz"]), "origin": Vector3(float(o[0]), float(o[1]), float(o[2])),
+		"material": row, "pins": pins, "floor_y": 0.0, "ground_level": ground}
+	var boxes: Array = []
+	for b in rec.get("boxes", []):
+		boxes.append(AABB(Vector3(float(b[0]), float(b[1]), float(b[2])), Vector3(float(b[3]), float(b[4]), float(b[5]))))
+	params["boxes"] = boxes
+	var ext: Array = rec["extent"]
+	params["solid"] = RoofSheetRelease.solid_grid({"keys": {}, "x0": int(ext[0]), "z0": int(ext[1]), "w": int(ext[2]), "d": int(ext[3]), "level": int(ext[4])}, ground)
+	if rec.has("basis_u"):
+		var bu: Array = rec["basis_u"]
+		var bv: Array = rec["basis_v"]
+		params["basis_u"] = Vector3(float(bu[0]), float(bu[1]), float(bu[2]))
+		params["basis_v"] = Vector3(float(bv[0]), float(bv[1]), float(bv[2]))
+	var initial: Array = rec.get("pos", rec.get("initial", []))   ## where it lay when the checkpoint was written, else where it started
+	if not initial.is_empty():
+		var start := PackedFloat64Array()
+		for f in initial:
+			start.append(float(f))
+		params["initial"] = start
+	var sim := SoftSheetSim.new(params)
+	var frozen: bool = bool(rec.get("settled", false)) and not initial.is_empty()
+	if frozen:
+		sim.restore(params["initial"])   ## it had come to rest: it is laid down exactly there
+	return {"rec": rec, "sim": sim, "frozen": frozen}
+
+
+func _fallen_job_run(whole: Dictionary) -> void:
+	var t0: int = Time.get_ticks_usec()
+	whole["steps"] = (whole["group"] as SoftSheetGroup).settle_now(4.0)   ## it was still falling when the checkpoint was written: the rest of the fall
+	whole["usec"] = Time.get_ticks_usec() - t0
+
+
+## The saved cloth, lying where it fell, with a little soot round the hole it was let go with.
+func _show_fallen(sub: Dictionary, whole: Dictionary, live: Node) -> void:
+	var rec: Dictionary = sub["rec"]
+	var sim: SoftSheetSim = sub["sim"]
+	var columns: Dictionary = {}
+	for c in rec["columns"]:
+		columns[Vector2i(int(c[0]), int(c[1]))] = true
+	var missing: Dictionary = {}
+	for c in rec["missing"]:
+		missing[Vector2i(int(c[0]), int(c[1]))] = true
+	var ext: Array = rec["extent"]
+	var info: Dictionary = {"keys": {}, "columns": columns, "blast_cells": missing, "level": int(ext[4]), "x0": int(ext[0]), "z0": int(ext[1]), "w": int(ext[2]), "d": int(ext[3]),
+		"material": String(rec["material"])}
+	if rec.has("plane"):
+		var p: Dictionary = rec["plane"]
+		var po: Array = p["origin"]
+		var pe: Array = p["eu"]
+		var pv: Array = p["ev"]
+		info["plane"] = {"origin": Vector3(float(po[0]), float(po[1]), float(po[2])), "eu": Vector3(float(pe[0]), float(pe[1]), float(pe[2])), "ev": Vector3(float(pv[0]), float(pv[1]), float(pv[2]))}
+		for k: String in ["axis", "wc", "u0", "nu", "levels"]:
+			info[k] = int(rec[k])
+	var sheet := SoftSheet3D.new()
+	_soft_sheets.append(sheet)
+	live.call("register_soft_sheet", sheet)
+	sheet.name = "SoftSheetFallen_%s" % String(rec["key"])
+	(live.call("geometry_root") as Node3D).add_child(sheet)
+	sheet.setup(live, sim, _cloth_skin(info, String(rec["material"]), sim.origin.y, live, true, true), whole["group"])
+	sheet.show_settled()
+	_cloth_live.append({"rec": rec, "sheet": sheet})
+	print("[SOFT-SHEET] a saved %s cloth (%s) lies where it fell, sewn to %d seam node(s) of its release: settled in %d step(s), %.0f ms on a worker" % [String(rec["material"]), String(rec["key"]), int(whole["seams"]), int(whole["steps"]), float(int(whole["usec"])) / 1000.0])
+
+
+## What a checkpoint needs to lay a let-go cloth down again (see `_base_cloths`).
+func _cloth_record(roof: Dictionary, info: Dictionary, params: Dictionary, rest_columns: Dictionary) -> Dictionary:
+	var o: Vector3 = params["origin"]
+	var pins: Array = []
+	for b in (params["pins"] as PackedByteArray):
+		pins.append(int(b))
+	var rec: Dictionary = {"batch": _release_batch, "material": String(roof["material"]), "key": str(_sheet_key(roof)), "nx": int(params["nx"]), "nz": int(params["nz"]), "hx": float(params["hx"]), "hz": float(params["hz"]),
+		"origin": [o.x, o.y, o.z], "pins": pins, "extent": [int(info["x0"]), int(info["z0"]), int(info["w"]), int(info["d"]), int(info["level"])]}
+	var initial: Array = []
+	if params.has("initial"):
+		for f in (params["initial"] as PackedFloat64Array):
+			initial.append(f)
+	rec["initial"] = initial
+	var boxes: Array = []
+	for b: AABB in params["boxes"]:
+		boxes.append([b.position.x, b.position.y, b.position.z, b.size.x, b.size.y, b.size.z])
+	rec["boxes"] = boxes
+	var columns: Array = []
+	for c: Vector2i in info["columns"]:
+		columns.append([c.x, c.y])
+	rec["columns"] = columns
+	var missing: Array = []
+	for c: Vector2i in rest_columns:
+		if not (info["columns"] as Dictionary).has(c):
+			missing.append([c.x, c.y])
+	rec["missing"] = missing
+	if info.has("plane"):
+		var bu: Vector3 = params["basis_u"]
+		var bv: Vector3 = params["basis_v"]
+		rec["basis_u"] = [bu.x, bu.y, bu.z]
+		rec["basis_v"] = [bv.x, bv.y, bv.z]
+		var p: Dictionary = info["plane"]
+		var po: Vector3 = p["origin"]
+		var pe: Vector3 = p["eu"]
+		var pv: Vector3 = p["ev"]
+		rec["plane"] = {"origin": [po.x, po.y, po.z], "eu": [pe.x, pe.y, pe.z], "ev": [pv.x, pv.y, pv.z]}
+		for k: String in ["axis", "wc", "u0", "nu", "levels"]:
+			rec[k] = int(info[k])
+	return rec
 
 
 func _drain_resting_jobs() -> void:
@@ -4482,6 +4658,10 @@ func _finish_resting_sheets(live: Node) -> void:
 	var setup_usec: int = 0
 	var show_usec: int = 0
 	for job: Dictionary in _resting_jobs:
+		if bool(job.get("fallen", false)):
+			for sub: Dictionary in job["jobs"]:
+				_show_fallen(sub, job, live)
+			continue
 		var roof: Dictionary = job["roof"]
 		var info: Dictionary = job["info"]
 		var sim: SoftSheetSim = job["sim"]
@@ -4622,6 +4802,11 @@ func _cloth_skin(info: Dictionary, material: String, y_top: float, live: Node, f
 ## ROOF_MASTER_PLAN v0.43: a SHEET ENTITY is a soft roof (the layout's own `roof_instances` entry) or a soft wall (`RoofSheetRelease.wall_entities`: {kind "wall", id, ...}).
 ## Everything below that used to take a roof takes either.
 var _soft_walls: Array = []
+## The cloths this mission has let go, for a checkpoint (`SaveState`): where each started and what held it, enough to lay it down again where it falls
+## (`_fallen_job` / `_show_fallen`). Plain data: JSON arrays and numbers.
+var _base_cloths: Array = []
+var _cloth_live: Array = []   ## [{rec, sheet}]: the let-go cloths that are on screen, so a checkpoint can save where they lie now
+var _release_batch: int = 0   ## counts the releases: the cloths of one release are saved with the same number and laid down again TOGETHER, sewn
 var _releasing_keys: Dictionary = {}   ## the sheets one blast is letting go right now (a sheet sewn to one of THESE is not a static seam)
 
 
@@ -4724,6 +4909,7 @@ func release_soft_roofs_after_blast(before: Dictionary) -> bool:
 	## WHICH sheets let go, decided on paper first: a wall hangs from the roof above it, and a wall's corner is held by the next wall, so one that goes takes holds from
 	## the others. Every cloth already decided to go counts as gone (`ignore`) for the next, until nothing changes; only then are they prepared, all against the same final
 	## world (a wall pinned to a neighbour that is leaving too would hang from nothing), and finished together.
+	_release_batch += 1
 	var released: Dictionary = {}   ## key -> info
 	var ignore: Dictionary = {}     ## Vector3i voxel -> true
 	for _pass in range(4):
@@ -4914,6 +5100,7 @@ func scenario_roof_gravity() -> bool:
 ## built BEFORE they went (so it takes the roof's own tone) appears in the step the chunks swap and falls from whatever held the roof
 ## (`RoofSheetRelease`: the voxels beside a wall's top, a block, another roof). The sheet is not saved: a checkpoint restore forgets it (open, plan v0.28).
 func release_roof_sheet(roof: Dictionary, from_rest: bool = true, blast_cells: Dictionary = {}) -> bool:
+	_release_batch += 1
 	var job: Dictionary = _release_prepare(roof, from_rest, blast_cells)
 	if job.is_empty():
 		return false
@@ -4959,6 +5146,9 @@ func _release_prepare(roof: Dictionary, from_rest: bool, blast_cells: Dictionary
 	## The sim (its banded factor is the biggest piece of a release: ~20 ms a sheet on the desktop, 40 on the Moto) is built on a worker while the voxels are
 	## destroyed and the board remeshes; `_release_group` waits for it right before the cloth is shown.
 	var job: Dictionary = {"params": params, "sim": null, "sim_usec": 0}
+	if resting != null:
+		job["rec"] = _cloth_record(roof, info, params, (_resting_sheets[_sheet_key(roof)] as Dictionary)["rest_columns"])
+		_base_cloths.append(job["rec"])
 	job["task"] = WorkerThreadPool.add_task(_build_sim_job.bind(job), false, "SoftSheetBuild")
 	var t_sim: int = Time.get_ticks_usec()
 	var voxels: Array = []   ## the handles of what this release destroys, and nothing else: the sheet itself is claims
@@ -5058,6 +5248,8 @@ func _release_finish(jobs: Array) -> bool:
 	for job: Dictionary in jobs:
 		_drop_resting_sheet(job["roof"])   ## the cloth at rest gives way to the one that falls, in the very frame the chunks swap
 		(job["sheet"] as SoftSheet3D).reveal()
+		if job.has("rec"):
+			_cloth_live.append({"rec": job["rec"], "sheet": job["sheet"]})
 	if _cloth_flaps != null and is_instance_valid(_cloth_flaps):
 		for job: Dictionary in jobs:
 			if not (job["info"] as Dictionary).has("plane"):

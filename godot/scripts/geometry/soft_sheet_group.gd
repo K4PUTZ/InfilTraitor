@@ -2,10 +2,9 @@
 ##
 ## ROOF_MASTER_PLAN v0.43 (Director, 2026-10-17: "pano em contato com pano gruda (costura)"): a quitanda's roof and its three walls are one piece of cloth sewn along
 ## the seams, not four sheets that fall on their own. Each sheet keeps its own `SoftSheetSim` (a grid, its own banded factor); the group steps them all, and after
-## every step projects the SEAMS: a boundary node of one sheet is tied to the nearest point of another sheet's boundary (a node, or a point between two), so the
-## two edges stay one edge. Position-based, mass-weighted, a node that is pinned never moves; the correction is also given to the velocity, so a seam carries the
-## momentum of what hangs from it. A seam is a Gauss-Seidel coupling between solves, not part of one: it lags by a fraction of a step, which the stiff stitching
-## and two relaxation rounds keep below a centimetre.
+## drives the SEAMS: a boundary node of a later sheet (a wall's top edge) is tied to the nearest point of an earlier sheet's boundary (the roof's rim), so the two edges stay
+## one edge. A seam is ONE-WAY: the earlier sheet is the master, the later sheet's sewn nodes are KINEMATIC (`SoftSheetSim.make_kinematic`: pinned in its solve, moved here before
+## every step), so it hangs from the rim instead of fighting it and a roof and its walls settle together. The wall's weight does not load the roof.
 ##
 ## THE WORKER lives here (it used to live in `SoftSheet3D`): ONE long task on the `WorkerThreadPool` steps the whole group back to back for as long as real time is
 ## owed and publishes a copy of every sheet's last step under a mutex; each `SoftSheet3D` draws its own sheet's copy. A lone sheet is a group of one.
@@ -14,7 +13,6 @@ extends RefCounted
 
 ## How close (GU) a boundary node must be to another sheet's boundary to be sewn to it: the wall's plane is half a voxel inside the roof's edge, the roof rests a hair above.
 static var SEAM_TOLERANCE: float = 0.14
-static var SEAM_ROUNDS: int = 2
 
 var sims: Array = []     ## SoftSheetSim
 var seams: Array = []    ## {a: sim index of the node, nb: its node, c: sim index of the target sheet, k0, k1: the target's two nodes, t: where between them}
@@ -80,6 +78,7 @@ static func _nearest_on_ring(positions: PackedFloat64Array, ring: PackedInt32Arr
 func sew(tolerance: float = -1.0) -> int:
 	var tol: float = SEAM_TOLERANCE if tolerance < 0.0 else tolerance
 	seams.clear()
+	var driven: Dictionary = {}   ## sim index -> {node: true}
 	for later in range(1, sims.size()):
 		var sim_b: SoftSheetSim = sims[later]
 		for earlier in range(later):
@@ -87,8 +86,17 @@ func sew(tolerance: float = -1.0) -> int:
 			var ring_a: PackedInt32Array = boundary_nodes(sim_a)
 			for nb in boundary_nodes(sim_b):
 				var hit: Dictionary = _nearest_on_ring(sim_a.pos, ring_a, _node(sim_b.pos, nb))
-				if float(hit["d"]) <= tol:
+				if float(hit["d"]) <= tol and sim_b.pinned[nb] != 1 and not (driven.get(later, {}) as Dictionary).has(nb):
 					seams.append({"a": later, "nb": nb, "c": earlier, "k0": int(hit["k0"]), "k1": int(hit["k1"]), "t": float(hit["t"])})
+					var nodes: Dictionary = driven.get(later, {})
+					nodes[nb] = true
+					driven[later] = nodes
+	## The sewn nodes of a later sheet are driven by the earlier one: pinned in its solve, moved here (`_drive`).
+	for later: int in driven:
+		var list := PackedInt32Array()
+		for n in (driven[later] as Dictionary):
+			list.append(int(n))
+		(sims[later] as SoftSheetSim).make_kinematic(list)
 	return seams.size()
 
 
@@ -128,48 +136,65 @@ static func pin_to_statics(initial: PackedFloat64Array, nx: int, nz: int, pins: 
 
 
 func step() -> void:
+	for i in range(sims.size()):
+		_drive(i)
+		(sims[i] as SoftSheetSim).step()
+		_drive_prev(i)
+
+
+## Writes the sewn nodes of sheet `i` where their masters are (the earlier sheets, already stepped this round) and gives them the master's velocity. A seam is ONE-WAY, the sheet added
+## first (the roof) drives a later one (a wall's top edge): tying both ends to each other, position-based or in the solve, made two stiff sheets of unequal mass ring against each
+## other at 3-5 GU/s for ever. A wall's weight does not load the roof's rim: a seam that follows is better than one that fights.
+func _drive(i: int) -> void:
+	for seam: Dictionary in seams:
+		if int(seam["a"]) != i:
+			continue
+		var sa: SoftSheetSim = sims[i]
+		var sc: SoftSheetSim = sims[int(seam["c"])]
+		var t: float = float(seam["t"])
+		var k0: int = int(seam["k0"])
+		var k1: int = int(seam["k1"])
+		var q: Vector3 = (1.0 - t) * _node(sc.pos, k0) + t * _node(sc.pos, k1)
+		var o: int = int(seam["nb"]) * 3
+		sa.pos[o] = q.x
+		sa.pos[o + 1] = q.y
+		sa.pos[o + 2] = q.z
+
+
+## After the step the driven nodes' `prev` follows their master's, so the draw interpolates the seam like the roof it hangs from.
+func _drive_prev(i: int) -> void:
+	for seam: Dictionary in seams:
+		if int(seam["a"]) != i:
+			continue
+		var sa: SoftSheetSim = sims[i]
+		var sc: SoftSheetSim = sims[int(seam["c"])]
+		var t: float = float(seam["t"])
+		var q: Vector3 = (1.0 - t) * _node(sc.prev, int(seam["k0"])) + t * _node(sc.prev, int(seam["k1"]))
+		var o: int = int(seam["nb"]) * 3
+		sa.prev[o] = q.x
+		sa.prev[o + 1] = q.y
+		sa.prev[o + 2] = q.z
+
+
+## The whole group, back to back, until nothing moves faster than `speed` GU/s for `hold` seconds or `max_seconds` of simulated time (a cloth laid down again after a
+## checkpoint: the sheets let go together settle together, seams and all). No Godot object is touched: a worker may run it. Returns the steps run.
+func settle_now(max_seconds: float = 10.0, speed: float = 0.10, hold: float = 0.4) -> int:
+	var run: int = 0
+	var quiet: float = 0.0
+	while sim_time() < max_seconds:
+		step()
+		run += 1
+		var fastest: float = 0.0
+		for sim: SoftSheetSim in sims:
+			fastest = maxf(fastest, sim._fastest)
+		quiet = quiet + SoftSheetSim.STEP if fastest < speed else 0.0
+		if quiet >= hold:
+			break
 	for sim: SoftSheetSim in sims:
-		sim.step()
-	_stitch()
-
-
-func _stitch() -> void:
-	if seams.is_empty():
-		return
-	for _round in range(SEAM_ROUNDS):
-		for seam: Dictionary in seams:
-			var sa: SoftSheetSim = sims[int(seam["a"])]
-			var sc: SoftSheetSim = sims[int(seam["c"])]
-			var nb: int = int(seam["nb"])
-			var k0: int = int(seam["k0"])
-			var k1: int = int(seam["k1"])
-			var t: float = float(seam["t"])
-			var w_b: float = 0.0 if sa.pinned[nb] == 1 else 1.0 / sa._mass
-			var w_0: float = 0.0 if sc.pinned[k0] == 1 else 1.0 / sc._mass
-			var w_1: float = 0.0 if sc.pinned[k1] == 1 else 1.0 / sc._mass
-			var denom: float = w_b + (1.0 - t) * (1.0 - t) * w_0 + t * t * w_1
-			if denom < 1.0e-12:
-				continue
-			var pb: Vector3 = _node(sa.pos, nb)
-			var q: Vector3 = (1.0 - t) * _node(sc.pos, k0) + t * _node(sc.pos, k1)
-			var lam: Vector3 = (pb - q) / denom
-			_nudge(sa, nb, -w_b * lam)
-			_nudge(sc, k0, (1.0 - t) * w_0 * lam)
-			_nudge(sc, k1, t * w_1 * lam)
-
-
-## Moves a free node by `delta` and gives the move to its velocity (the seam carries momentum).
-func _nudge(sim: SoftSheetSim, node: int, delta: Vector3) -> void:
-	if sim.pinned[node] == 1:
-		return
-	var o: int = node * 3
-	sim.pos[o] += delta.x
-	sim.pos[o + 1] += delta.y
-	sim.pos[o + 2] += delta.z
-	var inv_dt: float = 1.0 / SoftSheetSim.STEP
-	sim.vel[o] += delta.x * inv_dt
-	sim.vel[o + 1] += delta.y * inv_dt
-	sim.vel[o + 2] += delta.z * inv_dt
+		for k in range(sim.vel.size()):
+			sim.vel[k] = 0.0
+		sim.prev = sim.pos.duplicate()
+	return run
 
 
 func is_settled() -> bool:

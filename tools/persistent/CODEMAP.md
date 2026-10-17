@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**307 scripts · 93239 lines total** (under `godot/scripts/`)
+**307 scripts · 93529 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1167,7 +1167,7 @@ extends `Node3D` · 3522 lines
 
 ### `soft_sheet3d.gd`
 
-`class_name SoftSheet3D` · extends `Node3D` · 541 lines
+`class_name SoftSheet3D` · extends `Node3D` · 564 lines
 
 `godot/scripts/geometry/soft_sheet3d.gd`
 
@@ -1188,11 +1188,11 @@ extends `Node3D` · 3522 lines
 
 ### `soft_sheet_group.gd`
 
-`class_name SoftSheetGroup` · extends `RefCounted` · 271 lines
+`class_name SoftSheetGroup` · extends `RefCounted` · 296 lines
 
 `godot/scripts/geometry/soft_sheet_group.gd`
 
-> SoftSheetGroup — the cloths one blast lets go, stepped TOGETHER and stitched where they touch. ROOF_MASTER_PLAN v0.43 (Director, 2026-10-17: "pano em contato com pano gruda (costura)"): a quitanda's roof and its three walls are one piece of cloth sewn along the seams, not four sheets that fall on their own. Each sheet keeps its own `SoftSheetSim` (a grid, its own banded factor); the group steps them all, and after every step projects the SEAMS: a boundary node of one sheet is tied to the nearest point of another sheet's boundary (a node, or a point between two), so the two edges stay one edge. Position-based, mass-weighted, a node that is pinned never moves; the correction is also given to the velocity, so a seam carries the momentum of what hangs from it. A seam is a Gauss-Seidel coupling between solves, not part of one: it lags by a fraction of a step, which the stiff stitching and two relaxation rounds keep below a centimetre. THE WORKER lives here (it used to live in `SoftSheet3D`): ONE long task on the `WorkerThreadPool` steps the whole group back to back for as long as real time is owed and publishes a copy of every sheet's last step under a mutex; each `SoftSheet3D` draws its own sheet's copy. A lone sheet is a group of one.
+> SoftSheetGroup — the cloths one blast lets go, stepped TOGETHER and stitched where they touch. ROOF_MASTER_PLAN v0.43 (Director, 2026-10-17: "pano em contato com pano gruda (costura)"): a quitanda's roof and its three walls are one piece of cloth sewn along the seams, not four sheets that fall on their own. Each sheet keeps its own `SoftSheetSim` (a grid, its own banded factor); the group steps them all, and after drives the SEAMS: a boundary node of a later sheet (a wall's top edge) is tied to the nearest point of an earlier sheet's boundary (the roof's rim), so the two edges stay one edge. A seam is ONE-WAY: the earlier sheet is the master, the later sheet's sewn nodes are KINEMATIC (`SoftSheetSim.make_kinematic`: pinned in its solve, moved here before every step), so it hangs from the rim instead of fighting it and a roof and its walls settle together. The wall's weight does not load the roof. THE WORKER lives here (it used to live in `SoftSheet3D`): ONE long task on the `WorkerThreadPool` steps the whole group back to back for as long as real time is owed and publishes a copy of every sheet's last step under a mutex; each `SoftSheet3D` draws its own sheet's copy. A lone sheet is a group of one.
 
 **Public vars**
 - `var sims: Array = []`
@@ -1216,7 +1216,7 @@ extends `Node3D` · 3522 lines
 
 ### `soft_sheet_sim.gd`
 
-`class_name SoftSheetSim` · extends `RefCounted` · 688 lines
+`class_name SoftSheetSim` · extends `RefCounted` · 731 lines
 
 `godot/scripts/geometry/soft_sheet_sim.gd`
 
@@ -1241,6 +1241,9 @@ extends `Node3D` · 3522 lines
 - `var prev: PackedFloat64Array = PackedFloat64Array()`
 - `var vel: PackedFloat64Array = PackedFloat64Array()`
 - `var pinned: PackedByteArray = PackedByteArray()`
+
+**Public API**
+- `func make_kinematic(nodes: PackedInt32Array) -> void:`
 
 ---
 
@@ -3559,7 +3562,7 @@ extends `Node` · 143 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 334 lines
+`class_name SaveState` · extends `RefCounted` · 338 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -5293,7 +5296,7 @@ extends `SceneTree` · 36 lines
 
 ### `save_state_selftest.gd`
 
-extends `SceneTree` · 275 lines
+extends `SceneTree` · 278 lines
 
 `godot/scripts/tools/save_state_selftest.gd`
 
@@ -6339,7 +6342,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12057 lines
+extends `Node2D` · 12249 lines
 
 `godot/scripts/world/room.gd`
 

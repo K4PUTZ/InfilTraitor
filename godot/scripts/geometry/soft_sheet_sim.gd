@@ -70,6 +70,7 @@ var _solid: Dictionary = {}   ## the standing voxels around the roof, a grid (`R
 var _ground_level: int = 0
 var _acc: float = 0.0
 var _quiet: float = 0.0
+var _kinematic: bool = false   ## some pinned nodes are driven from outside (`make_kinematic`)
 var _fastest: float = 0.0   ## the speed (GU/s) of the fastest free node after the last step
 var _push: PackedFloat64Array = PackedFloat64Array()   ## per node, 3 floats: how far the last `_collide()` moved it OUT of something (its contact normal), which is not a velocity
 var _steps: int = 0
@@ -98,6 +99,46 @@ var _rz: PackedFloat64Array = PackedFloat64Array()
 var _inertia_x: PackedFloat64Array = PackedFloat64Array()
 var _inertia_y: PackedFloat64Array = PackedFloat64Array()
 var _inertia_z: PackedFloat64Array = PackedFloat64Array()
+
+
+## KINEMATIC nodes (ROOF_MASTER_PLAN v0.46): nodes another sheet drives (a wall's top row, sewn to a roof's rim). They are PINNED in the matrix (so the sheet's solve treats them as
+## the support they are, and does not fight the seam) but they MOVE: whoever drives them writes `pos` before every `step()`, and the step re-reads them into the right-hand side.
+## Costs one refactor now and a few hundred multiply-adds a step.
+func make_kinematic(nodes: PackedInt32Array) -> void:
+	var any: bool = false
+	for n in nodes:
+		if pinned[n] != 1:
+			pinned[n] = 1
+			any = true
+	if not any:
+		return
+	_kinematic = true
+	_l = PackedFloat64Array()
+	_factor()
+
+
+## The pinned nodes' share of the right-hand side again, from where they are NOW (kinematic nodes move).
+func _refresh_rhs_const() -> void:
+	_rhs_const.fill(0.0)
+	for e in range(_ew.size()):
+		_stamp_rhs([_ea[e], _eb[e]], [1.0, -1.0], _ew[e])
+	for t in range(_tw.size()):
+		_stamp_rhs([_ta[t], _tb[t], _tc[t]], [1.0, -2.0, 1.0], _tw[t])
+
+
+func _stamp_rhs(ids: Array, coef: Array, w: float) -> void:
+	for p in range(ids.size()):
+		var rp: int = _free_of[int(ids[p])]
+		if rp < 0:
+			continue
+		for q in range(ids.size()):
+			if _free_of[int(ids[q])] >= 0:
+				continue
+			var cf: float = w * float(coef[p]) * float(coef[q])
+			var o: int = int(ids[q]) * 3
+			_rhs_const[rp * 3] -= cf * pos[o]
+			_rhs_const[rp * 3 + 1] -= cf * pos[o + 1]
+			_rhs_const[rp * 3 + 2] -= cf * pos[o + 2]
 
 
 ## `p`: nx, nz (ints >= 1), hx, hz (GU), origin (Vector3), material ({lb, k_stretch, k_shear, drag}), pins (PackedByteArray, 1 = held by
@@ -382,6 +423,8 @@ func positions_lerped(a: float, out: PackedFloat32Array) -> void:
 # the step
 
 func step() -> void:
+	if _kinematic:
+		_refresh_rhs_const()
 	var n: int = nx * nz
 	var dt: float = _dt
 	var fall: float = dt * dt * _gravity

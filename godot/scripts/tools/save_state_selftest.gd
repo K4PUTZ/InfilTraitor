@@ -40,7 +40,10 @@ class RoomStub extends RefCounted:
 	var _base_debris: Dictionary = {}
 	var _base_prop_piles: Dictionary = {}
 	var _base_rubble_piles: Array = []
+	var _base_cloths: Array = []   ## the let-go cloths' records (checkpoint persistence)
 	var projected: int = 0
+	func cloths_for_save() -> Array:
+		return _base_cloths.duplicate(true)
 	func project_soot_store() -> void:
 		projected += 1
 

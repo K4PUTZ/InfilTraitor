@@ -125,6 +125,8 @@ static func capture(room) -> Dictionary:
 		"shattered_props": shattered_props,
 		"prop_piles": prop_piles,
 		"rubble_piles": rubble_piles,
+		## ROOF_MASTER_PLAN v0.46 — the cloths this mission let go (`Room._base_cloths`: plain records), laid down again on a restore. An old save has no key: no cloth.
+		"cloths": room.cloths_for_save(),
 		"debris": debris,
 		## G6 — `[base_x, base_y, level, count]` per pile. ⚠️ The COUNT travels, not
 		## a flag: it is what decides how heavy the pile reads, and a save that
@@ -252,6 +254,7 @@ static func restore(room, data: Dictionary) -> bool:
 			rubble_materials.append(String(zm))
 		room._base_rubble_piles.append({"y0": float(rp[0]), "zone_materials": rubble_materials, "records": rubble_records,
 			"div": int(rp[3])})
+	room._base_cloths = (data.get("cloths", []) as Array).duplicate(true)
 	room._base_debris.clear()
 	for dd in data.get("debris", []):
 		room._base_debris[String(dd[0])] = {"base": Vector2(float(dd[1]), float(dd[2])), "level": int(dd[3]),
@@ -332,3 +335,4 @@ static func clear_run_state(room) -> void:
 	room._base_debris.clear()
 	room._base_prop_piles.clear()
 	room._base_rubble_piles.clear()
+	room._base_cloths.clear()

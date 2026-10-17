@@ -139,6 +139,21 @@ func show_at_rest(burning: bool = false, finished: bool = false) -> void:
 		_board.call("sheet_reveal_state", self)   ## the agent may already be under this roof
 
 
+## A cloth that was LET GO before a checkpoint, brought back lying where it fell (`Room._show_fallen`): drawn still, soot finished, and NOT hidden with a roof (it is
+## on the floor, not up in the roof's place).
+func show_settled() -> void:
+	_resting = false
+	_done = true
+	visible = true
+	_upload(0.0)
+	if _burn_end > 0.0 or _burn_b_end > 0.0:
+		_burn_clock = _burn_end + 2.0
+		_settle_clock = _burn_b_end + 2.0
+		_mat.set_shader_parameter("clock", _burn_clock)
+		_mat.set_shader_parameter("settle_clock", _settle_clock)
+	set_process(false)
+
+
 ## A cloth shown at rest from the load (not yet cut by a blast, nor let go): the cutaway hides it with its roof (`set_revealed`).
 func is_resting() -> bool:
 	return _resting
@@ -166,6 +181,14 @@ func covers_any_gu(gus: Dictionary) -> bool:
 
 
 ## A WALL sheet (a vertical one) and the board columns its voxels stand in: the cutaway ghosts those, and the cloth hides with them.
+## Where the nodes are now (3 floats each): the last step the worker finished (a checkpoint saves it).
+func current_positions() -> PackedFloat64Array:
+	if _group == null:
+		return _sim.pos.duplicate()
+	var snap: Dictionary = _group.snapshot()
+	return ((snap["pos"] as Array)[_index] as PackedFloat64Array).duplicate()
+
+
 func is_wall() -> bool:
 	return not _xy.is_empty()
 

@@ -1,5 +1,6 @@
 {
   "id": "leather",
+  "support_reach": 8,
   "family": "leather",
   "destroy_factor": 0.45,
   "dent_factor": 0.2,

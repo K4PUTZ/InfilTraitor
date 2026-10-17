@@ -1,5 +1,6 @@
 {
   "id": "wood",
+  "support_reach": 24,
   "family": "wood",
   "tags": ["wood", "indoor"],
   "destroy_factor": 0.75,

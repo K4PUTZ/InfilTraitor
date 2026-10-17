@@ -117,6 +117,7 @@ def steps_for(tier: str, have_baseline: bool):
         ("pick", True, sh("pick_gate.py")),
         ("roof-yaw", True, sh("roof_yaw_gate.py")),
         ("world", True, sh("world_gate.py")),
+        ("struct-audit", True, sh("struct_audit.py")),
         ("canvas", True, sh("canvas_gate.py")),
         ("roundtrip+shadow", True, sh("board_probe.py", "roundtrip", "--with-store")),
     ] + identity

@@ -4286,6 +4286,7 @@ func schedule_structural_support(touched: Array) -> void:
 	var store: VoxelStore = VoxelStore.active
 	if store == null:
 		return
+	var universal: bool = str(_dev_flag("STRUCT_UNIVERSAL", "1")) != "0"
 	var blocks_by_id: Dictionary = {}
 	for block: PropBlock in _voxel_board.prop_blocks():
 		blocks_by_id[block.get_instance_id()] = block
@@ -4297,27 +4298,45 @@ func schedule_structural_support(touched: Array) -> void:
 		var block: Variant = blocks_by_id.get(v.container_id())
 		if block != null:
 			affected[(block as PropBlock).get_instance_id()] = block
-	if affected.is_empty():
+	if affected.is_empty() and (not universal or broken.is_empty()):
 		return
 	var ground: int = _voxel_board.ground_plane_level()
+	var grid: ClaimGrid = ClaimGrid.of_store(store)
+	_fill_anchored(grid)
 	var seeds: Array = []
-	var block_of: Dictionary = {}
+	var seeded: Dictionary = {}
 	for id in affected:
 		var block: PropBlock = affected[id]
 		for v: Voxel in block.voxels:
 			if v.damage_state != Voxel.DamageState.DESTROYED:
 				var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 				seeds.append(key)
-				block_of[key] = block
+				seeded[key] = true
+	## G3: the universal pass asks about every standing voxel that touches a cell this event destroyed, and the walk names the whole piece that lost its hold.
+	if universal:
+		for cell: Vector3i in broken:
+			for d: Vector3i in StructuralSupport.NEIGHBOURS:
+				var n: Vector3i = cell + d
+				if not seeded.has(n) and not broken.has(n):
+					seeded[n] = true
+					seeds.append(n)
 	var t0: int = Time.get_ticks_usec()
-	var loose: Dictionary = StructuralSupport.unsupported(ClaimGrid.of_store(store), ground, seeds, broken)
-	print_debug("[STRUCT] %d prop voxel(s) asked, %d with no support (%.2f ms)" % [seeds.size(), loose.size(), float(Time.get_ticks_usec() - t0) / 1000.0])
+	var loose: Dictionary = StructuralSupport.unsupported(grid, ground, seeds, broken, universal)
+	## Cloth and glass keep their own rules (a cloth lets go as a sheet, a pane collapses by `GlassSupport`'s cantilever).
+	for key: Vector3i in loose.keys():
+		var material: String = grid.material_at(key)
+		if SoftSheetPresets.has(material) or GlassMaterials.is_glass(material):
+			loose.erase(key)
+	print_debug("[STRUCT] %d voxel(s) asked (%s), %d with no support (%.2f ms)" % [seeds.size(), "universal" if universal else "props", loose.size(), float(Time.get_ticks_usec() - t0) / 1000.0])
 	if loose.is_empty():
 		return
-	_structural_fall(loose, block_of)
+	var material_of: Dictionary = {}
+	for key: Vector3i in loose:
+		material_of[key] = grid.material_at(key)
+	_structural_fall(loose, material_of, blocks_by_id)
 
 
-func _structural_fall(loose: Dictionary, block_of: Dictionary) -> void:
+func _structural_fall(loose: Dictionary, material_of: Dictionary, blocks_by_id: Dictionary) -> void:
 	var step: float = maxf(float(_dev_flag("STRUCT_CASCADE_S", "0.04")), 0.001)
 	var scale: float = float(_dev_flag("STRUCT_GRAVITY_SCALE", "1.0"))
 	var steps_max: int = int(round(0.6 / step))
@@ -4332,6 +4351,7 @@ func _structural_fall(loose: Dictionary, block_of: Dictionary) -> void:
 	var ground: int = _voxel_board.ground_plane_level()
 	var t_prev: float = 0.0
 	var fallen: int = 0
+	var walls_fell: Dictionary = {}   ## the GUs a wall / roof / slab voxel fell from (their light is repainted once, at the end)
 	for idx in order:
 		var at: float = float(idx) * step
 		if at > t_prev:
@@ -4345,6 +4365,7 @@ func _structural_fall(loose: Dictionary, block_of: Dictionary) -> void:
 		var voxels: Array = []
 		var by_material: Dictionary = {}
 		var centre := Vector2.ZERO
+		var structure: bool = false   ## a voxel of a slice / slab / column (not a prop's): the board's dirty passes run
 		for key: Vector3i in buckets[idx]:
 			var v: Voxel = grid.voxel_at(key)
 			if v == null or VoxelStore.damage_of(v) == Voxel.DamageState.DESTROYED:
@@ -4354,7 +4375,10 @@ func _structural_fall(loose: Dictionary, block_of: Dictionary) -> void:
 			record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state, v.damage_is_blast, v.damage_carved_side, v.damage_variant, v.damage_substrate, v)
 			voxels.append(v)
 			centre += Vector2(key.x, key.y)
-			var material: String = (block_of[key] as PropBlock).material
+			if not blocks_by_id.has(v.container_id()):
+				structure = true
+				walls_fell[Vector2i(v.grid_pos.x >> 3, v.grid_pos.y >> 3)] = true
+			var material: String = String(material_of[key])
 			var group: Array = by_material.get(material, [])
 			group.append(Vector3i(key.x, key.z - ground, key.y))
 			by_material[material] = group
@@ -4363,11 +4387,24 @@ func _structural_fall(loose: Dictionary, block_of: Dictionary) -> void:
 		fallen += voxels.size()
 		centre /= float(voxels.size())
 		bump_world_revision()
+		if structure:
+			while _destruction_render_busy:
+				await get_tree().process_frame
+				if not is_instance_valid(self) or not is_instance_valid(_voxel_board):
+					return
+			_destruction_render_busy = true
+			await _voxel_board.process_dirty_slabs_async(_slab_registry)
+			await _voxel_board.process_dirty_async(_edge_registry)
+			_destruction_render_busy = false
+			if not is_instance_valid(self) or not is_instance_valid(live):
+				return
 		live.on_shot_commit(voxels)
 		_release_destroyed_prop_cells()
 		for material: String in by_material:
 			_spawn_roof_pieces(by_material[material], 1, material, centre, 1.0, "struct|%d|%d" % [idx, voxels.size()], Vector2(0.1, 0.0), scale)
-	print_debug("[STRUCT] %d unsupported prop voxel(s) fell in %d step(s) of %.2f s (gravity x%.2f)" % [fallen, order.size(), step, scale])
+	if not walls_fell.is_empty() and is_instance_valid(self) and _voxel_board != null:
+		_repaint_voxel_light_buckets_scoped(_light_reach_scope(walls_fell.keys()), true)   ## what a wall that fell stopped keeping out
+	print_debug("[STRUCT] %d unsupported voxel(s) fell in %d step(s) of %.2f s (gravity x%.2f)" % [fallen, order.size(), step, scale])
 
 
 ## ROOF_MASTER_PLAN v0.30 (Director, 2026-10-16: "um poste de madeira segurando o toldo; a granada fura/queima o toldo e remove o poste, e o pano cai").
@@ -5090,6 +5127,92 @@ func _spawn_cloth_flaps(destroyed: Dictionary, material: String) -> int:
 	_cloth_flaps.add_flaps(flaps, live.call("material_facade_texture", material))
 	print_debug("[SOFT-SHEET] %d flap(s) on the rim of a %d-voxel hole in the %s roof" % [flaps.size(), hole.size(), material])
 	return flaps.size()
+
+
+## RF-G G3 audit: every standing voxel of the store asked; an intact map has none without support (a count above 0 names a material the reach table is too strict for).
+func scenario_struct_audit() -> bool:
+	var store: VoxelStore = VoxelStore.active
+	if store == null or _voxel_board == null:
+		push_error("[Room] struct_audit: no store or board")
+		return false
+	var grid: ClaimGrid = ClaimGrid.of_store(store)
+	_fill_anchored(grid)
+	var seeds: Array = []
+	var seen: Dictionary = {}
+	for claim: int in range(store.claims):
+		var k := Vector3i(store.xyz[claim * 3], store.xyz[claim * 3 + 1], store.xyz[claim * 3 + 2])
+		if not seen.has(k):
+			seen[k] = true
+			seeds.append(k)
+	var standing: Dictionary = {}   ## material -> [count, highest level]
+	for k: Vector3i in seeds:
+		var m: Variant = grid.standing_material(k)
+		if m != null:
+			var row: Array = standing.get(String(m), [0, 0])
+			row[0] += 1
+			row[1] = maxi(int(row[1]), k.z)
+			standing[String(m)] = row
+	var t0: int = Time.get_ticks_usec()
+	var loose: Dictionary = StructuralSupport.unsupported(grid, _voxel_board.ground_plane_level(), seeds, {})
+	var by_material: Dictionary = {}
+	var lo := Vector3i(1 << 30, 1 << 30, 1 << 30)
+	var hi := Vector3i(-(1 << 30), -(1 << 30), -(1 << 30))
+	for k: Vector3i in loose:
+		var m: String = grid.material_at(k)
+		by_material[m] = int(by_material.get(m, 0)) + 1
+		lo = Vector3i(mini(lo.x, k.x), mini(lo.y, k.y), mini(lo.z, k.z))
+		hi = Vector3i(maxi(hi.x, k.x), maxi(hi.y, k.y), maxi(hi.z, k.z))
+	if not loose.is_empty():
+		var probe: Vector3i = loose.keys()[loose.size() / 2]
+		var col: String = ""
+		for lv in range(_voxel_board.ground_plane_level(), probe.z + 2):
+			var mm: Variant = grid.standing_material(Vector3i(probe.x, probe.y, lv))
+			col += "." if mm == null else str(mm).substr(0, 1)
+		print("[STRUCT-AUDIT] a loose voxel at %s: its column from the ground up: %s" % [str(probe), col])
+		print("[STRUCT-AUDIT] the loose voxels span x %d..%d, y %d..%d, level %d..%d" % [lo.x, hi.x, lo.y, hi.y, lo.z, hi.z])
+	print("[STRUCT-AUDIT] %d voxel(s) asked, %d with no support %s (%.1f ms); standing by material [count, highest level] %s" % [seeds.size(), loose.size(), str(by_material), float(Time.get_ticks_usec() - t0) / 1000.0, str(standing)])
+	return true
+
+
+## The cells that hold themselves up by design: the voxels of a prop whose definition says `anchored` (a shelf, a picture).
+func _fill_anchored(grid: ClaimGrid) -> void:
+	for block: PropBlock in _voxel_board.prop_blocks():
+		if not block.anchored:
+			continue
+		for v: Voxel in block.voxels:
+			grid.anchored[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
+
+
+## RF-G G3 bench: `STRUCT_CUT=<material>,<levels>` destroys the lowest `levels` levels above the ground of EVERY voxel of that material (a wall with its foot gone), through the
+## same commit a blast's damage takes, then asks the support service about it like any event: what hangs over the cut must fall. A dev tool: it is how G3 is seen on a real map.
+func scenario_struct_cut() -> bool:
+	var spec: PackedStringArray = str(_dev_flag("STRUCT_CUT", "")).split(",")
+	var store: VoxelStore = VoxelStore.active
+	if spec.size() != 2 or store == null or _voxel_board == null:
+		push_error("[Room] struct_cut: set STRUCT_CUT=<material>,<levels> and have a board")
+		return false
+	var ground: int = _voxel_board.ground_plane_level()
+	var grid: ClaimGrid = ClaimGrid.of_store(store)
+	var cut: Array = []
+	var seen: Dictionary = {}
+	for claim: int in range(store.claims):
+		var k := Vector3i(store.xyz[claim * 3], store.xyz[claim * 3 + 1], store.xyz[claim * 3 + 2])
+		if seen.has(k) or k.z < ground or k.z >= ground + int(spec[1]) or grid.material_at(k) != spec[0] or grid.damage_at(k) == Voxel.DamageState.DESTROYED:
+			continue
+		seen[k] = true
+		var v: Voxel = grid.voxel_at(k)
+		if v != null:
+			_quiet_destroy[k] = true
+			v.set_damage(Voxel.DamageState.DESTROYED, true, Voxel.CarvedSide.NONE, 0, 0)
+			record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state, v.damage_is_blast, v.damage_carved_side, v.damage_variant, v.damage_substrate, v)
+			cut.append(v)
+	await _voxel_board.process_dirty_slabs_async(_slab_registry)
+	await _voxel_board.process_dirty_async(_edge_registry)
+	board3d().on_shot_commit(cut)
+	bump_world_revision()
+	print("[STRUCT-CUT] %d voxel(s) of %s destroyed up to level +%s" % [cut.size(), spec[0], spec[1]])
+	schedule_structural_support(cut)
+	return true
 
 
 func scenario_roof_gravity() -> bool:

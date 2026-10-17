@@ -14,6 +14,7 @@ func _init() -> void:
 	print("=".repeat(70) + "\n")
 	_rule()
 	_overlay()
+	_reach()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -99,3 +100,43 @@ func _overlay() -> void:
 	grid.overlay[Vector3i(6, 0, GROUND + 3)] = Voxel.DamageState.DESTROYED
 	_check(StructuralSupport.unsupported(grid, GROUND, roof, {}).size() == 7, "both walls cut on the prediction: the 7 roof voxels (they hold each other) have no support")
 	_check(grid.damage_at(Vector3i(0, 0, GROUND + 3)) == Voxel.DamageState.DESTROYED and grid.damage_at(Vector3i(0, 0, GROUND + 2)) >= 0, "the overlay answers for its cells only")
+
+
+## RF-G G3: a ledge hangs sideways as far as its material allows (plywood 16 voxels, concrete 64), a wall holds it from below, an anchored cell holds itself.
+func _reach() -> void:
+	for pair: Array in [["plywood", 16], ["concrete", 96], ["wood", 24]]:
+		var material: String = pair[0]
+		var reach: int = pair[1]
+		var grid := ClaimGrid.empty()
+		var wall: Array = _column(0, 0, GROUND, GROUND + 7)
+		var ledge: Array = []
+		for x in range(1, reach + 11):
+			ledge.append(Vector3i(x, 0, GROUND + 7))
+		_put(grid, wall)
+		_put(grid, ledge)
+		for c: Vector3i in wall + ledge:
+			grid.put_material(c, material)
+		var loose: Dictionary = StructuralSupport.unsupported(grid, GROUND, ledge, {})
+		_check(loose.size() == 10 and not loose.has(Vector3i(reach, 0, GROUND + 7)) and loose.has(Vector3i(reach + 1, 0, GROUND + 7)),
+				"%s: a ledge holds %d voxels off its wall, the %d beyond let go (%d loose)" % [material, reach, 10, loose.size()])
+	## the other side holds too: a plywood roof between two walls 24 voxels apart is held from both ends (12 each way)
+	var grid2 := ClaimGrid.empty()
+	var left: Array = _column(0, 0, GROUND, GROUND + 7)
+	var right: Array = _column(25, 0, GROUND, GROUND + 7)
+	var roof: Array = []
+	for x in range(1, 25):
+		roof.append(Vector3i(x, 0, GROUND + 7))
+	_put(grid2, left)
+	_put(grid2, right)
+	_put(grid2, roof)
+	for c: Vector3i in left + right + roof:
+		grid2.put_material(c, "plywood")
+	_check(StructuralSupport.unsupported(grid2, GROUND, roof, {}).is_empty(), "a plywood roof 24 voxels between two walls is held from both ends")
+	## anchored: a shelf with nothing under it stays when its cells are anchored
+	var grid3 := ClaimGrid.empty()
+	var shelf: Array = _column(3, 3, GROUND + 4, GROUND + 5)
+	_put(grid3, shelf)
+	_check(StructuralSupport.unsupported(grid3, GROUND, shelf, {}).size() == 2, "a shelf with nothing under it falls")
+	for c: Vector3i in shelf:
+		grid3.anchored[c] = true
+	_check(StructuralSupport.unsupported(grid3, GROUND, shelf, {}).is_empty(), "the same shelf, anchored by design, stays")

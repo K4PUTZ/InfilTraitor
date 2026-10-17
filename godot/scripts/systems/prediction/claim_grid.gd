@@ -15,6 +15,10 @@ var _dict: Dictionary = {}
 ## What a PREDICTION says about a cell before it is committed: `Vector3i -> Voxel.DamageState`. `damage_at()` (what the support walk reads) answers from it first,
 ## so `StructuralSupport` can be asked about the world a `WorldDelta` would leave (RF-G G2: the blast's roof islands).
 var overlay: Dictionary = {}
+## Cells that hold themselves up by design (a shelf, a picture, an anchored prop): `StructuralSupport` treats them as ground. `Vector3i -> true`.
+var anchored: Dictionary = {}
+## A dictionary-backed grid's materials (`Vector3i -> id`); a cell with none answers the default reach.
+var _materials: Dictionary = {}
 
 
 ## Backed by the store's grid: nothing is built, nothing is held.
@@ -51,6 +55,33 @@ func damage_at(key: Vector3i) -> int:
 		return -1 if v == null else VoxelStore.damage_of(v)
 	var claim: int = _store.last_claim_at(key.x, key.y, key.z)
 	return -1 if claim < 0 else ((_store.state[claim] >> 1) & 3)
+
+
+## The material id at a cell ("" when none is known).
+func material_at(key: Vector3i) -> String:
+	if _store == null:
+		return String(_materials.get(key, ""))
+	var claim: int = _store.last_claim_at(key.x, key.y, key.z)
+	return "" if claim < 0 else _store.material_ids[_store.mat[claim]]
+
+
+func put_material(key: Vector3i, material: String) -> void:
+	_materials[key] = material
+
+
+## ONE probe for the support walk: the material id of a STANDING voxel at `key` (the overlay answered first), or null when nothing stands there.
+func standing_material(key: Vector3i) -> Variant:
+	if not overlay.is_empty() and overlay.has(key):
+		return null if int(overlay[key]) == Voxel.DamageState.DESTROYED else material_at(key)
+	if _store == null:
+		var v: Voxel = _dict.get(key)
+		if v == null or VoxelStore.damage_of(v) == Voxel.DamageState.DESTROYED:
+			return null
+		return String(_materials.get(key, ""))
+	var claim: int = _store.last_claim_at(key.x, key.y, key.z)
+	if claim < 0 or ((_store.state[claim] >> 1) & 3) == Voxel.DamageState.DESTROYED:
+		return null
+	return _store.material_ids[_store.mat[claim]]
 
 
 func has(key: Vector3i) -> bool:

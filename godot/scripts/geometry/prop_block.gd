@@ -12,6 +12,8 @@ var id: String
 var material: String
 ## The floor level the prop stands on (the vertical reference of a blast ring); -1 = use the block's own lowest voxel.
 var floor_level: int = -1
+## RF-G G3: the prop holds itself up by design (a shelf, a picture): `StructuralSupport` takes its cells as ground. From the prop's definition.
+var anchored: bool = false
 
 
 func _init(p_id: String, p_material: String):

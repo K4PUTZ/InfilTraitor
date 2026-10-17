@@ -1,5 +1,6 @@
 {
   "id": "plastic",
+  "support_reach": 24,
   "family": "plastic",
   "destroy_factor": 0.65,
   "dent_factor": 0.25,

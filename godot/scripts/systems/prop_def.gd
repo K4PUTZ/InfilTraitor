@@ -11,6 +11,8 @@ var size_vox: Vector3i                      # authoring-forward; not consumed by
 var layers: Array                           # authoring-forward; not consumed by v1 renderer
 var material_zones: Dictionary              # {"default": "wood", ...}
 var footprint_gus: Array[Vector2i]          # GU cells (relative to placement anchor) this prop occupies
+## RF-G G3: the prop holds itself up by design (a shelf on a wall, a picture): `StructuralSupport` takes its cells as ground, so it never falls for want of support.
+var anchored: bool = false
 var storeys: int = 1                        # how many storeys tall the *rendered* solid is
 var gameplay: Dictionary                    # {"cover": "full"|"half"|"quarter"|"none", "destructible": bool}
 var tags: Array[String]                     # Array[String] — classification tags
@@ -64,6 +66,7 @@ static func from_json(data: Dictionary, errors: Array = []) -> PropDef:
 		def.footprint_gus.append(JsonFileRef.vector2i(fp, Vector2i.ZERO, "prop '%s' footprint_gus" % def.id, errors))
 	
 	def.storeys = int(data.get("storeys", 1))
+	def.anchored = bool(data.get("anchored", false))
 	def.gameplay = data.get("gameplay", {"cover": "none", "destructible": false})
 	
 	def.tags = []

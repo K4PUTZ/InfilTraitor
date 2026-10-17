@@ -161,6 +161,15 @@ static var _loaded: bool = false
 static var load_errors: Array[String] = []
 
 
+## RF-G G3 (Director, 2026-10-17: "cola lateral por material, madeira e vidro seguram menos que concreto"): how far, in VOXELS, a piece of this material hangs sideways
+## off what holds it before it lets go (the span a roof or the ledge over a hole may cross). `StructuralSupport` reads it. 8 voxels = 1 GU. Vertical contact is free.
+const DEFAULT_SUPPORT_REACH := 96.0
+
+
+static func support_reach(material: String) -> float:
+	return maxf(float(_row(material).get("support_reach", DEFAULT_SUPPORT_REACH)), 1.0)
+
+
 static func destroy_factor(material: String) -> float:
 	return float(_row(material).get("destroy_factor", DEFAULT_DESTROY_FACTOR))
 
@@ -263,5 +272,6 @@ static func _scan_dir(dir_path: String) -> void:
 						## (69 dents on a fixture, ZERO on the real map, because only one
 						## material had the row).
 						"smoke_chance": float(parsed.get("smoke_chance", DEFAULT_SMOKE_CHANCE)),
+						"support_reach": float(parsed.get("support_reach", DEFAULT_SUPPORT_REACH)),
 					}
 		entry = dir.get_next()

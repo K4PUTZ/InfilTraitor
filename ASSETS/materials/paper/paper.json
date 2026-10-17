@@ -1,5 +1,6 @@
 {
   "id": "paper",
+  "support_reach": 6,
   "family": "paper",
   "destroy_factor": 0.85,
   "dent_factor": 0.1,

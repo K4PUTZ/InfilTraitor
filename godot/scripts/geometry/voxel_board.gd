@@ -2636,6 +2636,7 @@ func register_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 	for footprint_offset in prop_def.footprint_gus:
 		var cell: Vector2i = gu_cell + footprint_offset
 		var block := PropBlock.new("PROP_%d_%d_%d_%s" % [cell.x, cell.y, start_storey, prop_def.id], material_name)
+		block.anchored = prop_def.anchored
 		## Level outer, then `gu_voxels()`'s own y-outer/x-inner order — matches
 		## `VoxelStore._fill()`'s "regular" box check exactly, so this container
 		## never falls back to the per-voxel lookup table irregular containers need.
@@ -2701,6 +2702,7 @@ func register_vox_prop(gu_cell: Vector2i, start_storey: int, prop_def, build: Di
 		for gu: Vector2i in gus:
 			var block := PropBlock.new("PROP_%d_%d_%d_%s_%s" % [gu.x, gu.y, start_storey, prop_def.id, material_id], String(material_id))
 			block.floor_level = start_level
+			block.anchored = prop_def.anchored
 			for cell: Vector3i in by_gu[gu]:
 				_ensure_level(cell.z)
 				block.voxels.append(Voxel.new(Vector2i(cell.x, cell.y), cell.z, block))

@@ -1,5 +1,6 @@
 {
   "id": "plywood",
+  "support_reach": 16,
   "family": "wood",
   "tags": ["wood", "indoor"],
   "destroy_factor": 0.95,

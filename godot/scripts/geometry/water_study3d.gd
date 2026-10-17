@@ -1,5 +1,5 @@
 ## WaterStudy3D — M6 WATER STUDY (2026-10-17): ONE flat sheet over a rectangle of the floor, drawn by `water_study3d.gdshader` in the look
-## a KIND picks. Dev only (flag `WATER_STUDY=<kind>`, `WATER_RAIN=<0..1>`), nothing simulated and nothing saved: it exists so the Director can judge how
+## a KIND picks. Dev only (flag `WATER_STUDY=<kind>`, `WATER_RAIN=<0..1>`, rain works on ANY kind: the Director's rule of 2026-10-17, every water exposed to rain gets it), nothing simulated and nothing saved: it exists so the Director can judge how
 ## water could READ (flat tint / stipple / surface / both) before a mechanism is chosen (`MATERIALS_MASTER_PLAN` §6).
 class_name WaterStudy3D
 extends RefCounted
@@ -15,6 +15,10 @@ const KINDS: Dictionary = {
 	"stipple": {"mode": 1},
 	"surface": {"mode": 2},
 	"waste": {"mode": 3},
+	## Caribbean shallows: very clear, light blue-green, no bubbles; the channel shows its own depth (the curbs' shade on the water, deeper
+	## blue in the middle) and the sun's caustics on the bed.
+	"caribe": {"mode": 2, "bubble_amount": 0.0, "caustics": 1.0, "depth_shade": 1.0,
+			"deep": Color(0.0, 0.52, 0.78, 0.26), "shallow": Color(0.3, 0.92, 0.96, 0.1), "light": Color(0.95, 1.0, 1.0, 1.0)},
 	"clean": {"mode": 2, "deep": Color(0.05, 0.3, 0.38, 0.3), "shallow": Color(0.3, 0.64, 0.7, 0.18), "light": Color(0.9, 1.0, 1.0, 1.0)},
 }
 
@@ -46,6 +50,9 @@ func attach(board: Node3D, rect: Rect2, level: int, kind: String, flow: Vector2,
 	material.shader = SHADER
 	material.set_shader_parameter("mode", int(look["mode"]))
 	material.set_shader_parameter("rain", clampf(rain, 0.0, 1.0))
+	for key: String in ["bubble_amount", "caustics", "depth_shade"]:
+		if look.has(key):
+			material.set_shader_parameter(key, look[key])
 	for key: String in ["deep", "shallow", "light"]:
 		if look.has(key):
 			material.set_shader_parameter(key + "_color", look[key])

@@ -13,6 +13,10 @@ uniform float flow_speed = 0.3;          // GU / s
 uniform vec4 deep_color : source_color = vec4(0.04, 0.2, 0.26, 0.5);
 uniform vec4 shallow_color : source_color = vec4(0.16, 0.46, 0.5, 0.38);
 uniform vec4 light_color : source_color = vec4(0.78, 0.95, 1.0, 1.0);
+uniform float bubble_amount = 1.0;      // 0 = no bubbles
+uniform float caustics = 0.0;           // light networks on the bed, as in clear shallow water
+uniform float depth_shade = 0.0;        // the channel's own depth: the curbs' shade on the water, deeper blue toward the middle
+uniform vec2 shade_dir = vec2(1.0, 0.0); // which way the curbs' shadow falls (local xz, away from the light)
 uniform float rain = 0.0;               // 0 off .. 1 heavy: concentric rings from random drops, independent of the flow
 uniform float dot_cells = 11.0;          // stipple cells per GU
 
@@ -82,6 +86,19 @@ float bubbles(vec2 p, float t) {
 	return step(0.86, r.y) * (rim * 1.0 + disc * 0.3);
 }
 
+// Caustics: the bright network the sun draws on a shallow bed; two warped layers, thin lines where a sine sum crosses zero.
+float caustic_net(vec2 p, float t) {
+	float c = 0.0;
+	for (int i = 0; i < 2; i++) {
+		float k = float(i);
+		vec2 q = p * (9.0 + 5.0 * k);
+		q += vec2(sin(q.y * 0.9 + t * (0.7 + 0.2 * k) + k * 1.9), cos(q.x * 0.8 - t * (0.6 + 0.15 * k) + k * 2.7)) * 0.9;
+		float s = abs(sin(q.x) + sin(q.y * 1.1 + 1.3));
+		c = max(c, smoothstep(0.16, 0.0, s));
+	}
+	return c;
+}
+
 // Rain: drops land at random places on a 0.4 GU grid; each draws two concentric rings that grow and fade in about a second. `rain` sets
 // how many cells have a drop at once. Not carried by the flow: rain falls where it falls.
 float rain_rings(vec2 p, float t) {
@@ -124,9 +141,26 @@ void fragment() {
 		float glints = smoothstep(0.82, 1.0, bands) * smoothstep(0.55, 0.85, warp);
 		col.rgb = mix(col.rgb, light_color.rgb, glints * 0.45 * soft);
 		float ring = rings(p, t);
-		float bub = bubbles(p, t);
+		float bub = bubbles(p, t) * bubble_amount;
 		col.rgb = mix(col.rgb, light_color.rgb, clamp(ring * 0.8 + bub, 0.0, 1.0) * soft);
 		col.a = max(col.a, clamp(ring * 0.85 + bub, 0.0, 1.0) * soft);
+	}
+	if (depth_shade > 0.0) {
+		// depth: shallow turquoise at the curbs, deep blue in the middle; and each curb throws a soft shade onto the water on the side
+		// away from the light (the shade of a wall standing in the channel), wavering a little with the surface
+		float mid = clamp(across_d / (0.5 * (rect_max.x - rect_min.x)), 0.0, 1.0);
+		col.rgb = mix(col.rgb, deep_color.rgb * 0.65, mid * 0.5 * depth_shade);
+		float d_shade = shade_dir.x > 0.0 ? (p.x - rect_min.x) : (rect_max.x - p.x);
+		float wob = 0.03 * sin(along * 6.0 - t * 1.2) + 0.02 * vnoise(vec2(along * 3.0, t * 0.4));
+		float shade = smoothstep(0.42 + wob, 0.0, d_shade) * 0.5 * depth_shade;
+		col.rgb *= 1.0 - shade * 0.7;
+		col.a = max(col.a, shade * 0.55);
+	}
+	if (caustics > 0.0) {
+		float cn = caustic_net(p * vec2(1.0) + flow_dir * t * 0.05, t);
+		float lit = 1.0 - (depth_shade > 0.0 ? smoothstep(0.42, 0.0, shade_dir.x > 0.0 ? (p.x - rect_min.x) : (rect_max.x - p.x)) * 0.8 : 0.0);
+		col.rgb = mix(col.rgb, light_color.rgb, cn * 0.3 * caustics * lit);
+		col.a = max(col.a, cn * 0.2 * caustics * lit);
 	}
 	if (mode == 1 || mode == 3) {
 		float d = stipple(p, t);

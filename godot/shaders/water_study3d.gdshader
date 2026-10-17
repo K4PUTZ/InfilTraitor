@@ -13,6 +13,7 @@ uniform float flow_speed = 0.3;          // GU / s
 uniform vec4 deep_color : source_color = vec4(0.04, 0.2, 0.26, 0.5);
 uniform vec4 shallow_color : source_color = vec4(0.16, 0.46, 0.5, 0.38);
 uniform vec4 light_color : source_color = vec4(0.78, 0.95, 1.0, 1.0);
+uniform float rain = 0.0;               // 0 off .. 1 heavy: concentric rings from random drops, independent of the flow
 uniform float dot_cells = 11.0;          // stipple cells per GU
 
 varying vec2 lp;
@@ -81,6 +82,28 @@ float bubbles(vec2 p, float t) {
 	return step(0.86, r.y) * (rim * 1.0 + disc * 0.3);
 }
 
+// Rain: drops land at random places on a 0.4 GU grid; each draws two concentric rings that grow and fade in about a second. `rain` sets
+// how many cells have a drop at once. Not carried by the flow: rain falls where it falls.
+float rain_rings(vec2 p, float t) {
+	vec2 q = p / 0.4;
+	vec2 id = floor(q);
+	vec2 f = fract(q) - 0.5;
+	vec2 r = h22(id + 53.0);
+	float cycle = 1.1 + r.x * 0.9;
+	float k = t / cycle + r.y * 7.0;
+	float n = floor(k);
+	float phase = fract(k);
+	vec2 r2 = h22(id + n * 1.7 + 91.0);
+	if (r2.x > rain) {
+		return 0.0;
+	}
+	f -= (r2 - 0.5) * 0.4;
+	float d = length(f);
+	float radius = phase * 0.5;
+	float ring = smoothstep(0.05, 0.0, abs(d - radius)) + 0.7 * smoothstep(0.04, 0.0, abs(d - radius * 0.62));
+	return ring * (1.0 - phase) * (1.0 - phase);
+}
+
 void fragment() {
 	vec2 p = lp;
 	float edge = min(min(p.x - rect_min.x, rect_max.x - p.x), min(p.y - rect_min.y, rect_max.y - p.y));
@@ -113,6 +136,11 @@ void fragment() {
 		}
 		col.rgb = mix(col.rgb, light_color.rgb, d * soft);
 		col.a = max(col.a, d * 0.95 * soft);
+	}
+	if (rain > 0.0) {
+		float drop = clamp(rain_rings(p, TIME * 0.6), 0.0, 1.0) * 0.95;
+		col.rgb = mix(col.rgb, light_color.rgb, drop);
+		col.a = max(col.a, drop);
 	}
 	ALBEDO = col.rgb;
 	ALPHA = col.a * smoothstep(0.0, 0.03, edge);

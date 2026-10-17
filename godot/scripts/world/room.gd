@@ -3811,8 +3811,8 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 				push_warning("[GroundScatter] the scatter covers %.2f layers of its zones, past the budget of %.1f (about %.1f ms per layer over a full screen on the Moto; a warning, not a cap, SURFACES_MASTER_PLAN §7.0)"
 						% [layers, GROUND_SCATTER_LAYER_BUDGET, 2.4])
 		_ground_decals.attach(live, decal_instances, GeometryCoords.FLOOR_TOP_LEVEL, floor_tags_of)
-		## M6 water study (dev only): `WATER_STUDY=<0..3>` lays one flat sheet over the map's region `water`, flowing along `water_flow`'s
-		## direction (a region's long axis), in the look that mode picks. Nothing is simulated.
+		## M6 water study (dev only): `WATER_STUDY=<kind>` (see WaterStudy3D.KINDS; `waste`, `clean`) lays one flat sheet over the map's region `water`, flowing along `water_flow`'s
+		## direction (a region's long axis), in that look; `WATER_RAIN=<0..1>` adds rain rings. Nothing is simulated.
 		var water_mode: String = _dev_flag("WATER_STUDY", "")
 		if water_mode != "" and map_layout != null:
 			var water: Dictionary = map_layout.resolve("water", self)
@@ -3822,7 +3822,8 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 					_water_study = WaterStudy3DRef.new()
 				var long_y: bool = box.size.z >= box.size.x
 				_water_study.attach(live, Rect2(Vector2(box.position.x, box.position.z), Vector2(box.size.x, box.size.z)),
-						GeometryCoords.FLOOR_TOP_LEVEL, int(water_mode), Vector2(0.0, 1.0) if long_y else Vector2(1.0, 0.0))
+						GeometryCoords.FLOOR_TOP_LEVEL, water_mode, Vector2(0.0, 1.0) if long_y else Vector2(1.0, 0.0),
+						float(_dev_flag("WATER_RAIN", "0")))
 			else:
 				push_error("[Room] WATER_STUDY is set but this map has no `water` region: %s" % str(water))
 		## R3D-SURFACES transitions — a feathered overlay where two organic grounds (a `photo` floor) meet.

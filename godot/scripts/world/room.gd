@@ -4717,9 +4717,10 @@ func soft_roof_supports() -> Dictionary:
 	return out
 
 
-func release_soft_roofs_after_blast(before: Dictionary) -> void:
+## True when a sheet let go: the blast's PREDICTED light field (cooked before the cloth fell) no longer describes the board (`WorldDelta.commit` drops it).
+func release_soft_roofs_after_blast(before: Dictionary) -> bool:
 	if str(_dev_flag("SOFT_SHEET_RELEASE", "1")) == "0":
-		return   ## the A/B: the blast alone, the cloth stays up (`soft_sheet_scenario.py --extra SOFT_SHEET_RELEASE=0`)
+		return false   ## the A/B: the blast alone, the cloth stays up (`soft_sheet_scenario.py --extra SOFT_SHEET_RELEASE=0`)
 	## WHICH sheets let go, decided on paper first: a wall hangs from the roof above it, and a wall's corner is held by the next wall, so one that goes takes holds from
 	## the others. Every cloth already decided to go counts as gone (`ignore`) for the next, until nothing changes; only then are they prepared, all against the same final
 	## world (a wall pinned to a neighbour that is leaving too would hang from nothing), and finished together.
@@ -4784,6 +4785,7 @@ func release_soft_roofs_after_blast(before: Dictionary) -> void:
 			_swap_resting_sheet(entry["roof"], info)   ## a hole, and every support still stands: the cloth stays up with its opening
 	if not jobs.is_empty():
 		_release_finish(jobs)   ## not awaited: the cloth appears when the chunks swap
+	return not jobs.is_empty()
 
 
 ## The ONE node that draws every flap of this room's cloth roofs (`ClothFlaps3D`), made on first use.
@@ -5036,7 +5038,7 @@ func _release_finish(jobs: Array) -> bool:
 	## The light the roof kept out (R-D4: a destroyed roof voxel transmits the lamps above) reaches the floor under it. ⚠️ ~630 ms on the Moto and
 	## the SAME with a narrower scope (measured 2026-10-15: the repaint rebuilds the field, it does not scale with the GUs): the release frame's cost
 	## until the plan's sliced light path takes this over (plan v0.28, open).
-	_repaint_voxel_light_buckets_scoped(shot_repaint_scope(gus.keys()), true)
+	_repaint_voxel_light_buckets_scoped(_light_reach_scope(gus.keys()), true)
 	var t_field: int = Time.get_ticks_usec()
 	## The cloth appears the moment the chunks swap; the light the roof kept out is written AFTER, a slice a frame (the planes are ~590 ms on the Moto).
 	_release_group(jobs)
@@ -7988,6 +7990,27 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary, scope_gus: Arr
 ## Microseconds of a frame the shot pre-cook spends deriving buckets (R3D-LIGHT). Rule 1: a `var` would do the same; this is a
 ## budget constant like `SHOT_REPAINT_SOOT_RINGS`.
 const SHOT_PRECOOK_WARM_BUDGET_US: int = 6000
+
+
+## The GUs a lamp can reach from where something that kept its light out was taken away (a released roof, and since the walls became sheets, the walls: a stall's
+## wall lets a lamp's light in as far as the lamp reaches, 7 GU on PLAYGROUND, where a shot's scope grows 3). The rectangle round all of them, grown by the biggest light
+## radius of the map: one rectangle, not a ring round every GU (the repaint rebuilds the field anyway, its cost does not scale with the scope).
+func _light_reach_scope(gus: Array) -> Array:
+	if gus.is_empty():
+		return []
+	var reach: int = SHOT_REPAINT_SOOT_RINGS
+	for light in _current_light_sources:
+		reach = maxi(reach, int(ceil(float(light.get("radius", 0)))) + 1)
+	var lo := Vector2i(1 << 30, 1 << 30)
+	var hi := Vector2i(-(1 << 30), -(1 << 30))
+	for gu: Vector2i in gus:
+		lo = Vector2i(mini(lo.x, gu.x), mini(lo.y, gu.y))
+		hi = Vector2i(maxi(hi.x, gu.x), maxi(hi.y, gu.y))
+	var out: Array = []
+	for x in range(lo.x - reach, hi.x + reach + 1):
+		for y in range(lo.y - reach, hi.y + reach + 1):
+			out.append(Vector2i(x, y))
+	return out
 
 
 ## The GU scope for a shot: every impact GU, grown by the soot reach.

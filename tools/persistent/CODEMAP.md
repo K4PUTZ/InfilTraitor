@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**307 scripts · 93214 lines total** (under `godot/scripts/`)
+**307 scripts · 93239 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3404,7 +3404,7 @@ extends `Node` · 236 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 463 lines
+`class_name WorldDelta` · extends `RefCounted` · 465 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -6339,7 +6339,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12034 lines
+extends `Node2D` · 12057 lines
 
 `godot/scripts/world/room.gd`
 

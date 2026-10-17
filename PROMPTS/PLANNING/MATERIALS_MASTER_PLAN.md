@@ -1087,6 +1087,25 @@ Bench: `maps/PIPE_LAB.map.json` (two grated half-buried pipes in the long walls,
 
 **Per-liquid rules RATIFIED (Director, 2026-10-17), recorded as data in each `liquids/<id>.json` `gameplay` block (`LiquidRegistry.GAMEPLAY_KEYS`; nothing consumes it yet).** Exposure model: a dose 0..1 that grows each turn in the liquid, by depth (`shallow` <= 2 voxels, `deep` above), shrinks by `recovery` outside, lethal at 1: **lethal in the deep, much less on top; the more contact, the worse.** Water, sewage and mud never kill by exposure (they slow, make noise, leave footprints); biohazard, toxic, nuclear, acid, cryogenic, oil (deep), lava and quicksand do. Oil is flammable and ignites the agent; clean water extinguishes; acid corrodes floor / curbs / metal; toxic corrodes paper / cloth; nuclear makes the agent glow; mud traps and muffles; quicksand sinks a level per still turn; lava crust plates are walkable for 3 turns. **Footprints: YES** (a colour and a lifetime per liquid); later more of them come from puddles, mud and dog droppings (props milestone). **Swimming and on / in-water animations are PLANNED for the MOVEMENT milestone** (blocked on the approved 3D agent model); `swim_ap` is stored, not used. Few aquatic zones per game: decoration, blocked paths, the player modifies the flow.
 
+### M6 task list (planned 2026-10-17; the look and the data are DONE, everything below is unbuilt)
+
+| Step | Task | Done when | Blocked by |
+|---|---|---|---|
+| F0 | ✅ Looks (18 liquids), `LiquidRegistry`, the `liquids` section, `gameplay` data, PIPE_LAB bench | `liquid_registry_selftest` green | done |
+| F1 | **`FluidPlane`**, pure: per GU a kind, a depth (0..8 voxels) and a flow; sources and sinks (a pipe emits `rate` per turn, a drain takes `rate`); walls and curbs stop it; a fixed number of equalise rounds per TIC, no randomness | selftest: equalise, source to drain, wall, determinism, a breach spills | F0 |
+| F2 | The plane DRIVES the sheet: depth is the sheet's height, the kind its skin, real-time looping untouched (ice frozen); PIPE_LAB: A emits, B drains | capture of A to B; Moto frame cost | F1 |
+| F3 | **Exposure and wading** (`gameplay.exposure`, `wade_ap`, `noise`, `smell`): the dose per turn by depth, recovery outside, lethal at 1; the first hazard reads from the plane | selftest + a take on PIPE_LAB with a lethal liquid | F2 |
+| F4 | **Footprints** (`gameplay.footprint`: colour, lifetime in turns) through the existing floor-mark path (`FloorPile3D`) | a walked path leaves marks that fade | F3 |
+| F5 | **Per-liquid rules, one by one**: fire first (oil burns and ignites the agent, clean water extinguishes), then acid / toxic corrosion, lava (light source, ignites), cryogenic (freezes neighbours into plates), lama and quicksand traps (`trap`), lava crust plates | each rule has its own take and selftest | F3 |
+| F6 | **The player changes the flow**: a valve or grate on a pipe (the source rate), a breach by blast spills over the curb | take: close the valve, the channel drains | F2 |
+| F7 | **Rain** wired to weather for any exposed body (the shader layer exists, `rain` 0..1) | a map with weather wets its liquids | weather system (none yet) |
+| F8 | **Moto and Galaxy measurement** of a map with N bodies (cost per sheet, `FluidPlane` tick on the main thread; a worker only if it measures) | numbers in `DEVICE_DIAGNOSTICS` | F2 |
+| F9 | Swimming / wading / struggling ANIMATIONS and the `swim_ap` rule | in the MOVEMENT milestone | the approved 3D agent model |
+| F10 | Footprints from puddles, mud and dog droppings | in the props milestone | props milestone |
+| F11 | Gases (maybe), a per-GU concentration plane read by detection and fire | a separate decision | F1 |
+
+Rules for the build: the plane never writes the `VoxelStore` (rule 8); a liquid's behaviour is read from its `gameplay` block, never from its id; a cell's level is derived (rule 9); a new writer of world state bumps `Room.bump_world_revision()` (prediction); the looks stay in real time and never wait for the turn.
+
 ---
 
 ## 7. Task order, one list
@@ -1111,7 +1130,7 @@ Bench: `maps/PIPE_LAB.map.json` (two grated half-buried pipes in the long walls,
 | 🟢 | **M4a** — glass transparency — ➡️ `GLASS_MASTER_PLAN` **G1**. Appearance signed off 2026-08-31 (`BackBufferCopy` container, calibrated); geometry still open (the Director will adjust) | Director: glass LAST |
 | 9 | **M4b** — glass pane break — ➡️ now `GLASS_MASTER_PLAN` **G2/G3/G5**. ⚠️ `HOLE_ONLY_MATERIALS` and the INTACT branch are NO LONGER NEEDED (G-D3) | design ✅ ratified 2026-08-30 |
 | 10 | **M5** — voxel prop class | M3, renderer v2 |
-| 11 | **M6** — fluid research | — |
+| 11 | **M6** — fluids: looks and data DONE (2026-10-17), build list F1-F11 above | F1 first |
 
 **Glass moved to the end of the queue on 2026-08-21**, Director's call: it is
 *"um caso à parte"* needing its own crack/hole algorithm. M4a used to be the

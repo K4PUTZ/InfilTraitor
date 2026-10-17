@@ -82,10 +82,10 @@ static func unsupported(grid: ClaimGrid, ground: int, seeds: Array, broken: Dict
 	for key: Vector3i in seeds:
 		if cost_of.has(key):
 			continue
-		var m: Variant = grid.standing_material(key)
-		if m == null:
+		var c: int = grid.standing_step_cost(key)
+		if c < 0:
 			continue
-		cost_of[key] = step_cost(String(m))
+		cost_of[key] = c
 		stack.append(key)
 	var asked: Array[Vector3i] = []
 	asked.assign(cost_of.keys())
@@ -99,11 +99,11 @@ static func unsupported(grid: ClaimGrid, ground: int, seeds: Array, broken: Dict
 			var n: Vector3i = k + d
 			if cost_of.has(n) or empty.has(n):
 				continue
-			var m: Variant = grid.standing_material(n)
-			if m == null:
+			var c: int = grid.standing_step_cost(n)
+			if c < 0:
 				empty[n] = true
 				continue
-			cost_of[n] = step_cost(String(m))
+			cost_of[n] = c
 			if n.x < lo.x or n.x > hi.x or n.y < lo.y or n.y > hi.y or n.z > top:
 				sources.append(n)   ## the rim: assumed held
 				continue

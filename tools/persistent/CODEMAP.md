@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**307 scripts · 93847 lines total** (under `godot/scripts/`)
+**307 scripts · 93919 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3309,7 +3309,7 @@ extends `Node` · 236 lines
 
 ### `claim_grid.gd`
 
-`class_name ClaimGrid` · extends `RefCounted` · 110 lines
+`class_name ClaimGrid` · extends `RefCounted` · 164 lines
 
 `godot/scripts/systems/prediction/claim_grid.gd`
 
@@ -6335,7 +6335,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12379 lines
+extends `Node2D` · 12397 lines
 
 `godot/scripts/world/room.gd`
 

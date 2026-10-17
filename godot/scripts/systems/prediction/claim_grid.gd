@@ -12,6 +12,20 @@ extends RefCounted
 
 var _store: VoxelStore = null
 var _dict: Dictionary = {}
+## SNAPSHOT mode (`snapshot_of`): copies of what the support walk reads, so it can run on a worker while the main thread goes on writing the store (the arrays are
+## copy-on-write: taking them costs nothing until the first later write).
+var _snap: bool = false
+var _s_owner := PackedInt32Array()
+var _s_state := PackedByteArray()
+var _s_mat := PackedByteArray()
+var _s_multi: Dictionary = {}
+var _s_costs := PackedInt32Array()   ## material index -> `StructuralSupport.step_cost`, filled on the main thread
+var _s_x0: int = 0
+var _s_y0: int = 0
+var _s_l0: int = 0
+var _s_w: int = 0
+var _s_h: int = 0
+var _s_nl: int = 0
 ## What a PREDICTION says about a cell before it is committed: `Vector3i -> Voxel.DamageState`. `damage_at()` (what the support walk reads) answers from it first,
 ## so `StructuralSupport` can be asked about the world a `WorldDelta` would leave (RF-G G2: the blast's roof islands).
 var overlay: Dictionary = {}
@@ -25,6 +39,26 @@ var _materials: Dictionary = {}
 static func of_store(store: VoxelStore) -> ClaimGrid:
 	var grid := ClaimGrid.new()
 	grid._store = store
+	return grid
+
+
+## A read-only copy of the store's grid for a worker thread (`standing_step_cost` is what it answers; the object queries need the live store).
+static func snapshot_of(store: VoxelStore) -> ClaimGrid:
+	var grid := ClaimGrid.new()
+	grid._snap = true
+	grid._s_owner = store.owner
+	grid._s_state = store.state
+	grid._s_mat = store.mat
+	grid._s_multi = store._multi.duplicate()
+	grid._s_x0 = store.x0
+	grid._s_y0 = store.y0
+	grid._s_l0 = store.l0
+	grid._s_w = store.w
+	grid._s_h = store.h
+	grid._s_nl = store.nl
+	grid._s_costs.resize(store.material_ids.size())
+	for i: int in range(store.material_ids.size()):
+		grid._s_costs[i] = StructuralSupport.step_cost(store.material_ids[i])
 	return grid
 
 
@@ -67,6 +101,26 @@ func material_at(key: Vector3i) -> String:
 
 func put_material(key: Vector3i, material: String) -> void:
 	_materials[key] = material
+
+
+## ONE probe for the support walk, as the step cost of a standing voxel's material (`StructuralSupport.step_cost`), or -1 when nothing stands there. Safe on a worker in
+## snapshot mode.
+func standing_step_cost(key: Vector3i) -> int:
+	if _snap:
+		if not overlay.is_empty() and overlay.has(key):
+			return -1
+		if key.x < _s_x0 or key.y < _s_y0 or key.z < _s_l0 or key.x >= _s_x0 + _s_w or key.y >= _s_y0 + _s_h or key.z >= _s_l0 + _s_nl:
+			return -1
+		var cell: int = ((key.z - _s_l0) * _s_h + (key.y - _s_y0)) * _s_w + (key.x - _s_x0)
+		var claim: int = _s_owner[cell]
+		if _s_multi.has(cell):
+			var list: PackedInt32Array = _s_multi[cell]
+			claim = list[list.size() - 1]
+		if claim < 0 or ((_s_state[claim] >> 1) & 3) == Voxel.DamageState.DESTROYED:
+			return -1
+		return _s_costs[_s_mat[claim]]
+	var m: Variant = standing_material(key)
+	return -1 if m == null else StructuralSupport.step_cost(String(m))
 
 
 ## ONE probe for the support walk: the material id of a STANDING voxel at `key` (the overlay answered first), or null when nothing stands there.

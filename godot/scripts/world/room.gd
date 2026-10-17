@@ -4283,6 +4283,7 @@ const LIGHT_APPLY_SLICE_US: int = 10000
 func schedule_structural_support(touched: Array) -> void:
 	if str(_dev_flag("STRUCT_GRAVITY", "1")) == "0" or _voxel_board == null or touched.is_empty():
 		return
+	var t_main0: int = Time.get_ticks_usec()
 	var store: VoxelStore = VoxelStore.active
 	if store == null:
 		return
@@ -4301,7 +4302,7 @@ func schedule_structural_support(touched: Array) -> void:
 	if affected.is_empty() and (not universal or broken.is_empty()):
 		return
 	var ground: int = _voxel_board.ground_plane_level()
-	var grid: ClaimGrid = ClaimGrid.of_store(store)
+	var grid: ClaimGrid = ClaimGrid.snapshot_of(store)   ## the walk runs on a worker: it reads a copy
 	_fill_anchored(grid)
 	var seeds: Array = []
 	var seeded: Dictionary = {}
@@ -4312,27 +4313,44 @@ func schedule_structural_support(touched: Array) -> void:
 				var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 				seeds.append(key)
 				seeded[key] = true
-	## G3: the universal pass asks about every standing voxel that touches a cell this event destroyed, and the walk names the whole piece that lost its hold.
-	if universal:
-		for cell: Vector3i in broken:
-			for d: Vector3i in StructuralSupport.NEIGHBOURS:
-				var n: Vector3i = cell + d
-				if not seeded.has(n) and not broken.has(n):
-					seeded[n] = true
-					seeds.append(n)
 	var t0: int = Time.get_ticks_usec()
-	var loose: Dictionary = StructuralSupport.unsupported(grid, ground, seeds, broken, universal)
+	var main_usec: int = t0 - t_main0   ## what the main thread paid before the walk went to the worker
+	## G3: the universal pass asks about every standing voxel that touches a cell this event destroyed (the worker derives them), and the walk names the whole piece that lost its hold.
+	var holder: Array = [{}, 0, 0]
+	var task: int = WorkerThreadPool.add_task(func() -> void:
+		var w0: int = Time.get_ticks_usec()
+		if universal:
+			for cell: Vector3i in broken:
+				for d: Vector3i in StructuralSupport.NEIGHBOURS:
+					var n: Vector3i = cell + d
+					if not seeded.has(n) and not broken.has(n):
+						seeded[n] = true
+						seeds.append(n)
+		holder[2] = seeds.size()
+		holder[0] = StructuralSupport.unsupported(grid, ground, seeds, broken, universal)
+		holder[1] = Time.get_ticks_usec() - w0, false, "StructuralSupport")
+	while not WorkerThreadPool.is_task_completed(task):
+		await get_tree().process_frame
+		if not is_instance_valid(self):
+			WorkerThreadPool.wait_for_task_completion(task)
+			return
+	WorkerThreadPool.wait_for_task_completion(task)
+	var loose: Dictionary = holder[0]
+	if VoxelStore.active != store:
+		return   ## the map was reloaded under the walk
+	var live_grid: ClaimGrid = ClaimGrid.of_store(store)
 	## Cloth and glass keep their own rules (a cloth lets go as a sheet, a pane collapses by `GlassSupport`'s cantilever).
 	for key: Vector3i in loose.keys():
-		var material: String = grid.material_at(key)
+		var material: String = live_grid.material_at(key)
 		if SoftSheetPresets.has(material) or GlassMaterials.is_glass(material):
 			loose.erase(key)
-	print_debug("[STRUCT] %d voxel(s) asked (%s), %d with no support (%.2f ms)" % [seeds.size(), "universal" if universal else "props", loose.size(), float(Time.get_ticks_usec() - t0) / 1000.0])
+	print("[STRUCT] %d voxel(s) asked (%s), %d with no support (main thread %.2f ms, walk on the worker %.2f ms, %.2f ms until the answer)"
+		% [int(holder[2]), "universal" if universal else "props", loose.size(), float(main_usec) / 1000.0, float(int(holder[1])) / 1000.0, float(Time.get_ticks_usec() - t0) / 1000.0])
 	if loose.is_empty():
 		return
 	var material_of: Dictionary = {}
 	for key: Vector3i in loose:
-		material_of[key] = grid.material_at(key)
+		material_of[key] = live_grid.material_at(key)
 	_structural_fall(loose, material_of, blocks_by_id)
 
 

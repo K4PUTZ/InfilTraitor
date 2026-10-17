@@ -8,6 +8,9 @@ const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.g
 ## before the global class cache exists in a headless lint run.
 const LiquidRegistryRef = preload("res://godot/scripts/systems/liquid_registry.gd")  ## M6: the liquids a map may place
 const LiquidSheet3DRef = preload("res://godot/scripts/geometry/liquid_sheet3d.gd")  ## M6: the sheet of one body of liquid
+const LiquidFieldRef = preload("res://godot/scripts/systems/liquid_field.gd")  ## M6: which liquid stands in a cell, and how deep
+const LiquidExposureRef = preload("res://godot/scripts/systems/liquid_exposure.gd")  ## M6: what a liquid does to an agent
+const FootprintMarks3DRef = preload("res://godot/scripts/geometry/footprint_marks3d.gd")  ## M6: the prints left after a liquid
 const FluidPlaneRef = preload("res://godot/scripts/systems/fluid_plane.gd")  ## M6: the gameplay truth of a body of liquid
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
 const SurfaceRulesRef = preload("res://godot/scripts/systems/surface_rules.gd")  ## R3D-SURFACES: floor tags and patch rules
@@ -143,6 +146,15 @@ var _slab_registry: SlabRegistry = null
 @warning_ignore("unused_private_class_variable")
 var _junction_columns: Array = []             ## Array of JunctionResolver.JunctionColumn
 var _voxel_board: VoxelBoard = null     ## Voxel rendering engine
+var _liquid_field: RefCounted = null       ## M6: the planes of the map's liquids, read by the rules (LiquidField)
+var _liquid_dose: float = 0.0              ## M6: the agent's exposure, 0..1, lethal at 1 (LiquidExposure)
+var _liquid_dose_gameplay: Dictionary = {} ## M6: the gameplay block of the liquid the dose comes from (its recovery)
+var _liquid_pending_loss: String = ""      ## M6: the liquid that killed the agent, handled once the move or the enemy phase is over
+var _liquid_prev_cell: Vector2i = Vector2i(-9999, -9999)
+var _liquid_left_foot: bool = false
+var _agent_track: Dictionary = {}          ## M6: {color, turns, left}: the prints the agent still leaves on dry floor after a liquid
+var _footprints: RefCounted = null         ## M6: FootprintMarks3D
+const LIQUID_FOOTPRINT_STEPS: int = 4      ## M6: how many dry steps an agent leaves prints for after leaving a liquid
 var _liquid_sheets: Array = []             ## M6: one LiquidSheet3D per `liquids` body, see _attach_liquids()
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
 ## SM-2 — a scatter covering more than this many LAYERS of its zones gets a loud warning (not a refusal). Moto: ~2.4 ms per layer over a full screen of zone.
@@ -2477,6 +2489,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	movement_overlay.z_index = 5
 	movement_overlay.setup(VISUAL_GRID_OFFSET, turn_manager.move_points_per_ap)
 	movement_overlay.ground_size = Callable(self, "ground_size")
+	movement_overlay.extra_cost = Callable(self, "_liquid_extra_cost")   ## M6: liquids slow the step, deep lethal ones block it
 	movement_overlay.set_blocked_cells(_room_builder.build_navigation_blocked_cells(_guards))
 	var blocked_edges: Array[Dictionary] = []
 	for e in view_layout.get("blocked_edges", []):
@@ -2872,6 +2885,8 @@ func _ready() -> void:
 	turn_manager.ap_changed.connect(_on_ap_changed)
 	turn_manager.player_turn_started.connect(_turn_controller._on_player_turn_started)
 	turn_manager.enemy_phase_started.connect(_turn_controller._on_enemy_phase_started)
+	turn_manager.enemy_phase_started.connect(_on_liquid_turn_end)      ## M6: the agent's turn is over: the dose of where it stands
+	turn_manager.player_turn_started.connect(_on_liquid_turn_start)    ## M6: the liquids run one turn, prints fade, mud holds
 	agent.move_started.connect(_on_agent_move_started)
 	agent.step_finished.connect(_on_agent_step_finished)
 	agent.move_finished.connect(_on_agent_move_finished)
@@ -5735,6 +5750,7 @@ func _on_agent_move_started(_from_cell: Vector2i, to_cell: Vector2i) -> void:
 
 
 func _on_agent_step_finished(step_cell: Vector2i) -> void:
+	_liquid_step(step_cell)
 	_fow_controller.reveal_around(step_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 
 	## Dev 04: register trail — last position when stepping in
@@ -5857,6 +5873,7 @@ func _get_detection_decay(state: String) -> float:
 
 
 func _on_agent_move_finished(_cell: Vector2i) -> void:
+	_check_liquid_loss.call_deferred()
 	_selected_cell = agent.cell
 	selection_overlay.set_selected(agent.cell)
 	
@@ -9297,6 +9314,15 @@ func _attach_liquids(live: Node3D) -> void:
 		if is_instance_valid(sheet):
 			sheet.queue_free()
 	_liquid_sheets.clear()
+	if _liquid_field == null:
+		_liquid_field = LiquidFieldRef.new()
+	_liquid_field.clear()
+	if _footprints != null:
+		_footprints.detach()
+	_footprints = FootprintMarks3DRef.new()
+	_footprints.attach(live)
+	_liquid_dose = 0.0
+	_agent_track.clear()
 	var forced_kind: String = _dev_flag("WATER_STUDY", "")
 	var forced_rain: String = _dev_flag("WATER_RAIN", "")
 	var auto_tick: float = float(_dev_flag("FLUID_AUTO_TICK", "0"))    ## dev: seconds of real time per liquid turn (0 = only the game's turns)
@@ -9318,10 +9344,119 @@ func _attach_liquids(live: Node3D) -> void:
 		var sheet: MeshInstance3D = LiquidSheet3DRef.new()
 		live.add_child(sheet)
 		sheet.setup(body["rect"], base_y, params, body["flow"], plane)
+		_liquid_field.add_body(kind, body["rect"], plane)
 		sheet.auto_tick_seconds = auto_tick
 		if plane != null:
 			sheet.snap()
 		_liquid_sheets.append(sheet)
+	## dev: `LIQUID_WALK="x,y;x,y;..."` (inner GU) walks the agent along that path once the map is up, to try wading, splashes and prints
+	var walk: String = _dev_flag("LIQUID_WALK", "")
+	if walk != "" and agent != null:
+		await get_tree().create_timer(1.5).timeout
+		var origin := Vector2i(_base_layout.get("playable_rect", Rect2i()).position)
+		var path: Array[Vector2i] = []
+		for pair in walk.split(";"):
+			var xy: PackedStringArray = pair.split(",")
+			if xy.size() == 2:
+				path.append(Vector2i(int(xy[0]), int(xy[1])) + origin)
+		if not path.is_empty():
+			agent.move_along_path(path)
+			await agent.move_finished
+			var report: String = "[Liquids] walk done: dose %.2f, %d print(s) on the floor, AP left %d" % [_liquid_dose, _footprints.count() if _footprints != null else -1, turn_manager.current_ap]
+			print(report)
+			var log_file := FileAccess.open("user://liquid_walk.log", FileAccess.WRITE)   ## the capture harness filters stdout: a dev run reads this file
+			if log_file != null:
+				log_file.store_line(report)
+
+
+## M6 rules (F3, F4). The liquid under a cell, or {}.
+func liquid_at(cell: Vector2i) -> Dictionary:
+	return _liquid_field.at_cell(cell) if _liquid_field != null else {}
+
+
+## The movement points entering `cell` costs on top of the step's own: a liquid slows it, and a deep lethal one cannot be entered at all.
+func _liquid_extra_cost(cell: Vector2i) -> int:
+	var info: Dictionary = liquid_at(cell)
+	if info.is_empty():
+		return 0
+	if LiquidExposureRef.is_blocked(info["gameplay"], float(info["depth"])):
+		return 9999
+	return LiquidExposureRef.wade_points(info["gameplay"], float(info["depth"]))
+
+
+## One step of the agent: a step into a liquid adds its share of the dose, makes a splash, and starts the prints; a dry step right after leaves one.
+func _liquid_step(cell: Vector2i) -> void:
+	var previous: Vector2i = _liquid_prev_cell
+	_liquid_prev_cell = cell
+	if _liquid_field == null or _liquid_field.count() == 0:
+		return
+	var info: Dictionary = liquid_at(cell)
+	if info.is_empty():
+		if not _agent_track.is_empty() and int(_agent_track["left"]) > 0 and _footprints != null and previous.x > -9000:
+			var heading: Vector2 = Vector2(cell - previous)
+			_liquid_left_foot = not _liquid_left_foot
+			_footprints.mark(Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5), atan2(heading.x, -heading.y), _agent_track["color"],
+					int(_agent_track["turns"]), GeometryCoords.FLOOR_TOP_LEVEL, _liquid_left_foot)
+			_agent_track["left"] = int(_agent_track["left"]) - 1
+		return
+	var gameplay: Dictionary = info["gameplay"]
+	var depth: float = float(info["depth"])
+	_liquid_dose = LiquidExposureRef.after_step(_liquid_dose, gameplay, depth)
+	_liquid_dose_gameplay = gameplay
+	var splash: float = float(gameplay.get("noise", 0.0))
+	if splash > 0.0 and _noise_system != null:
+		_noise_system.emit(cell, splash)
+	var print_spec: Variant = gameplay.get("footprint", null)
+	if print_spec is Dictionary:
+		var c: Array = print_spec["color"]
+		_agent_track = {"color": Color(float(c[0]), float(c[1]), float(c[2])), "turns": int(print_spec["turns"]), "left": LIQUID_FOOTPRINT_STEPS}
+	if LiquidExposureRef.is_lethal(_liquid_dose):
+		_liquid_pending_loss = String(info["kind"])
+
+
+## The player's turn is over (the enemy phase begins): standing in a liquid adds the whole turn's dose, standing out of it lets the dose recover.
+func _on_liquid_turn_end() -> void:
+	if agent == null or _liquid_field == null:
+		return
+	var info: Dictionary = liquid_at(agent.cell)
+	var gameplay: Dictionary = info["gameplay"] if not info.is_empty() else _liquid_dose_gameplay
+	_liquid_dose = LiquidExposureRef.after_turn(_liquid_dose, gameplay, float(info.get("depth", 0.0)))
+	if not info.is_empty():
+		_liquid_dose_gameplay = gameplay
+		if LiquidExposureRef.is_lethal(_liquid_dose):
+			_liquid_pending_loss = String(info["kind"])
+
+
+## A new player turn: the liquids run a turn, the prints fade, and a trap liquid that holds the agent costs AP.
+func _on_liquid_turn_start() -> void:
+	tick_liquids()
+	if _footprints != null:
+		_footprints.age_turn()
+	if agent != null and turn_manager != null:
+		var info: Dictionary = liquid_at(agent.cell)
+		if not info.is_empty():
+			var held: int = LiquidExposureRef.trap_ap(info["gameplay"], float(info["depth"]))
+			if held > 0:
+				turn_manager.consume_ap(held)
+	_check_liquid_loss.call_deferred()
+
+
+## A lethal dose: the banner, a moment, then the room resets as it does for a capture (the agent back at the start, the guards on their routes).
+func _check_liquid_loss() -> void:
+	if _liquid_pending_loss == "" or _hud_controller == null:
+		return
+	var kind: String = _liquid_pending_loss
+	_liquid_pending_loss = ""
+	Telemetry.event("agent.liquid_lost", {"kind": kind, "dose": snappedf(_liquid_dose, 0.01)})
+	_hud_controller.show_busted("ui.banner.liquid_lost")
+	await get_tree().create_timer(1.2).timeout
+	_hud_controller.hide_busted()
+	_liquid_dose = 0.0
+	_agent_track.clear()
+	_liquid_prev_cell = Vector2i(-9999, -9999)
+	if _footprints != null:
+		_footprints.clear()
+	_reset_room_state()
 
 
 ## M6: one TURN of every body of liquid (the turn controller's TIC calls it; the sheets ease toward the new depths).

@@ -100,6 +100,24 @@ func add_source(rect: Rect2, rate: float) -> void:
 	_sources.append({"cells": cells_in(rect), "rate": maxf(rate, 0.0)})
 
 
+## The player's valve: the rate of source `index` (0 = shut), a source being in the order it was added. False for an index that does not exist.
+func set_source_rate(index: int, rate: float) -> bool:
+	if index < 0 or index >= _sources.size():
+		return false
+	_sources[index]["rate"] = maxf(rate, 0.0)
+	return true
+
+
+func source_rate(index: int) -> float:
+	return float(_sources[index]["rate"]) if index >= 0 and index < _sources.size() else 0.0
+
+
+## A breach (a blast through a curb, a wall giving way): the ground of the cells in `rect` drops to `height`, so the liquid can leave.
+func lower_ground(rect: Rect2, height: float) -> void:
+	for i in cells_in(rect):
+		ground[i] = minf(ground[i], height)
+
+
 func add_sink(rect: Rect2, rate: float) -> void:
 	_sinks.append({"cells": cells_in(rect), "rate": maxf(rate, 0.0)})
 

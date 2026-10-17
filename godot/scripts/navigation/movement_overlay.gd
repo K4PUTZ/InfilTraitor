@@ -9,6 +9,8 @@ var ground_size: Callable = Callable()
 var visual_offset: Vector2 = Vector2.ZERO
 var origin_cell: Vector2i = Vector2i(-9999, -9999)
 var max_path_cost: int = 0
+## M6: extra movement points for ENTERING a cell (a liquid slows the step; a blocking one returns a cost no turn can pay). `Callable(cell) -> int`.
+var extra_cost: Callable = Callable()
 
 var _costs: Dictionary = {}
 var _came_from: Dictionary = {}
@@ -283,5 +285,5 @@ func _is_edge_blocked(from_cell: Vector2i, to_cell: Vector2i) -> bool:
 
 
 
-func _movement_cost(_cell: Vector2i) -> int:
-	return 1
+func _movement_cost(cell: Vector2i) -> int:
+	return 1 + (int(extra_cost.call(cell)) if extra_cost.is_valid() else 0)

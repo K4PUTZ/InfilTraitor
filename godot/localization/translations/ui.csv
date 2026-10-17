@@ -5,6 +5,7 @@ ui.hud.alert,ALERT %d%%,ALERTA %d%%
 ui.button.end_turn,END,FIM
 ui.banner.enemy_turn,Enemy Turn,Turno Inimigo
 ui.banner.busted,Busted,Capturado
+ui.banner.liquid_lost,Lost,Perdido
 ui.main_menu.title,MAIN MENU,MENU PRINCIPAL
 ui.main_menu.resume,RESUME,CONTINUAR
 ui.main_menu.new_game,NEW GAME,NOVO JOGO

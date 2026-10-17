@@ -358,7 +358,9 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			"vox_offset": vox_offset,
 			"rot": int(prop_item.get("rot", 0)),
 		})
-		blocked_map[cell] = true
+		## `walkable: true` on a placement: the prop stands in the cell but does not block it (a curb rail, a floor-level object: the agent may stand there)
+		if not bool(prop_item.get("walkable", false)):
+			blocked_map[cell] = true
 
 	var agent_start_raw: Vector2i = Vector2i(spec.get("agent_start", Vector2i.ZERO)) + offset
 

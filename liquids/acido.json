@@ -33,7 +33,7 @@
     "exposure": {
       "shallow": 0.15,
       "deep": 0.4,
-      "recovery": 0.0
+      "recovery": 0.15
     },
     "corrodes": [
       "floor",

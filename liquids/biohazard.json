@@ -54,7 +54,7 @@
     "exposure": {
       "shallow": 0.1,
       "deep": 0.34,
-      "recovery": 0.0
+      "recovery": 0.1
     },
     "marks_agent": true,
     "footprint": {

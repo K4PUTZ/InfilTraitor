@@ -55,7 +55,7 @@
     "exposure": {
       "shallow": 0.12,
       "deep": 0.4,
-      "recovery": 0.0
+      "recovery": 0.1
     },
     "corrodes": [
       "paper",

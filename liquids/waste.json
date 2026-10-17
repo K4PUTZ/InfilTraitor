@@ -3,5 +3,19 @@
   "note": "",
   "params": {
     "mode": 3
+  },
+  "gameplay": {
+    "wade_ap": 1,
+    "noise": 0.5,
+    "smell": 1.0,
+    "footprint": {
+      "color": [
+        0.3,
+        0.22,
+        0.1
+      ],
+      "turns": 6
+    },
+    "swim_ap": 2
   }
 }

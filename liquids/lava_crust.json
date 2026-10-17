@@ -37,5 +37,20 @@
       0.08,
       1.0
     ]
+  },
+  "gameplay": {
+    "wade_ap": 0,
+    "exposure": {
+      "shallow": 0.5,
+      "deep": 1.0,
+      "recovery": 0.0
+    },
+    "light": "source",
+    "ignites": true,
+    "noise": 0.0,
+    "plates": {
+      "walkable": true,
+      "break_after_turns": 3
+    }
   }
 }

@@ -47,5 +47,23 @@
       0.7,
       1.0
     ]
+  },
+  "gameplay": {
+    "wade_ap": 1,
+    "noise": 0.4,
+    "exposure": {
+      "shallow": 0.1,
+      "deep": 0.34,
+      "recovery": 0.0
+    },
+    "marks_agent": true,
+    "footprint": {
+      "color": [
+        0.5,
+        0.04,
+        0.05
+      ],
+      "turns": 8
+    }
   }
 }

@@ -37,6 +37,16 @@ func _init() -> void:
 	_check(errors.size() == 3 and coerced.size() == 1 and float(coerced["junk"]) == 0.5, "an unknown control, a word where a number goes and a colour out of 0..1 are each refused, the good one stays (%d errors)" % errors.size())
 	_check((LiquidRegistryClass.resolve("no_such_liquid") as Dictionary).is_empty(), "an unknown liquid answers {} (loudly)")
 	_check(float(LiquidRegistryClass.resolve("criogenico")["time_scale"]) == 0.0, "ice is frozen (time_scale 0)")
+	var lava: Dictionary = LiquidRegistryClass.gameplay("lava_gold")
+	var toxic: Dictionary = LiquidRegistryClass.gameplay("toxic")
+	_check(float(lava["exposure"]["deep"]) >= 1.0 and float(lava["exposure"]["shallow"]) < float(lava["exposure"]["deep"]), "lava kills in the deep at once and less on top")
+	_check(float(toxic["exposure"]["deep"]) > float(toxic["exposure"]["shallow"]) and float(toxic["exposure"]["shallow"]) > 0.0, "toxic waste hurts more the deeper it is (and a little on top)")
+	var harmless_deep: bool = true
+	for id: String in ["clean", "caribe", "waste", "esgoto", "lama"]:
+		var g: Dictionary = LiquidRegistryClass.gameplay(id)
+		harmless_deep = harmless_deep and not g.has("exposure")
+	_check(harmless_deep, "water, sewage and mud are never lethal by exposure (they slow, make noise, leave footprints)")
+	_check((LiquidRegistryClass.gameplay("petroleo") as Dictionary).get("flammable", false) == true and (LiquidRegistryClass.gameplay("clean") as Dictionary).get("extinguishes", false) == true, "oil burns and clean water puts out fire")
 	for key: String in LiquidRegistryClass.PARAMS:
 		var spec: Array = LiquidRegistryClass.PARAMS[key]
 		_check(String(spec[3]) != "" and float(spec[1]) <= float(spec[2]), "control '%s' has a description and a sane range" % key)

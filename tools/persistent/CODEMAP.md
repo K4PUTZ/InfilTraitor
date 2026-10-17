@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**310 scripts · 94498 lines total** (under `godot/scripts/`)
+**310 scripts · 94532 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3163,7 +3163,7 @@ extends `Node` · 236 lines
 
 ### `liquid_registry.gd`
 
-`class_name LiquidRegistry` · 163 lines
+`class_name LiquidRegistry` · 187 lines
 
 `godot/scripts/systems/liquid_registry.gd`
 
@@ -3173,6 +3173,8 @@ extends `Node` · 236 lines
 - `DIR` = `"res://liquids"`
 - `OWNER` = `"LiquidRegistry"`
 - `PARAMS` = `{ "mode": ["int", 0, 3, "which layers: 0 tint only, 1 + dots, 2 + surface (waves, foam, rings, bubbles), 3 both"], "flow_speed": ["float", 0.0, 1.5, "how fast the water (and what floats on it) travels along the flow, GU per second"], "time_scale": ["float", 0.0, 3.0, "the pace of the whole animation: 0 frozen (ice), 1 usual, 2 twice as fast"], "detail_strength": ["float", 0.0, 2.0, "how strongly dots, rings, bubbles, foam and glints read: low = soft, the bed shows through"], "wave_amount": ["float", 0.0, 2.0, "the colour bands and glints of the surface"], "ring_amount": ["float", 0.0, 2.0, "the ring ripples drifting on the surface"], "foam_amount": ["float", 0.0, 2.0, "the foam along the curbs"], "bubble_amount": ["float", 0.0, 2.0, "small bubbles on the surface: 0 none, 1 usual, 2 many"], "pop_bubbles": ["float", 0.0, 2.0, "slow bubbles that swell and burst with a ring"], "stipple_alive": ["float", 0.0, 1.0, "the dots (mode 1 or 3): HIGHER = FEWER dots; 0.42 is dense, 0.8 sparse"], "dot_cells": ["float", 4.0, 30.0, "the dots' grid per GU: lower = bigger dots"], "froth": ["float", 0.0, 1.5, "white foam patches, packed with tiny bubbles"], "scum": ["float", 0.0, 1.5, "floating clumps (algae, flesh, charred rock): how much of them"], "scum_cut": ["float", 0.3, 0.9, "clump threshold: HIGHER = sparser clumps"], "scum_scale": ["float", 1.0, 12.0, "clump size: LOWER = bigger clumps"], "junk": ["float", 0.0, 1.0, "floating rubbish (planks, cardboard, plastic, cans)"], "junk_skip": ["float", 0.0, 1.0, "HIGHER = fewer pieces of rubbish"], "oil": ["float", 0.0, 2.0, "iridescent oil slicks"], "oil_cut": ["float", 0.0, 1.0, "slick coverage: LOWER = the film covers more"], "glow": ["float", 0.0, 2.0, "slow pulsing bright patches (phosphorescence, heat)"], "caustics": ["float", 0.0, 2.0, "the sun's light network on the bed (clear shallows)"], "depth_shade": ["float", 0.0, 2.0, "the channel's depth: the curbs' shade and a deeper middle"], "crust": ["float", 0.0, 1.0, "plates covering the surface (cooled lava, ice floes): 0 none, 1 all"], "crack_scale": ["float", 1.0, 10.0, "plates per GU: HIGHER = smaller plates"], "rain": ["float", 0.0, 1.0, "rain rings on the surface (weather: any exposed water)"], "deep_color": ["color", 0.0, 1.0, "the colour of the deep part and its opacity (alpha)"], "shallow_color": ["color", 0.0, 1.0, "the colour of the shallow part and its opacity (alpha)"], "light_color": ["color", 0.0, 1.0, "foam, rings, bubbles, glints and glow"], "dirt_color": ["color", 0.0, 1.0, "the dots as specks of this colour (alpha 0 = the dots take light_color)"], "scum_color": ["color", 0.0, 1.0, "the floating clumps"], "scum_top_color": ["color", 0.0, 1.0, "the clumps' lit tops (alpha 0 = the clump colour brightened)"], "scum_rim_color": ["color", 0.0, 1.0, "a glowing rim on the clumps (alpha 0 = a dark rim)"], "crust_color": ["color", 0.0, 1.0, "the plates"], "crack_color": ["color", 0.0, 1.0, "the cracks between plates"], }`
+- `SHALLOW_VOXELS` = `2`
+- `GAMEPLAY_KEYS` = `["wade_ap", "swim_ap", "noise", "smell", "slippery", "exposure", "status", "marks_agent", "footprint", "flammable", "ignites", "ignites_agent", "extinguishes", "corrodes", "light", "trap", "plates", "freezes_neighbours"]`
 
 ---
 
@@ -4705,7 +4707,7 @@ extends `SceneTree` · 445 lines
 
 ### `liquid_registry_selftest.gd`
 
-extends `SceneTree` · 55 lines
+extends `SceneTree` · 65 lines
 
 `godot/scripts/tools/liquid_registry_selftest.gd`
 

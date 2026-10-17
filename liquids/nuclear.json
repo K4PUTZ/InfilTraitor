@@ -26,5 +26,23 @@
       0.25,
       1.0
     ]
+  },
+  "gameplay": {
+    "wade_ap": 0,
+    "noise": 0.1,
+    "exposure": {
+      "shallow": 0.2,
+      "deep": 0.5,
+      "recovery": 0.0
+    },
+    "light": "agent_glows",
+    "footprint": {
+      "color": [
+        0.4,
+        0.9,
+        0.2
+      ],
+      "turns": 10
+    }
   }
 }

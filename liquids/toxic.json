@@ -48,5 +48,27 @@
       0.1,
       1.0
     ]
+  },
+  "gameplay": {
+    "wade_ap": 0,
+    "noise": 0.3,
+    "exposure": {
+      "shallow": 0.12,
+      "deep": 0.4,
+      "recovery": 0.0
+    },
+    "corrodes": [
+      "paper",
+      "cloth",
+      "cardboard"
+    ],
+    "footprint": {
+      "color": [
+        0.2,
+        0.4,
+        0.06
+      ],
+      "turns": 6
+    }
   }
 }

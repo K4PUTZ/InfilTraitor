@@ -32,5 +32,19 @@
       0.15,
       1.0
     ]
+  },
+  "gameplay": {
+    "wade_ap": 0,
+    "noise": 0.0,
+    "trap": {
+      "escape_ap": 2,
+      "sink_per_turn_when_still": 1
+    },
+    "exposure": {
+      "shallow": 0.0,
+      "deep": 1.0,
+      "recovery": 0.0
+    },
+    "footprint": null
   }
 }

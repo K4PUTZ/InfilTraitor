@@ -40,5 +40,20 @@
       0.12,
       1.0
     ]
+  },
+  "gameplay": {
+    "wade_ap": 2,
+    "noise": -0.5,
+    "trap": {
+      "escape_ap": 2
+    },
+    "footprint": {
+      "color": [
+        0.3,
+        0.2,
+        0.1
+      ],
+      "turns": 10
+    }
   }
 }

@@ -41,5 +41,24 @@
       1.0
     ],
     "time_scale": 0.0
+  },
+  "gameplay": {
+    "wade_ap": 1,
+    "noise": 0.3,
+    "exposure": {
+      "shallow": 0.1,
+      "deep": 0.34,
+      "recovery": 0.0
+    },
+    "status": "chilled",
+    "freezes_neighbours": true,
+    "footprint": {
+      "color": [
+        0.8,
+        0.92,
+        1.0
+      ],
+      "turns": 4
+    }
   }
 }

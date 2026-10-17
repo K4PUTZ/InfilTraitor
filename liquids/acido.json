@@ -26,5 +26,27 @@
       0.55,
       1.0
     ]
+  },
+  "gameplay": {
+    "wade_ap": 0,
+    "noise": 0.3,
+    "exposure": {
+      "shallow": 0.15,
+      "deep": 0.4,
+      "recovery": 0.0
+    },
+    "corrodes": [
+      "floor",
+      "curb",
+      "metal"
+    ],
+    "footprint": {
+      "color": [
+        0.6,
+        0.8,
+        0.1
+      ],
+      "turns": 4
+    }
   }
 }

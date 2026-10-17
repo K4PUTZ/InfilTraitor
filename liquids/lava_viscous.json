@@ -47,5 +47,16 @@
       0.06,
       1.0
     ]
+  },
+  "gameplay": {
+    "wade_ap": 1,
+    "exposure": {
+      "shallow": 0.5,
+      "deep": 1.0,
+      "recovery": 0.0
+    },
+    "light": "source",
+    "ignites": true,
+    "noise": 0.0
   }
 }

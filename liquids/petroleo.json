@@ -27,5 +27,25 @@
       0.72,
       1.0
     ]
+  },
+  "gameplay": {
+    "wade_ap": 1,
+    "slippery": true,
+    "noise": 0.3,
+    "exposure": {
+      "shallow": 0.0,
+      "deep": 0.5,
+      "recovery": 0.0
+    },
+    "flammable": true,
+    "ignites_agent": true,
+    "footprint": {
+      "color": [
+        0.04,
+        0.04,
+        0.05
+      ],
+      "turns": 8
+    }
   }
 }

@@ -38,5 +38,19 @@
       0.1,
       1.0
     ]
+  },
+  "gameplay": {
+    "wade_ap": 1,
+    "noise": 0.5,
+    "smell": 1.0,
+    "footprint": {
+      "color": [
+        0.28,
+        0.2,
+        0.08
+      ],
+      "turns": 6
+    },
+    "swim_ap": 2
   }
 }

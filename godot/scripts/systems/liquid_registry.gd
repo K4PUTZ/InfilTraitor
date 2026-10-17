@@ -49,6 +49,14 @@ const PARAMS: Dictionary = {
 	"crack_color": ["color", 0.0, 1.0, "the cracks between plates"],
 }
 
+## What a liquid DOES (data only for now; `FluidPlane` and the movement milestone consume it). Depth bands: SHALLOW is up to `SHALLOW_VOXELS`
+## of depth, DEEP is above. EXPOSURE is a dose in 0..1 that grows each turn the agent is in the liquid (`shallow` / `deep` per turn: the more
+## contact and the deeper, the worse), shrinks by `recovery` per turn out of it, and is lethal at 1. Director, 2026-10-17: lethal in the deep,
+## much less on top.
+const SHALLOW_VOXELS: int = 2
+const GAMEPLAY_KEYS: PackedStringArray = ["wade_ap", "swim_ap", "noise", "smell", "slippery", "exposure", "status", "marks_agent", "footprint",
+	"flammable", "ignites", "ignites_agent", "extinguishes", "corrodes", "light", "trap", "plates", "freezes_neighbours"]
+
 static var load_errors: Array = []
 static var _rows: Dictionary = {}     ## id -> {"note": String, "params": Dictionary}
 static var _loaded: bool = false
@@ -76,7 +84,17 @@ static func reload() -> void:
 		var errors: Array = []
 		var params: Dictionary = coerce(raw as Dictionary, path, errors)
 		load_errors.append_array(errors)
-		_rows[id] = {"note": String(row.get("note", "")), "params": params}
+		var gameplay: Variant = row.get("gameplay", {})
+		if not (gameplay is Dictionary):
+			push_error("[%s] %s: `gameplay` must be an object; ignored" % [OWNER, path])
+			load_errors.append(path)
+			gameplay = {}
+		for key: String in gameplay:
+			if not GAMEPLAY_KEYS.has(key):
+				var message: String = "[%s] %s: unknown gameplay key '%s' (known: %s)" % [OWNER, path, key, ", ".join(GAMEPLAY_KEYS)]
+				push_error(message)
+				load_errors.append(message)
+		_rows[id] = {"note": String(row.get("note", "")), "params": params, "gameplay": gameplay}
 
 
 static func ids() -> PackedStringArray:
@@ -89,6 +107,12 @@ static func ids() -> PackedStringArray:
 static func has(id: String) -> bool:
 	_ensure()
 	return _rows.has(id)
+
+
+## The rules of liquid `id` (see `GAMEPLAY_KEYS`), `{}` for a look with none.
+static func gameplay(id: String) -> Dictionary:
+	_ensure()
+	return (_rows.get(id, {}) as Dictionary).get("gameplay", {})
 
 
 static func note(id: String) -> String:

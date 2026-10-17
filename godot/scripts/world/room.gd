@@ -154,7 +154,8 @@ var _liquid_prev_cell: Vector2i = Vector2i(-9999, -9999)
 var _liquid_left_foot: bool = false
 var _agent_track: Dictionary = {}          ## M6: {color, turns, left}: the prints the agent still leaves on dry floor after a liquid
 var _footprints: RefCounted = null         ## M6: FootprintMarks3D
-const LIQUID_FOOTPRINT_STEPS: int = 4      ## M6: how many dry steps an agent leaves prints for after leaving a liquid
+const LIQUID_FOOTPRINT_STEPS: int = 8      ## M6 (Director, 2026-10-17): up to eight prints after leaving a liquid, the first well marked, each next one lighter
+const LIQUID_FOOTPRINT_FADE: float = 0.88   ## how much lighter the last print starts than the first (1 - this = its strength)
 var _liquid_sheets: Array = []             ## M6: one LiquidSheet3D per `liquids` body, see _attach_liquids()
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
 ## SM-2 — a scatter covering more than this many LAYERS of its zones gets a loud warning (not a refusal). Moto: ~2.4 ms per layer over a full screen of zone.
@@ -9349,6 +9350,11 @@ func _attach_liquids(live: Node3D) -> void:
 		if plane != null:
 			sheet.snap()
 		_liquid_sheets.append(sheet)
+	## dev: `FLUID_VALVE="seconds:body:source:rate;..."` turns a source's valve at those real-time seconds after the map is up (rate 0 = shut),
+	## the stand-in for the valve the player will click (props milestone): a take opens it and the channel fills and spills
+	var valve: String = _dev_flag("FLUID_VALVE", "")
+	if valve != "":
+		_run_valve_script(valve)
 	## dev: `LIQUID_WALK="x,y;x,y;..."` (inner GU) walks the agent along that path once the map is up, to try wading, splashes and prints
 	var walk: String = _dev_flag("LIQUID_WALK", "")
 	if walk != "" and agent != null:
@@ -9367,6 +9373,23 @@ func _attach_liquids(live: Node3D) -> void:
 			var log_file := FileAccess.open("user://liquid_walk.log", FileAccess.WRITE)   ## the capture harness filters stdout: a dev run reads this file
 			if log_file != null:
 				log_file.store_line(report)
+
+
+## dev: runs a `FLUID_VALVE` script (see `_attach_liquids`); each step waits its own seconds from the previous one's end.
+func _run_valve_script(script: String) -> void:
+	var steps: Array = []
+	for item in script.split(";"):
+		var f: PackedStringArray = item.split(":")
+		if f.size() == 4:
+			steps.append([float(f[0]), int(f[1]), int(f[2]), float(f[3])])
+	steps.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
+	var elapsed: float = 0.0
+	for st in steps:
+		if float(st[0]) > elapsed:
+			await get_tree().create_timer(float(st[0]) - elapsed).timeout
+			elapsed = float(st[0])
+		if _liquid_field == null or not _liquid_field.set_source_rate(int(st[1]), int(st[2]), float(st[3])):
+			push_warning("[Room] FLUID_VALVE: no body %d / source %d" % [int(st[1]), int(st[2])])
 
 
 ## M6 rules (F3, F4). The liquid under a cell, or {}.
@@ -9396,7 +9419,8 @@ func _liquid_step(cell: Vector2i) -> void:
 			var heading: Vector2 = Vector2(cell - previous)
 			_liquid_left_foot = not _liquid_left_foot
 			_footprints.mark(Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5), atan2(heading.x, -heading.y), _agent_track["color"],
-					int(_agent_track["turns"]), GeometryCoords.FLOOR_TOP_LEVEL, _liquid_left_foot)
+					int(_agent_track["turns"]), GeometryCoords.FLOOR_TOP_LEVEL, _liquid_left_foot,
+					1.0 - LIQUID_FOOTPRINT_FADE * float(LIQUID_FOOTPRINT_STEPS - int(_agent_track["left"])) / float(LIQUID_FOOTPRINT_STEPS - 1))
 			_agent_track["left"] = int(_agent_track["left"]) - 1
 		return
 	var gameplay: Dictionary = info["gameplay"]

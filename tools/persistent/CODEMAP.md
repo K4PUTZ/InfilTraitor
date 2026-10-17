@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**316 scripts · 95426 lines total** (under `godot/scripts/`)
+**316 scripts · 95452 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -676,7 +676,7 @@ extends `Node3D` · 3522 lines
 - `func attach(board: Node3D) -> void:`
 - `func detach() -> void:`
 - `func count() -> int:`
-- `func mark(centre: Vector2, heading: float, tint: Color, turns: int, level: int, left_foot: bool) -> void:`
+- `func mark(centre: Vector2, heading: float, tint: Color, turns: int, level: int, left_foot: bool, strength: float = 1.0) -> void:`
 - `func age_turn() -> void:`
 - `func clear() -> void:`
 
@@ -4831,7 +4831,7 @@ extends `SceneTree` · 65 lines
 
 ### `liquid_rules_selftest.gd`
 
-extends `SceneTree` · 80 lines
+extends `SceneTree` · 82 lines
 
 `godot/scripts/tools/liquid_rules_selftest.gd`
 
@@ -6511,7 +6511,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12603 lines
+extends `Node2D` · 12627 lines
 
 `godot/scripts/world/room.gd`
 
@@ -6588,7 +6588,8 @@ extends `Node2D` · 12603 lines
 - `WALL_BASE_Z_INDEX` = `10`
 - `WALL_FLOOR_STEP_PX` = `158.0`
 - `VOXEL_STEP_PX` = `20.0`
-- `LIQUID_FOOTPRINT_STEPS` = `4`
+- `LIQUID_FOOTPRINT_STEPS` = `8`
+- `LIQUID_FOOTPRINT_FADE` = `0.88`
 - `GROUND_SCATTER_LAYER_BUDGET` = `1.5`
 
 ---

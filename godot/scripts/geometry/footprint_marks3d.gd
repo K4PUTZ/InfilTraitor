@@ -34,14 +34,14 @@ func count() -> int:
 	return _marks.size()
 
 
-## A print at `centre` (raw GU, world X/Z) walking toward `heading` (a direction, radians in the ground plane), of colour `tint`, lasting `turns`.
-func mark(centre: Vector2, heading: float, tint: Color, turns: int, level: int, left_foot: bool) -> void:
+## A print at `centre`, `strength` (0..1) how marked it starts (the first print after a liquid is the strongest, each next one lighter), (raw GU, world X/Z) walking toward `heading` (a direction, radians in the ground plane), of colour `tint`, lasting `turns`.
+func mark(centre: Vector2, heading: float, tint: Color, turns: int, level: int, left_foot: bool, strength: float = 1.0) -> void:
 	if _pile == null or turns <= 0:
 		return
 	var id: int = _next_id
 	_next_id += 1
-	_marks[id] = {"turns": turns, "age": 0, "tint": tint, "centre": centre, "rot": heading, "variant": 1 if left_foot else 0, "level": level}
-	_pile.place(id, centre, level, int(_marks[id]["variant"]), 0.9, tint, heading)
+	_marks[id] = {"turns": turns, "age": 0, "tint": tint, "centre": centre, "rot": heading, "variant": 1 if left_foot else 0, "level": level, "strength": strength}
+	_pile.place(id, centre, level, int(_marks[id]["variant"]), 0.9 * strength, tint, heading)
 
 
 ## One turn passes: every mark fades by its share, and goes when it is gone.
@@ -55,7 +55,7 @@ func age_turn() -> void:
 			_pile.remove(id)
 			_marks.erase(id)
 		else:
-			_pile.place(id, m["centre"], int(m["level"]), int(m["variant"]), 0.9 * (1.0 - float(m["age"]) / float(m["turns"])), m["tint"], float(m["rot"]))
+			_pile.place(id, m["centre"], int(m["level"]), int(m["variant"]), 0.9 * float(m["strength"]) * (1.0 - float(m["age"]) / float(m["turns"])), m["tint"], float(m["rot"]))
 
 
 func clear() -> void:

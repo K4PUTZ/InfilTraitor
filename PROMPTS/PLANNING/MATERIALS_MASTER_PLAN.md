@@ -1044,6 +1044,10 @@ The fluids M6 has to cover are therefore **water, lava, sewer and quicksand**, a
 
 The open questions for the study stay the four above, plus: whether **sewer** is water with a smell/noise rule (an audio-detection surface: `NoiseSystem`) or its own thing; whether **lava** is a hazard that also lights (`LIGHT_MASTER_PLAN`: a light source from a material) and burns what it touches (`MATERIALS` M3 fire); and whether **gases** are a separate layer at all (a per-GU concentration plane read by detection and fire) or a later milestone. No design is ratified; no code exists.
 
+### 2026-10-17 — the water study starts from the LOOK (Director)
+
+Bench: `maps/PIPE_LAB.map.json` (two grated half-buried pipes in the long walls, A north, B south, a concrete channel between them; the pipe pieces are 1 GU `.vox` props from `tools/asset_generation/gen_pipe_vox.py`, because a voxel prop is one GU and ignores `rot`). Prototype: `WaterStudy3D` + `water_study3d.gdshader`, dev flag `WATER_STUDY=0..3` (0 flat tint, 1 stipple like the occlusion cutaway's dither, 2 surface: bands, edge foam, ring ripples, bubbles, 3 both); `INFILTRAITOR_WATER_STUDY=3 python3 tools/persistent/capture.py --map PIPE_LAB --take water_flow`. **Nothing is simulated: the flow is a scrolling field**, so the looks are judged before a mechanism (height-field on the `SoftSheetSim` machinery vs. per-voxel flow) is picked. Unshaded, so no light yet. Director's call on the look is open; the mechanism and the gameplay (noise, trail, crossing, A-to-B flow) come after it.
+
 ---
 
 ## 7. Task order, one list

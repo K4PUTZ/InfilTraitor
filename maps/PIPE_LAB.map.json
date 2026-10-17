@@ -955,7 +955,55 @@
      ]
     }
    ],
-   "regions": []
+   "regions": [
+    {
+     "id": "water",
+     "box": {
+      "min": [
+       11,
+       3,
+       0
+      ],
+      "max": [
+       13,
+       9,
+       0.25
+      ]
+     },
+     "tags": [
+      "water"
+     ]
+    }
+   ]
+  },
+  "capture": {
+   "v": 1,
+   "rails": [
+    {
+     "id": "channel_rail",
+     "keys": [
+      {
+       "frame": "detail",
+       "target": "@channel",
+       "view": "W",
+       "hold": 600
+      }
+     ]
+    }
+   ],
+   "takes": [
+    {
+     "id": "water_flow",
+     "profile": "engine",
+     "rail": "channel_rail",
+     "steps": [],
+     "at_key": 0,
+     "after_hold": 0,
+     "length": 240,
+     "seed": 1,
+     "note": "M6 water study: the channel with the WATER_STUDY look (INFILTRAITOR_WATER_STUDY=0..3)"
+    }
+   ]
   }
  }
 }

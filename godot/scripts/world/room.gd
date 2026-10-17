@@ -6,6 +6,7 @@ const ScenarioDrawRef = preload("res://godot/scripts/systems/scenario_draw.gd") 
 const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.gd")
 ## G4-3 — preloaded rather than used by `class_name`: this file is parsed
 ## before the global class cache exists in a headless lint run.
+const WaterStudy3DRef = preload("res://godot/scripts/geometry/water_study3d.gd")  ## M6 water study (dev flag WATER_STUDY)
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
 const SurfaceRulesRef = preload("res://godot/scripts/systems/surface_rules.gd")  ## R3D-SURFACES: floor tags and patch rules
 const VentEmitterRef = preload("res://godot/scripts/overlays/vent_emitter.gd")  ## R3D-SURFACES SM-6: a plume rising from a floor vent
@@ -140,6 +141,7 @@ var _slab_registry: SlabRegistry = null
 @warning_ignore("unused_private_class_variable")
 var _junction_columns: Array = []             ## Array of JunctionResolver.JunctionColumn
 var _voxel_board: VoxelBoard = null     ## Voxel rendering engine
+var _water_study: RefCounted = null        ## M6 water study sheet (dev flag), see WaterStudy3D
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
 ## SM-2 — a scatter covering more than this many LAYERS of its zones gets a loud warning (not a refusal). Moto: ~2.4 ms per layer over a full screen of zone.
 const GROUND_SCATTER_LAYER_BUDGET: float = 1.5
@@ -3809,6 +3811,20 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 				push_warning("[GroundScatter] the scatter covers %.2f layers of its zones, past the budget of %.1f (about %.1f ms per layer over a full screen on the Moto; a warning, not a cap, SURFACES_MASTER_PLAN §7.0)"
 						% [layers, GROUND_SCATTER_LAYER_BUDGET, 2.4])
 		_ground_decals.attach(live, decal_instances, GeometryCoords.FLOOR_TOP_LEVEL, floor_tags_of)
+		## M6 water study (dev only): `WATER_STUDY=<0..3>` lays one flat sheet over the map's region `water`, flowing along `water_flow`'s
+		## direction (a region's long axis), in the look that mode picks. Nothing is simulated.
+		var water_mode: String = _dev_flag("WATER_STUDY", "")
+		if water_mode != "" and map_layout != null:
+			var water: Dictionary = map_layout.resolve("water", self)
+			if bool(water.get("ok", false)):
+				var box: AABB = water["box"] if water.has("box") else AABB()
+				if _water_study == null:
+					_water_study = WaterStudy3DRef.new()
+				var long_y: bool = box.size.z >= box.size.x
+				_water_study.attach(live, Rect2(Vector2(box.position.x, box.position.z), Vector2(box.size.x, box.size.z)),
+						GeometryCoords.FLOOR_TOP_LEVEL, int(water_mode), Vector2(0.0, 1.0) if long_y else Vector2(1.0, 0.0))
+			else:
+				push_error("[Room] WATER_STUDY is set but this map has no `water` region: %s" % str(water))
 		## R3D-SURFACES transitions — a feathered overlay where two organic grounds (a `photo` floor) meet.
 		if _ground_transitions == null:
 			_ground_transitions = GroundTransitions3DRef.new()

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**307 scripts · 93536 lines total** (under `godot/scripts/`)
+**307 scripts · 93545 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2451,7 +2451,7 @@ extends `RefCounted` · 37 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 3586 lines
+`class_name DetonationPlanBuilder` · 3570 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -3308,20 +3308,11 @@ extends `Node` · 236 lines
 
 ### `claim_grid.gd`
 
-`class_name ClaimGrid` · extends `RefCounted` · 74 lines
+`class_name ClaimGrid` · extends `RefCounted` · 79 lines
 
 `godot/scripts/systems/prediction/claim_grid.gd`
 
 > ClaimGrid - the detonation plan's `cell_to_voxel`, without the 215 000-entry Dictionary of `Voxel` objects. R3D-CLAIMS C2. The plan's WALK used to build `Dictionary[Vector3i -> Voxel]` over every claim of the board (and `VoxelStore.walk_cache` kept it for the store's life: ~21 MB, and every `Voxel` object in it alive). The answer is already in the store: its dense grid knows which claim holds a cell, so this object answers `voxel_at()` / `has()` / `size()` from the grid and hands back the container's own `Voxel` for that claim (made on request, one per claim). Same answers as the Dictionary, "the last claim of a cell wins" included: a cell two claims hold answers for the one that comes last in claim order, which is what assigning in walk order did. A plan built over a board with no matching store (a fixture) has no grid to ask; it fills `put()` as the old walk did.
-
-**Public API**
-- `func put(key: Vector3i, voxel: Voxel) -> void:`
-- `func damage_at(key: Vector3i) -> int:`
-- `func has(key: Vector3i) -> bool:`
-- `func claim_at(key: Vector3i) -> int:`
-- `func size() -> int:`
-- `func is_empty() -> bool:`
-- `func is_store_backed() -> bool:`
 
 ---
 
@@ -5423,7 +5414,7 @@ extends `Node` · 104 lines
 
 ### `structural_support_selftest.gd`
 
-extends `SceneTree` · 81 lines
+extends `SceneTree` · 101 lines
 
 `godot/scripts/tools/structural_support_selftest.gd`
 

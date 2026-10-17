@@ -1274,8 +1274,8 @@ static func _phase_roofs(s: Dictionary, deadline: int) -> void:
 
 ## ROOF RF-2 (Director, 2026-10-14: "condicionar a permanência daquela zona a estar em contato com algum suporte; caso contrário deve despencar
 ## também, assim que o contato com a sustentação se rompe, da mesma maneira que fizemos com as paredes de vidro"). After the hole, a standing voxel
-## of a roof this blast reached is SUPPORTED when it touches (six neighbours) a standing claim that is not one of those roof voxels — a wall's top
-## under it, a block, a roof slab the blast did not reach — or touches a supported one. What is left is an ISLAND the hole cut off: destroyed on
+## of a roof this blast reached is SUPPORTED when a path of standing claims (six neighbours, any material) leads from it to the ground plane — `StructuralSupport`, RF-G G2
+## (before G2 one touching standing claim that was not a roof voxel was enough, a floating one included). What is left is an ISLAND the hole cut off: destroyed on
 ## the Delta with the hole and proposed as falling pieces (`blast_roof_rubble`, `island`: every voxel falls, `Room.spawn_blast_roof_rubble`).
 ## A skylight (glass) keeps the glass collapse (`GlassSupport`).
 static func _roof_islands(s: Dictionary) -> void:
@@ -1294,33 +1294,17 @@ static func _roof_islands(s: Dictionary) -> void:
 				remaining[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = [v, roof.material]
 	if remaining.is_empty():
 		return
+	## RF-G G2: the walk is the service's (`StructuralSupport`, full glue to the GROUND PLANE), asked about the world this Delta would leave.
 	var grid: ClaimGrid = ClaimGrid.of_store(store)
-	var dirs: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
-	var reached: Dictionary = {}
-	var queue: Array = []
-	for key: Vector3i in remaining:
-		for d: Vector3i in dirs:
-			var n: Vector3i = key + d
-			if remaining.has(n):
-				continue
-			var other: Voxel = grid.voxel_at(n)
-			if other != null and delta.state_of(other) != Voxel.DamageState.DESTROYED:
-				reached[key] = true
-				queue.append(key)
-				break
-	var head: int = 0
-	while head < queue.size():
-		var key: Vector3i = queue[head]
-		head += 1
-		for d: Vector3i in dirs:
-			var n: Vector3i = key + d
-			if remaining.has(n) and not reached.has(n):
-				reached[n] = true
-				queue.append(n)
+	for v: Voxel in delta.projections():
+		if delta.state_of(v) == Voxel.DamageState.DESTROYED:
+			var cell := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+			if grid.voxel_at(cell) == v:   ## a cell two claims hold answers for the last one
+				grid.overlay[cell] = Voxel.DamageState.DESTROYED
+	var ground: int = (s["voxel_board"] as VoxelBoardClass).ground_plane_level()
+	var loose: Dictionary = StructuralSupport.unsupported(grid, ground, remaining.keys(), {})
 	var entries: Array = []
-	for key: Vector3i in remaining:
-		if reached.has(key):
-			continue
+	for key: Vector3i in loose:
 		var v: Voxel = remaining[key][0]
 		entries.append(BlastCalculatorClass.damage_entry(v, Voxel.DamageState.DESTROYED, true, Voxel.CarvedSide.BOTTOM))
 		delta.blast_roof_rubble.append({"grid_pos": v.grid_pos, "level": int(v.level), "material": String(remaining[key][1]), "island": true})

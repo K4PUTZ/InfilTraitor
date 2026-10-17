@@ -13,6 +13,7 @@ func _init() -> void:
 	print("StructuralSupport SELFTEST")
 	print("=".repeat(70) + "\n")
 	_rule()
+	_overlay()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -79,3 +80,22 @@ func _rule() -> void:
 	_put(grid, floating)
 	loose = StructuralSupport.unsupported(grid, GROUND, floating, {Vector3i(5, 5, GROUND): true})
 	_check(int(loose[Vector3i(5, 5, GROUND + 1)]) == 0 and int(loose[Vector3i(5, 5, GROUND + 15)]) == 14, "the cascade runs up the post: step 0 at the foot, 14 at the head (%d, %d)" % [int(loose[Vector3i(5, 5, GROUND + 1)]), int(loose[Vector3i(5, 5, GROUND + 15)])])
+
+
+## RF-G G2: the roof islands ask the walk about the world a prediction leaves (`ClaimGrid.overlay`): a roof on two walls, one wall destroyed on the Delta, then both.
+func _overlay() -> void:
+	var grid := ClaimGrid.empty()
+	var left: Array = _column(0, 0, GROUND, GROUND + 7)
+	var right: Array = _column(6, 0, GROUND, GROUND + 7)
+	var roof: Array = []
+	for x in range(0, 7):
+		roof.append(Vector3i(x, 0, GROUND + 8))
+	_put(grid, left)
+	_put(grid, right)
+	_put(grid, roof)
+	_check(StructuralSupport.unsupported(grid, GROUND, roof, {}).is_empty(), "a roof on two walls: held")
+	grid.overlay[Vector3i(0, 0, GROUND + 3)] = Voxel.DamageState.DESTROYED
+	_check(StructuralSupport.unsupported(grid, GROUND, roof, {}).is_empty(), "one wall cut on the prediction: the roof is still held by the other")
+	grid.overlay[Vector3i(6, 0, GROUND + 3)] = Voxel.DamageState.DESTROYED
+	_check(StructuralSupport.unsupported(grid, GROUND, roof, {}).size() == 7, "both walls cut on the prediction: the 7 roof voxels (they hold each other) have no support")
+	_check(grid.damage_at(Vector3i(0, 0, GROUND + 3)) == Voxel.DamageState.DESTROYED and grid.damage_at(Vector3i(0, 0, GROUND + 2)) >= 0, "the overlay answers for its cells only")

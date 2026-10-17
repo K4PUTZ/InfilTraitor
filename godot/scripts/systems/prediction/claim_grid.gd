@@ -12,6 +12,9 @@ extends RefCounted
 
 var _store: VoxelStore = null
 var _dict: Dictionary = {}
+## What a PREDICTION says about a cell before it is committed: `Vector3i -> Voxel.DamageState`. `damage_at()` (what the support walk reads) answers from it first,
+## so `StructuralSupport` can be asked about the world a `WorldDelta` would leave (RF-G G2: the blast's roof islands).
+var overlay: Dictionary = {}
 
 
 ## Backed by the store's grid: nothing is built, nothing is held.
@@ -41,6 +44,8 @@ func voxel_at(key: Vector3i) -> Voxel:
 ## The damage state at a cell (`Voxel.DamageState`), or -1 when nothing is there: answered from the store's packed state, no `Voxel` handle made (a walk over a roof's
 ## neighbours made thousands of them, ~1 KB each, kept for good).
 func damage_at(key: Vector3i) -> int:
+	if not overlay.is_empty() and overlay.has(key):
+		return int(overlay[key])
 	if _store == null:
 		var v: Voxel = _dict.get(key)
 		return -1 if v == null else VoxelStore.damage_of(v)

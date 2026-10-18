@@ -1,7 +1,7 @@
 ## LiquidField — the liquids of the open map as the rules see them: a lookup from a GU cell to the liquid standing in it and how deep.
 ##
 ## M6 F3. It owns nothing: each body is a `FluidPlane` (the turn's truth, ticked by its `LiquidSheet3D`) plus the liquid's id; the field only
-## READS the planes, so there is one truth. A cell is wet when the deepest plane cell inside that GU holds more than `LiquidExposure.NO_DEPTH`.
+## READS the planes, so there is one truth. It reads the plane's COMMITTED depths (the last complete tick), never the live ones the sheet draws. A cell is wet when the deepest plane cell inside that GU holds more than `LiquidExposure.NO_DEPTH`.
 class_name LiquidField
 extends RefCounted
 
@@ -38,7 +38,7 @@ func at_cell(cell: Vector2i) -> Dictionary:
 		var r1: int = mini(int(ceil((float(cell.y + 1) - plane.origin.y) / plane.cell_gu)) - 1, plane.rows - 2)
 		for r in range(r0, r1 + 1):
 			for c in range(c0, c1 + 1):
-				depth = maxf(depth, plane.depth[plane.index(c, r)])
+				depth = maxf(depth, plane.committed[plane.index(c, r)])
 		if depth > 0.05:
 			return {"kind": body["kind"], "depth": depth, "gameplay": LiquidRegistryRef.gameplay(String(body["kind"])), "body": b}
 		return {}

@@ -26,7 +26,7 @@ FILES = "/sdcard/Android/data/com.example.infiltraitor/files"
 def scenario_f8() -> str:
     ## M6 F8: N copies of PIPE_LAB's real channel, each a plane + a driven sheet with the real look, ticked every 0.3 s
     return ("framing portrait; centre agent; zoom 0.5; frames 60; wait 10; flood off; mark idle; wait 10; "
-            "flood ch1; mark ch1; wait 14; flood ch4; mark ch4; wait 14; flood ch8; mark ch8; wait 14; flood off; mark after; wait 10; quit")
+            "flood ch1; mark ch1; wait 14; flood ch4; mark ch4; wait 14; flood ch8; mark ch8; wait 14; flood ch8q; mark ch8q; wait 14; flood off; mark after; wait 10; quit")
 
 
 def scenario(stress: bool) -> str:

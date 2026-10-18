@@ -5302,7 +5302,7 @@ func scenario_flood(mode: String) -> bool:
 		push_error("[Room] flood: no 3D board")
 		return false
 	if mode.begins_with("ch"):
-		return _flood_channels(live, int(mode.substr(2)))
+		return _flood_channels(live, int(mode.substr(2)), 0.25 if mode.ends_with("q") else 0.5)
 	var pr: Rect2i = _base_layout.get("playable_rect", Rect2i(Vector2i.ZERO, _room_size))
 	var rect := Rect2(Vector2(pr.position), Vector2(pr.size))
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
@@ -5351,7 +5351,7 @@ func scenario_flood(mode: String) -> bool:
 
 ## M6 F8: `count` copies of PIPE_LAB's channel (1.5 x 10 GU, 0.25 GU cells, a source at one end, a drain at the other, the curb 2 voxels), side by side, each a
 ## `FluidPlane` and a driven `LiquidSheet3D` with the real look. One timer ticks them all every 0.3 s and prints the whole tick's cost.
-func _flood_channels(live: Node3D, count: int) -> bool:
+func _flood_channels(live: Node3D, count: int, cell: float) -> bool:
 	var pr: Rect2i = _base_layout.get("playable_rect", Rect2i(Vector2i.ZERO, _room_size))
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var base_y: float = float(GeometryCoords.FLOOR_TOP_LEVEL + 1 - int(live.call("ground_level"))) * unit + LiquidSheet3DRef.LIFT
@@ -5361,7 +5361,6 @@ func _flood_channels(live: Node3D, count: int) -> bool:
 	for n in range(count):
 		var rect := Rect2(Vector2(pr.position) + Vector2(0.5 + 2.0 * float(n % 8), 1.0 + 12.0 * float(n / 8)), Vector2(1.5, 10.0))
 		var plane: RefCounted = FluidPlaneRef.new()
-		var cell: float = 0.25
 		var cols: int = int(round(rect.size.x / cell)) + 2
 		var rows: int = int(round(rect.size.y / cell)) + 2
 		plane.setup(cols, rows, cell, rect.position - Vector2(cell, cell), 0.9)
@@ -5369,8 +5368,8 @@ func _flood_channels(live: Node3D, count: int) -> bool:
 			for c in range(cols):
 				if plane.is_rim(c, r):
 					plane.ground[plane.index(c, r)] = 2.0
-		plane.add_source(Rect2(rect.position, Vector2(1.5, 0.25)), 2.0)
-		plane.add_sink(Rect2(rect.position + Vector2(0.0, 9.75), Vector2(1.5, 0.25)), 1.0)
+		plane.add_source(Rect2(rect.position, Vector2(1.5, cell)), 2.0)
+		plane.add_sink(Rect2(rect.position + Vector2(0.0, 10.0 - cell), Vector2(1.5, cell)), 1.0)
 		var sheet: MeshInstance3D = LiquidSheet3DRef.new()
 		live.add_child(sheet)
 		sheet.setup(rect, base_y, params, Vector2(0.0, 1.0), plane)
@@ -5390,7 +5389,7 @@ func _flood_channels(live: Node3D, count: int) -> bool:
 		stats[1] = float(stats[1]) + ms
 		stats[2] = maxf(float(stats[2]), ms)
 		if int(stats[0]) % 10 == 0:
-			print("[FLOOD] ch%d (%d cells each) tick %d: all bodies mean %.2f ms, worst %.2f ms" % [count, (planes[0] as RefCounted).cols * (planes[0] as RefCounted).rows, int(stats[0]),
+			print("[FLOOD] ch%d (%d cells each) tick %d: the turn's begin_tick (the rounds run in the frames: read the frame times) mean %.2f ms, worst %.2f ms" % [count, (planes[0] as RefCounted).cols * (planes[0] as RefCounted).rows, int(stats[0]),
 					float(stats[1]) / float(stats[0]), float(stats[2])]))
 	_flood_timer = timer
 	timer.start()

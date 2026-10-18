@@ -14,6 +14,7 @@ const EASE_PER_SECOND: float = 2.5
 const LIFT: float = 0.03              ## above the floor top, below the contact shadows and decals' own lifts
 const WET_VOXELS: float = 0.5          ## the depth at which a vertex is fully opaque
 
+const FRAMES_PER_TICK: int = 10         ## a turn's rounds are spread over about this many frames (M6 F8)
 var plane: RefCounted = null           ## a FluidPlane, or null for a static sheet
 var auto_tick_seconds: float = 0.0     ## dev: tick the plane by itself every N seconds of real time (0 = only when told)
 
@@ -48,7 +49,7 @@ func setup(rect: Rect2, base_y: float, params: Dictionary, flow: Vector2, fluid_
 ## One turn of the liquid (the caller's TIC, or the dev auto-tick).
 func tick() -> void:
 	if plane != null:
-		plane.tick()
+		plane.begin_tick()    ## the rounds run a few a frame in `_process`; the rules read the committed depths
 		_dirty = true
 
 
@@ -69,6 +70,9 @@ func _process(delta: float) -> void:
 		while _clock >= auto_tick_seconds:
 			_clock -= auto_tick_seconds
 			tick()
+	if plane.has_pending():
+		plane.step_rounds(maxi(int(ceil(float(plane.rounds_per_tick()) / float(FRAMES_PER_TICK))), 1))
+		_dirty = true
 	if not _dirty:
 		return
 	var step: float = clampf(delta * EASE_PER_SECOND, 0.0, 1.0)

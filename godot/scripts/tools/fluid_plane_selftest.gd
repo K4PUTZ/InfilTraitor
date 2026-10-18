@@ -38,6 +38,25 @@ func _channel(fluidity: float, source_rate: float, with_sink: bool) -> RefCounte
 	return plane
 
 
+func _golden_channel() -> RefCounted:
+	var plane = load("res://godot/scripts/systems/fluid_plane.gd").new()
+	var rect := Rect2(11.25, 1.0, 1.5, 10.0)
+	plane.setup(int(rect.size.x / 0.25) + 2, int(rect.size.y / 0.25) + 2, 0.25, rect.position - Vector2(0.25, 0.25), 0.55)
+	for r in range(plane.rows):
+		for c in range(plane.cols):
+			if plane.is_rim(c, r):
+				plane.ground[plane.index(c, r)] = 2.0
+	for w in [Rect2(11.0, 0.75, 2.0, 0.25), Rect2(11.0, 11.0, 2.0, 0.25), Rect2(11.0, 1.0, 0.25, 2.0), Rect2(12.75, 1.0, 0.25, 2.0), Rect2(11.0, 9.0, 0.25, 2.0), Rect2(12.75, 9.0, 0.25, 2.0)]:
+		plane.set_ground_rect(w, 8.0)
+	plane.set_ceiling_rect(Rect2(11.25, 1.0, 1.5, 2.0), 6.0)
+	plane.set_ceiling_rect(Rect2(11.25, 9.0, 1.5, 2.0), 6.0)
+	plane.add_source(Rect2(11.25, 1.0, 1.5, 0.25), 2.0)
+	plane.add_sink(Rect2(11.25, 10.75, 1.5, 0.25), 1.0)
+	plane.add_grate("y", 2.75)
+	plane.add_grate("y", 9.25)
+	return plane
+
+
 func _depth_at_y(plane: RefCounted, y: float) -> float:
 	var sum: float = 0.0
 	for c in range(1, plane.cols - 1):
@@ -100,5 +119,38 @@ func _init() -> void:
 	var behind: float = _depth_at_y(tar, 2.0)
 	var beyond: float = _depth_at_y(tar, 6.0)
 	_check(behind > 0.1 and behind <= 6.0 and beyond < 0.01, "a thick liquid stops at the grate (behind %.2f, beyond %.4f)" % [behind, beyond])
+	## The loop was rewritten for speed (M6 F8, 2026-10-17); a digest taken from the FIRST form (a channel with walls, roofs, grates, a valve shut at tick 60)
+	## must still come out of it, bit for bit. A change that is meant to alter the flow has to re-take these numbers on purpose.
+	var gold = _golden_channel()
+	var digest: int = 2166136261
+	var seen: Array = []
+	for t in range(1, 121):
+		if t == 60:
+			gold.set_source_rate(0, 0.0)
+		gold.tick()
+		if t % 40 == 0:
+			for i in range(gold.depth.size()):
+				digest = ((digest ^ int(round(gold.depth[i] * 10000.0))) * 16777619) & 0xFFFFFFFF
+			seen.append(digest)
+	_check(seen == [2507004377, 449335435, 984992381] and is_equal_approx(gold.spilled, 193.9446), "the lean loop gives the first form's digests bit for bit (%s, spilled %.4f)" % [str(seen), gold.spilled])
+	## The incremental tick (rounds spread over frames) must land on the same depths as the synchronous one, and the rules' `committed` depths must not move
+	## while it runs (they change only when the NEXT tick begins), whatever the number of rounds a frame.
+	var sync = _golden_channel()
+	var spread = _golden_channel()
+	var frozen: bool = true
+	for _t in range(30):
+		sync.tick()
+		spread.begin_tick()
+		var seen_committed: PackedFloat32Array = spread.committed.duplicate()
+		while spread.has_pending():
+			spread.step_rounds(3)
+			frozen = frozen and spread.committed == seen_committed
+	spread.finish_tick()
+	_check(frozen, "the committed depths hold still while a tick's rounds run, three at a time")
+	var same: bool = true
+	for i in range(sync.depth.size()):
+		same = same and sync.depth[i] == spread.depth[i]
+	_check(same and sync.spilled == spread.spilled, "30 ticks run as spread rounds end on exactly the synchronous depths")
+	_check(spread.committed != spread.depth, "committed is one tick behind the live depths between ticks (it moves when the next tick begins)")
 	print("\n== %s ==" % ("PASS" if _failures == 0 else "FAIL (%d)" % _failures))
 	quit(0 if _failures == 0 else 1)

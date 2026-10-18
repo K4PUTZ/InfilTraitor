@@ -74,7 +74,8 @@
 ##   flood <mode>                         MATERIALS F12 feasibility bench: the WHOLE playable floor under water, as one body.
 ##                                        plane05 / plane025 = a `FluidPlane` of 0.5 / 0.25 GU cells (no walls: every cell is active, the
 ##                                        upper bound) driven by a source, ticked every 0.3 s, drawn by a driven `LiquidSheet3D`;
-##                                        ch1 / ch4 / ch8 = that many copies of PIPE_LAB's real channel (1.5 x 10 GU, 0.25 GU cells, source + drain,
+##                                        ch1 / ch4 / ch8 = that many copies of PIPE_LAB's real channel (1.5 x 10 GU, 0.5 GU cells since F8, source + drain,
+##                                        ch8q = 8 of them at the old 0.25 GU cells,
 ##                                        closed curb), each with its own driven sheet: the M6 F8 cost of N bodies;
 ##                                        level = one flat sheet and no sim (the "level model"); off = remove it. Prints `[FLOOD]` lines
 ##                                        (`Room.scenario_flood`)
@@ -330,8 +331,8 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 				return "shoot takes a guard index >= 0"
 			step["index"] = int(arg)
 		"flood":
-			if not ["off", "level", "plane05", "plane025", "ch1", "ch4", "ch8"].has(arg.to_lower()):
-				return "flood takes off, level, plane05, plane025, ch1, ch4 or ch8"
+			if not ["off", "level", "plane05", "plane025", "ch1", "ch4", "ch8", "ch8q"].has(arg.to_lower()):
+				return "flood takes off, level, plane05, plane025, ch1, ch4, ch8 or ch8q"
 			step["mode"] = arg.to_lower()
 		"view_mode":
 			if not VIEW_MODES.has(arg.to_lower()):

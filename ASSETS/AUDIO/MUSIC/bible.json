@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "status": "draft: values marked draft are working defaults taken from the authorship paper's example; the Director ratifies or replaces them",
+  "global": {
+    "tonal_center": "A minor (draft)",
+    "bpm_range": [112, 140],
+    "bpm_home": 128,
+    "meter": "4/4",
+    "harmonic_dna": "minor centre with major-colour inflections, sus/add tones, chromatic movement, tonal ambiguity",
+    "timbral_dna": "analog polysynths, sequenced electronic bass, arpeggiators, gated ambience, restrained cinematic strings and brass",
+    "constraint": "instrumental, free of vocal hooks"
+  },
+  "motifs": {
+    "agent":   {"role": "The Agent: principal melodic signature of the protagonist", "notes": "six-note hook, to be authored", "status": "pending"},
+    "threat":  {"role": "The Threat: short gesture of danger, surveillance, exposure", "notes": "to be authored", "status": "pending"},
+    "mission": {"role": "The Mission: recurring pulse / sequencing pattern", "notes": "to be authored", "status": "pending"}
+  },
+  "contexts": {
+    "menu":         {"function": "isolated notes, pad and a restrained motif fragment", "bpm": 96,  "motifs": ["agent"], "density": "sparse", "loop": true},
+    "stealth":      {"function": "bass pulse, filtered sequencing, incomplete melodic gestures", "bpm": 112, "motifs": ["mission"], "density": "low", "loop": true},
+    "infiltration": {"function": "rhythmic motif and arpeggiated fragments", "bpm": 124, "motifs": ["mission", "agent"], "density": "medium", "loop": true},
+    "alert":        {"function": "threat motif, intensified rhythm, harmonic destabilisation", "bpm": 132, "motifs": ["threat", "mission"], "density": "high", "loop": true},
+    "combat":       {"function": "aggressive orchestration, complete rhythmic vocabulary", "bpm": 140, "motifs": ["threat", "mission", "agent"], "density": "very high", "loop": true},
+    "major":        {"function": "expanded harmonic and melodic material for a major encounter", "bpm": 136, "motifs": ["agent", "threat", "mission"], "density": "very high", "loop": true},
+    "credits":      {"function": "the COMPLETE theme: dark intro, agent, movement, first statement, threat, ignition, main theme, variation, final statement, signature ending", "bpm": 128, "motifs": ["agent", "threat", "mission"], "density": "full", "loop": false}
+  }
+}

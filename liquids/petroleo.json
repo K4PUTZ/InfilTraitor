@@ -47,6 +47,12 @@
       ],
       "turns": 8
     },
-    "fluidity": 0.6
+    "fluidity": 0.6,
+    "fire": {
+      "speed": 3.0,
+      "burn": 0.15,
+      "dose_step": 0.5,
+      "dose_turn": 0.5
+    }
   }
 }

@@ -15,6 +15,8 @@ const LIFT: float = 0.03              ## above the floor top, below the contact 
 const WET_VOXELS: float = 0.5          ## the depth at which a vertex is fully opaque
 
 const FRAMES_PER_TICK: int = 10         ## a turn's rounds are spread over about this many frames (M6 F8)
+var fire: RefCounted = null           ## a `LiquidFire` of this body (or null): its burning cells are drawn as flames
+var _fire_version: int = -1
 var use_thread: bool = true            ## the plane's rounds run on a worker thread (dev flag FLUID_THREAD=0 puts them back on the main thread, a few a frame)
 var plane: RefCounted = null           ## a FluidPlane, or null for a static sheet
 var auto_tick_seconds: float = 0.0     ## dev: tick the plane by itself every N seconds of real time (0 = only when told)
@@ -78,6 +80,8 @@ func _process(delta: float) -> void:
 		while _clock >= auto_tick_seconds:
 			_clock -= auto_tick_seconds
 			tick()
+	if fire != null and fire.version != _fire_version:
+		_dirty = true
 	if plane.has_pending():
 		plane.step_rounds(maxi(int(ceil(float(plane.rounds_per_tick()) / float(FRAMES_PER_TICK))), 1))
 		_dirty = true
@@ -101,14 +105,32 @@ func _target(i: int) -> float:
 	return plane.depth[plane.index(1 + i % interior_cols, 1 + i / interior_cols)]
 
 
+## The fire at a vertex: the share of the four cells around it that burn (the plane's interior cell (c, r) is grid cell (c + 1, r + 1)).
+func _flame_at(vc: int, vr: int) -> float:
+	if fire == null:
+		return 0.0
+	var sum: float = 0.0
+	var count: int = 0
+	for dr in range(-1, 1):
+		for dc in range(-1, 1):
+			var c: int = vc + dc
+			var r: int = vr + dr
+			if c >= 0 and r >= 0 and c < plane.cols - 2 and r < plane.rows - 2:
+				sum += float(fire.burning[plane.index(c + 1, r + 1)])
+				count += 1
+	return sum / float(maxi(count, 1))
+
+
 func _rebuild() -> void:
+	if fire != null:
+		_fire_version = fire.version
 	var verts := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
 	if plane == null:
 		for corner: Vector2 in [_rect.position, Vector2(_rect.end.x, _rect.position.y), _rect.end, Vector2(_rect.position.x, _rect.end.y)]:
 			verts.append(Vector3(corner.x, _base_y, corner.y))
-			colors.append(Color(1, 1, 1, 1))
+			colors.append(Color(0, 0, 0, 1))
 		indices = PackedInt32Array([0, 1, 2, 0, 2, 3])
 	else:
 		var icols: int = plane.cols - 2
@@ -127,7 +149,7 @@ func _rebuild() -> void:
 							count += 1
 				var level: float = sum / float(maxi(count, 1))
 				verts.append(Vector3(_rect.position.x + float(vc) * cell, _base_y + level * UNIT, _rect.position.y + float(vr) * cell))
-				colors.append(Color(1, 1, 1, clampf(level / WET_VOXELS, 0.0, 1.0)))
+				colors.append(Color(_flame_at(vc, vr), 0.0, 0.0, clampf(level / WET_VOXELS, 0.0, 1.0)))
 		for r in range(irows):
 			for c in range(icols):
 				var a: int = r * (icols + 1) + c

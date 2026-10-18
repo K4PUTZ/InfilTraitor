@@ -45,6 +45,21 @@ func at_cell(cell: Vector2i) -> Dictionary:
 	return {}
 
 
+## Whether water (a liquid that `extinguishes`) stands at the GU position `gu` (raw GU, a plane cell's centre): it puts out the fire there.
+func extinguishes_at(gu: Vector2) -> bool:
+	for body: Dictionary in _bodies:
+		if not (body["rect"] as Rect2).has_point(gu):
+			continue
+		var gameplay: Dictionary = LiquidRegistryRef.gameplay(String(body["kind"]))
+		if not bool(gameplay.get("extinguishes", false)):
+			continue
+		var plane = body["plane"]
+		var cell: Vector2i = plane.cell_of(gu)
+		if plane.committed[plane.index(cell.x, cell.y)] > 0.05:
+			return true
+	return false
+
+
 ## Dev / the player's valve: the rate of a body's `source` (0 = shut).
 func set_source_rate(body: int, source: int, rate: float) -> bool:
 	if body < 0 or body >= _bodies.size():

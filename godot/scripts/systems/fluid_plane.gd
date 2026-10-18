@@ -226,6 +226,13 @@ func step_rounds(count: int) -> void:
 	_rounds_left -= todo
 
 
+## Takes `amount` voxels of depth out of cell `i` (a flame eating oil): waits for a running tick, and moves the committed depth too, so the rules see it now.
+func consume(i: int, amount: float) -> void:
+	finish_tick()
+	depth[i] = maxf(depth[i] - amount, 0.0)
+	committed[i] = maxf(committed[i] - amount, 0.0)
+
+
 func has_pending() -> bool:
 	if _task_id != -1:
 		return not WorkerThreadPool.is_task_completed(_task_id)

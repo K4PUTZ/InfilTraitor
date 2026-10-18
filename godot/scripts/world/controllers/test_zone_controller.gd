@@ -21,6 +21,7 @@
 ## SelectionController.
 class_name TestZoneController
 
+const BLAST_IGNITES_LIQUID_GU: float = 3.0   ## M6 F5: how far a blast lights a flammable liquid (the fragmentation grenade's three live rings)
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 const GrenadePropClass = preload("res://godot/scripts/overlays/grenade_prop.gd")
 const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")
@@ -1447,6 +1448,9 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	var burst0: int = Time.get_ticks_usec()
 	room.spawn_blast_burst(boom_anchor, anchor)
 	_prof_clock("spawn_blast_burst", burst0)
+	## M6 F5 (Director, 2026-10-17: anything explosive lights a flammable liquid): the reach is the grenade's nonzero rings (3 for the fragmentation grenade);
+	## it becomes the bomb's own data when a second explosive needs another.
+	room.ignite_liquids(Vector2(float(gu.x) + 0.5, float(gu.y) + 0.5), BLAST_IGNITES_LIQUID_GU)
 	if room._camera_controller != null:
 		room._camera_controller.shake(SHAKE_SECONDS, SHAKE_AMPLITUDE_PX)
 

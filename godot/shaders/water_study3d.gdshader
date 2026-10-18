@@ -46,11 +46,14 @@ uniform float dot_cells = 11.0;          // stipple cells per GU
 
 varying vec2 lp;
 varying float wet;   // the vertex alpha: 0 where the cell is dry, 1 from half a voxel of depth
+varying float flame; // the vertex red: how much of the surface burns here (0 water .. 1 fire), set by `LiquidSheet3D` from `LiquidFire`
 
 void vertex() {
 	lp = VERTEX.xz;
 	wet = COLOR.a;
+	flame = COLOR.r;
 }
+
 
 float h21(vec2 p) {
 	return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
@@ -368,6 +371,14 @@ void fragment() {
 		float drop = clamp(rain_rings(p, TIME * 0.6), 0.0, 1.0) * 0.95;
 		col.rgb = mix(col.rgb, light_color.rgb, drop);
 		col.a = max(col.a, drop);
+	}
+	if (flame > 0.01) {
+		// FIRE on the surface (M6 F5): tongues that rise (the noise scrolls up the board) and flicker, red at the foot, yellow at the heart; it loops in
+		// real time, so a paused game still burns. Unshaded, brighter than the water so it reads as light.
+		float heat = flame * (0.45 + 0.55 * vnoise(lp * 5.0 + vec2(TIME * 0.8, -TIME * 2.4)) * (0.6 + 0.4 * vnoise(lp * 11.0 + vec2(-TIME * 1.3, -TIME * 3.7))));
+		vec3 fire_col = mix(vec3(0.85, 0.18, 0.03), vec3(1.0, 0.82, 0.25), smoothstep(0.5, 0.95, heat));
+		col.rgb = mix(col.rgb, fire_col * 1.15, clamp(heat * 1.5, 0.0, 1.0));
+		col.a = max(col.a, clamp(heat * 1.4, 0.0, 1.0));
 	}
 	ALBEDO = col.rgb;
 	ALPHA = col.a * smoothstep(0.0, 0.03, edge) * wet;

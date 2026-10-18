@@ -11,6 +11,7 @@ const LiquidSheet3DRef = preload("res://godot/scripts/geometry/liquid_sheet3d.gd
 const LiquidFieldRef = preload("res://godot/scripts/systems/liquid_field.gd")  ## M6: which liquid stands in a cell, and how deep
 const LiquidExposureRef = preload("res://godot/scripts/systems/liquid_exposure.gd")  ## M6: what a liquid does to an agent
 const FootprintMarks3DRef = preload("res://godot/scripts/geometry/footprint_marks3d.gd")  ## M6: the prints left after a liquid
+const LiquidFireRef = preload("res://godot/scripts/systems/liquid_fire.gd")  ## M6 F5: a flammable liquid on fire
 const FluidPlaneRef = preload("res://godot/scripts/systems/fluid_plane.gd")  ## M6: the gameplay truth of a body of liquid
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
 const SurfaceRulesRef = preload("res://godot/scripts/systems/surface_rules.gd")  ## R3D-SURFACES: floor tags and patch rules
@@ -159,6 +160,7 @@ const LIQUID_FOOTPRINT_FADE: float = 0.88   ## how much lighter the last print s
 var _flood_sheet: MeshInstance3D = null      ## F12 bench (`scenario_flood`)
 var _flood_timer: Timer = null
 var _flood_sheets: Array = []              ## F8 bench: the channels
+var _liquid_fires: Array = []              ## M6 F5: one LiquidFire per flammable body
 var _liquid_sheets: Array = []             ## M6: one LiquidSheet3D per `liquids` body, see _attach_liquids()
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
 ## SM-2 — a scatter covering more than this many LAYERS of its zones gets a loud warning (not a refusal). Moto: ~2.4 ms per layer over a full screen of zone.
@@ -9434,6 +9436,7 @@ func _attach_liquids(live: Node3D) -> void:
 		if is_instance_valid(sheet):
 			sheet.queue_free()
 	_liquid_sheets.clear()
+	_liquid_fires.clear()
 	if _liquid_field == null:
 		_liquid_field = LiquidFieldRef.new()
 	_liquid_field.clear()
@@ -9466,10 +9469,25 @@ func _attach_liquids(live: Node3D) -> void:
 		live.add_child(sheet)
 		sheet.setup(body["rect"], base_y, params, body["flow"], plane)
 		_liquid_field.add_body(kind, body["rect"], plane)
-		sheet.auto_tick_seconds = auto_tick
+		var kind_rules: Dictionary = LiquidRegistryRef.gameplay(kind)
+		if plane != null and bool(kind_rules.get("flammable", false)):
+			var burn = LiquidFireRef.new()
+			burn.setup(plane, kind_rules.get("fire", {}))
+			sheet.fire = burn
+			_liquid_fires.append(burn)
 		if plane != null:
 			sheet.snap()
 		_liquid_sheets.append(sheet)
+	if auto_tick > 0.0:
+		var turn_timer := Timer.new()    ## dev: the liquids' own turn (fire, water, flow) in real time, as the game's turn would run it
+		turn_timer.wait_time = auto_tick
+		turn_timer.timeout.connect(_liquid_world_turn)
+		add_child(turn_timer)
+		turn_timer.start()
+	## dev: `LIQUID_IGNITE="seconds:x,y,radius;..."` (inner GU) lights the flammable liquids at those real-time seconds, the stand-in for a blast / a shot
+	var ignite_script: String = _dev_flag("LIQUID_IGNITE", "")
+	if ignite_script != "":
+		_run_ignite_script(ignite_script)
 	## dev: `FLUID_VALVE="seconds:body:source:rate;..."` turns a source's valve at those real-time seconds after the map is up (rate 0 = shut),
 	## the stand-in for the valve the player will click (props milestone): a take opens it and the channel fills and spills
 	var valve: String = _dev_flag("FLUID_VALVE", "")
@@ -9493,6 +9511,55 @@ func _attach_liquids(live: Node3D) -> void:
 			var log_file := FileAccess.open("user://liquid_walk.log", FileAccess.WRITE)   ## the capture harness filters stdout: a dev run reads this file
 			if log_file != null:
 				log_file.store_line(report)
+
+
+## dev: runs a `LIQUID_IGNITE` script (see `_attach_liquids`).
+func _run_ignite_script(script: String) -> void:
+	var origin := Vector2(_base_layout.get("playable_rect", Rect2i()).position)
+	var elapsed: float = 0.0
+	for item in script.split(";"):
+		var f: PackedStringArray = item.split(":")
+		var xy: PackedStringArray = f[1].split(",") if f.size() == 2 else PackedStringArray()
+		if xy.size() != 3:
+			continue
+		var at: float = float(f[0])
+		if at > elapsed:
+			await get_tree().create_timer(at - elapsed).timeout
+			elapsed = at
+		var lit: int = ignite_liquids(Vector2(float(xy[0]), float(xy[1])) + origin, float(xy[2]))
+		print("[Liquids] ignite at %s radius %s: %d cell(s) caught" % [str(Vector2(float(xy[0]), float(xy[1]))), xy[2], lit])
+
+
+## M6 F5. Anything that burns (a blast, a shot, an incendiary arrow, later lava) calls this with the point (raw GU) and the reach (GU): every flammable body
+## lights its wet cells inside. Returns the cells that caught.
+func ignite_liquids(centre: Vector2, radius: float) -> int:
+	var lit: int = 0
+	for burn in _liquid_fires:
+		lit += burn.ignite(centre, radius)
+	return lit
+
+
+## The fire at the GU cell `cell`, or null: the `LiquidFire` whose body burns there.
+func liquid_fire_at(cell: Vector2i):
+	for burn in _liquid_fires:
+		if burn.burning_at(cell):
+			return burn
+	return null
+
+
+## One turn of the fire: water puts cells out, the front runs, the flames eat the oil. Before the plane's next tick (the rules and the fire read the same depths).
+func _liquid_fire_turn() -> void:
+	if _liquid_fires.is_empty():
+		return
+	var put_out := func(gu: Vector2) -> bool: return _liquid_field != null and _liquid_field.extinguishes_at(gu)
+	for burn in _liquid_fires:
+		burn.tick(put_out)
+
+
+## One turn of every liquid, in the order the rules need: the fire first, then the flow.
+func _liquid_world_turn() -> void:
+	_liquid_fire_turn()
+	tick_liquids()
 
 
 ## dev: runs a `FLUID_VALVE` script (see `_attach_liquids`); each step waits its own seconds from the previous one's end.
@@ -9522,6 +9589,8 @@ func _liquid_extra_cost(cell: Vector2i) -> int:
 	var info: Dictionary = liquid_at(cell)
 	if info.is_empty():
 		return 0
+	if liquid_fire_at(cell) != null:
+		return 9999    ## a burning cell cannot be entered (M6 F5)
 	if LiquidExposureRef.is_blocked(info["gameplay"], float(info["depth"])):
 		return 9999
 	return LiquidExposureRef.wade_points(info["gameplay"], float(info["depth"]))
@@ -9546,6 +9615,9 @@ func _liquid_step(cell: Vector2i) -> void:
 	var gameplay: Dictionary = info["gameplay"]
 	var depth: float = float(info["depth"])
 	_liquid_dose = LiquidExposureRef.after_step(_liquid_dose, gameplay, depth)
+	var flames = liquid_fire_at(cell)
+	if flames != null:
+		_liquid_dose += flames.dose_step    ## M6 F5: standing in burning oil, on top of the oil's own dose
 	_liquid_dose_gameplay = gameplay
 	var splash: float = float(gameplay.get("noise", 0.0))
 	if splash > 0.0 and _noise_system != null:
@@ -9565,6 +9637,9 @@ func _on_liquid_turn_end() -> void:
 	var info: Dictionary = liquid_at(agent.cell)
 	var gameplay: Dictionary = info["gameplay"] if not info.is_empty() else _liquid_dose_gameplay
 	_liquid_dose = LiquidExposureRef.after_turn(_liquid_dose, gameplay, float(info.get("depth", 0.0)))
+	var flames = liquid_fire_at(agent.cell)
+	if flames != null:
+		_liquid_dose += flames.dose_turn    ## M6 F5: the fire under the agent at the end of its turn
 	if not info.is_empty():
 		_liquid_dose_gameplay = gameplay
 		if LiquidExposureRef.is_lethal(_liquid_dose):
@@ -9573,7 +9648,7 @@ func _on_liquid_turn_end() -> void:
 
 ## A new player turn: the liquids run a turn, the prints fade, and a trap liquid that holds the agent costs AP.
 func _on_liquid_turn_start() -> void:
-	tick_liquids()
+	_liquid_world_turn()    ## the fire first (it reads the depths the rules read), then the flow
 	if _footprints != null:
 		_footprints.age_turn()
 	if agent != null and turn_manager != null:

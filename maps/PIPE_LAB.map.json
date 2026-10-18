@@ -1021,6 +1021,23 @@
       "FLUID_VALVE": "0:0:0:0;2:0:0:2.0;12:0:0:0"
      },
      "note": "M6 F6: the valve starts shut, opens at 2 s (the channel rises against its drain, the curb holds it: no overflow, by ruling), shuts at 12 s (it falls)"
+    },
+    {
+     "id": "oil_fire",
+     "profile": "engine",
+     "rail": "channel_rail",
+     "steps": [],
+     "at_key": 0,
+     "after_hold": 0,
+     "length": 1500,
+     "seed": 1,
+     "env": {
+      "WATER_STUDY": "petroleo",
+      "FLUID_PREROLL": "60",
+      "FLUID_AUTO_TICK": "0.5",
+      "LIQUID_IGNITE": "3:12,6,1"
+     },
+     "note": "M6 F5: the channel carries oil (WATER_STUDY), a blast point lights it at 3 s, the front runs 3 GU a turn, the flames eat the oil and loop in real time"
     }
    ]
   },

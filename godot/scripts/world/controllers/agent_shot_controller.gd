@@ -724,6 +724,8 @@ func fire_at_active() -> void:
 	## cached blast prediction is now stale.
 	room.bump_world_revision()
 	room.report_passage_of(cell_to_voxel.values(), "SHOT-PASSAGE")
+	for impact_cell: Vector2i in impact_gus.keys():    ## M6 F5 (Director: shots light a flammable liquid too)
+		room.ignite_liquids(Vector2(float(impact_cell.x) + 0.5, float(impact_cell.y) + 0.5), 0.75)
 
 	## VL-PERSIST: record into base coords so the damage survives a checkpoint
 	## restore (SaveState replays it after load_map()).

@@ -7,7 +7,7 @@ class_name LiquidFlameTongues
 extends MultiMeshInstance3D
 
 const SHADER: Shader = preload("res://godot/shaders/liquid_flame3d.gdshader")
-const PER_CELL: int = 3
+const PER_CELL: int = 4
 const FLOATS: int = 16     ## a 3D transform (12) + custom data (4) per instance
 const LIFT: float = 0.03
 

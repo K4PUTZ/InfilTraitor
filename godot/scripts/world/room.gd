@@ -9793,7 +9793,7 @@ func _process(_delta: float) -> void:
 	for k in range(_liquid_flames.size()):    ## M6 F5: the flame balls of every burning body
 		var flame_sheet = _liquid_fire_sheets[k]
 		if is_instance_valid(flame_sheet):
-			(_liquid_flames[k] as RefCounted).tick(_delta, _liquid_fires[k], flame_sheet.surface_y(), _ember_overlay)
+			(_liquid_flames[k] as RefCounted).tick(_delta, _liquid_fires[k], flame_sheet.surface_y(), _ember_overlay, _smoke_spark_overlay)
 		var tongue_node = _liquid_tongues[k]
 		if tongue_node != null and is_instance_valid(tongue_node):
 			tongue_node.update_frame()

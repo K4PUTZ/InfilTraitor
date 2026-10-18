@@ -44,6 +44,8 @@ var headroom_gu: PackedFloat32Array = PackedFloat32Array()  ## the free height o
 var _lit_at: PackedFloat32Array = PackedFloat32Array()    ## the visual clock at which a burning cell may start to light
 var _clock: float = 0.0
 var base_color: Color = Color(0.0, 0.0, 0.0, 0.0)    ## the COOL tongues among the others (`fire.base` [r, g, b], `fire.base_share` of the tongues, default 0.3): small, blue for a hydrocarbon, deep red for organic matter; alpha 0 = none
+var out_cells: PackedInt32Array = PackedInt32Array()   ## cells that went out since the last `take_out_events()`: smoke leaves them (the emitter drains this)
+var out_by_water: PackedByteArray = PackedByteArray()  ## parallel: 1 = put out by water (steam), 0 = the oil ran out (black smoke)
 var version: int = 0               ## bumped whenever a cell lights or goes out (the sheet redraws then)
 
 
@@ -143,6 +145,8 @@ func extinguish_rect(rect: Rect2) -> int:
 	for i in range(burning.size()):
 		if burning[i] == 1 and rect.has_point(centre_of(i)):
 			burning[i] = 0
+			out_cells.append(i)
+			out_by_water.append(1)
 			out += 1
 	if out > 0:
 		version += 1
@@ -150,6 +154,10 @@ func extinguish_rect(rect: Rect2) -> int:
 
 
 func extinguish_all() -> void:
+	for i in range(burning.size()):
+		if burning[i] == 1:
+			out_cells.append(i)
+			out_by_water.append(1)
 	burning.fill(0)
 	version += 1
 
@@ -167,6 +175,8 @@ func tick(put_out: Callable = Callable()) -> void:
 			if put_out.is_valid() and bool(put_out.call(centre_of(i))):
 				burning[i] = 0
 				changed = true
+				out_cells.append(i)
+				out_by_water.append(1)
 			else:
 				front.append(i)
 	var rounds: int = maxi(int(round(speed_gu / plane.cell_gu)), 1)
@@ -195,6 +205,8 @@ func tick(put_out: Callable = Callable()) -> void:
 			if not _wet(i):
 				burning[i] = 0
 				changed = true
+				out_cells.append(i)
+				out_by_water.append(0)
 	if changed:
 		version += 1
 

@@ -20,12 +20,20 @@ const SIZE_MIN: float = 0.25             ## the ember radius scale (a coal of th
 const SIZE_MAX: float = 0.9
 const LIFT_GU: float = 0.05              ## above the oil, so the depth test does not bury the first frame
 
+## A cell that goes out lets go of SMOKE (Director, 2026-10-18): dark and thick when the oil ran out, pale steam when water put it out. A patch going out is staggered so
+## it does not puff all at once, and a flood of cells is capped.
+const SMOKE_OIL: Color = Color(0.13, 0.11, 0.10, 0.78)
+const SMOKE_STEAM: Color = Color(0.9, 0.92, 0.95, 0.42)
+const SMOKE_SCALE: float = 1.2
+const SMOKE_MAX_PER_FRAME: int = 24
 var rate_scale: float = 1.0     ## dev / the experiments: 0 = no balls, 2 = twice as many
 var _carry: float = 0.0
 
 
 ## One frame. `base_y` is the sheet's surface height (GU), `embers` the room's `EmberOverlay`.
-func tick(dt: float, fire: RefCounted, base_y: float, embers: Node) -> void:
+## `smoke` is the room's `SmokeSparkOverlay` (or null).
+func tick(dt: float, fire: RefCounted, base_y: float, embers: Node, smoke: Node = null) -> void:
+	_smoke_out(fire, base_y, smoke)
 	if fire == null or embers == null or fire.hot_cells.is_empty():
 		_carry = 0.0
 		return
@@ -50,3 +58,18 @@ func tick(dt: float, fire: RefCounted, base_y: float, embers: Node) -> void:
 		var life: float = lerpf(LIFE_MIN, LIFE_MAX, size) * randf_range(0.7, 1.3)
 		embers.add_ember(Vector2.ZERO, life, Vector2.ZERO, 0.0, rise, 1.0, 0.0, size, 1.0, false,
 				Vector2.ZERO, Vector3(at.x, base_y + LIFT_GU, at.y))
+
+
+## Drains the fire's put-out cells into smoke puffs, anchored in 3D at the cell.
+func _smoke_out(fire: RefCounted, base_y: float, smoke: Node) -> void:
+	if fire == null or fire.out_cells.is_empty():
+		return
+	if smoke != null:
+		var n: int = mini(fire.out_cells.size(), SMOKE_MAX_PER_FRAME)
+		for k in range(n):
+			var at: Vector2 = fire.centre_of(fire.out_cells[k])
+			var color: Color = SMOKE_STEAM if fire.out_by_water[k] == 1 else SMOKE_OIL
+			smoke.add_smoke(Vector2.ZERO, color, SMOKE_SCALE * randf_range(0.8, 1.3), 1.0, 0, 1.0, randf_range(0.0, 0.5),
+					Vector2.ZERO, Vector3(at.x, base_y + LIFT_GU, at.y))
+	fire.out_cells = PackedInt32Array()
+	fire.out_by_water = PackedByteArray()

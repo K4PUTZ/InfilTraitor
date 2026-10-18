@@ -159,6 +159,29 @@ func _init() -> void:
 			inside += 1
 	_check(inside == 0 and absf(of.headroom_gu[deep] - 0.75) < 0.001 and of.headroom_gu[open_cell] > 1.0e8, "the front does not enter the starved bore, and the roof leaves %.2f GU of headroom (6 voxels)" % of.headroom_gu[deep])
 
+	## SMOKE (Director, 2026-10-18): a cell that goes out is reported once, black when the oil ran out and steam when water or an extinguisher did it.
+	var sp: RefCounted = _pool(0.3)
+	var sf = Fire.new()
+	sf.setup(sp, {"burn": 0.2})
+	sf.ignite(Vector2(13.0, 5.0), 0.6)
+	var none_yet: int = sf.out_cells.size()
+	sf.tick()
+	sf.tick()
+	var burnt: int = 0
+	for k in range(sf.out_cells.size()):
+		burnt += 1 if sf.out_by_water[k] == 0 else 0
+	_check(none_yet == 0 and burnt > 0, "cells whose oil ran out are reported as OIL smoke (%d)" % burnt)
+	var wp: RefCounted = _pool(2.0)
+	var wf = Fire.new()
+	wf.setup(wp, {"burn": 0.0})
+	wf.ignite(Vector2(13.0, 5.0), 1.0)
+	var lit_before: int = wf.count()
+	wf.extinguish_rect(Rect2(0.0, 0.0, 100.0, 100.0))
+	var steam: int = 0
+	for k in range(wf.out_cells.size()):
+		steam += wf.out_by_water[k]
+	_check(lit_before > 0 and steam == lit_before, "every cell an extinguisher puts out is reported as steam (%d of %d)" % [steam, lit_before])
+
 	## The tongues of flame follow the same visual levels: one MultiMesh instance per sub-flame per interior cell, level 0 where nothing burns.
 	var tp: RefCounted = _pool(2.0)
 	var tf = Fire.new()

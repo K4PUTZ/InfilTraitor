@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**320 scripts · 96525 lines total** (under `godot/scripts/`)
+**320 scripts · 96583 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -868,7 +868,7 @@ extends `Node3D` · 3522 lines
 
 **Constants / tuning**
 - `SHADER` = `preload("res://godot/shaders/liquid_flame3d.gdshader")`
-- `PER_CELL` = `3`
+- `PER_CELL` = `4`
 - `FLOATS` = `16`
 - `LIFT` = `0.03`
 
@@ -883,7 +883,7 @@ extends `Node3D` · 3522 lines
 
 ### `liquid_flames.gd`
 
-`class_name LiquidFlames` · extends `RefCounted` · 52 lines
+`class_name LiquidFlames` · extends `RefCounted` · 75 lines
 
 `godot/scripts/geometry/liquid_flames.gd`
 
@@ -3305,7 +3305,7 @@ extends `Node` · 236 lines
 
 ### `liquid_fire.gd`
 
-`class_name LiquidFire` · extends `RefCounted` · 248 lines
+`class_name LiquidFire` · extends `RefCounted` · 260 lines
 
 `godot/scripts/systems/liquid_fire.gd`
 
@@ -4885,7 +4885,7 @@ extends `SceneTree` · 445 lines
 
 ### `liquid_fire_selftest.gd`
 
-extends `SceneTree` · 182 lines
+extends `SceneTree` · 205 lines
 
 `godot/scripts/tools/liquid_fire_selftest.gd`
 

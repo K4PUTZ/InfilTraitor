@@ -20,8 +20,25 @@
   "notes": "first AI take, draft Bible values, MLX on M-series",
   "export": {
     "path": "ASSETS/AUDIO/MUSIC/Export/infiltration/infiltration-20261018-030bbd95.ogg",
-    "sha256": "280ad20a839ab67b26db2e8725b569070016ee79edf486dcf665dda51ee769e9",
+    "sha256": "b19e4268d3ded552555801f5b0d5bdc084c249276d83ea85a3e1e584257ae2d8",
     "format": "ogg vorbis q6, -16 LUFS",
-    "exported": "2026-10-18T04:19:34+00:00"
+    "exported": "2026-10-18T19:07:08+00:00"
+  },
+  "stems": {
+    "drums": {
+      "path": "ASSETS/AUDIO/MUSIC/Raw/infiltration/infiltration-20261018-030bbd95_stems/drums.wav",
+      "sha256": "dcd6793d985e0ca76b0fe6e97e8da753ea564e4e6b7a5d673cdb88c0ece8d5ea",
+      "duration_s": 16.484
+    },
+    "bass": {
+      "path": "ASSETS/AUDIO/MUSIC/Raw/infiltration/infiltration-20261018-030bbd95_stems/bass.wav",
+      "sha256": "f6b5a74fffe10fb23a3d759994e037a73b08f73d44dcc1e70df401f624bd2c49",
+      "duration_s": 16.484
+    },
+    "arp": {
+      "path": "ASSETS/AUDIO/MUSIC/Raw/infiltration/infiltration-20261018-030bbd95_stems/arp.wav",
+      "sha256": "a58c4a25afee65126540b4f2e0304e4156db0f595bf769626591b9c40bdc3ae3",
+      "duration_s": 16.484
+    }
   }
 }

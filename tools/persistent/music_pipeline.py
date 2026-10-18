@@ -15,6 +15,7 @@
 ##   python3 tools/persistent/music_pipeline.py register stealth path/to/take.wav --tool ACE-Step --tool-version 1.5 \
 ##       --license Apache-2.0 --prompt-file p.txt [--params seed=42,steps=60] [--notes "..."]
 ##   python3 tools/persistent/music_pipeline.py export <take-id>
+##   python3 tools/persistent/music_pipeline.py stems <take-id> drums=d.wav bass=b.wav   # per-line files of a take
 ##   python3 tools/persistent/music_pipeline.py list
 ##
 ## Stdlib only; needs ffmpeg for `register` (duration) and `export`. Exit code 1 on any failed check.
@@ -175,6 +176,25 @@ def cmd_export(a):
     print(f"[music] exported {rec['export']['path']}")
 
 
+def cmd_stems(a):
+    pf = PROV / f"{a.take}.json"
+    if not pf.exists():
+        fail(f"no take '{a.take}' (see `list`)")
+    rec = json.loads(pf.read_text())
+    dest = RAW / rec["context"] / f"{rec['id']}_stems"
+    dest.mkdir(parents=True, exist_ok=True)
+    stems = rec.setdefault("stems", {})
+    for spec in a.stem:  # name=path
+        name, _, path = spec.partition("=")
+        if not path or not Path(path).is_file():
+            fail(f"stem '{spec}': use name=path to an existing file")
+        d = dest / f"{name}{Path(path).suffix.lower()}"
+        shutil.copy2(path, d)
+        stems[name] = {"path": str(d.relative_to(ROOT)), "sha256": sha256(d), "duration_s": probe_duration(d)}
+    pf.write_text(json.dumps(rec, indent=2) + "\n")
+    print(f"[music] {rec['id']}: stems {', '.join(stems)} recorded (files in {dest.relative_to(ROOT)}, git-ignored)")
+
+
 def cmd_list(a):
     for f in sorted(PROV.glob("*.json")):
         d = json.loads(f.read_text())
@@ -194,6 +214,7 @@ def main():
         p.add_argument(f"--{k}")
     p.set_defaults(fn=cmd_register)
     p = sub.add_parser("export"); p.add_argument("take"); p.set_defaults(fn=cmd_export)
+    p = sub.add_parser("stems"); p.add_argument("take"); p.add_argument("stem", nargs="+", help="name=path"); p.set_defaults(fn=cmd_stems)
     sub.add_parser("list").set_defaults(fn=cmd_list)
     a = ap.parse_args(); a.fn(a)
 

@@ -12,7 +12,7 @@ PIPE (16 x 16 x 8 voxels): a circle of outer radius 8 centred on the FLOOR plane
 2 voxels thick, the bore radius 6. Along its length u: u = 15 is the MOUTH (open to the room), u = 0 the back, against the wall (closed by a
 plug). Grating bars every 2 voxels close the bore 1 voxel behind the mouth, so nothing passes. `pipe_n_<ix><iy>` stands on the north wall
 (mouth faces +y), `pipe_s_<ix><iy>` on the south wall (mouth faces -y); ix across (map x), iy from the wall side (north) / the mouth side (south).
-CURBS (8 x 8 x 2): `curb_lo` has its rail at vox x 0-1, `curb_hi` at x 6-7: placed side by side they bound a 2 GU channel along y.
+CURBS (8 x 8 x 4: 2026-10-18, they were 2 high; the water now stands 3 voxels at most and the extra voxel is the MARGIN the surface's waves need, so it meets the rail's inner face instead of hanging at its lip): `curb_lo` has its rail at vox x 0-1, `curb_hi` at x 6-7: placed side by side they bound a 2 GU channel along y.
 
 Usage:  python3 tools/asset_generation/gen_pipe_vox.py [--out ASSETS/props/vox]
 """
@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gen_dorm_vox import Model, write_vox  # noqa: E402
 
 SHELL, BARS, PLUG = 1, 2, 3
+CURB_HEIGHT = 4     ## voxels; the plane's brim (`fluid.rim` in the map) is one less
 
 
 def pipe_cell(v: int, u: int, z: int):
@@ -55,8 +56,8 @@ def pipe_piece(ix: int, iy: int, south: bool) -> Model:
 
 
 def curb(hi: bool) -> Model:
-    m = Model(8, 8, 2)
-    m.box(6 if hi else 0, 0, 0, 7 if hi else 1, 7, 1, 1)
+    m = Model(8, 8, CURB_HEIGHT)
+    m.box(6 if hi else 0, 0, 0, 7 if hi else 1, 7, CURB_HEIGHT - 1, 1)
     return m
 
 

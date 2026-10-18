@@ -1139,7 +1139,7 @@
      ],
      "fluid": {
       "cell": 0.5,
-      "rim": 2,
+      "rim": 3,
       "walls": [
        {
         "zone": [

@@ -121,5 +121,24 @@ func _init() -> void:
 		vf.advance_visual(0.1)
 	_check(vf.visual[far_i] == 0.0 and vf.hot_cells.is_empty(), "and is dark after it")
 
+	## The tongues of flame follow the same visual levels: one MultiMesh instance per sub-flame per interior cell, level 0 where nothing burns.
+	var tp: RefCounted = _pool(2.0)
+	var tf = Fire.new()
+	tf.setup(tp, {"burn": 0.0})
+	var tongues = load("res://godot/scripts/geometry/liquid_flame_tongues.gd").new()
+	tongues.setup(tf, 0.0, 0.45, 1.0)
+	var interior: int = (tp.cols - 2) * (tp.rows - 2)
+	_check(tongues.multimesh.instance_count == interior * tongues.PER_CELL, "the tongues hold %d instances (%d interior cells x %d)" % [tongues.multimesh.instance_count, interior, tongues.PER_CELL])
+	tf.ignite(Vector2(13.0, 2.0), 0.6)
+	for _f in range(10):
+		tf.advance_visual(0.1)
+	tongues.update_frame()
+	var lit_instances: int = 0
+	for k in range(tongues._cells.size()):
+		if tongues._buf[k * tongues.FLOATS + 12] > 0.0:
+			lit_instances += 1
+	_check(lit_instances > 0 and lit_instances < tongues._cells.size(), "after a light only the burning cells' instances have a level (%d of %d)" % [lit_instances, tongues._cells.size()])
+	tongues.free()
+
 	print("\n== %s ==" % ("PASS" if _failures == 0 else "FAIL (%d)" % _failures))
 	quit(0 if _failures == 0 else 1)

@@ -1037,7 +1037,88 @@
       "FLUID_AUTO_TICK": "0.5",
       "LIQUID_IGNITE": "3:12,6,1"
      },
-     "note": "M6 F5: the channel carries oil (WATER_STUDY), a blast point lights it at 3 s, the front runs 3 GU a turn, the flames eat the oil and loop in real time"
+     "note": "M6 F5 (final look): the channel carries oil (WATER_STUDY) that stays dark, a blast point lights it at 3 s, the front sweeps 3 GU a turn, tongues of flame (LiquidFlameTongues) rise from the burning cells with a few ember sparks; defaults FLAME_STYLE=both FIRE_SURFACE=0.1 FLAME_H=1.0 FLAME_W=0.45 FLAME_EMBER_RATE=0.6"
+    },
+    {
+     "id": "oil_fire_a",
+     "profile": "engine",
+     "rail": "channel_rail",
+     "steps": [],
+     "at_key": 0,
+     "after_hold": 0,
+     "length": 900,
+     "seed": 1,
+     "env": {
+      "WATER_STUDY": "petroleo",
+      "FLUID_PREROLL": "60",
+      "FLUID_AUTO_TICK": "0.5",
+      "LIQUID_IGNITE": "3:12,6,1",
+      "FLAME_STYLE": "embers",
+      "FIRE_SURFACE": "0.1",
+      "FLAME_EMBER_RATE": "2.5"
+     },
+     "note": "F5 experiment A: dark oil, only the blast's ember balls, 2.5x as many"
+    },
+    {
+     "id": "oil_fire_b",
+     "profile": "engine",
+     "rail": "channel_rail",
+     "steps": [],
+     "at_key": 0,
+     "after_hold": 0,
+     "length": 900,
+     "seed": 1,
+     "env": {
+      "WATER_STUDY": "petroleo",
+      "FLUID_PREROLL": "60",
+      "FLUID_AUTO_TICK": "0.5",
+      "LIQUID_IGNITE": "3:12,6,1",
+      "FLAME_STYLE": "tongues",
+      "FIRE_SURFACE": "0.1"
+     },
+     "note": "F5 experiment B: dark oil, only billboard tongues of flame (noise-scrolled teardrops)"
+    },
+    {
+     "id": "oil_fire_c",
+     "profile": "engine",
+     "rail": "channel_rail",
+     "steps": [],
+     "at_key": 0,
+     "after_hold": 0,
+     "length": 900,
+     "seed": 1,
+     "env": {
+      "WATER_STUDY": "petroleo",
+      "FLUID_PREROLL": "60",
+      "FLUID_AUTO_TICK": "0.5",
+      "LIQUID_IGNITE": "3:12,6,1",
+      "FLAME_STYLE": "both",
+      "FIRE_SURFACE": "0.1",
+      "FLAME_EMBER_RATE": "1.0"
+     },
+     "note": "F5 experiment C: dark oil, tongues + the ember balls"
+    },
+    {
+     "id": "oil_fire_d",
+     "profile": "engine",
+     "rail": "channel_rail",
+     "steps": [],
+     "at_key": 0,
+     "after_hold": 0,
+     "length": 900,
+     "seed": 1,
+     "env": {
+      "WATER_STUDY": "petroleo",
+      "FLUID_PREROLL": "60",
+      "FLUID_AUTO_TICK": "0.5",
+      "LIQUID_IGNITE": "3:12,6,1",
+      "FLAME_STYLE": "both",
+      "FIRE_SURFACE": "0.1",
+      "FLAME_H": "1.3",
+      "FLAME_W": "0.42",
+      "FLAME_EMBER_RATE": "0.6"
+     },
+     "note": "F5 experiment D: taller, narrower tongues + few balls"
     }
    ]
   },

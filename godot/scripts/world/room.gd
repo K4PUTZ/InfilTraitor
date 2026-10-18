@@ -11,6 +11,7 @@ const LiquidSheet3DRef = preload("res://godot/scripts/geometry/liquid_sheet3d.gd
 const LiquidFieldRef = preload("res://godot/scripts/systems/liquid_field.gd")  ## M6: which liquid stands in a cell, and how deep
 const LiquidExposureRef = preload("res://godot/scripts/systems/liquid_exposure.gd")  ## M6: what a liquid does to an agent
 const FootprintMarks3DRef = preload("res://godot/scripts/geometry/footprint_marks3d.gd")  ## M6: the prints left after a liquid
+const LiquidFlameTonguesRef = preload("res://godot/scripts/geometry/liquid_flame_tongues.gd")  ## M6 F5: tongues of flame
 const LiquidFlamesRef = preload("res://godot/scripts/geometry/liquid_flames.gd")  ## M6 F5: the flame balls of a burning liquid
 const LiquidFireRef = preload("res://godot/scripts/systems/liquid_fire.gd")  ## M6 F5: a flammable liquid on fire
 const FluidPlaneRef = preload("res://godot/scripts/systems/fluid_plane.gd")  ## M6: the gameplay truth of a body of liquid
@@ -161,6 +162,7 @@ const LIQUID_FOOTPRINT_FADE: float = 0.88   ## how much lighter the last print s
 var _flood_sheet: MeshInstance3D = null      ## F12 bench (`scenario_flood`)
 var _flood_timer: Timer = null
 var _flood_sheets: Array = []              ## F8 bench: the channels
+var _liquid_tongues: Array = []            ## M6 F5: one LiquidFlameTongues per fire (or null when the style has none)
 var _liquid_flames: Array = []             ## M6 F5: one LiquidFlames emitter per fire, same order as `_liquid_fires` (its sheet in `_liquid_fire_sheets`)
 var _liquid_fire_sheets: Array = []
 var _liquid_fires: Array = []              ## M6 F5: one LiquidFire per flammable body
@@ -9442,6 +9444,10 @@ func _attach_liquids(live: Node3D) -> void:
 	_liquid_fires.clear()
 	_liquid_flames.clear()
 	_liquid_fire_sheets.clear()
+	for old_tongues in _liquid_tongues:
+		if is_instance_valid(old_tongues):
+			old_tongues.queue_free()
+	_liquid_tongues.clear()
 	if _liquid_field == null:
 		_liquid_field = LiquidFieldRef.new()
 	_liquid_field.clear()
@@ -9481,7 +9487,18 @@ func _attach_liquids(live: Node3D) -> void:
 			sheet.fire = burn
 			_liquid_fires.append(burn)
 			_liquid_fire_sheets.append(sheet)
-			_liquid_flames.append(LiquidFlamesRef.new())
+			var flames = LiquidFlamesRef.new()
+			var style: String = _dev_flag("FLAME_STYLE", "both")    ## experiments: embers | tongues | both
+			flames.rate_scale = (float(_dev_flag("FLAME_EMBER_RATE", "0.6")) if style != "tongues" else 0.0)
+			_liquid_flames.append(flames)
+			sheet.set_fire_surface(float(_dev_flag("FIRE_SURFACE", "0.1")))
+			if style != "embers":
+				var tongues = LiquidFlameTonguesRef.new()
+				live.add_child(tongues)
+				tongues.setup(burn, sheet.surface_y(), float(_dev_flag("FLAME_W", "0.45")), float(_dev_flag("FLAME_H", "1.0")))
+				_liquid_tongues.append(tongues)
+			else:
+				_liquid_tongues.append(null)
 		if plane != null:
 			sheet.snap()
 		_liquid_sheets.append(sheet)
@@ -9777,6 +9794,9 @@ func _process(_delta: float) -> void:
 		var flame_sheet = _liquid_fire_sheets[k]
 		if is_instance_valid(flame_sheet):
 			(_liquid_flames[k] as RefCounted).tick(_delta, _liquid_fires[k], flame_sheet.surface_y(), _ember_overlay)
+		var tongue_node = _liquid_tongues[k]
+		if tongue_node != null and is_instance_valid(tongue_node):
+			tongue_node.update_frame()
 	if _frame_probe:
 		var t_now: int = Time.get_ticks_usec()
 		if not _frame_probe_armed:

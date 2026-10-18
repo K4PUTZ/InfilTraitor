@@ -41,6 +41,7 @@ uniform float time_scale = 1.0;         // 0 = frozen (ice), 1 = the usual pace,
 uniform float foam_amount = 1.0;        // the foam along the curbs
 uniform float ring_amount = 1.0;        // the ring ripples of the surface look
 uniform float wave_amount = 1.0;        // the bands and glints of the surface look
+uniform float fire_surface = 0.2;       // how much a burning cell tints the SURFACE (the oil stays dark; the flames above it are the fire: LiquidFlames / LiquidFlameTongues)
 uniform float rain = 0.0;               // 0 off .. 1 heavy: concentric rings from random drops, independent of the flow
 uniform float dot_cells = 11.0;          // stipple cells per GU
 
@@ -377,8 +378,8 @@ void fragment() {
 		// real time, so a paused game still burns. Unshaded, brighter than the water so it reads as light.
 		float heat = flame * (0.45 + 0.55 * vnoise(lp * 5.0 + vec2(TIME * 0.8, -TIME * 2.4)) * (0.6 + 0.4 * vnoise(lp * 11.0 + vec2(-TIME * 1.3, -TIME * 3.7))));
 		vec3 fire_col = mix(vec3(0.85, 0.18, 0.03), vec3(1.0, 0.82, 0.25), smoothstep(0.5, 0.95, heat));
-		col.rgb = mix(col.rgb, fire_col * 1.15, clamp(heat * 1.5, 0.0, 1.0));
-		col.a = max(col.a, clamp(heat * 1.4, 0.0, 1.0));
+		col.rgb = mix(col.rgb, fire_col * 1.15, clamp(heat * 1.5, 0.0, 1.0) * fire_surface);
+		col.a = max(col.a, clamp(heat * 1.4, 0.0, 1.0) * fire_surface);
 	}
 	ALBEDO = col.rgb;
 	ALPHA = col.a * smoothstep(0.0, 0.03, edge) * wet;

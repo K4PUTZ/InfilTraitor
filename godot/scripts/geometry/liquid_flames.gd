@@ -8,17 +8,18 @@
 class_name LiquidFlames
 extends RefCounted
 
-const PER_CELL_PER_SECOND: float = 3.5   ## flames a hot cell throws a second (a cell is 0.25 GU^2 at 0.5 GU)
+const PER_CELL_PER_SECOND: float = 3.5   ## sparks a hot cell throws a second (a cell is 0.25 GU^2 at 0.5 GU); the tongues are the body of the fire, these are the sparks that leave it
 const MAX_PER_SECOND: float = 160.0      ## the cap for one body
 const MAX_DT: float = 0.1                ## a stalled frame is capped, not paid back
 const LIFE_MIN: float = 0.6             ## seconds
 const LIFE_MAX: float = 1.7
 const RISE_MIN_PX_S: float = 90.0        ## the blast's own buoyancy is 150 px/s +-45 %
 const RISE_MAX_PX_S: float = 300.0
-const SIZE_MIN: float = 0.5              ## the ember radius scale (a coal of the crater is 1.0, the fuse's spark 0.3-0.5)
-const SIZE_MAX: float = 2.0
+const SIZE_MIN: float = 0.25             ## the ember radius scale (a coal of the crater is 1.0, the fuse's spark 0.3-0.5)
+const SIZE_MAX: float = 0.9
 const LIFT_GU: float = 0.05              ## above the oil, so the depth test does not bury the first frame
 
+var rate_scale: float = 1.0     ## dev / the experiments: 0 = no balls, 2 = twice as many
 var _carry: float = 0.0
 
 
@@ -28,7 +29,7 @@ func tick(dt: float, fire: RefCounted, base_y: float, embers: Node) -> void:
 		_carry = 0.0
 		return
 	var step: float = minf(dt, MAX_DT)
-	_carry += minf(float(fire.hot_cells.size()) * PER_CELL_PER_SECOND, MAX_PER_SECOND) * step
+	_carry += minf(float(fire.hot_cells.size()) * PER_CELL_PER_SECOND, MAX_PER_SECOND) * step * rate_scale
 	var spawn: int = int(_carry)
 	_carry -= float(spawn)
 	var half: float = fire.plane.cell_gu * 0.5

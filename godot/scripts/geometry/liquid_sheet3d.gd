@@ -52,6 +52,12 @@ func setup(rect: Rect2, base_y: float, params: Dictionary, flow: Vector2, fluid_
 
 
 ## One turn of the liquid (the caller's TIC, or the dev auto-tick).
+## How much a burning cell tints the surface itself (0 = the oil stays as it is, 1 = the first version's orange sheet).
+func set_fire_surface(amount: float) -> void:
+	if material_override != null:
+		(material_override as ShaderMaterial).set_shader_parameter("fire_surface", amount)
+
+
 ## The surface height (GU) the flames are born at.
 func surface_y() -> float:
 	return _base_y

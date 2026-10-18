@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**321 scripts · 97042 lines total** (under `godot/scripts/`)
+**321 scripts · 97046 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -6599,7 +6599,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12936 lines
+extends `Node2D` · 12940 lines
 
 `godot/scripts/world/room.gd`
 
@@ -6682,7 +6682,8 @@ extends `Node2D` · 12936 lines
 - `VOXEL_STEP_PX` = `20.0`
 - `LIQUID_FOOTPRINT_STEPS` = `8`
 - `LIQUID_FOOTPRINT_FADE` = `0.88`
-- `FIRE_LIGHT_BUDGET_US` = `2500`
+- `FIRE_LIGHT_BUDGET_US` = `5000`
+- `FIRE_LIGHT_UPLOAD_S` = `0.5`
 - `GROUND_SCATTER_LAYER_BUDGET` = `1.5`
 
 ---

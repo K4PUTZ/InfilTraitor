@@ -436,11 +436,11 @@ func set_lights(lights: Array, shadow_results: Array) -> void:
 	clear_caches()
 
 
-## A voxel with all six neighbours occupied has no exposed face: nothing it holds can reach the screen.
+## A voxel with its four sides and its top occupied has no face the camera can see (it never looks up from below): nothing it holds can reach the screen.
 func is_buried(cell: Vector2i, level: int) -> bool:
 	return _occupancy_has(level, cell + Vector2i(1, 0)) and _occupancy_has(level, cell - Vector2i(1, 0)) \
 			and _occupancy_has(level, cell + Vector2i(0, 1)) and _occupancy_has(level, cell - Vector2i(0, 1)) \
-			and _occupancy_has(level + 1, cell) and _occupancy_has(level - 1, cell)
+			and _occupancy_has(level + 1, cell)
 
 
 ## True when any light the field holds is a fire (a map with none never pays for `warm_for`).

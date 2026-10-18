@@ -849,7 +849,7 @@ func placed_keys_in_gus(gus: Array) -> Array:
 	return keys
 
 
-## One cell's light bucket AND warmth from the field. A cell buried in solid (all six neighbours occupied) shows nothing and is skipped. Returns true when it was written.
+## One cell's light bucket AND warmth from the field. A cell buried in solid (its four sides and its top occupied) shows nothing and is skipped. Returns true when it was written.
 func write_fire_cell(field, key: Vector3i) -> bool:
 	var cell := Vector2i(key.x, key.y)
 	var level: int = key.z

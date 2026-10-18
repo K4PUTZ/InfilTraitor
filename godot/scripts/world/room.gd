@@ -169,7 +169,9 @@ var _liquid_fire_sheets: Array = []
 var _liquid_fires: Array = []              ## M6 F5: one LiquidFire per flammable body
 var _fire_job: Dictionary = {}               ## M6 F5: Vector3i(x, y, level) cells whose fire light is still to be written
 var _fire_job_levels: Dictionary = {}
-const FIRE_LIGHT_BUDGET_US: int = 2500
+var _fire_upload_since: float = 0.0
+const FIRE_LIGHT_BUDGET_US: int = 5000
+const FIRE_LIGHT_UPLOAD_S: float = 0.5
 var _liquid_fire_lights: Array = []        ## M6 F5: one LiquidFireLights per burning body (visual lights the field reads, never the tactical registry)
 var _liquid_sheets: Array = []             ## M6: one LiquidSheet3D per `liquids` body, see _attach_liquids()
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
@@ -9592,7 +9594,7 @@ func liquid_fire_at(cell: Vector2i):
 
 ## M6 F5: the burning bodies' lights follow their flames; a light that moved a step repaints the GUs it reaches (the temporal-light path: no rebuild, no occupancy diff).
 func _tick_liquid_fire_lights(delta: float) -> void:
-	_step_fire_light_job()
+	_step_fire_light_job(delta)
 	if _liquid_fire_lights.is_empty() or _voxel_light_field == null or _voxel_board == null:
 		return
 	var changed: Array = []
@@ -9623,7 +9625,7 @@ func _tick_liquid_fire_lights(delta: float) -> void:
 
 
 ## FIRE LIGHT, sliced: the queued cells are written a few ms a frame (a whole batch in one frame cost hundreds of ms on the Moto), and the levels they touched are uploaded once, when the queue is empty.
-func _step_fire_light_job() -> void:
+func _step_fire_light_job(delta: float) -> void:
 	if _fire_job.is_empty() or _voxel_light_field == null or _voxel_board == null:
 		return
 	var t0: int = Time.get_ticks_usec()
@@ -9638,8 +9640,10 @@ func _step_fire_light_job() -> void:
 			break
 	for key in done:
 		_fire_job.erase(key)
-	if not _fire_job.is_empty():
-		return
+	_fire_upload_since += delta
+	if not _fire_job.is_empty() and _fire_upload_since < FIRE_LIGHT_UPLOAD_S:
+		return   ## still working: but the light must show as it is written, so the levels touched so far go up every half second
+	_fire_upload_since = 0.0
 	_voxel_board.flush_cell_soot()
 	var live: Node = board3d()
 	if live != null:

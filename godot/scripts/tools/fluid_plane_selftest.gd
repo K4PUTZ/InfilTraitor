@@ -152,5 +152,18 @@ func _init() -> void:
 		same = same and sync.depth[i] == spread.depth[i]
 	_check(same and sync.spilled == spread.spilled, "30 ticks run as spread rounds end on exactly the synchronous depths")
 	_check(spread.committed != spread.depth, "committed is one tick behind the live depths between ticks (it moves when the next tick begins)")
+	## On a worker thread the rounds still end on exactly the synchronous depths (a plane owns its data: one worker, never two), and a thick liquid runs fewer rounds.
+	var worker = _golden_channel()
+	worker.threaded = true
+	for _t in range(30):
+		worker.begin_tick()
+	worker.finish_tick()
+	var same_thread: bool = true
+	for i in range(sync.depth.size()):
+		same_thread = same_thread and sync.depth[i] == worker.depth[i]
+	_check(same_thread and sync.spilled == worker.spilled, "30 ticks on a worker thread end on exactly the synchronous depths")
+	var thick = _golden_channel()
+	thick.rounds_scale = 0.55
+	_check(thick.rounds_per_tick() < sync.rounds_per_tick() and thick.rounds_per_tick() >= 1, "a thick liquid runs fewer rounds a turn (%d against %d)" % [thick.rounds_per_tick(), sync.rounds_per_tick()])
 	print("\n== %s ==" % ("PASS" if _failures == 0 else "FAIL (%d)" % _failures))
 	quit(0 if _failures == 0 else 1)

@@ -1099,7 +1099,7 @@ Bench: `maps/PIPE_LAB.map.json` (two grated half-buried pipes in the long walls,
 | F5 | 🟡 mud trap + deep-lethal blocking built; fire (oil), corrosion, cryogenic freezing, lava crust plates and quicksand NOT yet (need a fire system / a floor-behaviour seam) **Per-liquid rules, one by one**: fire first (oil burns and ignites the agent, clean water extinguishes), then acid / toxic corrosion, lava (light source, ignites), cryogenic (freezes neighbours into plates), lama and quicksand traps (`trap`), lava crust plates | each rule has its own take and selftest | F3 |
 | F6 | 🟡 the API is built and tested (`FluidPlane.set_source_rate`, `lower_ground` for a breach, `LiquidField.set_source_rate`); the valve's INPUT / HUD and the blast hook are not (a design call) **The player changes the flow**: a valve or grate on a pipe (the source rate), a breach by blast spills over the curb | take: close the valve, the channel drains | F2 |
 | F7 | **Rain** wired to weather for any exposed body (the shader layer exists, `rain` 0..1) | a map with weather wets its liquids | weather system (none yet) |
-| F8 | ✅ on the Moto 2026-10-17: ONE channel was 102 ms a tick; the lean loop + 0.5 GU cells + rounds spread over frames bring 8 channels to +0.9 ms/frame (second block below); a worker thread and per-liquid rounds were NOT needed; the Galaxy is not measured **Moto and Galaxy measurement** of a map with N bodies (cost per sheet, `FluidPlane` tick on the main thread; a worker only if it measures) | numbers in `DEVICE_DIAGNOSTICS` | F2 |
+| F8 | ✅ on the Moto 2026-10-17: ONE channel was 102 ms a tick; the lean loop + 0.5 GU cells + rounds spread over frames bring 8 channels to +0.9 ms/frame (second block below); then a worker thread and per-liquid rounds were added anyway for margin (third block below); the Galaxy is not measured **Moto and Galaxy measurement** of a map with N bodies (cost per sheet, `FluidPlane` tick on the main thread; a worker only if it measures) | numbers in `DEVICE_DIAGNOSTICS` | F2 |
 | F9 | Swimming / wading / struggling ANIMATIONS and the `swim_ap` rule | in the MOVEMENT milestone | the approved 3D agent model |
 | F10 | Footprints from puddles, mud and dog droppings (AI + MOVEMENT milestones: guards notice and follow prints, see the 2026-10-17 rulings) | in the props milestone | props milestone |
 | F11 | Gases (maybe), a per-GU concentration plane read by detection and fire | a separate decision | F1 |
@@ -1155,6 +1155,18 @@ Reading: the tick is LINEAR in bodies (about 100 ms a channel, 0.30 ms a cell on
 | 8 channels at the old 0.25 GU cells (steps 1 + 3 only) | | 92.1 |
 
 Desktop: 8 channels 190 ms -> 71 ms a synchronous tick from the loop alone; `liquid_rules_selftest` 10 s -> 0.9 s. Reading: the cell size is what made it fit (0.5 GU is 4 x fewer cells and half the rounds), the loop and the spreading make it smooth; the sheet's draw cost is outside this table (render GPU was 24.6-24.8 in all rows here; the earlier run that showed 37 ms for 4 and 8 bodies was taken while the main thread stalled, so treat that GPU number as unreliable, and measure a body on screen at the zoom of play before shipping a map with several). The water level the agent meets is the one at the START of the turn; the sheet may show it a few frames ahead. Galaxy not measured. The flow at 0.5 GU differs a little from 0.25 (PIPE_LAB at 60 turns: 1.92 voxels against 2.00).
+
+**F8 margin: worker thread and rounds per liquid BUILT (2026-10-17, Director: "para ter margem").** (4) `FluidPlane.threaded` (default on in the game, dev flag `FLUID_THREAD=0` for the control): `begin_tick()` queues the tick's rounds as a `WorkerThreadPool` task, `has_pending()` / `finish_tick()` wait on it, a valve or a breach finishes it first, the sheet's `_exit_tree` waits for it; the sheet eases to the live depths while the worker writes them. Pinned: 30 ticks on a worker end on exactly the synchronous depths. (5) `rounds_scale` = `lerp(0.5, 1.0, fluidity)`, set by `from_body`: a thick liquid runs fewer rounds a turn (lama: 13 against 24 at the old cell). Moto, uncapped, same bench:
+
+| Bodies | main thread, rounds spread over frames | worker thread |
+|---|---|---|
+| none | 26.1 ms/frame | 26.1 |
+| 1 channel | 26.1 | 26.1 |
+| 4 channels | 26.2 | 26.2 |
+| 8 channels | 27.0 | **26.3** |
+| 8 channels at the old 0.25 GU cells | 91.1 (GPU 32.9) | **31.8** (GPU 24.8) |
+
+Reading: at 0.5 GU cells the worker is worth ~0.7 ms a frame for 8 channels; its real value is the margin for a finer grid or a bigger body (8 bodies at 0.25 GU: 91 -> 32 ms). The worker costs one task a body a turn; on a device with few cores the pool is shared with the soft sheets.
 
 ---
 

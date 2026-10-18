@@ -5371,6 +5371,7 @@ func _flood_channels(live: Node3D, count: int, cell: float) -> bool:
 		plane.add_source(Rect2(rect.position, Vector2(1.5, cell)), 2.0)
 		plane.add_sink(Rect2(rect.position + Vector2(0.0, 10.0 - cell), Vector2(1.5, cell)), 1.0)
 		var sheet: MeshInstance3D = LiquidSheet3DRef.new()
+		sheet.use_thread = _dev_flag("FLUID_THREAD", "1") != "0"
 		live.add_child(sheet)
 		sheet.setup(rect, base_y, params, Vector2(0.0, 1.0), plane)
 		planes.append(plane)
@@ -9461,6 +9462,7 @@ func _attach_liquids(live: Node3D) -> void:
 			for _t in range(preroll):
 				plane.tick()
 		var sheet: MeshInstance3D = LiquidSheet3DRef.new()
+		sheet.use_thread = _dev_flag("FLUID_THREAD", "1") != "0"
 		live.add_child(sheet)
 		sheet.setup(body["rect"], base_y, params, body["flow"], plane)
 		_liquid_field.add_body(kind, body["rect"], plane)

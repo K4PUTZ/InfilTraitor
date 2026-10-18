@@ -57,11 +57,15 @@ def main() -> int:
     ap.add_argument("--stress", action="store_true")
     ap.add_argument("--f8", action="store_true", help="M6 F8: 1, 4 and 8 copies of the PIPE_LAB channel instead of the whole-segment bench")
     ap.add_argument("--uncapped", action="store_true")
+    ap.add_argument("--extra", action="append", default=[], help="another dev flag, K=V (repeatable), e.g. FLUID_THREAD=0")
     ap.add_argument("--print", action="store_true")
     ap.add_argument("--save", default="")
     ap.add_argument("--seconds", type=int, default=190)
     args = ap.parse_args()
     f = flags(args)
+    for kv in args.extra:
+        k, _, v = kv.partition("=")
+        f[k] = v
     if args.print or not args.device:
         for k, v in f.items():
             print("%s=%s" % (k, v))

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**316 scripts · 95733 lines total** (under `godot/scripts/`)
+**316 scripts · 95778 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -860,7 +860,7 @@ extends `Node3D` · 3522 lines
 
 ### `liquid_sheet3d.gd`
 
-`class_name LiquidSheet3D` · extends `MeshInstance3D` · 137 lines
+`class_name LiquidSheet3D` · extends `MeshInstance3D` · 145 lines
 
 `godot/scripts/geometry/liquid_sheet3d.gd`
 
@@ -875,6 +875,7 @@ extends `Node3D` · 3522 lines
 - `FRAMES_PER_TICK` = `10`
 
 **Public vars**
+- `var use_thread: bool = true`
 - `var plane: RefCounted = null`
 - `var auto_tick_seconds: float = 0.0`
 
@@ -2900,7 +2901,7 @@ extends `Node` · 236 lines
 
 ### `fluid_plane.gd`
 
-`class_name FluidPlane` · extends `RefCounted` · 330 lines
+`class_name FluidPlane` · extends `RefCounted` · 352 lines
 
 `godot/scripts/systems/fluid_plane.gd`
 
@@ -4435,7 +4436,7 @@ extends `SceneTree` · 196 lines
 
 ### `fluid_plane_selftest.gd`
 
-extends `SceneTree` · 156 lines
+extends `SceneTree` · 169 lines
 
 `godot/scripts/tools/fluid_plane_selftest.gd`
 
@@ -6512,7 +6513,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12745 lines
+extends `Node2D` · 12747 lines
 
 `godot/scripts/world/room.gd`
 

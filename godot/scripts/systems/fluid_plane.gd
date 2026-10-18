@@ -36,6 +36,9 @@ var _perm: PackedFloat32Array = PackedFloat32Array()    ## 4 per cell: how much 
 var _sources: Array = []              ## {"cells": PackedInt32Array, "rate": float} depth added per cell per TIC
 var _sinks: Array = []
 var committed: PackedFloat32Array = PackedFloat32Array()   ## the depths the RULES read: the state after the last COMPLETE tick, changed only at a tick's start (never by frame timing)
+var threaded: bool = false    ## true: a tick's rounds run on a worker thread (`WorkerThreadPool`); the sheet reads the live depths while they change (a torn read is a pixel of water for a frame)
+var rounds_scale: float = 1.0 ## a THICK liquid needs fewer rounds a turn (its flux is slow anyway): `from_body` sets it from the fluidity
+var _task_id: int = -1
 var _rounds_left: int = 0     ## rounds of an incremental tick still to run (`begin_tick`, `step_rounds`)
 var _delta: PackedFloat32Array = PackedFloat32Array()   ## the round's scratch (kept between rounds so nothing is allocated in a tick)
 
@@ -158,6 +161,7 @@ static func from_body(body: Dictionary, liquid_fluidity: float) -> RefCounted:
 	var width: int = int(round(rect.size.x / cell_size)) + 2
 	var height: int = int(round(rect.size.y / cell_size)) + 2
 	plane.setup(width, height, cell_size, rect.position - Vector2(cell_size, cell_size), liquid_fluidity)
+	plane.rounds_scale = lerpf(0.5, 1.0, clampf(liquid_fluidity, 0.0, 1.0))
 	for r in range(height):
 		for c in range(width):
 			if plane.is_rim(c, r):
@@ -202,9 +206,20 @@ func begin_tick() -> void:
 	finish_tick()
 	committed = depth.duplicate()
 	_rounds_left = rounds_per_tick()
+	if threaded:
+		_task_id = WorkerThreadPool.add_task(_run_pending_rounds, false, "FluidPlane tick")
+
+
+## The worker's body: every round the tick still owes, back to back.
+func _run_pending_rounds() -> void:
+	var todo: int = _rounds_left
+	for _round in range(todo):
+		_round_step()
 
 
 func step_rounds(count: int) -> void:
+	if _task_id != -1:
+		return    ## a worker owns the rounds
 	var todo: int = mini(count, _rounds_left)
 	for _round in range(todo):
 		_round_step()
@@ -212,18 +227,25 @@ func step_rounds(count: int) -> void:
 
 
 func has_pending() -> bool:
+	if _task_id != -1:
+		return not WorkerThreadPool.is_task_completed(_task_id)
 	return _rounds_left > 0
 
 
 ## Runs what is left of an incremental tick now (a hitch of at most that remainder).
 func finish_tick() -> void:
+	if _task_id != -1:
+		WorkerThreadPool.wait_for_task_completion(_task_id)
+		_task_id = -1
+		_rounds_left = 0
+		return
 	step_rounds(_rounds_left)
 
 
 ## A round moves the liquid at most one cell, so a tick needs as many rounds as the cells a wave crosses in a turn: `ROUNDS_PER_TICK` at the 0.25 GU the
 ## constant was tuned for, half as many at 0.5 GU (the same distance a turn, half the cost).
 func rounds_per_tick() -> int:
-	return maxi(int(round(float(ROUNDS_PER_TICK) * 0.25 / cell_gu)), 1)
+	return maxi(int(round(float(ROUNDS_PER_TICK) * 0.25 / cell_gu * rounds_scale)), 1)
 
 
 ## One round of flow. M6 F8 (2026-10-17): the Moto measured 12.7 us a cell-round with the first form of this loop (a `dirs` array and an `index()` call per

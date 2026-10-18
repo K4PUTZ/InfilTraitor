@@ -15,6 +15,7 @@ const LIFT: float = 0.03              ## above the floor top, below the contact 
 const WET_VOXELS: float = 0.5          ## the depth at which a vertex is fully opaque
 
 const FRAMES_PER_TICK: int = 10         ## a turn's rounds are spread over about this many frames (M6 F8)
+var use_thread: bool = true            ## the plane's rounds run on a worker thread (dev flag FLUID_THREAD=0 puts them back on the main thread, a few a frame)
 var plane: RefCounted = null           ## a FluidPlane, or null for a static sheet
 var auto_tick_seconds: float = 0.0     ## dev: tick the plane by itself every N seconds of real time (0 = only when told)
 
@@ -29,6 +30,8 @@ func setup(rect: Rect2, base_y: float, params: Dictionary, flow: Vector2, fluid_
 	_rect = rect
 	_base_y = base_y
 	plane = fluid_plane
+	if plane != null:
+		plane.threaded = use_thread
 	name = "LiquidSheet3D"
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var material := ShaderMaterial.new()
@@ -47,6 +50,11 @@ func setup(rect: Rect2, base_y: float, params: Dictionary, flow: Vector2, fluid_
 
 
 ## One turn of the liquid (the caller's TIC, or the dev auto-tick).
+func _exit_tree() -> void:
+	if plane != null:
+		plane.finish_tick()    ## a worker must not outlive the node that owns the plane
+
+
 func tick() -> void:
 	if plane != null:
 		plane.begin_tick()    ## the rounds run a few a frame in `_process`; the rules read the committed depths

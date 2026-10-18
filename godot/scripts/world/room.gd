@@ -13,6 +13,7 @@ const LiquidExposureRef = preload("res://godot/scripts/systems/liquid_exposure.g
 const FootprintMarks3DRef = preload("res://godot/scripts/geometry/footprint_marks3d.gd")  ## M6: the prints left after a liquid
 const LiquidFlameTonguesRef = preload("res://godot/scripts/geometry/liquid_flame_tongues.gd")  ## M6 F5: tongues of flame
 const LiquidFlamesRef = preload("res://godot/scripts/geometry/liquid_flames.gd")  ## M6 F5: the flame balls of a burning liquid
+const LiquidFireLightsRef = preload("res://godot/scripts/systems/liquid_fire_lights.gd")  ## M6 F5: the lights a burning body gives the field
 const LiquidFireRef = preload("res://godot/scripts/systems/liquid_fire.gd")  ## M6 F5: a flammable liquid on fire
 const FluidPlaneRef = preload("res://godot/scripts/systems/fluid_plane.gd")  ## M6: the gameplay truth of a body of liquid
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
@@ -166,6 +167,7 @@ var _liquid_tongues: Array = []            ## M6 F5: one LiquidFlameTongues per 
 var _liquid_flames: Array = []             ## M6 F5: one LiquidFlames emitter per fire, same order as `_liquid_fires` (its sheet in `_liquid_fire_sheets`)
 var _liquid_fire_sheets: Array = []
 var _liquid_fires: Array = []              ## M6 F5: one LiquidFire per flammable body
+var _liquid_fire_lights: Array = []        ## M6 F5: one LiquidFireLights per burning body (visual lights the field reads, never the tactical registry)
 var _liquid_sheets: Array = []             ## M6: one LiquidSheet3D per `liquids` body, see _attach_liquids()
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
 ## SM-2 — a scatter covering more than this many LAYERS of its zones gets a loud warning (not a refusal). Moto: ~2.4 ms per layer over a full screen of zone.
@@ -8341,7 +8343,7 @@ func _repaint_voxel_light_buckets_scoped(gus: Array, sliced: bool = false) -> vo
 	_occ_live_probe(occ, "scoped repaint")
 	var _s2: int = Time.get_ticks_usec()
 	_voxel_light_field.build(
-			registry.get_active_lights(),
+			field_lights(registry),
 			_lighting_controller.get_shadow_results(),
 			_voxel_board.top_wall_level(),
 			occ,
@@ -8474,7 +8476,7 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary, scope_gus: Arr
 	var pre_changes: Array[Vector3i] = []
 	var pre_erased: Array[Vector3i] = []
 	var occupancy: Dictionary = _voxel_board.build_occupancy_live_erasing(predict_destroyed, pre_changes, pre_erased)
-	var lights: Array = registry.get_active_lights()
+	var lights: Array = field_lights(registry)
 	var shadows = _lighting_controller.get_shadow_results()
 
 	## SOOT-STAMP (2026-09-22): ONE world. Soot left the alternative id with PERF-P2
@@ -8588,7 +8590,7 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 	_occ_live_probe(occupancy, "repaint (geometry_only=%s)" % geometry_only)
 	var _t1: int = Time.get_ticks_usec()
 	_voxel_light_field.build(
-			registry.get_active_lights(),
+			field_lights(registry),
 			_lighting_controller.get_shadow_results(),
 			top_wall_level,
 			occupancy,
@@ -9442,6 +9444,7 @@ func _attach_liquids(live: Node3D) -> void:
 			sheet.queue_free()
 	_liquid_sheets.clear()
 	_liquid_fires.clear()
+	_liquid_fire_lights.clear()
 	_liquid_flames.clear()
 	_liquid_fire_sheets.clear()
 	for old_tongues in _liquid_tongues:
@@ -9486,6 +9489,16 @@ func _attach_liquids(live: Node3D) -> void:
 			burn.setup(plane, kind_rules.get("fire", {}))
 			sheet.fire = burn
 			_liquid_fires.append(burn)
+			var fire_lights := LiquidFireLightsRef.new()
+			if _dev_flag("FIRE_LIGHT", "1") != "0":   ## dev: A/B the fire's light
+				fire_lights.setup(burn, body["rect"], (kind_rules.get("fire", {}) as Dictionary).get("light", {}))
+			if not fire_lights.lights.is_empty():
+				_liquid_fire_lights.append(fire_lights)
+				var reach: Dictionary = {}
+				for first_light in fire_lights.lights:
+					for gu in VoxelLightField.new().gus_in_light_range(first_light):
+						reach[gu] = true
+				_repaint_voxel_light_buckets_scoped(reach.keys())   ## the field's light list now has the fire lights (at 0 energy: nothing moves yet)
 			_liquid_fire_sheets.append(sheet)
 			var flames = LiquidFlamesRef.new()
 			var style: String = _dev_flag("FLAME_STYLE", "both")    ## experiments: embers | tongues | both
@@ -9569,6 +9582,39 @@ func liquid_fire_at(cell: Vector2i):
 		if burn.burning_at(cell):
 			return burn
 	return null
+
+
+## M6 F5: the burning bodies' lights follow their flames; a light that moved a step repaints the GUs it reaches (the temporal-light path: no rebuild, no occupancy diff).
+func _tick_liquid_fire_lights(delta: float) -> void:
+	if _liquid_fire_lights.is_empty() or _voxel_light_field == null or _voxel_board == null:
+		return
+	var changed: Array = []
+	for fire_lights in _liquid_fire_lights:
+		changed.append_array(fire_lights.tick(delta))
+	if changed.is_empty():
+		return
+	var t0: int = Time.get_ticks_usec()
+	var gus: Dictionary = {}
+	for light in changed:
+		for gu in _voxel_light_field.gus_in_light_range(light):
+			gus[gu] = true
+	_voxel_light_field.clear_caches()
+	_voxel_board.apply_light_field_gus(_voxel_light_field, gus.keys())
+	var live: Node = board3d()
+	if live != null:
+		var levels: Dictionary = {}
+		for level in range(GeometryCoords.FLOOR_TOP_LEVEL - LiquidFireLightsRef.LEVELS_BELOW, GeometryCoords.PLAYABLE_LEVEL + LiquidFireLightsRef.LEVELS_ABOVE):
+			levels[level] = true
+		live.call("sync_soot_levels", levels, "fire light")   ## the plane is CPU state: the 3D board reads it only once uploaded
+	print_debug("[FIRE-LIGHT] %d light(s) moved, %d GU(s), %.1f ms" % [changed.size(), gus.size(), float(Time.get_ticks_usec() - t0) / 1000.0])
+
+
+## The lights the voxel light field reads: the registry's (tactical and visual) plus the burning bodies' (visual only, see `LiquidFireLights`).
+func field_lights(registry) -> Array:
+	var all: Array = registry.get_active_lights()
+	for fire_lights in _liquid_fire_lights:
+		all.append_array(fire_lights.lights)
+	return all
 
 
 ## One turn of the fire: water puts cells out, the front runs, the flames eat the oil. Before the plane's next tick (the rules and the fire read the same depths).
@@ -9790,6 +9836,7 @@ func _process(_delta: float) -> void:
 	_sync_dev_overlay_view()
 	if _test_zone_controller != null:
 		_test_zone_controller.fuse_fx_tick(_delta)
+	_tick_liquid_fire_lights(_delta)
 	for k in range(_liquid_flames.size()):    ## M6 F5: the flame balls of every burning body
 		var flame_sheet = _liquid_fire_sheets[k]
 		if is_instance_valid(flame_sheet):

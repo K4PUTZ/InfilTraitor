@@ -35,21 +35,21 @@
      "y": 3,
      "height_class": 4,
      "radius": 9,
-     "intensity": 1.0
+     "intensity": 0.35
     },
     {
      "x": 12,
      "y": 8,
      "height_class": 4,
      "radius": 9,
-     "intensity": 1.0
+     "intensity": 0.35
     },
     {
      "x": 6,
      "y": 6,
      "height_class": 4,
      "radius": 10,
-     "intensity": 0.8
+     "intensity": 0.35
     }
    ]
   },

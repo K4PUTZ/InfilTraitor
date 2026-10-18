@@ -1824,7 +1824,7 @@ func _build_detonation_ctx(source_gu: Vector2i) -> Dictionary:
 	if room._lighting_controller != null:
 		var registry = room._lighting_controller.get_light_registry()
 		if registry != null:
-			lights = registry.get_active_lights()
+			lights = room.field_lights(registry)
 		shadow_results = room._lighting_controller.get_shadow_results()
 	return {
 		"edge_registry": room._edge_registry,

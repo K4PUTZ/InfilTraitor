@@ -8,8 +8,9 @@
 class_name LiquidFlames
 extends RefCounted
 
-const PER_CELL_PER_SECOND: float = 3.5   ## sparks a hot cell throws a second (a cell is 0.25 GU^2 at 0.5 GU); the tongues are the body of the fire, these are the sparks that leave it
-const MAX_PER_SECOND: float = 160.0      ## the cap for one body
+const SPARK_SHARE: float = 0.3          ## of the sparks, this share are FAGULHAS: tiny, quick, climbing high and drifting before they go
+const PER_CELL_PER_SECOND: float = 4.5   ## sparks a hot cell throws a second (a cell is 0.25 GU^2 at 0.5 GU); the tongues are the body of the fire, these are the sparks that leave it
+const MAX_PER_SECOND: float = 220.0      ## the cap for one body
 const MAX_DT: float = 0.1                ## a stalled frame is capped, not paid back
 const LIFE_MIN: float = 0.6             ## seconds
 const LIFE_MAX: float = 1.7
@@ -35,7 +36,14 @@ func tick(dt: float, fire: RefCounted, base_y: float, embers: Node) -> void:
 	var half: float = fire.plane.cell_gu * 0.5
 	for _n in range(spawn):
 		var i: int = fire.hot_cells[randi() % fire.hot_cells.size()]
+		if randf() > fire.oxygen[i]:
+			continue    ## the air is thin under a roof: little leaves a pipe
 		var at: Vector2 = fire.centre_of(i) + Vector2(randf_range(-half, half), randf_range(-half, half))
+		if randf() < SPARK_SHARE:
+			var drift := Vector2(randf_range(-26.0, 26.0), 0.0)
+			embers.add_ember(Vector2.ZERO, randf_range(1.2, 2.4), drift, 1.2, randf_range(220.0, 420.0), 1.0, 0.0, randf_range(0.12, 0.3), 1.6, false,
+					Vector2.ZERO, Vector3(at.x, base_y + LIFT_GU, at.y))
+			continue
 		var size: float = randf_range(SIZE_MIN, SIZE_MAX)
 		## a big ball is slower and lives longer than a small one, but both vary: the eye reads a flame, not a column of one speed
 		var rise: float = lerpf(RISE_MAX_PX_S, RISE_MIN_PX_S, size) * randf_range(0.75, 1.25)

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**320 scripts · 96423 lines total** (under `godot/scripts/`)
+**320 scripts · 96525 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -860,7 +860,7 @@ extends `Node3D` · 3522 lines
 
 ### `liquid_flame_tongues.gd`
 
-`class_name LiquidFlameTongues` · extends `MultiMeshInstance3D` · 94 lines
+`class_name LiquidFlameTongues` · extends `MultiMeshInstance3D` · 98 lines
 
 `godot/scripts/geometry/liquid_flame_tongues.gd`
 
@@ -868,7 +868,7 @@ extends `Node3D` · 3522 lines
 
 **Constants / tuning**
 - `SHADER` = `preload("res://godot/shaders/liquid_flame3d.gdshader")`
-- `PER_CELL` = `2`
+- `PER_CELL` = `3`
 - `FLOATS` = `16`
 - `LIFT` = `0.03`
 
@@ -883,15 +883,16 @@ extends `Node3D` · 3522 lines
 
 ### `liquid_flames.gd`
 
-`class_name LiquidFlames` · extends `RefCounted` · 44 lines
+`class_name LiquidFlames` · extends `RefCounted` · 52 lines
 
 `godot/scripts/geometry/liquid_flames.gd`
 
 > LiquidFlames — the flame BALLS of a burning liquid (M6 F5, Director 2026-10-18: *"as mesmas bolinhas de fogo da explosão, em toda a extensão que estiver queimando. Nascem no chão, vão subindo com variadas velocidades e tamanhos, e somem"*). It spawns nothing of its own: the blast's fire is `EmberOverlay` glows (yellow-hot, cooling to red, a soft halo, born and dying), and these are the same embers, born on the surface of the cells whose `LiquidFire.visual` level is above `HOT_LEVEL`, anchored in 3D on the oil, each with its own life, rise speed and size, so a front that sweeps across the pool is followed by flames and a cell that is put out stops throwing them as its level falls. PURELY VISUAL. The rate follows the number of hot cells up to `MAX_PER_SECOND` a body (a flooded floor does not become a thousand particles); the cells are picked at random.
 
 **Constants / tuning**
-- `PER_CELL_PER_SECOND` = `3.5`
-- `MAX_PER_SECOND` = `160.0`
+- `SPARK_SHARE` = `0.3`
+- `PER_CELL_PER_SECOND` = `4.5`
+- `MAX_PER_SECOND` = `220.0`
 - `MAX_DT` = `0.1`
 - `LIFE_MIN` = `0.6`
 - `LIFE_MAX` = `1.7`
@@ -3304,7 +3305,7 @@ extends `Node` · 236 lines
 
 ### `liquid_fire.gd`
 
-`class_name LiquidFire` · extends `RefCounted` · 196 lines
+`class_name LiquidFire` · extends `RefCounted` · 248 lines
 
 `godot/scripts/systems/liquid_fire.gd`
 
@@ -3321,27 +3322,7 @@ extends `Node` · 236 lines
 - `RISE_PER_S` = `4.0`
 - `FALL_PER_S` = `1.1`
 - `HOT_LEVEL` = `0.35`
-
-**Public vars**
-- `var plane: RefCounted = null`
-- `var burning: PackedByteArray = PackedByteArray()`
-- `var speed_gu: float = DEFAULT_SPEED`
-- `var burn_per_turn: float = DEFAULT_BURN`
-- `var dose_step: float = DEFAULT_DOSE_STEP`
-- `var dose_turn: float = DEFAULT_DOSE_TURN`
-- `var visual: PackedFloat32Array = PackedFloat32Array()`
-- `var hot_cells: PackedInt32Array = PackedInt32Array()`
-- `var version: int = 0`
-
-**Public API**
-- `func setup(fluid_plane: RefCounted, spec: Dictionary) -> void:`
-- `func count() -> int:`
-- `func centre_of(i: int) -> Vector2:`
-- `func ignite(centre: Vector2, radius: float) -> int:`
-- `func extinguish_rect(rect: Rect2) -> int:`
-- `func extinguish_all() -> void:`
-- `func tick(put_out: Callable = Callable()) -> void:`
-- `func advance_visual(dt: float) -> bool:`
+- `FULL_DEPTH` = `0.5`
 
 ---
 
@@ -4904,7 +4885,7 @@ extends `SceneTree` · 445 lines
 
 ### `liquid_fire_selftest.gd`
 
-extends `SceneTree` · 144 lines
+extends `SceneTree` · 182 lines
 
 `godot/scripts/tools/liquid_fire_selftest.gd`
 

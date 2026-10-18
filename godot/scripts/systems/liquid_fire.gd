@@ -22,6 +22,14 @@ const BLAST_FRONT_GU_S: float = 7.0   ## how fast a blast's fire opens outward f
 const RISE_PER_S: float = 4.0         ## a lit cell reaches full flame in about a quarter of a second
 const FALL_PER_S: float = 1.1         ## and takes about a second to die away
 const HOT_LEVEL: float = 0.35         ## from here a cell throws flames (`hot_cells`)
+## THE FLAME FOLLOWS THE OIL (Director, 2026-10-18): where the oil thins toward the dry border the flame shrinks with it, and where it advances a flame
+## appears and grows, instead of switching on and off. The drawn level aims at `depth / FULL_DEPTH` (the LIVE depth, which moves between turns).
+const FULL_DEPTH: float = 0.5         ## voxels of oil that carry a full flame
+## OXYGEN (Director, 2026-10-18): under a roof (a pipe's bore) a fire lives only near the opening. A roofed cell's oxygen falls from 1 at the opening to 0 over
+## `OXYGEN_REACH_GU`; a cell with less than `STARVED` cannot burn (it goes out, and the front does not enter it), and its flame is capped by the headroom.
+const OXYGEN_REACH_GU: float = 1.0
+const STARVED: float = 0.1
+const VOXEL_GU: float = 0.125
 
 var plane: RefCounted = null
 var burning: PackedByteArray = PackedByteArray()   ## 1 = the plane cell burns (the whole grid, rim included, which never burns)
@@ -31,8 +39,11 @@ var dose_step: float = DEFAULT_DOSE_STEP
 var dose_turn: float = DEFAULT_DOSE_TURN
 var visual: PackedFloat32Array = PackedFloat32Array()    ## 0..1 per plane cell: the flame the eye sees
 var hot_cells: PackedInt32Array = PackedInt32Array()      ## the cells whose visual level is above HOT_LEVEL, rebuilt each `advance_visual`
+var oxygen: PackedFloat32Array = PackedFloat32Array()      ## 0..1 per plane cell: 1 in the open, falling to 0 inside a roofed bore
+var headroom_gu: PackedFloat32Array = PackedFloat32Array()  ## the free height over a cell's floor, GU (1.0e9 in the open)
 var _lit_at: PackedFloat32Array = PackedFloat32Array()    ## the visual clock at which a burning cell may start to light
 var _clock: float = 0.0
+var base_color: Color = Color(0.0, 0.0, 0.0, 0.0)    ## the COOL tongues among the others (`fire.base` [r, g, b], `fire.base_share` of the tongues, default 0.3): small, blue for a hydrocarbon, deep red for organic matter; alpha 0 = none
 var version: int = 0               ## bumped whenever a cell lights or goes out (the sheet redraws then)
 
 
@@ -45,11 +56,48 @@ func setup(fluid_plane: RefCounted, spec: Dictionary) -> void:
 	_lit_at.resize(plane.cols * plane.rows)
 	_lit_at.fill(0.0)
 	_clock = 0.0
+	_compute_oxygen()
 	speed_gu = float(spec.get("speed", DEFAULT_SPEED))
 	burn_per_turn = float(spec.get("burn", DEFAULT_BURN))
 	dose_step = float(spec.get("dose_step", DEFAULT_DOSE_STEP))
 	dose_turn = float(spec.get("dose_turn", DEFAULT_DOSE_TURN))
+	var base: Variant = spec.get("base", null)
+	base_color = Color(float(base[0]), float(base[1]), float(base[2]), float(spec.get("base_share", 0.3))) if base is Array and (base as Array).size() >= 3 else Color(0.0, 0.0, 0.0, 0.0)
 	version = 0
+
+
+## Oxygen by distance from the opening: a flood of the roofed cells from the open ones (4 neighbours), `OXYGEN_REACH_GU` deep.
+func _compute_oxygen() -> void:
+	var n: int = plane.cols * plane.rows
+	oxygen.resize(n)
+	headroom_gu.resize(n)
+	var dist := PackedFloat32Array()
+	dist.resize(n)
+	var queue := PackedInt32Array()
+	for i in range(n):
+		var roofed: bool = plane.ceiling[i] < 1.0e8
+		headroom_gu[i] = maxf(plane.ceiling[i] - plane.ground[i], 0.0) * VOXEL_GU if roofed else 1.0e9
+		if roofed:
+			dist[i] = 1.0e9
+		else:
+			dist[i] = 0.0
+			queue.append(i)
+	var head: int = 0
+	while head < queue.size():
+		var i: int = queue[head]
+		head += 1
+		var c: int = i % plane.cols
+		var r: int = i / plane.cols
+		for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var nc: int = c + d.x
+			var nr: int = r + d.y
+			if nc >= 0 and nr >= 0 and nc < plane.cols and nr < plane.rows:
+				var j: int = plane.index(nc, nr)
+				if dist[j] > dist[i] + plane.cell_gu:
+					dist[j] = dist[i] + plane.cell_gu
+					queue.append(j)
+	for i in range(n):
+		oxygen[i] = clampf(1.0 - dist[i] / OXYGEN_REACH_GU, 0.0, 1.0)
 
 
 func count() -> int:
@@ -60,7 +108,7 @@ func count() -> int:
 
 
 func _wet(i: int) -> bool:
-	return plane.committed[i] > NO_DEPTH and plane.ground[i] < plane.WALL
+	return plane.committed[i] > NO_DEPTH and plane.ground[i] < plane.WALL and oxygen[i] > STARVED
 
 
 func _interior(c: int, r: int) -> bool:
@@ -112,7 +160,10 @@ func tick(put_out: Callable = Callable()) -> void:
 	var changed: bool = false
 	var front := PackedInt32Array()
 	for i in range(burning.size()):
-		if burning[i] == 1:
+		if burning[i] == 1 and oxygen[i] <= STARVED:
+			burning[i] = 0    ## no air this deep in the pipe
+			changed = true
+		elif burning[i] == 1:
 			if put_out.is_valid() and bool(put_out.call(centre_of(i))):
 				burning[i] = 0
 				changed = true
@@ -158,13 +209,14 @@ func advance_visual(dt: float) -> bool:
 	hot_cells = PackedInt32Array()
 	for i in range(visual.size()):
 		var level: float = visual[i]
-		var on: bool = burning[i] == 1 and _clock >= _lit_at[i]
-		if on:
-			if level < 1.0:
-				level = minf(level + rise, 1.0)
-				moving = true
-		elif level > 0.0:
-			level = maxf(level - fall, 0.0)
+		var target: float = 0.0
+		if burning[i] == 1 and _clock >= _lit_at[i]:
+			target = clampf(plane.depth[i] / FULL_DEPTH, 0.0, 1.0) * oxygen[i]
+		if level < target:
+			level = minf(level + rise, target)
+			moving = true
+		elif level > target:
+			level = maxf(level - fall, target)
 			moving = true
 		visual[i] = level
 		if level > HOT_LEVEL:

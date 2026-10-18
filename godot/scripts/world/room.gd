@@ -9489,13 +9489,13 @@ func _attach_liquids(live: Node3D) -> void:
 			_liquid_fire_sheets.append(sheet)
 			var flames = LiquidFlamesRef.new()
 			var style: String = _dev_flag("FLAME_STYLE", "both")    ## experiments: embers | tongues | both
-			flames.rate_scale = (float(_dev_flag("FLAME_EMBER_RATE", "0.6")) if style != "tongues" else 0.0)
+			flames.rate_scale = (float(_dev_flag("FLAME_EMBER_RATE", "1.3")) if style != "tongues" else 0.0)
 			_liquid_flames.append(flames)
 			sheet.set_fire_surface(float(_dev_flag("FIRE_SURFACE", "0.1")))
 			if style != "embers":
 				var tongues = LiquidFlameTonguesRef.new()
 				live.add_child(tongues)
-				tongues.setup(burn, sheet.surface_y(), float(_dev_flag("FLAME_W", "0.45")), float(_dev_flag("FLAME_H", "1.0")))
+				tongues.setup(burn, sheet.surface_y(), float(_dev_flag("FLAME_W", "0.38")), float(_dev_flag("FLAME_H", "0.75")))
 				_liquid_tongues.append(tongues)
 			else:
 				_liquid_tongues.append(null)

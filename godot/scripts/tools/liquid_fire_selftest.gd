@@ -121,6 +121,44 @@ func _init() -> void:
 		vf.advance_visual(0.1)
 	_check(vf.visual[far_i] == 0.0 and vf.hot_cells.is_empty(), "and is dark after it")
 
+	## THE FLAME FOLLOWS THE OIL (Director, 2026-10-18): a thin film carries a small flame, and the level glides to a new depth instead of jumping.
+	var dp: RefCounted = _pool(0.2)
+	var df = Fire.new()
+	df.setup(dp, {"burn": 0.0})
+	df.ignite(Vector2(13.0, 5.0), 0.6)
+	var probe_cell: int = dp.index(7, 10)
+	for _f in range(30):
+		df.advance_visual(0.1)
+	_check(absf(df.visual[probe_cell] - 0.4) < 0.02, "a film of 0.2 voxels of oil carries 40 %% of a flame (%.2f)" % df.visual[probe_cell])
+	dp.depth[probe_cell] = 0.1
+	df.advance_visual(0.05)
+	_check(df.visual[probe_cell] < 0.4 and df.visual[probe_cell] > 0.2, "when the oil thins the flame shrinks with it, gradually (%.2f one frame later)" % df.visual[probe_cell])
+	dp.depth[probe_cell] = 0.6
+	df.advance_visual(0.05)
+	_check(df.visual[probe_cell] > 0.2 and df.visual[probe_cell] < 1.0, "and where the oil rises it grows, gradually (%.2f)" % df.visual[probe_cell])
+
+	## OXYGEN: a roofed bore (here the first 4 GU of the pool) feeds a fire only near its mouth, and the roof caps the flame.
+	var op: RefCounted = _pool(2.0)
+	op.set_ceiling_rect(Rect2(9.5, -0.5, 9.0, 4.5), 6.0)
+	var of = Fire.new()
+	of.setup(op, {"burn": 0.0})
+	var deep: int = op.index(8, 1)
+	var mouth: int = op.index(8, 8)
+	var open_cell: int = op.index(8, 20)
+	_check(of.oxygen[deep] == 0.0 and of.oxygen[open_cell] == 1.0 and of.oxygen[mouth] > 0.0 and of.oxygen[mouth] < 1.0, "oxygen: none deep in the bore (%.2f), thin at the mouth (%.2f), full in the open (%.2f)" % [of.oxygen[deep], of.oxygen[mouth], of.oxygen[open_cell]])
+	of.ignite(Vector2(14.0, 10.0), 100.0)
+	var starved_burning: int = 0
+	for i in range(of.burning.size()):
+		if of.burning[i] == 1 and of.oxygen[i] <= Fire.STARVED:
+			starved_burning += 1
+	_check(of.count() > 0 and starved_burning == 0, "a blast over the whole pool does not light the cells with no air (%d burning, %d starved)" % [of.count(), starved_burning])
+	of.tick()
+	var inside: int = 0
+	for i in range(of.burning.size()):
+		if of.burning[i] == 1 and of.oxygen[i] <= Fire.STARVED:
+			inside += 1
+	_check(inside == 0 and absf(of.headroom_gu[deep] - 0.75) < 0.001 and of.headroom_gu[open_cell] > 1.0e8, "the front does not enter the starved bore, and the roof leaves %.2f GU of headroom (6 voxels)" % of.headroom_gu[deep])
+
 	## The tongues of flame follow the same visual levels: one MultiMesh instance per sub-flame per interior cell, level 0 where nothing burns.
 	var tp: RefCounted = _pool(2.0)
 	var tf = Fire.new()

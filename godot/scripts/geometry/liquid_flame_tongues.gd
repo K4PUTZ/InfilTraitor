@@ -7,7 +7,7 @@ class_name LiquidFlameTongues
 extends MultiMeshInstance3D
 
 const SHADER: Shader = preload("res://godot/shaders/liquid_flame3d.gdshader")
-const PER_CELL: int = 2
+const PER_CELL: int = 3
 const FLOATS: int = 16     ## a 3D transform (12) + custom data (4) per instance
 const LIFT: float = 0.03
 
@@ -30,6 +30,8 @@ func setup(burn: RefCounted, base_y: float, flame_width: float, flame_height: fl
 	material.shader = SHADER
 	material.set_shader_parameter("flame_width", flame_width)
 	material.set_shader_parameter("flame_height", flame_height)
+	var base: Color = fire.base_color
+	material.set_shader_parameter("base_color", base)
 	quad.material = material
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -64,7 +66,9 @@ func setup(burn: RefCounted, base_y: float, flame_width: float, flame_height: fl
 				_cells[k] = i
 				_seeds[k * 3] = h
 				_seeds[k * 3 + 1] = 0.7 + 0.6 * _hash(h * 5.1)
-				_seeds[k * 3 + 2] = 0.65 + 0.8 * _hash(h * 8.9)
+				## a roofed cell's flame is capped by the headroom under the roof (a pipe's bore holds it down)
+				var room_scale: float = minf(1.0, float(fire.headroom_gu[i]) / maxf(flame_height, 0.01))
+				_seeds[k * 3 + 2] = (0.6 + 0.7 * _hash(h * 8.9)) * maxf(room_scale, 0.12)
 				k += 1
 	multimesh.buffer = _buf
 	custom_aabb = AABB(Vector3(plane.origin.x, base_y - 0.1, plane.origin.y), Vector3(float(plane.cols) * plane.cell_gu, flame_height * 1.6, float(plane.rows) * plane.cell_gu))

@@ -155,7 +155,7 @@ func _rebuild() -> void:
 					for dc in range(-1, 1):
 						var cc: int = vc + dc
 						var rr: int = vr + dr
-						if cc >= 0 and rr >= 0 and cc < icols and rr < irows:
+						if cc >= 0 and rr >= 0 and cc < icols and rr < irows and plane.ground[plane.index(cc + 1, rr + 1)] < plane.WALL:    ## a wall cell holds no liquid: it must not pull a vertex beside it down (the gap along a pipe's shell)
 							sum += _shown[rr * icols + cc]
 							count += 1
 				var level: float = sum / float(maxi(count, 1))

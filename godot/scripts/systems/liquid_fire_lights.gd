@@ -13,8 +13,10 @@ extends RefCounted
 
 const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
 
-const DEFAULT_RADIUS: int = 3
+const DEFAULT_RADIUS: int = 5
 const DEFAULT_SPACING_GU: float = 2.0
+const DEFAULT_WARMTH: float = 0.65
+const DEFAULT_INNER: float = 0.5      ## the plateau of full light, as a share of the radius (a lamp's is 0.45)
 const DEFAULT_ENERGY: float = 1.0
 const STEP: float = 0.2             ## energies are rounded to this: a repaint only when a light moves a whole step
 const INTERVAL_S: float = 0.4       ## the lights are re-read this often
@@ -54,6 +56,8 @@ func setup(burn: RefCounted, rect: Rect2, spec: Dictionary) -> void:
 		light.radius = radius
 		light.tactical_energy = 0.0
 		light.visual_energy = _energy
+		light.warmth = float(spec.get("warmth", DEFAULT_WARMTH))
+		light.inner_ratio = float(spec.get("inner", DEFAULT_INNER))
 		light.energy_multiplier = 0.0
 		light.last_energy = 0.0
 		light.light_id = "fire_light_%d" % lights.size()

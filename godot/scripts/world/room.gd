@@ -9600,8 +9600,10 @@ func _tick_liquid_fire_lights(delta: float) -> void:
 			gus[gu] = true
 	_voxel_light_field.clear_caches()
 	_voxel_board.apply_light_field_gus(_voxel_light_field, gus.keys())
+	_voxel_board.apply_warm_gus(_voxel_light_field, gus.keys())
 	var live: Node = board3d()
 	if live != null:
+		live.set("fire_flicker", true)
 		var levels: Dictionary = {}
 		for level in range(GeometryCoords.FLOOR_TOP_LEVEL - LiquidFireLightsRef.LEVELS_BELOW, GeometryCoords.PLAYABLE_LEVEL + LiquidFireLightsRef.LEVELS_ABOVE):
 			levels[level] = true

@@ -408,6 +408,32 @@ func gus_in_light_range(light) -> Array:
 	return gus
 
 
+## FIRE LIGHT (2026-10-18) — the warmth (0..255, the cell plane's A channel) a cell takes from the fire lights in range: each warm light's glow at the cell
+## (energy x falloff x `warmth`), summed and saturated. Distance only (like the buckets, a fire is not shadowed by the projector's results); 0 with no warm light.
+func warm_for(cell: Vector2i, level: int) -> int:
+	var total: float = 0.0
+	var gu := Vector2i(cell.x >> 3, cell.y >> 3)
+	for light in _lights:
+		if light.warmth <= 0.0 or not light.active:
+			continue
+		var d_gu := Vector2(light.cell - gu).length()
+		var radius := maxf(float(light.radius), 0.001)
+		if d_gu > radius:
+			continue
+		var d_lvl := absf(float(level - _anchor_level(light))) / float(GeometryCoords.LEVELS_PER_STOREY) * vertical_gu_per_storey
+		var d := sqrt(d_gu * d_gu + d_lvl * d_lvl)
+		total += float(light.visual_energy) * float(light.energy_multiplier) * float(light.warmth) * _falloff(d, radius, light.inner_ratio)
+	return int(round(clampf(total, 0.0, 1.0) * 255.0))
+
+
+## True when any light the field holds is a fire (a map with none never pays for `warm_for`).
+func has_warm_lights() -> bool:
+	for light in _lights:
+		if light.warmth > 0.0:
+			return true
+	return false
+
+
 ## Bucket for one voxel cell at one layer level. 0 = darkest … N-1 = full lit.
 ## PB-6 (2026-10-09) — `bucket_for()` for EVERY cell of one level in one call, the map-wide pass's hot loop: the same maths as
 ## `_compute_bucket()` (lamp x surface x under-structure, rounded, jittered, clamped; operations in the same order, so the result is
@@ -693,7 +719,7 @@ func _lamp_term(gu: Vector2i, level: int, top_bucket: int) -> Vector3:
 			var d := sqrt(d_gu * d_gu + d_lvl * d_lvl)
 			## VL-03: energy_multiplier carries the temporal state (flicker/pulse).
 			var lamp_energy := float(light.visual_energy) * float(light.energy_multiplier)
-			var c: float = lamp_energy * _falloff(d, radius)
+			var c: float = lamp_energy * _falloff(d, radius, light.inner_ratio)
 			var roofed: bool = false
 			for sp: Vector3 in spans:
 				if level < int(sp.x) and anchor >= int(sp.x):
@@ -824,8 +850,8 @@ func _face_occlusion(cell: Vector2i, level: int, face: int) -> float:
 ## radius, then a fast linear ramp to 0 at the edge. Keeps most in-range voxels
 ## near full-lit and most out-of-range voxels at ambient, rather than smearing
 ## everything through the middle buckets.
-func _falloff(d: float, radius: float) -> float:
-	var inner := radius * inner_full_ratio
+func _falloff(d: float, radius: float, inner_override: float = -1.0) -> float:
+	var inner := radius * (inner_full_ratio if inner_override < 0.0 else inner_override)
 	if d <= inner:
 		return 1.0
 	if d >= radius:

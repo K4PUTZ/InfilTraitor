@@ -47,6 +47,8 @@ var cone_angle: float = 90.0  # Degrees, cone spread
 # Energy levels
 var tactical_energy: float = 1.0  ## Affects shadow strength and detection multiplier
 var visual_energy: float = 1.0    ## Affects brightness (not used for gameplay)
+var warmth: float = 0.0           ## 0 = a plain lamp; > 0 = a fire: the share of this light that tints the cells it reaches warm (VoxelLightField.warm_for, the cell plane's A channel)
+var inner_ratio: float = -1.0     ## < 0: the field's `inner_full_ratio`; else the plateau of full light as a share of the radius (a fire holds its glow wider than a lamp)
 
 # ============================================================================
 # Temporal Properties (L-IMP-06) — Simple, deterministic animation

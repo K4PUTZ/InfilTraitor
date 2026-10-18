@@ -829,6 +829,19 @@ func light_apply_job_pending() -> bool:
 	return not _apply_job.is_empty()
 
 
+## FIRE LIGHT — write the warmth plane (A) of every placed cell in these GUs from the field's fire lights. Only the fire ticker calls it (a plain lamp has warmth 0 and
+## never moves it). Returns nothing; flushes like the other apply paths. A cell with 0 before and after is not dirtied.
+func apply_warm_gus(field, gus: Array) -> void:
+	if LIGHT_DISABLED or field == null:
+		return
+	for gu in gus:
+		var placements: PackedInt32Array = _placed_by_gu.get(gu, PackedInt32Array())
+		for j: int in range(0, placements.size(), 3):
+			var cell := Vector2i(placements[j + 1], placements[j + 2])
+			_cell_planes.write_warm(placements[j], cell, field.warm_for(cell, placements[j]))
+	flush_cell_soot()
+
+
 func apply_light_field_gus(field, gus: Array) -> void:
 	if LIGHT_DISABLED:
 		return

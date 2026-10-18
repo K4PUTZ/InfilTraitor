@@ -133,6 +133,15 @@ uniform int face_x_slot = 1;
 uniform int face_z_slot = 2;
 uniform float depth_dim[5];
 uniform float soot_smooth = 1.0;  // 1: a floor top's soot tone is the cell plane's B channel read bilinear (no square edges); 0: one cell, hard
+// FIRE LIGHT (2026-10-18): the cell plane's A channel is how much of a cell's light is a fire's; it tints the face warm and the tint breathes
+// (a flicker of `fire_time`, a phase per voxel column). Arithmetic only (no branch: an untaken branch costs on the Mali).
+uniform float fire_time = 0.0;
+uniform vec3 warm_color = vec3(1.40, 0.84, 0.50);
+vec3 fire_tint(float a, ivec3 vv) {
+	float ph = fract(float(vv.x * 7 + vv.z * 13) * 0.137) * 6.2831;
+	float flick = 1.0 + 0.22 * sin(fire_time * 9.0 + ph) * sin(fire_time * 4.3 + ph * 1.7);
+	return mix(vec3(1.0), warm_color, clamp(a * flick, 0.0, 1.0));
+}
 uniform float pit_dark = 0.60;     // the inside of a crater (side faces and the tops below the walkable floor) is darkened by this
 // ROOF R-D9 (Director 2026-10-12): a face looking INTO a hole a wall took (the material's FRESH twin, `_fresh_twin`) is freshly broken
 // material: most of its cell's soot is taken off and it reads a little lighter; the wall's outer face around the opening keeps the
@@ -238,6 +247,7 @@ void fragment() {
 	float code = 172.0;
 	int bucket = 255;
 	float own_tone = 1.0;  // the plane's B: this cell's floor-top tone
+	float warm = 0.0;      // the plane's A: how much of the light is a fire's
 	bool in_plane = false;
 	if (layer >= 0 && layer < level_count && pc.x >= 0 && pc.y >= 0
 			&& pc.x < plane_size.x && pc.y < plane_size.y) {
@@ -245,6 +255,7 @@ void fragment() {
 		code = clamp(floor(t.r * 255.0 + 0.5), 0.0, 215.0);
 		bucket = int(floor(t.g * 255.0 + 0.5));
 		own_tone = t.b;
+		warm = t.a;
 		in_plane = true;
 	}
 	int face = v_normal.y > 0.5 ? 0 : (abs(v_normal.x) > 0.5 ? face_x_slot : face_z_slot);
@@ -277,11 +288,12 @@ void fragment() {
 	if (flat_pit) {
 		f *= pit_dark;
 	}
-	ALBEDO = srgb_to_linear(base_color * lum * f);
+	vec3 warm_mult = fire_tint(warm, v);
+	ALBEDO = srgb_to_linear(base_color * lum * f * warm_mult);
 	if (face == 0 && !flat_pit && (rel < 0 ? has_surface_floor : has_surface_roof) > 0.5) {
 		vec3 macro_n = texture(surface_macro, v_world.xz / 61.0).rgb;
 		vec3 macro_mult = vec3(mix(0.85, 1.15, macro_n.r), mix(0.85, 1.15, macro_n.g), mix(0.90, 1.05, macro_n.b));
-		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * macro_mult * f);
+		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * macro_mult * f * warm_mult);
 	}
 	if (ghost) {
 		float tone = face == 0 ? 1.0 : (face == 1 ? 0.80 : 0.60);
@@ -304,6 +316,7 @@ static var SOLID_SHADER: String = OPAQUE_SHADER \
 ## replaced by one layer of the decal array (COLOR.r * 255 = the layer). The quad sits 0.02 voxel off
 ## its face, so the voxel lookup steps back 0.06 instead of 0.01 to stay in the voxel it decorates.
 const DECAL_TAIL: String = """
+	vec3 warm_mult = fire_tint(warm, v);
 	vec4 d = texture(decals, vec3(UV, v_layer));
 	// A bullet's mark (the first `bullet_layers` layers of the array) is stronger than a blast's: a DENTED or CRACKED
 	// voxel keeps its face, so this decal is the only thing that says a round landed.
@@ -311,7 +324,7 @@ const DECAL_TAIL: String = """
 	// A blast's mark on the FLOOR (a top-face decal) is burnt, whatever material the art was drawn for: pale clay or concrete
 	// dust on a scorched floor read as another material (Director 2026-10-05). One rule, no per-material art.
 	vec3 mark = d.rgb * mix(1.0, floor_char, v_burnt);
-	ALBEDO = srgb_to_linear(mark * mix(1.0, bullet_darken, bullet) * f);
+	ALBEDO = srgb_to_linear(mark * mix(1.0, bullet_darken, bullet) * f * warm_mult);
 	ALPHA = clamp(d.a * mix(1.0, bullet_alpha_gain, bullet), 0.0, 1.0);
 }
 """
@@ -337,11 +350,12 @@ static var DECAL_SHADER: String = OPAQUE_SHADER \
 	if (flat_pit) {
 		f *= pit_dark;
 	}
-	ALBEDO = srgb_to_linear(base_color * lum * f);
+	vec3 warm_mult = fire_tint(warm, v);
+	ALBEDO = srgb_to_linear(base_color * lum * f * warm_mult);
 	if (face == 0 && !flat_pit && (rel < 0 ? has_surface_floor : has_surface_roof) > 0.5) {
 		vec3 macro_n = texture(surface_macro, v_world.xz / 61.0).rgb;
 		vec3 macro_mult = vec3(mix(0.85, 1.15, macro_n.r), mix(0.85, 1.15, macro_n.g), mix(0.90, 1.05, macro_n.b));
-		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * macro_mult * f);
+		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * macro_mult * f * warm_mult);
 	}
 	if (ghost) {
 		float tone = face == 0 ? 1.0 : (face == 1 ? 0.80 : 0.60);
@@ -908,9 +922,20 @@ func _exit_tree() -> void:
 		_remesh_task_id = -1
 
 
+## FIRE LIGHT: while a fire burns the warm tint breathes, a flicker of this clock in the face and mesh shaders (no repaint: the planes do not move).
+var fire_flicker: bool = false
+
+
 func _process(_delta: float) -> void:
 	if _remesh_task_id != -1 and WorkerThreadPool.is_task_completed(_remesh_task_id):
 		_finish_remesh_task()
+	if fire_flicker:
+		var fire_clock: float = float(Time.get_ticks_msec()) / 1000.0
+		for i: int in range(_shader_materials.size()):
+			if not _material_glass[i]:
+				(_shader_materials[i] as ShaderMaterial).set_shader_parameter("fire_time", fire_clock)
+		for pm: ShaderMaterial in _prop_materials:
+			pm.set_shader_parameter("fire_time", fire_clock)
 	if _camera == null or _room == null:
 		return
 	var cam2d: Camera2D = _room.camera
@@ -1955,8 +1980,8 @@ func _plane_image(level: int) -> Image:
 	if image != null:
 		return image
 	var blank := Image.create(VoxelBoard.plane_size().x, VoxelBoard.plane_size().y,
-		false, Image.FORMAT_RGB8)
-	blank.fill(Color8(VoxelBoard.FACE_SOOT_CODE_CLEAN, VoxelBoard.BUCKET_UNWRITTEN, 255, 255))
+		false, Image.FORMAT_RGBA8)
+	blank.fill(Color8(VoxelBoard.FACE_SOOT_CODE_CLEAN, VoxelBoard.BUCKET_UNWRITTEN, 255, 0))
 	return blank
 
 

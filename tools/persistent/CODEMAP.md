@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**321 scripts · 96838 lines total** (under `godot/scripts/`)
+**321 scripts · 96932 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -452,7 +452,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3522 lines
+extends `Node3D` · 3547 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1395,7 +1395,7 @@ extends `Node3D` · 3522 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2757 lines
+`class_name VoxelBoard` · extends `Node2D` · 2770 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1430,6 +1430,7 @@ extends `Node3D` · 3522 lines
 - `func step_light_apply_job(budget_us: int) -> bool:`
 - `func finish_light_apply_job() -> void:`
 - `func light_apply_job_pending() -> bool:`
+- `func apply_warm_gus(field, gus: Array) -> void:`
 - `func apply_light_field_gus(field, gus: Array) -> void:`
 - `func process_dirty(registry: EdgeRegistry) -> void:`
 - `func process_dirty_slabs(registry: SlabRegistry) -> void:`
@@ -2434,7 +2435,7 @@ extends `RefCounted` · 37 lines
 
 ### `cell_plane_store.gd`
 
-`class_name CellPlaneStore` · extends `RefCounted` · 279 lines
+`class_name CellPlaneStore` · extends `RefCounted` · 301 lines
 
 `godot/scripts/systems/cell_plane_store.gd`
 
@@ -3157,7 +3158,7 @@ extends `Node` · 236 lines
 
 ### `light_source.gd`
 
-`class_name LightSource` · extends `RefCounted` · 257 lines
+`class_name LightSource` · extends `RefCounted` · 259 lines
 
 `godot/scripts/systems/lighting/light_source.gd`
 
@@ -3187,6 +3188,7 @@ extends `Node` · 236 lines
 - `var cone_angle: float = 90.0`
 - `var tactical_energy: float = 1.0`
 - `var visual_energy: float = 1.0`
+- `var warmth: float = 0.0`
 
 ---
 
@@ -3252,7 +3254,7 @@ extends `Node` · 236 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 865 lines
+`class_name VoxelLightField` · extends `RefCounted` · 891 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -3331,7 +3333,7 @@ extends `Node` · 236 lines
 
 ### `liquid_fire_lights.gd`
 
-`class_name LiquidFireLights` · extends `RefCounted` · 94 lines
+`class_name LiquidFireLights` · extends `RefCounted` · 98 lines
 
 `godot/scripts/systems/liquid_fire_lights.gd`
 
@@ -3339,22 +3341,10 @@ extends `Node` · 236 lines
 
 **Constants / tuning**
 - `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
-- `DEFAULT_RADIUS` = `3`
+- `DEFAULT_RADIUS` = `5`
 - `DEFAULT_SPACING_GU` = `2.0`
-- `DEFAULT_ENERGY` = `1.0`
-- `STEP` = `0.2`
-- `INTERVAL_S` = `0.4`
-- `LEVELS_BELOW` = `4`
-- `LEVELS_ABOVE` = `0`
-- `FLICKER_DEPTH` = `0.2`
-
-**Public vars**
-- `var lights: Array = []`
-
-**Public API**
-- `func setup(burn: RefCounted, rect: Rect2, spec: Dictionary) -> void:`
-- `func tick(delta: float) -> Array:`
-- `func gus_of(changed: Array, field) -> Array:`
+- `DEFAULT_WARMTH` = `0.65`
+- `DEFAULT_INNER` = `0.5`
 
 ---
 
@@ -6603,7 +6593,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12900 lines
+extends `Node2D` · 12902 lines
 
 `godot/scripts/world/room.gd`
 

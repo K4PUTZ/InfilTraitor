@@ -42,8 +42,8 @@ static func configure_for_map(map_voxels: Vector2i) -> void:
 static func _outside(p: Vector2i) -> bool:
 	return p.x < 0 or p.y < 0 or p.x >= plane_size.x or p.y >= plane_size.y
 
-## PERF-P3: FORMAT_RGB8 — R = the per-face soot code (0..215, base 6), G = the light
-## bucket (0..11), B = the floor-top tone of R's ring (R3D-LOOK, derived from R in `write_soot`, never written alone). One texel per cell, one texture per level. Both writers do a
+## PERF-P3: FORMAT_RGBA8 (A added 2026-10-18, the GPU stored RGB8 as RGBA8 already) — R = the per-face soot code (0..215, base 6), G = the light
+## bucket (0..11), A = WARMTH (0 = none .. 255: how much of the cell's light is a fire's, `write_warm`), B = the floor-top tone of R's ring (R3D-LOOK, derived from R in `write_soot`, never written alone). One texel per cell, one texture per level. Both writers do a
 ## read-modify-write so neither channel can erase the other.
 ## RENDER3D R3D-2 — this store is domain-agnostic (it knows nothing of "soot" or
 ## "light bucket" as concepts): its OWNER supplies the R-channel's clean fill value
@@ -75,7 +75,7 @@ func _tone_byte(code: int) -> int:
 func _image_for(level: int) -> Image:
 	if _images.has(level):
 		return _images[level]
-	var img := Image.create(plane_size.x, plane_size.y, false, Image.FORMAT_RGB8)
+	var img := Image.create(plane_size.x, plane_size.y, false, Image.FORMAT_RGBA8)
 	## R = CLEAN, not zero: zero soot is "ring 0 on all three faces", the darkest
 	## scorch there is, so an unvisited cell would come up black.
 	##
@@ -85,7 +85,7 @@ func _image_for(level: int) -> Image:
 	## a missing value onto a legitimate one. The shader still CLAMPS 255 down to
 	## 11, so the picture is unchanged — but the plane, and debug paint mode 3, can
 	## now tell them apart.
-	img.fill(Color8(_clean_r, BUCKET_UNWRITTEN, _tone_byte(_clean_r), 255))
+	img.fill(Color8(_clean_r, BUCKET_UNWRITTEN, _tone_byte(_clean_r), 0))
 	_images[level] = img
 	return img
 
@@ -107,7 +107,7 @@ func write_soot(level: int, cell: Vector2i, code: int) -> void:
 	## PERF-P3: G is the light bucket and belongs to `write_bucket()` — carried
 	## through unchanged rather than rewritten, so a soot pass cannot silently
 	## relight a cell.
-	img.set_pixel(p.x, p.y, Color8(c, was.g8, _tone_byte(c), 255))
+	img.set_pixel(p.x, p.y, Color8(c, was.g8, _tone_byte(c), was.a8))
 	_dirty[level] = true
 
 
@@ -126,9 +126,31 @@ func write_bucket(level: int, cell: Vector2i, bucket: int) -> int:
 	var was: Color = img.get_pixel(p.x, p.y)
 	if was.g8 == b:
 		return b
-	img.set_pixel(p.x, p.y, Color8(was.r8, b, was.b8, 255))
+	img.set_pixel(p.x, p.y, Color8(was.r8, b, was.b8, was.a8))
 	_dirty[level] = true
 	return was.g8
+
+
+## FIRE LIGHT (2026-10-18) — one cell's warmth (A, 0..255): how much of its light is a fire's. Idempotent like the other two writers; returns true when it changed.
+func write_warm(level: int, cell: Vector2i, warm: int) -> bool:
+	var p := cell + plane_origin
+	if _outside(p):
+		return false
+	var img := _image_for(level)
+	var a: int = clampi(warm, 0, 255)
+	var was: Color = img.get_pixel(p.x, p.y)
+	if was.a8 == a:
+		return false
+	img.set_pixel(p.x, p.y, Color8(was.r8, was.g8, was.b8, a))
+	_dirty[level] = true
+	return true
+
+
+func warm_at(level: int, cell: Vector2i) -> int:
+	var p := cell + plane_origin
+	if _outside(p) or not _images.has(level):
+		return 0
+	return (_images[level] as Image).get_pixel(p.x, p.y).a8
 
 
 ## PB-6 (2026-10-09) — `write_bucket()` for a whole level at once: `cells[i]` gets `buckets[i]`, written straight into the image's
@@ -146,13 +168,13 @@ func write_buckets_level(level: int, cells: Array, buckets: PackedByteArray) -> 
 				_out_of_range_reported = true
 				push_error("[CellPlaneStore] PERF-P3: cell %s is outside the %dx%d cell plane — widen PLANE_MARGIN" % [cells[i], plane_size.x, plane_size.y])
 			continue
-		var at: int = (p.y * w + p.x) * 3 + 1
+		var at: int = (p.y * w + p.x) * 4 + 1
 		var b: int = mini(int(buckets[i]), _max_bucket)
 		if data[at] != b:
 			data[at] = b
 			changed = true
 	if changed:
-		img.set_data(img.get_width(), img.get_height(), false, Image.FORMAT_RGB8, data)
+		img.set_data(img.get_width(), img.get_height(), false, Image.FORMAT_RGBA8, data)
 		_dirty[level] = true
 
 
@@ -185,7 +207,7 @@ func write_buckets_levels(levels: Array, cells: Array, buckets: Array) -> void:
 				if first_outside == null:
 					first_outside = level_cells[i]
 				continue
-			var at: int = (p.y * w + p.x) * 3 + 1
+			var at: int = (p.y * w + p.x) * 4 + 1
 			var b: int = mini(int(level_buckets[i]), max_bucket)
 			if data[at] != b:
 				data[at] = b
@@ -202,7 +224,7 @@ func write_buckets_levels(levels: Array, cells: Array, buckets: Array) -> void:
 		if changed[li]:
 			var level: int = int(levels[li])
 			var img: Image = _images[level]
-			img.set_data(img.get_width(), img.get_height(), false, Image.FORMAT_RGB8, datas[li])
+			img.set_data(img.get_width(), img.get_height(), false, Image.FORMAT_RGBA8, datas[li])
 			_dirty[level] = true
 
 
@@ -275,5 +297,5 @@ func reset_all() -> void:
 			_out_of_range_reported = false
 			return
 	for level in _images:
-		(_images[level] as Image).fill(Color8(_clean_r, BUCKET_UNWRITTEN, _tone_byte(_clean_r), 255))
+		(_images[level] as Image).fill(Color8(_clean_r, BUCKET_UNWRITTEN, _tone_byte(_clean_r), 0))
 		_dirty[level] = true

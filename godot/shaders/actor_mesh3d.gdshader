@@ -28,5 +28,5 @@ void fragment() {
 		base *= texture(albedo_tex, UV).rgb;
 	}
 	// the ladder is an sRGB multiplier (the board multiplies in sRGB); the albedo is already linear
-	ALBEDO = base * pow(vec3(lum * key * soot), vec3(2.2));
+	ALBEDO = base * pow(vec3(lum * key * soot), vec3(2.2)) * (inside ? plane_warm(t, cell) : vec3(1.0));
 }

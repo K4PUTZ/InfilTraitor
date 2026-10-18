@@ -38,6 +38,15 @@ vec4 plane_texel(vec3 world, out bool inside, out ivec3 cell) {
 	return inside ? texelFetch(cell_plane, ivec3(pc, layer), 0) : vec4(0.0);
 }
 
+// FIRE LIGHT: the plane's A channel tints the mesh warm like the board's faces (`fire_time` drives the breathing; unset = steady).
+uniform float fire_time = 0.0;
+uniform vec3 warm_color = vec3(1.40, 0.84, 0.50);
+vec3 plane_warm(vec4 t, ivec3 cell) {
+	float ph = fract(float(cell.x * 7 + cell.z * 13) * 0.137) * 6.2831;
+	float flick = 1.0 + 0.22 * sin(fire_time * 9.0 + ph) * sin(fire_time * 4.3 + ph * 1.7);
+	return mix(vec3(1.0), warm_color, clamp(t.a * flick, 0.0, 1.0));
+}
+
 // The light ladder's multiplier for a texel (sRGB, the way the board multiplies).
 float plane_lum(vec4 t) {
 	int bucket = int(floor(t.g * 255.0 + 0.5));

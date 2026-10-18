@@ -69,5 +69,5 @@ void fragment() {
 	light = 1.0;
 	soot = 1.0;
 #endif
-	ALBEDO = base * pow(vec3(light * soot * detail), vec3(2.2));
+	ALBEDO = base * pow(vec3(light * soot * detail), vec3(2.2)) * (inside ? plane_warm(t, cell) : vec3(1.0));
 }

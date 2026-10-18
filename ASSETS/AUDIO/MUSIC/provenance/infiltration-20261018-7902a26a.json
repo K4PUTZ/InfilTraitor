@@ -17,5 +17,22 @@
     "sha256": "b401a20d8285522e8500b83d01dce05cfbbaaabae66088fc3b28c5f69d97cb68",
     "format": "ogg vorbis q6, -16 LUFS",
     "exported": "2026-10-18T04:06:52+00:00"
+  },
+  "stems": {
+    "drums": {
+      "path": "ASSETS/AUDIO/MUSIC/Raw/infiltration/infiltration-20261018-7902a26a_stems/drums.wav",
+      "sha256": "dcd6793d985e0ca76b0fe6e97e8da753ea564e4e6b7a5d673cdb88c0ece8d5ea",
+      "duration_s": 16.484
+    },
+    "bass": {
+      "path": "ASSETS/AUDIO/MUSIC/Raw/infiltration/infiltration-20261018-7902a26a_stems/bass.wav",
+      "sha256": "f6b5a74fffe10fb23a3d759994e037a73b08f73d44dcc1e70df401f624bd2c49",
+      "duration_s": 16.484
+    },
+    "arp": {
+      "path": "ASSETS/AUDIO/MUSIC/Raw/infiltration/infiltration-20261018-7902a26a_stems/arp.wav",
+      "sha256": "a58c4a25afee65126540b4f2e0304e4156db0f595bf769626591b9c40bdc3ae3",
+      "duration_s": 16.484
+    }
   }
 }

@@ -48,6 +48,8 @@ var cone_angle: float = 90.0  # Degrees, cone spread
 var tactical_energy: float = 1.0  ## Affects shadow strength and detection multiplier
 var visual_energy: float = 1.0    ## Affects brightness (not used for gameplay)
 var warmth: float = 0.0           ## 0 = a plain lamp; > 0 = a fire: the share of this light that tints the cells it reaches warm (VoxelLightField.warm_for, the cell plane's A channel)
+var reach: float = 1.0e9          ## GU: how far the light has GROWN (a fire spreads its glow outward a step at a time); a cell at distance d gets `clamp(reach - d, 0, 1)` of the light, so the front fades in. A lamp never moves it.
+var fading: bool = false          ## a light that is OFF (not `active`: the tactical layer sees it dark) but whose glow is still shrinking: the field keeps drawing it until `reach` is 0
 var inner_ratio: float = -1.0     ## < 0: the field's `inner_full_ratio`; else the plateau of full light as a share of the radius (a fire holds its glow wider than a lamp)
 
 # ============================================================================

@@ -9597,31 +9597,27 @@ func _tick_liquid_fire_lights(delta: float) -> void:
 	_step_fire_light_job(delta)
 	if _liquid_fire_lights.is_empty() or _voxel_light_field == null or _voxel_board == null:
 		return
-	var changed: Array = []
-	for fire_lights in _liquid_fire_lights:
-		changed.append_array(fire_lights.tick(delta))
-	if changed.is_empty():
-		return
 	var t0: int = Time.get_ticks_usec()
-	var flipped: bool = false
-	for light in changed:
-		var lit: bool = light.energy_multiplier >= (LiquidFireLightsRef.OFF_BELOW if light.active else LiquidFireLightsRef.ON_FROM)
-		if lit != light.active:   ## a fire that lights or goes out changes what a guard can see: the tactical layer follows (a few hundred ms at most, only on the flip)
-			light.active = lit
-			light.tactical_energy = 1.0 if lit else 0.0
-			flipped = true
-	if flipped:
-		var registry = _lighting_controller.get_light_registry()
+	var tactical: bool = false
+	var list_changed: bool = false
+	var queued: Dictionary = {}
+	for fire_lights in _liquid_fire_lights:
+		var step: Dictionary = fire_lights.tick(delta, _fire_job.is_empty())
+		tactical = tactical or bool(step["tactical"])
+		list_changed = list_changed or bool(step["list"])
+		for move: Dictionary in step["moved"]:
+			for gu in fire_lights.annulus_gus(move["light"], float(move["from"]), float(move["to"])):
+				queued[gu] = true
+	if tactical:   ## a fire that lights or goes out changes what a guard can see: the tactical layer follows at once (only the glow takes its time)
 		_lighting_controller.rebuild_tactical()
-		_voxel_light_field.set_lights(field_lights(registry), _lighting_controller.get_shadow_results())
-	var gus: Dictionary = {}
-	for light in changed:
-		for gu in _voxel_light_field.gus_in_light_range(light):
-			gus[gu] = true
+	if tactical or list_changed:
+		_voxel_light_field.set_lights(field_lights(_lighting_controller.get_light_registry()), _lighting_controller.get_shadow_results())
+	if queued.is_empty():
+		return
 	_voxel_light_field.clear_caches()
-	for key in _voxel_board.placed_keys_in_gus(gus.keys()):   ## merged with what an earlier batch has not written yet
+	for key in _voxel_board.placed_keys_in_gus(queued.keys()):
 		_fire_job[key] = true
-	print_debug("[FIRE-LIGHT] %d light(s) moved, %d cell(s) queued, %.1f ms" % [changed.size(), _fire_job.size(), float(Time.get_ticks_usec() - t0) / 1000.0])
+	print_debug("[FIRE-LIGHT] step: %d GU(s), %d cell(s) queued, %.1f ms" % [queued.size(), _fire_job.size(), float(Time.get_ticks_usec() - t0) / 1000.0])
 
 
 ## FIRE LIGHT, sliced: the queued cells are written a few ms a frame (a whole batch in one frame cost hundreds of ms on the Moto), and the levels they touched are uploaded once, when the queue is empty.
@@ -9654,7 +9650,12 @@ func _step_fire_light_job(delta: float) -> void:
 
 ## The lights the voxel light field reads: the registry's active ones (a burning body's lights are in it while they are lit, see `LiquidFireLights`).
 func field_lights(registry) -> Array:
-	return registry.get_active_lights()   ## the burning bodies' lights are registered (tactical) and active only while lit
+	var all: Array = registry.get_active_lights()   ## the burning bodies' lights are registered (tactical) and active only while lit ...
+	for fire_lights in _liquid_fire_lights:
+		for light in fire_lights.lights:
+			if light.fading and not light.active:
+				all.append(light)   ## ... plus the ones put out whose glow is still fading
+	return all
 
 
 ## One turn of the fire: water puts cells out, the front runs, the flames eat the oil. Before the plane's next tick (the rules and the fire read the same depths).

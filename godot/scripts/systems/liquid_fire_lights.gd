@@ -9,7 +9,8 @@
 ## thing a lamp is, a light the field reads, plus a `warmth` that tints what it reaches (the cell plane's A channel).
 ##
 ## The field takes the BRIGHTEST light on a cell (not the sum), so a fire shows where the map's own lamps leave it dim: a dark scene is what lets it read.
-## A light's energy is the flame of its patch (`LiquidFire.visual`, 0..1) with a slow flicker, quantised to `STEP` so the repaint it causes is a few a second.
+## A light is ON while the flame under its patch (`LiquidFire.visual`) is lit, and its glow GROWS outward `GROW_GU` a step (`LightSource.reach`: a cell at distance d takes `clamp(reach - d, 0, 1)` of
+## the light, so each ring fades in), and shrinks the same way when it goes out. The flame's breathing is the shader's (`fire_time`), never a repaint.
 class_name LiquidFireLights
 extends RefCounted
 
@@ -20,17 +21,15 @@ const DEFAULT_SPACING_GU: float = 2.0
 const DEFAULT_WARMTH: float = 0.65
 const DEFAULT_INNER: float = 0.5      ## the plateau of full light, as a share of the radius (a lamp's is 0.45)
 const DEFAULT_ENERGY: float = 1.0
-const ON_FROM: float = 0.2          ## a fire light is ACTIVE (tactical: shadows, exposure) from this energy up ...
+const ON_FROM: float = 0.2          ## a fire light is ACTIVE (tactical: shadows, exposure) from this flame up ...
 const OFF_BELOW: float = 0.1        ## ... and stays so until it falls under this
-const STEP: float = 0.25            ## energies are rounded to this: a repaint only when a light moves a whole step
-const INTERVAL_S: float = 1.5       ## the lights are re-read this often
-const FLICKER_DEPTH: float = 0.2    ## how far the flicker pulls a flame's light down
+const GROW_GU: float = 0.5          ## the glow grows (and shrinks) this far a step: two steps a GU, each ring fading in over its step
+const STEP_S: float = 0.3           ## at the soonest, one step this often; a step waits until the previous one has been WRITTEN (the pace is the work's, so it is steady on a slow handset)
 
 var lights: Array = []
 var _burn: RefCounted = null
 var _patches: Array = []   ## per light: PackedInt32Array of plane cell indices
 var _energy: float = DEFAULT_ENERGY
-var _clock: float = 0.0
 var _since: float = 0.0
 
 
@@ -61,41 +60,58 @@ func setup(burn: RefCounted, rect: Rect2, spec: Dictionary) -> void:
 		light.visual_energy = _energy
 		light.warmth = float(spec.get("warmth", DEFAULT_WARMTH))
 		light.inner_ratio = float(spec.get("inner", DEFAULT_INNER))
-		light.energy_multiplier = 0.0
-		light.last_energy = 0.0
+		light.energy_multiplier = 1.0   ## the flame's own breathing is the shader's; the light is on or off, and GROWS (`reach`)
+		light.last_energy = 1.0
+		light.reach = 0.0
 		light.light_id = "fire_light_%d" % lights.size()
 		light.owner_name = light.light_id
 		lights.append(light)
 		_patches.append(plane.cells_in(patch))
 
 
-## The lights whose energy moved a whole step since the last call (empty most frames). Each already carries its new `energy_multiplier`.
-func tick(delta: float) -> Array:
-	var changed: Array = []
+## One step of every light: lit or put out by the flame under it, then its glow grows (or shrinks) `GROW_GU`. `can_step` is false while the previous step is still being written.
+## Returns {"moved": [{light, from, to}] (the fronts that moved), "tactical": a light went on / off (shadows and exposure must be re-projected), "list": the set of lights the field
+## draws changed (a fade ended)}.
+func tick(delta: float, can_step: bool) -> Dictionary:
+	var out: Dictionary = {"moved": [], "tactical": false, "list": false}
 	if _burn == null:
-		return changed
-	_clock += delta
+		return out
 	_since += delta
-	if _since < INTERVAL_S:
-		return changed
+	if not can_step or _since < STEP_S:
+		return out
 	_since = 0.0
 	for i in range(lights.size()):
 		var flame: float = 0.0
 		for cell: int in _patches[i]:
 			flame = maxf(flame, _burn.visual[cell])
-		var flicker: float = 1.0 - FLICKER_DEPTH * (0.5 + 0.5 * sin(_clock * 7.0 + float(i) * 1.7) * sin(_clock * 3.1 + float(i)))
-		var target: float = snappedf(clampf(flame * flicker, 0.0, 1.0), STEP)
 		var light = lights[i]
-		if absf(target - light.energy_multiplier) >= STEP - 0.001:
-			light.energy_multiplier = target
-			changed.append(light)
-	return changed
+		var lit: bool = flame >= (OFF_BELOW if light.active else ON_FROM)
+		if lit != light.active:   ## a fire that lights or goes out changes what a guard can see at once; only its glow takes its time
+			light.active = lit
+			light.tactical_energy = 1.0 if lit else 0.0
+			light.fading = not lit and light.reach > 0.0
+			out["tactical"] = true
+			out["list"] = true
+		var goal: float = float(light.radius) + 1.0 if light.active else 0.0
+		if not is_equal_approx(light.reach, goal):
+			var was: float = light.reach
+			light.reach = move_toward(light.reach, goal, GROW_GU)
+			(out["moved"] as Array).append({"light": light, "from": was, "to": light.reach})
+			if not light.active and light.reach <= 0.0 and light.fading:
+				light.fading = false
+				out["list"] = true
+	return out
 
 
-## Every GU any of the lights can reach (what a repaint of `changed` has to cover).
-func gus_of(changed: Array, field) -> Array:
-	var set_of: Dictionary = {}
-	for light in changed:
-		for gu in field.gus_in_light_range(light):
-			set_of[gu] = true
-	return set_of.keys()
+## The GUs where a front moving from `a` to `b` changes the light: those at a distance in [min - 1, max] (a GU's share is `clamp(reach - d, 0, 1)`), inside the radius.
+func annulus_gus(light, a: float, b: float) -> Array:
+	var lo: float = minf(a, b) - 1.0
+	var hi: float = maxf(a, b)
+	var out: Array = []
+	var r: int = int(ceil(float(light.radius)))
+	for dx in range(-r, r + 1):
+		for dy in range(-r, r + 1):
+			var d: float = Vector2(dx, dy).length()
+			if d <= float(light.radius) and d >= lo and d <= hi:
+				out.append(light.cell + Vector2i(dx, dy))
+	return out

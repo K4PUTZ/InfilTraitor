@@ -414,15 +414,18 @@ func warm_for(cell: Vector2i, level: int) -> int:
 	var total: float = 0.0
 	var gu := Vector2i(cell.x >> 3, cell.y >> 3)
 	for light in _lights:
-		if light.warmth <= 0.0 or not light.active:
+		if light.warmth <= 0.0 or not (light.active or light.fading):
 			continue
 		var d_gu := Vector2(light.cell - gu).length()
 		var radius := maxf(float(light.radius), 0.001)
 		if d_gu > radius:
 			continue
+		var front: float = clampf(light.reach - d_gu, 0.0, 1.0)
+		if front <= 0.0:
+			continue
 		var d_lvl := absf(float(level - _anchor_level(light))) / float(GeometryCoords.LEVELS_PER_STOREY) * vertical_gu_per_storey
 		var d := sqrt(d_gu * d_gu + d_lvl * d_lvl)
-		total += float(light.visual_energy) * float(light.energy_multiplier) * float(light.warmth) * _falloff(d, radius, light.inner_ratio)
+		total += front * float(light.visual_energy) * float(light.energy_multiplier) * float(light.warmth) * _falloff(d, radius, light.inner_ratio)
 	return int(round(clampf(total, 0.0, 1.0) * 255.0))
 
 
@@ -446,7 +449,7 @@ func is_buried(cell: Vector2i, level: int) -> bool:
 ## True when any light the field holds is a fire (a map with none never pays for `warm_for`).
 func has_warm_lights() -> bool:
 	for light in _lights:
-		if light.warmth > 0.0:
+		if light.warmth > 0.0 and (light.active or light.fading):
 			return true
 	return false
 
@@ -719,7 +722,7 @@ func _lamp_term(gu: Vector2i, level: int, top_bucket: int) -> Vector3:
 	if not _lights.is_empty():
 		intensity = ambient_intensity
 		for light in _lights:
-			if not light.active:
+			if not (light.active or light.fading):
 				continue
 			## GU-level occlusion gate: reuse the ShadowProjector's result for this
 			## light — a GU it marks shadowed receives nothing from it.
@@ -735,7 +738,7 @@ func _lamp_term(gu: Vector2i, level: int, top_bucket: int) -> Vector3:
 					/ float(GeometryCoords.LEVELS_PER_STOREY) * vertical_gu_per_storey
 			var d := sqrt(d_gu * d_gu + d_lvl * d_lvl)
 			## VL-03: energy_multiplier carries the temporal state (flicker/pulse).
-			var lamp_energy := float(light.visual_energy) * float(light.energy_multiplier)
+			var lamp_energy := float(light.visual_energy) * float(light.energy_multiplier) * clampf(light.reach - d_gu, 0.0, 1.0)
 			var c: float = lamp_energy * _falloff(d, radius, light.inner_ratio)
 			var roofed: bool = false
 			for sp: Vector3 in spans:

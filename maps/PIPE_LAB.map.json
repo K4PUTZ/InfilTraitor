@@ -1008,19 +1008,19 @@
      "note": "M6 F3/F4: the agent walks the channel (INFILTRAITOR_LIQUID_WALK), wading, splashing and leaving prints"
     },
     {
-     "id": "valve_overflow",
+     "id": "valve_rise_fall",
      "profile": "engine",
      "rail": "channel_rail",
      "steps": [],
      "at_key": 0,
      "after_hold": 0,
-     "length": 1800,
+     "length": 1500,
      "seed": 1,
      "env": {
       "FLUID_AUTO_TICK": "0.12",
-      "FLUID_VALVE": "0:0:0:0;2:0:0:2.0;16:0:0:0"
+      "FLUID_VALVE": "0:0:0:0;2:0:0:2.0;12:0:0:0"
      },
-     "note": "M6 F6: the valve starts shut, opens at 2 s (the channel fills against a half-blocked drain, reaches the curb and spills onto the floor), shuts at 16 s (it drains); the zone is the channel plus a metre of floor each side (rim 1: a puddle a voxel deep forms before the edge of the floor drains away)"
+     "note": "M6 F6: the valve starts shut, opens at 2 s (the channel rises against its drain, the curb holds it: no overflow, by ruling), shuts at 12 s (it falls)"
     }
    ]
   },
@@ -1029,9 +1029,9 @@
    "items": [
     {
      "zone": [
-      10.0,
+      11.25,
       1.0,
-      4.0,
+      1.5,
       10.0
      ],
      "kind": "caribe",
@@ -1041,7 +1041,7 @@
      ],
      "fluid": {
       "cell": 0.25,
-      "rim": 1,
+      "rim": 2,
       "walls": [
        {
         "zone": [
@@ -1096,24 +1096,6 @@
          2.0
         ],
         "height": 8
-       },
-       {
-        "zone": [
-         11.0,
-         3.0,
-         0.25,
-         6.0
-        ],
-        "height": 2
-       },
-       {
-        "zone": [
-         12.75,
-         3.0,
-         0.25,
-         6.0
-        ],
-        "height": 2
        }
       ],
       "roofs": [
@@ -1155,7 +1137,7 @@
          1.5,
          0.25
         ],
-        "rate": 0.3
+        "rate": 1.0
        }
       ],
       "grates": [

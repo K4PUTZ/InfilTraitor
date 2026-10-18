@@ -71,6 +71,11 @@
 ##                                        in place — what a rotation or a restore runs, without
 ##                                        either (a probe before and after names what the
 ##                                        incremental light left different from a full relight)
+##   flood <mode>                         MATERIALS F12 feasibility bench: the WHOLE playable floor under water, as one body.
+##                                        plane05 / plane025 = a `FluidPlane` of 0.5 / 0.25 GU cells (no walls: every cell is active, the
+##                                        upper bound) driven by a source, ticked every 0.3 s, drawn by a driven `LiquidSheet3D`;
+##                                        level = one flat sheet and no sim (the "level model"); off = remove it. Prints `[FLOOD]` lines
+##                                        (`Room.scenario_flood`)
 ##   struct_audit                         ROOF_MASTER_PLAN RF-G G3: asks `StructuralSupport` about EVERY standing voxel of the map and prints how many have no support
 ##                                        (an intact map must say 0) and what the walk cost (`Room.scenario_struct_audit`)
 ##   struct_cut                           RF-G G3 bench: dev flag `STRUCT_CUT=<material>,<levels>` destroys the foot of every voxel of that material, then the support service runs
@@ -102,7 +107,7 @@ const ARITY: Dictionary = {
 	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
 	"container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "decal_wall": 2,
-	"skylight_hit": 0, "roof_gravity": 0, "struct_audit": 0, "struct_cut": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1,
+	"skylight_hit": 0, "roof_gravity": 0, "flood": 1, "struct_audit": 0, "struct_cut": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1,
 }
 ## CAPTURE_RAILS §7.5 — the cell arguments an `@id` may name, by op and token index (0 = the op). `substitute_anchors()` turns each
 ## into the anchor's raw ground cell BEFORE parsing, so the event and the camera read the same anchor.
@@ -322,6 +327,10 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			if not arg.is_valid_int() or int(arg) < 0:
 				return "shoot takes a guard index >= 0"
 			step["index"] = int(arg)
+		"flood":
+			if not ["off", "level", "plane05", "plane025"].has(arg.to_lower()):
+				return "flood takes off, level, plane05 or plane025"
+			step["mode"] = arg.to_lower()
 		"view_mode":
 			if not VIEW_MODES.has(arg.to_lower()):
 				return "view_mode takes dev, light, heat, numbers, ruler or layout"
@@ -486,7 +495,7 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "Room has no scenario_passages()")
 			if not bool(room.call("scenario_passages", str(step["name"]))):
 				return _fail(step, "no passages were computed (see the error above)")
-		"shoot", "reload", "save_restore", "perspective", "relight", "view_mode", "skylight_hit", "roof_gravity", "struct_audit", "struct_cut":
+		"shoot", "reload", "save_restore", "perspective", "relight", "view_mode", "skylight_hit", "roof_gravity", "flood", "struct_audit", "struct_cut":
 			var method: String = "scenario_" + str(step["op"])
 			if not room.has_method(method):
 				return _fail(step, "Room has no %s()" % method)
@@ -496,7 +505,7 @@ func _execute(room: Node, step: Dictionary) -> bool:
 					ok = await room.call(method, int(step["index"]))
 				"perspective":
 					ok = await room.call(method, str(step["direction"]))
-				"view_mode":
+				"view_mode", "flood":
 					ok = await room.call(method, str(step["mode"]))
 				_:
 					ok = await room.call(method)

@@ -156,6 +156,8 @@ var _agent_track: Dictionary = {}          ## M6: {color, turns, left}: the prin
 var _footprints: RefCounted = null         ## M6: FootprintMarks3D
 const LIQUID_FOOTPRINT_STEPS: int = 8      ## M6 (Director, 2026-10-17): up to eight prints after leaving a liquid, the first well marked, each next one lighter
 const LIQUID_FOOTPRINT_FADE: float = 0.88   ## how much lighter the last print starts than the first (1 - this = its strength)
+var _flood_sheet: MeshInstance3D = null      ## F12 bench (`scenario_flood`)
+var _flood_timer: Timer = null
 var _liquid_sheets: Array = []             ## M6: one LiquidSheet3D per `liquids` body, see _attach_liquids()
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
 ## SM-2 — a scatter covering more than this many LAYERS of its zones gets a loud warning (not a refusal). Moto: ~2.4 ms per layer over a full screen of zone.
@@ -5276,6 +5278,67 @@ func scenario_struct_cut() -> bool:
 	bump_world_revision()
 	print("[STRUCT-CUT] %d voxel(s) of %s destroyed up to level +%s" % [cut.size(), spec[0], spec[1]])
 	schedule_structural_support(cut)
+	return true
+
+
+## MATERIALS F12 feasibility bench (see `scenario_runner.gd`, op `flood`): the whole playable floor as one body of water. The plane has no walls (every cell
+## active: the upper bound of a real segment), a closed rim, and a source that keeps the water moving. A timer ticks it every 0.3 s and prints the tick's cost.
+func scenario_flood(mode: String) -> bool:
+	if _flood_timer != null and is_instance_valid(_flood_timer):
+		_flood_timer.queue_free()
+	_flood_timer = null
+	if _flood_sheet != null and is_instance_valid(_flood_sheet):
+		_flood_sheet.queue_free()
+	_flood_sheet = null
+	if mode == "off":
+		return true
+	var live: Node3D = board3d()
+	if live == null:
+		push_error("[Room] flood: no 3D board")
+		return false
+	var pr: Rect2i = _base_layout.get("playable_rect", Rect2i(Vector2i.ZERO, _room_size))
+	var rect := Rect2(Vector2(pr.position), Vector2(pr.size))
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var base_y: float = float(GeometryCoords.FLOOR_TOP_LEVEL + 1 - int(live.call("ground_level"))) * unit + LiquidSheet3DRef.LIFT
+	var params: Dictionary = LiquidRegistryRef.resolve("caribe", {})
+	var plane: RefCounted = null
+	if mode != "level":
+		var cell: float = 0.5 if mode == "plane05" else 0.25
+		plane = FluidPlaneRef.new()
+		var cols: int = int(round(rect.size.x / cell)) + 2
+		var rows: int = int(round(rect.size.y / cell)) + 2
+		plane.setup(cols, rows, cell, rect.position - Vector2(cell, cell), 0.9)
+		for r in range(rows):
+			for c in range(cols):
+				if plane.is_rim(c, r):
+					plane.ground[plane.index(c, r)] = FluidPlaneRef.WALL   ## a closed segment: the outer walls hold it
+		plane.add_source(Rect2(rect.position + Vector2(1.0, 1.0), Vector2(2.0, 0.5)), 6.0)
+	var sheet: MeshInstance3D = LiquidSheet3DRef.new()
+	live.add_child(sheet)
+	sheet.setup(rect, base_y, params, Vector2(0.0, 1.0), plane)
+	_flood_sheet = sheet
+	if plane != null:
+		var timer := Timer.new()
+		timer.wait_time = 0.3
+		add_child(timer)
+		var stats: Array = [0, 0.0, 0.0]    ## ticks, total ms, worst ms
+		timer.timeout.connect(func() -> void:
+			var t0: int = Time.get_ticks_usec()
+			sheet.tick()
+			var ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
+			stats[0] = int(stats[0]) + 1
+			stats[1] = float(stats[1]) + ms
+			stats[2] = maxf(float(stats[2]), ms)
+			if int(stats[0]) % 10 == 0:
+				var wet: int = 0
+				for d in plane.depth:
+					if d > 0.05:
+						wet += 1
+				print("[FLOOD] %s grid %dx%d tick %d: mean %.2f ms, worst %.2f ms, wet cells %d of %d, volume %.0f" % [mode, plane.cols, plane.rows, int(stats[0]),
+						float(stats[1]) / float(stats[0]), float(stats[2]), wet, plane.cols * plane.rows, plane.total_volume()]))
+		_flood_timer = timer
+		timer.start()
+	print("[FLOOD] %s started on a %.0f x %.0f GU floor" % [mode, rect.size.x, rect.size.y])
 	return true
 
 

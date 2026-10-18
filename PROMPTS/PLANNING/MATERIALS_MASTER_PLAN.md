@@ -1099,7 +1099,7 @@ Bench: `maps/PIPE_LAB.map.json` (two grated half-buried pipes in the long walls,
 | F5 | 🟡 mud trap + deep-lethal blocking built; fire (oil), corrosion, cryogenic freezing, lava crust plates and quicksand NOT yet (need a fire system / a floor-behaviour seam) **Per-liquid rules, one by one**: fire first (oil burns and ignites the agent, clean water extinguishes), then acid / toxic corrosion, lava (light source, ignites), cryogenic (freezes neighbours into plates), lama and quicksand traps (`trap`), lava crust plates | each rule has its own take and selftest | F3 |
 | F6 | 🟡 the API is built and tested (`FluidPlane.set_source_rate`, `lower_ground` for a breach, `LiquidField.set_source_rate`); the valve's INPUT / HUD and the blast hook are not (a design call) **The player changes the flow**: a valve or grate on a pipe (the source rate), a breach by blast spills over the curb | take: close the valve, the channel drains | F2 |
 | F7 | **Rain** wired to weather for any exposed body (the shader layer exists, `rain` 0..1) | a map with weather wets its liquids | weather system (none yet) |
-| F8 | ✅ on the Moto 2026-10-17: ONE channel was 102 ms a tick; the lean loop + 0.5 GU cells + rounds spread over frames bring 8 channels to +0.9 ms/frame (second block below); then a worker thread and per-liquid rounds were added anyway for margin (third block below); the Galaxy is not measured **Moto and Galaxy measurement** of a map with N bodies (cost per sheet, `FluidPlane` tick on the main thread; a worker only if it measures) | numbers in `DEVICE_DIAGNOSTICS` | F2 |
+| F8 | ✅ on the Moto 2026-10-17: ONE channel was 102 ms a tick; the lean loop + 0.5 GU cells + rounds spread over frames bring 8 channels to +0.9 ms/frame (second block below); then a worker thread and per-liquid rounds were added anyway for margin (third block below); the Galaxy A16 was measured too (fourth block) **Moto and Galaxy measurement** of a map with N bodies (cost per sheet, `FluidPlane` tick on the main thread; a worker only if it measures) | numbers in `DEVICE_DIAGNOSTICS` | F2 |
 | F9 | Swimming / wading / struggling ANIMATIONS and the `swim_ap` rule | in the MOVEMENT milestone | the approved 3D agent model |
 | F10 | Footprints from puddles, mud and dog droppings (AI + MOVEMENT milestones: guards notice and follow prints, see the 2026-10-17 rulings) | in the props milestone | props milestone |
 | F11 | Gases (maybe), a per-GU concentration plane read by detection and fire | a separate decision | F1 |
@@ -1167,6 +1167,19 @@ Desktop: 8 channels 190 ms -> 71 ms a synchronous tick from the loop alone; `liq
 | 8 channels at the old 0.25 GU cells | 91.1 (GPU 32.9) | **31.8** (GPU 24.8) |
 
 Reading: at 0.5 GU cells the worker is worth ~0.7 ms a frame for 8 channels; its real value is the margin for a finer grid or a bigger body (8 bodies at 0.25 GU: 91 -> 32 ms). The worker costs one task a body a turn; on a device with few cores the pool is shared with the soft sheets.
+
+**F8 on the Galaxy A16 (SM-A166W, Mali-G68; 2026-10-18; same bench, uncapped, release APK, logs `/tmp/flood_g1.log` worker and `/tmp/flood_g0.log` main thread).**
+
+| Bodies | worker thread | main thread, rounds spread | 
+|---|---|---|
+| none (idle) | 23.5 ms/frame (GPU 20.4) | 23.0 (20.0) |
+| 1 channel | 21.2 | 19.6 |
+| 4 channels | 21.5 | 21.5 |
+| 8 channels | 21.8 | 21.5 |
+| 8 channels at the old 0.25 GU cells | 28.0 (GPU 23.3) | 28.1 (24.3) |
+| after (water removed) | 24.3 | 27.0 |
+
+Reading: the Galaxy's baseline WANDERS by 2-4 ms between segments of one run (idle 23.0-23.5, the closing idle 24.3-27.0: the plan's standing warning), so the 0.5 GU channels are inside that noise, i.e. free; only the 0.25 GU case shows a cost (~+4.5 ms), and here the worker thread buys nothing over the main thread (28.0 against 28.1): the Galaxy has the headroom the Moto lacks. The Moto stays the floor device; the two agree that at 0.5 GU, with the rounds spread, up to 8 channels cost no frame time.
 
 ---
 

@@ -24,3 +24,7 @@ Resume point for the next session: **M6 is built through F1-F8 and the fire of F
 - Run `fire_scenario.py` on the Moto and the Galaxy (idle vs fire, `FLAME_STYLE` both / embers / tongues) and record it under the F5 blocks.
 - Fire as a real light (the board's light planes cost a repaint: measure first); a checkpoint keeping `LiquidFire.state()`; the valve / extinguisher input (props); the rest of F5 (acid / toxic corrosion, cryogenic freezing, lava crust plates, quicksand); F7 rain (needs weather); F9-F11 (movement / props / gases); F12 (shelved).
 - A blast's reach is the constant `BLAST_IGNITES_LIQUID_GU` (3 GU): move it to bomb data when a second explosive needs another.
+
+## Added late on 2026-10-18 (read with the plan's F5 rounds and the "Channel margin" block)
+- Fire final: yellow tongues only (blue rejected), 4 a cell, sway / wind / per-tongue flicker, flames follow the oil depth, oxygen under roofs, sparks + fagulhas, smoke when a cell goes out. `FluidPlane.surface_cap` and PIPE_LAB curbs 4 voxels / brim 3 (the margin rule: curb = brim + at least one voxel).
+- **First thing next session: dig the channel** (plan block "NEXT SESSION"); then run `fire_scenario.py` on the Moto and the Galaxy (still unmeasured).

@@ -11,6 +11,7 @@ const LiquidSheet3DRef = preload("res://godot/scripts/geometry/liquid_sheet3d.gd
 const LiquidFieldRef = preload("res://godot/scripts/systems/liquid_field.gd")  ## M6: which liquid stands in a cell, and how deep
 const LiquidExposureRef = preload("res://godot/scripts/systems/liquid_exposure.gd")  ## M6: what a liquid does to an agent
 const FootprintMarks3DRef = preload("res://godot/scripts/geometry/footprint_marks3d.gd")  ## M6: the prints left after a liquid
+const LiquidFlamesRef = preload("res://godot/scripts/geometry/liquid_flames.gd")  ## M6 F5: the flame balls of a burning liquid
 const LiquidFireRef = preload("res://godot/scripts/systems/liquid_fire.gd")  ## M6 F5: a flammable liquid on fire
 const FluidPlaneRef = preload("res://godot/scripts/systems/fluid_plane.gd")  ## M6: the gameplay truth of a body of liquid
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
@@ -160,6 +161,8 @@ const LIQUID_FOOTPRINT_FADE: float = 0.88   ## how much lighter the last print s
 var _flood_sheet: MeshInstance3D = null      ## F12 bench (`scenario_flood`)
 var _flood_timer: Timer = null
 var _flood_sheets: Array = []              ## F8 bench: the channels
+var _liquid_flames: Array = []             ## M6 F5: one LiquidFlames emitter per fire, same order as `_liquid_fires` (its sheet in `_liquid_fire_sheets`)
+var _liquid_fire_sheets: Array = []
 var _liquid_fires: Array = []              ## M6 F5: one LiquidFire per flammable body
 var _liquid_sheets: Array = []             ## M6: one LiquidSheet3D per `liquids` body, see _attach_liquids()
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
@@ -9437,6 +9440,8 @@ func _attach_liquids(live: Node3D) -> void:
 			sheet.queue_free()
 	_liquid_sheets.clear()
 	_liquid_fires.clear()
+	_liquid_flames.clear()
+	_liquid_fire_sheets.clear()
 	if _liquid_field == null:
 		_liquid_field = LiquidFieldRef.new()
 	_liquid_field.clear()
@@ -9475,6 +9480,8 @@ func _attach_liquids(live: Node3D) -> void:
 			burn.setup(plane, kind_rules.get("fire", {}))
 			sheet.fire = burn
 			_liquid_fires.append(burn)
+			_liquid_fire_sheets.append(sheet)
+			_liquid_flames.append(LiquidFlamesRef.new())
 		if plane != null:
 			sheet.snap()
 		_liquid_sheets.append(sheet)
@@ -9766,6 +9773,10 @@ func _process(_delta: float) -> void:
 	_sync_dev_overlay_view()
 	if _test_zone_controller != null:
 		_test_zone_controller.fuse_fx_tick(_delta)
+	for k in range(_liquid_flames.size()):    ## M6 F5: the flame balls of every burning body
+		var flame_sheet = _liquid_fire_sheets[k]
+		if is_instance_valid(flame_sheet):
+			(_liquid_flames[k] as RefCounted).tick(_delta, _liquid_fires[k], flame_sheet.surface_y(), _ember_overlay)
 	if _frame_probe:
 		var t_now: int = Time.get_ticks_usec()
 		if not _frame_probe_armed:

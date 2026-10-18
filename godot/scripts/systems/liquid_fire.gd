@@ -15,6 +15,13 @@ const DEFAULT_SPEED: float = 3.0     ## GU of front a turn
 const DEFAULT_BURN: float = 0.15     ## voxels of depth eaten a turn
 const DEFAULT_DOSE_STEP: float = 0.5
 const DEFAULT_DOSE_TURN: float = 0.5
+## THE LOOK is not the rules (Director, 2026-10-18: "uma coisa suave e fluida"): `burning` is the turn's truth and jumps; what is DRAWN is `visual`, a level 0..1 a
+## cell that rises when its turn comes (the front SWEEPS across the cells a turn lit instead of lighting them all at once), and falls slowly when the cell goes out.
+const SWEEP_SECONDS: float = 0.9      ## the time a turn's front takes to cross the GU it gained
+const BLAST_FRONT_GU_S: float = 7.0   ## how fast a blast's fire opens outward from its point
+const RISE_PER_S: float = 4.0         ## a lit cell reaches full flame in about a quarter of a second
+const FALL_PER_S: float = 1.1         ## and takes about a second to die away
+const HOT_LEVEL: float = 0.35         ## from here a cell throws flames (`hot_cells`)
 
 var plane: RefCounted = null
 var burning: PackedByteArray = PackedByteArray()   ## 1 = the plane cell burns (the whole grid, rim included, which never burns)
@@ -22,6 +29,10 @@ var speed_gu: float = DEFAULT_SPEED
 var burn_per_turn: float = DEFAULT_BURN
 var dose_step: float = DEFAULT_DOSE_STEP
 var dose_turn: float = DEFAULT_DOSE_TURN
+var visual: PackedFloat32Array = PackedFloat32Array()    ## 0..1 per plane cell: the flame the eye sees
+var hot_cells: PackedInt32Array = PackedInt32Array()      ## the cells whose visual level is above HOT_LEVEL, rebuilt each `advance_visual`
+var _lit_at: PackedFloat32Array = PackedFloat32Array()    ## the visual clock at which a burning cell may start to light
+var _clock: float = 0.0
 var version: int = 0               ## bumped whenever a cell lights or goes out (the sheet redraws then)
 
 
@@ -29,6 +40,11 @@ func setup(fluid_plane: RefCounted, spec: Dictionary) -> void:
 	plane = fluid_plane
 	burning.resize(plane.cols * plane.rows)
 	burning.fill(0)
+	visual.resize(plane.cols * plane.rows)
+	visual.fill(0.0)
+	_lit_at.resize(plane.cols * plane.rows)
+	_lit_at.fill(0.0)
+	_clock = 0.0
 	speed_gu = float(spec.get("speed", DEFAULT_SPEED))
 	burn_per_turn = float(spec.get("burn", DEFAULT_BURN))
 	dose_step = float(spec.get("dose_step", DEFAULT_DOSE_STEP))
@@ -66,6 +82,7 @@ func ignite(centre: Vector2, radius: float) -> int:
 			var i: int = plane.index(c, r)
 			if burning[i] == 0 and _wet(i) and centre_of(i).distance_to(centre) <= radius:
 				burning[i] = 1
+				_lit_at[i] = _clock + centre_of(i).distance_to(centre) / BLAST_FRONT_GU_S
 				lit += 1
 	if lit > 0:
 		version += 1
@@ -103,7 +120,7 @@ func tick(put_out: Callable = Callable()) -> void:
 				front.append(i)
 	var rounds: int = maxi(int(round(speed_gu / plane.cell_gu)), 1)
 	var w: int = plane.cols
-	for _round in range(rounds):
+	for round_index in range(rounds):
 		var next := PackedInt32Array()
 		for i in front:
 			var c: int = i % w
@@ -115,6 +132,7 @@ func tick(put_out: Callable = Callable()) -> void:
 					var j: int = plane.index(nc, nr)
 					if burning[j] == 0 and _wet(j) and not (put_out.is_valid() and bool(put_out.call(centre_of(j)))):    ## water standing there keeps the fire out
 						burning[j] = 1
+						_lit_at[j] = _clock + float(round_index + 1) / float(rounds) * SWEEP_SECONDS
 						next.append(j)
 						changed = true
 		front = next
@@ -128,6 +146,30 @@ func tick(put_out: Callable = Callable()) -> void:
 				changed = true
 	if changed:
 		version += 1
+
+
+## The look, one frame: each cell's `visual` level moves toward 1 once its burning cell's turn has come (`_lit_at`) and toward 0 otherwise, so a front sweeps
+## across the cells it gained and a put-out cell dies away. Returns true while anything is still changing or burning (the caller redraws then).
+func advance_visual(dt: float) -> bool:
+	_clock += dt
+	var rise: float = RISE_PER_S * dt
+	var fall: float = FALL_PER_S * dt
+	var moving: bool = false
+	hot_cells = PackedInt32Array()
+	for i in range(visual.size()):
+		var level: float = visual[i]
+		var on: bool = burning[i] == 1 and _clock >= _lit_at[i]
+		if on:
+			if level < 1.0:
+				level = minf(level + rise, 1.0)
+				moving = true
+		elif level > 0.0:
+			level = maxf(level - fall, 0.0)
+			moving = true
+		visual[i] = level
+		if level > HOT_LEVEL:
+			hot_cells.append(i)
+	return moving or not hot_cells.is_empty()
 
 
 ## Whether any burning cell lies in the GU cell `cell` (inner or raw GU, as the plane's grid is: raw).

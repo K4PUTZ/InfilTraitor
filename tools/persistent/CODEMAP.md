@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**318 scripts · 96152 lines total** (under `godot/scripts/`)
+**319 scripts · 96283 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — actor_pose.gd, agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, footprint_marks3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, liquid_sheet3d.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_rest_cache.gd, soft_sheet_sim.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
+- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, footprint_marks3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, liquid_flames.gd, liquid_sheet3d.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_rest_cache.gd, soft_sheet_sim.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, layout_overlay3d.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
 - **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, soft_sheet_presets.gd, structural_support.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, fluid_plane.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, liquid_exposure.gd, liquid_field.gd, liquid_fire.gd, liquid_registry.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
@@ -858,9 +858,29 @@ extends `Node3D` · 3522 lines
 
 ---
 
+### `liquid_flames.gd`
+
+`class_name LiquidFlames` · extends `RefCounted` · 43 lines
+
+`godot/scripts/geometry/liquid_flames.gd`
+
+> LiquidFlames — the flame BALLS of a burning liquid (M6 F5, Director 2026-10-18: *"as mesmas bolinhas de fogo da explosão, em toda a extensão que estiver queimando. Nascem no chão, vão subindo com variadas velocidades e tamanhos, e somem"*). It spawns nothing of its own: the blast's fire is `EmberOverlay` glows (yellow-hot, cooling to red, a soft halo, born and dying), and these are the same embers, born on the surface of the cells whose `LiquidFire.visual` level is above `HOT_LEVEL`, anchored in 3D on the oil, each with its own life, rise speed and size, so a front that sweeps across the pool is followed by flames and a cell that is put out stops throwing them as its level falls. PURELY VISUAL. The rate follows the number of hot cells up to `MAX_PER_SECOND` a body (a flooded floor does not become a thousand particles); the cells are picked at random.
+
+**Constants / tuning**
+- `PER_CELL_PER_SECOND` = `3.5`
+- `MAX_PER_SECOND` = `160.0`
+- `MAX_DT` = `0.1`
+- `LIFE_MIN` = `0.6`
+- `LIFE_MAX` = `1.7`
+- `RISE_MIN_PX_S` = `90.0`
+- `RISE_MAX_PX_S` = `300.0`
+- `SIZE_MIN` = `0.5`
+
+---
+
 ### `liquid_sheet3d.gd`
 
-`class_name LiquidSheet3D` · extends `MeshInstance3D` · 167 lines
+`class_name LiquidSheet3D` · extends `MeshInstance3D` · 172 lines
 
 `godot/scripts/geometry/liquid_sheet3d.gd`
 
@@ -3261,7 +3281,7 @@ extends `Node` · 236 lines
 
 ### `liquid_fire.gd`
 
-`class_name LiquidFire` · extends `RefCounted` · 154 lines
+`class_name LiquidFire` · extends `RefCounted` · 196 lines
 
 `godot/scripts/systems/liquid_fire.gd`
 
@@ -3273,6 +3293,11 @@ extends `Node` · 236 lines
 - `DEFAULT_BURN` = `0.15`
 - `DEFAULT_DOSE_STEP` = `0.5`
 - `DEFAULT_DOSE_TURN` = `0.5`
+- `SWEEP_SECONDS` = `0.9`
+- `BLAST_FRONT_GU_S` = `7.0`
+- `RISE_PER_S` = `4.0`
+- `FALL_PER_S` = `1.1`
+- `HOT_LEVEL` = `0.35`
 
 **Public vars**
 - `var plane: RefCounted = null`
@@ -3281,6 +3306,8 @@ extends `Node` · 236 lines
 - `var burn_per_turn: float = DEFAULT_BURN`
 - `var dose_step: float = DEFAULT_DOSE_STEP`
 - `var dose_turn: float = DEFAULT_DOSE_TURN`
+- `var visual: PackedFloat32Array = PackedFloat32Array()`
+- `var hot_cells: PackedInt32Array = PackedInt32Array()`
 - `var version: int = 0`
 
 **Public API**
@@ -3291,6 +3318,7 @@ extends `Node` · 236 lines
 - `func extinguish_rect(rect: Rect2) -> int:`
 - `func extinguish_all() -> void:`
 - `func tick(put_out: Callable = Callable()) -> void:`
+- `func advance_visual(dt: float) -> bool:`
 
 ---
 
@@ -4853,7 +4881,7 @@ extends `SceneTree` · 445 lines
 
 ### `liquid_fire_selftest.gd`
 
-extends `SceneTree` · 95 lines
+extends `SceneTree` · 125 lines
 
 `godot/scripts/tools/liquid_fire_selftest.gd`
 
@@ -6539,7 +6567,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12822 lines
+extends `Node2D` · 12833 lines
 
 `godot/scripts/world/room.gd`
 
@@ -6552,6 +6580,7 @@ extends `Node2D` · 12822 lines
 - `LiquidFieldRef` = `preload("res://godot/scripts/systems/liquid_field.gd")`
 - `LiquidExposureRef` = `preload("res://godot/scripts/systems/liquid_exposure.gd")`
 - `FootprintMarks3DRef` = `preload("res://godot/scripts/geometry/footprint_marks3d.gd")`
+- `LiquidFlamesRef` = `preload("res://godot/scripts/geometry/liquid_flames.gd")`
 - `LiquidFireRef` = `preload("res://godot/scripts/systems/liquid_fire.gd")`
 - `FluidPlaneRef` = `preload("res://godot/scripts/systems/fluid_plane.gd")`
 - `GroundDecals3DRef` = `preload("res://godot/scripts/geometry/ground_decals3d.gd")`

@@ -91,5 +91,35 @@ func _init() -> void:
 	fa.restore(saved)
 	_check(fa.state() == saved, "state() / restore() round-trip")
 
+	## THE LOOK (Director, 2026-10-18: smooth, never a whole GU at once): the drawn level rises over frames, the front SWEEPS, a put-out cell fades.
+	var vp: RefCounted = _pool(2.0)
+	var vf = Fire.new()
+	vf.setup(vp, {"speed": 3.0, "burn": 0.0})
+	vf.ignite(Vector2(13.0, 2.0), 0.6)
+
+	vf.tick()
+	var far_i: int = -1
+	var far_d: float = 0.0
+	for i in range(vf.burning.size()):
+		if vf.burning[i] == 1 and vf.centre_of(i).distance_to(Vector2(13.0, 2.0)) > far_d:
+			far_d = vf.centre_of(i).distance_to(Vector2(13.0, 2.0))
+			far_i = i
+	vf.advance_visual(0.1)
+	var first: float = vf.visual[vp.index(7, 5)]
+	_check(first > 0.0 and first < 0.5, "the first frame after the light shows a SMALL flame, not a full one (%.2f)" % first)
+	_check(vf.visual[far_i] == 0.0, "the far end of the front is still dark at 0.1 s (the front sweeps; far cell %.1f GU out)" % far_d)
+	for _f in range(10):
+		vf.advance_visual(0.1)
+	_check(vf.visual[far_i] > 0.0, "and the far end has caught a second later (%.2f)" % vf.visual[far_i])
+	for _f in range(10):
+		vf.advance_visual(0.1)
+	_check(vf.visual[far_i] >= 0.99 and not vf.hot_cells.is_empty(), "everything lit burns at full flame and throws flames (%d hot cells)" % vf.hot_cells.size())
+	vf.extinguish_all()
+	vf.advance_visual(0.1)
+	_check(vf.visual[far_i] > 0.5 and vf.visual[far_i] < 1.0, "a cell put out does not vanish: it dies away over about a second (%.2f after 0.1 s)" % vf.visual[far_i])
+	for _f in range(15):
+		vf.advance_visual(0.1)
+	_check(vf.visual[far_i] == 0.0 and vf.hot_cells.is_empty(), "and is dark after it")
+
 	print("\n== %s ==" % ("PASS" if _failures == 0 else "FAIL (%d)" % _failures))
 	quit(0 if _failures == 0 else 1)

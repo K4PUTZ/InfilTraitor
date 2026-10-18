@@ -52,6 +52,11 @@ func setup(rect: Rect2, base_y: float, params: Dictionary, flow: Vector2, fluid_
 
 
 ## One turn of the liquid (the caller's TIC, or the dev auto-tick).
+## The surface height (GU) the flames are born at.
+func surface_y() -> float:
+	return _base_y
+
+
 func _exit_tree() -> void:
 	if plane != null:
 		plane.finish_tick()    ## a worker must not outlive the node that owns the plane
@@ -80,7 +85,7 @@ func _process(delta: float) -> void:
 		while _clock >= auto_tick_seconds:
 			_clock -= auto_tick_seconds
 			tick()
-	if fire != null and fire.version != _fire_version:
+	if fire != null and (fire.advance_visual(delta) or fire.version != _fire_version):
 		_dirty = true
 	if plane.has_pending():
 		plane.step_rounds(maxi(int(ceil(float(plane.rounds_per_tick()) / float(FRAMES_PER_TICK))), 1))
@@ -116,7 +121,7 @@ func _flame_at(vc: int, vr: int) -> float:
 			var c: int = vc + dc
 			var r: int = vr + dr
 			if c >= 0 and r >= 0 and c < plane.cols - 2 and r < plane.rows - 2:
-				sum += float(fire.burning[plane.index(c + 1, r + 1)])
+				sum += fire.visual[plane.index(c + 1, r + 1)]
 				count += 1
 	return sum / float(maxi(count, 1))
 

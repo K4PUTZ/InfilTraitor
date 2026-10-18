@@ -1,0 +1,29 @@
+{
+  "id": "grate_s_0",
+  "mesh_tier": 0,
+  "vox_model": "res://ASSETS/props/vox/grate_s_0.vox",
+  "vox_scale": 1,
+  "vox_materials": {
+    "2": "steel_dark"
+  },
+  "material_zones": {
+    "default": "steel_dark"
+  },
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "storeys": 1,
+  "gameplay": {
+    "cover": "none",
+    "destructible": true
+  },
+  "tags": [
+    "industrial",
+    "voxel-model",
+    "pipe-lab"
+  ],
+  "slot": "pipe_piece"
+}

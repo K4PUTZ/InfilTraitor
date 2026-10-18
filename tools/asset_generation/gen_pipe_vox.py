@@ -14,6 +14,8 @@ plug). Grating bars every 2 voxels close the bore 1 voxel behind the mouth, so n
 (mouth faces +y), `pipe_s_<ix><iy>` on the south wall (mouth faces -y); ix across (map x), iy from the wall side (north) / the mouth side (south).
 CURBS (8 x 8 x 4: 2026-10-18, they were 2 high; the water now stands 3 voxels at most and the extra voxel is the MARGIN the surface's waves need, so it meets the rail's inner face instead of hanging at its lip): `curb_lo` has its rail at vox x 0-1, `curb_hi` at x 6-7: placed side by side they bound a 2 GU channel along y.
 
+GRATES (8 x 8 x 8, 2026-10-18): the part of the grating that stands BELOW the floor, in the dug channel (placed at storey -1 = levels 72-79, the bars filling levels 76-79 from the bed up to the floor top), so the bars run from the bed to the top of the bore. `grate_n_<ix>` / `grate_s_<ix>`: bars on every even voxel across, in the row the pipe's own bars stand on (north: GU row 6 of the pipe's last GU, south: row 1 of the first).
+
 Usage:  python3 tools/asset_generation/gen_pipe_vox.py [--out ASSETS/props/vox]
 """
 import argparse
@@ -61,6 +63,16 @@ def curb(hi: bool) -> Model:
     return m
 
 
+def grate(south: bool, ix: int) -> Model:
+    m = Model(8, 8, 8)
+    row = 1 if south else 6
+    for x in range(8):
+        if (8 * ix + x) % 2 == 0:
+            for z in range(4, 8):
+                m.set(x, row, z, BARS)
+    return m
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="ASSETS/props/vox")
@@ -70,6 +82,9 @@ def main() -> int:
         for ix in range(2):
             for iy in range(2):
                 models["pipe_%s_%d%d" % (side, ix, iy)] = pipe_piece(ix, iy, south)
+    for side, south in (("n", False), ("s", True)):
+        for ix in range(2):
+            models["grate_%s_%d" % (side, ix)] = grate(south, ix)
     for name, model in models.items():
         print("%s: %d voxels" % (name, write_vox(model, os.path.join(out, name + ".vox"))))
     return 0

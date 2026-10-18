@@ -744,6 +744,58 @@
       0
      ],
      "rot": 0
+    },
+    {
+     "def": "grate_n_0",
+     "gu": [
+      11,
+      2
+     ],
+     "storey": -1,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "grate_s_0",
+     "gu": [
+      11,
+      9
+     ],
+     "storey": -1,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "grate_n_1",
+     "gu": [
+      12,
+      2
+     ],
+     "storey": -1,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "grate_s_1",
+     "gu": [
+      12,
+      9
+     ],
+     "storey": -1,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
     }
    ]
   },
@@ -1036,7 +1088,7 @@
          1.5,
          2.0
         ],
-        "height": 6
+        "height": 10
        },
        {
         "zone": [
@@ -1045,7 +1097,7 @@
          1.5,
          2.0
         ],
-        "height": 6
+        "height": 10
        }
       ],
       "sources": [
@@ -1079,17 +1131,7 @@
        }
       ],
       "dig": 4,
-      "grounds": [
-       {
-        "zone": [
-         11.25,
-         1.0,
-         1.5,
-         2.0
-        ],
-        "height": 4
-       }
-      ]
+      "grounds": []
      }
     }
    ]
@@ -1098,14 +1140,14 @@
    "v": 1,
    "items": [
     {
-     "comment": "the oil channel, dug: bed at 4 voxels under the floor top",
+     "comment": "the oil channel, dug 4 voxels, running under both pipes",
      "gu": [
       11,
-      3
+      1
      ],
      "size": [
       2,
-      6
+      10
      ],
      "pattern": "open",
      "dig": 4,

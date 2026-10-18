@@ -1,0 +1,21 @@
+{
+  "id": "infiltration-20261018-7902a26a",
+  "context": "infiltration",
+  "created": "2026-10-18T04:06:51+00:00",
+  "source_sha256": "7902a26a96334ee7f7aaade320df8eda0dd052c3fc539723aabb8f5fa19523c0",
+  "raw_path": "ASSETS/AUDIO/MUSIC/Raw/infiltration/infiltration-20261018-7902a26a.wav",
+  "duration_s": 16.484,
+  "tool": "music_beat.py",
+  "tool_version": "1",
+  "license": "project code (no model)",
+  "prompt": "rhythmic motif and arpeggiated fragments, 124 BPM, 4/4, A minor (draft), minor centre with major-colour inflections, sus/add tones, chromatic movement, tonal ambiguity, medium arrangement density, seamlessly loopable, analog polysynths, sequenced electronic bass, arpeggiators, gated ambience, restrained cinematic strings and brass, melodic material: mission: The Mission: recurring pulse / sequencing pattern; agent: The Agent: principal melodic signature of the protagonist, controlled suspense and confidence, never helplessness, forward momentum, instrumental, free of vocal hooks",
+  "params": {},
+  "human_edits": "",
+  "notes": "placeholder beat, draft Bible values",
+  "export": {
+    "path": "ASSETS/AUDIO/MUSIC/Export/infiltration/infiltration-20261018-7902a26a.ogg",
+    "sha256": "b401a20d8285522e8500b83d01dce05cfbbaaabae66088fc3b28c5f69d97cb68",
+    "format": "ogg vorbis q6, -16 LUFS",
+    "exported": "2026-10-18T04:06:52+00:00"
+  }
+}

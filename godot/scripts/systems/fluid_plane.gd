@@ -36,6 +36,7 @@ var _perm: PackedFloat32Array = PackedFloat32Array()    ## 4 per cell: how much 
 var _sources: Array = []              ## {"cells": PackedInt32Array, "rate": float} depth added per cell per TIC
 var _sinks: Array = []
 var committed: PackedFloat32Array = PackedFloat32Array()   ## the depths the RULES read: the state after the last COMPLETE tick, changed only at a tick's start (never by frame timing)
+var surface_cap: float = 1.0e9   ## the highest the water may be DRAWN (voxels): the curbs that hold it. The depth under a pipe's roof (a source pushing into the bore) can stand higher than the curb outside; the sheet must not, or it hangs over the side (Director, 2026-10-18)
 var threaded: bool = false    ## true: a tick's rounds run on a worker thread (`WorkerThreadPool`); the sheet reads the live depths while they change (a torn read is a pixel of water for a frame)
 var rounds_scale: float = 1.0 ## a THICK liquid needs fewer rounds a turn (its flux is slow anyway): `from_body` sets it from the fluidity
 var _task_id: int = -1
@@ -162,6 +163,8 @@ static func from_body(body: Dictionary, liquid_fluidity: float) -> RefCounted:
 	var height: int = int(round(rect.size.y / cell_size)) + 2
 	plane.setup(width, height, cell_size, rect.position - Vector2(cell_size, cell_size), liquid_fluidity)
 	plane.rounds_scale = lerpf(0.5, 1.0, clampf(liquid_fluidity, 0.0, 1.0))
+	if float(fluid["rim"]) > 0.0:
+		plane.surface_cap = float(fluid["rim"])    ## the rim is the curb that holds the body
 	for r in range(height):
 		for c in range(width):
 			if plane.is_rim(c, r):

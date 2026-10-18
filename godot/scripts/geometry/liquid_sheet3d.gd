@@ -158,7 +158,7 @@ func _rebuild() -> void:
 						if cc >= 0 and rr >= 0 and cc < icols and rr < irows and plane.ground[plane.index(cc + 1, rr + 1)] < plane.WALL:    ## a wall cell holds no liquid: it must not pull a vertex beside it down (the gap along a pipe's shell)
 							sum += _shown[rr * icols + cc]
 							count += 1
-				var level: float = sum / float(maxi(count, 1))
+				var level: float = minf(sum / float(maxi(count, 1)), plane.surface_cap)    ## never above the curbs that hold it
 				verts.append(Vector3(_rect.position.x + float(vc) * cell, _base_y + level * UNIT, _rect.position.y + float(vr) * cell))
 				colors.append(Color(_flame_at(vc, vr), 0.0, 0.0, clampf(level / WET_VOXELS, 0.0, 1.0)))
 		for r in range(irows):

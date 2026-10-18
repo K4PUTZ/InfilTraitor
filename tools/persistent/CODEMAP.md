@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**320 scripts · 96583 lines total** (under `godot/scripts/`)
+**320 scripts · 96586 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2946,7 +2946,7 @@ extends `Node` · 236 lines
 
 ### `fluid_plane.gd`
 
-`class_name FluidPlane` · extends `RefCounted` · 359 lines
+`class_name FluidPlane` · extends `RefCounted` · 362 lines
 
 `godot/scripts/systems/fluid_plane.gd`
 

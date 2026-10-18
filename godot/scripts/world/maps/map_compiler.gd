@@ -261,9 +261,9 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		var fluid_raw = body.get("fluid", null)
 		var fluid: Dictionary = {}
 		if fluid_raw is Dictionary:
-			fluid = {"cell": maxf(float(fluid_raw.get("cell", 0.25)), 0.125), "rim": float(fluid_raw.get("rim", 2.0)),
-				"walls": [], "roofs": [], "sources": [], "sinks": [], "grates": []}
-			for kind_key: String in ["walls", "roofs", "sources", "sinks"]:
+			fluid = {"cell": maxf(float(fluid_raw.get("cell", 0.25)), 0.125), "rim": float(fluid_raw.get("rim", 2.0)), "dig": maxf(float(fluid_raw.get("dig", 0.0)), 0.0),
+				"walls": [], "grounds": [], "roofs": [], "sources": [], "sinks": [], "grates": []}
+			for kind_key: String in ["walls", "grounds", "roofs", "sources", "sinks"]:
 				for entry in fluid_raw.get(kind_key, []):
 					var z = entry.get("zone", null)
 					if not (z is Array) or z.size() != 4:
@@ -271,7 +271,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 						continue
 					var rect_raw := Rect2(Vector2(float(z[0]), float(z[1])) + Vector2(offset), Vector2(float(z[2]), float(z[3])))
 					var packed: Dictionary = {"rect": rect_raw}
-					if kind_key == "walls" or kind_key == "roofs":
+					if kind_key == "walls" or kind_key == "roofs" or kind_key == "grounds":
 						packed["height"] = float(entry.get("height", 8.0))
 					else:
 						packed["rate"] = float(entry.get("rate", 1.0))

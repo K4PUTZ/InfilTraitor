@@ -150,6 +150,7 @@ func _rebuild() -> void:
 		for vr in range(irows + 1):
 			for vc in range(icols + 1):
 				var sum: float = 0.0
+				var ground_sum: float = 0.0
 				var count: int = 0
 				for dr in range(-1, 1):
 					for dc in range(-1, 1):
@@ -157,9 +158,11 @@ func _rebuild() -> void:
 						var rr: int = vr + dr
 						if cc >= 0 and rr >= 0 and cc < icols and rr < irows and plane.ground[plane.index(cc + 1, rr + 1)] < plane.WALL:    ## a wall cell holds no liquid: it must not pull a vertex beside it down (the gap along a pipe's shell)
 							sum += _shown[rr * icols + cc]
+							ground_sum += plane.ground[plane.index(cc + 1, rr + 1)]
 							count += 1
-				var level: float = minf(sum / float(maxi(count, 1)), plane.surface_cap)    ## never above the curbs that hold it
-				verts.append(Vector3(_rect.position.x + float(vc) * cell, _base_y + level * UNIT, _rect.position.y + float(vr) * cell))
+				var ground_here: float = ground_sum / float(maxi(count, 1))   ## floor standing inside a dug body (a pipe's bore) lifts the sheet; 0 elsewhere
+				var level: float = minf(sum / float(maxi(count, 1)), maxf(plane.surface_cap - ground_here, 0.0))    ## never above the curbs that hold it
+				verts.append(Vector3(_rect.position.x + float(vc) * cell, _base_y + (ground_here + level) * UNIT, _rect.position.y + float(vr) * cell))
 				colors.append(Color(_flame_at(vc, vr), 0.0, 0.0, clampf(level / WET_VOXELS, 0.0, 1.0)))
 		for r in range(irows):
 			for c in range(icols):

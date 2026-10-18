@@ -9478,7 +9478,7 @@ func _attach_liquids(live: Node3D) -> void:
 		var sheet: MeshInstance3D = LiquidSheet3DRef.new()
 		sheet.use_thread = _dev_flag("FLUID_THREAD", "1") != "0"
 		live.add_child(sheet)
-		sheet.setup(body["rect"], base_y, params, body["flow"], plane)
+		sheet.setup(body["rect"], base_y - (plane.dig if plane != null else 0.0) * unit, params, body["flow"], plane)   ## a dug body's sheet rests on its bed
 		_liquid_field.add_body(kind, body["rect"], plane)
 		var kind_rules: Dictionary = LiquidRegistryRef.gameplay(kind)
 		if plane != null and bool(kind_rules.get("flammable", false)):

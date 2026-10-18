@@ -744,174 +744,6 @@
       0
      ],
      "rot": 0
-    },
-    {
-     "def": "curb_lo",
-     "gu": [
-      11,
-      3
-     ],
-     "storey": 0,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0,
-     "walkable": true
-    },
-    {
-     "def": "curb_hi",
-     "gu": [
-      12,
-      3
-     ],
-     "storey": 0,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0,
-     "walkable": true
-    },
-    {
-     "def": "curb_lo",
-     "gu": [
-      11,
-      4
-     ],
-     "storey": 0,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0,
-     "walkable": true
-    },
-    {
-     "def": "curb_hi",
-     "gu": [
-      12,
-      4
-     ],
-     "storey": 0,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0,
-     "walkable": true
-    },
-    {
-     "def": "curb_lo",
-     "gu": [
-      11,
-      5
-     ],
-     "storey": 0,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0,
-     "walkable": true
-    },
-    {
-     "def": "curb_hi",
-     "gu": [
-      12,
-      5
-     ],
-     "storey": 0,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0,
-     "walkable": true
-    },
-    {
-     "def": "curb_lo",
-     "gu": [
-      11,
-      6
-     ],
-     "storey": 0,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0,
-     "walkable": true
-    },
-    {
-     "def": "curb_hi",
-     "gu": [
-      12,
-      6
-     ],
-     "storey": 0,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0,
-     "walkable": true
-    },
-    {
-     "def": "curb_lo",
-     "gu": [
-      11,
-      7
-     ],
-     "storey": 0,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0,
-     "walkable": true
-    },
-    {
-     "def": "curb_hi",
-     "gu": [
-      12,
-      7
-     ],
-     "storey": 0,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0,
-     "walkable": true
-    },
-    {
-     "def": "curb_lo",
-     "gu": [
-      11,
-      8
-     ],
-     "storey": 0,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0,
-     "walkable": true
-    },
-    {
-     "def": "curb_hi",
-     "gu": [
-      12,
-      8
-     ],
-     "storey": 0,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0,
-     "walkable": true
     }
    ]
   },
@@ -1245,8 +1077,39 @@
        {
         "y": 9.25
        }
+      ],
+      "dig": 4,
+      "grounds": [
+       {
+        "zone": [
+         11.25,
+         1.0,
+         1.5,
+         2.0
+        ],
+        "height": 4
+       }
       ]
      }
+    }
+   ]
+  },
+  "floor_openings": {
+   "v": 1,
+   "items": [
+    {
+     "comment": "the oil channel, dug: bed at 4 voxels under the floor top",
+     "gu": [
+      11,
+      3
+     ],
+     "size": [
+      2,
+      6
+     ],
+     "pattern": "open",
+     "dig": 4,
+     "bed_material": "concrete"
     }
    ]
   }

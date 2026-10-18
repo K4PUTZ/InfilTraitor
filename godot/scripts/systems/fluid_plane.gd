@@ -36,6 +36,7 @@ var _perm: PackedFloat32Array = PackedFloat32Array()    ## 4 per cell: how much 
 var _sources: Array = []              ## {"cells": PackedInt32Array, "rate": float} depth added per cell per TIC
 var _sinks: Array = []
 var committed: PackedFloat32Array = PackedFloat32Array()   ## the depths the RULES read: the state after the last COMPLETE tick, changed only at a tick's start (never by frame timing)
+var dig: float = 0.0   ## voxels the body's bed lies BELOW the floor top (a dug channel, `FloorOpenings` `dig`): ground and depth are measured from the bed, and the sheet is drawn `dig` lower
 var surface_cap: float = 1.0e9   ## the highest the water may be DRAWN (voxels): the curbs that hold it. The depth under a pipe's roof (a source pushing into the bore) can stand higher than the curb outside; the sheet must not, or it hangs over the side (Director, 2026-10-18)
 var threaded: bool = false    ## true: a tick's rounds run on a worker thread (`WorkerThreadPool`); the sheet reads the live depths while they change (a torn read is a pixel of water for a frame)
 var rounds_scale: float = 1.0 ## a THICK liquid needs fewer rounds a turn (its flux is slow anyway): `from_body` sets it from the fluidity
@@ -169,6 +170,9 @@ static func from_body(body: Dictionary, liquid_fluidity: float) -> RefCounted:
 		for c in range(width):
 			if plane.is_rim(c, r):
 				plane.ground[plane.index(c, r)] = float(fluid["rim"])
+	plane.dig = float(fluid.get("dig", 0.0))
+	for raised: Dictionary in fluid.get("grounds", []):   ## floor left standing inside a dug body (a pipe's bore): ground = its height above the bed
+		plane.set_ground_rect(raised["rect"], float(raised["height"]))
 	for wall: Dictionary in fluid["walls"]:
 		plane.set_ground_rect(wall["rect"], float(wall["height"]))
 	for roof: Dictionary in fluid["roofs"]:

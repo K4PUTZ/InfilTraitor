@@ -174,6 +174,24 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 					deep_slab.texture_anchor = floor_anchor
 			floor_slabs_by_gu[floor_gu] = floor_slab
 
+	## DIG (Director, 2026-10-18): an opening with `dig` > 2 gets a SHELL under the two real slabs, a bed and a wall ring of Slabs one voxel
+	## thick (`FloorOpenings.shell_cells`), so a channel can be deeper than the floor stack without promoting levels 77-72 to full planes.
+	var map_voxels := Vector2i(_room_size.x * GeometryCoords.VOXELS_PER_UNIT_AXIS, _room_size.y * GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var on_map := func(cell: Vector2i) -> bool: return cell.x >= 0 and cell.y >= 0 and cell.x < map_voxels.x and cell.y < map_voxels.y
+	for raw_dug: Dictionary in layout.get("floor_opening_instances", []):
+		var dug: Dictionary = FloorOpeningsRef.normalise(raw_dug)
+		if dug.is_empty():
+			continue
+		var shell: Dictionary = FloorOpeningsRef.shell_cells(dug, on_map)
+		for shell_level: int in shell:
+			var by_gu: Dictionary = {}
+			for shell_cell: Vector2i in shell[shell_level]:
+				by_gu[Vector2i(shell_cell.x >> 3, shell_cell.y >> 3)] = true
+			for shell_gu: Vector2i in by_gu:
+				var shell_slab: Slab = SlabGenerator.generate_cells(shell_gu, Slab.Role.FLOOR, shell_level, String(dug["bed_material"]), room._slab_registry, shell[shell_level])
+				if shell_slab != null:
+					room._voxel_board.register_fixed_level(shell_gu, shell_level)   ## makes the level's cell planes (light, soot); draws nothing
+
 	## D18 amendment (Director, 2026-07-16), dev-only: the map's outer edge
 	## shows the floor's lateral cut — lazy reveal alone leaves that edge only
 	## 1 voxel thick. In the shipped game a non-playable camera-buffer zone

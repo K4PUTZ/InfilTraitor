@@ -225,10 +225,12 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		var normalised: Dictionary = FloorOpeningsRef.normalise({
 			"gu_cell": Vector2i(int(o_gu[0]), int(o_gu[1])) + offset, "size": Vector2i(int(o_size[0]), int(o_size[1])),
 			"pattern": opening.get("pattern", "slats"), "axis": opening.get("axis", "x"), "pitch": opening.get("pitch", FloorOpeningsRef.DEFAULT_PITCH),
-			"material": opening.get("material", FloorOpeningsRef.DEFAULT_MATERIAL)})
+			"material": opening.get("material", FloorOpeningsRef.DEFAULT_MATERIAL),
+			"dig": opening.get("dig", FloorOpeningsRef.MIN_DIG), "bed_material": opening.get("bed_material", FloorOpeningsRef.DEFAULT_BED_MATERIAL)})
 		if not normalised.is_empty():
 			floor_opening_instances.append({"gu_cell": Vector2i(int(o_gu[0]), int(o_gu[1])) + offset, "size": Vector2i(int(o_size[0]), int(o_size[1])),
-				"pattern": normalised["pattern"], "axis": normalised["axis"], "pitch": normalised["pitch"], "material": normalised["material"]})
+				"pattern": normalised["pattern"], "axis": normalised["axis"], "pitch": normalised["pitch"], "material": normalised["material"],
+				"dig": normalised["dig"], "bed_material": normalised["bed_material"]})
 
 	## --- ground_vents (R3D-SURFACES SM-6): `at` in GU on the voxel lattice, shifted by the buffer; the kind is checked by `VentEmitter` ---
 	var ground_vent_instances: Array = []

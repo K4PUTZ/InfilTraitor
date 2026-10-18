@@ -173,7 +173,7 @@ static func register_ground_decals(registry) -> void:
 
 ## floor_openings (R3D-SURFACES SM-6b, 2026-10-06, DS-18): a REAL opening through the floor stack, in whole GUs. `{gu: [x, y], size: [w, h], pattern, axis?, pitch?,
 ## material?}` -- `pattern` is `slats` (1-voxel bars along `axis` every `pitch` voxels inside a 1-voxel frame, of `material`, default steel_dark: a grating)
-## or `open` (a bare shaft). `FloorOpenings` says which cells go; `SlabGenerator` skips them on both floor levels. Walkable by default.
+## or `open` (a bare shaft). `FloorOpenings` says which cells go; `SlabGenerator` skips them on both floor levels. Walkable by default. `dig` (2..8, default 2) / `bed_material` (default concrete): deeper than 2 builds a SHELL (bed + wall ring) under the two slabs, see `FloorOpenings.shell_cells`.
 static func register_floor_openings(registry) -> void:
 	var SectionOwner = registry.SectionOwner
 	registry.register(SectionOwner.new(

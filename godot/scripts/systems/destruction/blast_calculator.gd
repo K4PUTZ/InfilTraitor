@@ -1012,6 +1012,8 @@ static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRe
 	for slab in slab_registry.all_slabs():
 		if not gu_rings.has(slab.gu_cell):
 			continue
+		if slab.level < GeometryCoords.FLOOR_DEEP_LEVEL and slab.role == Slab.Role.FLOOR:
+			continue   ## the shell of a dug opening is ground below the two destructible planes: a blast never reaches it
 		if slab.role == Slab.Role.CEILING:
 			hit_roofs[slab.id] = gu_rings[slab.gu_cell]
 		else:

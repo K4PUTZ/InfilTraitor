@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**320 scripts · 96586 lines total** (under `godot/scripts/`)
+**320 scripts · 96690 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -629,7 +629,7 @@ extends `Node3D` · 3522 lines
 
 ### `floor_openings.gd`
 
-`class_name FloorOpenings` · extends `RefCounted` · 57 lines
+`class_name FloorOpenings` · extends `RefCounted` · 108 lines
 
 `godot/scripts/geometry/floor_openings.gd`
 
@@ -640,6 +640,9 @@ extends `Node3D` · 3522 lines
 - `AXES` = `["x", "z"]`
 - `DEFAULT_PITCH` = `2`
 - `DEFAULT_MATERIAL` = `"steel_dark"`
+- `MIN_DIG` = `2`
+- `MAX_DIG` = `8`
+- `DEFAULT_BED_MATERIAL` = `"concrete"`
 
 ---
 
@@ -1193,7 +1196,7 @@ extends `Node3D` · 3522 lines
 
 ### `slab_generator.gd`
 
-`class_name SlabGenerator` · 63 lines
+`class_name SlabGenerator` · 76 lines
 
 `godot/scripts/geometry/slab_generator.gd`
 
@@ -2460,7 +2463,7 @@ extends `RefCounted` · 37 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1892 lines
+`class_name BlastCalculator` · 1894 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -4449,7 +4452,7 @@ extends `SceneTree` · 247 lines
 
 ### `floor_openings_selftest.gd`
 
-extends `SceneTree` · 70 lines
+extends `SceneTree` · 88 lines
 
 `godot/scripts/tools/floor_openings_selftest.gd`
 
@@ -6141,7 +6144,7 @@ extends `Node2D` · 63 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 563 lines
+`class_name RoomBuilder` · 581 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -6457,7 +6460,7 @@ extends `Node` · 252 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 686 lines
+`class_name MapCompiler` · extends `RefCounted` · 688 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 

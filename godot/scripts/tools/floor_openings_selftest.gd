@@ -66,5 +66,23 @@ func _init() -> void:
 	var bad_spec: Dictionary = spec.duplicate(true)
 	bad_spec["floor_openings"] = [{"gu": [3, 3], "size": [2, 2], "pattern": "diamond"}, {"gu": [3, 3], "size": [2, 2], "pattern": "open"}]
 	_check((MapCompilerClass.compile(bad_spec).get("floor_opening_instances", []) as Array).size() == 1, "an unknown pattern is refused (loudly), the good one stays")
+	## DIG: the shell under a deeper opening.
+	var all_in := func(_c: Vector2i) -> bool: return true
+	_check(FloorOpeningsClass.shell_cells(FloorOpeningsClass.normalise({"gu_cell": gu, "size": Vector2i(1, 1), "pattern": "open"}), all_in).is_empty(), "dig 2 (default) builds no shell")
+	_check(FloorOpeningsClass.normalise({"gu_cell": gu, "size": Vector2i(1, 1), "pattern": "open", "dig": 9}).is_empty(), "dig beyond the cosmetic stack is refused")
+	var pit: Dictionary = FloorOpeningsClass.normalise({"gu_cell": gu, "size": Vector2i(2, 1), "pattern": "open", "dig": 5})
+	var shell: Dictionary = FloorOpeningsClass.shell_cells(pit, all_in)
+	var bed_level: int = GeometryCoords.FLOOR_TOP_LEVEL - 5
+	_check(shell.has(bed_level) and not shell.has(bed_level - 1) and shell.has(GeometryCoords.FLOOR_DEEP_LEVEL - 1) and not shell.has(GeometryCoords.FLOOR_DEEP_LEVEL), "the shell runs from the bed (%d) to the level under the deep slab, no further" % bed_level)
+	_check((shell[bed_level] as Dictionary).size() == 16 * 8 + (16 + 8) * 2 + 4, "the bed is the 16 x 8 footprint plus its one-voxel ring (%d)" % (shell[bed_level] as Dictionary).size())
+	_check((shell[bed_level + 1] as Dictionary).size() == (16 + 8) * 2 + 4, "a wall level is the ring alone (%d)" % (shell[bed_level + 1] as Dictionary).size())
+	var edge_only := func(c: Vector2i) -> bool: return c.x >= 0 and c.y >= 0
+	var corner: Dictionary = FloorOpeningsClass.shell_cells(FloorOpeningsClass.normalise({"gu_cell": Vector2i(0, 0), "size": Vector2i(1, 1), "pattern": "open", "dig": 4}), edge_only)
+	_check(not (corner[GeometryCoords.FLOOR_TOP_LEVEL - 4] as Dictionary).has(Vector2i(-1, 0)), "the ring never leaves the map")
+	var slat_pit: Dictionary = FloorOpeningsClass.normalise({"gu_cell": gu, "size": Vector2i(1, 1), "pattern": "slats", "dig": 4})
+	_check(FloorOpeningsClass.footprint_cells(slat_pit).size() == 36, "a slats pit is the interior inside the frame, 6 x 6 (%d)" % FloorOpeningsClass.footprint_cells(slat_pit).size())
+	var shell_slab: Slab = SlabGenerator.generate_cells(gu, Slab.Role.FLOOR, bed_level, "concrete", registry, shell[bed_level])
+	_check(shell_slab != null and shell_slab.voxel_count() > 0 and shell_slab.voxel_count() <= 64, "SlabGenerator.generate_cells builds the shell slab of a GU (%d cells)" % shell_slab.voxel_count())
+	_check(SlabGenerator.generate_cells(Vector2i(50, 50), Slab.Role.FLOOR, bed_level, "concrete", registry, shell[bed_level]) == null, "a GU the shell does not touch gets no slab")
 	print("\n== %s ==" % ("PASS" if _failures == 0 else "FAIL (%d)" % _failures))
 	quit(0 if _failures == 0 else 1)

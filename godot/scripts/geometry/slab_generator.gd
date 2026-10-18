@@ -24,6 +24,19 @@ static func generate(gu_cell: Vector2i, role: int, level: int, material: String,
 	return slab
 
 
+## A Slab made of exactly the voxel cells in `cells` (a set of (x, y)) that fall inside `gu_cell`: the SHELL of a dug floor opening (`FloorOpenings.shell_cells`),
+## which is a bed and a wall ring, never a full GU footprint. Returns null (and registers nothing) when no cell of the set is in this GU.
+static func generate_cells(gu_cell: Vector2i, role: int, level: int, material: String, registry: SlabRegistry, cells: Dictionary) -> Slab:
+	var slab := Slab.new(Slab.make_id(gu_cell, role, level), gu_cell, role, level, material)
+	for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
+		if cells.has(voxel_pos):
+			slab.add_cell(voxel_pos.x, voxel_pos.y, level)
+	if slab.voxel_count() == 0:
+		return null
+	registry.register_slab(slab)
+	return slab
+
+
 ## D1-ROOF border fix: a roof sized to exactly its GU's 8x8 footprint only
 ## covers the wall's OWN-side slice — SliceGenerator puts slice_a on gu_a's
 ## own boundary column, slice_b on gu_b's, one voxel further out in the

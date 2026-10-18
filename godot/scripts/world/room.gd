@@ -9445,6 +9445,8 @@ func _attach_liquids(live: Node3D) -> void:
 	_liquid_sheets.clear()
 	_liquid_fires.clear()
 	_liquid_fire_lights.clear()
+	if _lighting_controller != null:
+		_lighting_controller.clear_extra_lights()
 	_liquid_flames.clear()
 	_liquid_fire_sheets.clear()
 	for old_tongues in _liquid_tongues:
@@ -9494,6 +9496,7 @@ func _attach_liquids(live: Node3D) -> void:
 				fire_lights.setup(burn, body["rect"], (kind_rules.get("fire", {}) as Dictionary).get("light", {}))
 			if not fire_lights.lights.is_empty():
 				_liquid_fire_lights.append(fire_lights)
+				_lighting_controller.add_extra_lights(fire_lights.lights)
 				var reach: Dictionary = {}
 				for first_light in fire_lights.lights:
 					for gu in VoxelLightField.new().gus_in_light_range(first_light):
@@ -9594,6 +9597,17 @@ func _tick_liquid_fire_lights(delta: float) -> void:
 	if changed.is_empty():
 		return
 	var t0: int = Time.get_ticks_usec()
+	var flipped: bool = false
+	for light in changed:
+		var lit: bool = light.energy_multiplier >= (LiquidFireLightsRef.OFF_BELOW if light.active else LiquidFireLightsRef.ON_FROM)
+		if lit != light.active:   ## a fire that lights or goes out changes what a guard can see: the tactical layer follows (a few hundred ms at most, only on the flip)
+			light.active = lit
+			light.tactical_energy = 1.0 if lit else 0.0
+			flipped = true
+	if flipped:
+		var registry = _lighting_controller.get_light_registry()
+		_lighting_controller.rebuild_tactical()
+		_voxel_light_field.set_lights(field_lights(registry), _lighting_controller.get_shadow_results())
 	var gus: Dictionary = {}
 	for light in changed:
 		for gu in _voxel_light_field.gus_in_light_range(light):
@@ -9604,19 +9618,14 @@ func _tick_liquid_fire_lights(delta: float) -> void:
 	var live: Node = board3d()
 	if live != null:
 		live.set("fire_flicker", true)
-		var levels: Dictionary = {}
-		for level in range(GeometryCoords.FLOOR_TOP_LEVEL - LiquidFireLightsRef.LEVELS_BELOW, GeometryCoords.PLAYABLE_LEVEL + LiquidFireLightsRef.LEVELS_ABOVE):
-			levels[level] = true
+		var levels: Dictionary = _voxel_board.levels_in_gus(gus.keys())   ## by construction: every level that has a cell in the light's reach
 		live.call("sync_soot_levels", levels, "fire light")   ## the plane is CPU state: the 3D board reads it only once uploaded
 	print_debug("[FIRE-LIGHT] %d light(s) moved, %d GU(s), %.1f ms" % [changed.size(), gus.size(), float(Time.get_ticks_usec() - t0) / 1000.0])
 
 
-## The lights the voxel light field reads: the registry's (tactical and visual) plus the burning bodies' (visual only, see `LiquidFireLights`).
+## The lights the voxel light field reads: the registry's active ones (a burning body's lights are in it while they are lit, see `LiquidFireLights`).
 func field_lights(registry) -> Array:
-	var all: Array = registry.get_active_lights()
-	for fire_lights in _liquid_fire_lights:
-		all.append_array(fire_lights.lights)
-	return all
+	return registry.get_active_lights()   ## the burning bodies' lights are registered (tactical) and active only while lit
 
 
 ## One turn of the fire: water puts cells out, the front runs, the flames eat the oil. Before the plane's next tick (the rules and the fire read the same depths).

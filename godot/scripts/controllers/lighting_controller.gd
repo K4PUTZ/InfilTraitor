@@ -50,6 +50,28 @@ func get_shadow_results() -> Array:
 	return _last_shadow_results
 
 
+## TACTICAL FIRE (2026-10-18): lights that live outside the map's layout (a burning body's, later a torch's) and must survive `rebuild_all()` (which clears the registry).
+## They are registered dormant (`active` false): the owner turns one on or off and then calls `rebuild_tactical()`.
+var _extra_lights: Array = []
+
+
+func add_extra_lights(lights: Array) -> void:
+	for light in lights:
+		_extra_lights.append(light)
+		_light_registry.register_light(light)
+
+
+func clear_extra_lights() -> void:
+	for light in _extra_lights:
+		_light_registry.remove_light(light.light_id)
+	_extra_lights.clear()
+
+
+## Re-project the shadows and the exposure for the lights that are active NOW (a fire lit or put out), without the full repaint `rebuild()` ends in.
+func rebuild_tactical() -> void:
+	_rebuild_all_shadows_and_exposure()
+
+
 func rebuild() -> void:
 	## Rebuild all shadows and exposure systems
 	_rebuild_all_shadows_and_exposure()
@@ -133,6 +155,9 @@ func _setup_lights_from_layout() -> void:
 		light.light_id = "map_light_%d" % (i + 1)
 		light.owner_name = "map_light_%d" % (i + 1)
 		_light_registry.register_light(light)
+
+	for extra in _extra_lights:
+		_light_registry.register_light(extra)
 
 	var all_lights = _light_registry.get_all_lights()
 	print("[Room] Light registry initialized with %d map lights:" % all_lights.size())

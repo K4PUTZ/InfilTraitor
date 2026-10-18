@@ -829,6 +829,16 @@ func light_apply_job_pending() -> bool:
 	return not _apply_job.is_empty()
 
 
+## Every level that has a placed cell in these GUs: what a light's repaint must upload, whatever the scene's heights (a pit, a pipe, a wall, a roof).
+func levels_in_gus(gus: Array) -> Dictionary:
+	var levels: Dictionary = {}
+	for gu in gus:
+		var placements: PackedInt32Array = _placed_by_gu.get(gu, PackedInt32Array())
+		for j: int in range(0, placements.size(), 3):
+			levels[placements[j]] = true
+	return levels
+
+
 ## FIRE LIGHT — write the warmth plane (A) of every placed cell in these GUs from the field's fire lights. Only the fire ticker calls it (a plain lamp has warmth 0 and
 ## never moves it). Returns nothing; flushes like the other apply paths. A cell with 0 before and after is not dirtied.
 func apply_warm_gus(field, gus: Array) -> void:

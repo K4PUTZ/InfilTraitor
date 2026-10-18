@@ -426,6 +426,16 @@ func warm_for(cell: Vector2i, level: int) -> int:
 	return int(round(clampf(total, 0.0, 1.0) * 255.0))
 
 
+## A light switched on or off at run time (a fire lit or put out): the field's list and its per-light shadows follow, and the caches that read them are dropped.
+func set_lights(lights: Array, shadow_results: Array) -> void:
+	_lights = lights
+	_shadow_by_light.clear()
+	for result in shadow_results:
+		if result != null and result.source_light != null:
+			_shadow_by_light[result.source_light.get_instance_id()] = result
+	clear_caches()
+
+
 ## True when any light the field holds is a fire (a map with none never pays for `warm_for`).
 func has_warm_lights() -> bool:
 	for light in _lights:

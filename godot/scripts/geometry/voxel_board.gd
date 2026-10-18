@@ -839,6 +839,27 @@ func levels_in_gus(gus: Array) -> Dictionary:
 	return levels
 
 
+## FIRE LIGHT, sliced: every placed cell (key = Vector3i(x, y, level)) in these GUs, for a job that writes them a few ms a frame (`write_fire_cell`).
+func placed_keys_in_gus(gus: Array) -> Array:
+	var keys: Array = []
+	for gu in gus:
+		var placements: PackedInt32Array = _placed_by_gu.get(gu, PackedInt32Array())
+		for j: int in range(0, placements.size(), 3):
+			keys.append(Vector3i(placements[j + 1], placements[j + 2], placements[j]))
+	return keys
+
+
+## One cell's light bucket AND warmth from the field. A cell buried in solid (all six neighbours occupied) shows nothing and is skipped. Returns true when it was written.
+func write_fire_cell(field, key: Vector3i) -> bool:
+	var cell := Vector2i(key.x, key.y)
+	var level: int = key.z
+	if field.is_buried(cell, level):
+		return false
+	_write_cell_bucket(level, cell, field.bucket_for(cell, level))
+	_cell_planes.write_warm(level, cell, field.warm_for(cell, level))
+	return true
+
+
 ## FIRE LIGHT — write the warmth plane (A) of every placed cell in these GUs from the field's fire lights. Only the fire ticker calls it (a plain lamp has warmth 0 and
 ## never moves it). Returns nothing; flushes like the other apply paths. A cell with 0 before and after is not dirtied.
 func apply_warm_gus(field, gus: Array) -> void:

@@ -22,8 +22,8 @@ const DEFAULT_INNER: float = 0.5      ## the plateau of full light, as a share o
 const DEFAULT_ENERGY: float = 1.0
 const ON_FROM: float = 0.2          ## a fire light is ACTIVE (tactical: shadows, exposure) from this energy up ...
 const OFF_BELOW: float = 0.1        ## ... and stays so until it falls under this
-const STEP: float = 0.2             ## energies are rounded to this: a repaint only when a light moves a whole step
-const INTERVAL_S: float = 0.4       ## the lights are re-read this often
+const STEP: float = 0.25            ## energies are rounded to this: a repaint only when a light moves a whole step
+const INTERVAL_S: float = 1.0       ## the lights are re-read this often
 const FLICKER_DEPTH: float = 0.2    ## how far the flicker pulls a flame's light down
 
 var lights: Array = []

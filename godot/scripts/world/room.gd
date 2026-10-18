@@ -167,6 +167,9 @@ var _liquid_tongues: Array = []            ## M6 F5: one LiquidFlameTongues per 
 var _liquid_flames: Array = []             ## M6 F5: one LiquidFlames emitter per fire, same order as `_liquid_fires` (its sheet in `_liquid_fire_sheets`)
 var _liquid_fire_sheets: Array = []
 var _liquid_fires: Array = []              ## M6 F5: one LiquidFire per flammable body
+var _fire_job: Dictionary = {}               ## M6 F5: Vector3i(x, y, level) cells whose fire light is still to be written
+var _fire_job_levels: Dictionary = {}
+const FIRE_LIGHT_BUDGET_US: int = 2500
 var _liquid_fire_lights: Array = []        ## M6 F5: one LiquidFireLights per burning body (visual lights the field reads, never the tactical registry)
 var _liquid_sheets: Array = []             ## M6: one LiquidSheet3D per `liquids` body, see _attach_liquids()
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
@@ -9589,6 +9592,7 @@ func liquid_fire_at(cell: Vector2i):
 
 ## M6 F5: the burning bodies' lights follow their flames; a light that moved a step repaints the GUs it reaches (the temporal-light path: no rebuild, no occupancy diff).
 func _tick_liquid_fire_lights(delta: float) -> void:
+	_step_fire_light_job()
 	if _liquid_fire_lights.is_empty() or _voxel_light_field == null or _voxel_board == null:
 		return
 	var changed: Array = []
@@ -9613,14 +9617,35 @@ func _tick_liquid_fire_lights(delta: float) -> void:
 		for gu in _voxel_light_field.gus_in_light_range(light):
 			gus[gu] = true
 	_voxel_light_field.clear_caches()
-	_voxel_board.apply_light_field_gus(_voxel_light_field, gus.keys())
-	_voxel_board.apply_warm_gus(_voxel_light_field, gus.keys())
+	for key in _voxel_board.placed_keys_in_gus(gus.keys()):   ## merged with what an earlier batch has not written yet
+		_fire_job[key] = true
+	print_debug("[FIRE-LIGHT] %d light(s) moved, %d cell(s) queued, %.1f ms" % [changed.size(), _fire_job.size(), float(Time.get_ticks_usec() - t0) / 1000.0])
+
+
+## FIRE LIGHT, sliced: the queued cells are written a few ms a frame (a whole batch in one frame cost hundreds of ms on the Moto), and the levels they touched are uploaded once, when the queue is empty.
+func _step_fire_light_job() -> void:
+	if _fire_job.is_empty() or _voxel_light_field == null or _voxel_board == null:
+		return
+	var t0: int = Time.get_ticks_usec()
+	var done: Array = []
+	var written: int = 0
+	for key: Vector3i in _fire_job:
+		done.append(key)
+		if _voxel_board.write_fire_cell(_voxel_light_field, key):
+			_fire_job_levels[key.z] = true
+			written += 1
+		if (done.size() & 31) == 0 and Time.get_ticks_usec() - t0 >= FIRE_LIGHT_BUDGET_US:
+			break
+	for key in done:
+		_fire_job.erase(key)
+	if not _fire_job.is_empty():
+		return
+	_voxel_board.flush_cell_soot()
 	var live: Node = board3d()
 	if live != null:
 		live.set("fire_flicker", true)
-		var levels: Dictionary = _voxel_board.levels_in_gus(gus.keys())   ## by construction: every level that has a cell in the light's reach
-		live.call("sync_soot_levels", levels, "fire light")   ## the plane is CPU state: the 3D board reads it only once uploaded
-	print_debug("[FIRE-LIGHT] %d light(s) moved, %d GU(s), %.1f ms" % [changed.size(), gus.size(), float(Time.get_ticks_usec() - t0) / 1000.0])
+		live.call("sync_soot_levels", _fire_job_levels, "fire light")   ## the plane is CPU state: the 3D board reads it only once uploaded
+	_fire_job_levels.clear()
 
 
 ## The lights the voxel light field reads: the registry's active ones (a burning body's lights are in it while they are lit, see `LiquidFireLights`).

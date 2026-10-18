@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**321 scripts · 96932 lines total** (under `godot/scripts/`)
+**321 scripts · 97042 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -269,7 +269,7 @@ extends `Node` · 306 lines
 
 ### `lighting_controller.gd`
 
-extends `Node` · 269 lines
+extends `Node` · 294 lines
 
 `godot/scripts/controllers/lighting_controller.gd`
 
@@ -291,6 +291,9 @@ extends `Node` · 269 lines
 - `func get_tile_semantics_map() -> Dictionary:`
 - `func get_light_anchors() -> Array:`
 - `func get_shadow_results() -> Array:`
+- `func add_extra_lights(lights: Array) -> void:`
+- `func clear_extra_lights() -> void:`
+- `func rebuild_tactical() -> void:`
 - `func rebuild() -> void:`
 - `func rebuild_all() -> void:`
 
@@ -1395,7 +1398,7 @@ extends `Node3D` · 3547 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2770 lines
+`class_name VoxelBoard` · extends `Node2D` · 2801 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1430,6 +1433,9 @@ extends `Node3D` · 3547 lines
 - `func step_light_apply_job(budget_us: int) -> bool:`
 - `func finish_light_apply_job() -> void:`
 - `func light_apply_job_pending() -> bool:`
+- `func levels_in_gus(gus: Array) -> Dictionary:`
+- `func placed_keys_in_gus(gus: Array) -> Array:`
+- `func write_fire_cell(field, key: Vector3i) -> bool:`
 - `func apply_warm_gus(field, gus: Array) -> void:`
 - `func apply_light_field_gus(field, gus: Array) -> void:`
 - `func process_dirty(registry: EdgeRegistry) -> void:`
@@ -3254,7 +3260,7 @@ extends `Node` · 236 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 891 lines
+`class_name VoxelLightField` · extends `RefCounted` · 908 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -3333,11 +3339,11 @@ extends `Node` · 236 lines
 
 ### `liquid_fire_lights.gd`
 
-`class_name LiquidFireLights` · extends `RefCounted` · 98 lines
+`class_name LiquidFireLights` · extends `RefCounted` · 101 lines
 
 `godot/scripts/systems/liquid_fire_lights.gd`
 
-> LiquidFireLights — a burning body lights its surroundings (Director, 2026-10-18): a few VISUAL-ONLY `LightSource`s along the body, each following the flame of the plane cells under it. The board is lit by the CPU light buckets (`VoxelLightField`), never by Godot lights (they cost on the Mali, see the R3D-SPIKE-3D record), so a fire is the same thing a lamp is: a light the field reads. These are NOT in the `LightRegistry`: that registry feeds the tactical shadows and the exposure system, and a fire must not change what a guard sees (visual brightness is not tactical visibility). The room hands them to the field next to the registry's lights (`Room.field_lights()`); `tactical_energy` is 0 for the same reason. The field takes the BRIGHTEST light on a cell (not the sum), so a fire shows where the map's own lamps leave it dim: a dark scene is what lets it read. A light's energy is the flame of its patch (`LiquidFire.visual`, 0..1) with a slow flicker, quantised to `STEP` so the repaint it causes is a few a second.
+> LiquidFireLights — a burning body lights its surroundings (Director, 2026-10-18): a few `LightSource`s along the body, each following the flame of the plane cells under it. TACTICAL (Director, 2026-10-18: "praticamente todas as luzes serao taticas, vamos acender e apagar para abrir caminhos"): the lights are registered in the `LightRegistry` (through `LightingController.add_extra_lights`) and are ACTIVE only while lit, so the shadow projector and the exposure system see a fire like a lamp; the room flips `active` with a hysteresis and re-projects the tactical layer on the flip. The board itself is lit by the CPU light buckets (`VoxelLightField`), never by Godot lights (they cost on the Mali, see the R3D-SPIKE-3D record): a fire is the same thing a lamp is, a light the field reads, plus a `warmth` that tints what it reaches (the cell plane's A channel). The field takes the BRIGHTEST light on a cell (not the sum), so a fire shows where the map's own lamps leave it dim: a dark scene is what lets it read. A light's energy is the flame of its patch (`LiquidFire.visual`, 0..1) with a slow flicker, quantised to `STEP` so the repaint it causes is a few a second.
 
 **Constants / tuning**
 - `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
@@ -6593,7 +6599,7 @@ extends `Node` · 252 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12902 lines
+extends `Node2D` · 12936 lines
 
 `godot/scripts/world/room.gd`
 
@@ -6676,6 +6682,7 @@ extends `Node2D` · 12902 lines
 - `VOXEL_STEP_PX` = `20.0`
 - `LIQUID_FOOTPRINT_STEPS` = `8`
 - `LIQUID_FOOTPRINT_FADE` = `0.88`
+- `FIRE_LIGHT_BUDGET_US` = `2500`
 - `GROUND_SCATTER_LAYER_BUDGET` = `1.5`
 
 ---

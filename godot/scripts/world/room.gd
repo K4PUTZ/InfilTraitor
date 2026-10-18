@@ -158,6 +158,7 @@ const LIQUID_FOOTPRINT_STEPS: int = 8      ## M6 (Director, 2026-10-17): up to e
 const LIQUID_FOOTPRINT_FADE: float = 0.88   ## how much lighter the last print starts than the first (1 - this = its strength)
 var _flood_sheet: MeshInstance3D = null      ## F12 bench (`scenario_flood`)
 var _flood_timer: Timer = null
+var _flood_sheets: Array = []              ## F8 bench: the channels
 var _liquid_sheets: Array = []             ## M6: one LiquidSheet3D per `liquids` body, see _attach_liquids()
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
 ## SM-2 — a scatter covering more than this many LAYERS of its zones gets a loud warning (not a refusal). Moto: ~2.4 ms per layer over a full screen of zone.
@@ -5290,12 +5291,18 @@ func scenario_flood(mode: String) -> bool:
 	if _flood_sheet != null and is_instance_valid(_flood_sheet):
 		_flood_sheet.queue_free()
 	_flood_sheet = null
+	for old_sheet in _flood_sheets:
+		if is_instance_valid(old_sheet):
+			old_sheet.queue_free()
+	_flood_sheets.clear()
 	if mode == "off":
 		return true
 	var live: Node3D = board3d()
 	if live == null:
 		push_error("[Room] flood: no 3D board")
 		return false
+	if mode.begins_with("ch"):
+		return _flood_channels(live, int(mode.substr(2)))
 	var pr: Rect2i = _base_layout.get("playable_rect", Rect2i(Vector2i.ZERO, _room_size))
 	var rect := Rect2(Vector2(pr.position), Vector2(pr.size))
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
@@ -5339,6 +5346,55 @@ func scenario_flood(mode: String) -> bool:
 		_flood_timer = timer
 		timer.start()
 	print("[FLOOD] %s started on a %.0f x %.0f GU floor" % [mode, rect.size.x, rect.size.y])
+	return true
+
+
+## M6 F8: `count` copies of PIPE_LAB's channel (1.5 x 10 GU, 0.25 GU cells, a source at one end, a drain at the other, the curb 2 voxels), side by side, each a
+## `FluidPlane` and a driven `LiquidSheet3D` with the real look. One timer ticks them all every 0.3 s and prints the whole tick's cost.
+func _flood_channels(live: Node3D, count: int) -> bool:
+	var pr: Rect2i = _base_layout.get("playable_rect", Rect2i(Vector2i.ZERO, _room_size))
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var base_y: float = float(GeometryCoords.FLOOR_TOP_LEVEL + 1 - int(live.call("ground_level"))) * unit + LiquidSheet3DRef.LIFT
+	var params: Dictionary = LiquidRegistryRef.resolve("caribe", {})
+	var planes: Array = []
+	var sheets: Array = []
+	for n in range(count):
+		var rect := Rect2(Vector2(pr.position) + Vector2(0.5 + 2.0 * float(n % 8), 1.0 + 12.0 * float(n / 8)), Vector2(1.5, 10.0))
+		var plane: RefCounted = FluidPlaneRef.new()
+		var cell: float = 0.25
+		var cols: int = int(round(rect.size.x / cell)) + 2
+		var rows: int = int(round(rect.size.y / cell)) + 2
+		plane.setup(cols, rows, cell, rect.position - Vector2(cell, cell), 0.9)
+		for r in range(rows):
+			for c in range(cols):
+				if plane.is_rim(c, r):
+					plane.ground[plane.index(c, r)] = 2.0
+		plane.add_source(Rect2(rect.position, Vector2(1.5, 0.25)), 2.0)
+		plane.add_sink(Rect2(rect.position + Vector2(0.0, 9.75), Vector2(1.5, 0.25)), 1.0)
+		var sheet: MeshInstance3D = LiquidSheet3DRef.new()
+		live.add_child(sheet)
+		sheet.setup(rect, base_y, params, Vector2(0.0, 1.0), plane)
+		planes.append(plane)
+		sheets.append(sheet)
+	_flood_sheets = sheets
+	var timer := Timer.new()
+	timer.wait_time = 0.3
+	add_child(timer)
+	var stats: Array = [0, 0.0, 0.0]
+	timer.timeout.connect(func() -> void:
+		var t0: int = Time.get_ticks_usec()
+		for sheet in sheets:
+			sheet.tick()
+		var ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
+		stats[0] = int(stats[0]) + 1
+		stats[1] = float(stats[1]) + ms
+		stats[2] = maxf(float(stats[2]), ms)
+		if int(stats[0]) % 10 == 0:
+			print("[FLOOD] ch%d (%d cells each) tick %d: all bodies mean %.2f ms, worst %.2f ms" % [count, (planes[0] as RefCounted).cols * (planes[0] as RefCounted).rows, int(stats[0]),
+					float(stats[1]) / float(stats[0]), float(stats[2])]))
+	_flood_timer = timer
+	timer.start()
+	print("[FLOOD] ch%d started" % count)
 	return true
 
 

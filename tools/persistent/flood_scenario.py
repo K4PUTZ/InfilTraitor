@@ -23,6 +23,12 @@ ROOT = Path(__file__).resolve().parents[2]
 FILES = "/sdcard/Android/data/com.example.infiltraitor/files"
 
 
+def scenario_f8() -> str:
+    ## M6 F8: N copies of PIPE_LAB's real channel, each a plane + a driven sheet with the real look, ticked every 0.3 s
+    return ("framing portrait; centre agent; zoom 0.5; frames 60; wait 10; flood off; mark idle; wait 10; "
+            "flood ch1; mark ch1; wait 14; flood ch4; mark ch4; wait 14; flood ch8; mark ch8; wait 14; flood off; mark after; wait 10; quit")
+
+
 def scenario(stress: bool) -> str:
     if stress:
         ## the stress scenario's own script (stress_scenario.py), with the LEVEL model's sheet on from the start: the two stacked blasts and the shot over water
@@ -34,7 +40,7 @@ def scenario(stress: bool) -> str:
 
 
 def flags(args) -> dict:
-    f = {"MAP": "STRESS" if args.stress else args.map, "RNG_SEED": "1", "TELEMETRY": "1", "FRAME_PROBE": "1", "SCENARIO": scenario(args.stress)}
+    f = {"MAP": "STRESS" if args.stress else args.map, "RNG_SEED": "1", "TELEMETRY": "1", "FRAME_PROBE": "1", "SCENARIO": scenario_f8() if args.f8 else scenario(args.stress)}
     if args.stress:
         f["GRENADE_GUS"] = "20,21;36,24"
         f["THROW_PROFILE"] = "1"
@@ -49,6 +55,7 @@ def main() -> int:
     ap.add_argument("--device", default="")
     ap.add_argument("--map", default="SEG_HEAVY")
     ap.add_argument("--stress", action="store_true")
+    ap.add_argument("--f8", action="store_true", help="M6 F8: 1, 4 and 8 copies of the PIPE_LAB channel instead of the whole-segment bench")
     ap.add_argument("--uncapped", action="store_true")
     ap.add_argument("--print", action="store_true")
     ap.add_argument("--save", default="")

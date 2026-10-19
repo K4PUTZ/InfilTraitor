@@ -17,7 +17,8 @@
 class_name FluidPlane
 extends RefCounted
 
-const WALL: float = 8.0               ## a ground at or above this is a wall (a storey is 8 voxels)
+const WALL: float = 1000.0            ## a ground at or above this is a WALL: nothing enters the cell (a sentinel: a container read from the world may stand far higher than a storey)
+const LEGACY_WALL: float = 8.0        ## a TYPED height (`walls` / `grounds` / `set_ground_rect`) of a storey or more meant a wall before containers were read from the world; it still does
 const ROUNDS_PER_TICK: int = 24   ## at a 0.25 GU cell; see `rounds_per_tick()`
 const GRATE_MIN_FLUIDITY: float = 0.2  ## a thinner liquid than this does not cross a grate
 const GRATE_FULL_FLUIDITY: float = 0.8 ## from here on a grate costs the liquid nothing
@@ -54,6 +55,7 @@ var _delta: PackedFloat32Array = PackedFloat32Array()   ## the round's scratch (
 const WEIR_C: float = 0.035   ## tuned on PIPE_LAB: the raised bore (two 0.5 GU cells across) runs about a third full at its source's 2 voxels a turn
 var _weir: PackedByteArray = PackedByteArray()
 var _weir_dirty: bool = true
+var _cell_pass: PackedFloat32Array = PackedFloat32Array()   ## per cell, how much a grating in it lets through (1 = open): `set_cell_pass`, a container read from the world
 
 
 func setup(width: int, height: int, cell_size_gu: float, grid_origin: Vector2, liquid_fluidity: float) -> void:
@@ -111,7 +113,7 @@ func cells_in(rect: Rect2) -> PackedInt32Array:
 
 func set_ground_rect(rect: Rect2, height: float) -> void:
 	for i in _cells_or_warn(rect, "wall / ground"):
-		ground[i] = height if is_finite(height) else WALL
+		ground[i] = height if is_finite(height) and height < LEGACY_WALL else WALL
 	_weir_dirty = true
 
 
@@ -219,21 +221,28 @@ static func from_body(body: Dictionary, liquid_fluidity: float) -> RefCounted:
 		plane.set_ground_rect(wall["rect"], float(wall["height"]))
 	for roof: Dictionary in fluid["roofs"]:
 		plane.set_ceiling_rect(roof["rect"], float(roof["height"]))
-	for src: Dictionary in fluid["sources"]:
-		plane.add_source(src["rect"], float(src["rate"]))
-	for snk: Dictionary in fluid["sinks"]:
-		plane.add_sink(snk["rect"], float(snk["rate"]))
 	for grate: Dictionary in fluid["grates"]:
 		plane.add_grate(String(grate["axis"]), float(grate["at"]))
-	var fill: float = clampf(float(fluid.get("fill", 0.0)), 0.0, WALL)   ## a still pool: the depth it holds when the map opens (no source needed), up to `fill` voxels over the bed
-	if fill > 0.0:
-		for r in range(1, height - 1):
-			for c in range(1, width - 1):
-				var i: int = plane.index(c, r)
-				if plane.ground[i] < WALL:
-					plane.depth[i] = maxf(fill - plane.ground[i], 0.0)
-		plane.committed = plane.depth.duplicate()
+	plane.add_inputs(fluid)
 	return plane
+
+
+## What feeds and drains a body, from its compiled `fluid` block, whatever made its shape (`from_body`'s typed zone or a `FluidContainer` read from the world):
+## the sources and sinks (zones, raw GU), the still pool's `fill` (voxels over the body's lowest ground), the rounds a thick liquid saves.
+func add_inputs(fluid: Dictionary) -> void:
+	rounds_scale = lerpf(0.5, 1.0, clampf(fluidity, 0.0, 1.0))
+	for src: Dictionary in fluid.get("sources", []):
+		add_source(src["rect"], float(src["rate"]))
+	for snk: Dictionary in fluid.get("sinks", []):
+		add_sink(snk["rect"], float(snk["rate"]))
+	var fill: float = clampf(float(fluid.get("fill", 0.0)), 0.0, LEGACY_WALL)   ## a still pool: the depth it holds when the map opens (no source needed), up to `fill` voxels over the bed
+	if fill > 0.0:
+		for r in range(1, rows - 1):
+			for c in range(1, cols - 1):
+				var i: int = index(c, r)
+				if ground[i] < WALL:
+					depth[i] = maxf(fill - ground[i], 0.0)
+		committed = depth.duplicate()
 
 
 func surface(i: int) -> float:
@@ -347,6 +356,32 @@ func finish_tick() -> void:
 ## constant was tuned for, half as many at 0.5 GU (the same distance a turn, half the cost).
 func rounds_per_tick() -> int:
 	return maxi(int(round(float(ROUNDS_PER_TICK) * 0.25 / cell_gu * rounds_scale)), 1)
+
+
+## The grounds were rewritten from outside (a container re-read after the world changed): the weirs are found again before the next round.
+func mark_ground_changed() -> void:
+	_weir_dirty = true
+
+
+## A GRATING inside cell `i` (a container's bars: `FluidContainer`): every flow across its four edges, either way, passes `fraction` of itself (the lower of
+## the two cells' own fractions on a shared edge). 1 = open.
+func set_cell_pass(i: int, fraction: float) -> void:
+	if _cell_pass.size() != cols * rows:
+		_cell_pass.resize(cols * rows)
+		_cell_pass.fill(1.0)
+	_cell_pass[i] = clampf(fraction, 0.0, 1.0)
+	var c: int = i % cols
+	var r: int = i / cols
+	var steps: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	for k in range(4):
+		var nc: int = c + steps[k].x
+		var nr: int = r + steps[k].y
+		if not in_grid(nc, nr):
+			continue
+		var j: int = index(nc, nr)
+		var edge: float = minf(_cell_pass[i], _cell_pass[j])
+		_perm[i * 4 + k] = edge
+		_perm[j * 4 + (k ^ 1)] = edge    ## the opposite direction: +x <-> -x (0, 1), +y <-> -y (2, 3)
 
 
 ## Which outflows run over a fall (see `WEIR_C`): flag k of cell i is 1 when its neighbour that way stands `FALL_DROP` or more lower and is no wall.

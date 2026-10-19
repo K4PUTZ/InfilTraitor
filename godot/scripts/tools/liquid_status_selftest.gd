@@ -13,6 +13,7 @@ const RegistryClass = preload("res://godot/scripts/systems/liquid_registry.gd")
 const LightFieldClass = preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")
 const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
+const WorldClass = preload("res://godot/scripts/tools/liquid_test_world.gd")
 
 var _failures: int = 0
 
@@ -96,15 +97,19 @@ func _init() -> void:
 	var by_kind: Dictionary = {}
 	for body: Dictionary in bodies:
 		by_kind[String(body["kind"])] = body
-	var offset := Vector2i(layout.get("playable_rect", Rect2i()).position)
-	var crust_body: Dictionary = by_kind["lava_crust"]
-	var crust_plane = PlaneClass.from_body(crust_body, RegistryClass.fluidity("lava_crust"))
-	_check(absf(crust_plane.committed[crust_plane.index(3, 2)] - 2.5) < 0.001, "a still pool opens holding its `fill` (%.2f voxels)" % crust_plane.committed[crust_plane.index(3, 2)])
+	_check(by_kind.has("lava_crust") and (by_kind["lava_crust"]["fluid"] as Dictionary).has("seed"), "and its pools are SEEDED: their shapes come from the world")
+	## the bodies themselves in synthetic pits laid as LIQUIDS_LAB lays them (a body takes its shape from the voxels)
+	var world = WorldClass.new()
+	world.lay(Rect2i(0, 0, 8, 6), [Rect2i(2, 2, 4, 2)])
+	var crust_made: Dictionary = world.body(Vector2(4.0, 3.0), RegistryClass.fluidity("lava_crust"), {"fill": 2.5})
+	var crust_plane = crust_made["plane"]
+	var mid: Vector2i = crust_plane.cell_of(Vector2(3.25, 2.25))
+	_check(absf(crust_plane.committed[crust_plane.index(mid.x, mid.y)] - 2.5) < 0.001, "a still pool opens holding its `fill` (%.2f voxels)" % crust_plane.committed[crust_plane.index(mid.x, mid.y)])
 	var crust = SurfaceClass.new()
 	crust.setup(crust_plane, RegistryClass.gameplay("lava_crust"))
 	var field = FieldClass.new()
-	field.add_body("lava_crust", crust_body["rect"], crust_plane, crust)
-	var on_crust := Vector2i(3, 7) + offset
+	field.add_body("lava_crust", crust_made["rect"], crust_plane, crust)
+	var on_crust := Vector2i(3, 2)
 	var info: Dictionary = field.at_cell(on_crust)
 	_check(int(info.get("solid", 0)) == SurfaceClass.PLATE and not ExposureClass.is_blocked(info["gameplay"], float(info["depth"])) and ExposureClass.rate(info["gameplay"], float(info["depth"])) == 0.0,
 			"an intact plate is walkable and gives no dose")
@@ -121,17 +126,21 @@ func _init() -> void:
 	_check(crust.at_gu(on_crust + Vector2i(2, 0)) == SurfaceClass.PLATE, "a plate two GU away still stands")
 
 	## 5. the cold freezes the water beside it, along their common edge
-	var cold_plane = PlaneClass.from_body(by_kind["criogenico"], RegistryClass.fluidity("criogenico"))
-	var water_plane = PlaneClass.from_body(by_kind["clean"], RegistryClass.fluidity("clean"))
+	world.lay(Rect2i(0, 0, 8, 6), [Rect2i(2, 2, 4, 2)])
+	world.divider(32, 2, 4)    ## one pit split in two containers, as LIQUIDS_LAB's `pit_divider`
+	var cold_made: Dictionary = world.body(Vector2(3.0, 3.0), RegistryClass.fluidity("criogenico"), {"fill": 1.5})
+	var water_made: Dictionary = world.body(Vector2(5.0, 3.0), RegistryClass.fluidity("clean"), {"fill": 1.5})
+	var cold_plane = cold_made["plane"]
+	var water_plane = water_made["plane"]
 	var water = SurfaceClass.new()
 	water.setup(water_plane, RegistryClass.gameplay("clean"))
 	var touching: PackedInt32Array = SurfaceClass.contact_cells(cold_plane, water_plane)
 	_check(touching.size() == 4, "the water's column along the cold's edge touches it (%d cells of 0.5 GU)" % touching.size())
 	_check(water.freeze(touching) == 4 and water.freeze(touching) == 0, "those cells freeze, once")
 	var wfield = FieldClass.new()
-	wfield.add_body("clean", by_kind["clean"]["rect"], water_plane, water)
-	var edge: Dictionary = wfield.at_cell(Vector2i(18, 2) + offset)
-	var far: Dictionary = wfield.at_cell(Vector2i(19, 2) + offset)
+	wfield.add_body("clean", water_made["rect"], water_plane, water)
+	var edge: Dictionary = wfield.at_cell(Vector2i(4, 2))
+	var far: Dictionary = wfield.at_cell(Vector2i(5, 2))
 	_check(int(edge.get("solid", 0)) == SurfaceClass.ICE and bool(edge["gameplay"].get("slippery", false)) and int(far.get("solid", 0)) == 0, "the edge GU is ice (slippery), the far one water")
 
 	## 3-4. what the corrosives attack
@@ -151,13 +160,21 @@ func _init() -> void:
 	_check((result[CorrosionClass.DISSOLVE] as Array).is_empty() and acid.count_of(bar) == 5, "five turns of contact are not enough")
 	result = acid.tick({bar: CorrosionClass.DISSOLVE})
 	_check((result[CorrosionClass.DISSOLVE] as Array) == [bar] and (acid.tick({bar: CorrosionClass.DISSOLVE})[CorrosionClass.DISSOLVE] as Array).is_empty(), "the sixth dissolves the bar, once")
-	## the plane's grate opens when the bars go (a thick liquid, 0.5, so the grate holds some of it back: the acid itself is thin and passes it whole)
-	var acid_plane = PlaneClass.from_body(by_kind["acido"], 0.5)
-	var grate_at: float = float(by_kind["acido"]["fluid"]["grates"][0]["at"])
-	var row: int = int(round((grate_at - acid_plane.origin.y) / acid_plane.cell_gu)) - 1   ## the row just above the line: its +y outflow crosses it
-	var before: float = acid_plane._perm[acid_plane.index(2, row) * 4 + 2]
-	acid_plane.open_grate("y", grate_at)
-	_check(before < 1.0 and acid_plane._perm[acid_plane.index(2, row) * 4 + 2] == 1.0, "a grate line passes part of a thick liquid, and all of it once opened (%.2f -> 1)" % before)
+	## the grating's bars hold back a thick liquid (0.5: the acid itself is thin and passes them whole); once dissolved, the container re-read lets it all through
+	world.lay(Rect2i(0, 0, 6, 8), [Rect2i(2, 2, 2, 4)])
+	world.bars(2, 4, 33)
+	var acid_made: Dictionary = world.body(Vector2(3.0, 2.5), 0.5)
+	var acid_plane = acid_made["plane"]
+	var gcell: Vector2i = acid_plane.cell_of(Vector2(3.0, 4.1))
+	var gi: int = acid_plane.index(gcell.x, gcell.y)
+	var before: float = acid_plane._perm[gi * 4 + 2]
+	var gone: Array = []
+	for x in range(16, 32, 2):
+		for lv in range(76, 80):
+			world.solid.erase(Vector3i(x, 33, lv))
+		gone.append(Vector2i(x, 33))
+	acid_made["box"].refresh(acid_plane, gone, 80, acid_made["info"])
+	_check(before < 1.0 and acid_plane._perm[gi * 4 + 2] == 1.0, "the bars pass part of a thick liquid, and all of it once dissolved (%.2f -> 1)" % before)
 
 	## 1, 7. a body's own light: lava warm, nuclear cool and faint; the tint byte keeps one hue
 	var lava_light: Dictionary = GlowClass.body_light(RegistryClass.gameplay("lava_gold"))
@@ -165,7 +182,8 @@ func _init() -> void:
 	_check(not lava_light.is_empty() and String(lava_light.get("tint", "warm")) == "warm" and String(nuke_light.get("tint", "")) == "cool"
 			and float(nuke_light["energy"]) < float(lava_light["energy"]), "lava is a warm light, nuclear a fainter cool one")
 	var glow = GlowClass.new()
-	glow.setup(PlaneClass.from_body(by_kind["nuclear"], RegistryClass.fluidity("nuclear")))
+	world.lay(Rect2i(0, 0, 6, 6), [Rect2i(2, 2, 2, 2)])
+	glow.setup(world.body(Vector2(3.0, 3.0), RegistryClass.fluidity("nuclear"), {"fill": 1.5})["plane"])
 	var lit: int = 0
 	for v: float in glow.visual:
 		if v > 0.0:

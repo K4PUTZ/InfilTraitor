@@ -4,7 +4,7 @@
  "id": "PIPE_LAB",
  "meta": {
   "title": "Pipe Lab",
-  "description": "Static bench for the M6 water study (2026-10-17): two grated, half-buried drain pipes in opposite long walls (north A, south B) and a concrete channel between them along y. Water will run from A into B once the study picks a mechanism; none yet. Dev fixture, not a level. Pipe voxels: tools/asset_generation/gen_pipe_vox.py. 2026-10-18 (consolidation): pipe A is RAISED (pipe_n_hi_*, standing whole on the floor, its bore 2 voxels up) and the channel is dug only from its mouth to under pipe B, so A's water FALLS into the channel (take `waterfall`)."
+  "description": "Static bench for the M6 water study (2026-10-17): two grated, half-buried drain pipes in opposite long walls (north A, south B) and a concrete channel between them along y. Water will run from A into B once the study picks a mechanism; none yet. Dev fixture, not a level. Pipe voxels: tools/asset_generation/gen_pipe_vox.py. 2026-10-18 (consolidation): pipe A is RAISED (pipe_n_hi_*, standing whole on the floor, its bore 2 voxels up) and the channel is dug only from its mouth to under pipe B, so A's water FALLS into the channel (take `waterfall`). 2026-10-19: the body is SEEDED in pipe A's bore and takes its shape from the voxels (FluidContainer): no typed zone, walls, roofs, grounds or grates."
  },
  "sections": {
   "board": {
@@ -1015,12 +1015,6 @@
    "v": 1,
    "items": [
     {
-     "zone": [
-      11.0,
-      1.0,
-      2.0,
-      10.0
-     ],
      "kind": "caribe",
      "flow": [
       0,
@@ -1028,83 +1022,6 @@
      ],
      "fluid": {
       "cell": 0.5,
-      "rim": 3,
-      "walls": [
-       {
-        "zone": [
-         11.0,
-         0.5,
-         2.0,
-         0.5
-        ],
-        "height": 8
-       },
-       {
-        "zone": [
-         11.0,
-         11.0,
-         2.0,
-         0.5
-        ],
-        "height": 8
-       },
-       {
-        "zone": [
-         11.0,
-         1.0,
-         0.5,
-         2.0
-        ],
-        "height": 8
-       },
-       {
-        "zone": [
-         12.5,
-         1.0,
-         0.5,
-         2.0
-        ],
-        "height": 8
-       },
-       {
-        "zone": [
-         11.0,
-         9.0,
-         0.5,
-         2.0
-        ],
-        "height": 8
-       },
-       {
-        "zone": [
-         12.5,
-         9.0,
-         0.5,
-         2.0
-        ],
-        "height": 8
-       }
-      ],
-      "roofs": [
-       {
-        "zone": [
-         11.5,
-         1.0,
-         1.0,
-         2.0
-        ],
-        "height": 18
-       },
-       {
-        "zone": [
-         11.5,
-         9.0,
-         1.0,
-         2.0
-        ],
-        "height": 10
-       }
-      ],
       "sources": [
        {
         "zone": [
@@ -1126,28 +1043,13 @@
         ],
         "rate": 1.0
        }
-      ],
-      "grates": [
-       {
-        "y": 2.75
-       },
-       {
-        "y": 9.25
-       }
-      ],
-      "dig": 4,
-      "grounds": [
-       {
-        "zone": [
-         11.5,
-         1.0,
-         1.0,
-         2.0
-        ],
-        "height": 6.34
-       }
       ]
-     }
+     },
+     "seed": [
+      12.0,
+      1.4
+     ],
+     "comment": "read from the world (2026-10-19): the seed is in pipe A's bore; the flood takes the bore, falls through its mouth and fills the dug channel wall to wall, into pipe B; walls, roofs, the round bore and B's grating come from the voxels"
     }
    ]
   },

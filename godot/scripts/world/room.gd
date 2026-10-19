@@ -20,6 +20,7 @@ const LiquidFireRef = preload("res://godot/scripts/systems/liquid_fire.gd")  ## 
 const FluidPlaneRef = preload("res://godot/scripts/systems/fluid_plane.gd")  ## M6: the gameplay truth of a body of liquid
 const LiquidRulesControllerRef = preload("res://godot/scripts/world/controllers/liquid_rules_controller.gd")  ## M6 F5: the per-liquid rules
 const LiquidAgentStatusRef = preload("res://godot/scripts/systems/liquid_agent_status.gd")  ## M6 F5: what a liquid leaves on the agent
+const FluidContainerRef = preload("res://godot/scripts/systems/fluid_container.gd")  ## M6: a body takes the shape of what holds it (2026-10-19)
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
 const SurfaceRulesRef = preload("res://godot/scripts/systems/surface_rules.gd")  ## R3D-SURFACES: floor tags and patch rules
 const VentEmitterRef = preload("res://godot/scripts/overlays/vent_emitter.gd")  ## R3D-SURFACES SM-6: a plume rising from a floor vent
@@ -178,6 +179,7 @@ const FIRE_LIGHT_BUDGET_US: int = 5000
 const FIRE_LIGHT_UPLOAD_S: float = 0.5
 var _liquid_fire_lights: Array = []        ## M6 F5: one LiquidFireLights per burning body (visual lights the field reads, never the tactical registry)
 var _liquid_sheets: Array = []             ## M6: one LiquidSheet3D per `liquids` body, see _attach_liquids()
+var _liquid_containers: Array = []         ## M6 (2026-10-19): {"box": FluidContainer, "plane", "info", "brim", "sheet"} per body read from the world, re-read when it changes
 var _liquid_rules_controller: RefCounted = null   ## M6 F5: lava, oil on the agent, corrosion, cold, crust, glow, stain, quicksand (`_liquid_rules()`)
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
 ## SM-2 — a scatter covering more than this many LAYERS of its zones gets a loud warning (not a refusal). Moto: ~2.4 ms per layer over a full screen of zone.
@@ -4334,6 +4336,7 @@ const LIGHT_APPLY_SLICE_US: int = 10000
 ## the case. Switches (dev flags): `STRUCT_GRAVITY` (0 = off, as before), `STRUCT_GRAVITY_SCALE` (the fall's gravity, 1.0), `STRUCT_CASCADE_S` (0.04 s a step, at most 0.6 s).
 ## What falls is DESTROYED and base-recorded (a checkpoint restores it) and its pieces settle into the persistent rubble piles (`_base_rubble_piles`).
 func schedule_structural_support(touched: Array) -> void:
+	refresh_liquid_containers(touched)   ## M6: every committed event passes here (a blast's Delta, a cut, a corrosion): a liquid's container may have changed
 	if str(_dev_flag("STRUCT_GRAVITY", "1")) == "0" or _voxel_board == null or touched.is_empty():
 		return
 	var t_main0: int = Time.get_ticks_usec()
@@ -4748,6 +4751,7 @@ var _sheet_entity_by_key: Dictionary = {}
 
 ## A shot touched these voxels: a cloth sheet that lost some is drawn again with the hole (the board draws no face for it). The fire a blast gave it stays as soot.
 func _on_shot_touched(touched: Array) -> void:
+	refresh_liquid_containers(touched)   ## M6: a liquid's container may have changed
 	var hit: Dictionary = {}
 	for v: Voxel in touched:
 		var key: Variant = _sheet_of_voxel.get(Vector3i(v.grid_pos.x, v.grid_pos.y, v.level))
@@ -9462,6 +9466,7 @@ func _attach_liquids(live: Node3D) -> void:
 		if is_instance_valid(sheet):
 			sheet.queue_free()
 	_liquid_sheets.clear()
+	_liquid_containers.clear()
 	_liquid_fires.clear()
 	_liquid_fire_lights.clear()
 	if _lighting_controller != null:
@@ -9496,7 +9501,15 @@ func _attach_liquids(live: Node3D) -> void:
 		if params.is_empty():
 			continue
 		var plane: RefCounted = null
-		if not (body["fluid"] as Dictionary).is_empty():
+		var container: Dictionary = {}
+		if (body["fluid"] as Dictionary).has("seed"):
+			container = _build_container(body, kind)
+			if container.is_empty():
+				continue
+			plane = container["plane"]
+			for _t in range(preroll):
+				plane.tick()
+		elif not (body["fluid"] as Dictionary).is_empty():
 			plane = FluidPlaneRef.from_body(body, LiquidRegistryRef.fluidity(kind))
 			for _t in range(preroll):
 				plane.tick()
@@ -9533,6 +9546,9 @@ func _attach_liquids(live: Node3D) -> void:
 				_liquid_tongues.append(tongues)
 			else:
 				_liquid_tongues.append(null)
+		if not container.is_empty():
+			container["sheet"] = sheet
+			_liquid_containers.append(container)
 		if plane != null:
 			sheet.snap()
 			var falls: MeshInstance3D = LiquidFalls3DRef.new()   ## the waterfalls wherever this body flows over a step (a child: it goes with the sheet)
@@ -9612,6 +9628,53 @@ func liquid_stand_y(cell: Vector2i, actor: Node) -> float:
 		var sink: float = _liquid_rules().status.sink if actor == agent else 0.0
 		return (surface - sink) * unit
 	return NAN
+
+
+## M6 (2026-10-19, Director: "o liquido precisa se espalhar pelo recipiente"; "por construcao e nao por definicao"): a seeded body's plane read from the WORLD
+## (`FluidContainer` over the store's columns). The body's `rect` becomes the cells it found (the sheet, the field and the rules use it). {} when nothing holds it.
+func _build_container(body: Dictionary, kind: String) -> Dictionary:
+	var store: VoxelStore = VoxelStore.active
+	var fluid: Dictionary = body["fluid"]
+	if store == null:
+		push_error("[Room] liquids: a seeded %s body needs the voxel store to read its container; skipped" % kind)
+		return {}
+	var box = FluidContainerRef.new()
+	box.setup(Callable(store, "has_solid"), store.l0, store.l0 + store.nl - 1, GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var brim_level: int = GeometryCoords.FLOOR_TOP_LEVEL + 1 + int(round(float(fluid.get("brim", 0.0))))
+	var seed_gu: Vector2 = fluid["seed"]
+	var per: float = float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	box.flood(Vector2i(floori(seed_gu.x * per), floori(seed_gu.y * per)), brim_level)
+	var info: Dictionary = {}
+	var plane = box.build_plane(float(fluid.get("cell", 0.5)), LiquidRegistryRef.fluidity(kind), brim_level, info)
+	if plane == null:
+		push_error("[Room] liquids: the %s body seeded at %s found no container (the seed stands on nothing); skipped" % [kind, seed_gu])
+		return {}
+	if box.leaked:
+		push_warning("[Room] liquids: the %s body seeded at %s does not close under its brim (level %d): cut at %d columns" % [kind, seed_gu, brim_level, box.region.size()])
+	plane.dig = float(GeometryCoords.FLOOR_TOP_LEVEL + 1 - int(info["base"]))
+	plane.add_inputs(fluid)
+	body["rect"] = info["rect"]
+	print("[Liquids] %s body read from the world at %s: %d columns, %d x %d cells, base level %d (dig %d), rect %s" % [kind, seed_gu, box.region.size(), plane.cols, plane.rows,
+			int(info["base"]), int(plane.dig), info["rect"]])
+	return {"box": box, "plane": plane, "info": info, "brim": brim_level}
+
+
+## The world changed under these voxels (a shot, a blast, an acid, a fall): every body read from the world re-reads the columns they stand in, so a breach lets
+## the liquid in and a dissolved grating stops holding it, by construction.
+func refresh_liquid_containers(voxels: Array) -> void:
+	if _liquid_containers.is_empty() or voxels.is_empty():
+		return
+	var columns: Dictionary = {}
+	for v in voxels:
+		if v is Voxel:
+			columns[(v as Voxel).grid_pos] = true
+	for entry: Dictionary in _liquid_containers:
+		var redone: int = entry["box"].refresh(entry["plane"], columns.keys(), int(entry["brim"]), entry["info"])
+		if redone > 0:
+			var sheet = entry["sheet"]
+			if is_instance_valid(sheet):
+				sheet.set("_dirty", true)
+			print_debug("[Liquids] a container changed: %d cell(s) re-read" % redone)
 
 
 ## The per-liquid rules (M6 F5), made on first use.

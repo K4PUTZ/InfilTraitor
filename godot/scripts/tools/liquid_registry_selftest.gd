@@ -55,8 +55,8 @@ func _init() -> void:
 	var layout: Dictionary = MapCompilerClass.compile(spec_map)
 	var bodies: Array = layout.get("liquid_instances", [])
 	var offset := Vector2(layout.get("playable_rect", Rect2i()).position)
-	_check(bodies.size() == 1 and (bodies[0]["rect"] as Rect2) == Rect2(Vector2(11, 1) + offset, Vector2(2, 10)) and (bodies[0]["flow"] as Vector2) == Vector2(0, 1),
-		"MapCompiler shifts the zone by the buffer and keeps the flow")
+	_check(bodies.size() == 1 and (bodies[0]["fluid"]["seed"] as Vector2) == Vector2(12.0, 1.4) + offset and (bodies[0]["flow"] as Vector2) == Vector2(0, 1),
+		"MapCompiler shifts the seed by the buffer and keeps the flow (the body's shape is read from the world at load)")
 	var bad_spec: Dictionary = spec_map.duplicate(true)
 	bad_spec["liquids"] = [{"zone": [1, 1, 0, 3], "kind": "caribe"}, {"zone": [1, 1, 2, 2]}, {"zone": [2, 2, 3, 1], "kind": "lama"}]
 	var good: Array = MapCompilerClass.compile(bad_spec).get("liquid_instances", [])

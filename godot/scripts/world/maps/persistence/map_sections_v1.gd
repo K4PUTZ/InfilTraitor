@@ -204,7 +204,8 @@ static func register_ground_vents(registry) -> void:
 			return { "items": [] }
 	))
 
-## liquids (M6, 2026-10-17): a body of liquid over a rectangle of floor. `{zone: [x, y, w, h], kind, flow?, rain?, overrides?}` -- `zone` in GU
+## liquids (M6, 2026-10-17; 2026-10-19 by construction): a SEEDED body `{seed: [x, y], kind, brim?, fluid?}` takes the shape of what holds it, read from
+## the voxels at load (`FluidContainer`); a ZONE body is a body of liquid over a rectangle of floor (a quicksand patch). `{zone: [x, y, w, h], kind, flow?, rain?, overrides?}` -- `zone` in GU
 ## (inner coordinates, whole or fractional), `kind` a liquid of `liquids/<id>.json` (`LiquidRegistry`), `flow` a direction `[dx, dy]` (default
 ## the zone's long axis, +), `rain` 0..1 (weather on this body), `overrides` a table of the liquid's controls (`LiquidRegistry.PARAMS`: more
 ## bubbles, faster, more foam, another colour). Cosmetic for now (nothing saves it); gameplay (`FluidPlane`) comes later.

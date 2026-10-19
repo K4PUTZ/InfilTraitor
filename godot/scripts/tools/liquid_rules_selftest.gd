@@ -1,5 +1,5 @@
 ## M6 F3-F6 — the liquids' RULES: the dose model (lethal in the deep, little on top, worse the longer), wading cost and blocked paths, the trap, a
-## `LiquidField` lookup over the real PIPE_LAB plane, the player's valve, and a breach.
+## `LiquidField` lookup over a PIPE_LAB-like channel read from voxels, the player's valve, and a breach.
 extends SceneTree
 
 const ExposureClass = preload("res://godot/scripts/systems/liquid_exposure.gd")
@@ -8,6 +8,7 @@ const PlaneClass = preload("res://godot/scripts/systems/fluid_plane.gd")
 const RegistryClass = preload("res://godot/scripts/systems/liquid_registry.gd")
 const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
+const WorldClass = preload("res://godot/scripts/tools/liquid_test_world.gd")
 
 var _failures: int = 0
 
@@ -48,35 +49,35 @@ func _init() -> void:
 	_check(ExposureClass.wade_points(RegistryClass.gameplay("petroleo"), 1.0) == 2, "oil costs a point and a slippery one")
 	_check(ExposureClass.trap_ap(mud, 4.0) == 2 and ExposureClass.trap_ap(mud, 1.0) == 0 and ExposureClass.trap_ap(water, 4.0) == 0, "deep mud holds the agent for 2 AP, shallow mud and water do not")
 
-	var spec: Dictionary = FileMapSourceClass.new().get_runtime_spec("PIPE_LAB")
-	var layout: Dictionary = MapCompilerClass.compile(spec)
-	var body: Dictionary = (layout["liquid_instances"] as Array)[0]
-	var plane = PlaneClass.from_body(body, 1.0)
+	## a channel as PIPE_LAB lays it, built from voxels (2026-10-19: a body takes its shape from the world): a raised pipe pours into a channel dug 4 under
+	## the floor, a drain at its far end
+	var world = WorldClass.new()
+	world.lay(Rect2i(0, 0, 6, 14), [Rect2i(2, 3, 2, 8)])
+	world.raised_pipe(2, 1, 3)
+	var made: Dictionary = world.body(Vector2(3.0, 1.4), 1.0, {"sources": [{"rect": Rect2(2.5, 1.0, 1.0, 0.5), "rate": 2.0}], "sinks": [{"rect": Rect2(2.5, 10.5, 1.0, 0.5), "rate": 1.0}]})
+	var plane = made["plane"]
 	var field = FieldClass.new()
-	field.add_body("caribe", body["rect"], plane)
-	var offset := Vector2i(layout.get("playable_rect", Rect2i()).position)
-	var probe := Vector2i(12, 6) + offset
+	field.add_body("caribe", made["rect"], plane)
+	var probe := Vector2i(3, 6)
 	_check(field.at_cell(probe).is_empty(), "before any turn the channel is dry")
 	for _t in range(60):
 		plane.tick()
 	var wet: Dictionary = field.at_cell(probe)
 	_check(not wet.is_empty() and String(wet["kind"]) == "caribe" and float(wet["depth"]) > 0.5, "after 60 turns the field reports caribe in the channel (%.2f voxels)" % float(wet.get("depth", 0.0)))
-	_check(field.at_cell(Vector2i(3, 3) + offset).is_empty(), "and nothing outside it")
+	_check(field.at_cell(Vector2i(0, 6)).is_empty() and field.at_cell(Vector2i(1, 6)).is_empty(), "and nothing on the floor beside it")
 	var before: float = float(wet["depth"])
 	field.set_source_rate(0, 0, 0.0)
 	for _t in range(200):
 		plane.tick()
 	var after: float = float(field.at_cell(probe).get("depth", 0.0))
-	## the floor's puddles keep their own voxel (`fluid.rim`), so the channel falls to that level, not to nothing
 	_check(after < before * 0.7, "shutting the valve lowers the channel (%.2f to %.2f voxels)" % [before, after])
-	field.set_source_rate(0, 0, 2.0)
 	field.set_source_rate(0, 0, 8.0)
 	for _t in range(80):
 		plane.tick()
 	var spilled_before: float = plane.spilled
-	plane.lower_ground(Rect2(11.0 + float(offset.x), 5.0 + float(offset.y), 0.25, 1.0), 0.0)
+	plane.lower_ground(Rect2(1.5, 5.0, 0.5, 1.0), 0.0)   ## the rim cell beside the channel: a breach through its wall
 	for _t in range(20):
 		plane.tick()
-	_check(plane.spilled > spilled_before and not field.set_source_rate(5, 0, 1.0), "a breach in a curb lets the liquid out; a valve that does not exist says so")
+	_check(plane.spilled > spilled_before and not field.set_source_rate(5, 0, 1.0), "a breach in the wall lets the liquid out; a valve that does not exist says so")
 	print("\n== %s ==" % ("PASS" if _failures == 0 else "FAIL (%d)" % _failures))
 	quit(0 if _failures == 0 else 1)

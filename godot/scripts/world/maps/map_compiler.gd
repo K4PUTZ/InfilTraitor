@@ -250,10 +250,16 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 	for body in spec.get("liquids", []):
 		var zone = body.get("zone", null)
 		var liquid_kind: String = String(body.get("kind", ""))
-		if not (zone is Array) or zone.size() != 4 or liquid_kind.is_empty() or float(zone[2]) <= 0.0 or float(zone[3]) <= 0.0:
-			push_error("[MapCompiler] liquids: %s needs `zone` [x, y, w, h] with a positive size and a `kind`; skipped" % str(body))
+		## 2026-10-19 — a body BY CONSTRUCTION names a `seed` [x, y] (a point in the pool, or where a pipe pours) and its shape is read from the world at load
+		## (`FluidContainer`); `brim` (voxels over the floor top, default 0) is how high it may stand. A `zone` body (a patch on the floor: quicksand) keeps
+		## its rectangle.
+		var seed_raw = body.get("seed", null)
+		var has_seed: bool = seed_raw is Array and (seed_raw as Array).size() == 2
+		if liquid_kind.is_empty() or (not has_seed and (not (zone is Array) or zone.size() != 4 or float(zone[2]) <= 0.0 or float(zone[3]) <= 0.0)):
+			push_error("[MapCompiler] liquids: %s needs a `kind` and either a `seed` [x, y] or a `zone` [x, y, w, h] with a positive size; skipped" % str(body))
 			continue
-		var rect := Rect2(Vector2(float(zone[0]), float(zone[1])) + Vector2(offset), Vector2(float(zone[2]), float(zone[3])))
+		var rect := Rect2(Vector2(float(seed_raw[0]), float(seed_raw[1])) + Vector2(offset), Vector2.ZERO) if has_seed \
+				else Rect2(Vector2(float(zone[0]), float(zone[1])) + Vector2(offset), Vector2(float(zone[2]), float(zone[3])))
 		var flow_raw = body.get("flow", null)
 		var flow := Vector2(0.0, 1.0) if rect.size.y >= rect.size.x else Vector2(1.0, 0.0)
 		if flow_raw is Array and flow_raw.size() == 2 and (float(flow_raw[0]) != 0.0 or float(flow_raw[1]) != 0.0):
@@ -282,6 +288,11 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 					push_error("[MapCompiler] liquids.fluid.grates: %s needs `x` or `y`; skipped" % str(grate))
 					continue
 				(fluid["grates"] as Array).append({"axis": axis, "at": float(grate[axis]) + float(offset.x if axis == "x" else offset.y)})
+		if has_seed and fluid.is_empty():
+			fluid = {"cell": 0.5, "rim": 0.0, "dig": 0.0, "walls": [], "grounds": [], "roofs": [], "sources": [], "sinks": [], "grates": []}
+		if has_seed:
+			fluid["seed"] = rect.position
+			fluid["brim"] = clampf(float(body.get("brim", 0.0)), -8.0, 16.0)
 		liquid_instances.append({"fluid": fluid, "rect": rect, "kind": liquid_kind, "flow": flow, "rain": clampf(float(body.get("rain", 0.0)), 0.0, 1.0),
 			"overrides": (body.get("overrides", {}) as Dictionary) if body.get("overrides", {}) is Dictionary else {}})
 
@@ -289,7 +300,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 	## the second one's rules silently unreachable there (consolidation, 2026-10-18).
 	for a in range(liquid_instances.size()):
 		for b in range(a + 1, liquid_instances.size()):
-			var shared: Rect2 = (liquid_instances[a]["rect"] as Rect2).intersection(liquid_instances[b]["rect"])
+			var shared: Rect2 = (liquid_instances[a]["rect"] as Rect2).intersection(liquid_instances[b]["rect"])   ## a seeded body's rect is a point here: it takes its shape at load
 			if shared.size.x > 0.01 and shared.size.y > 0.01:
 				push_warning("[MapCompiler] liquids: bodies %d (%s) and %d (%s) overlap over %s: the cells there answer only body %d's rules"
 						% [a, liquid_instances[a]["kind"], b, liquid_instances[b]["kind"], shared, a])

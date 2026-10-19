@@ -4,7 +4,7 @@
  "id": "LIQUIDS_LAB",
  "meta": {
   "title": "Liquids Lab",
-  "description": "Bench for the M6 F5 per-liquid rules (2026-10-18): one still pool per rule (lava + oil, acid + grating, toxic + cardboard boxes, cryogenic + water, lava crust, nuclear, biohazard, quicksand on earth: the GU 16-19 x 6-9 is left undeclared, which is earth). Dev fixture, not a level. Box voxels: tools/asset_generation/gen_liquids_lab_vox.py."
+  "description": "Bench for the M6 F5 per-liquid rules (2026-10-18): one still pool per rule (lava + oil, acid + grating, toxic + cardboard boxes, cryogenic + water, lava crust, nuclear, biohazard, quicksand on earth: the GU 16-19 x 6-9 is left undeclared, which is earth). Dev fixture, not a level. Box voxels: tools/asset_generation/gen_liquids_lab_vox.py. 2026-10-19: every pool is SEEDED and read from the world (FluidContainer); the shared pits are split by `pit_divider` walls."
  },
  "sections": {
   "board": {
@@ -706,6 +706,58 @@
       0
      ],
      "rot": 0
+    },
+    {
+     "def": "pit_divider",
+     "gu": [
+      4,
+      2
+     ],
+     "storey": -1,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "pit_divider",
+     "gu": [
+      4,
+      3
+     ],
+     "storey": -1,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "pit_divider",
+     "gu": [
+      18,
+      2
+     ],
+     "storey": -1,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "pit_divider",
+     "gu": [
+      18,
+      3
+     ],
+     "storey": -1,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
     }
    ]
   },
@@ -1050,12 +1102,6 @@
    "items": [
     {
      "comment": "1. lava: a warm light; it lights the oil beside it",
-     "zone": [
-      2,
-      2,
-      2,
-      2
-     ],
      "kind": "lava_gold",
      "flow": [
       1,
@@ -1063,25 +1109,15 @@
      ],
      "fluid": {
       "cell": 0.5,
-      "rim": 3,
-      "dig": 4,
-      "fill": 1.5,
-      "walls": [],
-      "grounds": [],
-      "roofs": [],
-      "sources": [],
-      "sinks": [],
-      "grates": []
-     }
+      "fill": 1.5
+     },
+     "seed": [
+      3.0,
+      3.0
+     ]
     },
     {
      "comment": "1-2. oil the lava sets on fire",
-     "zone": [
-      4,
-      2,
-      2,
-      2
-     ],
      "kind": "petroleo",
      "flow": [
       1,
@@ -1089,25 +1125,15 @@
      ],
      "fluid": {
       "cell": 0.5,
-      "rim": 3,
-      "dig": 4,
-      "fill": 1.5,
-      "walls": [],
-      "grounds": [],
-      "roofs": [],
-      "sources": [],
-      "sinks": [],
-      "grates": []
-     }
+      "fill": 1.5
+     },
+     "seed": [
+      5.0,
+      3.0
+     ]
     },
     {
      "comment": "3. acid: dissolves the grating's bars (metal) and opens the grate line; marks the bed and the walls",
-     "zone": [
-      8,
-      2,
-      2,
-      2
-     ],
      "kind": "acido",
      "flow": [
       0,
@@ -1115,29 +1141,15 @@
      ],
      "fluid": {
       "cell": 0.5,
-      "rim": 3,
-      "dig": 4,
-      "fill": 2.0,
-      "walls": [],
-      "grounds": [],
-      "roofs": [],
-      "sources": [],
-      "sinks": [],
-      "grates": [
-       {
-        "y": 2.75
-       }
-      ]
-     }
+      "fill": 2.0
+     },
+     "seed": [
+      9.0,
+      3.0
+     ]
     },
     {
      "comment": "4. toxic: dissolves the cardboard boxes standing in it",
-     "zone": [
-      12,
-      2,
-      2,
-      2
-     ],
      "kind": "toxic",
      "flow": [
       0,
@@ -1145,25 +1157,15 @@
      ],
      "fluid": {
       "cell": 0.5,
-      "rim": 3,
-      "dig": 4,
-      "fill": 2.0,
-      "walls": [],
-      "grounds": [],
-      "roofs": [],
-      "sources": [],
-      "sinks": [],
-      "grates": []
-     }
+      "fill": 2.0
+     },
+     "seed": [
+      13.0,
+      3.0
+     ]
     },
     {
      "comment": "5. cryogenic: chills the agent, freezes the water beside it",
-     "zone": [
-      16,
-      2,
-      2,
-      2
-     ],
      "kind": "criogenico",
      "flow": [
       1,
@@ -1171,25 +1173,15 @@
      ],
      "fluid": {
       "cell": 0.5,
-      "rim": 3,
-      "dig": 4,
-      "fill": 1.5,
-      "walls": [],
-      "grounds": [],
-      "roofs": [],
-      "sources": [],
-      "sinks": [],
-      "grates": []
-     }
+      "fill": 1.5
+     },
+     "seed": [
+      17.0,
+      3.0
+     ]
     },
     {
      "comment": "5. water the cold freezes along their common edge",
-     "zone": [
-      18,
-      2,
-      2,
-      2
-     ],
      "kind": "clean",
      "flow": [
       1,
@@ -1197,25 +1189,15 @@
      ],
      "fluid": {
       "cell": 0.5,
-      "rim": 3,
-      "dig": 4,
-      "fill": 1.5,
-      "walls": [],
-      "grounds": [],
-      "roofs": [],
-      "sources": [],
-      "sinks": [],
-      "grates": []
-     }
+      "fill": 1.5
+     },
+     "seed": [
+      19.0,
+      3.0
+     ]
     },
     {
      "comment": "6. lava crust: walkable plates that break 3 turns after the first step (deep: lethal and blocked once broken)",
-     "zone": [
-      2,
-      7,
-      4,
-      2
-     ],
      "kind": "lava_crust",
      "flow": [
       1,
@@ -1223,25 +1205,15 @@
      ],
      "fluid": {
       "cell": 0.5,
-      "rim": 3,
-      "dig": 4,
-      "fill": 2.5,
-      "walls": [],
-      "grounds": [],
-      "roofs": [],
-      "sources": [],
-      "sinks": [],
-      "grates": []
-     }
+      "fill": 2.5
+     },
+     "seed": [
+      4.0,
+      8.0
+     ]
     },
     {
      "comment": "7. nuclear: a faint cool glow around it; the agent it doses glows",
-     "zone": [
-      12,
-      7,
-      2,
-      2
-     ],
      "kind": "nuclear",
      "flow": [
       0,
@@ -1249,25 +1221,15 @@
      ],
      "fluid": {
       "cell": 0.5,
-      "rim": 3,
-      "dig": 4,
-      "fill": 1.5,
-      "walls": [],
-      "grounds": [],
-      "roofs": [],
-      "sources": [],
-      "sinks": [],
-      "grates": []
-     }
+      "fill": 1.5
+     },
+     "seed": [
+      13.0,
+      8.0
+     ]
     },
     {
      "comment": "8. biohazard: stains the agent for 5 turns",
-     "zone": [
-      8,
-      7,
-      2,
-      2
-     ],
      "kind": "biohazard",
      "flow": [
       0,
@@ -1275,16 +1237,12 @@
      ],
      "fluid": {
       "cell": 0.5,
-      "rim": 3,
-      "dig": 4,
-      "fill": 1.5,
-      "walls": [],
-      "grounds": [],
-      "roofs": [],
-      "sources": [],
-      "sinks": [],
-      "grates": []
-     }
+      "fill": 1.5
+     },
+     "seed": [
+      9.0,
+      8.0
+     ]
     },
     {
      "comment": "9. quicksand on earth: a still agent sinks a voxel a turn",

@@ -1,6 +1,6 @@
 ## M6 consolidation (2026-10-18) — the liquids' error protection: a malformed `gameplay` value is refused at load (loud, the key dropped, never a script
 ## error mid-step), and a body's plane survives bad map data (an oversized grid is cut, a zone that holds no cell and a grate off the body are said, NaN
-## and negative numbers are neutralised), with every real liquid file loading clean. And the WATERFALL: on the real PIPE_LAB (pipe A raised over the dug
+## and negative numbers are neutralised), with every real liquid file loading clean. And the WATERFALL: on PIPE_LAB's layout read from voxels (a raised pipe over a dug
 ## channel) the water leaves the bore over a step and `FluidPlane.falls()` finds the fall at the mouth, and nowhere on a flat body.
 extends SceneTree
 
@@ -8,8 +8,7 @@ const RegistryClass = preload("res://godot/scripts/systems/liquid_registry.gd")
 const PlaneClass = preload("res://godot/scripts/systems/fluid_plane.gd")
 const FireClass = preload("res://godot/scripts/systems/liquid_fire.gd")
 const FallsClass = preload("res://godot/scripts/geometry/liquid_falls3d.gd")
-const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
-const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
+const WorldClass = preload("res://godot/scripts/tools/liquid_test_world.gd")
 
 var _failures: int = 0
 
@@ -86,11 +85,13 @@ func _init() -> void:
 	fire.ignite(Vector2(1.5, 1.0), 5.0)
 	fire.tick()
 	_check(fire.burn_per_turn == 0.0 and fire.speed_gu == 0.0 and fire.dose_step == 0.0 and pool.total_volume() <= before + 0.01, "negative fire numbers are clamped to zero (no oil made)")
-	## the waterfall on the real PIPE_LAB: pipe A's bore stands 6 voxels over the channel's bed
-	var layout: Dictionary = MapCompilerClass.compile(FileMapSourceClass.new().get_runtime_spec("PIPE_LAB"))
-	var body: Dictionary = (layout["liquid_instances"] as Array)[0]
-	var lab = PlaneClass.from_body(body, RegistryClass.fluidity("caribe"))
-	var mouth_y: float = float(Vector2(layout.get("playable_rect", Rect2i()).position).y) + 3.0
+	## the waterfall, PIPE_LAB's layout read from voxels: a raised pipe pours over the end of a channel dug 4 (a body takes its shape from the world)
+	var world = WorldClass.new()
+	world.lay(Rect2i(0, 0, 6, 14), [Rect2i(2, 3, 2, 8)])
+	world.raised_pipe(2, 1, 3)
+	var made: Dictionary = world.body(Vector2(3.0, 1.4), RegistryClass.fluidity("caribe"), {"sources": [{"rect": Rect2(2.5, 1.0, 1.0, 0.5), "rate": 2.0}], "sinks": [{"rect": Rect2(2.5, 10.5, 1.0, 0.5), "rate": 1.0}]})
+	var lab = made["plane"]
+	var mouth_y: float = 3.0
 	var seen: Array = []
 	for _t in range(6):
 		lab.begin_tick()
@@ -98,22 +99,22 @@ func _init() -> void:
 			lab.step_rounds(1)
 			if seen.is_empty():
 				seen = lab.falls()
-	_check(not seen.is_empty(), "water flowing out of pipe A's raised bore makes a fall (%d edge(s))" % seen.size())
+	_check(not seen.is_empty(), "water flowing out of the raised bore makes a fall (%d edge(s))" % seen.size())
 	if not seen.is_empty():
 		var f: Dictionary = seen[0]
 		_check(absf((f["a"] as Vector2).y - mouth_y) < 0.01 and f["dir"] == Vector2(0, 1) and float(f["top"]) >= 6.0 and float(f["top"]) - float(f["bottom"]) >= PlaneClass.FALL_DROP,
 				"at the mouth (y %.2f), falling south, from the bore (%.2f voxels) to the channel (%.2f)" % [(f["a"] as Vector2).y, float(f["top"]), float(f["bottom"])])
 	for _t in range(20):   ## twenty more turns: the bore settles at its level
 		lab.tick()
-	var steady: Array = lab.falls()   ## the bore runs about a third full: water over the whole lip
+	var steady: Array = lab.falls()
 	var chains: Array = FallsClass._chains(steady)
 	_check(steady.size() >= 2 and chains.size() == 1 and (chains[0] as Array).size() == steady.size(), "the mouth's edges (the bore's two cells) join into ONE curtain (%d edge(s), %d chain(s))" % [steady.size(), chains.size()])
 	var deepest: float = 0.0
 	for f: Dictionary in steady:
 		deepest = maxf(deepest, float(f["depth"]))
-	_check(deepest > 2.5 and deepest < 5.0, "the weir holds a level in the bore: %.2f voxels over its round bottom (it drained to a film before)" % deepest)
+	_check(deepest > 1.0 and deepest < 5.0, "the weir holds a level in the (flat, four-cell) bore: %.2f voxels over its bottom, not a film" % deepest)
 	var channel: float = 0.0
-	for i in lab.cells_in(Rect2(Vector2(11.0, 3.5) + Vector2(layout.get("playable_rect", Rect2i()).position), Vector2(2.0, 5.0))):
+	for i in lab.cells_in(Rect2(2.0, 3.5, 2.0, 5.0)):
 		channel += lab.depth[i]
 	_check(channel > 1.0, "the water reached the channel below (%.2f voxels in it)" % channel)
 	var flat = PlaneClass.from_body(_body(Rect2(0, 0, 3, 2), {"rim": 4.0, "fill": 2.0, "sources": [{"rect": Rect2(0, 0, 1, 2), "rate": 2.0}]}), 1.0)

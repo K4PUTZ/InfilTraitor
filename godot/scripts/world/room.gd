@@ -9538,6 +9538,7 @@ func _attach_liquids(live: Node3D) -> void:
 			var falls: MeshInstance3D = LiquidFalls3DRef.new()   ## the waterfalls wherever this body flows over a step (a child: it goes with the sheet)
 			sheet.add_child(falls)
 			falls.setup(plane, base_y - plane.dig * unit, params)
+			falls.smoke = _smoke_spark_overlay   ## steam where the curtain lands
 		_liquid_sheets.append(sheet)
 	if auto_tick > 0.0:
 		var turn_timer := Timer.new()    ## dev: the liquids' own turn (fire, water, flow) in real time, as the game's turn would run it

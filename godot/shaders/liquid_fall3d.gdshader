@@ -4,7 +4,8 @@
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, blend_mix;
 
-uniform vec4 body_color : source_color = vec4(0.16, 0.46, 0.5, 0.6);
+uniform vec4 body_color : source_color = vec4(0.16, 0.46, 0.5, 0.6);   // the liquid's shallow colour
+uniform vec4 deep_color : source_color = vec4(0.04, 0.2, 0.26, 0.5);    // and its deep one: the curtain is their mix, the same water as the sheet below
 uniform vec4 light_color : source_color = vec4(0.78, 0.95, 1.0, 1.0);
 uniform float fall_speed = 1.6;     // curtain heights a second
 uniform float time_scale = 1.0;     // 0: frozen (ice), as the body's own look
@@ -38,7 +39,7 @@ void fragment() {
 		float r = length(q);
 		float ring = smoothstep(1.0, 0.55, r) * (0.55 + 0.45 * sin(t * 7.0 - r * 9.0));
 		float speck = step(0.5, vnoise(q * 9.0 + vec2(t * 1.3, -t * 0.9)));
-		col = vec4(mix(body_color.rgb, light_color.rgb, 0.75), ring * (0.35 + 0.5 * speck));
+		col = vec4(mix(mix(deep_color.rgb, body_color.rgb, 0.45), light_color.rgb, 0.7), ring * (0.35 + 0.5 * speck));
 	} else {
 		// the curtain: vertical streaks scrolling down, thinner and more broken as they fall; a pale lip; froth at the foot
 		float y = UV.y;
@@ -47,8 +48,9 @@ void fragment() {
 		float body = smoothstep(0.25, 0.75, streak);
 		float broken = mix(1.0, smoothstep(0.35, 0.6, vnoise(vec2(lane * 1.7, y * 4.0 - t * fall_speed * 1.2))), y * 0.6);
 		float sides = smoothstep(0.0, 0.06, UV.x) * smoothstep(1.0, 0.94, UV.x);   // only the ends of a whole curtain fade
-		vec3 rgb = mix(body_color.rgb, light_color.rgb, body * 0.55 + smoothstep(0.12, 0.0, y) * 0.35);
-		float a = mix(body_color.a, 0.95, body * 0.6) * broken;
+		vec3 water = mix(deep_color.rgb, body_color.rgb, 0.45);
+		vec3 rgb = mix(water, light_color.rgb, body * 0.28 + smoothstep(0.12, 0.0, y) * 0.2);
+		float a = mix(max(body_color.a, deep_color.a), 0.92, body * 0.5) * broken;
 		float froth = smoothstep(0.78, 1.0, y) * (0.6 + 0.4 * vnoise(vec2(lane * 3.0, t * 4.0)));
 		rgb = mix(rgb, light_color.rgb, froth * 0.85);
 		a = max(a, froth * 0.9);

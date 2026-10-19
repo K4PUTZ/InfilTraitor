@@ -13,7 +13,16 @@ const SPLASH_GU: float = 0.42          ## the foam ring's size
 const FLOW_FULL: float = 0.12          ## the flow (voxels a round) that draws a full curtain; less is thinner
 const SURFACE_LIFT: float = 0.01       ## the splash just over the sheet
 
+## STEAM where the curtain lands (Director, 2026-10-18: "uma fumacinha (vapor) onde a cortina atinge o container"): pale puffs through the room's
+## `SmokeSparkOverlay`, anchored in 3D at the splash, a few a second a curtain, more as more falls.
+const STEAM: Color = Color(0.93, 0.95, 0.98, 0.34)
+const STEAM_PER_SECOND: float = 9.0     ## puffs a second for a full curtain edge
+const STEAM_SCALE: float = 1.0
+const STEAM_STYLE: Dictionary = {"growth": 1.7, "damp": 1.6, "fade_in": 0.25}   ## a soft mist that swells and lingers low, not a puff that shoots up
+
 var plane: RefCounted = null
+var smoke: Node = null                 ## the room's SmokeSparkOverlay (or null: no steam)
+var _steam_carry: float = 0.0
 var _base_y: float = 0.0
 var count: int = 0                     ## the edges falling in the last frame (read by a selftest / the log)
 
@@ -28,6 +37,8 @@ func setup(fluid_plane: RefCounted, base_y: float, params: Dictionary) -> void:
 	material.shader = SHADER
 	if params.has("shallow_color"):
 		material.set_shader_parameter("body_color", params["shallow_color"])
+	if params.has("deep_color"):
+		material.set_shader_parameter("deep_color", params["deep_color"])
 	if params.has("light_color"):
 		material.set_shader_parameter("light_color", params["light_color"])
 	material.set_shader_parameter("time_scale", float(params.get("time_scale", 1.0)))
@@ -35,8 +46,26 @@ func setup(fluid_plane: RefCounted, base_y: float, params: Dictionary) -> void:
 	set_process(plane != null)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	rebuild()
+	_steam(delta)
+
+
+var _landings: Array = []   ## [Vector3 where a curtain lands, amount] from the last rebuild
+
+
+func _steam(delta: float) -> void:
+	if smoke == null or not is_instance_valid(smoke) or _landings.is_empty():
+		_steam_carry = 0.0
+		return
+	for landing: Array in _landings:
+		_steam_carry += STEAM_PER_SECOND * float(landing[1]) * minf(delta, 0.1)
+	while _steam_carry >= 1.0:
+		_steam_carry -= 1.0
+		var landing: Array = _landings[randi() % _landings.size()]
+		var along: Vector3 = landing[2]
+		var at: Vector3 = (landing[0] as Vector3) + along * randf_range(-0.5, 0.5) + Vector3(randf_range(-0.08, 0.08), 0.03, randf_range(-0.08, 0.08))
+		smoke.add_smoke(Vector2.ZERO, STEAM, STEAM_SCALE * randf_range(0.7, 1.3), randf_range(0.7, 1.2), 2, 0.4, 0.0, Vector2.ZERO, at, STEAM_STYLE)
 
 
 ## The falls joined into CHAINS: neighbouring edges on one line, falling the same way, are one curtain (a mouth 1.5 GU wide is one sheet of water, not
@@ -102,6 +131,18 @@ func _add_curtain(chain: Array, verts: PackedVector3Array, uvs: PackedVector2Arr
 		var b: Vector2 = edge["b"]
 		var p: Vector2 = (a if (a.x < b.x if along_x else a.y < b.y) == low_end else b)
 		columns.append({"p": p, "top": top / n, "bottom": bottom / n, "amount": amount / n})
+	## the jet is as wide as the water over the lip: an end column whose cell is shallower than the chain's deepest (the sides of a round bore) is pulled in
+	## by up to half a cell, so the curtain matches the opening at the level the water stands at, not the whole row of cells
+	var deepest: float = 0.0
+	for f: Dictionary in chain:
+		deepest = maxf(deepest, float(f["depth"]))
+	if deepest > 0.0 and columns.size() >= 2:
+		var line: Vector2 = Vector2(-dir.y, dir.x).abs()
+		var half_cell: float = ((chain[0]["a"] as Vector2).distance_to(chain[0]["b"])) * 0.5
+		var first_in: float = half_cell * (1.0 - clampf(float(chain[0]["depth"]) / deepest, 0.0, 1.0))
+		var last_in: float = half_cell * (1.0 - clampf(float(chain.back()["depth"]) / deepest, 0.0, 1.0))
+		columns[0]["p"] = (columns[0]["p"] as Vector2) + line * first_in
+		columns[columns.size() - 1]["p"] = (columns.back()["p"] as Vector2) - line * last_in
 	var first: int = verts.size()
 	var width: int = columns.size()
 	for s in range(SEGMENTS + 1):
@@ -121,6 +162,8 @@ func _add_curtain(chain: Array, verts: PackedVector3Array, uvs: PackedVector2Arr
 		var top_y: float = _base_y + float(fall["top"]) * UNIT
 		var bottom_y: float = _base_y + float(fall["bottom"]) * UNIT
 		var land: Vector2 = ((fall["a"] as Vector2) + (fall["b"] as Vector2)) * 0.5 + dir * (THROW_GU + maxf(top_y - bottom_y, 0.0) * 0.25)
+		var span: Vector2 = (fall["b"] as Vector2) - (fall["a"] as Vector2)   ## the mist spreads along the edge the water lands on
+		_landings.append([Vector3(land.x, bottom_y, land.y), clampf(float(fall["flow"]) / FLOW_FULL, 0.15, 1.0), Vector3(span.x, 0.0, span.y)])
 		var half: float = SPLASH_GU * 0.5
 		var s0: int = verts.size()
 		for corner: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
@@ -137,6 +180,7 @@ func rebuild() -> void:
 	if falls.is_empty() and count == 0:
 		return
 	count = falls.size()
+	_landings.clear()
 	if falls.is_empty():
 		mesh = null
 		return

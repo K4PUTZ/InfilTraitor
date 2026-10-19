@@ -103,8 +103,13 @@ func _init() -> void:
 		var f: Dictionary = seen[0]
 		_check(absf((f["a"] as Vector2).y - mouth_y) < 0.01 and f["dir"] == Vector2(0, 1) and float(f["top"]) >= 6.0 and float(f["top"]) - float(f["bottom"]) >= PlaneClass.FALL_DROP,
 				"at the mouth (y %.2f), falling south, from the bore (%.2f voxels) to the channel (%.2f)" % [(f["a"] as Vector2).y, float(f["top"]), float(f["bottom"])])
-	var chains: Array = FallsClass._chains(seen)
-	_check(chains.size() == 1 and (chains[0] as Array).size() == seen.size(), "the mouth's edges join into ONE curtain (%d chain(s) of %s)" % [chains.size(), str(chains.map(func(c: Array) -> int: return c.size()))])
+	var steady: Array = lab.falls()   ## after six turns the bore runs about a third full: water over the whole lip
+	var chains: Array = FallsClass._chains(steady)
+	_check(steady.size() == 3 and chains.size() == 1 and (chains[0] as Array).size() == 3, "the mouth's 3 edges join into ONE curtain (%d edge(s), %d chain(s))" % [steady.size(), chains.size()])
+	var deepest: float = 0.0
+	for f: Dictionary in steady:
+		deepest = maxf(deepest, float(f["depth"]))
+	_check(deepest > 2.5 and deepest < 5.0, "the weir holds a level in the bore: %.2f voxels over its round bottom (it drained to a film before)" % deepest)
 	var channel: float = 0.0
 	for i in lab.cells_in(Rect2(Vector2(11.25, 3.5) + Vector2(layout.get("playable_rect", Rect2i()).position), Vector2(1.5, 5.0))):
 		channel += lab.depth[i]

@@ -47,6 +47,13 @@ var rounds_scale: float = 1.0 ## a THICK liquid needs fewer rounds a turn (its f
 var _task_id: int = -1
 var _rounds_left: int = 0     ## rounds of an incremental tick still to run (`begin_tick`, `step_rounds`)
 var _delta: PackedFloat32Array = PackedFloat32Array()   ## the round's scratch (kept between rounds so nothing is allocated in a tick)
+## WEIRS (2026-10-18, the waterfall; Director: the water in the raised pipe should stand about a third up its bore, not drain to a film). An outflow over a
+## FALL (onto a cell `FALL_DROP` lower) is a free overfall: what crosses the lip in a round is at most `WEIR_C * depth^1.5` (the weir law: discharge grows
+## with the head over the lip to the power 3/2), so a body upstream of a fall holds a level that rises with the flow it carries. 4 flags a cell, found
+## from the grounds before the first round after any ground change.
+const WEIR_C: float = 0.045   ## tuned on PIPE_LAB: the raised bore runs about a third full at its source's 2 voxels a turn
+var _weir: PackedByteArray = PackedByteArray()
+var _weir_dirty: bool = true
 
 
 func setup(width: int, height: int, cell_size_gu: float, grid_origin: Vector2, liquid_fluidity: float) -> void:
@@ -71,6 +78,7 @@ func setup(width: int, height: int, cell_size_gu: float, grid_origin: Vector2, l
 	spilled = 0.0
 	_sources.clear()
 	_sinks.clear()
+	_weir_dirty = true
 
 
 func index(c: int, r: int) -> int:
@@ -104,6 +112,7 @@ func cells_in(rect: Rect2) -> PackedInt32Array:
 func set_ground_rect(rect: Rect2, height: float) -> void:
 	for i in _cells_or_warn(rect, "wall / ground"):
 		ground[i] = height if is_finite(height) else WALL
+	_weir_dirty = true
 
 
 func set_ceiling_rect(rect: Rect2, height: float) -> void:
@@ -141,6 +150,7 @@ func lower_ground(rect: Rect2, height: float) -> void:
 	finish_tick()
 	for i in cells_in(rect):
 		ground[i] = minf(ground[i], height)
+	_weir_dirty = true
 
 
 func add_sink(rect: Rect2, rate: float) -> void:
@@ -235,12 +245,13 @@ func surface(i: int) -> float:
 ## over a dug channel, a breach over a step, a ledge). The flow itself is the virtual pipes' (it already crosses a step: the surface difference drives it);
 ## this only tells the drawing where the sheet must NOT bridge the step and where a falling curtain goes. Reads the LIVE depths and flows (what the sheet
 ## draws), so it may be called every frame; a torn read on a worker tick is a frame of a slightly different curtain.
-const FALL_DROP: float = 1.5          ## voxels of ground between two cells from which the step is a fall, not a slope
+const FALL_DROP: float = 2.0          ## voxels of ground between two cells from which the step is a fall, not a slope (a round bore's 1.5 between its middle and its sides is a slope)
 const FALL_MIN_FLOW: float = 0.002    ## the outflow (voxels a round) under which nothing is falling
 
 
 ## Every edge where liquid falls now: {"from": cell index (high), "to": cell index (low), "a" / "b": the shared edge's ends (GU), "dir": Vector2 (high -> low),
-## "top": the high cell's surface, "bottom": the low cell's surface (voxels over the bed), "flow": the outflow across the edge (voxels a round)}.
+## "top": the high cell's surface, "bottom": the low cell's surface (voxels over the bed), "flow": the outflow across the edge (voxels a round), "depth":
+## the high cell's depth (the head over the lip)}.
 func falls() -> Array:
 	var out: Array = []
 	var dirs: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
@@ -262,7 +273,7 @@ func falls() -> Array:
 				var mid: Vector2 = origin + (Vector2(c, r) + Vector2(0.5, 0.5) + d * 0.5) * cell_gu
 				var side := Vector2(-d.y, d.x) * (cell_gu * 0.5)
 				out.append({"from": i, "to": j, "a": mid - side, "b": mid + side, "dir": d, "top": ground[i] + depth[i],
-					"bottom": ground[j] + depth[j], "flow": flow})
+					"bottom": ground[j] + depth[j], "flow": flow, "depth": depth[i]})
 	return out
 
 
@@ -338,6 +349,24 @@ func rounds_per_tick() -> int:
 	return maxi(int(round(float(ROUNDS_PER_TICK) * 0.25 / cell_gu * rounds_scale)), 1)
 
 
+## Which outflows run over a fall (see `WEIR_C`): flag k of cell i is 1 when its neighbour that way stands `FALL_DROP` or more lower and is no wall.
+func _refresh_weirs() -> void:
+	_weir.resize(cols * rows * 4)
+	_weir.fill(0)
+	var steps: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	for r in range(rows):
+		for c in range(cols):
+			var i: int = index(c, r)
+			if ground[i] >= WALL:
+				continue
+			for k in range(4):
+				var nc: int = c + steps[k].x
+				var nr: int = r + steps[k].y
+				if in_grid(nc, nr) and ground[index(nc, nr)] < WALL and ground[i] - ground[index(nc, nr)] >= FALL_DROP:
+					_weir[i * 4 + k] = 1
+	_weir_dirty = false
+
+
 ## One round of flow. M6 F8 (2026-10-17): the Moto measured 12.7 us a cell-round with the first form of this loop (a `dirs` array and an `index()` call per
 ## neighbour, members read inside the loop, a fresh `delta` per tick). Same arithmetic in the same ORDER (so the depths are bit-identical: `fluid_plane_selftest`
 ## pins a digest taken from the first form), with the members held in locals, the four neighbours unrolled and the rim visited by its own loop.
@@ -349,6 +378,9 @@ func _round_step() -> void:
 	var ce: PackedFloat32Array = ceiling
 	var fx: PackedFloat32Array = _flux
 	var pm: PackedFloat32Array = _perm
+	if _weir_dirty:
+		_refresh_weirs()
+	var wr: PackedByteArray = _weir
 	var accel: float = lerpf(0.03, 0.2, fluidity)
 	var damp: float = lerpf(0.55, 0.96, fluidity)
 	var per_round: float = 1.0 / float(rounds_per_tick())
@@ -392,6 +424,16 @@ func _round_step() -> void:
 				var j: int = i - w
 				if gr[j] < WALL:
 					f3 = maxf(0.0, fx[i4 + 3] * damp + accel * (h - (gr[j] + de[j]))) * pm[i4 + 3]
+			if wr[i4] + wr[i4 + 1] + wr[i4 + 2] + wr[i4 + 3] > 0:   ## an outflow over a fall is a weir's (a cell with none pays one sum)
+				var over: float = WEIR_C * pow(de[i], 1.5)
+				if wr[i4] != 0:
+					f0 = minf(f0, over)
+				if wr[i4 + 1] != 0:
+					f1 = minf(f1, over)
+				if wr[i4 + 2] != 0:
+					f2 = minf(f2, over)
+				if wr[i4 + 3] != 0:
+					f3 = minf(f3, over)
 			## stored as float32 first, as the first form did: the scale below then acts on the STORED value
 			fx[i4] = f0
 			fx[i4 + 1] = f1

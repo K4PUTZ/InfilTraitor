@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**332 scripts · 98869 lines total** (under `godot/scripts/`)
+**332 scripts · 98961 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -870,7 +870,7 @@ extends `Node3D` · 3572 lines
 
 ### `liquid_falls3d.gd`
 
-`class_name LiquidFalls3D` · extends `MeshInstance3D` · 157 lines
+`class_name LiquidFalls3D` · extends `MeshInstance3D` · 201 lines
 
 `godot/scripts/geometry/liquid_falls3d.gd`
 
@@ -884,9 +884,14 @@ extends `Node3D` · 3572 lines
 - `SPLASH_GU` = `0.42`
 - `FLOW_FULL` = `0.12`
 - `SURFACE_LIFT` = `0.01`
+- `STEAM` = `Color(0.93, 0.95, 0.98, 0.34)`
+- `STEAM_PER_SECOND` = `9.0`
+- `STEAM_SCALE` = `1.0`
+- `STEAM_STYLE` = `{"growth": 1.7, "damp": 1.6, "fade_in": 0.25}`
 
 **Public vars**
 - `var plane: RefCounted = null`
+- `var smoke: Node = null`
 - `var count: int = 0`
 
 **Public API**
@@ -2989,7 +2994,7 @@ extends `Node` · 236 lines
 
 ### `fluid_plane.gd`
 
-`class_name FluidPlane` · extends `RefCounted` · 442 lines
+`class_name FluidPlane` · extends `RefCounted` · 484 lines
 
 `godot/scripts/systems/fluid_plane.gd`
 
@@ -5109,7 +5114,7 @@ extends `SceneTree` · 205 lines
 
 ### `liquid_guards_selftest.gd`
 
-extends `SceneTree` · 121 lines
+extends `SceneTree` · 126 lines
 
 `godot/scripts/tools/liquid_guards_selftest.gd`
 
@@ -6870,7 +6875,7 @@ extends `RefCounted` · 319 lines
 
 ### `room.gd`
 
-extends `Node2D` · 13045 lines
+extends `Node2D` · 13046 lines
 
 `godot/scripts/world/room.gd`
 

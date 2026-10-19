@@ -53,6 +53,9 @@ var _grenade: Node3D = null
 var _action: String = ""
 var _skeleton: Skeleton3D = null
 var _head_bone: int = -1
+var _stand_y: float = NAN            ## the height the feet rest at now (eased toward `Board3DLive.stand_height`)
+const FALL_GU_S: float = 3.0          ## how fast an actor drops onto lower ground (GU of height a second)
+const CLIMB_GU_S: float = 1.5         ## and climbs back up
 ## Gameplay decides WHO is revealed (vision, skills and progress are gameplay, not physics); this only draws it: every
 ## part of the mesh an opaque wall covers becomes a striped silhouette (`actor_mesh_silhouette3d.gdshader`, chained as
 ## the `next_pass` of each board-lit surface). Off, nothing extra is drawn or allocated.
@@ -159,6 +162,15 @@ func _sync() -> void:
 		return
 	## The pose node sits at its actor's origin, so the actor's 2D position IS where the feet are.
 	position = _board.call("ground_point", (parent as Node2D).global_position)
+	## GRAVITY (Director, 2026-10-18): the feet rest on what is under them (`Board3DLive.stand_height`: a pit's bed, a crater, a crust's plate, ice, a
+	## quicksand), reached at a walking pace up and a falling one down, never snapped mid-step.
+	var target: float = float(_board.call("stand_height", position, parent))
+	if is_nan(_stand_y):
+		_stand_y = target
+	else:
+		var dt: float = get_process_delta_time()
+		_stand_y = move_toward(_stand_y, target, dt * (FALL_GU_S if target < _stand_y else CLIMB_GU_S))
+	position.y += _stand_y
 	var state: Dictionary = _source.mesh_state()
 	var step: Vector2i = state["step"]
 	var body_yaw: float = _body.rotation.y

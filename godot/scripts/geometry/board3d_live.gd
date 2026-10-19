@@ -671,6 +671,27 @@ func ground_point(point_2d: Vector2) -> Vector3:
 	return Vector3(gu.x + 0.5, 0.0, gu.y + 0.5)
 
 
+## UNIVERSAL GRAVITY for actors (Director, 2026-10-18: "todos os atores sujeitos a gravidade, alem dos props e outros objetos"): the height (board-local y)
+## an actor standing at `p` rests at. What is under its feet decides: the top of the highest STANDING voxel at or below the floor top (a dug pit's bed, a
+## crater's bottom; the floor top itself is y = 0), or, over a body of liquid, what the room says the liquid holds up (a crust's plate, ice, a quicksand
+## the agent sank into: `Room.liquid_stand_y`). Never above the ground plane: an actor does not climb onto what stands on the floor. 0 outside the store.
+func stand_height(p: Vector3, actor: Node = null) -> float:
+	if _room != null and _room.has_method("liquid_stand_y"):
+		var on_liquid: float = _room.liquid_stand_y(Vector2i(floori(p.x), floori(p.z)), actor)
+		if not is_nan(on_liquid):
+			return on_liquid
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		return 0.0
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var x: int = floori(p.x / unit)
+	var y: int = floori(p.z / unit)
+	for lv in range(_ground_level - 1, store.l0 - 1, -1):
+		if store.has_solid(x, y, lv):
+			return float(lv + 1 - _ground_level) * unit * VERTICAL_SCALE
+	return 0.0
+
+
 ## ROOF RF-2 (Director, 2026-10-14: the grenade's smoke rose THROUGH the roof): the height (board-local y) of the underside of the first
 ## standing ROOF voxel (a CEILING slab's) above the point `p`, or INF when no roof covers its column (or it is outside the store). A puff
 ## stops climbing there. Walls do not count: a puff born in a wall's hole keeps rising past the wall above it, as it always did.

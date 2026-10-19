@@ -18,6 +18,7 @@ const LiquidFireLightsRef = preload("res://godot/scripts/systems/liquid_fire_lig
 const LiquidFireRef = preload("res://godot/scripts/systems/liquid_fire.gd")  ## M6 F5: a flammable liquid on fire
 const FluidPlaneRef = preload("res://godot/scripts/systems/fluid_plane.gd")  ## M6: the gameplay truth of a body of liquid
 const LiquidRulesControllerRef = preload("res://godot/scripts/world/controllers/liquid_rules_controller.gd")  ## M6 F5: the per-liquid rules
+const LiquidAgentStatusRef = preload("res://godot/scripts/systems/liquid_agent_status.gd")  ## M6 F5: what a liquid leaves on the agent
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
 const SurfaceRulesRef = preload("res://godot/scripts/systems/surface_rules.gd")  ## R3D-SURFACES: floor tags and patch rules
 const VentEmitterRef = preload("res://godot/scripts/overlays/vent_emitter.gd")  ## R3D-SURFACES SM-6: a plume rising from a floor vent
@@ -9589,6 +9590,24 @@ func _attach_liquids(live: Node3D) -> void:
 					log_file.flush()
 
 
+## GRAVITY over liquids (Director, 2026-10-18): the height (board-local y; the floor top is 0) an actor standing on `cell` rests at when a liquid
+## HOLDS it up: an intact crust plate or ice (its surface), a quicksand (its surface less how far the agent sank: a guard sinks nothing yet). NAN when the
+## liquid holds nothing up (the actor wades on the bed, `Board3DLive.stand_height` finds it) or there is no liquid.
+func liquid_stand_y(cell: Vector2i, actor: Node) -> float:
+	var info: Dictionary = liquid_at(cell)
+	if info.is_empty():
+		return NAN
+	var plane = (_liquid_field.bodies()[int(info["body"])] as Dictionary)["plane"]
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var surface: float = float(info["depth"]) - float(plane.dig)   ## voxels over the floor top
+	if int(info.get("solid", 0)) != 0:
+		return surface * unit
+	if not LiquidAgentStatusRef.sink_rule(info["gameplay"]).is_empty():
+		var sink: float = _liquid_rules().status.sink if actor == agent else 0.0
+		return (surface - sink) * unit
+	return NAN
+
+
 ## The per-liquid rules (M6 F5), made on first use.
 func _liquid_rules() -> RefCounted:
 	if _liquid_rules_controller == null:
@@ -9621,8 +9640,10 @@ func queue_light_cells(gus: Array) -> void:
 func _liquid_status_line(tag: String) -> String:
 	var st = _liquid_rules().status
 	var info: Dictionary = liquid_at(agent.cell) if agent != null else {}
-	return "[Liquids] %s: at %s in %s (solid %d), dose %.2f, burning %d, chill %d, marked %d, glow '%s', sink %.1f, AP %d, loss '%s'" % [tag,
-		str(agent.cell) if agent != null else "-", String(info.get("kind", "-")), int(info.get("solid", 0)), _liquid_dose, st.burning, st.chill, st.marked,
+	var figure = agent.sprite.get_meta("figure3d") if agent != null and agent.sprite != null and agent.sprite.has_meta("figure3d") else null
+	var feet: float = (figure as Node3D).position.y if is_instance_valid(figure) else NAN
+	return "[Liquids] %s: at %s in %s (solid %d), feet y %.3f, dose %.2f, burning %d, chill %d, marked %d, glow '%s', sink %.1f, AP %d, loss '%s'" % [tag,
+		str(agent.cell) if agent != null else "-", String(info.get("kind", "-")), int(info.get("solid", 0)), feet, _liquid_dose, st.burning, st.chill, st.marked,
 		st.glow_kind, st.sink, turn_manager.current_ap if turn_manager != null else -1, _liquid_pending_loss]
 
 

@@ -942,6 +942,28 @@
        "hold": 900
       }
      ]
+    },
+    {
+     "id": "crust_rail",
+     "keys": [
+      {
+       "frame": "detail",
+       "target": "@crust",
+       "view": "N",
+       "hold": 900
+      }
+     ]
+    },
+    {
+     "id": "sand_rail",
+     "keys": [
+      {
+       "frame": "detail",
+       "target": "@quicksand",
+       "view": "N",
+       "hold": 900
+      }
+     ]
     }
    ],
    "takes": [
@@ -988,6 +1010,38 @@
       "LIQUID_END_TURNS": "2"
      },
      "note": "M6 F5: the agent steps into the nuclear pool: it glows (a small cool tactical light that follows it) and its figure turns green"
+    },
+    {
+     "id": "agent_crust",
+     "profile": "engine",
+     "rail": "crust_rail",
+     "steps": [],
+     "at_key": 0,
+     "after_hold": 0,
+     "length": 540,
+     "seed": 1,
+     "env": {
+      "LIQUID_WALK_FROM": "3,5",
+      "LIQUID_WALK": "3,6;3,7",
+      "LIQUID_END_TURNS": "4"
+     },
+     "note": "M6 F5 + gravity: the agent stands ON a crust plate (its surface), the plate breaks 3 turns later"
+    },
+    {
+     "id": "agent_sand",
+     "profile": "engine",
+     "rail": "sand_rail",
+     "steps": [],
+     "at_key": 0,
+     "after_hold": 0,
+     "length": 540,
+     "seed": 1,
+     "env": {
+      "LIQUID_WALK_FROM": "17,5",
+      "LIQUID_WALK": "17,6;17,7",
+      "LIQUID_END_TURNS": "4"
+     },
+     "note": "M6 F5 + gravity: the agent sinks into the quicksand a voxel a still turn"
     }
    ]
   },

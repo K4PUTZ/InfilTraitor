@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**330 scripts · 98366 lines total** (under `godot/scripts/`)
+**330 scripts · 98420 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -421,7 +421,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 340 lines
+`class_name ActorMesh3D` · extends `Node3D` · 352 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -439,6 +439,8 @@ extends `ConfirmationDialog` · 64 lines
 - `WEAPON_BY_SUFFIX` = `{"": "shotgun", "_pistol": "pistol", "_rifle": "shotgun"}`
 - `METRES_TO_UNITS` = `1.0 / 1.6`
 - `DEFAULT_SHADOW` = `Color(0.0, 0.0, 0.0, 0.28)`
+- `FALL_GU_S` = `3.0`
+- `CLIMB_GU_S` = `1.5`
 - `REVEAL_PALETTES` = `{ &"agent": {"stripe_a": Color(0.86, 0.96, 1.0), "stripe_b": Color(0.16, 0.28, 0.38), "outline_color": Color(1.0, 1.0, 1.0)}, &"agency": {"stripe_a": Color(0.46, 0.64, 1.0), "stripe_b": Color(0.08, 0.14, 0.40), "outline_color": Color(0.30, 0.56, 1.0)}, &"militia": {"stripe_a": Color(1.0, 0.52, 0.36), "stripe_b": Color(0.40, 0.10, 0.06), "outline_color": Color(1.0, 0.34, 0.18)}, &"corporation": {"stripe_a": Color(1.0, 0.84, 0.30), "stripe_b": Color(0.38, 0.28, 0.04), "outline_color": Color(1.0, 0.74, 0.12)}, &"network": {"stripe_a": Color(0.46, 0.96, 0.62), "stripe_b": Color(0.06, 0.30, 0.14), "outline_color": Color(0.28, 0.90, 0.46)}, }`
 
 **Public vars**
@@ -456,7 +458,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3551 lines
+extends `Node3D` · 3572 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -6817,7 +6819,7 @@ extends `RefCounted` · 319 lines
 
 ### `room.gd`
 
-extends `Node2D` · 13019 lines
+extends `Node2D` · 13040 lines
 
 `godot/scripts/world/room.gd`
 
@@ -6837,6 +6839,7 @@ extends `Node2D` · 13019 lines
 - `LiquidFireRef` = `preload("res://godot/scripts/systems/liquid_fire.gd")`
 - `FluidPlaneRef` = `preload("res://godot/scripts/systems/fluid_plane.gd")`
 - `LiquidRulesControllerRef` = `preload("res://godot/scripts/world/controllers/liquid_rules_controller.gd")`
+- `LiquidAgentStatusRef` = `preload("res://godot/scripts/systems/liquid_agent_status.gd")`
 - `GroundDecals3DRef` = `preload("res://godot/scripts/geometry/ground_decals3d.gd")`
 - `SurfaceRulesRef` = `preload("res://godot/scripts/systems/surface_rules.gd")`
 - `VentEmitterRef` = `preload("res://godot/scripts/overlays/vent_emitter.gd")`

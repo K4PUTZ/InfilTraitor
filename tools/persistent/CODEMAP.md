@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**332 scripts · 98961 lines total** (under `godot/scripts/`)
+**332 scripts · 98974 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -870,7 +870,7 @@ extends `Node3D` · 3572 lines
 
 ### `liquid_falls3d.gd`
 
-`class_name LiquidFalls3D` · extends `MeshInstance3D` · 201 lines
+`class_name LiquidFalls3D` · extends `MeshInstance3D` · 214 lines
 
 `godot/scripts/geometry/liquid_falls3d.gd`
 
@@ -884,10 +884,13 @@ extends `Node3D` · 3572 lines
 - `SPLASH_GU` = `0.42`
 - `FLOW_FULL` = `0.12`
 - `SURFACE_LIFT` = `0.01`
-- `STEAM` = `Color(0.93, 0.95, 0.98, 0.34)`
-- `STEAM_PER_SECOND` = `9.0`
-- `STEAM_SCALE` = `1.0`
-- `STEAM_STYLE` = `{"growth": 1.7, "damp": 1.6, "fade_in": 0.25}`
+- `LIP_BACK_GU` = `0.1`
+- `LIP_UV` = `0.15`
+- `SINK_GU` = `0.03`
+- `STEAM` = `Color(0.93, 0.95, 0.98, 0.2)`
+- `STEAM_PER_SECOND` = `2.5`
+- `STEAM_SCALE` = `0.6`
+- `STEAM_STYLE` = `{"growth": 1.4, "damp": 3.5, "fade_in": 0.2}`
 
 **Public vars**
 - `var plane: RefCounted = null`

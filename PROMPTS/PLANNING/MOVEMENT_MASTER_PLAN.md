@@ -317,3 +317,13 @@ Recorded as the brief for a LATER detailed plan (the Director: *"vamos depois fa
    have a hard ceiling in this rendering model? The most consequential one, and
    the reason R1 is a survey rather than a formality.
 6. **Can the numbers be computed without disturbing the animation?** (Director, 2026-10-08.) Today the prediction runs on the main thread in budgeted slices (`predict_budget_ms`, 4 ms a frame), which keeps an animation moving but makes the answer arrive over many frames (a second grenade's prediction took ~100 frames on the Galaxy). Real parallelism needs a worker thread, and the pure pipeline is a candidate (it writes only to its own Delta) but it reads live `Voxel` / store state that is not thread-safe, so it would need a snapshot or a read-only discipline first. To be answered with a measurement before the planning, not by reasoning.
+
+### 7a. Planned here from the liquids and gravity work (M6 F5, RF-G v0.52; Director, 2026-10-18: "o que for de outras milestones pode deixar planejado")
+
+The engine side is built; what follows is MOVEMENT's to design, and nothing is decided.
+
+1. **Going down into a pit and climbing out.** An actor now rests on what is under its feet (`Board3DLive.stand_height`: a dug pit's bed, a crater, a crust plate, ice, quicksand). The grid lets the agent walk into a pit 4 voxels deep (0.8 m) and out of it at no extra cost, and the figure just slides down and up (3 GU/s down, 1.5 up). To decide: from what depth a step down is a drop and a step up is a climb (an AP cost, a pose), whether a pit deeper than a storey is a fall, and how this meets the grapple / ceiling hooks note (`PROPS_TIER4_PLAN`).
+2. **Poses in a liquid.** Wading (the legs under the surface), sinking in quicksand (a struggle, the escape's 2 AP), standing on a crust plate that is about to break, slipping on ice and oil. `MATERIALS_MASTER_PLAN` F9 (swimming, `swim_ap`) is the same family.
+3. **The agent on fire.** Today the only sign is an orange pulse on the figure (`ActorMesh3D.set_status_tint`): flames on the body, a pose (patting down, running to water) are to design. The stain (biohazard) and the glow (nuclear) are tints too.
+4. **The height a shot and a throw start from.** The agent's muzzle and throw origin are a 2D head offset above the FLOOR plane: an agent standing in a pit still fires and throws from floor height. The anchor must follow the figure's real height (`WEAPON_MASTER_PLAN` §7b item 6).
+

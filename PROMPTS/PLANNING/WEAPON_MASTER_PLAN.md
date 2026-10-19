@@ -1341,3 +1341,5 @@ aiming window to hide it in.
    spinning grenade has no readable orientation. Director's call: leave it until
    the thrown-grenade work ever gives a grenade a readable orientation, don't
    spend time on it now.
+
+6. **The origin of a shot and a throw when the actor is not on the floor plane (2026-10-18, planned).** Actors now rest on what is under their feet (`ROOF_MASTER_PLAN` v0.52: a pit's bed, a crater, a crust plate, quicksand), but `Agent.throw_origin()` / `muzzle_origin()` are a 2D head offset above the floor plane, so an agent in a pit still fires and throws from floor height. To build with the combat wave: the anchor from the figure's real height (`ActorMesh3D`'s position), and what a shot out of a pit can reach (its rim as cover). Also in `MOVEMENT_MASTER_PLAN` §7a item 4.

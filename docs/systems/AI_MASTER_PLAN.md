@@ -378,6 +378,23 @@ ENEMY PHASE
 
 ---
 
+## Planned from the liquids (M6, 2026-10-17/18) — `DESIGNED`, nothing built
+
+Recorded here by the Director's rule of 2026-10-18 ("o que for de outras milestones pode deixar planejado"); the engine side is built
+(`MATERIALS_MASTER_PLAN` §6, F3-F5), no guard reads it.
+
+1. **Prints.** A guard near a liquid's footprint may notice it: the chance from the liquid (colour / contrast against the floor, smell),
+   the distance, the guard's perception, the light on the cell, the print's age. A noticed print puts the guard in SUSPICION (through
+   `_enter_state()`, Rule 4) and he FOLLOWS the trail (`DESIGN_MASTER_PLAN` §4.7). The prints are `FootprintMarks3D` records with a
+   colour and a remaining life.
+2. **What the agent carries.** The biohazard STAIN (`LiquidAgentStatus.marked`, 5 turns) and the nuclear GLOW (`light.agent`: a tactical
+   light that follows the agent and already raises its exposure) are clues a guard who sees the agent reacts to; the reaction is to design.
+3. **Guards in liquids.** Today only the agent has a dose, a wading cost, a sink in quicksand and a fire on the body (`LiquidAgentStatus`).
+   A guard walks a liquid like dry floor (his feet already rest on the pit's bed or the quicksand's surface: `ROOF_MASTER_PLAN` v0.52).
+   To decide: whether guards path around harmful liquids, wade, sink, catch fire from oil or lava, and whether a liquid is a trap the
+   player can lure a guard into.
+4. **Noise and smell.** A splash already goes through `NoiseSystem`; the liquids' `smell` value has no reader.
+
 ## Related Documentation
 
 - **`CLAUDE.md`** (repo root) — architectural invariants and workflow (it replaced the retired OPERATOR_CONTEXT on 2026-07-27)

@@ -338,6 +338,13 @@ Managing your own trail — standing still, using abilities that erase evidence
 — is real gameplay. **The agent can have left a position and still be
 tracked.**
 
+**Evidence the liquids leave (`DESIGNED`; M6, Director 2026-10-17/18; built on the engine side, read by no guard yet).** A liquid leaves
+footprints (up to eight, fading, `gameplay.footprint`); biohazard STAINS the agent for 5 turns; a nuclear dose makes the agent GLOW (a small
+tactical light: it already counts in the exposure); a splash raises noise and some liquids carry a smell. Ruled for the AI milestone: a guard
+near a print may notice it (the liquid's contrast and smell, distance, the guard's perception, the light, the print's age), goes SUSPICIOUS and
+follows the trail — the same chain as above. The stain and the glow are what a guard who sees the agent reads. Planned in `AI_MASTER_PLAN`
+("Planned from the liquids").
+
 ---
 
 ## 5. Noise — `BUILT`

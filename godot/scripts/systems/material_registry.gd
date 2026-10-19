@@ -20,6 +20,7 @@
 class_name MaterialRegistry
 
 const JsonFileRef = preload("res://godot/scripts/systems/json_file.gd")
+const MaterialRowsRef = preload("res://godot/scripts/systems/material_rows.gd")  ## secondary materials (`inherits`), shared with MaterialResistanceTable
 
 # Import constants
 const StonePatternClass = preload("res://godot/scripts/systems/stone_pattern.gd")
@@ -98,6 +99,10 @@ class MaterialDef:
 	## The mean of the facade's grayscale (0..255), written by the generators; 0 = unknown. `base_color_for_albedo()` divides by it so a
 	## colour lands at the same brightness whatever the pattern (a dark weave and a light tile need different `base_color`s).
 	var facade_mean: float = 0.0
+	## SECONDARY MATERIALS (Director, 2026-10-18; `MATERIALS_MASTER_PLAN` §2b, `PROPS_TIER4_PLAN` §2d): the primary this row inherits its stats from
+	## ("" = a primary itself), and the root of that chain (`primary`, its own id for a primary). Ask `primary` wherever a table is keyed by material.
+	var inherits: String = ""
+	var primary: String = ""
 
 	## The `base_color` that makes this material READ AS `albedo` under full light: the albedo over the facade's mean, clipped to 1.
 	## A material with no known mean (a flat one) takes the albedo as is.
@@ -140,6 +145,8 @@ class MaterialDef:
 		def.tags = SurfaceRulesRef.checked_tags(def.id, data.get("tags", []))
 		def.facade_from = String(data.get("facade_from", ""))
 		def.facade_mean = float(data.get("facade_mean", 0.0))
+		def.inherits = String(data.get("inherits", ""))
+		def.primary = String(data.get("primary", def.id))
 		var surfaces = data.get("surfaces", {})
 		if typeof(surfaces) == TYPE_DICTIONARY:
 			for role in surfaces:
@@ -201,6 +208,11 @@ func _warn_fallback(p_id: String, used: String) -> void:
 	_fallback_warned[p_id] = true
 	push_warning("[MaterialRegistry] material '%s' is not registered: using '%s'" % [p_id, used])
 
+## The primary a material's stats come from (itself for a primary, the root of its `inherits` chain for a secondary). Unknown ids answer themselves.
+func primary_of(p_id: String) -> String:
+	var def: MaterialDef = registry.get(p_id, null)
+	return def.primary if def != null and not def.primary.is_empty() else p_id
+
 ## List all material IDs
 func list_materials() -> Array:
 	return registry.keys()
@@ -218,32 +230,7 @@ func register_defaults() -> void:
 
 
 func load_from_disk() -> void:
-	_scan_dir(RES_MATERIALS_DIR)
-	_scan_dir(USER_MATERIALS_DIR)
-
-
-## ASSET_TREE_REFORM (2026-08-21): one folder per material, so a row lives at
-## `<root>/<id>/<id>.json` beside that material's art rather than in a flat
-## directory of 14 files.
-##
-## The walk is deliberately ONE level and name-matched — it opens `concrete/` and
-## looks for `concrete.json`, not for any `*.json` it can find. A recursive glob
-## would happily load a stray copy left in the wrong folder, and D21's whole
-## point is one row per material with no duplicates: the `ground_concrete` /
-## `concrete` disagreement is exactly what a lenient scan re-creates.
-func _scan_dir(dir_path: String) -> void:
-	var dir := DirAccess.open(dir_path)
-	if dir == null:
-		return
-
-	dir.list_dir_begin()
-	var entry := dir.get_next()
-	while entry != "":
-		if dir.current_is_dir() and not entry.begins_with("."):
-			var row_path := dir_path.path_join(entry).path_join(entry + ".json")
-			## A folder with no row of its own (`_generic/`, art only) is normal; a row that exists must read.
-			if FileAccess.file_exists(row_path):
-				var parsed: Dictionary = JsonFileRef.read_object(row_path, "MaterialRegistry", load_errors)
-				if not parsed.is_empty() and not JsonFileRef.require_id(parsed, row_path, "MaterialRegistry", load_errors).is_empty():
-					register(MaterialDef.from_json(parsed))
-		entry = dir.get_next()
+	## Both tiers, user wins on a collision, secondaries merged over their primaries (`MaterialRows`).
+	var rows: Dictionary = MaterialRowsRef.load_all(RES_MATERIALS_DIR, USER_MATERIALS_DIR, "MaterialRegistry", load_errors)
+	for id: String in rows:
+		register(MaterialDef.from_json(rows[id]))

@@ -349,7 +349,11 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		var gu_raw = prop_item.get("gu", Vector2i.ZERO)
 		var gu_cell: Vector2i = Vector2i(gu_raw) if gu_raw is Vector2i else Vector2i(int(gu_raw[0]), int(gu_raw[1]))
 		var cell: Vector2i = gu_cell + offset
-		if blocked_map.has(cell):
+		## A prop BELOW the walkable plane (`storey` < 0: a grating in a dug channel) is not on the cell an actor stands on: it neither blocks the cell nor is
+		## refused because something stands on it (2026-10-18: PIPE_LAB's grates under the pipes were dropped here in silence, the pipe above had blocked the cell).
+		var below_floor: bool = int(prop_item.get("storey", 0)) < 0
+		if blocked_map.has(cell) and not below_floor:
+			push_warning("[MapCompiler] voxel prop '%s' at GU %s skipped: the cell is already blocked by another prop" % [String(prop_item.get("def", "")), str(gu_cell)])
 			continue
 		var vox_offset_raw = prop_item.get("vox_offset", [0, 0])
 		var vox_offset: Vector2i = vox_offset_raw if vox_offset_raw is Vector2i else Vector2i(int(vox_offset_raw[0]), int(vox_offset_raw[1]))
@@ -361,7 +365,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			"rot": int(prop_item.get("rot", 0)),
 		})
 		## `walkable: true` on a placement: the prop stands in the cell but does not block it (a curb rail, a floor-level object: the agent may stand there)
-		if not bool(prop_item.get("walkable", false)):
+		if not bool(prop_item.get("walkable", false)) and not below_floor:
 			blocked_map[cell] = true
 
 	var agent_start_raw: Vector2i = Vector2i(spec.get("agent_start", Vector2i.ZERO)) + offset

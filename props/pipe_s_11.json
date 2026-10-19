@@ -5,8 +5,8 @@
   "vox_scale": 1,
   "vox_materials": {
     "1": "steel_plate_rust",
-    "2": "steel_dark",
-    "3": "steel_dark"
+    "2": "iron_bar",
+    "3": "iron_bar"
   },
   "material_zones": {
     "default": "steel_plate_rust"

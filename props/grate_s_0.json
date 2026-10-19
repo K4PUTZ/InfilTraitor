@@ -4,10 +4,10 @@
   "vox_model": "res://ASSETS/props/vox/grate_s_0.vox",
   "vox_scale": 1,
   "vox_materials": {
-    "2": "steel_dark"
+    "2": "iron_bar"
   },
   "material_zones": {
-    "default": "steel_dark"
+    "default": "iron_bar"
   },
   "footprint_gus": [
     [

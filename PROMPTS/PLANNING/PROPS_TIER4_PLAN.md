@@ -113,6 +113,13 @@ The numbers are NOT mine to set: each row is proposed from its analogue and cali
 - **Scale target = the game's own** (1/8 GU fragments, a model fitted into its slot's box); scale problems are adapted as they appear.
 - **The dormitory (PIPELINE §8) is the calibration room of P7:** sizes, palette, material numbers are judged there, with the agent and a guard beside every prop.
 
+## 2d. Secondary materials for objects (RATIFIED 2026-10-18, see `MATERIALS_MASTER_PLAN` §2b)
+
+A prop's zones (§2.5, `material_zones`, a `.vox` model's `vox_materials`) name **secondary** materials where the object has its own look: the zone wears the secondary's texture and behaves as its primary (an iron bar is `steel_dark` to every rule). The fallback chain of §2b is unchanged and comes AFTER it: own row -> its `inherits` chain -> family by name -> `generic`.
+- A model author picks the OBJECT material (`iron_bar`, later `plank`, `kerb`), never a new set of numbers: balance lives on the primary, once.
+- A new object look is one facade PNG + one row (`inherits`, `has_facade`, `facade_mean`, optional `base_color`); no code.
+- First use (2026-10-18): the PIPE_LAB pipes' bars and plugs (`vox_materials` 2 and 3) and the four `grate_*` pieces wear `iron_bar`.
+
 ## 3. Risks
 - The 30 fps handsets make 0.5 s = 15 frames: the animation has to read in 15 frames, so the sim is timed, not counted, and is judged on a device capture, not the desktop one.
 - The pile is the first cosmetic state that survives a blast for props: it must ride the rotation and save machinery (P3) or it is a regression waiting for R3D-ROT.

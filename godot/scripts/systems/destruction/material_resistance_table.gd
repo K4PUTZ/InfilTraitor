@@ -20,6 +20,7 @@
 class_name MaterialResistanceTable
 
 const JsonFileRef = preload("res://godot/scripts/systems/json_file.gd")
+const MaterialRowsRef = preload("res://godot/scripts/systems/material_rows.gd")
 
 const RES_MATERIALS_DIR := "res://ASSETS/materials"
 const USER_MATERIALS_DIR := "user://materials"
@@ -234,56 +235,31 @@ static func _ensure_loaded() -> void:
 	if _loaded:
 		return
 	_loaded = true
-	_scan_dir(RES_MATERIALS_DIR)
-	_scan_dir(USER_MATERIALS_DIR)
+	## Both tiers, user wins, secondaries merged over their primaries (`MaterialRows`): a secondary is its primary to destruction.
+	var rows: Dictionary = MaterialRowsRef.load_all(RES_MATERIALS_DIR, USER_MATERIALS_DIR, "MaterialResistanceTable", load_errors)
+	for id: String in rows:
+		_add_row(id, rows[id])
 
 
-## ASSET_TREE_REFORM (2026-08-21): one folder per material, so a row lives at
-## `<root>/<id>/<id>.json` beside that material's art rather than in a flat
-## directory of 14 files.
-##
-## The walk is deliberately ONE level and name-matched — it opens `concrete/` and
-## looks for `concrete.json`, not for any `*.json` it can find. A recursive glob
-## would happily load a stray copy left in the wrong folder, and D21's whole
-## point is one row per material with no duplicates: the `ground_concrete` /
-## `concrete` disagreement is exactly what a lenient scan re-creates.
-static func _scan_dir(dir_path: String) -> void:
-	var dir := DirAccess.open(dir_path)
-	if dir == null:
-		return
+## One row into the table: `parsed` is a row already merged over its primary (`MaterialRows`).
+static func _add_row(id: String, parsed: Dictionary) -> void:
+	## ⚠️ THIS DICT IS AN EXPLICIT WHITELIST, not a copy of the row, and adding a column to the JSON without adding it HERE makes the new column read
+	## as its default with no error anywhere. Cost of learning that: M3-3's first real run reported `[E-BURN] 0` on every material, including fabric
+	## at burn_consumption 1.0 — the exact shape of CLAUDE.md's floor-dent case, and the reason that print exists at all.
+	_table[id] = {
+		"destroy_factor": _number(parsed, "destroy_factor", DEFAULT_DESTROY_FACTOR, id),
+		"dent_factor": _number(parsed, "dent_factor", DEFAULT_DENT_FACTOR, id),
+		"crack_factor": _number(parsed, "crack_factor", DEFAULT_CRACK_FACTOR, id),
+		"flammability": _number(parsed, "flammability", DEFAULT_FLAMMABILITY, id),
+		"burn_consumption": _number(parsed, "burn_consumption", DEFAULT_BURN_CONSUMPTION, id),
+		## ⚠️ A KEY MISSING FROM THIS LIST IS NOT A COMPILE ERROR AND NOT
+		## A WARNING — the row simply never carries it and every lookup
+		## silently returns the default. This dictionary is the schema, not
+		## the JSON, and that is exactly CLAUDE.md's floor-dent case
+		## (69 dents on a fixture, ZERO on the real map, because only one
+		## material had the row).
+		"smoke_chance": _number(parsed, "smoke_chance", DEFAULT_SMOKE_CHANCE, id),
+		"support_reach": _number(parsed, "support_reach", DEFAULT_SUPPORT_REACH, id, 0.5, 100000.0),
+	}
 
-	dir.list_dir_begin()
-	var entry := dir.get_next()
-	while entry != "":
-		if dir.current_is_dir() and not entry.begins_with("."):
-			var row_path := dir_path.path_join(entry).path_join(entry + ".json")
-			## A folder with no row of its own (`_generic/`, art only) is normal; a row that exists must read (`JsonFile`).
-			var parsed: Dictionary = JsonFileRef.read_object(row_path, "MaterialResistanceTable", load_errors) \
-				if FileAccess.file_exists(row_path) else {}
-			if not parsed.is_empty():
-				var id := JsonFileRef.require_id(parsed, row_path, "MaterialResistanceTable", load_errors)
-				if not id.is_empty():
-					## ⚠️ THIS DICT IS AN EXPLICIT WHITELIST, not a copy of the
-					## row, and adding a column to the JSON without adding it
-					## HERE makes the new column read as its default with no
-					## error anywhere. Cost of learning that: M3-3's first
-					## real run reported `[E-BURN] 0` on every material,
-					## including fabric at burn_consumption 1.0 — the exact
-					## shape of CLAUDE.md's floor-dent case, and the reason
-					## that print exists at all.
-					_table[id] = {
-						"destroy_factor": _number(parsed, "destroy_factor", DEFAULT_DESTROY_FACTOR, id),
-						"dent_factor": _number(parsed, "dent_factor", DEFAULT_DENT_FACTOR, id),
-						"crack_factor": _number(parsed, "crack_factor", DEFAULT_CRACK_FACTOR, id),
-						"flammability": _number(parsed, "flammability", DEFAULT_FLAMMABILITY, id),
-						"burn_consumption": _number(parsed, "burn_consumption", DEFAULT_BURN_CONSUMPTION, id),
-						## ⚠️ A KEY MISSING FROM THIS LIST IS NOT A COMPILE ERROR AND NOT
-						## A WARNING — the row simply never carries it and every lookup
-						## silently returns the default. This dictionary is the schema, not
-						## the JSON, and that is exactly CLAUDE.md's floor-dent case
-						## (69 dents on a fixture, ZERO on the real map, because only one
-						## material had the row).
-						"smoke_chance": _number(parsed, "smoke_chance", DEFAULT_SMOKE_CHANCE, id),
-						"support_reach": _number(parsed, "support_reach", DEFAULT_SUPPORT_REACH, id, 0.5, 100000.0),
-					}
-		entry = dir.get_next()
+

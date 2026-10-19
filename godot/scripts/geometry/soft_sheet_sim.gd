@@ -608,13 +608,19 @@ func _collide() -> void:
 			if d < best:
 				best = d
 				face = 5
-			match face:
-				0: _xs[o] = lx
-				1: _xs[o + 1] = ly
-				2: _xs[o + 2] = lz
-				3: _xs[o] = ux
-				4: _xs[o + 1] = uy
-				_: _xs[o + 2] = uz
+			## an `if` chain, not a `match`: this runs on worker threads (`worker_typing_check.py`)
+			if face == 0:
+				_xs[o] = lx
+			elif face == 1:
+				_xs[o + 1] = ly
+			elif face == 2:
+				_xs[o + 2] = lz
+			elif face == 3:
+				_xs[o] = ux
+			elif face == 4:
+				_xs[o + 1] = uy
+			else:
+				_xs[o + 2] = uz
 		_push[o] += _xs[o] - before_boxes.x
 		_push[o + 1] += _xs[o + 1] - before_boxes.y
 		_push[o + 2] += _xs[o + 2] - before_boxes.z

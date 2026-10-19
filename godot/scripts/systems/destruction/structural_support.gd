@@ -54,7 +54,12 @@ const MAX_FOUND: int = 120000
 static var _step_cost_cache: Dictionary = {}   ## material id -> int
 
 
+## The cache is the MAIN thread's: a worker computes the cost without touching it (a Dictionary written by one thread while another
+## reads it is a data race). Today no worker gets here (the walk on the worker reads `ClaimGrid._s_costs`, filled on the main thread by
+## `ClaimGrid.snapshot_of()`); this keeps a future caller from making that race real.
 static func step_cost(material: String) -> int:
+	if OS.get_thread_caller_id() != OS.get_main_thread_id():
+		return int(round(float(BUDGET) / MaterialResistanceTable.support_reach(material)))
 	if not _step_cost_cache.has(material):
 		_step_cost_cache[material] = int(round(float(BUDGET) / MaterialResistanceTable.support_reach(material)))
 	return int(_step_cost_cache[material])

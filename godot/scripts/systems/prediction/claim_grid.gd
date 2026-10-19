@@ -123,7 +123,7 @@ func standing_step_cost(key: Vector3i) -> int:
 			return -1
 		return _s_costs[_s_mat[claim]]
 	var m: Variant = standing_material(key)
-	return -1 if m == null else StructuralSupport.step_cost(String(m))
+	return -1 if typeof(m) == TYPE_NIL else StructuralSupport.step_cost(String(m))   ## not `m == null`: an operator on an untyped value, and this is reachable from a worker (`worker_typing_check.py`)
 
 
 ## ONE probe for the support walk: the material id of a STANDING voxel at `key` (the overlay answered first), or null when nothing stands there.

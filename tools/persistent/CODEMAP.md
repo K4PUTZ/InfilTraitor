@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**335 scripts · 99621 lines total** (under `godot/scripts/`)
+**335 scripts · 99632 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1359,7 +1359,7 @@ extends `Node3D` · 3573 lines
 
 ### `soft_sheet_sim.gd`
 
-`class_name SoftSheetSim` · extends `RefCounted` · 759 lines
+`class_name SoftSheetSim` · extends `RefCounted` · 765 lines
 
 `godot/scripts/geometry/soft_sheet_sim.gd`
 
@@ -2873,7 +2873,7 @@ extends `RefCounted` · 37 lines
 
 ### `structural_support.gd`
 
-`class_name StructuralSupport` · extends `RefCounted` · 170 lines
+`class_name StructuralSupport` · extends `RefCounted` · 175 lines
 
 `godot/scripts/systems/destruction/structural_support.gd`
 

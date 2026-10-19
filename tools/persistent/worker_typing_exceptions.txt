@@ -1,0 +1,6 @@
+## worker_typing_check.py — reviewed false positives. One per line:  path | function | code
+##   path      repo-relative, as the check prints it
+##   function  the function name as printed (a lambda prints as `<lambda path:line ...>`: copy it whole)
+##   code      the stripped source line, exactly as printed
+## then `  # why it is safe`, which the check does not read. A line that matches nothing any more FAILS the check (stale): remove it.
+## Prefer fixing the code (type the variable, convert the element, an `if` chain for a `match`): an exception is the last resort.

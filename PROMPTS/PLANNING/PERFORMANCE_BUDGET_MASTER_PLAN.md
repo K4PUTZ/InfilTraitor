@@ -25,8 +25,19 @@
 > another class's constants.** Fixed by that rule: the light path (`_lamp_term`, `_anchor_level`), `FacadeSampler._fnv1a_continue`,
 > the chunk merge (`_emit_dent`'s corners, `_emit_glass_rim`'s side test), the claim walk (`material_glass`), `CellPlaneStore`'s bucket
 > writer (`first_outside`), `PropShadow.build_image()`. Audited clean: `SoftSheetSim` / `SoftSheetGroup` (the parallel rest, build and
-> fallen jobs), `FluidPlane._round_step()`, `GlassSupport` / `StructuralSupport` (snapshot path). Not fixed, noted: `StructuralSupport.step_cost()`
-> fills a static `_step_cost_cache` Dictionary that a worker can write (a plain data race, not this one). No engine upgrade was tried.
+> fallen jobs), `FluidPlane._round_step()`, `GlassSupport` / `StructuralSupport` (snapshot path).
+> **THE RULE IS GATED (Director, 2026-10-19: a quick-tier tool, not a hook rule, until it proves quiet):** `tools/persistent/worker_typing_check.py`
+> (`verify.py quick` and up) finds every `WorkerThreadPool.add_task` / `add_group_task` callable (inline lambda, lambda variable, method,
+> `.bind()`), follows the calls (97 functions today) and fails on an operator with an untyped operand of the measured classes, or on any
+> `match`; a reviewed false positive goes in `worker_typing_exceptions.txt` (empty today; an exception that matches nothing fails as stale).
+> Proven both ways: run on the five files as they were before f3d8a74c it reports all seven sites fixed there (19 lines); an injected
+> `var probe = ...; if probe > 0` in `FluidPlane._run_pending_rounds()` fails it. It also found two more, fixed: `ClaimGrid.standing_step_cost()`
+> (`m == null` on a Variant -> `typeof(m) == TYPE_NIL`) and `SoftSheetSim._collide()` (a `match face` -> an `if` chain). It is a heuristic
+> reading of the source, not the compiler: a call through an untyped receiver whose method name is defined twice is not followed.
+> `StructuralSupport.step_cost()`'s static cache: no worker writes it today (the worker walk reads `ClaimGrid._s_costs`, filled on the
+> main thread by `snapshot_of()`); it now computes without the cache off the main thread, so a future caller cannot make that race real.
+> **No engine fix exists:** upstream `master`'s `OPCODE_OPERATOR` is identical to 4.6.1's and no godotengine/godot issue or PR was found
+> (2026-10-19); reporting it upstream is the Director's call.
 
 > ⏭️ **2026-10-17 — what the soft sheets cost (`ROOF_MASTER_PLAN` v0.41-v0.43; MARKET_LAB, two quitandas = 8 sheets).** **Load:** every sheet is settled on a worker while the board builds (`Room._begin_resting_sheets` / `_finish_resting_sheets`): 82-353 ms of worker time each on the Moto g04s, the load waited **0 ms** (172 ms in all) there and on the Galaxy A16 (189 ms). **A release** (a grenade that takes a quitanda's posts: roof + 3 walls sewn, one batch): destroy + dirty pass 256 ms / 211 ms (Moto / Galaxy), board commit 22 / 9, light field 66 / 29, and **no wait for the chunk remesh** (it was 5.7 s on the Moto before a cloth at rest was drawn by its own node); the fall window is 35.6 / 34.1 ms per frame, GPU 18.8 / 26.4 ms. **RAM, not measured, a known cost:** `RoofSheetRelease.collect` and `wall_entities` read `slice.voxels` / `slab.voxels`, which turns a released container back into `Voxel` objects (~1 KB each on the Moto, kept): ~1 MB per 4x4 GU awning. **DONE the same day (`ROOF_MASTER_PLAN` v0.45): the sheets are claims (a handle only for what a release destroys: 20 containers / 320 voxels after the sheets, as with none) and the settled positions are cached between runs (`SoftSheetRestCache`).** Galaxy A16 on `MARKET_STRESS` (40 sheets, 13 640 voxels): load wait 0 ms, `_finish_resting_sheets` 142-206 ms in all (`SoftSheet3D.setup` 109-158), a four-sheet release ~100 ms of main thread, PSS median 901-912 MB against 887-888 MB with the sheets off (~15-35 MB for 40 sheets; the device swaps, so read it as an order of magnitude). The Moto g04s on this map is the number still owed.
 

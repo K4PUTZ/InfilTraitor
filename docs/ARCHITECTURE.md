@@ -91,6 +91,17 @@ A roof or a wall of `fabric` or `cardboard` (`SoftSheetPresets.OF`) is not drawn
 - **Seams.** Sheets one blast lets go are stepped together by a **`SoftSheetGroup`**, which also owns the worker; a seam ties a boundary node of one sheet to the nearest point of another's boundary (position-based, mass-weighted), so a quitanda's roof and walls fall as one piece; a node sewn to a cloth that stays is pinned.
 - **Switches:** `SOFT_REST=0` (the flat plane as before), `SOFT_WALLS=0`, `SOFT_SHEET_RELEASE=0`, `SOFT_SHEET_THREAD=0`, `ROOF_FIRE=0`. Benches: ROOF_LAB rooms C (cloth) and D (cardboard), `MARKET_LAB`, PLAYGROUND's quitandas. Costs: `PERFORMANCE_BUDGET_MASTER_PLAN` top block.
 
+### 0.6 Liquids: a body takes the shape of what holds it (2026-10-19, `MATERIALS_MASTER_PLAN` §6, M6 CLOSED)
+
+A body of liquid is never voxels and never writes the store (rule 8): it is a per-turn TRUTH, a set of RULES read as data, and EFFECTS that draw it.
+
+- **Shape, by construction.** A map's `liquids` item names a `kind`, a `seed` and a `brim`; at load `Room._build_container` asks **`FluidContainer`** (pure, over `VoxelStore.has_solid`) to flood the voxel columns from the seed: a column joins under the brim (a pit, wall to wall), strictly downhill (a chute) or level under a roof (a bore), only where the two columns' air meets. The columns become the cells of a **`FluidPlane`** (ground = lowest floor, ceiling = lowest roof, a grating's bars a pass fraction); cells outside are walls (a body never spills). Every committed event (`schedule_structural_support`, `_on_shot_touched`) calls `Room.refresh_liquid_containers`, which re-reads the touched columns. A `zone` item is only a floor patch (quicksand).
+- **Truth.** `FluidPlane`: virtual pipes on 0.5 GU cells, a turn's rounds on a worker (`begin_tick` / `committed`: the rules read the last complete tick), weirs over falls (`WEIR_C`: a body upstream of a fall holds a level), `falls()` found from the grounds. `LiquidField` answers a GU cell's liquid, depth and surface.
+- **Rules (data).** `LiquidRegistry` (`liquids/<id>.json`: looks as shader controls, `gameplay` checked against a schema at load); `LiquidExposure` (dose, wading, blocking, traps); `LiquidFire` (oil); `LiquidRulesController` with the pure `LiquidAgentStatus`, `LiquidSurfaceState` (crust plates, ice), `LiquidCorrosion`, `LiquidGlow`; actors stand on what is under them (`Board3DLive.stand_height`, `Room.liquid_stand_y`).
+- **Effects.** `LiquidSheet3D` (one quad per cell, never bridging a step; vertex R fire, G plates, B ice, A wetness), `LiquidFalls3D` (a curtain per chain of fall edges, foam band, steam; drawn after the sheets), `LiquidFlameTongues` / `LiquidFlames` (on each cell's surface), `LiquidFireLights` (tactical lights; the cell plane's A byte is ONE hue: warm 1-127, cool 128-255), `FootprintMarks3D`.
+- **Switches:** `FLUID_THREAD=0`, `LIQUID_FALLS=0`, `FIRE_LIGHT=0`, `FLUID_AUTO_TICK`, `FLUID_PREROLL`, `WATER_STUDY=<kind>`, dev scripts `LIQUID_IGNITE`, `FLUID_VALVE`, `LIQUID_WALK(_FROM)`, `LIQUID_END_TURNS`. Benches `PIPE_LAB`, `LIQUIDS_LAB`. Costs (Moto): `MATERIALS_MASTER_PLAN` "M6 CLOSING PASS".
+- ⚠️ **Code several worker threads run at once has no untyped operator** (a Godot 4.6.1 / 4.7.2 GDScript race; `worker_typing_check`, `PERFORMANCE_BUDGET_MASTER_PLAN` top block).
+
 ---
 
 ## How to read this document

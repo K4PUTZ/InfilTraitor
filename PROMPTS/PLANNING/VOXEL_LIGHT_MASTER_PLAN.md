@@ -1,6 +1,6 @@
 # INFILTRAITOR — Voxel Light Projection Master Plan
 
-> 🔦 **2026-10-18 — LIGHT-ENGINE: PROPOSAL, AWAITING RATIFICATION (§LE below).** Director: light is gameplay (fires, candles, torches, searchlights, alarms, lasers lit and put out to open paths), so the engine must light "de maneira uniforme e racional", propagate light laterally and from above, and give each face its own light; budget proposed by the Director: 30 ms + 8 ms of light. §LE is the measured state, the design and the budget answer.
+> 🔦 **2026-10-18 — LIGHT-ENGINE: PARKED for the light milestone (Director, same day: "o ganho da separacao e muito pequeno. E melhor deixar como esta. A milestone de iluminacao faz parte do gameplay, mas vamos deixar o encanamento preparado (como a luz do fogo)").** The frame budget stays 30 fps / 33.3 ms, no separate light lane. §LE stays as the design record the light milestone starts from (Q2-Q4 open until then). The plumbing already in: `LightSource.warmth` / `inner_ratio` / `reach` / `fading`, `LightingController.add_extra_lights` / `rebuild_tactical`, `VoxelLightField.set_lights` / `warm_for`, the plane's A = warmth, the shader's `fire_time` breathing, `LiquidFireLights` (the stepped, sliced reveal). Was: **LIGHT-ENGINE: PROPOSAL, AWAITING RATIFICATION (§LE below).** Director: light is gameplay (fires, candles, torches, searchlights, alarms, lasers lit and put out to open paths), so the engine must light "de maneira uniforme e racional", propagate light laterally and from above, and give each face its own light; budget proposed by the Director: 30 ms + 8 ms of light. §LE is the measured state, the design and the budget answer.
 
 > 🧭 **2026-09-27 — reorganization pointer.** The CPU-bucket-vs-3D-lights question is RESOLVED (2026-09-23: keeps CPU buckets). Remaining light cost work is `RENDER3D_MASTER_PLAN`'s R3D-LIGHT track (CLOSED 2026-09-27).
 
@@ -997,7 +997,7 @@ mode implemented (explicit non-goal).
 
 ---
 
-## §LE — LIGHT-ENGINE (proposal, 2026-10-18 — NOTHING BELOW IS RATIFIED)
+## §LE — LIGHT-ENGINE (proposal, 2026-10-18 — PARKED for the light milestone; Q1 RESOLVED: the budget stays 33.3 ms, no light lane)
 
 **Why now.** The oil fire of `MATERIALS_MASTER_PLAN` M6 F5 became a real light (`LiquidFireLights`: tactical `LightSource`s with `warmth`, a stepped reveal, the warm tint in the plane's A channel). It exposed what the field cannot do. The Director's frame (2026-10-18): light is gameplay; sources to come (alarms, candles, bonfires, searchlights, light cannons, torches, intermittent lights, lasers) are lit and put out (water pistol, extinguisher, foam, tricks) or lit on purpose (to expose another agent); research light-centred games (Alan Wake) when the light milestone opens. **What matters now is an engine able to carry that milestone.** The light changes of an action belong to the CONSEQUENCE beat (room.gd §13.3: soot, then light, a ~1 s arrival after the event; the Director adds a camera focus on the zone whose light moves, and a sound).
 

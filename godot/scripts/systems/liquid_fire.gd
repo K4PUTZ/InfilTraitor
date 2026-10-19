@@ -59,10 +59,11 @@ func setup(fluid_plane: RefCounted, spec: Dictionary) -> void:
 	_lit_at.fill(0.0)
 	_clock = 0.0
 	_compute_oxygen()
-	speed_gu = float(spec.get("speed", DEFAULT_SPEED))
-	burn_per_turn = float(spec.get("burn", DEFAULT_BURN))
-	dose_step = float(spec.get("dose_step", DEFAULT_DOSE_STEP))
-	dose_turn = float(spec.get("dose_turn", DEFAULT_DOSE_TURN))
+	## never below zero (a negative burn would ADD oil; `LiquidRegistry.check_gameplay` already refuses one from a file), and a front at most a body's length a turn
+	speed_gu = clampf(float(spec.get("speed", DEFAULT_SPEED)), 0.0, 64.0)
+	burn_per_turn = maxf(float(spec.get("burn", DEFAULT_BURN)), 0.0)
+	dose_step = maxf(float(spec.get("dose_step", DEFAULT_DOSE_STEP)), 0.0)
+	dose_turn = maxf(float(spec.get("dose_turn", DEFAULT_DOSE_TURN)), 0.0)
 	var base: Variant = spec.get("base", null)
 	base_color = Color(float(base[0]), float(base[1]), float(base[2]), float(spec.get("base_share", 0.3))) if base is Array and (base as Array).size() >= 3 else Color(0.0, 0.0, 0.0, 0.0)
 	version = 0

@@ -4,7 +4,7 @@
  "id": "PIPE_LAB",
  "meta": {
   "title": "Pipe Lab",
-  "description": "Static bench for the M6 water study (2026-10-17): two grated, half-buried drain pipes in opposite long walls (north A, south B) and a concrete channel between them along y. Water will run from A into B once the study picks a mechanism; none yet. Dev fixture, not a level. Pipe voxels: tools/asset_generation/gen_pipe_vox.py."
+  "description": "Static bench for the M6 water study (2026-10-17): two grated, half-buried drain pipes in opposite long walls (north A, south B) and a concrete channel between them along y. Water will run from A into B once the study picks a mechanism; none yet. Dev fixture, not a level. Pipe voxels: tools/asset_generation/gen_pipe_vox.py. 2026-10-18 (consolidation): pipe A is RAISED (pipe_n_hi_*, standing whole on the floor, its bore 2 voxels up) and the channel is dug only from its mouth to under pipe B, so A's water FALLS into the channel (take `waterfall`)."
  },
  "sections": {
   "board": {
@@ -642,7 +642,7 @@
    "v": 1,
    "items": [
     {
-     "def": "pipe_n_00",
+     "def": "pipe_n_hi_00",
      "gu": [
       11,
       1
@@ -668,7 +668,7 @@
      "rot": 0
     },
     {
-     "def": "pipe_n_01",
+     "def": "pipe_n_hi_01",
      "gu": [
       11,
       2
@@ -694,7 +694,7 @@
      "rot": 0
     },
     {
-     "def": "pipe_n_10",
+     "def": "pipe_n_hi_10",
      "gu": [
       12,
       1
@@ -720,7 +720,7 @@
      "rot": 0
     },
     {
-     "def": "pipe_n_11",
+     "def": "pipe_n_hi_11",
      "gu": [
       12,
       2
@@ -746,36 +746,10 @@
      "rot": 0
     },
     {
-     "def": "grate_n_0",
-     "gu": [
-      11,
-      2
-     ],
-     "storey": -1,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0
-    },
-    {
      "def": "grate_s_0",
      "gu": [
       11,
       9
-     ],
-     "storey": -1,
-     "vox_offset": [
-      0,
-      0
-     ],
-     "rot": 0
-    },
-    {
-     "def": "grate_n_1",
-     "gu": [
-      12,
-      2
      ],
      "storey": -1,
      "vox_offset": [
@@ -864,6 +838,23 @@
        "target": "@channel",
        "view": "W",
        "hold": 600
+      }
+     ]
+    },
+    {
+     "id": "fall_rail",
+     "keys": [
+      {
+       "frame": "detail",
+       "target": "@pipe_a",
+       "view": "W",
+       "hold": 330
+      },
+      {
+       "frame": "detail",
+       "target": "@pipe_a",
+       "view": "S",
+       "hold": 330
       }
      ]
     }
@@ -1003,6 +994,20 @@
       "FLAME_EMBER_RATE": "0.6"
      },
      "note": "F5 experiment D: taller, narrower tongues + few balls"
+    },
+    {
+     "id": "waterfall",
+     "profile": "engine",
+     "rail": "fall_rail",
+     "steps": [],
+     "at_key": 0,
+     "after_hold": 0,
+     "length": 660,
+     "seed": 1,
+     "env": {
+      "FLUID_AUTO_TICK": "0.3"
+     },
+     "note": "Consolidation 2026-10-18: pipe A stands RAISED over the dug channel; its water leaves the mouth and FALLS into the channel (LiquidFalls3D: curtain + splash), two views"
     }
    ]
   },
@@ -1088,7 +1093,7 @@
          1.5,
          2.0
         ],
-        "height": 10
+        "height": 18
        },
        {
         "zone": [
@@ -1131,7 +1136,17 @@
        }
       ],
       "dig": 4,
-      "grounds": []
+      "grounds": [
+       {
+        "zone": [
+         11.25,
+         1.0,
+         1.5,
+         2.0
+        ],
+        "height": 6
+       }
+      ]
      }
     }
    ]
@@ -1140,14 +1155,14 @@
    "v": 1,
    "items": [
     {
-     "comment": "the oil channel, dug 4 voxels, running under both pipes",
+     "comment": "the channel, dug 4 voxels, from pipe A's mouth (raised: its water falls in) to under pipe B (half-buried, the drain)",
      "gu": [
       11,
-      1
+      3
      ],
      "size": [
       2,
-      10
+      8
      ],
      "pattern": "open",
      "dig": 4,

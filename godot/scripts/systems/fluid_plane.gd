@@ -21,6 +21,10 @@ const WALL: float = 8.0               ## a ground at or above this is a wall (a 
 const ROUNDS_PER_TICK: int = 24   ## at a 0.25 GU cell; see `rounds_per_tick()`
 const GRATE_MIN_FLUIDITY: float = 0.2  ## a thinner liquid than this does not cross a grate
 const GRATE_FULL_FLUIDITY: float = 0.8 ## from here on a grate costs the liquid nothing
+## The biggest grid a body may have (consolidation, 2026-10-18). A tick costs per cell and per round (the F12 feasibility: a whole segment at 0.5 GU was
+## 2 812 cells and 855 ms a turn on the Moto, on the main thread); a body past this is a map error, cut to its corner and said loudly, never a frozen turn.
+const MAX_CELLS: int = 4096
+const MIN_CELL_GU: float = 0.125     ## one voxel
 
 var cols: int = 0
 var rows: int = 0
@@ -46,9 +50,9 @@ var _delta: PackedFloat32Array = PackedFloat32Array()   ## the round's scratch (
 
 
 func setup(width: int, height: int, cell_size_gu: float, grid_origin: Vector2, liquid_fluidity: float) -> void:
-	cols = width
-	rows = height
-	cell_gu = cell_size_gu
+	cols = maxi(width, 1)
+	rows = maxi(height, 1)
+	cell_gu = maxf(cell_size_gu, MIN_CELL_GU) if is_finite(cell_size_gu) else MIN_CELL_GU
 	origin = grid_origin
 	fluidity = clampf(liquid_fluidity, 0.0, 1.0)
 	ground.resize(cols * rows)
@@ -98,17 +102,25 @@ func cells_in(rect: Rect2) -> PackedInt32Array:
 
 
 func set_ground_rect(rect: Rect2, height: float) -> void:
-	for i in cells_in(rect):
-		ground[i] = height
+	for i in _cells_or_warn(rect, "wall / ground"):
+		ground[i] = height if is_finite(height) else WALL
 
 
 func set_ceiling_rect(rect: Rect2, height: float) -> void:
-	for i in cells_in(rect):
-		ceiling[i] = height
+	for i in _cells_or_warn(rect, "roof"):
+		ceiling[i] = height if is_finite(height) else 1.0e9
 
 
 func add_source(rect: Rect2, rate: float) -> void:
-	_sources.append({"cells": cells_in(rect), "rate": maxf(rate, 0.0)})
+	_sources.append({"cells": _cells_or_warn(rect, "source"), "rate": maxf(rate, 0.0) if is_finite(rate) else 0.0})
+
+
+## The cells of a zone a body's data names; a zone that holds no cell centre (outside the body, or thinner than a cell) is a map error said once.
+func _cells_or_warn(rect: Rect2, what: String) -> PackedInt32Array:
+	var cells: PackedInt32Array = cells_in(rect)
+	if cells.is_empty():
+		push_warning("[FluidPlane] a %s at %s holds no cell of the body (grid at %s, %d x %d cells of %.3f GU): it does nothing" % [what, rect, origin, cols, rows, cell_gu])
+	return cells
 
 
 ## The player's valve: the rate of source `index` (0 = shut), a source being in the order it was added. False for an index that does not exist.
@@ -132,7 +144,7 @@ func lower_ground(rect: Rect2, height: float) -> void:
 
 
 func add_sink(rect: Rect2, rate: float) -> void:
-	_sinks.append({"cells": cells_in(rect), "rate": maxf(rate, 0.0)})
+	_sinks.append({"cells": _cells_or_warn(rect, "sink"), "rate": maxf(rate, 0.0) if is_finite(rate) else 0.0})
 
 
 ## A grate across the line at `at` GU on `axis` ("x": a vertical line, flow crosses it along x; "y": a horizontal line, flow crosses it along y).
@@ -148,6 +160,10 @@ func open_grate(axis: String, at: float) -> void:
 
 
 func _set_grate(axis: String, at: float, pass_fraction: float) -> void:
+	var line_at: int = int(round((at - (origin.y if axis == "y" else origin.x)) / cell_gu))
+	if line_at < 1 or line_at >= (rows if axis == "y" else cols):
+		push_warning("[FluidPlane] a grate at %s = %.2f lies outside the body (grid at %s, %d x %d cells): it does nothing" % [axis, at, origin, cols, rows])
+		return
 	if axis == "y":
 		var line: int = int(round((at - origin.y) / cell_gu))     ## the boundary between row line-1 and row line
 		for c in range(cols):
@@ -169,8 +185,15 @@ static func from_body(body: Dictionary, liquid_fluidity: float) -> RefCounted:
 	var cell_size: float = float(fluid["cell"])
 	var rect: Rect2 = body["rect"]
 	var plane = load("res://godot/scripts/systems/fluid_plane.gd").new()
-	var width: int = int(round(rect.size.x / cell_size)) + 2
-	var height: int = int(round(rect.size.y / cell_size)) + 2
+	cell_size = maxf(cell_size, MIN_CELL_GU) if is_finite(cell_size) else MIN_CELL_GU
+	var width: int = maxi(int(round(rect.size.x / cell_size)), 1) + 2
+	var height: int = maxi(int(round(rect.size.y / cell_size)), 1) + 2
+	if width * height > MAX_CELLS:
+		push_error("[FluidPlane] the body at %s is %d x %d cells of %.3f GU (%d), over MAX_CELLS %d: a tick would freeze the turn; it is cut to its corner (use a bigger `fluid.cell` or split it)"
+				% [rect, width, height, cell_size, width * height, MAX_CELLS])
+		var keep: float = sqrt(float(MAX_CELLS) / float(width * height))
+		width = maxi(int(float(width) * keep), 3)
+		height = maxi(int(float(height) * keep), 3)
 	plane.setup(width, height, cell_size, rect.position - Vector2(cell_size, cell_size), liquid_fluidity)
 	plane.rounds_scale = lerpf(0.5, 1.0, clampf(liquid_fluidity, 0.0, 1.0))
 	if float(fluid["rim"]) > 0.0:
@@ -192,7 +215,7 @@ static func from_body(body: Dictionary, liquid_fluidity: float) -> RefCounted:
 		plane.add_sink(snk["rect"], float(snk["rate"]))
 	for grate: Dictionary in fluid["grates"]:
 		plane.add_grate(String(grate["axis"]), float(grate["at"]))
-	var fill: float = float(fluid.get("fill", 0.0))   ## a still pool: the depth it holds when the map opens (no source needed), up to `fill` voxels over the bed
+	var fill: float = clampf(float(fluid.get("fill", 0.0)), 0.0, WALL)   ## a still pool: the depth it holds when the map opens (no source needed), up to `fill` voxels over the bed
 	if fill > 0.0:
 		for r in range(1, height - 1):
 			for c in range(1, width - 1):
@@ -205,6 +228,42 @@ static func from_body(body: Dictionary, liquid_fluidity: float) -> RefCounted:
 
 func surface(i: int) -> float:
 	return ground[i] + depth[i]
+
+
+## WATERFALLS (consolidation, 2026-10-18: "a queda de uma cachoeira, derrubando liquido dentro do container"). A fall is not a feature a map places: it is
+## found, BY CONSTRUCTION, wherever liquid is flowing from a cell onto a neighbour whose ground is at least `FALL_DROP` voxels lower (a raised pipe's mouth
+## over a dug channel, a breach over a step, a ledge). The flow itself is the virtual pipes' (it already crosses a step: the surface difference drives it);
+## this only tells the drawing where the sheet must NOT bridge the step and where a falling curtain goes. Reads the LIVE depths and flows (what the sheet
+## draws), so it may be called every frame; a torn read on a worker tick is a frame of a slightly different curtain.
+const FALL_DROP: float = 1.5          ## voxels of ground between two cells from which the step is a fall, not a slope
+const FALL_MIN_FLOW: float = 0.002    ## the outflow (voxels a round) under which nothing is falling
+
+
+## Every edge where liquid falls now: {"from": cell index (high), "to": cell index (low), "a" / "b": the shared edge's ends (GU), "dir": Vector2 (high -> low),
+## "top": the high cell's surface, "bottom": the low cell's surface (voxels over the bed), "flow": the outflow across the edge (voxels a round)}.
+func falls() -> Array:
+	var out: Array = []
+	var dirs: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	for r in range(1, rows - 1):
+		for c in range(1, cols - 1):
+			var i: int = index(c, r)
+			if ground[i] >= WALL or depth[i] <= 0.0:
+				continue
+			for k in range(4):
+				var flow: float = _flux[i * 4 + k]
+				if flow < FALL_MIN_FLOW:
+					continue
+				var nc: int = c + dirs[k].x
+				var nr: int = r + dirs[k].y
+				var j: int = index(nc, nr)
+				if ground[j] >= WALL or ground[i] - ground[j] < FALL_DROP:
+					continue
+				var d := Vector2(dirs[k])
+				var mid: Vector2 = origin + (Vector2(c, r) + Vector2(0.5, 0.5) + d * 0.5) * cell_gu
+				var side := Vector2(-d.y, d.x) * (cell_gu * 0.5)
+				out.append({"from": i, "to": j, "a": mid - side, "b": mid + side, "dir": d, "top": ground[i] + depth[i],
+					"bottom": ground[j] + depth[j], "flow": flow})
+	return out
 
 
 func total_volume() -> float:

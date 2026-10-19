@@ -1,0 +1,31 @@
+{
+  "id": "pipe_n_hi_00",
+  "mesh_tier": 0,
+  "vox_model": "res://ASSETS/props/vox/pipe_n_hi_00.vox",
+  "vox_scale": 1,
+  "vox_materials": {
+    "1": "steel_plate_rust",
+    "2": "iron_bar",
+    "3": "iron_bar"
+  },
+  "material_zones": {
+    "default": "steel_plate_rust"
+  },
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "storeys": 2,
+  "gameplay": {
+    "cover": "half",
+    "destructible": true
+  },
+  "tags": [
+    "industrial",
+    "voxel-model",
+    "pipe-lab"
+  ],
+  "slot": "pipe_piece_raised"
+}

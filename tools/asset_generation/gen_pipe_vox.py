@@ -14,6 +14,8 @@ plug). Grating bars every 2 voxels close the bore 1 voxel behind the mouth, so n
 (mouth faces +y), `pipe_s_<ix><iy>` on the south wall (mouth faces -y); ix across (map x), iy from the wall side (north) / the mouth side (south).
 CURBS (8 x 8 x 4: 2026-10-18, they were 2 high; the water now stands 3 voxels at most and the extra voxel is the MARGIN the surface's waves need, so it meets the rail's inner face instead of hanging at its lip): `curb_lo` has its rail at vox x 0-1, `curb_hi` at x 6-7: placed side by side they bound a 2 GU channel along y.
 
+RAISED PIPE (8 x 8 x 16 a GU piece, 2026-10-18, the waterfall bench): `pipe_n_hi_<ix><iy>` is the north pipe with its axis 8 voxels over the floor, standing whole on it; its bore's bottom is 2 voxels up, so the water leaving its mouth FALLS into the channel dug below.
+
 GRATES (8 x 8 x 8, 2026-10-18): the part of the grating that stands BELOW the floor, in the dug channel (placed at storey -1 = levels 72-79, the bars filling levels 76-79 from the bed up to the floor top), so the bars run from the bed to the top of the bore. `grate_n_<ix>` / `grate_s_<ix>`: bars on every even voxel across, in the row the pipe's own bars stand on (north: GU row 6 of the pipe's last GU, south: row 1 of the first).
 
 Usage:  python3 tools/asset_generation/gen_pipe_vox.py [--out ASSETS/props/vox]
@@ -57,6 +59,24 @@ def pipe_piece(ix: int, iy: int, south: bool) -> Model:
     return m
 
 
+RAISE = 8          ## the RAISED pipe's axis is this many voxels over the floor: the whole pipe stands on the floor (16 high), its bore 2 voxels up
+
+
+def pipe_piece_raised(ix: int, iy: int, south: bool) -> Model:
+    """The raised pipe (2026-10-18, the waterfall bench): the same circle as `pipe_piece`, its axis RAISE voxels over the floor, so the pipe stands
+    whole on the floor (8 x 8 x 16, two storeys) and its bore's bottom is 2 voxels up: water leaving its mouth falls into a channel dug below."""
+    m = Model(8, 8, 16)
+    for x in range(8):
+        for y in range(8):
+            gy = 8 * iy + y
+            u = 15 - gy if south else gy
+            for z in range(16):
+                idx = pipe_cell(8 * ix + x, u, z - RAISE)
+                if idx:
+                    m.set(x, y, z, idx)
+    return m
+
+
 def curb(hi: bool) -> Model:
     m = Model(8, 8, CURB_HEIGHT)
     m.box(6 if hi else 0, 0, 0, 7 if hi else 1, 7, CURB_HEIGHT - 1, 1)
@@ -85,6 +105,9 @@ def main() -> int:
     for side, south in (("n", False), ("s", True)):
         for ix in range(2):
             models["grate_%s_%d" % (side, ix)] = grate(south, ix)
+    for ix in range(2):
+        for iy in range(2):
+            models["pipe_n_hi_%d%d" % (ix, iy)] = pipe_piece_raised(ix, iy, False)
     for name, model in models.items():
         print("%s: %d voxels" % (name, write_vox(model, os.path.join(out, name + ".vox"))))
     return 0

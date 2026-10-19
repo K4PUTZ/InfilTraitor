@@ -8,18 +8,18 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**330 scripts · 98420 lines total** (under `godot/scripts/`)
+**332 scripts · 98869 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — actor_pose.gd, agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, footprint_marks3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, liquid_flame_tongues.gd, liquid_flames.gd, liquid_sheet3d.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_rest_cache.gd, soft_sheet_sim.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
+- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, footprint_marks3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, liquid_falls3d.gd, liquid_flame_tongues.gd, liquid_flames.gd, liquid_sheet3d.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_rest_cache.gd, soft_sheet_sim.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, layout_overlay3d.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
 - **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, soft_sheet_presets.gd, structural_support.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, fluid_plane.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, liquid_agent_status.gd, liquid_corrosion.gd, liquid_exposure.gd, liquid_field.gd, liquid_fire.gd, liquid_fire_lights.gd, liquid_glow.gd, liquid_registry.gd, liquid_surface_state.gd, localization_manager.gd, material_registry.gd, material_rows.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, secondary_tables.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, capture_framer_selftest.gd, circle_field_octagon_selftest.gd, cloth_flaps_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, fluid_plane_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, liquid_fire_selftest.gd, liquid_registry_selftest.gd, liquid_rules_selftest.gd, liquid_status_selftest.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_rows_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, pane_frame_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_light_selftest.gd, roof_occlusion_selftest.gd, roof_sheet_release_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soft_sheet_sim_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, structural_support_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
+- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, capture_framer_selftest.gd, circle_field_octagon_selftest.gd, cloth_flaps_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, fluid_plane_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, liquid_fire_selftest.gd, liquid_guards_selftest.gd, liquid_registry_selftest.gd, liquid_rules_selftest.gd, liquid_status_selftest.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_rows_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, pane_frame_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_light_selftest.gd, roof_occlusion_selftest.gd, roof_sheet_release_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soft_sheet_sim_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, structural_support_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, options_panel.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, capture_controller.gd, debug_tools_controller.gd, input_controller.gd, liquid_rules_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compass.gd, map_compiler.gd, map_envelope.gd, map_geometry.gd, map_layout.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, roof_sheet_release.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -868,6 +868,33 @@ extends `Node3D` · 3572 lines
 
 ---
 
+### `liquid_falls3d.gd`
+
+`class_name LiquidFalls3D` · extends `MeshInstance3D` · 157 lines
+
+`godot/scripts/geometry/liquid_falls3d.gd`
+
+> LiquidFalls3D — the WATERFALLS of one body of liquid (consolidation, 2026-10-18; Director: "a queda de uma cachoeira, derrubando liquido dentro do container"). Purely visual: the flow over a step is the plane's own (`FluidPlane` virtual pipes); this draws, at every edge `FluidPlane.falls()` finds, a curtain from the lip down to the surface below, arcing out a little as a jet leaves a mouth, and a ring of foam where it lands. One mesh a body, rebuilt from the live falls each frame while anything falls (a handful of edges: a few dozen vertices); empty and asleep otherwise.
+
+**Constants / tuning**
+- `SHADER` = `preload("res://godot/shaders/liquid_fall3d.gdshader")`
+- `UNIT` = `1.0 / 8.0`
+- `SEGMENTS` = `6`
+- `THROW_GU` = `0.06`
+- `SPLASH_GU` = `0.42`
+- `FLOW_FULL` = `0.12`
+- `SURFACE_LIFT` = `0.01`
+
+**Public vars**
+- `var plane: RefCounted = null`
+- `var count: int = 0`
+
+**Public API**
+- `func setup(fluid_plane: RefCounted, base_y: float, params: Dictionary) -> void:`
+- `func rebuild() -> void:`
+
+---
+
 ### `liquid_flame_tongues.gd`
 
 `class_name LiquidFlameTongues` · extends `MultiMeshInstance3D` · 98 lines
@@ -914,7 +941,7 @@ extends `Node3D` · 3572 lines
 
 ### `liquid_sheet3d.gd`
 
-`class_name LiquidSheet3D` · extends `MeshInstance3D` · 208 lines
+`class_name LiquidSheet3D` · extends `MeshInstance3D` · 219 lines
 
 `godot/scripts/geometry/liquid_sheet3d.gd`
 
@@ -2962,7 +2989,7 @@ extends `Node` · 236 lines
 
 ### `fluid_plane.gd`
 
-`class_name FluidPlane` · extends `RefCounted` · 383 lines
+`class_name FluidPlane` · extends `RefCounted` · 442 lines
 
 `godot/scripts/systems/fluid_plane.gd`
 
@@ -2973,6 +3000,8 @@ extends `Node` · 236 lines
 - `ROUNDS_PER_TICK` = `24`
 - `GRATE_MIN_FLUIDITY` = `0.2`
 - `GRATE_FULL_FLUIDITY` = `0.8`
+- `MAX_CELLS` = `4096`
+- `MIN_CELL_GU` = `0.125`
 
 **Public vars**
 - `var cols: int = 0`
@@ -3382,7 +3411,7 @@ extends `Node` · 236 lines
 
 ### `liquid_fire.gd`
 
-`class_name LiquidFire` · extends `RefCounted` · 260 lines
+`class_name LiquidFire` · extends `RefCounted` · 261 lines
 
 `godot/scripts/systems/liquid_fire.gd`
 
@@ -3442,7 +3471,7 @@ extends `Node` · 236 lines
 
 ### `liquid_registry.gd`
 
-`class_name LiquidRegistry` · 193 lines
+`class_name LiquidRegistry` · 279 lines
 
 `godot/scripts/systems/liquid_registry.gd`
 
@@ -3454,6 +3483,10 @@ extends `Node` · 236 lines
 - `PARAMS` = `{ "mode": ["int", 0, 3, "which layers: 0 tint only, 1 + dots, 2 + surface (waves, foam, rings, bubbles), 3 both"], "flow_speed": ["float", 0.0, 1.5, "how fast the water (and what floats on it) travels along the flow, GU per second"], "time_scale": ["float", 0.0, 3.0, "the pace of the whole animation: 0 frozen (ice), 1 usual, 2 twice as fast"], "detail_strength": ["float", 0.0, 2.0, "how strongly dots, rings, bubbles, foam and glints read: low = soft, the bed shows through"], "wave_amount": ["float", 0.0, 2.0, "the colour bands and glints of the surface"], "ring_amount": ["float", 0.0, 2.0, "the ring ripples drifting on the surface"], "foam_amount": ["float", 0.0, 2.0, "the foam along the curbs"], "bubble_amount": ["float", 0.0, 2.0, "small bubbles on the surface: 0 none, 1 usual, 2 many"], "pop_bubbles": ["float", 0.0, 2.0, "slow bubbles that swell and burst with a ring"], "stipple_alive": ["float", 0.0, 1.0, "the dots (mode 1 or 3): HIGHER = FEWER dots; 0.42 is dense, 0.8 sparse"], "dot_cells": ["float", 4.0, 30.0, "the dots' grid per GU: lower = bigger dots"], "froth": ["float", 0.0, 1.5, "white foam patches, packed with tiny bubbles"], "scum": ["float", 0.0, 1.5, "floating clumps (algae, flesh, charred rock): how much of them"], "scum_cut": ["float", 0.3, 0.9, "clump threshold: HIGHER = sparser clumps"], "scum_scale": ["float", 1.0, 12.0, "clump size: LOWER = bigger clumps"], "junk": ["float", 0.0, 1.0, "floating rubbish (planks, cardboard, plastic, cans)"], "junk_skip": ["float", 0.0, 1.0, "HIGHER = fewer pieces of rubbish"], "oil": ["float", 0.0, 2.0, "iridescent oil slicks"], "oil_cut": ["float", 0.0, 1.0, "slick coverage: LOWER = the film covers more"], "glow": ["float", 0.0, 2.0, "slow pulsing bright patches (phosphorescence, heat)"], "caustics": ["float", 0.0, 2.0, "the sun's light network on the bed (clear shallows)"], "depth_shade": ["float", 0.0, 2.0, "the channel's depth: the curbs' shade and a deeper middle"], "crust": ["float", 0.0, 1.0, "plates covering the surface (cooled lava, ice floes): 0 none, 1 all"], "crack_scale": ["float", 1.0, 10.0, "plates per GU: HIGHER = smaller plates"], "rain": ["float", 0.0, 1.0, "rain rings on the surface (weather: any exposed water)"], "deep_color": ["color", 0.0, 1.0, "the colour of the deep part and its opacity (alpha)"], "shallow_color": ["color", 0.0, 1.0, "the colour of the shallow part and its opacity (alpha)"], "light_color": ["color", 0.0, 1.0, "foam, rings, bubbles, glints and glow"], "dirt_color": ["color", 0.0, 1.0, "the dots as specks of this colour (alpha 0 = the dots take light_color)"], "scum_color": ["color", 0.0, 1.0, "the floating clumps"], "scum_top_color": ["color", 0.0, 1.0, "the clumps' lit tops (alpha 0 = the clump colour brightened)"], "scum_rim_color": ["color", 0.0, 1.0, "a glowing rim on the clumps (alpha 0 = a dark rim)"], "crust_color": ["color", 0.0, 1.0, "the plates"], "crack_color": ["color", 0.0, 1.0, "the cracks between plates"], }`
 - `SHALLOW_VOXELS` = `2`
 - `GAMEPLAY_KEYS` = `["fluidity", "wade_ap", "swim_ap", "noise", "smell", "slippery", "exposure", "status", "marks_agent", "footprint", "flammable", "fire", "ignites", "ignites_agent", "extinguishes", "corrodes", "corrode_turns", "light", "trap", "plates", "freezes_neighbours"]`
+- `_SCALAR` = `{"fluidity": "number", "wade_ap": "number", "swim_ap": "number", "noise": "signed", "smell": "signed", "slippery": "bool", "status": "string", "marks_agent": "bool", "flammable": "bool", "ignites": "bool", "ignites_agent": "bool", "extinguishes": "bool", "corrode_turns": "number", "freezes_neighbours": "bool"}`
+- `_NESTED` = `{ "exposure": {"shallow": "number", "deep": "number", "recovery": "number"}, "footprint": {"color": "rgb", "turns": "number"}, "fire": {"speed": "number", "burn": "number", "dose_step": "number", "dose_turn": "number", "light": "light", "base": "rgb", "base_share": "number"}, "trap": {"escape_ap": "number", "sink_per_turn_when_still": "number"}, "plates": {"walkable": "bool", "break_after_turns": "number"}, "light": {"body": "light", "agent": "light"}, }`
+- `_LIGHT` = `{"radius": "number", "spacing": "number", "energy": "number", "warmth": "number", "inner": "number", "tint": "tint"}`
+- `CORRODE_TARGETS` = `["metal", "paper", "cardboard", "cloth", "floor", "curb"]`
 
 ---
 
@@ -5071,6 +5104,24 @@ extends `SceneTree` · 205 lines
 `godot/scripts/tools/liquid_fire_selftest.gd`
 
 > liquid_fire_selftest — M6 F5: a flammable liquid on fire (`LiquidFire`). Headless: `godot --headless --script res://godot/scripts/tools/liquid_fire_selftest.gd` (the arbiter is `tools/persistent/run_selftests.py --only liquid_fire_selftest`).
+
+---
+
+### `liquid_guards_selftest.gd`
+
+extends `SceneTree` · 121 lines
+
+`godot/scripts/tools/liquid_guards_selftest.gd`
+
+> M6 consolidation (2026-10-18) — the liquids' error protection: a malformed `gameplay` value is refused at load (loud, the key dropped, never a script error mid-step), and a body's plane survives bad map data (an oversized grid is cut, a zone that holds no cell and a grate off the body are said, NaN and negative numbers are neutralised), with every real liquid file loading clean. And the WATERFALL: on the real PIPE_LAB (pipe A raised over the dug channel) the water leaves the bore over a step and `FluidPlane.falls()` finds the fall at the mouth, and nowhere on a flat body.
+
+**Constants / tuning**
+- `RegistryClass` = `preload("res://godot/scripts/systems/liquid_registry.gd")`
+- `PlaneClass` = `preload("res://godot/scripts/systems/fluid_plane.gd")`
+- `FireClass` = `preload("res://godot/scripts/systems/liquid_fire.gd")`
+- `FallsClass` = `preload("res://godot/scripts/geometry/liquid_falls3d.gd")`
+- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
+- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 
 ---
 
@@ -6705,7 +6756,7 @@ extends `RefCounted` · 319 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 692 lines
+`class_name MapCompiler` · extends `RefCounted` · 701 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -6819,7 +6870,7 @@ extends `RefCounted` · 319 lines
 
 ### `room.gd`
 
-extends `Node2D` · 13040 lines
+extends `Node2D` · 13045 lines
 
 `godot/scripts/world/room.gd`
 
@@ -6829,6 +6880,7 @@ extends `Node2D` · 13040 lines
 - `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
 - `LiquidRegistryRef` = `preload("res://godot/scripts/systems/liquid_registry.gd")`
 - `LiquidSheet3DRef` = `preload("res://godot/scripts/geometry/liquid_sheet3d.gd")`
+- `LiquidFalls3DRef` = `preload("res://godot/scripts/geometry/liquid_falls3d.gd")`
 - `LiquidFieldRef` = `preload("res://godot/scripts/systems/liquid_field.gd")`
 - `LiquidExposureRef` = `preload("res://godot/scripts/systems/liquid_exposure.gd")`
 - `FootprintMarks3DRef` = `preload("res://godot/scripts/geometry/footprint_marks3d.gd")`

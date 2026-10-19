@@ -89,12 +89,98 @@ static func reload() -> void:
 			push_error("[%s] %s: `gameplay` must be an object; ignored" % [OWNER, path])
 			load_errors.append(path)
 			gameplay = {}
-		for key: String in gameplay:
-			if not GAMEPLAY_KEYS.has(key):
-				var message: String = "[%s] %s: unknown gameplay key '%s' (known: %s)" % [OWNER, path, key, ", ".join(GAMEPLAY_KEYS)]
-				push_error(message)
-				load_errors.append(message)
-		_rows[id] = {"note": String(row.get("note", "")), "params": params, "gameplay": gameplay}
+		_rows[id] = {"note": String(row.get("note", "")), "params": params, "gameplay": check_gameplay(gameplay as Dictionary, path, load_errors)}
+
+
+## THE RULES' SHAPE (consolidation, 2026-10-18): every reader of a `gameplay` block casts what it reads (`gameplay["exposure"] as Dictionary`, a footprint's
+## colour as three numbers), so a value of the wrong shape was a SCRIPT ERROR in the middle of a step, far from the file. Each key is checked here, once,
+## at load: a malformed one is loud (path, key, what it needs) and DROPPED, so the liquid behaves as if the file did not set it.
+const _SCALAR: Dictionary = {"fluidity": "number", "wade_ap": "number", "swim_ap": "number", "noise": "signed", "smell": "signed", "slippery": "bool",
+	"status": "string", "marks_agent": "bool", "flammable": "bool", "ignites": "bool", "ignites_agent": "bool", "extinguishes": "bool",
+	"corrode_turns": "number", "freezes_neighbours": "bool"}
+## A nested block: key -> {field: kind}; a field it does not name is loud too. "number" fields must be >= 0.
+const _NESTED: Dictionary = {
+	"exposure": {"shallow": "number", "deep": "number", "recovery": "number"},
+	"footprint": {"color": "rgb", "turns": "number"},
+	"fire": {"speed": "number", "burn": "number", "dose_step": "number", "dose_turn": "number", "light": "light", "base": "rgb", "base_share": "number"},
+	"trap": {"escape_ap": "number", "sink_per_turn_when_still": "number"},
+	"plates": {"walkable": "bool", "break_after_turns": "number"},
+	"light": {"body": "light", "agent": "light"},
+}
+const _LIGHT: Dictionary = {"radius": "number", "spacing": "number", "energy": "number", "warmth": "number", "inner": "number", "tint": "tint"}
+const CORRODE_TARGETS: PackedStringArray = ["metal", "paper", "cardboard", "cloth", "floor", "curb"]
+
+
+static func check_gameplay(raw: Dictionary, where: String, errors: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for key: String in raw:
+		var value: Variant = raw[key]
+		var problem: String = ""
+		if value == null and GAMEPLAY_KEYS.has(key):
+			continue    ## `null` says "none" (quicksand leaves no footprint): the key is simply not set
+		if not GAMEPLAY_KEYS.has(key):
+			problem = "unknown gameplay key (known: %s)" % ", ".join(GAMEPLAY_KEYS)
+		elif _SCALAR.has(key):
+			problem = _field_problem(value, String(_SCALAR[key]))
+		elif key == "corrodes":
+			if not (value is Array):
+				problem = "needs a list of %s" % ", ".join(CORRODE_TARGETS)
+			else:
+				for item: Variant in value:
+					if not (item is String) or not CORRODE_TARGETS.has(String(item)):
+						problem = "'%s' is not one of %s" % [str(item), ", ".join(CORRODE_TARGETS)]
+		elif _NESTED.has(key):
+			problem = _block_problem(value, _NESTED[key])
+		if problem != "":
+			var message: String = "[%s] %s: gameplay '%s' = %s: %s; the key is dropped" % [OWNER, where, key, str(value), problem]
+			push_error(message)
+			errors.append(message)
+			continue
+		out[key] = value
+	return out
+
+
+static func _block_problem(value: Variant, fields: Dictionary) -> String:
+	if not (value is Dictionary):
+		return "needs an object with %s" % ", ".join(fields.keys())
+	for field: String in value:
+		if not fields.has(field):
+			return "unknown field '%s' (known: %s)" % [field, ", ".join(fields.keys())]
+		var problem: String = ""
+		var kind: String = String(fields[field])
+		if kind == "light":
+			problem = _block_problem(value[field], _LIGHT)
+		else:
+			problem = _field_problem(value[field], kind)
+		if problem != "":
+			return "'%s' %s" % [field, problem]
+	return ""
+
+
+static func _field_problem(value: Variant, kind: String) -> String:
+	match kind:
+		"number":
+			if not (value is float or value is int) or not is_finite(float(value)) or float(value) < 0.0:
+				return "needs a number >= 0"
+		"signed":   ## a noise or a smell may be negative: mud MUFFLES a step
+			if not (value is float or value is int) or not is_finite(float(value)):
+				return "needs a number"
+		"bool":
+			if not (value is bool):
+				return "needs true or false"
+		"string":
+			if not (value is String):
+				return "needs a text"
+		"tint":
+			if not (value is String) or not (String(value) in ["warm", "cool"]):
+				return "needs \"warm\" or \"cool\""
+		"rgb":
+			if not (value is Array) or (value as Array).size() < 3:
+				return "needs [r, g, b] in 0..1"
+			for c: Variant in value:
+				if not (c is float or c is int) or float(c) < 0.0 or float(c) > 1.0:
+					return "needs [r, g, b] in 0..1"
+	return ""
 
 
 static func ids() -> PackedStringArray:

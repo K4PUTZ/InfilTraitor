@@ -8,6 +8,7 @@ const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.g
 ## before the global class cache exists in a headless lint run.
 const LiquidRegistryRef = preload("res://godot/scripts/systems/liquid_registry.gd")  ## M6: the liquids a map may place
 const LiquidSheet3DRef = preload("res://godot/scripts/geometry/liquid_sheet3d.gd")  ## M6: the sheet of one body of liquid
+const LiquidFalls3DRef = preload("res://godot/scripts/geometry/liquid_falls3d.gd")  ## M6: the waterfalls of a body (consolidation, 2026-10-18)
 const LiquidFieldRef = preload("res://godot/scripts/systems/liquid_field.gd")  ## M6: which liquid stands in a cell, and how deep
 const LiquidExposureRef = preload("res://godot/scripts/systems/liquid_exposure.gd")  ## M6: what a liquid does to an agent
 const FootprintMarks3DRef = preload("res://godot/scripts/geometry/footprint_marks3d.gd")  ## M6: the prints left after a liquid
@@ -9534,6 +9535,9 @@ func _attach_liquids(live: Node3D) -> void:
 				_liquid_tongues.append(null)
 		if plane != null:
 			sheet.snap()
+			var falls: MeshInstance3D = LiquidFalls3DRef.new()   ## the waterfalls wherever this body flows over a step (a child: it goes with the sheet)
+			sheet.add_child(falls)
+			falls.setup(plane, base_y - plane.dig * unit, params)
 		_liquid_sheets.append(sheet)
 	if auto_tick > 0.0:
 		var turn_timer := Timer.new()    ## dev: the liquids' own turn (fire, water, flow) in real time, as the game's turn would run it
@@ -9564,7 +9568,8 @@ func _attach_liquids(live: Node3D) -> void:
 			var xy: PackedStringArray = pair.split(",")
 			if xy.size() == 2:
 				path.append(Vector2i(int(xy[0]), int(xy[1])) + origin)
-		if not path.is_empty():
+		path.push_front(agent.cell)   ## `move_along_path` takes the agent's own cell first (it skips it): a dev path names only where to go
+		if path.size() >= 2:          ## a path of one cell never moves, and `move_finished` would never come
 			agent.move_along_path(path)
 			await agent.move_finished
 			var report: String = "[Liquids] walk done: dose %.2f, %d print(s) on the floor, AP left %d" % [_liquid_dose, _footprints.count() if _footprints != null else -1, turn_manager.current_ap]

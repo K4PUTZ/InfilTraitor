@@ -1,0 +1,25 @@
+{
+  "id": "pipe_piece_raised",
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "max_size": [
+    1.6,
+    1.6,
+    2.2
+  ],
+  "mesh_tier": 0,
+  "gameplay": {
+    "cover": "half",
+    "destructible": true
+  },
+  "default_model": "pipe_n_hi_00",
+  "generic_material": "steel_plate_rust",
+  "budget": {
+    "max_claims": 700,
+    "max_materials": 4
+  }
+}

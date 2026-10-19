@@ -261,7 +261,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		var fluid_raw = body.get("fluid", null)
 		var fluid: Dictionary = {}
 		if fluid_raw is Dictionary:
-			fluid = {"cell": maxf(float(fluid_raw.get("cell", 0.25)), 0.125), "rim": float(fluid_raw.get("rim", 2.0)), "dig": maxf(float(fluid_raw.get("dig", 0.0)), 0.0), "fill": maxf(float(fluid_raw.get("fill", 0.0)), 0.0),
+			fluid = {"cell": maxf(float(fluid_raw.get("cell", 0.25)), 0.125), "rim": clampf(float(fluid_raw.get("rim", 2.0)), 0.0, 8.0), "dig": maxf(float(fluid_raw.get("dig", 0.0)), 0.0), "fill": maxf(float(fluid_raw.get("fill", 0.0)), 0.0),
 				"walls": [], "grounds": [], "roofs": [], "sources": [], "sinks": [], "grates": []}
 			for kind_key: String in ["walls", "grounds", "roofs", "sources", "sinks"]:
 				for entry in fluid_raw.get(kind_key, []):
@@ -284,6 +284,15 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 				(fluid["grates"] as Array).append({"axis": axis, "at": float(grate[axis]) + float(offset.x if axis == "x" else offset.y)})
 		liquid_instances.append({"fluid": fluid, "rect": rect, "kind": liquid_kind, "flow": flow, "rain": clampf(float(body.get("rain", 0.0)), 0.0, 1.0),
 			"overrides": (body.get("overrides", {}) as Dictionary) if body.get("overrides", {}) is Dictionary else {}})
+
+	## Two bodies may share an edge (lava beside oil in one pit), never cells: `LiquidField` answers the FIRST body holding a cell, so an overlap would make
+	## the second one's rules silently unreachable there (consolidation, 2026-10-18).
+	for a in range(liquid_instances.size()):
+		for b in range(a + 1, liquid_instances.size()):
+			var shared: Rect2 = (liquid_instances[a]["rect"] as Rect2).intersection(liquid_instances[b]["rect"])
+			if shared.size.x > 0.01 and shared.size.y > 0.01:
+				push_warning("[MapCompiler] liquids: bodies %d (%s) and %d (%s) overlap over %s: the cells there answer only body %d's rules"
+						% [a, liquid_instances[a]["kind"], b, liquid_instances[b]["kind"], shared, a])
 
 	## --- ground_scatter (R3D-SURFACES SM-2): zones in raw GU (the buffer applied, like every position); expanded later, in `GroundScatter` ---
 	var ground_scatter_items: Array = []

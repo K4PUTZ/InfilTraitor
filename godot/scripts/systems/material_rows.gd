@@ -82,3 +82,51 @@ static func _merged(id: String, raw: Dictionary, owner: String, errors: Array) -
 static func _fail(errors: Array, message: String) -> void:
 	push_error(message)
 	errors.append(message)
+
+## Give every secondary the entry of its primary in `table` (a Dictionary keyed by material id, or an Array[String] of ids). An entry a secondary
+## already has is its own and is kept. Returns the entries added.
+static func alias_secondaries(table) -> int:
+	var added: int = 0
+	var primaries: Dictionary = primary_map()
+	for sid: String in primaries:
+		var primary: String = primaries[sid]
+		if primary == sid:
+			continue
+		if table is Dictionary:
+			if not (table as Dictionary).has(sid) and (table as Dictionary).has(primary):
+				table[sid] = table[primary]
+				added += 1
+		elif table is Array:
+			if (table as Array).has(primary) and not (table as Array).has(sid):
+				(table as Array).append(sid)
+				added += 1
+	return added
+
+
+static var _primary_cache: Dictionary = {}
+static var _primary_loaded: bool = false
+
+
+## id -> primary for every row of both tiers (a primary maps to itself). Read once, quietly: the registries already reported a bad row.
+static func primary_map() -> Dictionary:
+	if _primary_loaded:
+		return _primary_cache
+	_primary_loaded = true
+	var quiet: Array = []
+	var raw: Dictionary = read_tier("res://ASSETS/materials", "MaterialRows", quiet)
+	raw.merge(read_tier("user://materials", "MaterialRows", quiet), true)
+	for id: String in raw:
+		var primary: String = id
+		var seen: Dictionary = {id: true}
+		var next: String = String((raw[id] as Dictionary).get("inherits", ""))
+		while not next.is_empty() and raw.has(next) and not seen.has(next):
+			seen[next] = true
+			primary = next
+			next = String((raw[next] as Dictionary).get("inherits", ""))
+		_primary_cache[id] = primary
+	return _primary_cache
+
+
+## The primary of a material id (itself for a primary or an unknown id). For a behaviour asked by name (`== "metal"`), never for its texture.
+static func primary_of(id: String) -> String:
+	return String(primary_map().get(id, id))

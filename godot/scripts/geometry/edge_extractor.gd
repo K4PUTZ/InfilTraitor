@@ -9,11 +9,12 @@ const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd
 ## cell) and drops the inner layer; a block or divider can ask for the other with `side: "inner"` (the layer stays in its own GU). The designer's call,
 ## never forced. A wall of one of these materials in a framed element (a window) sits in the INNER GU: that is the panel's own authored cell.
 ## Plywood (madeirite) joined them on 2026-10-14 (Director: "teto e paredes"); a roof of any of them is one layer too (`RoomBuilder`).
+const MaterialRowsRef = preload("res://godot/scripts/systems/material_rows.gd")
 const THIN_MATERIALS: Array[String] = ["cardboard", "fabric", "plywood"]
 
 
 static func is_thin_material(material: String) -> bool:
-	return GlassMaterials.is_glass(material) or THIN_MATERIALS.has(material)
+	return GlassMaterials.is_glass(material) or THIN_MATERIALS.has(MaterialRowsRef.primary_of(material))   ## a secondary of a thin material is thin
 
 
 ## Mapping from wall tile suffix to face direction (DIRECTION_GLOSSARY §6)

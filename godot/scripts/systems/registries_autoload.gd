@@ -17,6 +17,8 @@
 
 extends Node
 
+const SecondaryTablesRef = preload("res://godot/scripts/systems/secondary_tables.gd")
+
 const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
 const PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")
 const BombRegistryClass = preload("res://godot/scripts/systems/destruction/bomb_registry.gd")
@@ -38,6 +40,7 @@ var _file_map_source_ref: WeakRef = null
 
 func _ready() -> void:
 	print("[Registries] Autoload initialized")
+	SecondaryTablesRef.apply()   ## secondary materials answer the behaviour tables as their primaries (MATERIALS_MASTER_PLAN §2b)
 
 
 ## Ensure material registry exists and is initialized

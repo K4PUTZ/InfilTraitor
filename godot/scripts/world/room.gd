@@ -13,6 +13,7 @@ const LiquidExposureRef = preload("res://godot/scripts/systems/liquid_exposure.g
 const FootprintMarks3DRef = preload("res://godot/scripts/geometry/footprint_marks3d.gd")  ## M6: the prints left after a liquid
 const LiquidFlameTonguesRef = preload("res://godot/scripts/geometry/liquid_flame_tongues.gd")  ## M6 F5: tongues of flame
 const LiquidFlamesRef = preload("res://godot/scripts/geometry/liquid_flames.gd")  ## M6 F5: the flame balls of a burning liquid
+const MaterialRowsRef = preload("res://godot/scripts/systems/material_rows.gd")  ## secondary materials: a behaviour asked by name asks the primary
 const LiquidFireLightsRef = preload("res://godot/scripts/systems/liquid_fire_lights.gd")  ## M6 F5: the lights a burning body gives the field
 const LiquidFireRef = preload("res://godot/scripts/systems/liquid_fire.gd")  ## M6 F5: a flammable liquid on fire
 const FluidPlaneRef = preload("res://godot/scripts/systems/fluid_plane.gd")  ## M6: the gameplay truth of a body of liquid
@@ -6710,7 +6711,7 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 		carved_side: int = Voxel.CarvedSide.NONE, shooter_gu: Vector2i = NO_SHOOTER, dust_chance: float = -1.0, chips_mult: float = 1.0) -> void:
 	if _voxel_board == null or _smoke_spark_overlay == null or _debris_overlay == null:
 		return
-	var profile: Dictionary = vfx_impact_profiles.get(material_id, {})
+	var profile: Dictionary = vfx_impact_profiles.get(material_id, vfx_impact_profiles.get(MaterialRowsRef.primary_of(material_id), {}))   ## a secondary throws its primary's effects unless it has a row
 	if profile.is_empty():
 		return
 	var origin: Vector2 = _voxel_board.voxel_world_position(grid_pos, level)
@@ -6732,7 +6733,7 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 		var jittered: int = maxi(1, int(round(float(spark_count) * randf_range(
 			1.0 - vfx_impact_spark_jitter, 1.0 + vfx_impact_spark_jitter))))
 		_smoke_spark_overlay.add_sparks(origin, jittered,
-			vfx_metal_spark_color if material_id == "metal" else vfx_stone_spark_color,
+			vfx_metal_spark_color if MaterialRowsRef.primary_of(material_id) == "metal" else vfx_stone_spark_color,
 			vfx_surface_spark_speed_scale, vfx_surface_spark_duration_scale, floor_pos, anchor_3d,
 			_impact_spray_dir(grid_pos, level, carved_side, shooter_gu), deg_to_rad(vfx_impact_spray_cone_deg))
 	if bool(profile.get("smoke", false)):
@@ -6832,16 +6833,16 @@ func _dispatch_destruction_vfx(grid_pos: Vector2i, level: int, material_id: Stri
 	_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id),
 		1.0, 1.0, 0, 1.0, 0.0, floor_pos)
 
-	if vfx_dust_materials.has(material_id) and randf() < vfx_dust_chance:
+	if vfx_dust_materials.has(MaterialRowsRef.primary_of(material_id)) and randf() < vfx_dust_chance:
 		var dust_color: Color = _vfx_material_base_color(material_id)
 		_debris_overlay.add_dust(origin, floor_pos, dust_color)
 
-	if material_id == "metal" and randf() < vfx_spark_chance:
+	if MaterialRowsRef.primary_of(material_id) == "metal" and randf() < vfx_spark_chance:
 		_smoke_spark_overlay.add_sparks(origin, randi_range(vfx_metal_spark_count_min, vfx_metal_spark_count_max), vfx_metal_spark_color, 1.0, 1.0, floor_pos)
-	elif material_id == "stone" and randf() < vfx_spark_chance:
+	elif MaterialRowsRef.primary_of(material_id) == "stone" and randf() < vfx_spark_chance:
 		_smoke_spark_overlay.add_sparks(origin, vfx_stone_spark_count, vfx_stone_spark_color, 1.0, 1.0, floor_pos)
 
-	if material_id == "wood" and randf() < vfx_chip_chance:
+	if MaterialRowsRef.primary_of(material_id) == "wood" and randf() < vfx_chip_chance:
 		var wood_color: Color = _vfx_material_base_color(material_id)
 		_debris_overlay.add_chips(origin, floor_pos, randi_range(vfx_chip_count_min, vfx_chip_count_max), wood_color)
 
@@ -6871,10 +6872,10 @@ func spawn_prop_shatter(cell: Vector2i, level: int, material_id: String, fragmen
 	_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id), 1.0, 1.0, 0, 1.0, 0.0, floor_pos)
 	_debris_overlay.add_dust(origin, floor_pos, tint)
 	_debris_overlay.add_chips(origin, floor_pos, fragment_count, tint)
-	if material_id == "metal":
+	if MaterialRowsRef.primary_of(material_id) == "metal":
 		_smoke_spark_overlay.add_sparks(origin, randi_range(vfx_metal_spark_count_min, vfx_metal_spark_count_max),
 			vfx_metal_spark_color, 1.0, 1.0, floor_pos)
-	elif material_id == "stone":
+	elif MaterialRowsRef.primary_of(material_id) == "stone":
 		_smoke_spark_overlay.add_sparks(origin, vfx_stone_spark_count, vfx_stone_spark_color, 1.0, 1.0, floor_pos)
 	## Ground debris (goal 7): several small, scattered, rotated pieces around the break point —
 	## Director, 2026-09-28: not one mark sized to a whole cell, and free to land across a GU or
@@ -6965,7 +6966,7 @@ func _place_debris_piece(id: String, center: Vector2, level: int, material_id: S
 ## The debris art's tint: the material colour, darkened per material, then by the soot tone of the cell it lies on
 ## (`_soot_map`, base-keyed, the ground plane's own level) — proximity to the blast, the same model a wall follows.
 func _debris_tint(tint: Color, voxel_point: Vector2, material_id: String) -> Color:
-	var k: float = float(DEBRIS_TINT_SCALE.get(material_id, 1.0))
+	var k: float = float(DEBRIS_TINT_SCALE.get(MaterialRowsRef.primary_of(material_id), 1.0))
 	var cell := Vector2i(floori(voxel_point.x), floori(voxel_point.y))
 	var base_xy := cell
 	var soot_level: Dictionary = _soot_map.get(_voxel_board.ground_plane_level() - 1, {})
@@ -8282,7 +8283,7 @@ func blast_debris_palette() -> Dictionary:
 		palette["dust:%s" % material_id] = base
 		palette["chips:%s" % material_id] = base
 		palette["sparks:%s" % material_id] = \
-			vfx_metal_spark_color if material_id == "metal" else vfx_stone_spark_color
+			vfx_metal_spark_color if MaterialRowsRef.primary_of(material_id) == "metal" else vfx_stone_spark_color
 	return palette
 
 
@@ -8291,7 +8292,7 @@ func blast_debris_palette() -> Dictionary:
 ## read as light smoke, per the Director's request.
 func _vfx_smoke_color_for_material(material_id: String) -> Color:
 	var base: Color = _vfx_material_base_color(material_id)
-	var darken: float = vfx_smoke_darken_wood if material_id == "wood" else vfx_smoke_darken_default
+	var darken: float = vfx_smoke_darken_wood if MaterialRowsRef.primary_of(material_id) == "wood" else vfx_smoke_darken_default
 	var smoke: Color = base.darkened(darken)
 	smoke.a = vfx_smoke_alpha
 	return smoke

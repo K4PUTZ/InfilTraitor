@@ -1,6 +1,6 @@
 # INFILTRAITOR — Documentation Index
 
-> Turn-based stealth tactics. Isometric voxels, Godot 4.6, GDScript, mobile-first. The board is drawn in Godot 3D over a packed voxel store; the 2D `TileMapLayer` board was deleted at R3D-END (2026-09-25) — [`RENDER3D_MASTER_PLAN`](../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md).
+> Turn-based stealth tactics. Isometric voxels, Godot 4.7, GDScript, mobile-first. The board is drawn in Godot 3D over a packed voxel store; the 2D `TileMapLayer` board was deleted at R3D-END (2026-09-25) — [`RENDER3D_MASTER_PLAN`](../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md).
 >
 > **Renamed:** `VoxelRenderer` is now **`VoxelBoard`** (R3D-END END-6) and its `render*()` methods are `register_*()`; older dated records, audits and session summaries keep the old names (`DIRECTION_GLOSSARY` §10 maps every retired name to its replacement).
 

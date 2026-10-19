@@ -1,8 +1,9 @@
 # PERFORMANCE_BUDGET_MASTER_PLAN
 ## One content, many phones: the memory and time budget a segment has to fit — v0.3 (PB-0/1 ratified, PB-2 attributed and acted on)
 
-> ⏭️ **2026-10-19 — GODOT 4.7.2 EVALUATED (Director: "ainda é bom ter a última versão"); the switch waits for the Director.** 4.7.2 is
-> installed BESIDE 4.6.1 (`/Applications/Godot_4.7.2.app`, templates `4.7.2.stable`, SHA-512 checked); the project was evaluated on a
+> ⏭️ **2026-10-19 — GODOT 4.7.2: EVALUATED, THEN THE PROJECT SWITCHED (Director: "ainda é bom ter a última versão"; "pode trocar").**
+> `/Applications/Godot.app` is 4.7.2 (templates `4.7.2.stable`, SHA-512 checked); 4.6.1 is kept as `/Applications/Godot_4.6.1.app`, and
+> `project.godot` says `4.7`. Every device baseline in this plan was taken on 4.6.1; the A/B below says they still hold. The project was evaluated on a
 > copy (`../INFILTRAITOR_G472`, tools pointed at 4.7.2, no git remote), never on this tree. **Desktop:** import 47 s, 0 errors (tangent
 > warnings on some `.glb` cones / cylinders); lint, selftests, `worker_typing_check`, smoke on PLAYGROUND / GLASS / MARKET_LAB / PIPE_LAB
 > / LIQUIDS_LAB / ROOF_LAB / SEG_HEAVY, and **`verify.py full` green against a 4.6.1 baseline** (every boot gate, the board-state probe,
@@ -16,8 +17,10 @@
 > **Found on the way, not fixed:** `pb3_study.py` / `gen_segment_map.py` produce segment maps that FAIL TO LOAD since PLAYGROUND gained
 > `capture` rails and takes (2026-10-13/16): `gen_segment_map.py` inherits every PLAYGROUND section (line 154) but replaces `layout`, so the
 > takes name anchors (`@wood_wall` ...) the segment does not have, `FileMapSource` refuses the map and the handset boots an EMPTY room
-> that reads 31 draws / 1.3 ms GPU / PSS ~380 MiB, a number that looks like a measurement. Fix: do not inherit `capture` (one line);
-> until then every SEG_* device row after 2026-10-13 is void.
+> that reads 31 draws / 1.3 ms GPU / PSS ~380 MiB, a number that looks like a measurement. Fix: do not inherit `capture` (one line).
+> The five `maps/SEG_*.map.json` on disk (git-ignored, written 2026-10-09/10, before PLAYGROUND had a `capture` section) still load;
+> only a map written since 2026-10-13 is broken. **Do not run `pb3_study.py --write` until the fix lands:** on 2026-10-19 it replaced the
+> five with 25 broken ones and `map_layout_selftest` (every map loads) failed; the five were restored from a copy.
 
 > ⏭️ **2026-10-19 — THE PARALLEL LOAD HAD A CRASH IN IT: Godot 4.6.1's `OPCODE_OPERATOR` race (closes the "intermittent `propagate_notification()` + exit -6" item of `PROMPTS/RESUMO_SESSAO_2026-10-19_LIQUIDS_CLOSED.md`).**
 > **The symptom was a decoy.** `ERROR: /root: The caller thread can't call the function propagate_notification()` is what Godot's crash handler

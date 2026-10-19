@@ -735,7 +735,7 @@ func _lamp_term(gu: Vector2i, level: int, top_bucket: int) -> Vector3:
 	if not _lights.is_empty():
 		intensity = ambient_intensity
 		## ⚠️ TYPED ON PURPOSE: this runs on the WorkerThreadPool, one level per task (`buckets_for_level()`). An operator on an
-		## UNTYPED value compiles to `OPCODE_OPERATOR`, which patches its own bytecode on its first run, and in Godot 4.6.1 a second
+		## UNTYPED value compiles to `OPCODE_OPERATOR`, which patches its own bytecode on its first run, and in Godot 4.6.1 and 4.7.2 a second
 		## thread can read that half-written patch and call a NULL evaluator (the `propagate_notification()` + exit -6 crash at map load,
 		## 2026-10-19; `MATERIALS_MASTER_PLAN` §M6 stability). Typed operands compile to `OPCODE_OPERATOR_VALIDATED`, which never patches.
 		for light: LightSource in _lights:

@@ -14,7 +14,7 @@ config/name="INFILTRAITOR"
 config/description="Mobile turn-based stealth tactics — Godot 4 isometric 2.5D"
 config/version="0.1.0-pre-alpha"
 run/main_scene="res://godot/scenes/game/room.tscn"
-config/features=PackedStringArray("4.6", "Mobile")
+config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://icon.svg"
 
 [autoload]

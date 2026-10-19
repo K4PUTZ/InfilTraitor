@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 ##
-## project_lint.py — Whole-project GDScript compile check (Godot 4.6.1)
+## project_lint.py — Whole-project GDScript compile check (Godot 4.7.2 since 2026-10-19)
 ## Runs the validator script and reports compile/parse errors.
 ##
 ## Known headless limitation (handled here): Godot in `--script` mode does not
@@ -23,7 +23,7 @@ import re
 import time
 
 def find_godot_binary():
-    """Locate the Godot 4.6.1 binary"""
+    """Locate the Godot binary (4.7.2 since 2026-10-19)"""
     candidates = [
         "/Applications/Godot.app/Contents/MacOS/Godot",
         "/usr/bin/godot",

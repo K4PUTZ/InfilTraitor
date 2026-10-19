@@ -2,7 +2,7 @@
 ##
 ## worker_typing_check.py — no operator on an UNTYPED value in GDScript that runs on a worker thread (2026-10-19)
 ##
-## WHY. Godot 4.6.1 compiles an operator whose operand the compiler cannot type to `OPCODE_OPERATOR`, which on its FIRST run
+## WHY. Godot 4.6.1 and 4.7.2 (upstream `master` too, checked 2026-10-19: the opcode code is identical) compile an operator whose operand the compiler cannot type to `OPCODE_OPERATOR`, which on its FIRST run
 ## patches its own bytecode (signature, then return type, then the evaluator pointer) under a mutex its fast path does not take. A
 ## second thread running the same instruction at that moment reads the new signature and calls the pointer before it is written:
 ## a NULL call, a crash on the worker, and the decoy line `ERROR: /root: ... propagate_notification()` (the crash handler notifying

@@ -84,7 +84,7 @@ def steps_for(tier: str, have_baseline: bool):
         ("codemap", False, sh("gen_codemap.py", "--check")),
         ("surfaces", False, sh("check_surface.py", "--declared")),
         ("segment-budget", False, sh("segment_budget.py")),
-        ("worker-typing", False, sh("worker_typing_check.py")),   ## no untyped operator in code a worker thread runs (Godot 4.6.1 race, 2026-10-19)
+        ("worker-typing", False, sh("worker_typing_check.py")),   ## no untyped operator in code a worker thread runs (Godot 4.6.1 / 4.7.2 race, 2026-10-19)
         ("selftests", False, sh("run_selftests.py")),
     ]
     if tier == "docs":

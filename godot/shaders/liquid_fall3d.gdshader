@@ -34,12 +34,12 @@ void fragment() {
 	float t = TIME * time_scale;
 	vec4 col;
 	if (splash > 0.5) {
-		// the splash: a ring of foam that breathes, broken by noise, fading at its rim
+		// the splash: soft churning foam, densest where the water lands and feathered to nothing at its edge (neighbouring quads overlap into one band)
 		vec2 q = UV * 2.0 - 1.0;
-		float r = length(q);
-		float ring = smoothstep(1.0, 0.55, r) * (0.55 + 0.45 * sin(t * 7.0 - r * 9.0));
-		float speck = step(0.5, vnoise(q * 9.0 + vec2(t * 1.3, -t * 0.9)));
-		col = vec4(mix(mix(deep_color.rgb, body_color.rgb, 0.45), light_color.rgb, 0.7), ring * (0.35 + 0.5 * speck));
+		float r = length(q * vec2(0.8, 1.0));
+		float soft = smoothstep(1.0, 0.15, r);
+		float churn = vnoise(q * 5.0 + vec2(t * 1.1, -t * 1.7)) * 0.6 + vnoise(q * 11.0 - vec2(t * 2.3, t * 0.7)) * 0.4;
+		col = vec4(mix(mix(deep_color.rgb, body_color.rgb, 0.45), light_color.rgb, 0.65), soft * smoothstep(0.3, 0.8, churn) * 0.7);
 	} else {
 		// the curtain: vertical streaks scrolling down, thinner and more broken as they fall; a pale lip; froth at the foot
 		float y = UV.y;
@@ -49,12 +49,14 @@ void fragment() {
 		float broken = mix(1.0, smoothstep(0.35, 0.6, vnoise(vec2(lane * 1.7, y * 4.0 - t * fall_speed * 1.2))), y * 0.6);
 		float sides = smoothstep(0.0, 0.06, UV.x) * smoothstep(1.0, 0.94, UV.x);   // only the ends of a whole curtain fade
 		vec3 water = mix(deep_color.rgb, body_color.rgb, 0.45);
-		vec3 rgb = mix(water, light_color.rgb, body * 0.28 + smoothstep(0.12, 0.0, y) * 0.2);
+		vec3 rgb = mix(water, light_color.rgb, body * 0.28);
 		float a = mix(max(body_color.a, deep_color.a), 0.92, body * 0.5) * broken;
-		float froth = smoothstep(0.78, 1.0, y) * (0.6 + 0.4 * vnoise(vec2(lane * 3.0, t * 4.0)));
-		rgb = mix(rgb, light_color.rgb, froth * 0.85);
-		a = max(a, froth * 0.9);
-		col = vec4(rgb, a * sides);
+		float froth = smoothstep(0.62, 0.9, y) * (0.6 + 0.4 * vnoise(vec2(lane * 3.0, t * 4.0)));
+		rgb = mix(rgb, light_color.rgb, froth * 0.75);
+		a = max(a, froth * 0.75);
+		// FEATHERED ends: the curtain grows out of the water upstream (UV.y < 0 lies back over it) and its foot fades into the froth and the water below
+		float feather = smoothstep(-0.15, 0.12, y) * (1.0 - smoothstep(0.8, 1.0, y) * 0.85);
+		col = vec4(rgb, a * sides * feather);
 	}
 	ALBEDO = col.rgb;
 	ALPHA = clamp(col.a * amount, 0.0, 1.0);

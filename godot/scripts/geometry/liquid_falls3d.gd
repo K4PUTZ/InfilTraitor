@@ -12,13 +12,20 @@ const THROW_GU: float = 0.06           ## how far the jet leaves the lip before 
 const SPLASH_GU: float = 0.42          ## the foam ring's size
 const FLOW_FULL: float = 0.12          ## the flow (voxels a round) that draws a full curtain; less is thinner
 const SURFACE_LIFT: float = 0.01       ## the splash just over the sheet
+## FEATHERED ENDS (Director, 2026-10-18: "um feather ou um blur nessas regioes de transicao"): the curtain starts LIP_BACK_GU back over the water upstream
+## (an extra row at UV.y = -LIP_UV, where the shader starts it transparent) and ends SINK_GU under the surface below, its foot fading into the froth.
+const LIP_BACK_GU: float = 0.1
+const LIP_UV: float = 0.15
+const SINK_GU: float = 0.03
 
 ## STEAM where the curtain lands (Director, 2026-10-18: "uma fumacinha (vapor) onde a cortina atinge o container"): pale puffs through the room's
 ## `SmokeSparkOverlay`, anchored in 3D at the splash, a few a second a curtain, more as more falls.
-const STEAM: Color = Color(0.93, 0.95, 0.98, 0.34)
-const STEAM_PER_SECOND: float = 9.0     ## puffs a second for a full curtain edge
-const STEAM_SCALE: float = 1.0
-const STEAM_STYLE: Dictionary = {"growth": 1.7, "damp": 1.6, "fade_in": 0.25}   ## a soft mist that swells and lingers low, not a puff that shoots up
+## Director, 2026-10-18: "nao precisa de tanto vapor: e so uma lembranca, no local onde a cortina entra em contato com a pelicula de baixo, pra disfarcar a
+## transicao": a few faint, small puffs that stay low on the contact line.
+const STEAM: Color = Color(0.93, 0.95, 0.98, 0.2)
+const STEAM_PER_SECOND: float = 2.5     ## puffs a second for a full curtain edge
+const STEAM_SCALE: float = 0.6
+const STEAM_STYLE: Dictionary = {"growth": 1.4, "damp": 3.5, "fade_in": 0.2}   ## swells a little and hardly rises
 
 var plane: RefCounted = null
 var smoke: Node = null                 ## the room's SmokeSparkOverlay (or null: no steam)
@@ -65,7 +72,7 @@ func _steam(delta: float) -> void:
 		var landing: Array = _landings[randi() % _landings.size()]
 		var along: Vector3 = landing[2]
 		var at: Vector3 = (landing[0] as Vector3) + along * randf_range(-0.5, 0.5) + Vector3(randf_range(-0.08, 0.08), 0.03, randf_range(-0.08, 0.08))
-		smoke.add_smoke(Vector2.ZERO, STEAM, STEAM_SCALE * randf_range(0.7, 1.3), randf_range(0.7, 1.2), 2, 0.4, 0.0, Vector2.ZERO, at, STEAM_STYLE)
+		smoke.add_smoke(Vector2.ZERO, STEAM, STEAM_SCALE * randf_range(0.7, 1.2), randf_range(0.6, 0.9), 1, 0.25, 0.0, Vector2.ZERO, at, STEAM_STYLE)
 
 
 ## The falls joined into CHAINS: neighbouring edges on one line, falling the same way, are one curtain (a mouth 1.5 GU wide is one sheet of water, not
@@ -145,16 +152,19 @@ func _add_curtain(chain: Array, verts: PackedVector3Array, uvs: PackedVector2Arr
 		columns[columns.size() - 1]["p"] = (columns.back()["p"] as Vector2) - line * last_in
 	var first: int = verts.size()
 	var width: int = columns.size()
-	for s in range(SEGMENTS + 1):
-		var u: float = float(s) / float(SEGMENTS)
+	for s in range(-1, SEGMENTS + 1):   ## row -1 lies back over the upstream water: the curtain grows out of it, transparent there
+		var u: float = maxf(float(s) / float(SEGMENTS), 0.0)
 		for k in range(width):
 			var col: Dictionary = columns[k]
 			var drop: float = maxf(float(col["top"]) - float(col["bottom"]), 0.0)
 			var p: Vector2 = (col["p"] as Vector2) + dir * ((THROW_GU + drop * 0.25) * sqrt(u))
-			verts.append(Vector3(p.x, float(col["top"]) - drop * u, p.y))
-			uvs.append(Vector2(float(k) / float(width - 1), u))
+			var y: float = float(col["top"]) - (drop + SINK_GU) * u
+			if s < 0:
+				p -= dir * LIP_BACK_GU
+			verts.append(Vector3(p.x, y, p.y))
+			uvs.append(Vector2(float(k) / float(width - 1), -LIP_UV if s < 0 else u))
 			colors.append(Color(0.0, 0.0, float(width - 1) * float(chain[0]["a"].distance_to(chain[0]["b"])), float(col["amount"])))   ## B = the curtain's width (GU)
-	for s in range(SEGMENTS):
+	for s in range(SEGMENTS + 1):
 		for k in range(width - 1):
 			var i0: int = first + s * width + k
 			indices.append_array(PackedInt32Array([i0, i0 + 1, i0 + width + 1, i0, i0 + width + 1, i0 + width]))
@@ -164,10 +174,13 @@ func _add_curtain(chain: Array, verts: PackedVector3Array, uvs: PackedVector2Arr
 		var land: Vector2 = ((fall["a"] as Vector2) + (fall["b"] as Vector2)) * 0.5 + dir * (THROW_GU + maxf(top_y - bottom_y, 0.0) * 0.25)
 		var span: Vector2 = (fall["b"] as Vector2) - (fall["a"] as Vector2)   ## the mist spreads along the edge the water lands on
 		_landings.append([Vector3(land.x, bottom_y, land.y), clampf(float(fall["flow"]) / FLOW_FULL, 0.15, 1.0), Vector3(span.x, 0.0, span.y)])
-		var half: float = SPLASH_GU * 0.5
+		## the foam: as long as the edge and a little more (neighbours overlap into one band), SPLASH_GU across the fall
+		var along_half: Vector2 = ((fall["b"] as Vector2) - (fall["a"] as Vector2)) * 0.6
+		var across_half: Vector2 = dir * (SPLASH_GU * 0.5)
 		var s0: int = verts.size()
 		for corner: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
-			verts.append(Vector3(land.x + corner.x * half, bottom_y + SURFACE_LIFT, land.y + corner.y * half))
+			var at: Vector2 = land + along_half * corner.x + across_half * corner.y
+			verts.append(Vector3(at.x, bottom_y + SURFACE_LIFT, at.y))
 			uvs.append((corner + Vector2.ONE) * 0.5)
 			colors.append(Color(0.0, 1.0, 0.0, clampf(float(fall["flow"]) / FLOW_FULL, 0.15, 1.0)))
 		indices.append_array(PackedInt32Array([s0, s0 + 1, s0 + 2, s0, s0 + 2, s0 + 3]))

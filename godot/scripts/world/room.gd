@@ -179,6 +179,8 @@ const FIRE_LIGHT_BUDGET_US: int = 5000
 const FIRE_LIGHT_UPLOAD_S: float = 0.5
 var _liquid_fire_lights: Array = []        ## M6 F5: one LiquidFireLights per burning body (visual lights the field reads, never the tactical registry)
 var _liquid_sheets: Array = []             ## M6: one LiquidSheet3D per `liquids` body, see _attach_liquids()
+var _liquid_refresh_frame: int = -1        ## M6: the frame `refresh_liquid_containers` last ran in, and the columns it re-read then
+var _liquid_refresh_seen: Dictionary = {}
 var _liquid_containers: Array = []         ## M6 (2026-10-19): {"box": FluidContainer, "plane", "info", "brim", "sheet"} per body read from the world, re-read when it changes
 var _liquid_rules_controller: RefCounted = null   ## M6 F5: lava, oil on the agent, corrosion, cold, crust, glow, stain, quicksand (`_liquid_rules()`)
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
@@ -9551,10 +9553,11 @@ func _attach_liquids(live: Node3D) -> void:
 			_liquid_containers.append(container)
 		if plane != null:
 			sheet.snap()
-			var falls: MeshInstance3D = LiquidFalls3DRef.new()   ## the waterfalls wherever this body flows over a step (a child: it goes with the sheet)
-			sheet.add_child(falls)
-			falls.setup(plane, base_y - plane.dig * unit, params)
-			falls.smoke = _smoke_spark_overlay   ## steam where the curtain lands
+			if _dev_flag("LIQUID_FALLS", "1") != "0":   ## dev: the A/B of the waterfalls' cost (the flow is the plane's either way)
+				var falls: MeshInstance3D = LiquidFalls3DRef.new()   ## the waterfalls wherever this body flows over a step (a child: it goes with the sheet)
+				sheet.add_child(falls)
+				falls.setup(plane, base_y - plane.dig * unit, params)
+				falls.smoke = _smoke_spark_overlay   ## steam where the curtain lands
 		_liquid_sheets.append(sheet)
 	if auto_tick > 0.0:
 		var turn_timer := Timer.new()    ## dev: the liquids' own turn (fire, water, flow) in real time, as the game's turn would run it
@@ -9621,7 +9624,7 @@ func liquid_stand_y(cell: Vector2i, actor: Node) -> float:
 		return NAN
 	var plane = (_liquid_field.bodies()[int(info["body"])] as Dictionary)["plane"]
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
-	var surface: float = float(info["depth"]) - float(plane.dig)   ## voxels over the floor top
+	var surface: float = float(info.get("surface", info["depth"])) - float(plane.dig)   ## voxels over the floor top (ground + depth: a raised floor counts)
 	if int(info.get("solid", 0)) != 0:
 		return surface * unit
 	if not LiquidAgentStatusRef.sink_rule(info["gameplay"]).is_empty():
@@ -9664,16 +9667,27 @@ func _build_container(body: Dictionary, kind: String) -> Dictionary:
 func refresh_liquid_containers(voxels: Array) -> void:
 	if _liquid_containers.is_empty() or voxels.is_empty():
 		return
+	## an event reaches here through two hooks (the commit's support pass and the board's touched signal): a column re-read once a frame is enough
+	var frame: int = Engine.get_process_frames()
+	if frame != _liquid_refresh_frame:
+		_liquid_refresh_frame = frame
+		_liquid_refresh_seen.clear()
 	var columns: Dictionary = {}
 	for v in voxels:
-		if v is Voxel:
+		if v is Voxel and not _liquid_refresh_seen.has((v as Voxel).grid_pos):
 			columns[(v as Voxel).grid_pos] = true
+			_liquid_refresh_seen[(v as Voxel).grid_pos] = true
+	if columns.is_empty():
+		return
 	for entry: Dictionary in _liquid_containers:
 		var redone: int = entry["box"].refresh(entry["plane"], columns.keys(), int(entry["brim"]), entry["info"])
 		if redone > 0:
 			var sheet = entry["sheet"]
 			if is_instance_valid(sheet):
 				sheet.set("_dirty", true)
+			for burn in _liquid_fires:   ## a roof that went over burning oil gives it air
+				if burn.plane == entry["plane"]:
+					burn.recompute_oxygen()
 			print_debug("[Liquids] a container changed: %d cell(s) re-read" % redone)
 
 

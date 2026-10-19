@@ -179,7 +179,7 @@ func _read_cell(plane: RefCounted, c: int, r: int, cell: Vector2i, cols_per_cell
 func refresh(plane: RefCounted, columns: Array, brim_level: int, info: Dictionary) -> int:
 	var cols_per_cell: int = int(info["cols_per_cell"])
 	var base: int = int(info["base"])
-	var origin_cell := Vector2i(int(round(plane.origin.x * float(per_gu))) / cols_per_cell, int(round(plane.origin.y * float(per_gu))) / cols_per_cell)
+	var origin_cell := Vector2i(floori(round(plane.origin.x * float(per_gu)) / float(cols_per_cell)), floori(round(plane.origin.y * float(per_gu)) / float(cols_per_cell)))
 	var cells: Dictionary = {}
 	for col: Vector2i in columns:
 		_floor.erase(col)

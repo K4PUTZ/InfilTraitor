@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**335 scripts · 99573 lines total** (under `godot/scripts/`)
+**335 scripts · 99611 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -906,7 +906,7 @@ extends `Node3D` · 3572 lines
 
 ### `liquid_flame_tongues.gd`
 
-`class_name LiquidFlameTongues` · extends `MultiMeshInstance3D` · 98 lines
+`class_name LiquidFlameTongues` · extends `MultiMeshInstance3D` · 108 lines
 
 `godot/scripts/geometry/liquid_flame_tongues.gd`
 
@@ -922,14 +922,13 @@ extends `Node3D` · 3572 lines
 - `var fire: RefCounted = null`
 
 **Public API**
-- `func setup(burn: RefCounted, base_y: float, flame_width: float, flame_height: float) -> void:`
 - `func update_frame() -> void:`
 
 ---
 
 ### `liquid_flames.gd`
 
-`class_name LiquidFlames` · extends `RefCounted` · 75 lines
+`class_name LiquidFlames` · extends `RefCounted` · 77 lines
 
 `godot/scripts/geometry/liquid_flames.gd`
 
@@ -3029,7 +3028,7 @@ extends `Node` · 236 lines
 
 ### `fluid_plane.gd`
 
-`class_name FluidPlane` · extends `RefCounted` · 519 lines
+`class_name FluidPlane` · extends `RefCounted` · 521 lines
 
 `godot/scripts/systems/fluid_plane.gd`
 
@@ -3428,7 +3427,7 @@ extends `Node` · 236 lines
 
 ### `liquid_field.gd`
 
-`class_name LiquidField` · extends `RefCounted` · 86 lines
+`class_name LiquidField` · extends `RefCounted` · 91 lines
 
 `godot/scripts/systems/liquid_field.gd`
 
@@ -3452,7 +3451,7 @@ extends `Node` · 236 lines
 
 ### `liquid_fire.gd`
 
-`class_name LiquidFire` · extends `RefCounted` · 261 lines
+`class_name LiquidFire` · extends `RefCounted` · 266 lines
 
 `godot/scripts/systems/liquid_fire.gd`
 
@@ -6948,7 +6947,7 @@ extends `RefCounted` · 319 lines
 
 ### `room.gd`
 
-extends `Node2D` · 13109 lines
+extends `Node2D` · 13123 lines
 
 `godot/scripts/world/room.gd`
 

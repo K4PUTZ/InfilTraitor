@@ -47,17 +47,18 @@ func tick(dt: float, fire: RefCounted, base_y: float, embers: Node, smoke: Node 
 		if randf() > fire.oxygen[i]:
 			continue    ## the air is thin under a roof: little leaves a pipe
 		var at: Vector2 = fire.centre_of(i) + Vector2(randf_range(-half, half), randf_range(-half, half))
+		var y: float = base_y + (fire.plane.ground[i] + fire.plane.depth[i]) / 8.0 + LIFT_GU   ## born on the oil's surface in its cell
 		if randf() < SPARK_SHARE:
 			var drift := Vector2(randf_range(-26.0, 26.0), 0.0)
 			embers.add_ember(Vector2.ZERO, randf_range(1.2, 2.4), drift, 1.2, randf_range(220.0, 420.0), 1.0, 0.0, randf_range(0.12, 0.3), 1.6, false,
-					Vector2.ZERO, Vector3(at.x, base_y + LIFT_GU, at.y))
+					Vector2.ZERO, Vector3(at.x, y, at.y))
 			continue
 		var size: float = randf_range(SIZE_MIN, SIZE_MAX)
 		## a big ball is slower and lives longer than a small one, but both vary: the eye reads a flame, not a column of one speed
 		var rise: float = lerpf(RISE_MAX_PX_S, RISE_MIN_PX_S, size) * randf_range(0.75, 1.25)
 		var life: float = lerpf(LIFE_MIN, LIFE_MAX, size) * randf_range(0.7, 1.3)
 		embers.add_ember(Vector2.ZERO, life, Vector2.ZERO, 0.0, rise, 1.0, 0.0, size, 1.0, false,
-				Vector2.ZERO, Vector3(at.x, base_y + LIFT_GU, at.y))
+				Vector2.ZERO, Vector3(at.x, y, at.y))
 
 
 ## Drains the fire's put-out cells into smoke puffs, anchored in 3D at the cell.
@@ -67,9 +68,10 @@ func _smoke_out(fire: RefCounted, base_y: float, smoke: Node) -> void:
 	if smoke != null:
 		var n: int = mini(fire.out_cells.size(), SMOKE_MAX_PER_FRAME)
 		for k in range(n):
-			var at: Vector2 = fire.centre_of(fire.out_cells[k])
+			var cell_i: int = fire.out_cells[k]
+			var at: Vector2 = fire.centre_of(cell_i)
 			var color: Color = SMOKE_STEAM if fire.out_by_water[k] == 1 else SMOKE_OIL
 			smoke.add_smoke(Vector2.ZERO, color, SMOKE_SCALE * randf_range(0.8, 1.3), 1.0, 0, 1.0, randf_range(0.0, 0.5),
-					Vector2.ZERO, Vector3(at.x, base_y + LIFT_GU, at.y))
+					Vector2.ZERO, Vector3(at.x, base_y + fire.plane.ground[cell_i] / 8.0 + LIFT_GU, at.y))
 	fire.out_cells = PackedInt32Array()
 	fire.out_by_water = PackedByteArray()

@@ -194,6 +194,8 @@ func _set_grate(axis: String, at: float, pass_fraction: float) -> void:
 ## ground and the ceiling over rects, then the sources, sinks and grates. `body.rect` is the interior in raw GU.
 static func from_body(body: Dictionary, liquid_fluidity: float) -> RefCounted:
 	var fluid: Dictionary = body["fluid"]
+	if fluid.has("seed"):
+		push_error("[FluidPlane] from_body: a SEEDED body takes its shape from the world (FluidContainer, Room._build_container), not from its zone: %s" % str(fluid["seed"]))
 	var cell_size: float = float(fluid["cell"])
 	var rect: Rect2 = body["rect"]
 	var plane = load("res://godot/scripts/systems/fluid_plane.gd").new()

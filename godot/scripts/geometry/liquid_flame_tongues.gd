@@ -16,10 +16,13 @@ var _buf: PackedFloat32Array = PackedFloat32Array()
 var _cells: PackedInt32Array = PackedInt32Array()     ## the plane cell of each instance, in order
 var _seeds: PackedFloat32Array = PackedFloat32Array()  ## per instance: seed, width scale, height scale
 var _live: bool = false
+var _base_y: float = 0.0   ## the body's base (its lowest ground); a flame stands on its own cell's SURFACE over it (a raised bore's oil burns up there)
+const UNIT: float = 1.0 / 8.0
 
 
 func setup(burn: RefCounted, base_y: float, flame_width: float, flame_height: float) -> void:
 	fire = burn
+	_base_y = base_y
 	var plane = fire.plane
 	name = "LiquidFlameTongues"
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -71,7 +74,11 @@ func setup(burn: RefCounted, base_y: float, flame_width: float, flame_height: fl
 				_seeds[k * 3 + 2] = (0.6 + 0.7 * _hash(h * 8.9)) * maxf(room_scale, 0.12)
 				k += 1
 	multimesh.buffer = _buf
-	custom_aabb = AABB(Vector3(plane.origin.x, base_y - 0.1, plane.origin.y), Vector3(float(plane.cols) * plane.cell_gu, flame_height * 1.6, float(plane.rows) * plane.cell_gu))
+	var top_ground: float = 0.0
+	for g: float in plane.ground:
+		if g < plane.WALL:
+			top_ground = maxf(top_ground, g)
+	custom_aabb = AABB(Vector3(plane.origin.x, base_y - 0.1, plane.origin.y), Vector3(float(plane.cols) * plane.cell_gu, flame_height * 1.6 + (top_ground + 8.0) * UNIT, float(plane.rows) * plane.cell_gu))
 
 
 static func _hash(x: float) -> float:
@@ -86,9 +93,12 @@ func update_frame() -> void:
 		return
 	var any: bool = false
 	for k in range(_cells.size()):
-		var level: float = fire.visual[_cells[k]]
+		var i: int = _cells[k]
+		var level: float = fire.visual[i]
 		var o: int = k * FLOATS
 		_buf[o + 12] = level
+		if level > 0.0:   ## the foot on the oil's surface in its own cell (ground + depth over the base)
+			_buf[o + 7] = _base_y + (fire.plane.ground[i] + fire.plane.depth[i]) * UNIT + LIFT
 		_buf[o + 13] = _seeds[k * 3]
 		_buf[o + 14] = _seeds[k * 3 + 1]
 		_buf[o + 15] = _seeds[k * 3 + 2]

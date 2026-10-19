@@ -34,7 +34,8 @@ func count() -> int:
 	return _bodies.size()
 
 
-## `{}` for a dry cell, else `{"kind", "depth" (voxels, the deepest plane cell in the GU), "gameplay", "body" (index), "solid" (0, PLATE, ICE)}`. A solid
+## `{}` for a dry cell, else `{"kind", "depth" (voxels, the deepest plane cell in the GU), "surface" (voxels over the body's base: ground + depth, the
+## highest wet cell), "gameplay", "body" (index), "solid" (0, PLATE, ICE)}`. A solid
 ## surface answers its own gameplay (`PLATE_GAMEPLAY`, `ICE_GAMEPLAY`) in place of the liquid's.
 func at_cell(cell: Vector2i) -> Dictionary:
 	var centre := Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5)
@@ -44,13 +45,17 @@ func at_cell(cell: Vector2i) -> Dictionary:
 			continue
 		var plane = body["plane"]
 		var depth: float = 0.0
+		var top: float = 0.0
 		var c0: int = maxi(int(floor((float(cell.x) - plane.origin.x) / plane.cell_gu)), 1)
 		var c1: int = mini(int(ceil((float(cell.x + 1) - plane.origin.x) / plane.cell_gu)) - 1, plane.cols - 2)
 		var r0: int = maxi(int(floor((float(cell.y) - plane.origin.y) / plane.cell_gu)), 1)
 		var r1: int = mini(int(ceil((float(cell.y + 1) - plane.origin.y) / plane.cell_gu)) - 1, plane.rows - 2)
 		for r in range(r0, r1 + 1):
 			for c in range(c0, c1 + 1):
-				depth = maxf(depth, plane.committed[plane.index(c, r)])
+				var ci: int = plane.index(c, r)
+				depth = maxf(depth, plane.committed[ci])
+				if plane.committed[ci] > 0.05 and plane.ground[ci] < plane.WALL:
+					top = maxf(top, plane.ground[ci] + plane.committed[ci])
 		if depth > 0.05:
 			var surface = body["surface"]
 			var solid: int = surface.at_gu(cell) if surface != null else 0
@@ -59,7 +64,7 @@ func at_cell(cell: Vector2i) -> Dictionary:
 				gameplay = PLATE_GAMEPLAY
 			elif solid == ICE:
 				gameplay = ICE_GAMEPLAY
-			return {"kind": body["kind"], "depth": depth, "gameplay": gameplay, "body": b, "solid": solid}
+			return {"kind": body["kind"], "depth": depth, "surface": top, "gameplay": gameplay, "body": b, "solid": solid}
 		return {}
 	return {}
 

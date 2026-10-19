@@ -69,6 +69,11 @@ func setup(fluid_plane: RefCounted, spec: Dictionary) -> void:
 	version = 0
 
 
+## The plane's roofs changed (its container was re-read: a roof destroyed over the oil, a new bore): the air is measured again.
+func recompute_oxygen() -> void:
+	_compute_oxygen()
+
+
 ## Oxygen by distance from the opening: a flood of the roofed cells from the open ones (4 neighbours), `OXYGEN_REACH_GU` deep.
 func _compute_oxygen() -> void:
 	var n: int = plane.cols * plane.rows

@@ -1,0 +1,13 @@
+{
+  "id": "iron_bar",
+  "inherits": "steel_dark",
+  "family": "metal",
+  "base_color": [
+    0.63,
+    0.613,
+    0.63
+  ],
+  "pattern_algorithm": "flat",
+  "has_facade": true,
+  "facade_mean": 145.6
+}

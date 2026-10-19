@@ -9,7 +9,7 @@ const SHADER: Shader = preload("res://godot/shaders/liquid_fall3d.gdshader")
 const UNIT: float = 1.0 / 8.0          ## a voxel of height in GU
 const SEGMENTS: int = 6                ## rows of the curtain's arc
 const THROW_GU: float = 0.06           ## how far the jet leaves the lip before it falls, per GU of drop (a parabola)
-const SPLASH_GU: float = 0.42          ## the foam ring's size
+const SPLASH_GU: float = 0.42          ## the foam band's width across the fall
 const FLOW_FULL: float = 0.12          ## the flow (voxels a round) that draws a full curtain; less is thinner
 const SURFACE_LIFT: float = 0.01       ## the splash just over the sheet
 const SHEET_PRIORITY: int = 0          ## `LiquidSheet3D`'s material (the default)
@@ -173,22 +173,30 @@ func _add_curtain(chain: Array, verts: PackedVector3Array, uvs: PackedVector2Arr
 		for k in range(width - 1):
 			var i0: int = first + s * width + k
 			indices.append_array(PackedInt32Array([i0, i0 + 1, i0 + width + 1, i0, i0 + width + 1, i0 + width]))
-	for fall: Dictionary in chain:
-		var top_y: float = _base_y + float(fall["top"]) * UNIT
-		var bottom_y: float = _base_y + float(fall["bottom"]) * UNIT
-		var land: Vector2 = ((fall["a"] as Vector2) + (fall["b"] as Vector2)) * 0.5 + dir * (THROW_GU + maxf(top_y - bottom_y, 0.0) * 0.25)
-		var span: Vector2 = (fall["b"] as Vector2) - (fall["a"] as Vector2)   ## the mist spreads along the edge the water lands on
-		_landings.append([Vector3(land.x, bottom_y, land.y), clampf(float(fall["flow"]) / FLOW_FULL, 0.15, 1.0), Vector3(span.x, 0.0, span.y)])
-		## the foam: as long as the edge and a little more (neighbours overlap into one band), SPLASH_GU across the fall
-		var along_half: Vector2 = ((fall["b"] as Vector2) - (fall["a"] as Vector2)) * 0.6
-		var across_half: Vector2 = dir * (SPLASH_GU * 0.5)
-		var s0: int = verts.size()
-		for corner: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
-			var at: Vector2 = land + along_half * corner.x + across_half * corner.y
-			verts.append(Vector3(at.x, bottom_y + SURFACE_LIFT, at.y))
-			uvs.append((corner + Vector2.ONE) * 0.5)
-			colors.append(Color(0.0, 1.0, 0.0, clampf(float(fall["flow"]) / FLOW_FULL, 0.15, 1.0)))
-		indices.append_array(PackedInt32Array([s0, s0 + 1, s0 + 2, s0, s0 + 2, s0 + 3]))
+	## ONE foam band a curtain (Director, 2026-10-19: per-edge bands ran past the curtain's ends, over the void beside it): from the curtain's first column to its
+	## last (the narrowed ends included), where its foot lands, SPLASH_GU across the fall; the steam rises along the same line
+	var c0: Dictionary = columns[0]
+	var c1: Dictionary = columns[columns.size() - 1]
+	var drop0: float = maxf(float(c0["top"]) - float(c0["bottom"]), 0.0)
+	var drop1: float = maxf(float(c1["top"]) - float(c1["bottom"]), 0.0)
+	var foot0: Vector2 = (c0["p"] as Vector2) + dir * (THROW_GU + drop0 * 0.25)
+	var foot1: Vector2 = (c1["p"] as Vector2) + dir * (THROW_GU + drop1 * 0.25)
+	var foam_y: float = minf(float(c0["bottom"]), float(c1["bottom"])) + SURFACE_LIFT
+	var across: Vector2 = dir * (SPLASH_GU * 0.5)
+	var amount_all: float = 0.0
+	for col: Dictionary in columns:
+		amount_all += float(col["amount"])
+	amount_all /= float(columns.size())
+	var s0: int = verts.size()
+	for corner: Array in [[foot0, -1.0, Vector2(0, 0)], [foot1, -1.0, Vector2(1, 0)], [foot1, 1.0, Vector2(1, 1)], [foot0, 1.0, Vector2(0, 1)]]:
+		var at: Vector2 = (corner[0] as Vector2) + across * float(corner[1])
+		verts.append(Vector3(at.x, foam_y, at.y))
+		uvs.append(corner[2])
+		colors.append(Color(0.0, 1.0, (foot0.distance_to(foot1)), amount_all))   ## B = the band's length (GU): the shader keeps the churn's scale
+	indices.append_array(PackedInt32Array([s0, s0 + 1, s0 + 2, s0, s0 + 2, s0 + 3]))
+	var mid: Vector2 = (foot0 + foot1) * 0.5
+	var span: Vector2 = foot1 - foot0
+	_landings.append([Vector3(mid.x, foam_y, mid.y), amount_all, Vector3(span.x, 0.0, span.y)])
 
 
 func rebuild() -> void:

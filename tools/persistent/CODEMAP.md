@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**332 scripts · 98979 lines total** (under `godot/scripts/`)
+**332 scripts · 98989 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -870,7 +870,7 @@ extends `Node3D` · 3572 lines
 
 ### `liquid_falls3d.gd`
 
-`class_name LiquidFalls3D` · extends `MeshInstance3D` · 219 lines
+`class_name LiquidFalls3D` · extends `MeshInstance3D` · 227 lines
 
 `godot/scripts/geometry/liquid_falls3d.gd`
 
@@ -5118,7 +5118,7 @@ extends `SceneTree` · 205 lines
 
 ### `liquid_guards_selftest.gd`
 
-extends `SceneTree` · 126 lines
+extends `SceneTree` · 128 lines
 
 `godot/scripts/tools/liquid_guards_selftest.gd`
 

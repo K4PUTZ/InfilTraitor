@@ -51,7 +51,7 @@ var _delta: PackedFloat32Array = PackedFloat32Array()   ## the round's scratch (
 ## FALL (onto a cell `FALL_DROP` lower) is a free overfall: what crosses the lip in a round is at most `WEIR_C * depth^1.5` (the weir law: discharge grows
 ## with the head over the lip to the power 3/2), so a body upstream of a fall holds a level that rises with the flow it carries. 4 flags a cell, found
 ## from the grounds before the first round after any ground change.
-const WEIR_C: float = 0.045   ## tuned on PIPE_LAB: the raised bore runs about a third full at its source's 2 voxels a turn
+const WEIR_C: float = 0.035   ## tuned on PIPE_LAB: the raised bore (two 0.5 GU cells across) runs about a third full at its source's 2 voxels a turn
 var _weir: PackedByteArray = PackedByteArray()
 var _weir_dirty: bool = true
 

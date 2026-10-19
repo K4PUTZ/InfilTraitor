@@ -35,9 +35,9 @@ void fragment() {
 	vec4 col;
 	if (splash > 0.5) {
 		// the splash: soft churning foam, densest where the water lands and feathered to nothing at its edge (neighbouring quads overlap into one band)
-		vec2 q = UV * 2.0 - 1.0;
-		float r = length(q * vec2(0.8, 1.0));
-		float soft = smoothstep(1.0, 0.15, r);
+		// one band the curtain's width: UV.x along it (feathered at its two ends), UV.y across the fall (feathered both sides); the churn keeps its size per GU
+		vec2 q = vec2(UV.x * curtain_gu * 2.0, UV.y * 2.0 - 1.0);
+		float soft = smoothstep(0.0, 0.12, UV.x) * smoothstep(1.0, 0.88, UV.x) * smoothstep(1.0, 0.2, abs(q.y));
 		float churn = vnoise(q * 5.0 + vec2(t * 1.1, -t * 1.7)) * 0.6 + vnoise(q * 11.0 - vec2(t * 2.3, t * 0.7)) * 0.4;
 		col = vec4(mix(mix(deep_color.rgb, body_color.rgb, 0.45), light_color.rgb, 0.65), soft * smoothstep(0.3, 0.8, churn) * 0.7);
 	} else {

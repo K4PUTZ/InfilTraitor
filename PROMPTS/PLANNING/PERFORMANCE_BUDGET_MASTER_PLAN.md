@@ -1,6 +1,24 @@
 # PERFORMANCE_BUDGET_MASTER_PLAN
 ## One content, many phones: the memory and time budget a segment has to fit — v0.3 (PB-0/1 ratified, PB-2 attributed and acted on)
 
+> ⏭️ **2026-10-19 — GODOT 4.7.2 EVALUATED (Director: "ainda é bom ter a última versão"); the switch waits for the Director.** 4.7.2 is
+> installed BESIDE 4.6.1 (`/Applications/Godot_4.7.2.app`, templates `4.7.2.stable`, SHA-512 checked); the project was evaluated on a
+> copy (`../INFILTRAITOR_G472`, tools pointed at 4.7.2, no git remote), never on this tree. **Desktop:** import 47 s, 0 errors (tangent
+> warnings on some `.glb` cones / cylinders); lint, selftests, `worker_typing_check`, smoke on PLAYGROUND / GLASS / MARKET_LAB / PIPE_LAB
+> / LIQUIDS_LAB / ROOF_LAB / SEG_HEAVY, and **`verify.py full` green against a 4.6.1 baseline** (every boot gate, the board-state probe,
+> the pixels). Pixels: two 4.6.1 boots differ by 0 px; 4.7.2 against them by 21-28 px, all at most 1/255 and all on the HUD's END
+> checkbox tick (an icon rasterised a hair differently); the board is identical. **Moto g04s, PLAYGROUND zoom 0.75, uncapped, 3 boots
+> each, release APKs proven by their logs:** idle GPU 19.1-19.3 ms (4.6.1) vs 19.1-19.2 (4.7.2); idle frame 20.7-20.9 both; blast worst
+> 237-262 vs 239-254 ms, mean 21.1-22.3 vs 21.1-22.0; load 7.4-7.7 vs 7.4-7.5 s (4.7.2's first boot after the install read 11.7 s, the
+> known first-boot noise); PSS 688-693 vs 697-700 MiB (+~8, native heap +~12). The Galaxy A16 was not connected: not measured. The
+> 4.6 -> 4.7 migration notes touch nothing here except 2D line thickness (`CanvasItem` lines lose their AA feather: the dev overlays
+> draw 63 lines, unseen in these captures). **4.7.2 does NOT fix the `OPCODE_OPERATOR` race** (the block below): the gate stays.
+> **Found on the way, not fixed:** `pb3_study.py` / `gen_segment_map.py` produce segment maps that FAIL TO LOAD since PLAYGROUND gained
+> `capture` rails and takes (2026-10-13/16): `gen_segment_map.py` inherits every PLAYGROUND section (line 154) but replaces `layout`, so the
+> takes name anchors (`@wood_wall` ...) the segment does not have, `FileMapSource` refuses the map and the handset boots an EMPTY room
+> that reads 31 draws / 1.3 ms GPU / PSS ~380 MiB, a number that looks like a measurement. Fix: do not inherit `capture` (one line);
+> until then every SEG_* device row after 2026-10-13 is void.
+
 > ⏭️ **2026-10-19 — THE PARALLEL LOAD HAD A CRASH IN IT: Godot 4.6.1's `OPCODE_OPERATOR` race (closes the "intermittent `propagate_notification()` + exit -6" item of `PROMPTS/RESUMO_SESSAO_2026-10-19_LIQUIDS_CLOSED.md`).**
 > **The symptom was a decoy.** `ERROR: /root: The caller thread can't call the function propagate_notification()` is what Godot's crash handler
 > prints when the crash is on a WORKER thread: it sends `NOTIFICATION_CRASH` to `/root` from that thread and trips the thread guard. The two

@@ -1,0 +1,51 @@
+{
+  "id": "infiltration-20261019-87d9d018",
+  "context": "infiltration",
+  "created": "2026-10-19T06:02:27+00:00",
+  "source_sha256": "87d9d018ea6ceaab39c46d463a72e3ee0821b3fd6eb595e3b37f3293b64c0282",
+  "raw_path": "ASSETS/AUDIO/MUSIC/Raw/infiltration/infiltration-20261019-87d9d018.wav",
+  "duration_s": 32.968,
+  "tool": "music_arrange.py + Surge XT 1.3.4",
+  "tool_version": "arrangement.json v1",
+  "license": "Surge XT GPL-3 (output unrestricted); project code",
+  "prompt": "rhythmic motif and arpeggiated fragments, 124 BPM, 4/4, A minor (draft), minor centre with major-colour inflections, sus/add tones, chromatic movement, tonal ambiguity, medium arrangement density, seamlessly loopable, analog polysynths, sequenced electronic bass, arpeggiators, gated ambience, restrained cinematic strings and brass, melodic material: mission: The Mission: recurring pulse / sequencing pattern; agent: The Agent: principal melodic signature of the protagonist, controlled suspense and confidence, never helplessness, forward momentum, instrumental, free of vocal hooks",
+  "params": {
+    "presets": "bass5/arp7/pad6/lead7",
+    "bpm": "124"
+  },
+  "human_edits": "",
+  "notes": "first 4-line arrangement, Director-picked timbres, PLACEHOLDER notes",
+  "export": {
+    "path": "ASSETS/AUDIO/MUSIC/Export/infiltration/infiltration-20261019-87d9d018.ogg",
+    "sha256": "9106c587aee77e19d1da0f3f05b20473a6e1a734dee2cdbd0b5afbcc12f9a420",
+    "format": "ogg vorbis q6, -16 LUFS",
+    "exported": "2026-10-19T06:02:30+00:00"
+  },
+  "stems": {
+    "drums": {
+      "path": "ASSETS/AUDIO/MUSIC/Raw/infiltration/infiltration-20261019-87d9d018_stems/drums.wav",
+      "sha256": "372b89504be11915103d5e0b3a90e92680c93a12b1bc64e407d86b59e2cfac73",
+      "duration_s": 32.968
+    },
+    "bass": {
+      "path": "ASSETS/AUDIO/MUSIC/Raw/infiltration/infiltration-20261019-87d9d018_stems/bass.wav",
+      "sha256": "49f15e9f784504465460708469fedba46f0908d2190fbf91b459fba4d9c074da",
+      "duration_s": 32.968
+    },
+    "arp": {
+      "path": "ASSETS/AUDIO/MUSIC/Raw/infiltration/infiltration-20261019-87d9d018_stems/arp.wav",
+      "sha256": "5fa840103ffba02aac9a388127e812ed82f3dd38cb62430465b6e3248007e61b",
+      "duration_s": 32.968
+    },
+    "pad": {
+      "path": "ASSETS/AUDIO/MUSIC/Raw/infiltration/infiltration-20261019-87d9d018_stems/pad.wav",
+      "sha256": "a7520199b8c1beea5769e8fca83e9e8eff1332c8b1cb0e433aaa6afdd7463bf7",
+      "duration_s": 32.968
+    },
+    "lead": {
+      "path": "ASSETS/AUDIO/MUSIC/Raw/infiltration/infiltration-20261019-87d9d018_stems/lead.wav",
+      "sha256": "6e1f2e129aed0802002db2fd43694b8d5f65e25a8423e8982422702376cfec42",
+      "duration_s": 32.968
+    }
+  }
+}

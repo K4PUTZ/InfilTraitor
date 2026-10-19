@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "context": "infiltration",
+  "note": "timbres chosen by the Director 2026-10-19 from music_audition.py (Surge XT factory presets); the notes are PLACEHOLDER phrases until the motifs in bible.json are authored",
+  "presets": {"bass": "Basses/Bass 5", "arp": "Plucks/Tinker", "pad": "Pads/Primes", "lead": "Leads/Scooped"},
+  "bars": 16,
+  "entries": {"drums": 0, "pad": 0, "bass": 2, "arp": 4, "lead": 8},
+  "gain": {"drums": 0.9, "bass": 0.8, "arp": 0.55, "pad": 0.5, "lead": 0.6}
+}

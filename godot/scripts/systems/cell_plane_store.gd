@@ -43,7 +43,7 @@ static func _outside(p: Vector2i) -> bool:
 	return p.x < 0 or p.y < 0 or p.x >= plane_size.x or p.y >= plane_size.y
 
 ## PERF-P3: FORMAT_RGBA8 (A added 2026-10-18, the GPU stored RGB8 as RGBA8 already) — R = the per-face soot code (0..215, base 6), G = the light
-## bucket (0..11), A = WARMTH (0 = none .. 255: how much of the cell's light is a fire's, `write_warm`), B = the floor-top tone of R's ring (R3D-LOOK, derived from R in `write_soot`, never written alone). One texel per cell, one texture per level. Both writers do a
+## bucket (0..11), A = TINT (0 = none; 1..127 how much of the cell's light is a fire's, 128..255 a cool phosphorescent glow's: `VoxelLightField.encode_tint`, `write_warm`), B = the floor-top tone of R's ring (R3D-LOOK, derived from R in `write_soot`, never written alone). One texel per cell, one texture per level. Both writers do a
 ## read-modify-write so neither channel can erase the other.
 ## RENDER3D R3D-2 — this store is domain-agnostic (it knows nothing of "soot" or
 ## "light bucket" as concepts): its OWNER supplies the R-channel's clean fill value

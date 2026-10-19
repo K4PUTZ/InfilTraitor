@@ -31,6 +31,9 @@ var _s_nl: int = 0
 var overlay: Dictionary = {}
 ## Cells that hold themselves up by design (a shelf, a picture, an anchored prop): `StructuralSupport` treats them as ground. `Vector3i -> true`.
 var anchored: Dictionary = {}
+## Prop cells BELOW the ground plane (a grating, a box standing in a dug pit): the ground plane is not their ground, so `StructuralSupport` walks them to the pit's
+## bed and walls like anything above it, instead of taking every cell under the plane as held. `Vector3i -> true`.
+var below_props: Dictionary = {}
 ## A dictionary-backed grid's materials (`Vector3i -> id`); a cell with none answers the default reach.
 var _materials: Dictionary = {}
 

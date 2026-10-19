@@ -55,7 +55,7 @@ const PARAMS: Dictionary = {
 ## much less on top.
 const SHALLOW_VOXELS: int = 2
 const GAMEPLAY_KEYS: PackedStringArray = ["fluidity", "wade_ap", "swim_ap", "noise", "smell", "slippery", "exposure", "status", "marks_agent", "footprint",
-	"flammable", "fire", "ignites", "ignites_agent", "extinguishes", "corrodes", "light", "trap", "plates", "freezes_neighbours"]
+	"flammable", "fire", "ignites", "ignites_agent", "extinguishes", "corrodes", "corrode_turns", "light", "trap", "plates", "freezes_neighbours"]
 
 static var load_errors: Array = []
 static var _rows: Dictionary = {}     ## id -> {"note": String, "params": Dictionary}

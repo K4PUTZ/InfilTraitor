@@ -43,16 +43,22 @@ uniform float ring_amount = 1.0;        // the ring ripples of the surface look
 uniform float wave_amount = 1.0;        // the bands and glints of the surface look
 uniform float fire_surface = 0.2;       // how much a burning cell tints the SURFACE (the oil stays dark; the flames above it are the fire: LiquidFlames / LiquidFlameTongues)
 uniform float rain = 0.0;               // 0 off .. 1 heavy: concentric rings from random drops, independent of the flow
+uniform float plate_mask = 0.0;         // 1: a crust body with walkable plates (M6 F5): the vertex green says which plates still stand (0 = broken, the melt shows)
+uniform vec4 ice_color : source_color = vec4(0.78, 0.88, 0.95, 0.96);   // water a cryogenic liquid froze (the vertex blue)
 uniform float dot_cells = 11.0;          // stipple cells per GU
 
 varying vec2 lp;
 varying float wet;   // the vertex alpha: 0 where the cell is dry, 1 from half a voxel of depth
 varying float flame; // the vertex red: how much of the surface burns here (0 water .. 1 fire), set by `LiquidSheet3D` from `LiquidFire`
+varying float plate_v; // the vertex green: the share of standing plates around the vertex (`LiquidSurfaceState`), read when `plate_mask` is 1
+varying float ice;     // the vertex blue: the share of frozen cells around the vertex
 
 void vertex() {
 	lp = VERTEX.xz;
 	wet = COLOR.a;
 	flame = COLOR.r;
+	plate_v = COLOR.g;
+	ice = COLOR.b;
 }
 
 
@@ -296,7 +302,7 @@ void fragment() {
 		vec3 pl = plates(p * crack_scale - flow_dir * t * flow_speed * 0.4 * crack_scale, t);
 		float gap = pl.y - pl.x;
 		float crack = smoothstep(0.12, 0.0, gap);
-		float present = step(pl.z, crust);
+		float present = step(pl.z, crust) * mix(1.0, smoothstep(0.35, 0.65, plate_v), plate_mask);
 		float mott = 0.65 + 0.7 * vnoise(p * 19.0 + pl.z * 31.0);
 		vec3 plate = crust_color.rgb * (0.6 + 0.8 * pl.z) * mott;
 		plate = mix(plate, crack_color.rgb * 0.35, smoothstep(0.55, 0.0, pl.x) * 0.25);   // warmer toward the plate's middle
@@ -372,6 +378,15 @@ void fragment() {
 		float drop = clamp(rain_rings(p, TIME * 0.6), 0.0, 1.0) * 0.95;
 		col.rgb = mix(col.rgb, light_color.rgb, drop);
 		col.a = max(col.a, drop);
+	}
+	if (ice > 0.01) {
+		// ICE (M6 F5): still, pale and frosted, a network of white cracks; it does not move with the flow (a frozen sheet)
+		vec3 ip = plates(p * 2.6, 0.0);
+		float ice_crack = smoothstep(0.06, 0.0, ip.y - ip.x);
+		vec3 icec = ice_color.rgb * (0.85 + 0.25 * vnoise(p * 23.0)) * (0.9 + 0.2 * ip.z);
+		icec = mix(icec, vec3(1.0), ice_crack * 0.6);
+		col.rgb = mix(col.rgb, icec, clamp(ice, 0.0, 1.0));
+		col.a = max(col.a, clamp(ice, 0.0, 1.0) * ice_color.a);
 	}
 	if (flame > 0.01) {
 		// FIRE on the surface (M6 F5): tongues that rise (the noise scrolls up the board) and flicker, red at the foot, yellow at the heart; it loops in

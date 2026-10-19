@@ -48,6 +48,7 @@
       ],
       "turns": 4
     },
-    "fluidity": 0.95
+    "fluidity": 0.95,
+    "corrode_turns": 6
   }
 }

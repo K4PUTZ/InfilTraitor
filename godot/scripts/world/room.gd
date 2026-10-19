@@ -17,6 +17,7 @@ const MaterialRowsRef = preload("res://godot/scripts/systems/material_rows.gd") 
 const LiquidFireLightsRef = preload("res://godot/scripts/systems/liquid_fire_lights.gd")  ## M6 F5: the lights a burning body gives the field
 const LiquidFireRef = preload("res://godot/scripts/systems/liquid_fire.gd")  ## M6 F5: a flammable liquid on fire
 const FluidPlaneRef = preload("res://godot/scripts/systems/fluid_plane.gd")  ## M6: the gameplay truth of a body of liquid
+const LiquidRulesControllerRef = preload("res://godot/scripts/world/controllers/liquid_rules_controller.gd")  ## M6 F5: the per-liquid rules
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
 const SurfaceRulesRef = preload("res://godot/scripts/systems/surface_rules.gd")  ## R3D-SURFACES: floor tags and patch rules
 const VentEmitterRef = preload("res://godot/scripts/overlays/vent_emitter.gd")  ## R3D-SURFACES SM-6: a plume rising from a floor vent
@@ -175,6 +176,7 @@ const FIRE_LIGHT_BUDGET_US: int = 5000
 const FIRE_LIGHT_UPLOAD_S: float = 0.5
 var _liquid_fire_lights: Array = []        ## M6 F5: one LiquidFireLights per burning body (visual lights the field reads, never the tactical registry)
 var _liquid_sheets: Array = []             ## M6: one LiquidSheet3D per `liquids` body, see _attach_liquids()
+var _liquid_rules_controller: RefCounted = null   ## M6 F5: lava, oil on the agent, corrosion, cold, crust, glow, stain, quicksand (`_liquid_rules()`)
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
 ## SM-2 — a scatter covering more than this many LAYERS of its zones gets a loud warning (not a refusal). Moto: ~2.4 ms per layer over a full screen of zone.
 const GROUND_SCATTER_LAYER_BUDGET: float = 1.5
@@ -2903,8 +2905,10 @@ func _ready() -> void:
 
 	turn_manager.ap_changed.connect(_on_ap_changed)
 	turn_manager.player_turn_started.connect(_turn_controller._on_player_turn_started)
+	## M6: the agent's turn is over: the dose of where it stands. Connected FIRST: with no guard the turn controller's handler ends the enemy phase
+	## inside the signal, so the next turn's start (the liquids' turn) would otherwise run before this turn's end.
+	turn_manager.enemy_phase_started.connect(_on_liquid_turn_end)
 	turn_manager.enemy_phase_started.connect(_turn_controller._on_enemy_phase_started)
-	turn_manager.enemy_phase_started.connect(_on_liquid_turn_end)      ## M6: the agent's turn is over: the dose of where it stands
 	turn_manager.player_turn_started.connect(_on_liquid_turn_start)    ## M6: the liquids run one turn, prints fade, mud holds
 	agent.move_started.connect(_on_agent_move_started)
 	agent.step_finished.connect(_on_agent_step_finished)
@@ -4390,10 +4394,15 @@ func schedule_structural_support(touched: Array) -> void:
 		return
 	var loose: Dictionary = holder[0]
 	var live_grid: ClaimGrid = ClaimGrid.of_store(store)
-	## Cloth and glass keep their own rules (a cloth lets go as a sheet, a pane collapses by `GlassSupport`'s cantilever).
+	## Cloth and glass keep their own rules (a cloth lets go as a sheet, a pane collapses by `GlassSupport`'s cantilever). A voxel PROP of a soft material (a cardboard
+	## box) is no sheet: it falls like any prop (M6 F5, 2026-10-18: the toxic liquid eats a box's foot).
 	for key: Vector3i in loose.keys():
 		var material: String = live_grid.material_at(key)
-		if SoftSheetPresets.has(material) or GlassMaterials.is_glass(material):
+		var prop_voxel: bool = false
+		if SoftSheetPresets.has(material):
+			var lv: Voxel = live_grid.voxel_at(key)
+			prop_voxel = lv != null and blocks_by_id.has(lv.container_id())
+		if (SoftSheetPresets.has(material) and not prop_voxel) or GlassMaterials.is_glass(material):
 			loose.erase(key)
 	print("[STRUCT] %d voxel(s) asked (%s), %d with no support (main thread %.2f ms, walk on the worker %.2f ms, %.2f ms until the answer)"
 		% [int(holder[2]), "universal" if universal else "props", loose.size(), float(main_usec) / 1000.0, float(int(holder[1])) / 1000.0, float(Time.get_ticks_usec() - t0) / 1000.0])
@@ -5258,11 +5267,13 @@ func scenario_struct_audit() -> bool:
 
 ## The cells that hold themselves up by design: the voxels of a prop whose definition says `anchored` (a shelf, a picture).
 func _fill_anchored(grid: ClaimGrid) -> void:
+	var ground: int = _voxel_board.ground_plane_level()
 	for block: PropBlock in _voxel_board.prop_blocks():
-		if not block.anchored:
-			continue
 		for v: Voxel in block.voxels:
-			grid.anchored[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
+			if block.anchored:
+				grid.anchored[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
+			elif v.level < ground:
+				grid.below_props[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true   ## a prop in a dug pit (storey -1): held by the pit, not by the plane
 
 
 ## RF-G G3 bench: `STRUCT_CUT=<material>,<levels>` destroys the lowest `levels` levels above the ground of EVERY voxel of that material (a wall with its foot gone), through the
@@ -9462,6 +9473,7 @@ func _attach_liquids(live: Node3D) -> void:
 	if _liquid_field == null:
 		_liquid_field = LiquidFieldRef.new()
 	_liquid_field.clear()
+	_liquid_rules().reset()
 	if _footprints != null:
 		_footprints.detach()
 	_footprints = FootprintMarks3DRef.new()
@@ -9490,8 +9502,12 @@ func _attach_liquids(live: Node3D) -> void:
 		sheet.use_thread = _dev_flag("FLUID_THREAD", "1") != "0"
 		live.add_child(sheet)
 		sheet.setup(body["rect"], base_y - (plane.dig if plane != null else 0.0) * unit, params, body["flow"], plane)   ## a dug body's sheet rests on its bed
-		_liquid_field.add_body(kind, body["rect"], plane)
 		var kind_rules: Dictionary = LiquidRegistryRef.gameplay(kind)
+		var surface: RefCounted = _liquid_rules().surface_for(kind_rules, plane)   ## M6 F5: a crust's plates, water that can freeze
+		_liquid_field.add_body(kind, body["rect"], plane, surface)
+		if surface != null:
+			sheet.surface = surface
+		_liquid_rules().add_body(_liquid_field.count() - 1, kind, body, plane)
 		if plane != null and bool(kind_rules.get("flammable", false)):
 			var burn = LiquidFireRef.new()
 			burn.setup(plane, kind_rules.get("fire", {}))
@@ -9501,13 +9517,7 @@ func _attach_liquids(live: Node3D) -> void:
 			if _dev_flag("FIRE_LIGHT", "1") != "0":   ## dev: A/B the fire's light
 				fire_lights.setup(burn, body["rect"], (kind_rules.get("fire", {}) as Dictionary).get("light", {}))
 			if not fire_lights.lights.is_empty():
-				_liquid_fire_lights.append(fire_lights)
-				_lighting_controller.add_extra_lights(fire_lights.lights)
-				var reach: Dictionary = {}
-				for first_light in fire_lights.lights:
-					for gu in VoxelLightField.new().gus_in_light_range(first_light):
-						reach[gu] = true
-				_repaint_voxel_light_buckets_scoped(reach.keys())   ## the field's light list now has the fire lights (at 0 energy: nothing moves yet)
+				register_body_lights(fire_lights)
 			_liquid_fire_sheets.append(sheet)
 			var flames = LiquidFlamesRef.new()
 			var style: String = _dev_flag("FLAME_STYLE", "both")    ## experiments: embers | tongues | both
@@ -9544,6 +9554,10 @@ func _attach_liquids(live: Node3D) -> void:
 	if walk != "" and agent != null:
 		await get_tree().create_timer(1.5).timeout
 		var origin := Vector2i(_base_layout.get("playable_rect", Rect2i()).position)
+		var start_xy: PackedStringArray = _dev_flag("LIQUID_WALK_FROM", "").split(",")   ## dev: "x,y" (inner GU): where the walk starts
+		if start_xy.size() == 2 and start_xy[0].is_valid_int() and start_xy[1].is_valid_int():
+			agent.set_cell(Vector2i(start_xy[0].to_int(), start_xy[1].to_int()) + origin)
+			_liquid_prev_cell = Vector2i(-9999, -9999)
 		var path: Array[Vector2i] = []
 		for pair in walk.split(";"):
 			var xy: PackedStringArray = pair.split(",")
@@ -9557,6 +9571,59 @@ func _attach_liquids(live: Node3D) -> void:
 			var log_file := FileAccess.open("user://liquid_walk.log", FileAccess.WRITE)   ## the capture harness filters stdout: a dev run reads this file
 			if log_file != null:
 				log_file.store_line(report)
+				log_file.store_line(_liquid_status_line("walk"))
+			## dev: `LIQUID_END_TURNS=<n>` then ends n turns where the agent stands, logging the statuses after each (M6 F5's real-path check)
+			for t in range(int(_dev_flag("LIQUID_END_TURNS", "0"))):
+				if not is_instance_valid(turn_manager) or _liquid_pending_loss != "":
+					break
+				var started: Array = [false]   ## with no guard the enemy phase ends INSIDE end_turn(): listen before calling it
+				turn_manager.player_turn_started.connect(func() -> void: started[0] = true, CONNECT_ONE_SHOT)
+				turn_manager.end_turn()
+				while not bool(started[0]):
+					await get_tree().process_frame
+				await get_tree().create_timer(0.6).timeout
+				var line: String = _liquid_status_line("turn %d" % (t + 1))
+				print(line)
+				if log_file != null:
+					log_file.store_line(line)
+					log_file.flush()
+
+
+## The per-liquid rules (M6 F5), made on first use.
+func _liquid_rules() -> RefCounted:
+	if _liquid_rules_controller == null:
+		_liquid_rules_controller = LiquidRulesControllerRef.new(self)
+	return _liquid_rules_controller
+
+
+## The lights of a body (a fire, or a body that is itself a light: lava, a nuclear liquid) join the field and the tactical registry; the ticker
+## (`_tick_liquid_fire_lights`) grows them from the light under each.
+func register_body_lights(fire_lights: RefCounted) -> void:
+	_liquid_fire_lights.append(fire_lights)
+	_lighting_controller.add_extra_lights(fire_lights.lights)
+	var reach: Dictionary = {}
+	for first_light in fire_lights.lights:
+		for gu in VoxelLightField.new().gus_in_light_range(first_light):
+			reach[gu] = true
+	_repaint_voxel_light_buckets_scoped(reach.keys())   ## the field's light list now has the body's lights (at 0 reach: nothing moves yet)
+
+
+## A light that moved or switched (the agent's glow) repaints these GUs through the fire light's sliced job.
+func queue_light_cells(gus: Array) -> void:
+	if _voxel_light_field == null or _voxel_board == null:
+		return
+	_voxel_light_field.clear_caches()
+	for key in _voxel_board.placed_keys_in_gus(gus):
+		_fire_job[key] = true
+
+
+## dev: one line of the agent's liquid state (`LIQUID_END_TURNS`).
+func _liquid_status_line(tag: String) -> String:
+	var st = _liquid_rules().status
+	var info: Dictionary = liquid_at(agent.cell) if agent != null else {}
+	return "[Liquids] %s: at %s in %s (solid %d), dose %.2f, burning %d, chill %d, marked %d, glow '%s', sink %.1f, AP %d, loss '%s'" % [tag,
+		str(agent.cell) if agent != null else "-", String(info.get("kind", "-")), int(info.get("solid", 0)), _liquid_dose, st.burning, st.chill, st.marked,
+		st.glow_kind, st.sink, turn_manager.current_ap if turn_manager != null else -1, _liquid_pending_loss]
 
 
 ## dev: runs a `LIQUID_IGNITE` script (see `_attach_liquids`).
@@ -9671,6 +9738,7 @@ func _liquid_fire_turn() -> void:
 ## One turn of every liquid, in the order the rules need: the fire first, then the flow.
 func _liquid_world_turn() -> void:
 	_liquid_fire_turn()
+	_liquid_rules().liquid_turn()   ## M6 F5: lava, cold, plates, corrosion, glow (they read the same committed depths)
 	tick_liquids()
 
 
@@ -9715,6 +9783,7 @@ func _liquid_step(cell: Vector2i) -> void:
 	if _liquid_field == null or _liquid_field.count() == 0:
 		return
 	var info: Dictionary = liquid_at(cell)
+	_liquid_rules().on_step(cell, info)   ## M6 F5: fire, stain, glow, a plate's count, the quicksand's reset
 	if info.is_empty():
 		if not _agent_track.is_empty() and int(_agent_track["left"]) > 0 and _footprints != null and previous.x > -9000:
 			var heading: Vector2 = Vector2(cell - previous)
@@ -9725,7 +9794,7 @@ func _liquid_step(cell: Vector2i) -> void:
 			_agent_track["left"] = int(_agent_track["left"]) - 1
 		return
 	var gameplay: Dictionary = info["gameplay"]
-	var depth: float = float(info["depth"])
+	var depth: float = _liquid_rules().status.rule_depth(info)   ## a quicksand's depth is how far the agent sank
 	_liquid_dose = LiquidExposureRef.after_step(_liquid_dose, gameplay, depth)
 	var flames = liquid_fire_at(cell)
 	if flames != null:
@@ -9748,14 +9817,18 @@ func _on_liquid_turn_end() -> void:
 		return
 	var info: Dictionary = liquid_at(agent.cell)
 	var gameplay: Dictionary = info["gameplay"] if not info.is_empty() else _liquid_dose_gameplay
-	_liquid_dose = LiquidExposureRef.after_turn(_liquid_dose, gameplay, float(info.get("depth", 0.0)))
+	var rules: RefCounted = _liquid_rules()
+	rules.status.settle(info)   ## a still turn in quicksand sinks the agent first: the dose is the depth it ends the turn at
+	_liquid_dose = LiquidExposureRef.after_turn(_liquid_dose, gameplay, rules.status.rule_depth(info) if not info.is_empty() else 0.0)
 	var flames = liquid_fire_at(agent.cell)
 	if flames != null:
 		_liquid_dose += flames.dose_turn    ## M6 F5: the fire under the agent at the end of its turn
+	var on_agent: float = rules.on_turn_end(agent.cell, info, _liquid_dose)   ## M6 F5: the fire ON the agent (and the other statuses' turn)
+	_liquid_dose = clampf(_liquid_dose + on_agent, 0.0, 1.0)
 	if not info.is_empty():
 		_liquid_dose_gameplay = gameplay
-		if LiquidExposureRef.is_lethal(_liquid_dose):
-			_liquid_pending_loss = String(info["kind"])
+	if LiquidExposureRef.is_lethal(_liquid_dose) and (not info.is_empty() or on_agent > 0.0):
+		_liquid_pending_loss = String(info["kind"]) if not info.is_empty() else "fire"
 
 
 ## A new player turn: the liquids run a turn, the prints fade, and a trap liquid that holds the agent costs AP.
@@ -9765,10 +9838,12 @@ func _on_liquid_turn_start() -> void:
 		_footprints.age_turn()
 	if agent != null and turn_manager != null:
 		var info: Dictionary = liquid_at(agent.cell)
+		var rules: RefCounted = _liquid_rules()
+		var lost: int = rules.on_turn_start(agent.cell, info)   ## M6 F5: the chill's AP (and a fire that reached the agent)
 		if not info.is_empty():
-			var held: int = LiquidExposureRef.trap_ap(info["gameplay"], float(info["depth"]))
-			if held > 0:
-				turn_manager.consume_ap(held)
+			lost += LiquidExposureRef.trap_ap(info["gameplay"], rules.status.rule_depth(info))
+		if lost > 0:
+			turn_manager.consume_ap(mini(lost, turn_manager.current_ap))
 	_check_liquid_loss.call_deferred()
 
 
@@ -9784,6 +9859,8 @@ func _check_liquid_loss() -> void:
 	_hud_controller.hide_busted()
 	_liquid_dose = 0.0
 	_agent_track.clear()
+	_liquid_rules().status.reset()
+	_liquid_rules().refresh_agent_look()
 	_liquid_prev_cell = Vector2i(-9999, -9999)
 	if _footprints != null:
 		_footprints.clear()

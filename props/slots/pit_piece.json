@@ -1,0 +1,10 @@
+{
+  "id": "pit_piece",
+  "footprint_gus": [[0, 0]],
+  "max_size": [1.6, 1.6, 1.6],
+  "mesh_tier": 0,
+  "gameplay": {"cover": "none", "destructible": true},
+  "default_model": "box_cardboard_pit",
+  "generic_material": "cardboard",
+  "budget": {"max_claims": 400, "max_materials": 2}
+}

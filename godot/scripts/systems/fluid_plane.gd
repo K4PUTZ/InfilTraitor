@@ -138,7 +138,16 @@ func add_sink(rect: Rect2, rate: float) -> void:
 ## A grate across the line at `at` GU on `axis` ("x": a vertical line, flow crosses it along x; "y": a horizontal line, flow crosses it along y).
 ## The liquid's fluidity decides what gets through.
 func add_grate(axis: String, at: float) -> void:
-	var pass_fraction: float = clampf((fluidity - GRATE_MIN_FLUIDITY) / (GRATE_FULL_FLUIDITY - GRATE_MIN_FLUIDITY), 0.0, 1.0)
+	_set_grate(axis, at, clampf((fluidity - GRATE_MIN_FLUIDITY) / (GRATE_FULL_FLUIDITY - GRATE_MIN_FLUIDITY), 0.0, 1.0))
+
+
+## The grate across `at` on `axis` is gone (an acid dissolved its bars, M6 F5): the line lets everything through.
+func open_grate(axis: String, at: float) -> void:
+	finish_tick()
+	_set_grate(axis, at, 1.0)
+
+
+func _set_grate(axis: String, at: float, pass_fraction: float) -> void:
 	if axis == "y":
 		var line: int = int(round((at - origin.y) / cell_gu))     ## the boundary between row line-1 and row line
 		for c in range(cols):
@@ -183,6 +192,14 @@ static func from_body(body: Dictionary, liquid_fluidity: float) -> RefCounted:
 		plane.add_sink(snk["rect"], float(snk["rate"]))
 	for grate: Dictionary in fluid["grates"]:
 		plane.add_grate(String(grate["axis"]), float(grate["at"]))
+	var fill: float = float(fluid.get("fill", 0.0))   ## a still pool: the depth it holds when the map opens (no source needed), up to `fill` voxels over the bed
+	if fill > 0.0:
+		for r in range(1, height - 1):
+			for c in range(1, width - 1):
+				var i: int = plane.index(c, r)
+				if plane.ground[i] < WALL:
+					plane.depth[i] = maxf(fill - plane.ground[i], 0.0)
+		plane.committed = plane.depth.duplicate()
 	return plane
 
 

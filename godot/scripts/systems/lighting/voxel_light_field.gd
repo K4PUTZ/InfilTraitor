@@ -408,10 +408,12 @@ func gus_in_light_range(light) -> Array:
 	return gus
 
 
-## FIRE LIGHT (2026-10-18) — the warmth (0..255, the cell plane's A channel) a cell takes from the fire lights in range: each warm light's glow at the cell
-## (energy x falloff x `warmth`), summed and saturated. Distance only (like the buckets, a fire is not shadowed by the projector's results); 0 with no warm light.
+## FIRE LIGHT (2026-10-18) — the tint (0..255, the cell plane's A channel) a cell takes from the fire lights in range: each tinting light's glow at the cell
+## (energy x falloff x `warmth`), summed and saturated per hue. Distance only (like the buckets, a fire is not shadowed by the projector's results); 0 with no
+## tinting light. The byte holds ONE hue (`encode_tint`): 1..127 = warm (a fire, lava), 128..255 = cool (a phosphorescent glow); the stronger hue wins a cell.
 func warm_for(cell: Vector2i, level: int) -> int:
 	var total: float = 0.0
+	var cool: float = 0.0
 	var gu := Vector2i(cell.x >> 3, cell.y >> 3)
 	for light in _lights:
 		if light.warmth <= 0.0 or not (light.active or light.fading):
@@ -425,8 +427,19 @@ func warm_for(cell: Vector2i, level: int) -> int:
 			continue
 		var d_lvl := absf(float(level - _anchor_level(light))) / float(GeometryCoords.LEVELS_PER_STOREY) * vertical_gu_per_storey
 		var d := sqrt(d_gu * d_gu + d_lvl * d_lvl)
-		total += front * float(light.visual_energy) * float(light.energy_multiplier) * float(light.warmth) * _falloff(d, radius, light.inner_ratio)
-	return int(round(clampf(total, 0.0, 1.0) * 255.0))
+		var glow: float = front * float(light.visual_energy) * float(light.energy_multiplier) * float(light.warmth) * _falloff(d, radius, light.inner_ratio)
+		if int(light.tint) == LightSource.TINT_COOL:
+			cool += glow
+		else:
+			total += glow
+	return encode_tint(total, cool)
+
+
+## The A byte of a cell: the stronger hue, in its half of the byte (warm 0..127, cool 128..255); the shaders decode it the same way (`fire_tint`, `plane_warm`).
+static func encode_tint(warm: float, cool: float) -> int:
+	if cool > warm:
+		return 128 + int(round(clampf(cool, 0.0, 1.0) * 127.0))
+	return int(round(clampf(warm, 0.0, 1.0) * 127.0))
 
 
 ## A light switched on or off at run time (a fire lit or put out): the field's list and its per-light shadows follow, and the caches that read them are dropped.

@@ -33,7 +33,9 @@ var _energy: float = DEFAULT_ENERGY
 var _since: float = 0.0
 
 
-## `spec` is the liquid's `fire.light` ({radius, spacing, energy}); an `energy` of 0 makes none. `rect` is the body's interior (raw GU).
+## `spec` is the liquid's `fire.light` ({radius, spacing, energy, warmth, inner, tint}); an `energy` of 0 makes none. `rect` is the body's interior (raw GU).
+## `burn` is what lights it: a `LiquidFire` (a burning body) or a `LiquidGlow` (lava, a nuclear liquid: a body that is itself a light); both give a `plane`
+## and a `visual` level per plane cell.
 func setup(burn: RefCounted, rect: Rect2, spec: Dictionary) -> void:
 	_burn = burn
 	_energy = float(spec.get("energy", DEFAULT_ENERGY))
@@ -60,6 +62,7 @@ func setup(burn: RefCounted, rect: Rect2, spec: Dictionary) -> void:
 		light.visual_energy = _energy
 		light.warmth = float(spec.get("warmth", DEFAULT_WARMTH))
 		light.inner_ratio = float(spec.get("inner", DEFAULT_INNER))
+		light.tint = LightSourceClass.TINT_COOL if String(spec.get("tint", "warm")) == "cool" else LightSourceClass.TINT_WARM
 		light.energy_multiplier = 1.0   ## the flame's own breathing is the shader's; the light is on or off, and GROWS (`reach`)
 		light.last_energy = 1.0
 		light.reach = 0.0

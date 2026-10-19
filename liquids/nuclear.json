@@ -35,7 +35,22 @@
       "deep": 0.5,
       "recovery": 0.0
     },
-    "light": "agent_glows",
+    "light": {
+      "body": {
+        "radius": 3,
+        "spacing": 2,
+        "energy": 0.5,
+        "warmth": 1.0,
+        "inner": 0.4,
+        "tint": "cool"
+      },
+      "agent": {
+        "radius": 2,
+        "energy": 0.5,
+        "warmth": 0.6,
+        "tint": "cool"
+      }
+    },
     "footprint": {
       "color": [
         0.4,

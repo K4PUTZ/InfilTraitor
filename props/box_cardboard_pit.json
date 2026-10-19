@@ -1,0 +1,13 @@
+{
+  "id": "box_cardboard_pit",
+  "mesh_tier": 0,
+  "vox_model": "res://ASSETS/props/vox/box_cardboard_pit.vox",
+  "vox_scale": 1,
+  "vox_materials": {"1": "cardboard"},
+  "material_zones": {"default": "cardboard"},
+  "footprint_gus": [[0, 0]],
+  "storeys": 1,
+  "gameplay": {"cover": "none", "destructible": true},
+  "tags": ["voxel-model", "liquids-lab"],
+  "slot": "pit_piece"
+}

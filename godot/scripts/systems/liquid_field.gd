@@ -7,23 +7,35 @@ extends RefCounted
 
 const LiquidRegistryRef = preload("res://godot/scripts/systems/liquid_registry.gd")
 
-var _bodies: Array = []     ## {"kind": String, "rect": Rect2 (the interior, raw GU), "plane": FluidPlane}
+var _bodies: Array = []     ## {"kind": String, "rect": Rect2 (the interior, raw GU), "plane": FluidPlane, "surface": LiquidSurfaceState or null}
+
+## What a SOLID surface is to the rules (M6 F5): a lava crust's intact plate is ground (no dose, no wading); ice is ground that slips.
+const PLATE_GAMEPLAY: Dictionary = {"wade_ap": 0}
+const ICE_GAMEPLAY: Dictionary = {"wade_ap": 0, "slippery": true}
+const PLATE: int = 1   ## = LiquidSurfaceState.PLATE
+const ICE: int = 2     ## = LiquidSurfaceState.ICE
 
 
 func clear() -> void:
 	_bodies.clear()
 
 
-func add_body(kind: String, rect: Rect2, plane: RefCounted) -> void:
+func add_body(kind: String, rect: Rect2, plane: RefCounted, surface: RefCounted = null) -> void:
 	if plane != null:
-		_bodies.append({"kind": kind, "rect": rect, "plane": plane})
+		_bodies.append({"kind": kind, "rect": rect, "plane": plane, "surface": surface})
+
+
+## Every body as the field holds it ({kind, rect, plane, surface}): the per-liquid rules walk them (`LiquidRulesController`).
+func bodies() -> Array:
+	return _bodies
 
 
 func count() -> int:
 	return _bodies.size()
 
 
-## `{}` for a dry cell, else `{"kind", "depth" (voxels, the deepest plane cell in the GU), "gameplay", "body" (index)}`.
+## `{}` for a dry cell, else `{"kind", "depth" (voxels, the deepest plane cell in the GU), "gameplay", "body" (index), "solid" (0, PLATE, ICE)}`. A solid
+## surface answers its own gameplay (`PLATE_GAMEPLAY`, `ICE_GAMEPLAY`) in place of the liquid's.
 func at_cell(cell: Vector2i) -> Dictionary:
 	var centre := Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5)
 	for b in range(_bodies.size()):
@@ -40,7 +52,14 @@ func at_cell(cell: Vector2i) -> Dictionary:
 			for c in range(c0, c1 + 1):
 				depth = maxf(depth, plane.committed[plane.index(c, r)])
 		if depth > 0.05:
-			return {"kind": body["kind"], "depth": depth, "gameplay": LiquidRegistryRef.gameplay(String(body["kind"])), "body": b}
+			var surface = body["surface"]
+			var solid: int = surface.at_gu(cell) if surface != null else 0
+			var gameplay: Dictionary = LiquidRegistryRef.gameplay(String(body["kind"]))
+			if solid == PLATE:
+				gameplay = PLATE_GAMEPLAY
+			elif solid == ICE:
+				gameplay = ICE_GAMEPLAY
+			return {"kind": body["kind"], "depth": depth, "gameplay": gameplay, "body": b, "solid": solid}
 		return {}
 	return {}
 

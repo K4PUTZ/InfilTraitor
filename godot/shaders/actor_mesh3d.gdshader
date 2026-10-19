@@ -9,6 +9,10 @@ render_mode unshaded, cull_back;
 uniform vec4 albedo : source_color = vec4(1.0);
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
 uniform float has_tex = 0.0;
+// M6 F5 — what a liquid left ON the agent (`ActorMesh3D.set_status_tint`): rgb the colour, a how much (0 = none); `status_pulse` 1 makes it breathe
+// (a fire on the agent), 0 holds it (a stain, a glow).
+uniform vec4 status_tint = vec4(0.0);
+uniform float status_pulse = 0.0;
 #include "res://godot/shaders/mesh_planes.gdshaderinc"
 
 void vertex() {
@@ -29,4 +33,8 @@ void fragment() {
 	}
 	// the ladder is an sRGB multiplier (the board multiplies in sRGB); the albedo is already linear
 	ALBEDO = base * pow(vec3(lum * key * soot), vec3(2.2)) * (inside ? plane_warm(t, cell) : vec3(1.0));
+	float breathe = mix(1.0, 0.55 + 0.45 * sin(TIME * 7.0 + v_world.y * 9.0), status_pulse);
+	// the tint keeps the figure's own shading: the status colour at the pixel's brightness, never a flat fill
+	vec3 tinted = status_tint.rgb * clamp(dot(ALBEDO, vec3(0.3333)) * 2.6, 0.18, 1.0);
+	ALBEDO = mix(ALBEDO, tinted, clamp(status_tint.a * breathe, 0.0, 1.0));
 }

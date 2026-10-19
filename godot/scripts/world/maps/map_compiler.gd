@@ -261,7 +261,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		var fluid_raw = body.get("fluid", null)
 		var fluid: Dictionary = {}
 		if fluid_raw is Dictionary:
-			fluid = {"cell": maxf(float(fluid_raw.get("cell", 0.25)), 0.125), "rim": float(fluid_raw.get("rim", 2.0)), "dig": maxf(float(fluid_raw.get("dig", 0.0)), 0.0),
+			fluid = {"cell": maxf(float(fluid_raw.get("cell", 0.25)), 0.125), "rim": float(fluid_raw.get("rim", 2.0)), "dig": maxf(float(fluid_raw.get("dig", 0.0)), 0.0), "fill": maxf(float(fluid_raw.get("fill", 0.0)), 0.0),
 				"walls": [], "grounds": [], "roofs": [], "sources": [], "sinks": [], "grates": []}
 			for kind_key: String in ["walls", "grounds", "roofs", "sources", "sinks"]:
 				for entry in fluid_raw.get(kind_key, []):

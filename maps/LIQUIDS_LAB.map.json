@@ -1,0 +1,1367 @@
+{
+ "format": "infiltraitor-map",
+ "schema_version": 3,
+ "id": "LIQUIDS_LAB",
+ "meta": {
+  "title": "Liquids Lab",
+  "description": "Bench for the M6 F5 per-liquid rules (2026-10-18): one still pool per rule (lava + oil, acid + grating, toxic + cardboard boxes, cryogenic + water, lava crust, nuclear, biohazard, quicksand on earth: the GU 16-19 x 6-9 is left undeclared, which is earth). Dev fixture, not a level. Box voxels: tools/asset_generation/gen_liquids_lab_vox.py."
+ },
+ "sections": {
+  "board": {
+   "v": 1,
+   "inner_size": [
+    24,
+    12
+   ],
+   "buffer": 5,
+   "floor_tile": "floor_SE"
+  },
+  "actors": {
+   "v": 1,
+   "agent_start": [
+    10,
+    5
+   ],
+   "guards": []
+  },
+  "legacy_compiler": {
+   "v": 1,
+   "wall_height": 1,
+   "access_points": [],
+   "dividers": [],
+   "lights": [
+    {
+     "x": 6,
+     "y": 5,
+     "height_class": 4,
+     "radius": 9,
+     "intensity": 0.3
+    },
+    {
+     "x": 16,
+     "y": 5,
+     "height_class": 4,
+     "radius": 9,
+     "intensity": 0.3
+    }
+   ]
+  },
+  "blocks": {
+   "v": 2,
+   "items": [
+    {
+     "gu": [
+      0,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      1,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      1,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      2,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      2,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      3,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      3,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      4,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      4,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      5,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      5,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      6,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      6,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      7,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      7,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      8,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      8,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      9,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      9,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      10,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      10,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      11,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      11,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      12,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      12,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      13,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      13,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      15,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      15,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      16,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      16,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      17,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      17,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      18,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      18,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      19,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      19,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      20,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      20,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      21,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      21,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      22,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      22,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      0
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      11
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      1
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      1
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      2
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      2
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      3
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      3
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      4
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      4
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      5
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      6
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      6
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      7
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      7
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      8
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      8
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      9
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      10
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      10
+     ],
+     "material": "concrete",
+     "storeys": 2
+    }
+   ]
+  },
+  "floor_zones": {
+   "v": 2,
+   "items": [
+    {
+     "gu": [
+      0,
+      0
+     ],
+     "size": [
+      24,
+      6
+     ],
+     "material": "concrete"
+    },
+    {
+     "gu": [
+      0,
+      6
+     ],
+     "size": [
+      16,
+      6
+     ],
+     "material": "concrete"
+    },
+    {
+     "gu": [
+      20,
+      6
+     ],
+     "size": [
+      4,
+      6
+     ],
+     "material": "concrete"
+    },
+    {
+     "gu": [
+      16,
+      10
+     ],
+     "size": [
+      4,
+      2
+     ],
+     "material": "concrete"
+    }
+   ]
+  },
+  "damage_materials": {
+   "v": 1,
+   "materials": [
+    "concrete",
+    "steel_dark",
+    "cardboard"
+   ]
+  },
+  "props": {
+   "v": 1,
+   "items": [
+    {
+     "def": "grate_n_0",
+     "gu": [
+      8,
+      2
+     ],
+     "storey": -1,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "grate_n_1",
+     "gu": [
+      9,
+      2
+     ],
+     "storey": -1,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "box_cardboard_pit",
+     "gu": [
+      12,
+      2
+     ],
+     "storey": -1,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "box_cardboard_pit",
+     "gu": [
+      13,
+      3
+     ],
+     "storey": -1,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    }
+   ]
+  },
+  "layout": {
+   "v": 1,
+   "poi": [
+    {
+     "id": "lava_oil",
+     "at": [
+      4.0,
+      3.0,
+      0.0
+     ],
+     "extent": [
+      5.0,
+      3.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "acid",
+     "at": [
+      9.0,
+      3.0,
+      0.0
+     ],
+     "extent": [
+      3.0,
+      3.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "toxic",
+     "at": [
+      13.0,
+      3.0,
+      0.0
+     ],
+     "extent": [
+      3.0,
+      3.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "cold",
+     "at": [
+      18.0,
+      3.0,
+      0.0
+     ],
+     "extent": [
+      5.0,
+      3.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "crust",
+     "at": [
+      4.0,
+      8.0,
+      0.0
+     ],
+     "extent": [
+      5.0,
+      3.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "nuclear",
+     "at": [
+      13.0,
+      8.0,
+      0.0
+     ],
+     "extent": [
+      3.0,
+      3.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "biohazard",
+     "at": [
+      9.0,
+      8.0,
+      0.0
+     ],
+     "extent": [
+      3.0,
+      3.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "quicksand",
+     "at": [
+      18.0,
+      8.0,
+      0.0
+     ],
+     "extent": [
+      3.0,
+      3.0,
+      1.0
+     ],
+     "tags": [
+      "detail"
+     ]
+    },
+    {
+     "id": "lab",
+     "at": [
+      12.0,
+      6.0,
+      0.0
+     ],
+     "extent": [
+      22.0,
+      10.0,
+      1.0
+     ],
+     "tags": [
+      "wide"
+     ]
+    }
+   ],
+   "regions": []
+  },
+  "capture": {
+   "v": 1,
+   "rails": [
+    {
+     "id": "lab_rail",
+     "keys": [
+      {
+       "frame": "wide",
+       "target": "@lab",
+       "view": "N",
+       "hold": 600
+      }
+     ]
+    },
+    {
+     "id": "tour_rail",
+     "keys": [
+      {
+       "frame": "wide",
+       "target": "@lab",
+       "view": "N",
+       "hold": 420
+      },
+      {
+       "frame": "detail",
+       "target": "@acid",
+       "view": "N",
+       "hold": 60
+      },
+      {
+       "frame": "detail",
+       "target": "@toxic",
+       "view": "N",
+       "hold": 60
+      },
+      {
+       "frame": "detail",
+       "target": "@cold",
+       "view": "N",
+       "hold": 60
+      },
+      {
+       "frame": "detail",
+       "target": "@lava_oil",
+       "view": "N",
+       "hold": 60
+      },
+      {
+       "frame": "detail",
+       "target": "@crust",
+       "view": "N",
+       "hold": 60
+      },
+      {
+       "frame": "detail",
+       "target": "@nuclear",
+       "view": "N",
+       "hold": 60
+      },
+      {
+       "frame": "detail",
+       "target": "@biohazard",
+       "view": "N",
+       "hold": 60
+      },
+      {
+       "frame": "detail",
+       "target": "@quicksand",
+       "view": "N",
+       "hold": 60
+      }
+     ]
+    },
+    {
+     "id": "agent_rail",
+     "keys": [
+      {
+       "frame": "detail",
+       "target": "@nuclear",
+       "view": "N",
+       "hold": 900
+      }
+     ]
+    }
+   ],
+   "takes": [
+    {
+     "id": "rules_world",
+     "profile": "engine",
+     "rail": "lab_rail",
+     "steps": [],
+     "at_key": 0,
+     "after_hold": 0,
+     "length": 900,
+     "seed": 1,
+     "env": {
+      "FLUID_AUTO_TICK": "0.5"
+     },
+     "note": "M6 F5: the world rules over 15 s of liquid turns (one every 0.5 s): the lava lights the oil, the acid eats the grating, the toxic eats the boxes, the cold freezes the water's edge; lava and nuclear glow"
+    },
+    {
+     "id": "rules_tour",
+     "profile": "engine",
+     "rail": "tour_rail",
+     "steps": [],
+     "at_key": 0,
+     "after_hold": 0,
+     "length": 900,
+     "seed": 1,
+     "env": {
+      "FLUID_AUTO_TICK": "0.25"
+     },
+     "note": "M6 F5: 28 liquid turns at the wide frame (one every 0.25 s), then a detail stop at each pool: acid + grating, toxic + boxes, cold + water, lava + oil, crust, nuclear, biohazard, quicksand"
+    },
+    {
+     "id": "agent_statuses",
+     "profile": "engine",
+     "rail": "agent_rail",
+     "steps": [],
+     "at_key": 0,
+     "after_hold": 0,
+     "length": 600,
+     "seed": 1,
+     "env": {
+      "LIQUID_WALK_FROM": "12,5",
+      "LIQUID_WALK": "12,6;12,7",
+      "LIQUID_END_TURNS": "2"
+     },
+     "note": "M6 F5: the agent steps into the nuclear pool: it glows (a small cool tactical light that follows it) and its figure turns green"
+    }
+   ]
+  },
+  "liquids": {
+   "v": 1,
+   "items": [
+    {
+     "comment": "1. lava: a warm light; it lights the oil beside it",
+     "zone": [
+      2,
+      2,
+      2,
+      2
+     ],
+     "kind": "lava_gold",
+     "flow": [
+      1,
+      0
+     ],
+     "fluid": {
+      "cell": 0.5,
+      "rim": 3,
+      "dig": 4,
+      "fill": 1.5,
+      "walls": [],
+      "grounds": [],
+      "roofs": [],
+      "sources": [],
+      "sinks": [],
+      "grates": []
+     }
+    },
+    {
+     "comment": "1-2. oil the lava sets on fire",
+     "zone": [
+      4,
+      2,
+      2,
+      2
+     ],
+     "kind": "petroleo",
+     "flow": [
+      1,
+      0
+     ],
+     "fluid": {
+      "cell": 0.5,
+      "rim": 3,
+      "dig": 4,
+      "fill": 1.5,
+      "walls": [],
+      "grounds": [],
+      "roofs": [],
+      "sources": [],
+      "sinks": [],
+      "grates": []
+     }
+    },
+    {
+     "comment": "3. acid: dissolves the grating's bars (metal) and opens the grate line; marks the bed and the walls",
+     "zone": [
+      8,
+      2,
+      2,
+      2
+     ],
+     "kind": "acido",
+     "flow": [
+      0,
+      1
+     ],
+     "fluid": {
+      "cell": 0.5,
+      "rim": 3,
+      "dig": 4,
+      "fill": 2.0,
+      "walls": [],
+      "grounds": [],
+      "roofs": [],
+      "sources": [],
+      "sinks": [],
+      "grates": [
+       {
+        "y": 2.75
+       }
+      ]
+     }
+    },
+    {
+     "comment": "4. toxic: dissolves the cardboard boxes standing in it",
+     "zone": [
+      12,
+      2,
+      2,
+      2
+     ],
+     "kind": "toxic",
+     "flow": [
+      0,
+      1
+     ],
+     "fluid": {
+      "cell": 0.5,
+      "rim": 3,
+      "dig": 4,
+      "fill": 2.0,
+      "walls": [],
+      "grounds": [],
+      "roofs": [],
+      "sources": [],
+      "sinks": [],
+      "grates": []
+     }
+    },
+    {
+     "comment": "5. cryogenic: chills the agent, freezes the water beside it",
+     "zone": [
+      16,
+      2,
+      2,
+      2
+     ],
+     "kind": "criogenico",
+     "flow": [
+      1,
+      0
+     ],
+     "fluid": {
+      "cell": 0.5,
+      "rim": 3,
+      "dig": 4,
+      "fill": 1.5,
+      "walls": [],
+      "grounds": [],
+      "roofs": [],
+      "sources": [],
+      "sinks": [],
+      "grates": []
+     }
+    },
+    {
+     "comment": "5. water the cold freezes along their common edge",
+     "zone": [
+      18,
+      2,
+      2,
+      2
+     ],
+     "kind": "clean",
+     "flow": [
+      1,
+      0
+     ],
+     "fluid": {
+      "cell": 0.5,
+      "rim": 3,
+      "dig": 4,
+      "fill": 1.5,
+      "walls": [],
+      "grounds": [],
+      "roofs": [],
+      "sources": [],
+      "sinks": [],
+      "grates": []
+     }
+    },
+    {
+     "comment": "6. lava crust: walkable plates that break 3 turns after the first step (deep: lethal and blocked once broken)",
+     "zone": [
+      2,
+      7,
+      4,
+      2
+     ],
+     "kind": "lava_crust",
+     "flow": [
+      1,
+      0
+     ],
+     "fluid": {
+      "cell": 0.5,
+      "rim": 3,
+      "dig": 4,
+      "fill": 2.5,
+      "walls": [],
+      "grounds": [],
+      "roofs": [],
+      "sources": [],
+      "sinks": [],
+      "grates": []
+     }
+    },
+    {
+     "comment": "7. nuclear: a faint cool glow around it; the agent it doses glows",
+     "zone": [
+      12,
+      7,
+      2,
+      2
+     ],
+     "kind": "nuclear",
+     "flow": [
+      0,
+      1
+     ],
+     "fluid": {
+      "cell": 0.5,
+      "rim": 3,
+      "dig": 4,
+      "fill": 1.5,
+      "walls": [],
+      "grounds": [],
+      "roofs": [],
+      "sources": [],
+      "sinks": [],
+      "grates": []
+     }
+    },
+    {
+     "comment": "8. biohazard: stains the agent for 5 turns",
+     "zone": [
+      8,
+      7,
+      2,
+      2
+     ],
+     "kind": "biohazard",
+     "flow": [
+      0,
+      1
+     ],
+     "fluid": {
+      "cell": 0.5,
+      "rim": 3,
+      "dig": 4,
+      "fill": 1.5,
+      "walls": [],
+      "grounds": [],
+      "roofs": [],
+      "sources": [],
+      "sinks": [],
+      "grates": []
+     }
+    },
+    {
+     "comment": "9. quicksand on earth: a still agent sinks a voxel a turn",
+     "zone": [
+      17,
+      7,
+      2,
+      2
+     ],
+     "kind": "areia_movedica",
+     "flow": [
+      0,
+      1
+     ],
+     "fluid": {
+      "cell": 0.5,
+      "rim": 1,
+      "dig": 0,
+      "fill": 0.5,
+      "walls": [],
+      "grounds": [],
+      "roofs": [],
+      "sources": [],
+      "sinks": [],
+      "grates": []
+     }
+    }
+   ]
+  },
+  "floor_openings": {
+   "v": 1,
+   "items": [
+    {
+     "comment": "lava + oil",
+     "gu": [
+      2,
+      2
+     ],
+     "size": [
+      4,
+      2
+     ],
+     "pattern": "open",
+     "dig": 4,
+     "bed_material": "concrete"
+    },
+    {
+     "comment": "acid",
+     "gu": [
+      8,
+      2
+     ],
+     "size": [
+      2,
+      2
+     ],
+     "pattern": "open",
+     "dig": 4,
+     "bed_material": "concrete"
+    },
+    {
+     "comment": "toxic",
+     "gu": [
+      12,
+      2
+     ],
+     "size": [
+      2,
+      2
+     ],
+     "pattern": "open",
+     "dig": 4,
+     "bed_material": "concrete"
+    },
+    {
+     "comment": "cryogenic + water",
+     "gu": [
+      16,
+      2
+     ],
+     "size": [
+      4,
+      2
+     ],
+     "pattern": "open",
+     "dig": 4,
+     "bed_material": "concrete"
+    },
+    {
+     "comment": "lava crust",
+     "gu": [
+      2,
+      7
+     ],
+     "size": [
+      4,
+      2
+     ],
+     "pattern": "open",
+     "dig": 4,
+     "bed_material": "concrete"
+    },
+    {
+     "comment": "nuclear",
+     "gu": [
+      8,
+      7
+     ],
+     "size": [
+      2,
+      2
+     ],
+     "pattern": "open",
+     "dig": 4,
+     "bed_material": "concrete"
+    },
+    {
+     "comment": "biohazard",
+     "gu": [
+      12,
+      7
+     ],
+     "size": [
+      2,
+      2
+     ],
+     "pattern": "open",
+     "dig": 4,
+     "bed_material": "concrete"
+    }
+   ]
+  }
+ }
+}

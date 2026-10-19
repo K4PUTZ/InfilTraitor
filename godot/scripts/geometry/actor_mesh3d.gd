@@ -266,6 +266,13 @@ func _apply_board_light(body: Node) -> void:
 			m.set_surface_override_material(s, converted[src])
 
 
+## M6 F5 — what a liquid left on the actor, drawn over its board light: `color` (alpha = how much, 0 clears it), `pulse` 1 makes it breathe (a fire).
+func set_status_tint(color: Color, pulse: float) -> void:
+	for m: ShaderMaterial in _materials:
+		m.set_shader_parameter("status_tint", color)
+		m.set_shader_parameter("status_pulse", pulse)
+
+
 ## R3D-WORLD — the actor's contact shadow, on the ground under the feet: the 2D diamond the actor drew
 ## (`ground_shadow_half_px`, `COLOR_SHADOW`), carried through the board's 2D -> ground map, so it is the same shape on the
 ## same floor in view N and stays under the feet in every other view. The actor's own 2D shadow is gone (RETIRE-2D); the actor

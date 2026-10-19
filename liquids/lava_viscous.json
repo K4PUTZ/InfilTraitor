@@ -55,7 +55,15 @@
       "deep": 1.0,
       "recovery": 0.0
     },
-    "light": "source",
+    "light": {
+      "body": {
+        "radius": 5,
+        "spacing": 2,
+        "energy": 1.0,
+        "warmth": 0.8,
+        "inner": 0.5
+      }
+    },
     "ignites": true,
     "noise": 0.0,
     "fluidity": 0.2

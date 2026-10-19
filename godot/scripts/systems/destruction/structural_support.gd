@@ -97,9 +97,10 @@ static func unsupported(grid: ClaimGrid, ground: int, seeds: Array, broken: Dict
 			push_warning("[StructuralSupport] more than %d standing voxels found round %d asked: the walk gives up and nothing falls" % [max_found, seeds.size()])
 			return {}
 		var k: Vector3i = stack.pop_back()
-		if k.z <= ground or grid.anchored.has(k):
+		var on_ground: bool = k.z <= ground and not grid.below_props.has(k)   ## a prop standing in a dug pit holds only through the pit (M6, 2026-10-18)
+		if on_ground or grid.anchored.has(k):
 			sources.append(k)
-			if k.z <= ground:
+			if on_ground:
 				continue
 		for d: Vector3i in NEIGHBOURS:
 			var n: Vector3i = k + d

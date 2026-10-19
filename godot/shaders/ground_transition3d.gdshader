@@ -27,6 +27,7 @@ uniform ivec2 plane_size = ivec2(512, 512);
 uniform float bucket_lum[12];
 uniform float fire_time = 0.0;
 uniform vec3 warm_color = vec3(1.40, 0.84, 0.50);
+uniform vec3 cool_color = vec3(0.72, 1.30, 0.70);
 uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
 uniform float depth_dim[5];
 // The knobs (GroundTransitions3D.WIDTH_GU / NOISE_AMOUNT / NOISE_PERIOD_GU), one band width per side, in GU.
@@ -75,7 +76,8 @@ void fragment() {
 	vec4 plane_t = texelFetch(cell_plane, ivec3(ivec2(v.x, v.z) + plane_origin, layer), 0);
 	int bucket = int(floor(plane_t.g * 255.0 + 0.5));
 	float flick = 1.0 + 0.22 * sin(fire_time * 9.0 + float(v.x * 7 + v.z * 13)) * sin(fire_time * 4.3 + float(v.x * 7 + v.z * 13) * 1.7);
-	vec3 warm_mult = mix(vec3(1.0), warm_color, clamp(plane_t.a * flick, 0.0, 1.0));
+	float cool = step(0.5, plane_t.a);   // the A byte's hue: 0..127 warm, 128..255 cool (as `Board3DLive`'s `fire_tint`)
+	vec3 warm_mult = mix(vec3(1.0), mix(warm_color, cool_color, cool), clamp((plane_t.a - 0.502 * cool) * 2.0 * mix(flick, 1.0, cool), 0.0, 1.0));
 	float f = face_tone.x * bucket_lum[clamp(bucket, 0, 11)] * tone;
 	int rel = level + rel_offset;
 	if (rel < 0) {

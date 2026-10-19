@@ -137,10 +137,14 @@ uniform float soot_smooth = 1.0;  // 1: a floor top's soot tone is the cell plan
 // (a flicker of `fire_time`, a phase per voxel column). Arithmetic only (no branch: an untaken branch costs on the Mali).
 uniform float fire_time = 0.0;
 uniform vec3 warm_color = vec3(1.40, 0.84, 0.50);
+uniform vec3 cool_color = vec3(0.72, 1.30, 0.70);
+// The A byte holds one hue: 0..127 warm (it breathes), 128..255 cool (a phosphorescent glow, steady). Arithmetic, no branch.
 vec3 fire_tint(float a, ivec3 vv) {
 	float ph = fract(float(vv.x * 7 + vv.z * 13) * 0.137) * 6.2831;
 	float flick = 1.0 + 0.22 * sin(fire_time * 9.0 + ph) * sin(fire_time * 4.3 + ph * 1.7);
-	return mix(vec3(1.0), warm_color, clamp(a * flick, 0.0, 1.0));
+	float cool = step(0.5, a);
+	float amount = (a - 0.502 * cool) * 2.0;
+	return mix(vec3(1.0), mix(warm_color, cool_color, cool), clamp(amount * mix(flick, 1.0, cool), 0.0, 1.0));
 }
 uniform float pit_dark = 0.60;     // the inside of a crater (side faces and the tops below the walkable floor) is darkened by this
 // ROOF R-D9 (Director 2026-10-12): a face looking INTO a hole a wall took (the material's FRESH twin, `_fresh_twin`) is freshly broken

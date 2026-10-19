@@ -12,6 +12,7 @@ const THROW_GU: float = 0.06           ## how far the jet leaves the lip before 
 const SPLASH_GU: float = 0.42          ## the foam ring's size
 const FLOW_FULL: float = 0.12          ## the flow (voxels a round) that draws a full curtain; less is thinner
 const SURFACE_LIFT: float = 0.01       ## the splash just over the sheet
+const SHEET_PRIORITY: int = 0          ## `LiquidSheet3D`'s material (the default)
 ## FEATHERED ENDS (Director, 2026-10-18: "um feather ou um blur nessas regioes de transicao"): the curtain starts LIP_BACK_GU back over the water upstream
 ## (an extra row at UV.y = -LIP_UV, where the shader starts it transparent) and ends SINK_GU under the surface below, its foot fading into the froth.
 const LIP_BACK_GU: float = 0.1
@@ -49,6 +50,10 @@ func setup(fluid_plane: RefCounted, base_y: float, params: Dictionary) -> void:
 	if params.has("light_color"):
 		material.set_shader_parameter("light_color", params["light_color"])
 	material.set_shader_parameter("time_scale", float(params.get("time_scale", 1.0)))
+	## DRAWN AFTER THE SHEETS (Director, 2026-10-19: the curtain's foot was under the lower body's sheet). Both are transparent and never write depth, so Godot
+	## orders them by their AABB centres: the channel's sheet (its centre mid-channel) often came AFTER the curtain and painted over its foot and its foam.
+	## A higher render priority draws later; the sheets keep the default 0.
+	material.render_priority = SHEET_PRIORITY + 1
 	material_override = material
 	set_process(plane != null)
 

@@ -91,7 +91,7 @@ static func build_image(cells: Array) -> Dictionary:
 			prev = int(ys[i])
 		runs.append([col.x, col.y, start, prev + 1])
 	for r: Array in runs:
-		for t in [float(r[2]), float(r[3])]:
+		for t: float in [float(r[2]), float(r[3])]:   ## typed: built on the prop-shadow worker tasks, and an operator on an untyped value is Godot 4.6.1's self-patching `OPCODE_OPERATOR` (`VoxelLightField._lamp_term()`)
 			lo.x = minf(lo.x, float(r[0]) + shift.x * t)
 			hi.x = maxf(hi.x, float(r[0]) + 1.0 + shift.x * t)
 			lo.y = minf(lo.y, float(r[1]) + shift.y * t)

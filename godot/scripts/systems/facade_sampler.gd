@@ -24,7 +24,9 @@ static func _fnv1a_continue(state: int, input: String) -> int:
 	var hash_val: int = state
 	var fnv_prime: int = 16777619
 
-	for byte_val in input.to_ascii_buffer():
+	## `byte_val: int`, typed: this hash runs on worker threads (the board's chunk merge, the light buckets), and an operator on an untyped
+	## value is Godot 4.6.1's self-patching `OPCODE_OPERATOR`, which can crash when two threads run it first at once (`VoxelLightField._lamp_term()`).
+	for byte_val: int in input.to_ascii_buffer():
 		hash_val ^= byte_val
 		hash_val = (hash_val * fnv_prime) & 0xFFFFFFFF  # Keep 32-bit
 

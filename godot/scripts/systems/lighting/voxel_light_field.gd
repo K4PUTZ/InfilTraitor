@@ -734,12 +734,16 @@ func _lamp_term(gu: Vector2i, level: int, top_bucket: int) -> Vector3:
 	var spans: Array = _roofs.get(gu, [])
 	if not _lights.is_empty():
 		intensity = ambient_intensity
-		for light in _lights:
+		## ⚠️ TYPED ON PURPOSE: this runs on the WorkerThreadPool, one level per task (`buckets_for_level()`). An operator on an
+		## UNTYPED value compiles to `OPCODE_OPERATOR`, which patches its own bytecode on its first run, and in Godot 4.6.1 a second
+		## thread can read that half-written patch and call a NULL evaluator (the `propagate_notification()` + exit -6 crash at map load,
+		## 2026-10-19; `MATERIALS_MASTER_PLAN` §M6 stability). Typed operands compile to `OPCODE_OPERATOR_VALIDATED`, which never patches.
+		for light: LightSource in _lights:
 			if not (light.active or light.fading):
 				continue
 			## GU-level occlusion gate: reuse the ShadowProjector's result for this
 			## light — a GU it marks shadowed receives nothing from it.
-			var shadow = _shadow_by_light.get(light.get_instance_id())
+			var shadow: ShadowResult = _shadow_by_light.get(light.get_instance_id())
 			if shadow != null and shadow.is_shadowed(gu):
 				continue
 			var radius := maxf(float(light.radius), 0.001)
@@ -901,18 +905,19 @@ func _falloff(d: float, radius: float, inner_override: float = -1.0) -> float:
 ## absolute would put every lamp eighty levels below the geometry it lights —
 ## measured at 13 668 cells with a changed light bucket before this was fixed.
 ## The default branch is already a real level and stays one.
-func _anchor_level(light) -> int:
-	match light.height_class:
-		LightSource.HEIGHT_FLOOR:
-			return GeometryCoords.PLAYABLE_LEVEL
-		LightSource.HEIGHT_LOW_COVER:
-			return GeometryCoords.PLAYABLE_LEVEL + 2
-		LightSource.HEIGHT_HUMAN:
-			return GeometryCoords.PLAYABLE_LEVEL + 4
-		LightSource.HEIGHT_TALL_STRUCTURE:
-			return GeometryCoords.PLAYABLE_LEVEL + 6
-		_:
-			return _top_wall_level
+## ⚠️ An `if` chain, not a `match`: this runs on worker threads (`_lamp_term()`), and a `match` compiles its pattern test as an equality
+## on UNTYPED temporaries (`typeof()` results), i.e. the self-patching `OPCODE_OPERATOR` whatever the subject's type (`_lamp_term()`'s note).
+func _anchor_level(light: LightSource) -> int:
+	var height: int = light.height_class
+	if height == LightSource.HEIGHT_FLOOR:
+		return GeometryCoords.PLAYABLE_LEVEL
+	if height == LightSource.HEIGHT_LOW_COVER:
+		return GeometryCoords.PLAYABLE_LEVEL + 2
+	if height == LightSource.HEIGHT_HUMAN:
+		return GeometryCoords.PLAYABLE_LEVEL + 4
+	if height == LightSource.HEIGHT_TALL_STRUCTURE:
+		return GeometryCoords.PLAYABLE_LEVEL + 6
+	return _top_wall_level
 
 
 ## VL-01's border-guess facing factor was REMOVED by VL-02b. It inferred a wall's

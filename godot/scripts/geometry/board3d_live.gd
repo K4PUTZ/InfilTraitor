@@ -2452,7 +2452,7 @@ func _collect_store(store: VoxelStore) -> Dictionary:
 	var cy0: int = _chunk_y0
 	var ccols: int = _chunk_cols
 	var store_material: PackedInt32Array = _store_material
-	var material_glass: Array = _material_glass
+	var material_glass: Array[bool] = _material_glass   ## typed: read by `not` on the claim walk's worker tasks (an untyped operand is Godot 4.6.1's self-patching `OPCODE_OPERATOR`; `VoxelLightField._lamp_term()` has the account)
 	## Q5 (2026-10-09): the walk over every claim on the WorkerThreadPool, in contiguous ranges of CONTAINERS (each task keeps its own
 	## counters and its claims' chunk ids; nothing is written by two tasks), merged here. Same counts, same chunk lists, same order:
 	## the scatter below still runs claim by claim. Moto SEG_HEAVY: ~490 ms serial.
@@ -3020,7 +3020,7 @@ func _emit_glass_rim(rec: Array, surfaces: Dictionary) -> int:
 	var tris: int = 0
 	for pass_i: int in range(2):
 		var on_front: bool = pass_i == 0
-		if not (rec[7] if on_front else rec[8]):
+		if not bool(rec[7] if on_front else rec[8]):   ## `bool()`: a `not` on an untyped element, on the chunk merge's worker tasks (an untyped operand is Godot 4.6.1's self-patching `OPCODE_OPERATOR`; `VoxelLightField._lamp_term()` has the account)
 			continue
 		var poly: PackedVector2Array = front if on_front else back
 		var t: float = 1.0 if on_front else 0.0
@@ -3168,7 +3168,8 @@ func _emit_dent(dir: int, x: int, y: int, level: int, material: int, surfaces: D
 		var d1: float = DENT_DEPTH * float(DENT_RINGS[r + 1][1])
 		for k: int in range(8):
 			var n: int = (k + 1) % 8
-			var c: Array = [_dent_point(face_at, tu, tv, normal, rim[k] * s0, d0), _dent_point(face_at, tu, tv, normal, rim[n] * s0, d0),
+			## typed: `c[1] - c[0]` runs on the chunk merge's worker tasks (an untyped operand is Godot 4.6.1's self-patching `OPCODE_OPERATOR`; `VoxelLightField._lamp_term()` has the account)
+			var c: Array[Vector3] = [_dent_point(face_at, tu, tv, normal, rim[k] * s0, d0), _dent_point(face_at, tu, tv, normal, rim[n] * s0, d0),
 				_dent_point(face_at, tu, tv, normal, rim[n] * s1, d1), _dent_point(face_at, tu, tv, normal, rim[k] * s1, d1)]
 			var slope: Vector3 = (c[1] - c[0]).cross(c[3] - c[0])
 			if slope.dot(normal) < 0.0:

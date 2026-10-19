@@ -1,6 +1,33 @@
 # PERFORMANCE_BUDGET_MASTER_PLAN
 ## One content, many phones: the memory and time budget a segment has to fit — v0.3 (PB-0/1 ratified, PB-2 attributed and acted on)
 
+> ⏭️ **2026-10-19 — THE PARALLEL LOAD HAD A CRASH IN IT: Godot 4.6.1's `OPCODE_OPERATOR` race (closes the "intermittent `propagate_notification()` + exit -6" item of `PROMPTS/RESUMO_SESSAO_2026-10-19_LIQUIDS_CLOSED.md`).**
+> **The symptom was a decoy.** `ERROR: /root: The caller thread can't call the function propagate_notification()` is what Godot's crash handler
+> prints when the crash is on a WORKER thread: it sends `NOTIFICATION_CRASH` to `/root` from that thread and trips the thread guard. The two
+> macOS crash reports (`~/Library/Logs/DiagnosticReports/Godot-2026-10-18-223905.ips` = the GLASS smoke boot, `…-10-19-001139.ips`) show the
+> real fault: a worker running a GDScript lambda jumped through a NULL function pointer inside `GDScriptFunction::call` (+59364, `blr x23` to
+> 0x0), ~3 s after launch, while the main thread waited in `VoxelBoard._apply_light_field_pass_store()` on the §0g "light buckets" group.
+> **Cause (engine):** an operator whose operand is untyped at compile time compiles to `OPCODE_OPERATOR`, which on its FIRST run patches its
+> own bytecode with the operand signature, then the return type, then the evaluator pointer (`gdscript_vm.cpp`, the `op_signature == 0`
+> branch, under a mutex the fast path does not take). A second thread running the same instruction at that moment reads the new signature,
+> takes the fast path and calls the pointer before it is written. Only the first run of each such instruction in a process can crash, so
+> it hit at load, rarely (0 in 81 plain GLASS / PIPE_LAB boots this session), and 1800 repeated relights could not reproduce it.
+> **The site:** `VoxelLightField._anchor_level()`, reached as light-bucket lambda → `buckets_for_level()` → `_lamp_term()` →
+> `_anchor_level()`: `match light.height_class` on an untyped `light` (a `match` against another class's constants tests untyped temporaries
+> even when the subject is typed). **Red before green on the real function:** a stress that recompiles `voxel_light_field.gd` fresh
+> (`CACHE_MODE_IGNORE`) and runs the real `buckets_for_level()` on 32 tasks at once, every branch driven (shadows, roofs, byte maps,
+> jitter): **original 2 of 3 runs crash, with Godot's backtrace naming `_anchor_level:912`; fixed 0 of 3 (300 fresh compiles each).**
+> **What is hazardous, measured** (one probe per construct, 400 fresh compiles x 64 tasks, 4 boots): an untyped parameter in an operator
+> 4/4 crash, a `Dictionary.get()` result 4/4, a raw element of an untyped `Array` 3/4, a loop over an untyped array literal 1/4; a value
+> converted (`int(a[0])`), `for i in range()`, a loop over a packed array and a `match` on a typed int with literal patterns 0/4.
+> **THE RULE: code that several threads run at once (a group task, or many `add_task`s of one function) has no operator on a value the
+> compiler sees as untyped; type the variable, convert the element (`int()`, `bool()`), and use an `if` chain instead of a `match` on
+> another class's constants.** Fixed by that rule: the light path (`_lamp_term`, `_anchor_level`), `FacadeSampler._fnv1a_continue`,
+> the chunk merge (`_emit_dent`'s corners, `_emit_glass_rim`'s side test), the claim walk (`material_glass`), `CellPlaneStore`'s bucket
+> writer (`first_outside`), `PropShadow.build_image()`. Audited clean: `SoftSheetSim` / `SoftSheetGroup` (the parallel rest, build and
+> fallen jobs), `FluidPlane._round_step()`, `GlassSupport` / `StructuralSupport` (snapshot path). Not fixed, noted: `StructuralSupport.step_cost()`
+> fills a static `_step_cost_cache` Dictionary that a worker can write (a plain data race, not this one). No engine upgrade was tried.
+
 > ⏭️ **2026-10-17 — what the soft sheets cost (`ROOF_MASTER_PLAN` v0.41-v0.43; MARKET_LAB, two quitandas = 8 sheets).** **Load:** every sheet is settled on a worker while the board builds (`Room._begin_resting_sheets` / `_finish_resting_sheets`): 82-353 ms of worker time each on the Moto g04s, the load waited **0 ms** (172 ms in all) there and on the Galaxy A16 (189 ms). **A release** (a grenade that takes a quitanda's posts: roof + 3 walls sewn, one batch): destroy + dirty pass 256 ms / 211 ms (Moto / Galaxy), board commit 22 / 9, light field 66 / 29, and **no wait for the chunk remesh** (it was 5.7 s on the Moto before a cloth at rest was drawn by its own node); the fall window is 35.6 / 34.1 ms per frame, GPU 18.8 / 26.4 ms. **RAM, not measured, a known cost:** `RoofSheetRelease.collect` and `wall_entities` read `slice.voxels` / `slab.voxels`, which turns a released container back into `Voxel` objects (~1 KB each on the Moto, kept): ~1 MB per 4x4 GU awning. **DONE the same day (`ROOF_MASTER_PLAN` v0.45): the sheets are claims (a handle only for what a release destroys: 20 containers / 320 voxels after the sheets, as with none) and the settled positions are cached between runs (`SoftSheetRestCache`).** Galaxy A16 on `MARKET_STRESS` (40 sheets, 13 640 voxels): load wait 0 ms, `_finish_resting_sheets` 142-206 ms in all (`SoftSheet3D.setup` 109-158), a four-sheet release ~100 ms of main thread, PSS median 901-912 MB against 887-888 MB with the sheets off (~15-35 MB for 40 sheets; the device swaps, so read it as an order of magnitude). The Moto g04s on this map is the number still owed.
 
 > **Status: 🟢 v0.5, 2026-10-09 — PB-5 VERDICT: THE SEGMENT FITS ON BOTH HANDSETS; PB-7 BUILT.** HEAVY on the Moto g04s: PSS 757 MiB, idle GPU 24.4 ms, hit-stop worst stage 152 ms, load 7.6 s cold / 4.65 s reload (§0f, §0g); on the Galaxy A16: PSS 741 MiB, idle GPU 20.7 ms, blast worst 73 ms, load 3.4 s, reload ~1.6 s, segment cycle flat at 715-765 MiB (§0h). PB-7: `segment_budget.py` holds every segment map (`meta.segment: true`) to the HEAVY counts in `verify.py quick`; `pb3_study.py --max-pss-mib 1024` is the handset half. PB-8 (device profiles ultra / high / medium / low that switch features) moves to the last milestone (M7.0, Director). GLASS g1's intermittent pixel-gate difference: FOUND and fixed (§0h, the glass pane's two passes had no order). Open: the cooked segment (parked, M7.0 note).

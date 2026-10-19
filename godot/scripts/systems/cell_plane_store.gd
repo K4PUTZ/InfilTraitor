@@ -201,10 +201,12 @@ func write_buckets_levels(levels: Array, cells: Array, buckets: Array) -> void:
 		var w: int = widths[li]
 		var any: bool = false
 		var first_outside: Variant = null
+		var found_outside: bool = false   ## not `first_outside == null`: this runs on worker tasks, and an operator on an untyped value is Godot 4.6.1's self-patching `OPCODE_OPERATOR` (`VoxelLightField._lamp_term()`)
 		for i: int in range(level_cells.size()):
 			var p: Vector2i = (level_cells[i] as Vector2i) + origin
 			if _outside(p):
-				if first_outside == null:
+				if not found_outside:
+					found_outside = true
 					first_outside = level_cells[i]
 				continue
 			var at: int = (p.y * w + p.x) * 4 + 1

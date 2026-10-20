@@ -7,13 +7,23 @@
 ##   `quat`  — the lean Quaternius Superhero (CC0): ~14 k tris, 65 joints, no animation in the free pack, so its limbs are
 ##             swung by a SYNTHETIC sine on the leg / arm / spine bones. Skinning cost does not depend on the pose, which is
 ##             what this measures; the motion is NOT a walk cycle and says nothing about animation quality.
-## Scenario op (`scenario_runner.gd`): `actor_bench <agent|quat> <count>`. Not a gameplay path, not part of any save.
+##   `hero_naked` / `hero_split` / `hero_joined` — the same body re-exported WITH the Universal Animation Library's 43 actions (same 65
+##             bone names, so they drop in) and, in `split` / `joined`, a placeholder outfit skinned to the same skeleton: jacket,
+##             trousers, shoes, hat, tie, backpack + 2 gadget pouches, as separate pieces (`split`, 12 surfaces) or merged by material
+##             (`joined`, 6). They play `Walk_Formal_Loop` and march along a lane (a video needs them to move; the walk's speed is NOT
+##             matched to the stride, so foot sliding is unjudged).
+## Scenario op (`scenario_runner.gd`): `actor_bench <agent|quat|hero_naked|hero_split|hero_joined> <count>`. Not a gameplay path, not part of any save.
 extends RefCounted
 
 const SHADER_PATH := "res://godot/shaders/actor_mesh3d.gdshader"
 const AGENT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live.glb"
 const QUAT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/superhero_male_lean.glb"
 ## The agent stands 9.8 voxels of 0.20 m (CHARACTER_MASTER_PLAN §4.7); the candidate is scaled to the same height.
+const HERO_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/%s.glb"
+const HERO_HEIGHT_M: float = 1.83            ## the body's top of head, measured from its bones / mesh (feet at 0)
+const HERO_WALK := "Walk_Formal"   ## the import strips the `_Loop` suffix and loops it
+const LANE_GU: float = 9.0
+const LANE_SPEED_GU_S: float = 1.2
 const STAND_HEIGHT_M: float = 1.96
 const METRES_TO_UNITS: float = 1.0 / 1.6
 const SPACING_GU: float = 1.25
@@ -31,6 +41,9 @@ class Rig:
 	var player: AnimationPlayer
 	var swing_bones: Array = []   ## [bone index, axis, radians, phase, rest rotation]
 	var phase: float = 0.0
+	var holder: Node3D
+	var lane_start: Vector3
+	var lane_offset: float = 0.0
 
 ## Drives `tick()` once per frame without anything outside this file knowing about it.
 class Ticker extends Node:
@@ -56,7 +69,10 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		_ticker = Ticker.new()
 		_ticker.step = tick
 		board.add_child(_ticker)
-	var path: String = QUAT_RIG if model == "quat" else AGENT_RIG
+	var march: bool = model.ends_with("_march")  ## a video wants them walking along a lane; a measurement wants them still on the grid
+	model = model.trim_suffix("_march")
+	var hero: bool = model.begins_with("hero_")
+	var path: String = HERO_RIG % model if hero else (QUAT_RIG if model == "quat" else AGENT_RIG)
 	var scene := load(path) as PackedScene
 	if scene == null:
 		push_error("[ActorViabilityBench] cannot load %s (run `Godot --headless --import` once)" % path)
@@ -69,9 +85,14 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		var holder := Node3D.new()
 		holder.name = "BenchRig_%s_%d" % [model, i]
 		holder.position = origin + Vector3(2.0 + float(i % PER_ROW) * SPACING_GU, 0.0, 2.0 + float(i / PER_ROW) * SPACING_GU)
+		if march:  ## one lane of figures, each staggered along it
+			holder.position = origin + Vector3(-3.0, 0.0, 2.0 + float(i % 8) * 1.1)
 		board.add_child(holder)
 		holder.add_child(body)
-		if model == "quat":
+		if hero:
+			body.scale = Vector3.ONE * (STAND_HEIGHT_M / HERO_HEIGHT_M) * METRES_TO_UNITS
+			body.rotation.y = PI * 0.5   ## the rig's front is +Z; march toward +X (grid east)
+		elif model == "quat":
 			body.scale = Vector3.ONE * (STAND_HEIGHT_M / _mesh_height(body)) * METRES_TO_UNITS
 			body.rotation.y = PI
 		else:
@@ -79,13 +100,23 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		var converted: Dictionary = {}
 		_apply_board_light(board, body, converted)
 		var rig := Rig.new()
+		rig.holder = holder
+		rig.lane_start = holder.position
+		rig.lane_offset = float(i / 8) * 3.1 + float(i % 8) * 0.9 if march else -1.0
 		var skeletons := body.find_children("*", "Skeleton3D", true, false)
 		if not skeletons.is_empty():
 			rig.skeleton = skeletons[0] as Skeleton3D
 		var players := body.find_children("*", "AnimationPlayer", true, false)
 		if not players.is_empty():
 			rig.player = players[0] as AnimationPlayer
-		if model == "agent" and rig.player != null and rig.player.has_animation("walk_shotgun"):
+		if hero:
+			if rig.player == null or not rig.player.has_animation(HERO_WALK):
+				push_error("[ActorViabilityBench] %s has no %s" % [path, HERO_WALK])
+			else:
+				rig.player.get_animation(HERO_WALK).loop_mode = Animation.LOOP_LINEAR
+				rig.player.play(HERO_WALK)
+				rig.player.seek(float(i) * 0.11, true)
+		elif model == "agent" and rig.player != null and rig.player.has_animation("walk_shotgun"):
 			rig.player.play("walk_shotgun")
 			rig.player.seek(float(i) * 0.07, true)
 			rig.player.get_animation("walk_shotgun").loop_mode = Animation.LOOP_LINEAR
@@ -114,6 +145,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 ## Advance the synthetic motion (the quat rigs only; the agent's AnimationPlayer drives itself).
 static func tick(time_s: float) -> void:
 	for rig: Rig in _rigs:
+		if rig.holder != null and rig.lane_offset >= 0.0 and rig.holder.name.contains("hero_"):
+			rig.holder.position = rig.lane_start + Vector3(fposmod(time_s * LANE_SPEED_GU_S + rig.lane_offset, LANE_GU), 0.0, 0.0)
 		if rig.skeleton == null or rig.swing_bones.is_empty():
 			continue
 		for entry: Array in rig.swing_bones:

@@ -90,7 +90,7 @@
 ##                                        times through the real occlusion path (`_recompute_occlusion`),
 ##                                        one frame apart, and print the set / 3D cutaway / total cost
 ##   place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed
-##   actor_bench <agent|quat> <n>        dev viability test: n live rigs of the shipped agent or the candidate Quaternius body on
+##   actor_bench <agent|quat|hero_*> <n> dev viability test: n live rigs of the shipped agent or the candidate Quaternius body on
 ##                                        the board, lit its way (`ActorViabilityBench`), draw calls printed after 30 frames
 ##   quit                                end the process (the harness waits on it)
 ##
@@ -289,8 +289,8 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			step["index"] = int(arg)
 			step["cell"] = Vector2i(int(gxy[0]), int(gxy[1]))
 		"actor_bench":
-			if not ["agent", "quat"].has(arg) or not tokens[2].is_valid_int() or int(tokens[2]) < 1 or int(tokens[2]) > 64:
-				return "actor_bench takes agent|quat and a count 1..64"
+			if not ["agent", "quat", "hero_naked", "hero_split", "hero_joined", "hero_naked_march", "hero_split_march", "hero_joined_march"].has(arg) or not tokens[2].is_valid_int() or int(tokens[2]) < 1 or int(tokens[2]) > 64:
+				return "actor_bench takes agent|quat|hero_naked|hero_split|hero_joined and a count 1..64"
 			step["model"] = arg
 			step["count"] = int(tokens[2])
 		"occ_bench":

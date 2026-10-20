@@ -90,6 +90,8 @@
 ##                                        times through the real occlusion path (`_recompute_occlusion`),
 ##                                        one frame apart, and print the set / 3D cutaway / total cost
 ##   place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed
+##   actor_bench <agent|quat> <n>        dev viability test: n live rigs of the shipped agent or the candidate Quaternius body on
+##                                        the board, lit its way (`ActorViabilityBench`), draw calls printed after 30 frames
 ##   quit                                end the process (the harness waits on it)
 ##
 ## EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer
@@ -109,7 +111,7 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
-	"container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "decal_wall": 2,
+	"container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "actor_bench": 2, "decal_wall": 2,
 	"skylight_hit": 0, "roof_gravity": 0, "flood": 1, "struct_audit": 0, "struct_cut": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1,
 }
 ## CAPTURE_RAILS §7.5 — the cell arguments an `@id` may name, by op and token index (0 = the op). `substitute_anchors()` turns each
@@ -118,6 +120,7 @@ const CELL_TOKENS: Dictionary = {"throw": [2], "aim": [1], "centre": [1], "place
 ## CAPTURE_RAILS (§8.1): framing modes and views of `frame` / `still`.
 const FRAME_MODES: PackedStringArray = ["wide", "detail", "fit"]
 const VIEWS: PackedStringArray = ["N", "E", "S", "W"]
+const ActorViabilityBenchRef = preload("res://godot/scripts/debug/actor_viability_bench.gd")
 const ScenarioDrawRef = preload("res://godot/scripts/systems/scenario_draw.gd")  ## waits for a drawn frame, never forever (an occluded harness window draws nothing)
 const VIEW_MODES: PackedStringArray = ["dev", "light", "heat", "numbers", "ruler", "layout"]
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
@@ -285,6 +288,11 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 				return "place_guard takes a guard index >= 0 and a cell x,y"
 			step["index"] = int(arg)
 			step["cell"] = Vector2i(int(gxy[0]), int(gxy[1]))
+		"actor_bench":
+			if not ["agent", "quat"].has(arg) or not tokens[2].is_valid_int() or int(tokens[2]) < 1 or int(tokens[2]) > 64:
+				return "actor_bench takes agent|quat and a count 1..64"
+			step["model"] = arg
+			step["count"] = int(tokens[2])
 		"occ_bench":
 			for k: int in [1, 2]:
 				var xy: PackedStringArray = tokens[k].split(",")
@@ -537,6 +545,13 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "Room has no scenario_place_guard()")
 			if not bool(room.call("scenario_place_guard", int(step["index"]), step["cell"])):
 				return _fail(step, "the guard was not placed (see the error above)")
+		"actor_bench":
+			var bench_line: String = ActorViabilityBenchRef.spawn(room, str(step["model"]), int(step["count"]))
+			if bench_line.is_empty():
+				return _fail(step, "the bench rigs were not built (see the error above)")
+			for _bf in range(30):
+				await room.get_tree().process_frame
+			ActorViabilityBenchRef.report_render("%s x%d" % [step["model"], step["count"]])
 		"occ_bench":
 			if not room.has_method("scenario_occ_bench"):
 				return _fail(step, "Room has no scenario_occ_bench()")

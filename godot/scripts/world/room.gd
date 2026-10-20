@@ -1,5 +1,6 @@
 extends Node2D
 const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
+const VoxelWeaknessRef = preload("res://godot/scripts/systems/destruction/voxel_weakness.gd")  ## M6: voxels a corrosive weakened
 const ScenarioDrawRef = preload("res://godot/scripts/systems/scenario_draw.gd")  ## waits for a drawn frame, never forever (an occluded harness window draws nothing)
 ## Tactical room controller: input, UI wiring, agent turns and scene setup.
 
@@ -2456,6 +2457,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_soot_map.clear()           ## SOOT-STAMP: the soot map dies with the board
 	_soot_unsettled.clear()
 	_base_damage.clear()        ## VL-PERSIST: fresh map, no destruction yet
+	VoxelWeaknessRef.clear()    ## and no voxel eaten by a corrosive
 	_base_damage_claims.clear()
 	_base_cracks.clear()        ## CRACK-02 S-3: and no glass has been crazed on it
 	_base_openings.clear()      ## CRACK-04: nor any hole opened in it

@@ -26,6 +26,7 @@ class_name BlastCalculator
 ## future scope — every grenade this session detonates at the wall's own
 ## base level.
 const GRENADE_LEVEL := 0
+const VoxelWeaknessRef = preload("res://godot/scripts/systems/destruction/voxel_weakness.gd")   ## corroded voxels break easier (M6)
 
 ## VL-D4 — sentinel meaning "no directional bias" for apply_container_damage()/
 ## _select_deterministic()'s optional epicenter parameter. Any real epicenter is
@@ -823,6 +824,7 @@ static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 		## express — see ShotPunchTable.HOLE_ONLY_MATERIALS.
 		## V-D: the slice's own per-placement glass class travels with the material,
 		## because a screen's INDESTRUCTIBLE ceiling is a property of the PLACEMENT.
+		current_punch *= VoxelWeaknessRef.gain_of(voxel)   ## a voxel a corrosive ate into takes the round harder (M6, Director 2026-10-19)
 		var state: int = ShotPunchTable.damage_state_for(current_punch,
 			ShotPunchTable.destroy_min(current_slice.material), current_slice.material,
 			current_slice.glass_class)
@@ -1192,6 +1194,11 @@ static func simulate_container_damage(voxels: Array, container_id: String, mater
 		var crack_n: int = int(round(c_w * MaterialResistanceTable.crack_factor(material) * group.size()))
 
 		var destroy_set: Array = _select_deterministic(group, container_id, "DESTROY", destroy_n, bias_epicenter)
+		if d_w > 0.0 and VoxelWeaknessRef.count() > 0:
+			## a ring the blast destroys in reaches a corroded voxel whole (M6, Director 2026-10-19)
+			for weak: Voxel in group:
+				if VoxelWeaknessRef.is_weak(weak) and not destroy_set.has(weak):
+					destroy_set.append(weak)
 		var destroyed_lookup: Dictionary = {}
 		for v in destroy_set:
 			destroyed_lookup[v] = true

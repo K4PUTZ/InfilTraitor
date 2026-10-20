@@ -2,9 +2,11 @@
 ## propostos", plus "o nuclear ilumina levemente o ambiente (fosforescente)"). The rules themselves are pure (`LiquidAgentStatus`,
 ## `LiquidSurfaceState`, `LiquidCorrosion`, `LiquidGlow`); this is where they meet the world:
 ##
-## 1. LAVA is a light (warm) and IGNITES: a flammable body it touches catches fire, and so does the agent who steps in.
+## 1. LAVA is a light (warm) and IGNITES: a flammable body it touches catches fire, and so does the agent who steps in; the flammable VOXELS it
+##    touches catch too (`VoxelFire`: embers, spreading to flammable neighbours, then eaten or charred by the material's `burn_consumption`).
 ## 2. OIL in flames sets the AGENT on fire (2 turns, +0.25 dose a turn; water puts it out).
-## 3. ACID dissolves metal it touches (a grating's bars fall, and the plane's grate opens) and marks floor and curb.
+## 3. ACID dissolves metal it touches (a grating's bars fall, and the plane's grate opens) and marks floor and curb; a marked voxel is WEAKENED
+##    (`VoxelWeakness`: a round lands on it twice as hard, a blast ring takes it whole).
 ## 4. TOXIC dissolves paper, cardboard and cloth.
 ## 5. CRYOGENIC chills the agent (AP lost) and freezes the water it touches into walkable, slippery ice.
 ## 6. LAVA CRUST plates are walkable; 3 turns after the first step they break.
@@ -23,6 +25,9 @@ const LiquidCorrosionRef = preload("res://godot/scripts/systems/liquid_corrosion
 const LiquidGlowRef = preload("res://godot/scripts/systems/liquid_glow.gd")
 const LiquidFireLightsRef = preload("res://godot/scripts/systems/liquid_fire_lights.gd")
 const LiquidRegistryRef = preload("res://godot/scripts/systems/liquid_registry.gd")
+const VoxelFireRef = preload("res://godot/scripts/systems/voxel_fire.gd")
+const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
+const VoxelWeaknessRef = preload("res://godot/scripts/systems/destruction/voxel_weakness.gd")
 const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
 
 ## The agent's look per status (alpha = how much): a fire breathes, a stain and a glow hold.
@@ -38,6 +43,7 @@ var _agent_light = null           ## the LightSource of a glowing agent (registe
 var _agent_light_cell: Vector2i = Vector2i(-9999, -9999)
 var _family: Dictionary = {}      ## material id -> family
 var _tint_key: String = ""
+var _voxel_fire = VoxelFireRef.new()   ## the fire lava starts on voxels
 
 
 func _init(p_room: Node) -> void:
@@ -52,6 +58,7 @@ func reset() -> void:
 	_agent_light = null
 	_agent_light_cell = Vector2i(-9999, -9999)
 	_tint_key = ""
+	_voxel_fire.reset()
 	refresh_agent_look()
 
 
@@ -92,6 +99,7 @@ func liquid_turn() -> void:
 		return
 	var bodies: Array = field.bodies()
 	_lava_ignites(bodies)
+	_lava_burns_voxels(bodies)
 	_cold_freezes(bodies)
 	for body: Dictionary in bodies:
 		if body["surface"] != null:
@@ -138,9 +146,9 @@ func _family_of(material_id: String) -> String:
 	return String(_family[material_id])
 
 
-## Every voxel a corrosive body touches now: the bed under each wet cell and, from the bed up to the surface, every voxel inside the cell or one
-## voxel around it (the pit's walls, a curb, the bars of a grating standing in it).
-func _contacts(body: Dictionary, corrosion, store: VoxelStore) -> Dictionary:
+## Every voxel a body touches now: the bed under each wet cell and, from the bed up to the surface, every voxel inside the cell or one voxel around it
+## (the pit's walls, a curb, the bars of a grating standing in it). `classify(material_id, on_bed)` names what the rule does to it ("" = nothing).
+func _scan(body: Dictionary, store: VoxelStore, classify: Callable) -> Dictionary:
 	var out: Dictionary = {}
 	var plane = body["plane"]
 	var bed: int = GeometryCoords.FLOOR_TOP_LEVEL - int(round(float(plane.dig)))
@@ -163,10 +171,64 @@ func _contacts(body: Dictionary, corrosion, store: VoxelStore) -> Dictionary:
 						if out.has(key) or not store.has_solid(x, y, level):
 							continue
 						var claim: int = store.owner[store.cell_index(x, y, level)]
-						var category: String = corrosion.category_of(_family_of(store.material_ids[store.mat[claim]]), level == bed)
+						var category: String = String(classify.call(store.material_ids[store.mat[claim]], level == bed))
 						if category != "":
 							out[key] = category
 	return out
+
+
+## Every voxel a corrosive body touches now (key -> `LiquidCorrosion.DISSOLVE` / `MARK`).
+func _contacts(body: Dictionary, corrosion, store: VoxelStore) -> Dictionary:
+	return _scan(body, store, func(material_id: String, on_bed: bool) -> String: return corrosion.category_of(_family_of(material_id), on_bed))
+
+
+## The material id of the solid voxel at `key`, or "".
+func _material_at(store: VoxelStore, key: Vector3i) -> String:
+	if not store.has_solid(key.x, key.y, key.z):
+		return ""
+	return String(store.material_ids[store.mat[store.owner[store.cell_index(key.x, key.y, key.z)]]])
+
+
+## Lava sets the flammable voxels it touches alight; the fire spreads, burns out and leaves the voxel eaten (cardboard, cloth) or charred (wood).
+func _lava_burns_voxels(bodies: Array) -> void:
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		return
+	for body: Dictionary in bodies:
+		if not bool(LiquidRegistryRef.gameplay(String(body["kind"])).get("ignites", false)):
+			continue
+		var touching: Dictionary = _scan(body, store, func(material_id: String, _bed: bool) -> String: return "burn" if MaterialResistanceTable.flammability(material_id) > 0.0 else "")
+		for key: Vector3i in touching:
+			_voxel_fire.ignite(key)
+	if _voxel_fire.burning_count() == 0:
+		return
+	var result: Dictionary = _voxel_fire.advance(
+			func(key: Vector3i) -> float: return MaterialResistanceTable.flammability(_material_at(store, key)),
+			func(key: Vector3i) -> float: return MaterialResistanceTable.burn_consumption(_material_at(store, key)))
+	var burning: Array = result["burning"]
+	for key: Vector3i in burning:
+		_voxel_ember(key, store)
+	var charred: Array = []
+	for key: Vector3i in result["charred"]:
+		var family: String = _family_of(_material_at(store, key))
+		charred.append({"grid_pos": Vector2i(key.x, key.y), "level": key.z, "at": 0.0, "soft": family == "fabric" or family == "paper"})
+	if not charred.is_empty():
+		room.char_after_fire(charred)
+	var consumed: Array = result["consumed"]
+	if not consumed.is_empty():
+		_apply_corrosion(consumed, [], store)
+	if not (result["lit"] as Array).is_empty() or not consumed.is_empty() or not charred.is_empty():
+		print_debug("[LIQUID-RULES] voxel fire: %d burning (%d caught from a neighbour), %d eaten, %d charred" % [burning.size(), (result["lit"] as Array).size(), consumed.size(), charred.size()])
+
+
+## An ember on the burning voxel's top face (the roof fire's look), longer for what burns hotter.
+func _voxel_ember(key: Vector3i, store: VoxelStore) -> void:
+	var embers = room._ember_overlay
+	if embers == null or room._voxel_board == null:
+		return
+	var cell := Vector2i(key.x, key.y)
+	embers.add_ember(room._voxel_board.voxel_world_position(cell, key.z), -1.0, Vector2.ZERO, 0.0, 0.0,
+			MaterialResistanceTable.flammability(_material_at(store, key)), 0.0, 1.0, 1.0, true, ParticleMathRef.NO_FLOOR, embers.top_face_anchor(cell, key.z))
 
 
 func _corrode(bodies: Array) -> void:
@@ -207,8 +269,10 @@ func _apply_corrosion(dissolve: Array, marks: Array, store: VoxelStore) -> void:
 			if v == null or v.damage_state == Voxel.DamageState.DESTROYED:
 				continue
 			var state: int = int(pair[1])
-			if state == Voxel.DamageState.CRACKED and v.damage_state != Voxel.DamageState.INTACT:
-				continue
+			if state == Voxel.DamageState.CRACKED:
+				VoxelWeaknessRef.mark(key)   ## the mark is also a weakness: it breaks easier from now on (even under another mark)
+				if v.damage_state != Voxel.DamageState.INTACT:
+					continue
 			if state == Voxel.DamageState.DESTROYED:
 				room._quiet_destroy[key] = true
 			v.set_damage(state, false, Voxel.CarvedSide.NONE, (key.x * 7 + key.y * 13 + key.z) % 3, 0)

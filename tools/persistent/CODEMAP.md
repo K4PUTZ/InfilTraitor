@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**335 scripts · 99632 lines total** (under `godot/scripts/`)
+**338 scripts · 99969 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,8 +18,8 @@
 - **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, footprint_marks3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, liquid_falls3d.gd, liquid_flame_tongues.gd, liquid_flames.gd, liquid_sheet3d.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_rest_cache.gd, soft_sheet_sim.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, layout_overlay3d.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
-- **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, soft_sheet_presets.gd, structural_support.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, fluid_container.gd, fluid_plane.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, liquid_agent_status.gd, liquid_corrosion.gd, liquid_exposure.gd, liquid_field.gd, liquid_fire.gd, liquid_fire_lights.gd, liquid_glow.gd, liquid_registry.gd, liquid_surface_state.gd, localization_manager.gd, material_registry.gd, material_rows.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, secondary_tables.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, capture_framer_selftest.gd, circle_field_octagon_selftest.gd, cloth_flaps_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, fluid_container_selftest.gd, fluid_plane_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, liquid_fire_selftest.gd, liquid_guards_selftest.gd, liquid_registry_selftest.gd, liquid_rules_selftest.gd, liquid_status_selftest.gd, liquid_test_world.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_rows_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, pane_frame_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_light_selftest.gd, roof_occlusion_selftest.gd, roof_sheet_release_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soft_sheet_sim_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, structural_support_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
+- **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, soft_sheet_presets.gd, structural_support.gd, voxel_weakness.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, fluid_container.gd, fluid_plane.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, liquid_agent_status.gd, liquid_corrosion.gd, liquid_exposure.gd, liquid_field.gd, liquid_fire.gd, liquid_fire_lights.gd, liquid_glow.gd, liquid_registry.gd, liquid_surface_state.gd, localization_manager.gd, material_registry.gd, material_rows.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, secondary_tables.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_fire.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
+- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, capture_framer_selftest.gd, circle_field_octagon_selftest.gd, cloth_flaps_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, fluid_container_selftest.gd, fluid_plane_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, liquid_fire_selftest.gd, liquid_guards_selftest.gd, liquid_registry_selftest.gd, liquid_rules_selftest.gd, liquid_status_selftest.gd, liquid_test_world.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_rows_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, pane_frame_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_light_selftest.gd, roof_occlusion_selftest.gd, roof_sheet_release_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soft_sheet_sim_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, structural_support_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_fire_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, options_panel.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, capture_controller.gd, debug_tools_controller.gd, input_controller.gd, liquid_rules_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compass.gd, map_compiler.gd, map_envelope.gd, map_geometry.gd, map_layout.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, roof_sheet_release.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -2510,7 +2510,7 @@ extends `RefCounted` · 37 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1894 lines
+`class_name BlastCalculator` · 1901 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2518,6 +2518,7 @@ extends `RefCounted` · 37 lines
 
 **Constants / tuning**
 - `GRENADE_LEVEL` = `0`
+- `VoxelWeaknessRef` = `preload("res://godot/scripts/systems/destruction/voxel_weakness.gd")`
 - `NO_EPICENTER_BIAS` = `Vector2i(-999999, -999999)`
 - `FACE_SOOT_CLEAN` = `4`
 - `FACE_SOOT_CHAR` = `5`
@@ -2881,6 +2882,16 @@ extends `RefCounted` · 37 lines
 
 **Constants / tuning**
 - `NEIGHBOURS` = `[Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]`
+
+---
+
+### `voxel_weakness.gd`
+
+extends `RefCounted` · 55 lines
+
+`godot/scripts/systems/destruction/voxel_weakness.gd`
+
+> VoxelWeakness — the voxels a corrosive liquid has eaten into (M6, Director 2026-10-19: corrosion WEAKENS a voxel). A weakened voxel keeps its look (the corrosion mark is its CRACKED decal) and its place, but breaks easier: a shot or a pellet that lands on it punches `punch_gain` times harder, and a blast ring that reaches it (destroy weight above zero) takes it whole. It is a sparse set keyed by the voxel's addressing (`grid_pos.x`, `grid_pos.y`, `level`), the same key `Room._base_damage` uses, so it survives rotation (camera-only) and rides the checkpoint (`SaveState` "weakened"). Static, like the other catalogues the destruction code reads: one world at a time, the room clears it with the map. No class_name on purpose: a new class_name is invisible to a headless run until the editor rebuilds the global class cache (callers preload this file).
 
 ---
 
@@ -3991,11 +4002,12 @@ extends `Node` · 146 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 344 lines
+`class_name SaveState` · extends `RefCounted` · 350 lines
 
 `godot/scripts/systems/save_state.gd`
 
 **Constants / tuning**
+- `VoxelWeaknessRef` = `preload("res://godot/scripts/systems/destruction/voxel_weakness.gd")`
 - `FORMAT_VERSION` = `3`
 - `OLDEST_READABLE_VERSION` = `1`
 
@@ -4260,6 +4272,33 @@ extends `Node` · 54 lines
 `godot/scripts/systems/vox_prop_builder.gd`
 
 > VoxPropBuilder — a parsed `.vox` model into the cells of a destructible prop. PURE. PROP_PIPELINE_PLAN PP4. Steps, in order: SCALE (each source voxel becomes `scale`^3 board voxels; the target is the board voxel, 1/8 GU), MATERIAL (each palette index resolves to a registry material id through `material_of`), HOLLOW (keep only voxels with an empty 6-neighbour, like the crate's shell: a 16^3 model is ~1 200 claims, not 4 096), CENTRE (the model stands on the floor, centred on the footprint area). The result is grouped by material: one entry per material, each a list of cells in footprint-local voxel coordinates (x, y horizontal, z UP = the board level above the floor), because the store holds one material per container.
+
+---
+
+### `voxel_fire.gd`
+
+extends `RefCounted` · 83 lines
+
+`godot/scripts/systems/voxel_fire.gd`
+
+> VoxelFire — a fire that lives on the VOXELS themselves, outside any blast's plan (M6, Director 2026-10-19: lava sets flammable voxels alight). The M3 fire is a blast's own plan (embers, char and consumption decided at the detonation). This is the small standalone one a liquid can start: a voxel that touches lava with `flammability` > 0 CATCHES, burns `burn_turns` liquid turns, and a burning voxel passes the fire to the flammable voxel beside it (the six neighbours) when that neighbour's flammability reaches `spread_min`, by a deterministic hash roll (`spread_chance`), never `randf()`. When its turns are up a voxel is either CONSUMED (the material's `burn_consumption` reaches `consume_min`: cardboard, cloth, carpet) or CHARRED (wood and plywood keep their body, blackened). Pure: the room hands it the lookups (`flammability_at`, `consumption_at`) and applies what `advance` returns, the way `LiquidCorrosion` works. `max_burning` caps the cost of a spreading fire (a fire is cheap per voxel, but a whole warehouse of crates is not free on the Moto).
+
+**Constants / tuning**
+- `NEIGHBOURS` = `[Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]`
+
+**Public vars**
+- `var burn_turns: int = 2`
+- `var spread_min: float = 0.8`
+- `var spread_chance: float = 0.6`
+- `var consume_min: float = 0.5`
+- `var max_burning: int = 256`
+
+**Public API**
+- `func reset() -> void:`
+- `func burning_count() -> int:`
+- `func is_burning(key: Vector3i) -> bool:`
+- `func ignite(key: Vector3i) -> bool:`
+- `func advance(flammability_at: Callable, consumption_at: Callable) -> Dictionary:`
 
 ---
 
@@ -5215,7 +5254,7 @@ extends `SceneTree` · 83 lines
 
 ### `liquid_status_selftest.gd`
 
-extends `SceneTree` · 195 lines
+extends `SceneTree` · 249 lines
 
 `godot/scripts/tools/liquid_status_selftest.gd`
 
@@ -6137,6 +6176,19 @@ extends `SceneTree` · 247 lines
 
 ---
 
+### `voxel_fire_selftest.gd`
+
+extends `SceneTree` · 66 lines
+
+`godot/scripts/tools/voxel_fire_selftest.gd`
+
+> M6 (Director 2026-10-19) — the fire lava starts on voxels: it catches, spreads only to what is flammable enough, burns `burn_turns`, then eats or chars the voxel by its `burn_consumption`; it never lights a voxel twice and is capped. Pure state over lookup callables, plus the real material rows.
+
+**Constants / tuning**
+- `FireClass` = `preload("res://godot/scripts/systems/voxel_fire.gd")`
+
+---
+
 ### `voxel_handle_selftest.gd`
 
 extends `SceneTree` · 249 lines
@@ -6620,11 +6672,11 @@ extends `Node` · 252 lines
 
 ### `liquid_rules_controller.gd`
 
-extends `RefCounted` · 319 lines
+extends `RefCounted` · 383 lines
 
 `godot/scripts/world/controllers/liquid_rules_controller.gd`
 
-> LiquidRulesController — the per-liquid rules of M6 F5 on the open map (Director, 2026-10-18: "pode construir as oito regras com os padroes propostos", plus "o nuclear ilumina levemente o ambiente (fosforescente)"). The rules themselves are pure (`LiquidAgentStatus`, `LiquidSurfaceState`, `LiquidCorrosion`, `LiquidGlow`); this is where they meet the world: 1. LAVA is a light (warm) and IGNITES: a flammable body it touches catches fire, and so does the agent who steps in. 2. OIL in flames sets the AGENT on fire (2 turns, +0.25 dose a turn; water puts it out). 3. ACID dissolves metal it touches (a grating's bars fall, and the plane's grate opens) and marks floor and curb. 4. TOXIC dissolves paper, cardboard and cloth. 5. CRYOGENIC chills the agent (AP lost) and freezes the water it touches into walkable, slippery ice. 6. LAVA CRUST plates are walkable; 3 turns after the first step they break. 7. NUCLEAR glows faintly cool around itself, and the agent it doses glows (a tactical light). 8. BIOHAZARD stains the agent for 5 turns. 9. QUICKSAND sinks a still agent a voxel a turn; deep, it holds and kills. Order inside a liquid turn (`liquid_turn`, after the oil fire's own turn, before the planes tick): the lava lights what it touches, the cold freezes, the plates age, the corrosives eat, the glows follow their body. Every world write a rule makes goes the way a blast's does (base-recorded, the dirty pass, the board's commit, the support rule, the world revision).
+> LiquidRulesController — the per-liquid rules of M6 F5 on the open map (Director, 2026-10-18: "pode construir as oito regras com os padroes propostos", plus "o nuclear ilumina levemente o ambiente (fosforescente)"). The rules themselves are pure (`LiquidAgentStatus`, `LiquidSurfaceState`, `LiquidCorrosion`, `LiquidGlow`); this is where they meet the world: 1. LAVA is a light (warm) and IGNITES: a flammable body it touches catches fire, and so does the agent who steps in; the flammable VOXELS it touches catch too (`VoxelFire`: embers, spreading to flammable neighbours, then eaten or charred by the material's `burn_consumption`). 2. OIL in flames sets the AGENT on fire (2 turns, +0.25 dose a turn; water puts it out). 3. ACID dissolves metal it touches (a grating's bars fall, and the plane's grate opens) and marks floor and curb; a marked voxel is WEAKENED (`VoxelWeakness`: a round lands on it twice as hard, a blast ring takes it whole). 4. TOXIC dissolves paper, cardboard and cloth. 5. CRYOGENIC chills the agent (AP lost) and freezes the water it touches into walkable, slippery ice. 6. LAVA CRUST plates are walkable; 3 turns after the first step they break. 7. NUCLEAR glows faintly cool around itself, and the agent it doses glows (a tactical light). 8. BIOHAZARD stains the agent for 5 turns. 9. QUICKSAND sinks a still agent a voxel a turn; deep, it holds and kills. Order inside a liquid turn (`liquid_turn`, after the oil fire's own turn, before the planes tick): the lava lights what it touches, the cold freezes, the plates age, the corrosives eat, the glows follow their body. Every world write a rule makes goes the way a blast's does (base-recorded, the dirty pass, the board's commit, the support rule, the world revision).
 
 **Constants / tuning**
 - `LiquidAgentStatusRef` = `preload("res://godot/scripts/systems/liquid_agent_status.gd")`
@@ -6633,6 +6685,9 @@ extends `RefCounted` · 319 lines
 - `LiquidGlowRef` = `preload("res://godot/scripts/systems/liquid_glow.gd")`
 - `LiquidFireLightsRef` = `preload("res://godot/scripts/systems/liquid_fire_lights.gd")`
 - `LiquidRegistryRef` = `preload("res://godot/scripts/systems/liquid_registry.gd")`
+- `VoxelFireRef` = `preload("res://godot/scripts/systems/voxel_fire.gd")`
+- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
+- `VoxelWeaknessRef` = `preload("res://godot/scripts/systems/destruction/voxel_weakness.gd")`
 - `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
 - `BURN_TINT` = `Color(1.0, 0.45, 0.08, 0.55)`
 - `MARK_TINT` = `Color(0.55, 0.04, 0.04, 0.45)`
@@ -6644,6 +6699,9 @@ extends `RefCounted` · 319 lines
 
 **Public API**
 - `func reset() -> void:`
+- `func on_turn_end(cell: Vector2i, info: Dictionary, dose: float) -> float:`
+- `func on_turn_start(cell: Vector2i, info: Dictionary) -> int:`
+- `func refresh_agent_look() -> void:`
 
 ---
 
@@ -6947,12 +7005,13 @@ extends `RefCounted` · 319 lines
 
 ### `room.gd`
 
-extends `Node2D` · 13123 lines
+extends `Node2D` · 13125 lines
 
 `godot/scripts/world/room.gd`
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
+- `VoxelWeaknessRef` = `preload("res://godot/scripts/systems/destruction/voxel_weakness.gd")`
 - `ScenarioDrawRef` = `preload("res://godot/scripts/systems/scenario_draw.gd")`
 - `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
 - `LiquidRegistryRef` = `preload("res://godot/scripts/systems/liquid_registry.gd")`

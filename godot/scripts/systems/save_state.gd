@@ -1,6 +1,8 @@
 extends RefCounted
 class_name SaveState
 
+const VoxelWeaknessRef = preload("res://godot/scripts/systems/destruction/voxel_weakness.gd")
+
 ## SAVE-01 — the persistence seam for what a mission does to the map.
 ##
 ## Director, 2026-08-26: *"Precisamos atrelar isso ao save game (acho que já temos
@@ -120,6 +122,8 @@ static func capture(room) -> Dictionary:
 		"map_id": room.map_id,
 		"base_damage": damage,
 		"base_damage_claims": claim_damage,
+		## M6 - the voxels a corrosive weakened. An OLD save has no key: nothing weakened.
+		"weakened": VoxelWeaknessRef.to_save(),
 		"soot": soot,
 		## R3D-PROPS — an OLD save has neither key and reads as "nothing shattered, no debris": the honest restore.
 		"shattered_props": shattered_props,
@@ -201,6 +205,7 @@ static func restore(room, data: Dictionary) -> bool:
 	for e in data.get("base_damage", []):
 		room._base_damage[Vector3i(int(e[0]), int(e[1]), int(e[2]))] = \
 			(e as Array).slice(3)
+	VoxelWeaknessRef.from_save(data.get("weakened", []))
 	room._base_damage_claims.clear()
 	for c in data.get("base_damage_claims", []):
 		var ckey := Vector3i(int(c[0]), int(c[1]), int(c[2]))
@@ -324,6 +329,7 @@ static func load_from_file(room, path: String = "user://save_01.json") -> bool:
 ## so a new persisted field has exactly one place to be forgotten from.
 static func clear_run_state(room) -> void:
 	room._base_damage.clear()
+	VoxelWeaknessRef.clear()
 	room._base_damage_claims.clear()
 	## G-D15 / V-D — a primed pane is a promise made to THIS run. A fresh mission
 	## must not inherit a window that shatters to the first pistol shot.

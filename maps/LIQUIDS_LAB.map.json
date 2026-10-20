@@ -684,6 +684,19 @@
     {
      "def": "box_cardboard_pit",
      "gu": [
+      2,
+      2
+     ],
+     "storey": -1,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "box_cardboard_pit",
+     "gu": [
       12,
       2
      ],

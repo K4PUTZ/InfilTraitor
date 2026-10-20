@@ -125,6 +125,32 @@ func _init() -> void:
 			"the third turn breaks it: deep lava, blocked and lethal")
 	_check(crust.at_gu(on_crust + Vector2i(2, 0)) == SurfaceClass.PLATE, "a plate two GU away still stands")
 
+	## 6b. a cell that joins the crust LATER (a pillar in the pit destroyed, the container re-read) is a plate like the rest: walkable, counted, breakable
+	world.lay(Rect2i(0, 0, 8, 6), [Rect2i(2, 2, 4, 2)])
+	for x in range(32, 40):
+		for y in range(16, 24):
+			for lv in range(76, 80):
+				world.solid[Vector3i(x, y, lv)] = true
+	var late_made: Dictionary = world.body(Vector2(2.5, 2.5), RegistryClass.fluidity("lava_crust"), {"fill": 2.5})
+	var late_plane = late_made["plane"]
+	var late = SurfaceClass.new()
+	late.setup(late_plane, RegistryClass.gameplay("lava_crust"))
+	var pillar_cell: Vector2i = late_plane.cell_of(Vector2(4.5, 2.5))
+	var pillar_i: int = late_plane.index(pillar_cell.x, pillar_cell.y)
+	var pillar_cols: Array = []
+	for x in range(32, 40):
+		for y in range(16, 24):
+			for lv in range(76, 80):
+				world.solid.erase(Vector3i(x, y, lv))
+			pillar_cols.append(Vector2i(x, y))
+	(late_made["box"] as RefCounted).refresh(late_plane, pillar_cols, 80, late_made["info"])
+	late_plane.committed[pillar_i] = 2.5     ## the liquid has reached the freed cell
+	_check(late.solid[pillar_i] == SurfaceClass.PLATE and late.at_gu(Vector2i(4, 2)) == SurfaceClass.PLATE, "a cell that joins the crust later is an intact plate")
+	late.step_on(Vector2i(4, 2))
+	for _t in range(3):
+		late.tick_turn()
+	_check(late.solid[pillar_i] == 0 and late.at_gu(Vector2i(4, 2)) == 0, "and it breaks three turns after the step, like the first ones")
+
 	## 5. the cold freezes the water beside it, along their common edge
 	world.lay(Rect2i(0, 0, 8, 6), [Rect2i(2, 2, 4, 2)])
 	world.divider(32, 2, 4)    ## one pit split in two containers, as LIQUIDS_LAB's `pit_divider`
@@ -160,6 +186,34 @@ func _init() -> void:
 	_check((result[CorrosionClass.DISSOLVE] as Array).is_empty() and acid.count_of(bar) == 5, "five turns of contact are not enough")
 	result = acid.tick({bar: CorrosionClass.DISSOLVE})
 	_check((result[CorrosionClass.DISSOLVE] as Array) == [bar] and (acid.tick({bar: CorrosionClass.DISSOLVE})[CorrosionClass.DISSOLVE] as Array).is_empty(), "the sixth dissolves the bar, once")
+	## 3b. a marked voxel is WEAKENED: a round lands on it harder, a blast ring that destroys takes it whole, the checkpoint keeps it
+	var Weak = load("res://godot/scripts/systems/destruction/voxel_weakness.gd")
+	Weak.clear()
+	var eaten := Voxel.new(Vector2i(10, 11), 80, null)
+	var sound := Voxel.new(Vector2i(12, 11), 80, null)
+	_check(Weak.gain_of(eaten) == 1.0, "before the acid, every voxel takes a round at its own punch")
+	Weak.mark(Vector3i(10, 11, 80))
+	_check(Weak.gain_of(eaten) == Weak.punch_gain and Weak.punch_gain > 1.0 and Weak.gain_of(sound) == 1.0, "a marked voxel takes it %.1f times harder, its neighbour as before" % Weak.punch_gain)
+	var ring_weights: Array[float] = [1.0]
+	var none: Array[float] = [0.0]
+	var swept: Array = BlastCalculator.simulate_container_damage([eaten, sound], "weak_test", "concrete", 0, 80, false, ring_weights, [0.0], none, none)
+	var swept_voxels: Array = []
+	for e in swept:
+		swept_voxels.append(e["voxel"])
+	_check(not swept_voxels.has(eaten) and not swept_voxels.has(sound), "a ring with no destroy weight leaves even the weakened voxel alone")
+	swept = BlastCalculator.simulate_container_damage([eaten, sound], "weak_test", "concrete", 0, 80, false, ring_weights, [0.01], none, none)
+	swept_voxels.clear()
+	for e in swept:
+		if int(e["state"]) == Voxel.DamageState.DESTROYED:
+			swept_voxels.append(e["voxel"])
+	_check(swept_voxels.has(eaten), "a ring that destroys takes the weakened voxel whole, however small its share")
+	var saved: Array = Weak.to_save()
+	Weak.clear()
+	_check(Weak.count() == 0 and Weak.gain_of(eaten) == 1.0, "a new map forgets the weakness")
+	Weak.from_save(saved)
+	_check(Weak.count() == 1 and Weak.gain_of(eaten) == Weak.punch_gain, "and a restored checkpoint brings it back")
+	Weak.clear()
+
 	## the grating's bars hold back a thick liquid (0.5: the acid itself is thin and passes them whole); once dissolved, the container re-read lets it all through
 	world.lay(Rect2i(0, 0, 6, 8), [Rect2i(2, 2, 2, 4)])
 	world.bars(2, 4, 33)

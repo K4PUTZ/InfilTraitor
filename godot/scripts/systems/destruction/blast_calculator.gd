@@ -1196,8 +1196,11 @@ static func simulate_container_damage(voxels: Array, container_id: String, mater
 		var destroy_set: Array = _select_deterministic(group, container_id, "DESTROY", destroy_n, bias_epicenter)
 		if d_w > 0.0 and VoxelWeaknessRef.count() > 0:
 			## a ring the blast destroys in reaches a corroded voxel whole (M6, Director 2026-10-19)
+			var already: Dictionary = {}
+			for picked: Voxel in destroy_set:
+				already[picked] = true
 			for weak: Voxel in group:
-				if VoxelWeaknessRef.is_weak(weak) and not destroy_set.has(weak):
+				if VoxelWeaknessRef.is_weak(weak) and not already.has(weak):
 					destroy_set.append(weak)
 		var destroyed_lookup: Dictionary = {}
 		for v in destroy_set:

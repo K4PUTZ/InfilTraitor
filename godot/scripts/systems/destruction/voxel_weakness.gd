@@ -12,6 +12,9 @@ extends RefCounted
 ## How much harder a round lands on a weakened voxel (Rule 1: a var, difficulty scaling later).
 static var punch_gain: float = 2.0
 
+## A corrosive eats a handful of voxels, never a map's worth: a checkpoint (a file a player can edit) is not trusted past this.
+const MAX_CELLS: int = 100000
+
 static var _cells: Dictionary = {}     ## Vector3i (x, y, level) -> true
 
 
@@ -20,6 +23,9 @@ static func clear() -> void:
 
 
 static func mark(key: Vector3i) -> void:
+	if _cells.size() >= MAX_CELLS and not _cells.has(key):
+		push_warning("[VoxelWeakness] mark: %d weakened voxels already, this one is ignored" % _cells.size())
+		return
 	_cells[key] = true
 
 
@@ -48,8 +54,13 @@ static func to_save() -> Array:
 	return out
 
 
-static func from_save(rows: Array) -> void:
+## Restores a checkpoint's list. `SaveState.validate()` has refused a malformed file before this runs; a bad row that still gets here is skipped.
+static func from_save(rows: Variant) -> void:
 	_cells.clear()
-	for r in rows:
-		if r is Array and (r as Array).size() >= 3:
+	if typeof(rows) != TYPE_ARRAY:
+		return
+	for r in rows as Array:
+		if _cells.size() >= MAX_CELLS:
+			break
+		if typeof(r) == TYPE_ARRAY and (r as Array).size() >= 3:
 			_cells[Vector3i(int(r[0]), int(r[1]), int(r[2]))] = true

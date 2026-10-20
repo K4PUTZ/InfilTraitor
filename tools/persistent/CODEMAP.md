@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**338 scripts · 99969 lines total** (under `godot/scripts/`)
+**338 scripts · 100017 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2510,7 +2510,7 @@ extends `RefCounted` · 37 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1901 lines
+`class_name BlastCalculator` · 1904 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2887,11 +2887,14 @@ extends `RefCounted` · 37 lines
 
 ### `voxel_weakness.gd`
 
-extends `RefCounted` · 55 lines
+extends `RefCounted` · 66 lines
 
 `godot/scripts/systems/destruction/voxel_weakness.gd`
 
 > VoxelWeakness — the voxels a corrosive liquid has eaten into (M6, Director 2026-10-19: corrosion WEAKENS a voxel). A weakened voxel keeps its look (the corrosion mark is its CRACKED decal) and its place, but breaks easier: a shot or a pellet that lands on it punches `punch_gain` times harder, and a blast ring that reaches it (destroy weight above zero) takes it whole. It is a sparse set keyed by the voxel's addressing (`grid_pos.x`, `grid_pos.y`, `level`), the same key `Room._base_damage` uses, so it survives rotation (camera-only) and rides the checkpoint (`SaveState` "weakened"). Static, like the other catalogues the destruction code reads: one world at a time, the room clears it with the map. No class_name on purpose: a new class_name is invisible to a headless run until the editor rebuilds the global class cache (callers preload this file).
+
+**Constants / tuning**
+- `MAX_CELLS` = `100000`
 
 ---
 
@@ -4002,7 +4005,7 @@ extends `Node` · 146 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 350 lines
+`class_name SaveState` · extends `RefCounted` · 356 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -4277,7 +4280,7 @@ extends `Node` · 54 lines
 
 ### `voxel_fire.gd`
 
-extends `RefCounted` · 83 lines
+extends `RefCounted` · 86 lines
 
 `godot/scripts/systems/voxel_fire.gd`
 
@@ -5254,7 +5257,7 @@ extends `SceneTree` · 83 lines
 
 ### `liquid_status_selftest.gd`
 
-extends `SceneTree` · 249 lines
+extends `SceneTree` · 253 lines
 
 `godot/scripts/tools/liquid_status_selftest.gd`
 
@@ -6672,7 +6675,7 @@ extends `Node` · 252 lines
 
 ### `liquid_rules_controller.gd`
 
-extends `RefCounted` · 383 lines
+extends `RefCounted` · 404 lines
 
 `godot/scripts/world/controllers/liquid_rules_controller.gd`
 
@@ -6689,6 +6692,7 @@ extends `RefCounted` · 383 lines
 - `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
 - `VoxelWeaknessRef` = `preload("res://godot/scripts/systems/destruction/voxel_weakness.gd")`
 - `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
+- `MAX_EMBERS_PER_TURN` = `24`
 - `BURN_TINT` = `Color(1.0, 0.45, 0.08, 0.55)`
 - `MARK_TINT` = `Color(0.55, 0.04, 0.04, 0.45)`
 - `GLOW_TINT` = `Color(0.55, 1.0, 0.35, 0.35)`

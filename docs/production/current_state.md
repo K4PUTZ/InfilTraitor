@@ -553,8 +553,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 240
-- Test scripts: 91
+- GDScript modules: 242
+- Test scripts: 92
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 32
@@ -563,11 +563,11 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
-- 39e59bee ALPHA BRICK DECALS 0.9.107 - three of six parts built, and every gate that lied got fixed
-- 173f21cd ALPHA MATERIALS MASTERPLAN 0.9.106 - five materials land, the milestone is planned, and half-thickness walls turn out not to exist
-- 2f47876b [W-WEAPON-01/DOCS] Wood at five, the held weapon gets a seam, and the session closes
-- f3731aff ALPHA MOVEMENT FOUNDATION 0.9.104 - the placeholder is gone, he walks, and there is an enemy
-- a04e8c05 ALPHA MOCKUP MODEL FOUNDATION 0.9.103 - the agent stands in the room
+- 39e59bee4 ALPHA BRICK DECALS 0.9.107 - three of six parts built, and every gate that lied got fixed
+- 173f21cd0 ALPHA MATERIALS MASTERPLAN 0.9.106 - five materials land, the milestone is planned, and half-thickness walls turn out not to exist
+- 2f47876b0 [W-WEAPON-01/DOCS] Wood at five, the held weapon gets a seam, and the session closes
+- f3731aff3 ALPHA MOVEMENT FOUNDATION 0.9.104 - the placeholder is gone, he walks, and there is an enemy
+- a04e8c05b ALPHA MOCKUP MODEL FOUNDATION 0.9.103 - the agent stands in the room
 <!-- AUTO:END version_history -->
 
 ---

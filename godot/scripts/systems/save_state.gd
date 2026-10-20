@@ -188,6 +188,12 @@ static func validate(data: Dictionary) -> String:
 	for c in data.get("soot", []):
 		if typeof(c) != TYPE_ARRAY or (c as Array).size() < 4:
 			return "malformed soot entry: %s" % [c]
+	var weakened: Variant = data.get("weakened", [])
+	if typeof(weakened) != TYPE_ARRAY or (weakened as Array).size() > VoxelWeaknessRef.MAX_CELLS:
+		return "malformed weakened list (not an array, or more than %d voxels)" % VoxelWeaknessRef.MAX_CELLS
+	for w in weakened:
+		if typeof(w) != TYPE_ARRAY or (w as Array).size() < 3:
+			return "malformed weakened entry: %s" % [w]
 	for pid in data.get("pane_primed", []):
 		if typeof(pid) != TYPE_STRING or String(pid) == "":
 			return "malformed pane_primed entry: %s" % [pid]

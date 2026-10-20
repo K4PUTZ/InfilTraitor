@@ -48,6 +48,9 @@ func ignite(key: Vector3i) -> bool:
 ## room's lookups. Returns {"lit": [keys that caught from a neighbour this turn], "consumed": [keys eaten], "charred": [keys blackened], "burning": [every key
 ## burning after the turn]}.
 func advance(flammability_at: Callable, consumption_at: Callable) -> Dictionary:
+	if not flammability_at.is_valid() or not consumption_at.is_valid():
+		push_error("[VoxelFire] advance: an invalid lookup callable; the fire is left as it was")
+		return {"lit": [], "consumed": [], "charred": [], "burning": _burning.keys()}
 	var lit: Array = []
 	var consumed: Array = []
 	var charred: Array = []
@@ -66,7 +69,7 @@ func advance(flammability_at: Callable, consumption_at: Callable) -> Dictionary:
 			lit.append(n)
 	for key: Vector3i in _burning.keys():
 		var age: int = int(_burning[key]) + 1
-		if age >= burn_turns:
+		if age >= maxi(burn_turns, 1):
 			_burning.erase(key)
 			_spent[key] = true
 			if float(consumption_at.call(key)) >= consume_min:

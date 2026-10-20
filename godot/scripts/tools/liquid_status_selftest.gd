@@ -213,6 +213,10 @@ func _init() -> void:
 	Weak.from_save(saved)
 	_check(Weak.count() == 1 and Weak.gain_of(eaten) == Weak.punch_gain, "and a restored checkpoint brings it back")
 	Weak.clear()
+	_check(SaveState.validate({"version": 3, "weakened": [[1, 2, 80]]}) == "" and SaveState.validate({"version": 3}) == "", "a checkpoint with a weakened list, or an old one without, loads")
+	_check(SaveState.validate({"version": 3, "weakened": "x"}) != "" and SaveState.validate({"version": 3, "weakened": [[1, 2]]}) != "", "a weakened list that is not rows of three is refused before anything is restored")
+	Weak.from_save("x")
+	_check(Weak.count() == 0, "and a bad list that still reaches the restore is ignored, never fatal")
 
 	## the grating's bars hold back a thick liquid (0.5: the acid itself is thin and passes them whole); once dissolved, the container re-read lets it all through
 	world.lay(Rect2i(0, 0, 6, 8), [Rect2i(2, 2, 2, 4)])

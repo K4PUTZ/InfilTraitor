@@ -31,6 +31,8 @@ const VoxelWeaknessRef = preload("res://godot/scripts/systems/destruction/voxel_
 const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
 
 ## The agent's look per status (alpha = how much): a fire breathes, a stain and a glow hold.
+## The most embers a burning voxel set shows in one liquid turn.
+const MAX_EMBERS_PER_TURN: int = 24
 const BURN_TINT := Color(1.0, 0.45, 0.08, 0.55)
 const MARK_TINT := Color(0.55, 0.04, 0.04, 0.45)
 const GLOW_TINT := Color(0.55, 1.0, 0.35, 0.35)
@@ -43,6 +45,8 @@ var _agent_light = null           ## the LightSource of a glowing agent (registe
 var _agent_light_cell: Vector2i = Vector2i(-9999, -9999)
 var _family: Dictionary = {}      ## material id -> family
 var _tint_key: String = ""
+var _applying: bool = false         ## a corrosion / fire write is in flight (`_apply_corrosion`)
+var _queued: Array = []             ## [dissolve, marks] waiting for it
 var _voxel_fire = VoxelFireRef.new()   ## the fire lava starts on voxels
 
 
@@ -59,6 +63,7 @@ func reset() -> void:
 	_agent_light_cell = Vector2i(-9999, -9999)
 	_tint_key = ""
 	_voxel_fire.reset()
+	_queued.clear()
 	refresh_agent_look()
 
 
@@ -99,7 +104,7 @@ func liquid_turn() -> void:
 		return
 	var bodies: Array = field.bodies()
 	_lava_ignites(bodies)
-	_lava_burns_voxels(bodies)
+	var eaten: Array = _lava_burns_voxels(bodies)
 	_cold_freezes(bodies)
 	for body: Dictionary in bodies:
 		if body["surface"] != null:
@@ -108,8 +113,8 @@ func liquid_turn() -> void:
 				print_debug("[LIQUID-RULES] %s: %d plate cell(s) broke" % [body["kind"], broke.size()])
 	for glow in _glows:
 		glow.refresh()
-	if not _corrosions.is_empty():
-		_corrode(bodies)
+	if not _corrosions.is_empty() or not eaten.is_empty():
+		_corrode(bodies, eaten)
 
 
 func _lava_ignites(bodies: Array) -> void:
@@ -190,10 +195,11 @@ func _material_at(store: VoxelStore, key: Vector3i) -> String:
 
 
 ## Lava sets the flammable voxels it touches alight; the fire spreads, burns out and leaves the voxel eaten (cardboard, cloth) or charred (wood).
-func _lava_burns_voxels(bodies: Array) -> void:
+## Returns the voxels the fire ate this turn: they leave through `_corrode`'s one write, never a second one racing it.
+func _lava_burns_voxels(bodies: Array) -> Array:
 	var store: VoxelStore = VoxelStore.active
 	if store == null:
-		return
+		return []
 	for body: Dictionary in bodies:
 		if not bool(LiquidRegistryRef.gameplay(String(body["kind"])).get("ignites", false)):
 			continue
@@ -201,13 +207,15 @@ func _lava_burns_voxels(bodies: Array) -> void:
 		for key: Vector3i in touching:
 			_voxel_fire.ignite(key)
 	if _voxel_fire.burning_count() == 0:
-		return
+		return []
 	var result: Dictionary = _voxel_fire.advance(
 			func(key: Vector3i) -> float: return MaterialResistanceTable.flammability(_material_at(store, key)),
 			func(key: Vector3i) -> float: return MaterialResistanceTable.burn_consumption(_material_at(store, key)))
 	var burning: Array = result["burning"]
-	for key: Vector3i in burning:
-		_voxel_ember(key, store)
+	## a spreading fire shows a bounded number of embers a turn (an overlay particle each: a warehouse of crates must not flood it)
+	var stride: int = maxi(ceili(float(burning.size()) / float(MAX_EMBERS_PER_TURN)), 1)
+	for k in range(0, burning.size(), stride):
+		_voxel_ember(burning[k], store)
 	var charred: Array = []
 	for key: Vector3i in result["charred"]:
 		var family: String = _family_of(_material_at(store, key))
@@ -215,10 +223,9 @@ func _lava_burns_voxels(bodies: Array) -> void:
 	if not charred.is_empty():
 		room.char_after_fire(charred)
 	var consumed: Array = result["consumed"]
-	if not consumed.is_empty():
-		_apply_corrosion(consumed, [], store)
 	if not (result["lit"] as Array).is_empty() or not consumed.is_empty() or not charred.is_empty():
 		print_debug("[LIQUID-RULES] voxel fire: %d burning (%d caught from a neighbour), %d eaten, %d charred" % [burning.size(), (result["lit"] as Array).size(), consumed.size(), charred.size()])
+	return consumed
 
 
 ## An ember on the burning voxel's top face (the roof fire's look), longer for what burns hotter.
@@ -231,11 +238,11 @@ func _voxel_ember(key: Vector3i, store: VoxelStore) -> void:
 			MaterialResistanceTable.flammability(_material_at(store, key)), 0.0, 1.0, 1.0, true, ParticleMathRef.NO_FLOOR, embers.top_face_anchor(cell, key.z))
 
 
-func _corrode(bodies: Array) -> void:
+func _corrode(bodies: Array, eaten: Array = []) -> void:
 	var store: VoxelStore = VoxelStore.active
 	if store == null:
 		return
-	var dissolve: Array = []
+	var dissolve: Array = eaten.duplicate()   ## what the voxel fire ate goes out in the same write as what the acid dissolved
 	var marks: Array = []
 	var opened: Array = []
 	for entry: Dictionary in _corrosions:
@@ -259,6 +266,20 @@ func _corrode(bodies: Array) -> void:
 ## base-recorded for a checkpoint, the dirty passes, the board's commit, the props released, the support rule asked, the world revision bumped, the light
 ## around the opening repainted.
 func _apply_corrosion(dissolve: Array, marks: Array, store: VoxelStore) -> void:
+	## The write awaits the dirty passes over several frames; a second liquid turn must not start another on top of it (two passes over the same slabs):
+	## its voxels wait and go out when the first has finished.
+	if _applying:
+		_queued.append([dissolve, marks])
+		return
+	_applying = true
+	await _apply_corrosion_now(dissolve, marks, store)
+	while not _queued.is_empty():
+		var next: Array = _queued.pop_front()
+		await _apply_corrosion_now(next[0], next[1], store)
+	_applying = false
+
+
+func _apply_corrosion_now(dissolve: Array, marks: Array, store: VoxelStore) -> void:
 	var touched: Array = []
 	var gus: Dictionary = {}
 	for pair: Array in [[dissolve, Voxel.DamageState.DESTROYED], [marks, Voxel.DamageState.CRACKED]]:

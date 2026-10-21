@@ -1,16 +1,20 @@
-# hero_tailor.py — our OWN costume, tailored to the agile-B body and skinned to the same 65-bone skeleton (no CC0 suit was found; see ACTOR D74).
-# v3 (2026-10-21). ONE file holds BOTH styles of D70; the engine shows one: the normal style hides Outfit_Gloves, the black style hides Outfit_Coat.
-# v3 over v2 (Director's notes): REAL SHOES (a smooth last: the convex hull of the foot, a pointed toe, a flat sole; the spats are gone), a LOOSE overcoat
-# hanging half open (the black suit shows inside, Dick Tracy), three coat colours to test (env COAT = beige | lightblue | mustard), a better shirt (spread
-# collar points on the jacket) and tie (tapered, striped, draped on the shirt by ray-casting), a smaller flatter black pack, a looser jacket, and FABRIC:
-# a pinstripe + twill texture on the suit, a weave on the coat (box-projected UVs), baked into the glTF.
-# Cuts are made with PLANES (clean edges), not by skin-weight groups; the body is masked under the clothes except the hands.
-# Env: HERO_REPO (repo root, trailing /), HERO_UAL_GLB (UAL1_Standard.glb), BODY_FILE (default superhero_male_agile_b_lean.glb), OUT_SUFFIX, COAT,
-# DECIMATE (LOD ratio; 0.166 gives ~5k from the 27k master), HERO_TMP (preview folder). Usage: blender -b -P hero_tailor.py
-# ⚠️ Traps: (1) a copy of the body carries its Armature modifier (a second one poses the piece twice); (2) the 43 UAL tracks all start at frame 1, so the rig
-# must be in REST while pieces are fitted and weighted; (3) two bisect planes with clear_inner/clear_outer erase each other's hand; (4) never set
-# colorspace_settings on a generated image after its pixels (it regenerates a BLANK buffer: black textures); (5) Blender's Workbench shows textured
-# materials black in a background render: preview by material colour and judge the texture in the engine.
+# hero_tailor.py — our OWN costume, face and mask for the agile-B body, skinned to the same 65-bone skeleton (no CC0 suit was found; see ACTOR D74-D76).
+# v4 (2026-10-21). ONE file holds every state; the engine shows a subset:
+#   normal  = everything except Outfit_Gloves and the MASK kit;        black = hides Outfit_Coat + Outfit_CoatFlaps and the MASK kit (shirt/tie go dark);
+#   mask    = black + the MASK kit (Mask_Face, Mask_Jaw, Mask_Eyes, Mask_Halo, Outfit_HatTilt*) and the UPRIGHT hat hidden.
+# Pieces: shirt (+collar points, striped draped tie), jacket (V opening, rolled lapels, collar, buttons), trousers, two real shoes, gloves, the overcoat
+# (loose, half open, standing collar, front flaps, a hump over the pack), fedora (+tipped copy for the mask), a flat black pack with two pouches, the MASK
+# (a flat-shaded face plate, a jaw guard, slanted amber eye lenses and an additive halo), and FACE BLEND SHAPES on the skin / eyes / eyebrows
+# (smile, frown, brow_up, brow_down, blink, eyes_wide, jaw_open; the decimated LOD has none by design).
+# Env: HERO_REPO (repo root, trailing /), HERO_UAL_GLB (UAL1_Standard.glb), BODY_FILE (default superhero_male_agile_b_lean.glb), OUT_SUFFIX, COAT (mustard |
+# beige | lightblue; default mustard), DECIMATE (LOD ratio; 0.2 gives ~5.9k tris with the mask kit, 0.166 ~5k without it), HERO_TMP (preview folder).
+# Usage: blender -b -P hero_tailor.py
+# ⚠️ Traps, all paid for: (0) THE GLTF IMPORT SPLITS VERTICES ALONG UV SEAMS: offset along per-vertex normals the seams drift apart and every piece CRACKS
+# (the "openings at the shoulders"); weld with remove_doubles when copying the body. (1) A copy of the body carries its Armature modifier (a second one poses
+# the piece twice). (2) The 43 UAL tracks all start at frame 1: keep the rig in REST while pieces are fitted and weighted. (3) Two bisect planes with
+# clear_inner/clear_outer erase each other's hand. (4) Never set colorspace_settings on a generated image after its pixels (a BLANK buffer: black textures).
+# (5) Workbench shows textured materials black in a background render: preview by colour, judge textures in the engine. (6) Group-dominance selection leaves
+# the neck group out: those triangles become holes; include "neck_" and cut with a plane. (7) A comment on a line of `;`-joined statements eats the rest.
 import os
 import bpy, bmesh, math, os, sys
 from mathutils import Vector, noise
@@ -18,7 +22,7 @@ from mathutils.bvhtree import BVHTree
 SP=os.environ.get("HERO_TMP","/tmp/")
 UAL=os.environ.get("HERO_UAL_GLB","")
 D=os.environ.get("HERO_REPO","")+"ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/"
-BODY=D+os.environ.get("BODY_FILE","superhero_male_agile_b_lean.glb"); SUF=os.environ.get("OUT_SUFFIX","_tailor3")
+BODY=D+os.environ.get("BODY_FILE","superhero_male_agile_b_lean.glb"); SUF=os.environ.get("OUT_SUFFIX","_tailor4")
 DEC=float(os.environ.get("DECIMATE","1.0"))
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=BODY)
@@ -62,7 +66,7 @@ SUIT=tmat("Suit_Black",SUITIMG)                         # a black wool suit with
 BLACK=mat("Hat_Black",(0.03,0.03,0.036))               # hat felt
 COATS={"beige":(0.70,0.62,0.48),"lightblue":(0.60,0.72,0.85),"mustard":(0.80,0.64,0.24)}
 COATIMGS={k:fabric("Fabric_Coat_"+k,v,weave=0.09,grain=0.03,period=6) for k,v in COATS.items()}
-WHITE=tmat("Coat_Fabric",COATIMGS[os.environ.get("COAT","beige")])
+WHITE=tmat("Coat_Fabric",COATIMGS[os.environ.get("COAT","mustard")])
 SHIRTIMG=fabric("Fabric_Shirt",(0.62,0.76,0.92),weave=0.05,grain=0.02,period=4); SHIRT=tmat("Shirt_Fabric",SHIRTIMG)
 TIEIMG=fabric("Fabric_Tie",(0.55,0.08,0.10),stripe=(0.80,0.78,0.72),weave=0.10,grain=0.02,stripe_every=24,stripe_w=6); TIEW=tmat("Tie_Silk",TIEIMG,0.5)
 OLIVE=mat("Pack_Black",(0.05,0.052,0.058),0.7); GLOVE=mat("Glove_Leather",(0.016,0.016,0.02),0.55); BAND=mat("Hat_Band",(0.12,0.12,0.14)); SHOE=mat("Shoe_Leather",(0.022,0.022,0.026),0.4)
@@ -77,7 +81,9 @@ def blank(name):
     o=body.copy(); o.data=full.data.copy(); o.name=name; bpy.context.scene.collection.objects.link(o)
     for m_ in list(o.modifiers): o.modifiers.remove(m_)
     o.parent=None
-    bm=bmesh.new(); bm.from_mesh(o.data); bm.verts.ensure_lookup_table(); return o,bm
+    bm=bmesh.new(); bm.from_mesh(o.data)
+    bmesh.ops.remove_doubles(bm,verts=bm.verts[:],dist=0.0001)   # the glTF import SPLITS vertices along UV seams; offset along per-vertex normals they drift apart and the cloth CRACKS
+    bm.verts.ensure_lookup_table(); return o,bm
 def dgroup(bm):
     dl=bm.verts.layers.deform.active
     def dg(v):
@@ -118,7 +124,7 @@ def hem(bm,pred,drop,flare,steps):
         es=[g for g in ret['geom'] if isinstance(g,bmesh.types.BMEdge) and g.is_boundary and abs(g.verts[0].co.z-g.verts[1].co.z)<0.35*max((g.verts[0].co-g.verts[1].co).length,1e-6)]
         bm.verts.ensure_lookup_table(); bm.normal_update()
 def collar(bm,height,flare,steps=2):
-    pred=lambda c: c.z>zn-0.14 and abs(c.x)<0.14
+    pred=lambda c: c.z>zn-0.14 and abs(c.x)<0.14 and c.y>-0.02
     es=horizontal_boundary(bm,pred)
     for _ in range(steps):
         if not es: return
@@ -160,10 +166,10 @@ def folds(bm,joints,amp,span=0.085,freq=85.0):
 def noisy(bm,amp,scale=9.0):
     bm.normal_update()
     for v in bm.verts: v.co+=v.normal*(noise.noise(v.co*scale)*amp)
-def buttons(bm,xs,zs,r,mat_back=True):
+def buttons(bm,pts,r):
     bvh=BVHTree.FromBMesh(bm)
-    for x in xs:
-        for z in zs:
+    if True:
+        for (x,z) in pts:
             hit,nrm,idx,dist=bvh.ray_cast(Vector((x,-1.0,z)),Vector((0,1,0)))
             if hit is None: continue
             m=bmesh.ops.create_cone(bm,cap_ends=True,segments=10,radius1=r,radius2=r*0.9,depth=0.008)
@@ -178,10 +184,13 @@ def box_uv(bm,tile):
             p=l.vert.co
             u,v=((p.y,p.z) if ax==0 else (p.x,p.z) if ax==1 else (p.x,p.y))
             l[uvl].uv=(u/tile,v/tile)
-def finish(o,bm,material,uv=None):
+def finish(o,bm,material,uv=None,facet=None):
     sweep(bm); bm.normal_update()
     if uv: box_uv(bm,uv)
     bm.to_mesh(o.data); bm.free()
+    if facet:      # hard-surface: collapse to few planes and shade them flat
+        dm=o.modifiers.new('Dec','DECIMATE'); dm.ratio=facet; bpy.context.view_layer.objects.active=o; bpy.ops.object.modifier_apply(modifier='Dec')
+        for p_ in o.data.polygons: p_.use_smooth=False
     o.data.materials.clear(); o.data.materials.append(material)
     m=o.modifiers.new("DT",'DATA_TRANSFER'); m.object=full; m.use_vert_data=True; m.data_types_verts={'VGROUP_WEIGHTS'}
     m.vert_mapping='POLYINTERP_NEAREST'; m.layers_vgroup_select_src='ALL'; m.layers_vgroup_select_dst='NAME'
@@ -193,7 +202,7 @@ def shoulder_pad(amp):
     def f(v):
         d=min((v.co-p).length for p in pts); return amp*math.exp(-(d/0.07)**2)
     return f
-TORSO=("spine_","pelvis")+ARMS
+TORSO=("spine_","pelvis","neck_")+ARMS      # the neck group too: left out, its triangles became HOLES at the shoulders
 pieces=[]
 BVH={}
 def hull_shoe(name,side):
@@ -218,24 +227,24 @@ def hull_shoe(name,side):
         if v.co.z>0.04: v.co.y+= -0.004*(v.co.z-0.04)*8  # a slight forward lean of the vamp
     bmesh.ops.subdivide_edges(bm,edges=bm.edges[:],cuts=1,smooth=0.7,use_grid_fill=False); bm.normal_update()
     return o,bm
-TORSO=("spine_","pelvis")+ARMS
+TORSO=("spine_","pelvis","neck_")+ARMS      # the neck group too: left out, its triangles became HOLES at the shoulders
 # ---- shirt: a body, plus a spread collar whose points lie on the jacket ----
-o,bm=blank("Outfit_Shirt"); keep_groups(bm,region("spine_","pelvis","clavicle_")); plane(bm,(0,0,1.02),(0,0,1),inner=True)
+o,bm=blank("Outfit_Shirt"); keep_groups(bm,region("spine_","pelvis","clavicle_","neck_")); plane(bm,(0,0,1.02),(0,0,1),inner=True); plane(bm,(0,0,zn+0.015),(0,0,1),outer=True)
 displace(bm,0.007); collar(bm,0.032,1.06,1); BVH["shirt"]=BVHTree.FromBMesh(bm)
 pieces.append(finish(o,bm,SHIRT,uv=0.10))
 # ---- jacket: a little looser, pinstriped wool ----
 o,bm=blank("Outfit_Jacket"); keep_groups(bm,region(*TORSO))
-plane(bm,(0,0,1.03),(0,0,1),inner=True)
+plane(bm,(0,0,1.03),(0,0,1),inner=True); plane(bm,(0,0,zn+0.015),(0,0,1),outer=True)
 plane(bm,(wx-0.012,0,0),(1,0,0),outer=True); plane(bm,(-(wx-0.012),0,0),(-1,0,0),outer=True)
 sh=shoulder_pad(0.008)
 displace(bm,lambda v: 0.037+sh(v)+(0.006 if abs(v.co.x)>0.2 else 0.0)+(max(0.0,zc-v.co.z)*0.05 if abs(v.co.x)<0.25 else 0.0))
 folds(bm,[("lowerarm_l",None),("lowerarm_r",None)],0.0050)
 vopen(bm,zc-0.17,zn+0.02,0.060); smooth_boundary(bm,lambda c: c.y<0.0 and abs(c.x)<0.13 and c.z>zc-0.25)
-lapels(bm,zc-0.17,0.048,0.006)
+lapels(bm,zc-0.17,0.058,0.008)
 hem(bm,lambda c: 0.98<c.z<1.07 and abs(c.x)<0.40,0.175,1.08,3)
-collar(bm,0.038,1.10,2); cuffs(bm,wx-0.012,0.018,1.05)
-noisy(bm,0.0025); buttons(bm,[0.0],[zc-0.20,zc-0.30],0.011); BVH["jacket"]=BVHTree.FromBMesh(bm)
-pieces.append(finish(o,bm,SUIT,uv=0.22))
+collar(bm,0.050,1.16,2); cuffs(bm,wx-0.012,0.018,1.05)
+noisy(bm,0.0025); buttons(bm,[(0.0,zc-0.20),(0.0,zc-0.30)],0.011); BVH["jacket"]=BVHTree.FromBMesh(bm)
+JAC=(o,bm)
 # ---- trousers: pinstriped, falling over the shoes ----
 o,bm=blank("Outfit_Trousers"); keep_groups(bm,region("pelvis","thigh_","calf_","foot_","ball_"))
 plane(bm,(0,0,1.0),(0,0,1),outer=True); plane(bm,(0,0,0.075),(0,0,1),inner=True)
@@ -254,7 +263,7 @@ displace(bm,0.0045); cuffs(bm,wx-0.015,-0.035,1.12)
 pieces.append(finish(o,bm,GLOVE))
 # ---- the overcoat: loose, hanging half open like Dick Tracy's, the black suit showing inside ----
 o,bm=blank("Outfit_Coat"); keep_groups(bm,region(*TORSO))
-plane(bm,(0,0,1.03),(0,0,1),inner=True)
+plane(bm,(0,0,1.03),(0,0,1),inner=True); plane(bm,(0,0,zn+0.015),(0,0,1),outer=True)
 plane(bm,(wx+0.02,0,0),(1,0,0),outer=True); plane(bm,(-(wx+0.02),0,0),(-1,0,0),outer=True)
 sh=shoulder_pad(0.046)
 displace(bm,lambda v: (0.068 if abs(v.co.x)<0.20 else 0.058)+sh(v)+(max(0.0,zc-v.co.z)*0.12 if abs(v.co.x)<0.25 else 0.0))
@@ -267,13 +276,25 @@ def coat_w(z): return 0.045 if z>=zn+0.03 else 0.045+0.085*min(1.0,(zn+0.03-z)/(
 bm.faces.ensure_lookup_table()
 bmesh.ops.delete(bm,geom=[f for f in bm.faces if f.calc_center_median().y<0.0 and abs(f.calc_center_median().x)<coat_w(f.calc_center_median().z)],context='FACES'); sweep(bm)
 smooth_boundary(bm,lambda c: c.y<0.0 and abs(c.x)<0.18 and c.z>zc-0.60,iters=5)
-lapels(bm,zc-0.22,0.062,0.010)
+lapels(bm,zc-0.25,0.080,0.014)
 hem(bm,lambda c: 0.98<c.z<1.07 and abs(c.x)<0.50,0.58,1.22,5)
 for v in bm.verts:   # a modest hump: the pack lies flat against the back
     if v.co.y>0.0 and abs(v.co.x)<0.22:
         tz=max(0.0,min(1.0,(0.27-abs(v.co.z-(zc-0.03)))/0.12)); tx=max(0.0,min(1.0,(0.22-abs(v.co.x))/0.08)); v.co.y+=0.045*tz*tx*(3-2*tz*tx)
-collar(bm,0.060,1.14,2); cuffs(bm,wx+0.02,0.02,1.05)
-noisy(bm,0.0035); buttons(bm,[0.046],[zc-0.02,zc-0.12,zc-0.22],0.013)
+collar(bm,0.088,1.30,3); cuffs(bm,wx+0.02,0.02,1.05)
+noisy(bm,0.0035); buttons(bm,[(coat_w(z)+0.030,z) for z in (zc-0.02,zc-0.12,zc-0.22)],0.013)
+COATBVH=BVHTree.FromBMesh(bm); BVH["coat"]=COATBVH
+pushed=0
+for v in JAC[1].verts:      # wherever the jacket would show THROUGH the coat (shoulders, arms, back), sink it under; the open front and the collar stay
+    c=v.co
+    if (c.y<0.0 and abs(c.x)<0.17 and c.z>zc-0.5) or c.z>zn-0.04: continue
+    loc,nrm,idx,dist=COATBVH.find_nearest(c)
+    if loc is None: continue
+    out=(c-loc).dot(nrm)
+    if out>-0.012:
+        v.co-=v.normal*(max(out,0.0)+0.016); pushed+=1
+print("T2 jacket verts pushed under the coat",pushed)
+pieces.append(finish(*JAC,SUIT,uv=0.22))
 pieces.append(finish(o,bm,WHITE,uv=0.22))
 # ---- hat, band, tie (hugging the shirt), collar points, flat pack ----
 def prim(name,build,group,material):
@@ -288,8 +309,8 @@ def crown(bm):
     ct=max(m['verts'],key=lambda v:v.co.z-(abs(v.co.x-hx)+abs(v.co.y-hy))*10); ct.co.z-=0.022
     for v in m['verts']:
         if v.co.z>top-0.045+0.034 and v.co.y<hy-0.02: v.co.x=hx+(v.co.x-hx)*0.88
-def brim(bm):
-    seg=36; ri,ro,th=0.096,0.158,0.005; zb=top-0.092+0.035
+def brim(bm,ro=0.158):
+    seg=36; ri,th=0.096,0.005; zb=top-0.092+0.035
     def zz(t,r):
         k=(r-ri)/(ro-ri); return zb+0.016*abs(math.sin(t))*k-0.020*max(0.0,math.cos(t))*k
     ti=[];to=[];bi=[];bo=[]
@@ -324,6 +345,11 @@ def collar_points(bm):
     for s in (1,-1):
         P=conform(bm,BVH["jacket"],[(s*0.026,zn-0.004),(s*0.088,zn-0.050),(s*0.018,zn-0.110)],0.006)
         bm.faces.new(P if s>0 else P[::-1])
+def coat_flaps(bm):
+    for s in (1,-1):
+        P=conform(bm,BVH["coat"],[(s*0.034,zn+0.012),(s*0.118,zn-0.012),(s*0.130,zn-0.130),(s*0.050,zn-0.100)],0.012)
+        P[1].co.x+=s*0.012; P[1].co.z+=0.012; P[1].co.y-=0.020; P[2].co.x+=s*0.014; P[2].co.y-=0.016   # the outer corners lift off the coat
+        bm.faces.new(P if s>0 else P[::-1])
 def bevelbox(size,c):
     def f(bm):
         bmesh.ops.create_cube(bm,size=1.0)
@@ -334,15 +360,101 @@ pieces.append(prim("Outfit_HatCrown",crown,"Head",BLACK)); pieces.append(prim("O
 pieces.append(prim("Outfit_Tie",tie,"spine_03",TIEW))
 SHIRTCOLLAR=mat("Shirt_Collar",(0.88,0.90,0.94),0.8)
 pieces.append(prim("Outfit_CollarPoints",collar_points,"spine_03",SHIRTCOLLAR))
+pieces.append(prim("Outfit_CoatFlaps",coat_flaps,"spine_03",WHITE))
 pieces.append(prim("Pack_Main",bevelbox((0.25,0.065,0.29),(0,back+0.040,zc-0.02)),"spine_03",OLIVE))
 pieces.append(prim("Pack_PouchL",bevelbox((0.055,0.05,0.11),(0.150,back+0.040,zc-0.04)),"spine_03",OLIVE))
 pieces.append(prim("Pack_PouchR",bevelbox((0.055,0.05,0.11),(-0.150,back+0.040,zc-0.04)),"spine_03",OLIVE))
+
+# ================= THE MASK (D71): a face plate, a jaw guard that rises from the collar, amber eye lenses with a halo, and the hat tipped forward =================
+MASKBLACK=mat("Mask_Black",(0.028,0.029,0.034),0.55)
+EYEGLOW=mat("Mask_EyeGlow",(1.0,0.62,0.12),0.4); _b=EYEGLOW.node_tree.nodes["Principled BSDF"]
+for k_,v_ in (("Emission Color",(1.0,0.55,0.08,1.0)),("Emission Strength",6.0)):
+    if k_ in _b.inputs: _b.inputs[k_].default_value=v_
+HALO=mat("Mask_EyeHalo",(1.0,0.55,0.10),0.4)
+o,bm=blank("Mask_Face"); keep_groups(bm,region("Head"))
+plane(bm,(0,0.050,0),(0,1,0),outer=True); plane(bm,(0,0,1.742),(0,0,1),outer=True); plane(bm,(0,0,1.592),(0,0,1),inner=True)
+displace(bm,0.016)
+mface=finish(o,bm,MASKBLACK,facet=0.12); pieces.append(mface)
+bmf=bmesh.new(); bmf.from_mesh(mface.data); BVH["maskface"]=BVHTree.FromBMesh(bmf)
+o,bm=blank("Mask_Jaw"); keep_groups(bm,region("Head","neck_"))
+plane(bm,(0,0,1.632),(0,0,1),outer=True); plane(bm,(0,0,1.511),(0,0,1),inner=True); plane(bm,(0,0.045,0),(0,1,0),outer=True)
+displace(bm,0.021); pieces.append(finish(o,bm,MASKBLACK,facet=0.10))
+def eye_lenses(bm):       # slanted amber lenses, narrowest at the nose, like the reference's visor slits
+    for s_ in (1,-1):
+        P=conform(bm,BVH["maskface"],[(s_*0.012,1.688),(s_*0.014,1.699),(s_*0.058,1.715),(s_*0.056,1.704)],0.007)
+        bm.faces.new(P if s_>0 else P[::-1])
+def eye_halos(bm):        # a soft additive glow around each lens (the engine draws it; UVs run 0..1)
+    uvl=bm.loops.layers.uv.verify()
+    for s_ in (1,-1):
+        c=(s_*0.036,1.704); hw,hh=0.066,0.036
+        P=conform(bm,BVH["maskface"],[(c[0]-hw,c[1]-hh),(c[0]+hw,c[1]-hh),(c[0]+hw,c[1]+hh),(c[0]-hw,c[1]+hh)],0.011)
+        f=bm.faces.new(P if s_>0 else P[::-1])
+        for l_ in f.loops: l_[uvl].uv=(0.5+(l_.vert.co.x-c[0])/(2*hw),0.5+(l_.vert.co.z-c[1])/(2*hh))
+pieces.append(prim("Mask_Eyes",eye_lenses,"Head",EYEGLOW)); pieces.append(prim("Mask_Halo",eye_halos,"Head",HALO))
+def tipped(fn,deg=8.0,up=0.028):  # the same hat, pitched forward about a hinge at the nape (the animation will use a bone there)
+    def g(bm):
+        fn(bm); piv=Vector((hx,hy+0.085,1.745)); th=math.radians(deg)
+        for v in bm.verts:
+            p=v.co-piv; v.co=piv+Vector((p.x,p.y*math.cos(th)-p.z*math.sin(th)-0.020,p.y*math.sin(th)+p.z*math.cos(th)+up))     # up first, then forward: the brim must shade the forehead, not the lenses
+    return g
+# in the mask the brim is a short visor: a long one hides the lenses from the iso camera (30 deg above)
+pieces.append(prim("Outfit_HatTiltCrown",tipped(crown,deg=6.0,up=0.036),"Head",BLACK))
+pieces.append(prim("Outfit_HatTiltBrim",tipped(lambda bm: brim(bm,0.118),deg=6.0,up=0.036),"Head",BLACK))
+pieces.append(prim("Outfit_HatTiltBand",tipped(band,deg=6.0,up=0.036),"Head",BAND))
+MASKSET=["Mask_Face","Mask_Jaw","Mask_Eyes","Mask_Halo","Outfit_HatTiltCrown","Outfit_HatTiltBrim","Outfit_HatTiltBand"]; HATUP=["Outfit_HatCrown","Outfit_HatBrim","Outfit_HatBand"]
 # ---- mask the body under the clothes (not the hands: the gloves are a style that comes and goes) ----
 bm=bmesh.new(); bm.from_mesh(body.data); bm.verts.ensure_lookup_table(); dgb=dgroup(bm)
 cover=region("spine_","clavicle_","upperarm_","lowerarm_","pelvis","thigh_","calf_","foot_","ball_")
 cov=set(v.index for v in bm.verts if cover(dgb(v)))
 gone=[f for f in bm.faces if all(v.index in cov for v in f.verts)]
 bmesh.ops.delete(bm,geom=gone,context='FACES'); sweep(bm); bm.to_mesh(body.data); bm.free(); print("T2 body faces masked",len(gone))
+
+# ---------- FACE: blend shapes for basic expressions (the free body has no face rig at all) ----------
+def gauss(p,c,sx,sy=None,sz=None):
+    sy=sy or sx; sz=sz or sx
+    return math.exp(-(((p.x-c[0])/sx)**2+((p.y-c[1])/sy)**2+((p.z-c[2])/sz)**2)*0.5)
+EYE_Z=1.698; BROW_Z=1.725; MOUTH_Z=1.624; CORNER=(0.026,-0.098,1.622)
+def face_delta(name,p):
+    d=Vector((0,0,0)); s_=1.0 if p.x>=0 else -1.0
+    if not (-0.11<p.x<0.11 and 1.56<p.z<1.82 and p.y<0.02): return d
+    if name=="smile":
+        c=(s_*CORNER[0],CORNER[1],CORNER[2]); d+=Vector((s_*0.006,-0.002,0.010))*gauss(p,c,0.018)
+        d+=Vector((0,-0.004,0.007))*gauss(p,(s_*0.048,-0.09,1.652),0.026)
+        d+=Vector((0,0,0.003))*gauss(p,(s_*0.04,-0.07,1.688),0.02)          # cheeks lift into the lower lids
+    elif name=="frown":
+        c=(s_*CORNER[0],CORNER[1],CORNER[2]); d+=Vector((-s_*0.002,0.002,-0.009))*gauss(p,c,0.018)
+        d+=Vector((0,0,0.004))*gauss(p,(s_*0.016,-0.095,BROW_Z),0.013)
+        d+=Vector((0,0.001,-0.003))*gauss(p,(0,-0.1,1.608),0.014)
+    elif name=="brow_up":
+        d+=Vector((0,-0.001,0.012))*gauss(p,(s_*0.034,-0.09,BROW_Z+0.002),0.03,0.02,0.018)
+    elif name=="brow_down":
+        d+=Vector((0,-0.004,-0.011))*gauss(p,(s_*0.016,-0.092,BROW_Z),0.016,0.02,0.014)
+        d+=Vector((0,0,0.004))*gauss(p,(s_*0.058,-0.082,BROW_Z+0.004),0.014)
+    elif name=="blink":
+        dx=p.x-s_*0.034; dz=p.z-EYE_Z; r=math.hypot(dx,dz)*1.0
+        if p.y<-0.03 and r<0.034:
+            g=1.0-r/0.034
+            if p.z>=EYE_Z-0.002: d.z=-(p.z-(EYE_Z-0.004))*0.82*g
+            else: d.z=(EYE_Z-0.004-p.z)*0.35*g
+    elif name=="eyes_wide":
+        d+=Vector((0,0,0.007))*gauss(p,(s_*0.034,-0.088,EYE_Z+0.012),0.02,0.02,0.012)
+        d+=Vector((0,0,0.005))*gauss(p,(s_*0.034,-0.09,BROW_Z),0.03,0.02,0.016)
+    elif name=="jaw_open":
+        w=max(0.0,min(1.0,(1.640-p.z)/0.030))
+        if w>0.0 and p.y<0.045:
+            th=math.radians(17.0)*w; hy,hz=0.005,1.668
+            ry,rz=p.y-hy,p.z-hz
+            d=Vector((0,ry*math.cos(th)-rz*math.sin(th)-ry,ry*math.sin(th)+rz*math.cos(th)-rz))
+    return d
+FACE_KEYS=("smile","frown","brow_up","brow_down","blink","eyes_wide","jaw_open")
+def add_face_keys(obj):
+    if obj.data.shape_keys is None: obj.shape_key_add(name="Basis",from_mix=False)
+    for kn in FACE_KEYS:
+        sk=obj.shape_key_add(name=kn,from_mix=False)
+        for i,v in enumerate(obj.data.vertices): sk.data[i].co=v.co+face_delta(kn,v.co)
+if DEC>=1.0:       # a decimated LOD cannot carry shape keys, and the game LOD never needs a face (the mask covers it)
+    for o_ in (body,bpy.data.objects.get("Eyebrows"),bpy.data.objects.get("Eyes")):
+        if o_ is not None: add_face_keys(o_)
 bpy.data.objects.remove(full,do_unlink=True)
 if DEC<1.0:
     for o in [o for o in bpy.context.scene.objects if o.type=='MESH' and len(o.data.polygons)>150]:
@@ -356,24 +468,43 @@ bpy.ops.export_scene.gltf(filepath=D+f"hero{SUF}.glb",export_format='GLB',export
 sc=bpy.context.scene; sc.render.engine='BLENDER_WORKBENCH'; sh=sc.display.shading; sh.light='STUDIO'; sh.color_type='MATERIAL'; sh.show_specular_highlight=False
 sc.world=bpy.data.worlds.new("w"); sc.world.color=(0.25,0.26,0.29); sc.render.resolution_x=420; sc.render.resolution_y=640
 cam=bpy.data.cameras.new("c"); cam.type='ORTHO'; cam.ortho_scale=2.3; co=bpy.data.objects.new("c",cam); sc.collection.objects.link(co); sc.camera=co
+CTR=Vector((0,0,0.9)); ORTHO=2.3
 def shot(an,fr,az_deg,path,el_deg=18):
     if an is None: ad.action=None; arm.data.pose_position='REST'
     else:
         arm.data.pose_position='POSE'; a=bpy.data.actions[an]; ad.action=a; ad.action_slot=a.slots[0]; sc.frame_set(fr)
-    az=math.radians(az_deg); el=math.radians(el_deg); ctr=Vector((0,0,0.9)); d=10
+    az=math.radians(az_deg); el=math.radians(el_deg); ctr=CTR; d=10; cam.ortho_scale=ORTHO
     co.location=ctr+Vector((d*math.cos(el)*math.sin(az),-d*math.cos(el)*math.cos(az),d*math.sin(el))); co.rotation_euler=(ctr-co.location).to_track_quat('-Z','Y').to_euler()
     sc.render.filepath=path; bpy.ops.render.render(write_still=True)
 def set_coat(key):
     t=[n for n in WHITE.node_tree.nodes if n.type=='TEX_IMAGE'][0]; t.image=COATIMGS[key]; WHITE.diffuse_color=(*COATS[key],1)
 views=[(None,1,0),("Idle_Loop",20,30),("Walk_Formal_Loop",12,35),("Crouch_Idle_Loop",6,35)]
-for style,hide in (("normal",["Outfit_Gloves"]),("black",["Outfit_Coat"])):
+for style,hide in (("normal",["Outfit_Gloves"]+MASKSET),("black",["Outfit_Coat","Outfit_CoatFlaps"]+MASKSET),("mask",["Outfit_Coat","Outfit_CoatFlaps","Mask_Halo"]+HATUP)):
     for n in hide: bpy.data.objects[n].hide_render=True
     keep=(tuple(SHIRT.diffuse_color),tuple(TIEW.diffuse_color),tuple(SHIRTCOLLAR.diffuse_color))
-    if style=='black': SHIRT.diffuse_color=(0.03,0.03,0.04,1); TIEW.diffuse_color=(0.04,0.04,0.05,1); SHIRTCOLLAR.diffuse_color=(0.05,0.05,0.06,1)
+    if style in ('black','mask'): SHIRT.diffuse_color=(0.03,0.03,0.04,1); TIEW.diffuse_color=(0.04,0.04,0.05,1); SHIRTCOLLAR.diffuse_color=(0.05,0.05,0.06,1)
     for k,(an,fr,az) in enumerate(views): shot(an,fr,az,SP+f"t3_{style}_{k}.png")
+    if style=="mask":
+        CTR=Vector((0,-0.04,1.64)); ORTHO=0.62
+        for k2,az2 in enumerate((0,28,-28)): shot("Idle_Loop",20,az2,SP+f"mask_close_{k2}.png",el_deg=6)
+        CTR=Vector((0,0,0.9)); ORTHO=2.3
     SHIRT.diffuse_color,TIEW.diffuse_color,SHIRTCOLLAR.diffuse_color=keep
     for n in hide: bpy.data.objects[n].hide_render=False
 for key in COATS:       # the coat colour test: the same pose, three coats
     set_coat(key); bpy.data.objects["Outfit_Gloves"].hide_render=True
     shot("Idle_Loop",20,30,SP+f"t3c_{key}_0.png"); shot("Walk_Formal_Loop",12,35,SP+f"t3c_{key}_1.png")
+CTR=Vector((0,-0.03,1.52)); ORTHO=0.85
+for k,az in enumerate((0,35,-35)):
+    bpy.data.objects["Outfit_Gloves"].hide_render=True
+    shot("Walk_Formal_Loop",12,az,SP+f"t4_close_{k}.png",el_deg=22)
+if DEC>=1.0:
+    arm.data.pose_position='REST'; ad.action=None
+    for n_ in [o_.name for o_ in bpy.context.scene.objects if o_.type=='MESH' and o_.name.startswith(("Outfit_Hat","Mask_","Outfit_Tie","Outfit_Coat","Outfit_Jacket","Outfit_Shirt","Outfit_Collar","Pack_"))]: bpy.data.objects[n_].hide_render=True
+    CTR=Vector((0,-0.04,1.69)); ORTHO=0.34
+    for k,ex in enumerate(("neutral",)+FACE_KEYS):
+        for o_ in (body,bpy.data.objects["Eyebrows"],bpy.data.objects["Eyes"]):
+            for kb in o_.data.shape_keys.key_blocks: kb.value=1.0 if kb.name==ex else 0.0
+        shot(None,1,0,SP+f"face_{k}.png",el_deg=0)
+    for o_ in (body,bpy.data.objects["Eyebrows"],bpy.data.objects["Eyes"]):
+        for kb in o_.data.shape_keys.key_blocks: kb.value=0.0
 print("OK t3")

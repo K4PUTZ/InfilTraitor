@@ -3,6 +3,15 @@
 
 > 🧭 **2026-09-27 — reorganization pointer.** The build now targets D64's live-mesh rig, executed by `RENDER3D_MASTER_PLAN`'s `R3D-ACTORS` track. Read `RENDER3D_MASTER_PLAN` for current status.
 
+> 🧭 **2026-10-21 — the HERO costume track (new body, new costume, a face, a mask).** The Director asked for a richer, agile character built from free
+> CC0 parts: the free Quaternius Universal Base (Superhero body, 65-bone UE skeleton) + Universal Animation Library (43 actions, same bone names), remodelled to
+> an agile silhouette ("B"), and dressed with OUR OWN costume (no CC0 suit exists to download). **Decisions are `ACTOR_MASTER_PLAN` D70-D76** (the three costume
+> layers and the absorbed coat; the mask; the stationary cloak; one master + one ~5k game LOD; delivery of cosmetics; the face blend shapes; the first mask
+> model). **Build:** `tools/asset_generation/hero/` (`hero_lean_export.py`, `hero_remodel.py`, `hero_tailor.py`, the older `hero_dress.py`), bench
+> `godot/scripts/debug/actor_viability_bench.gd` (scenario op `actor_bench`). **Record, numbers and open items:**
+> `PROMPTS/RESUMO_SESSAO_2026-10-21_CHARACTER_HERO.md`. This plan's own bone set (§4.2, 20 bones) is NOT what the hero uses: the hero keeps the pack's 65-bone
+> skeleton, and `ActorMesh3D` still needs an adapter before it can wear it.
+
 > ⏭️ **2026-09-23 — the agent becomes a LIVE mesh (`ACTOR` D64, Director).** Measured in `RENDER3D_MASTER_PLAN` R3D-SPIKE-3D: the rig joined into one
 > skinned mesh with the walk keyed as an action (`tools/asset_generation/r3d_live_rig_export.py`, the same `p3_walk_export`
 > phases), lit by the board's cell planes, costs +1.0 ms for 9 walking figures on the Moto. The model, rig and poses this plan

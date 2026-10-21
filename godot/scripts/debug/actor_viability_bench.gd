@@ -18,6 +18,11 @@ extends RefCounted
 const SHADER_PATH := "res://godot/shaders/actor_mesh3d.gdshader"
 const CLOTH_SHADER_PATH := "res://godot/shaders/actor_cloth3d.gdshader"   ## D70 prototype: the costume's cloth gets a soft sheen
 const CLOTH_MATERIALS: PackedStringArray = ["Suit_Black", "Coat_Fabric", "Shirt_Fabric", "Tie_Silk"]
+const EYE_SHADER_PATH := "res://godot/shaders/actor_mask_eye3d.gdshader"      ## D71 prototype: the mask's lit eyes
+const HALO_SHADER_PATH := "res://godot/shaders/actor_mask_halo3d.gdshader"
+const MASK_PIECES: Array[String] = ["Mask_Face", "Mask_Jaw", "Mask_Eyes", "Mask_Halo", "Outfit_HatTiltCrown", "Outfit_HatTiltBrim", "Outfit_HatTiltBand"]
+const HAT_UPRIGHT: Array[String] = ["Outfit_HatCrown", "Outfit_HatBrim", "Outfit_HatBand"]
+const EYES_ON_SECONDS: float = 0.7
 const CLOAK_SHADER_PATH := "res://godot/shaders/actor_cloak3d.gdshader"   ## D72 prototype: `hero_*_cloak` draws the figures as the faint ghost, crouched
 const AGENT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live.glb"
 const QUAT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/superhero_male_lean.glb"
@@ -55,6 +60,9 @@ class Ticker extends Node:
 		step.call(float(Time.get_ticks_msec()) / 1000.0)
 
 static var _rigs: Array = []
+static var _glow_mats: Array = []
+static var _glow_t0: float = 0.0
+static var _glow_hold: float = -1.0   ## >= 0 pins the eyes at that level (`_maskoff` pins them at 0, to photograph the lenses dark)
 static var _ticker: Ticker = null
 
 
@@ -75,13 +83,25 @@ static func spawn(room: Node, model: String, count: int) -> String:
 	var cloak: bool = model.ends_with("_cloak")
 	model = model.trim_suffix("_cloak")
 	## a costume file holds BOTH styles; the engine will show one (D70): `_black` hides the coat, `_normal` hides the gloves
+	_glow_hold = -1.0
+	if model.ends_with("_maskoff"):
+		_glow_hold = 0.0
+		model = model.trim_suffix("off")
 	var hidden: Array[String] = []
+	var face_camera: bool = false      ## the mask view: stand still and look at the camera (the iso camera looks along the grid diagonal)
 	if model.ends_with("_black"):
-		hidden.append("Outfit_Coat")
+		hidden.append_array(["Outfit_Coat", "Outfit_CoatFlaps"])
+		hidden.append_array(MASK_PIECES)
 		model = model.trim_suffix("_black")
 	elif model.ends_with("_normal"):
 		hidden.append("Outfit_Gloves")
+		hidden.append_array(MASK_PIECES)
 		model = model.trim_suffix("_normal")
+	elif model.ends_with("_mask"):      ## the black style with the hat tipped over the face, the mask on and the eyes lit
+		hidden.append_array(["Outfit_Coat", "Outfit_CoatFlaps"])
+		hidden.append_array(HAT_UPRIGHT)
+		model = model.trim_suffix("_mask")
+		face_camera = true
 	var march: bool = model.ends_with("_march")  ## a video wants them walking along a lane; a measurement wants them still on the grid
 	model = model.trim_suffix("_march")
 	var hero: bool = model.begins_with("hero_")
@@ -104,7 +124,7 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		holder.add_child(body)
 		if hero:
 			body.scale = Vector3.ONE * (STAND_HEIGHT_M / HERO_HEIGHT_M) * METRES_TO_UNITS
-			body.rotation.y = PI * 0.5   ## the rig's front is +Z; march toward +X (grid east)
+			body.rotation.y = PI * 0.25 if face_camera else PI * 0.5   ## the rig's front is +Z; march toward +X (grid east), or face the camera on the diagonal
 		elif model == "quat":
 			body.scale = Vector3.ONE * (STAND_HEIGHT_M / _mesh_height(body)) * METRES_TO_UNITS
 			body.rotation.y = PI
@@ -126,7 +146,7 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		if not players.is_empty():
 			rig.player = players[0] as AnimationPlayer
 		if hero:
-			var clip: String = "Crouch_Idle" if cloak else HERO_WALK   ## the cloak works only crouched and still (D72)
+			var clip: String = "Crouch_Idle" if cloak else ("Idle" if face_camera else HERO_WALK)   ## the cloak works only crouched and still (D72)
 			if rig.player == null or not rig.player.has_animation(clip):
 				push_error("[ActorViabilityBench] %s has no %s" % [path, clip])
 			else:
@@ -154,6 +174,7 @@ static func spawn(room: Node, model: String, count: int) -> String:
 					var arrays := mesh.surface_get_arrays(s)
 					var idx_arr: Variant = arrays[Mesh.ARRAY_INDEX]
 					tris += (idx_arr as PackedInt32Array).size() / 3 if idx_arr != null else 0
+	_glow_t0 = float(Time.get_ticks_msec()) / 1000.0 + 0.4
 	var line := "[ACTOR-BENCH] %s x%d: %d tris and %d joints and %d material(s) per rig" % [model, count, tris, joints, materials]
 	print(line)
 	return line
@@ -161,6 +182,11 @@ static func spawn(room: Node, model: String, count: int) -> String:
 
 ## Advance the synthetic motion (the quat rigs only; the agent's AnimationPlayer drives itself).
 static func tick(time_s: float) -> void:
+	## The eyes ramp on over EYES_ON_SECONDS and then breathe a little (the mask's lenses and their halo).
+	var on: float = clampf((time_s - _glow_t0) / EYES_ON_SECONDS, 0.0, 1.0)
+	var level: float = _glow_hold if _glow_hold >= 0.0 else on * (0.94 + 0.06 * sin(time_s * 3.3))
+	for gm: ShaderMaterial in _glow_mats:
+		gm.set_shader_parameter("intensity", level)
 	for rig: Rig in _rigs:
 		if rig.holder != null and rig.lane_offset >= 0.0 and rig.holder.name.contains("hero_"):
 			rig.holder.position = rig.lane_start + Vector3(fposmod(time_s * LANE_SPEED_GU_S + rig.lane_offset, LANE_GU), 0.0, 0.0)
@@ -210,6 +236,13 @@ static func _apply_board_light(board: Node3D, body: Node, converted: Dictionary,
 					if std.albedo_texture != null:
 						sm.set_shader_parameter("albedo_tex", std.albedo_texture)
 						sm.set_shader_parameter("has_tex", 1.0)
+				if src != null and src.resource_name == "Mask_EyeGlow":
+					sm.shader = load(EYE_SHADER_PATH)
+					_glow_mats.append(sm)
+				elif src != null and src.resource_name == "Mask_EyeHalo":
+					sm.shader = load(HALO_SHADER_PATH)
+					_glow_mats.append(sm)
 				converted[src] = sm
-				board.call("register_prop_light_material", sm)
+				if not _glow_mats.has(sm):
+					board.call("register_prop_light_material", sm)
 			m.set_surface_override_material(s, converted[src])

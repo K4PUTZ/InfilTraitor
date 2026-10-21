@@ -5,7 +5,7 @@
 
 > 🧭 **2026-10-21 — the HERO costume track (new body, new costume, a face, a mask).** The Director asked for a richer, agile character built from free
 > CC0 parts: the free Quaternius Universal Base (Superhero body, 65-bone UE skeleton) + Universal Animation Library (43 actions, same bone names), remodelled to
-> an agile silhouette ("B"), and dressed with OUR OWN costume (no CC0 suit exists to download). **Decisions are `ACTOR_MASTER_PLAN` D70-D76** (the three costume
+> an agile silhouette ("B"), and dressed with OUR OWN costume (no CC0 suit exists to download). **Decisions are `ACTOR_MASTER_PLAN` D70-D77** (D77, 2026-10-21: the hat IS the mask; v5 = draped cloth, a real fedora, hair + optional beard, contrast collar and a real tie; record `PROMPTS/RESUMO_SESSAO_2026-10-21_HERO_V5.md`) (the three costume
 > layers and the absorbed coat; the mask; the stationary cloak; one master + one ~5k game LOD; delivery of cosmetics; the face blend shapes; the first mask
 > model). **Build:** `tools/asset_generation/hero/` (`hero_lean_export.py`, `hero_remodel.py`, `hero_tailor.py`, the older `hero_dress.py`), bench
 > `godot/scripts/debug/actor_viability_bench.gd` (scenario op `actor_bench`). **Record, numbers and open items:**

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**339 scripts · 100280 lines total** (under `godot/scripts/`)
+**339 scripts · 100286 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -320,7 +320,7 @@ extends `Node2D` · 325 lines
 
 ### `actor_viability_bench.gd`
 
-extends `RefCounted` · 248 lines
+extends `RefCounted` · 254 lines
 
 `godot/scripts/debug/actor_viability_bench.gd`
 
@@ -332,8 +332,9 @@ extends `RefCounted` · 248 lines
 - `CLOTH_MATERIALS` = `["Suit_Black", "Coat_Fabric", "Shirt_Fabric", "Tie_Silk"]`
 - `EYE_SHADER_PATH` = `"res://godot/shaders/actor_mask_eye3d.gdshader"`
 - `HALO_SHADER_PATH` = `"res://godot/shaders/actor_mask_halo3d.gdshader"`
-- `MASK_PIECES` = `["Mask_Face", "Mask_Jaw", "Mask_Eyes", "Mask_Halo", "Outfit_HatTiltCrown", "Outfit_HatTiltBrim", "Outfit_HatTiltBand"]`
+- `MASK_PIECES` = `["Mask_Shell", "Mask_Band", "Mask_Jaw", "Mask_Eyes", "Mask_Halo"]`
 - `HAT_UPRIGHT` = `["Outfit_HatCrown", "Outfit_HatBrim", "Outfit_HatBand"]`
+- `FACE_HAIR` = `["Face_Hair", "Face_Beard"]`
 - `EYES_ON_SECONDS` = `0.7`
 - `CLOAK_SHADER_PATH` = `"res://godot/shaders/actor_cloak3d.gdshader"`
 - `AGENT_RIG` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live.glb"`

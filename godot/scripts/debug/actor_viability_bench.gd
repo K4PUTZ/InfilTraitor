@@ -20,8 +20,10 @@ const CLOTH_SHADER_PATH := "res://godot/shaders/actor_cloth3d.gdshader"   ## D70
 const CLOTH_MATERIALS: PackedStringArray = ["Suit_Black", "Coat_Fabric", "Shirt_Fabric", "Tie_Silk"]
 const EYE_SHADER_PATH := "res://godot/shaders/actor_mask_eye3d.gdshader"      ## D71 prototype: the mask's lit eyes
 const HALO_SHADER_PATH := "res://godot/shaders/actor_mask_halo3d.gdshader"
-const MASK_PIECES: Array[String] = ["Mask_Face", "Mask_Jaw", "Mask_Eyes", "Mask_Halo", "Outfit_HatTiltCrown", "Outfit_HatTiltBrim", "Outfit_HatTiltBand"]
+## D77 (v5): the hat's crown IS the mask, so the masked agent wears no hat, and his hair and beard are under the shell
+const MASK_PIECES: Array[String] = ["Mask_Shell", "Mask_Band", "Mask_Jaw", "Mask_Eyes", "Mask_Halo"]
 const HAT_UPRIGHT: Array[String] = ["Outfit_HatCrown", "Outfit_HatBrim", "Outfit_HatBand"]
+const FACE_HAIR: Array[String] = ["Face_Hair", "Face_Beard"]
 const EYES_ON_SECONDS: float = 0.7
 const CLOAK_SHADER_PATH := "res://godot/shaders/actor_cloak3d.gdshader"   ## D72 prototype: `hero_*_cloak` draws the figures as the faint ghost, crouched
 const AGENT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live.glb"
@@ -88,18 +90,22 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		_glow_hold = 0.0
 		model = model.trim_suffix("off")
 	var hidden: Array[String] = []
+	if model.ends_with("_shaved"):     ## the beard is optional (v5): `hero_<file>_normal_shaved`
+		hidden.append("Face_Beard")
+		model = model.trim_suffix("_shaved")
 	var face_camera: bool = false      ## the mask view: stand still and look at the camera (the iso camera looks along the grid diagonal)
 	if model.ends_with("_black"):
-		hidden.append_array(["Outfit_Coat", "Outfit_CoatFlaps"])
+		hidden.append("Outfit_Coat")
 		hidden.append_array(MASK_PIECES)
 		model = model.trim_suffix("_black")
 	elif model.ends_with("_normal"):
 		hidden.append("Outfit_Gloves")
 		hidden.append_array(MASK_PIECES)
 		model = model.trim_suffix("_normal")
-	elif model.ends_with("_mask"):      ## the black style with the hat tipped over the face, the mask on and the eyes lit
-		hidden.append_array(["Outfit_Coat", "Outfit_CoatFlaps"])
+	elif model.ends_with("_mask"):      ## the black style with the hat's crown come down over the face as the mask, the eyes lit
+		hidden.append("Outfit_Coat")
 		hidden.append_array(HAT_UPRIGHT)
+		hidden.append_array(FACE_HAIR)
 		model = model.trim_suffix("_mask")
 		face_camera = true
 	var march: bool = model.ends_with("_march")  ## a video wants them walking along a lane; a measurement wants them still on the grid

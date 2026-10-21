@@ -20,8 +20,8 @@ const CLOTH_SHADER_PATH := "res://godot/shaders/actor_cloth3d.gdshader"   ## D70
 const CLOTH_MATERIALS: PackedStringArray = ["Suit_Black", "Coat_Fabric", "Shirt_Fabric", "Tie_Silk"]
 const EYE_SHADER_PATH := "res://godot/shaders/actor_mask_eye3d.gdshader"      ## D71 prototype: the mask's lit eyes
 const HALO_SHADER_PATH := "res://godot/shaders/actor_mask_halo3d.gdshader"
-## D77 (v5): the hat's crown IS the mask, so the masked agent wears no hat, and his hair and beard are under the shell
-const MASK_PIECES: Array[String] = ["Mask_Shell", "Mask_Band", "Mask_Jaw", "Mask_Eyes", "Mask_Halo"]
+## D77: the hat turns into the mask (its look is swapped as it comes down), so the masked agent wears no hat; hair and beard are under it
+const MASK_PIECES: Array[String] = ["Mask_Face", "Mask_Jaw", "Mask_Eyes", "Mask_Halo"]
 const HAT_UPRIGHT: Array[String] = ["Outfit_HatCrown", "Outfit_HatBrim", "Outfit_HatBand"]
 const FACE_HAIR: Array[String] = ["Face_Hair", "Face_Beard"]
 const EYES_ON_SECONDS: float = 0.7

@@ -332,7 +332,7 @@ extends `RefCounted` · 254 lines
 - `CLOTH_MATERIALS` = `["Suit_Black", "Coat_Fabric", "Shirt_Fabric", "Tie_Silk"]`
 - `EYE_SHADER_PATH` = `"res://godot/shaders/actor_mask_eye3d.gdshader"`
 - `HALO_SHADER_PATH` = `"res://godot/shaders/actor_mask_halo3d.gdshader"`
-- `MASK_PIECES` = `["Mask_Shell", "Mask_Band", "Mask_Jaw", "Mask_Eyes", "Mask_Halo"]`
+- `MASK_PIECES` = `["Mask_Face", "Mask_Jaw", "Mask_Eyes", "Mask_Halo"]`
 - `HAT_UPRIGHT` = `["Outfit_HatCrown", "Outfit_HatBrim", "Outfit_HatBand"]`
 - `FACE_HAIR` = `["Face_Hair", "Face_Beard"]`
 - `EYES_ON_SECONDS` = `0.7`

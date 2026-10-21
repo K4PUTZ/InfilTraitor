@@ -1,7 +1,7 @@
 # hero_tailor.py — our OWN costume, face and mask for the agile-B body, skinned to the same 65-bone skeleton (no CC0 suit was found; see ACTOR D74-D77).
 # v5 (2026-10-21). ONE file holds every state; the engine shows a subset:
 #   normal = everything except Outfit_Gloves and the MASK kit;   black = hides Outfit_Coat and the MASK kit (shirt/tie/trim go dark);
-#   mask   = black + the MASK kit (Mask_Shell, Mask_Band, Mask_Jaw, Mask_Eyes, Mask_Halo) with the hat AND Face_Hair / Face_Beard hidden: the hat's crown IS
+#   mask   = black + the MASK kit (Mask_Face, Mask_Jaw, Mask_Eyes, Mask_Halo) with the hat AND Face_Hair / Face_Beard hidden: the hat's crown IS
 #            the mask (D77), so the masked agent wears no hat. Face_Beard is optional in the unmasked states (the bench's `_shaved` hides it).
 # Pieces: shirt, contrast trim (turned-down collar, cuffs, pocket square), a thick tie (knot, diagonal stripes, tie bar), jacket (V opening, lapels), trousers
 # with a break, two parametric shoes, gloves, the overcoat (DRAPED over the body and the pack, lined, half open, wide lapels, a standing collar), an oval
@@ -635,7 +635,7 @@ def stubble_texture():
     streak=rng.normal(0,1,(n,n)); streak=(streak+np.roll(streak,1,0)+np.roll(streak,2,0)+np.roll(streak,1,1)*0.5)/3.5   # short vertical hairs
     img*=(1.0+0.22*streak)[...,None]; img*=(1.0+rng.normal(0,0.05,(n,n,1)))
     return image("Fabric_Beard",img)
-if os.environ.get("BEARD","1")!="0":
+if os.environ.get("BEARD","0")!="0":      # Director 2026-10-21: no beard for now (BEARD=1 grows it)
     o,bm=blank("Face_Beard"); keep_groups(bm,region("Head","neck_"))
     mk={v:beard_mask(v.co) for v in bm.verts}
     bmesh.ops.delete(bm,geom=[f for f in bm.faces if max(mk[v] for v in f.verts)<0.02],context='FACES'); sweep(bm)
@@ -663,56 +663,23 @@ for k_,v_ in (("Emission Color",(1.0,0.55,0.08,1.0)),("Emission Strength",6.0)):
     if k_ in _b.inputs: _b.inputs[k_].default_value=v_
 HALO=mat("Mask_EyeHalo",(1.0,0.55,0.10),0.4)
 EYE_Z=1.698
-o,bm=blank("Mask_Shell"); keep_groups(bm,region("Head","neck_","spine_","clavicle_"))
-bm.faces.ensure_lookup_table(); bmesh.ops.delete(bm,geom=[f for f in bm.faces if abs(f.calc_center_median().x)>0.085 and f.calc_center_median().z<1.60],context='FACES'); sweep(bm)   # the neck, not the shoulders
-def shell_floor(y): return 1.625+(1.532-1.625)*sstep(-0.05,0.035,y)              # under the nose at the front, deep into the jacket's collar at the nape (no skin)
+o,bm=blank("Mask_Face"); keep_groups(bm,region("Head","neck_","spine_","clavicle_"))   # D77 revised: the v4 HARD-SURFACE look (the Director preferred it). The game
+bm.faces.ensure_lookup_table(); bmesh.ops.delete(bm,geom=[f for f in bm.faces if abs(f.calc_center_median().x)>0.085 and f.calc_center_median().z<1.60],context='FACES'); sweep(bm)
+def shell_floor(y): return 1.592+(1.535-1.592)*sstep(-0.05,0.035,y)             # swaps the hat's look as it is pulled down, so the mask need not be shaped like it
 bm.faces.ensure_lookup_table(); bmesh.ops.delete(bm,geom=[f for f in bm.faces if f.calc_center_median().z<shell_floor(f.calc_center_median().y)],context='FACES'); sweep(bm)
-bmesh.ops.holes_fill(bm,edges=[e for e in bm.edges if e.is_boundary],sides=40)  # the eye openings (and the lips): a shell has no holes
-def shell_gap(v,i):
-    if v.co.y>0.0 and v.co.z<1.66: return 0.020-0.012*sstep(1.66,1.60,v.co.z)    # the nape: hugged (bridged to the back it read as a HOOD, which D70 rules out)
-    return 0.020 if (v.co.z>1.70 or v.co.y>-0.02) else 0.016                     # the felt has volume: a crown, not a balaclava
-drape(bm,shell_gap,30,free=lambda c: c.z>1.645 or c.y<-0.02)
-front_=set()
-for v in bm.verts:   # the face side is one smooth visor (the crown pulled down has no nose in it)
-    p=v.co; w=sstep(0.080,0.055,abs(p.x))*sstep(1.606,1.622,p.z)*sstep(1.752,1.730,p.z)*sstep(-0.02,-0.05,p.y)
-    yv=-0.129+9.0*p.x*p.x+5.5*(p.z-1.668)**2
-    if w>0.0 and yv<p.y: p.y+=(yv-p.y)*w; front_.add(v)
-for _ in range(3): bmesh.ops.smooth_vert(bm,verts=list(front_),factor=0.5,use_axis_x=True,use_axis_y=True,use_axis_z=True)
-for v in bm.verts:
-    p=v.co; topk=sstep(1.765,1.800,p.z); along=sstep(0.105,0.07,abs(p.y-0.0))
-    if p.z>1.78: p.z=1.78+(p.z-1.78)*0.75                                      # a flatter top with a rounded edge: the crown's, not the skull's
-    p.z+=0.026*topk                                                             # (raised enough that the crease never reaches the skull: 0.55 and +16 mm let the scalp through)
-    p.z-=0.017*topk*along*math.exp(-(p.x/0.020)**2)                             # the crown's centre crease, front to back (the fedora's, D77)
-    s=1.0 if p.x>=0 else -1.0
-    p.x-=s*0.013*math.exp(-(((p.x-s*0.038)/0.017)**2+((p.y+0.060)/0.026)**2+((p.z-1.79)/0.024)**2))     # the two front pinches
-SHELLBVH=BVHTree.FromBMesh(bm)
-pieces.append(finish(o,bm,BLACK))
-def mask_band(bm):   # the hat's band, slid down with the crown: across the eyes, carrying the lenses
-    N=48; rows=[]
-    for z in (EYE_Z-0.0120,EYE_Z+0.0110):
-        ring=[]
-        for j in range(N):
-            a=2*math.pi*j/N; d=Vector((math.sin(a),-math.cos(a),0)); hit,nrm,i_,d_=SHELLBVH.ray_cast(Vector((0,0.012,z)),d)
-            if hit is None: hit,nrm=Vector((0,0.012,z))+d*0.1,d
-            if nrm.dot(d)<0: nrm=-nrm
-            ring.append((hit,nrm,d))
-        rows.append(ring)
-    Bi=[bm.verts.new(h+n*0.0004) for h,n,d in rows[0]]; Bo=[bm.verts.new(h+n*0.0030) for h,n,d in rows[0]]
-    To=[bm.verts.new(h+n*0.0030) for h,n,d in rows[1]]; Ti=[bm.verts.new(h+n*0.0004) for h,n,d in rows[1]]
-    for j in range(N):
-        k=(j+1)%N; d=rows[0][j][2]
-        face_out(bm,[Bi[j],Bi[k],Bo[k],Bo[j]],Vector((0,0,-1))); face_out(bm,[Bo[j],Bo[k],To[k],To[j]],d); face_out(bm,[To[j],To[k],Ti[k],Ti[j]],Vector((0,0,1)))
-BANDBM=bmesh.new(); mask_band(BANDBM); BANDBVH=BVHTree.FromBMesh(BANDBM); pieces.append(finish(new_piece("Mask_Band"),BANDBM,BAND))
-o,bm=blank("Mask_Jaw"); keep_groups(bm,region("Head","neck_"))
-plane(bm,(0,0,1.636),(0,0,1),outer=True); plane(bm,(0,0,1.511),(0,0,1),inner=True); plane(bm,(0,0.045,0),(0,1,0),outer=True)
 bmesh.ops.holes_fill(bm,edges=[e for e in bm.edges if e.is_boundary],sides=40)
-drape(bm,0.024,20); pieces.append(finish(o,bm,MASKBLACK))                      # smooth plates (the v4 facets read as crumpled paper)
+displace(bm,lambda v: 0.016 if v.co.y<0.0 or v.co.z>1.64 else 0.008)            # the whole head now (no hat on top), hugging the nape (no hood)
+SHELLBVH=BVHTree.FromBMesh(bm); BANDBVH=SHELLBVH
+pieces.append(finish(o,bm,MASKBLACK,facet=0.12))
+o,bm=blank("Mask_Jaw"); keep_groups(bm,region("Head","neck_"))
+plane(bm,(0,0,1.632),(0,0,1),outer=True); plane(bm,(0,0,1.511),(0,0,1),inner=True); plane(bm,(0,0.045,0),(0,1,0),outer=True)
+displace(bm,0.021); pieces.append(finish(o,bm,MASKBLACK,facet=0.10))
 def eye_lenses(bm):       # slanted amber slits IN the band, narrowest at the nose; 8 segments, each on the band (one flat quad sank into its curve)
     for s_ in (1,-1):
         lo=[];hi=[]
         for k in range(9):
             t=k/8.0; x=0.011+0.046*t; zc_=1.6950+0.0072*t; hh=0.0028+0.0012*math.sin(t*math.pi)
-            lo.append(bm.verts.new(on_surface(BANDBVH,s_*x,zc_-hh,0.0010)[0])); hi.append(bm.verts.new(on_surface(BANDBVH,s_*x,zc_+hh,0.0010)[0]))
+            lo.append(bm.verts.new(on_surface(BANDBVH,s_*x,zc_-hh,0.0045)[0])); hi.append(bm.verts.new(on_surface(BANDBVH,s_*x,zc_+hh,0.0045)[0]))
         for k in range(8): face_out(bm,[lo[k],lo[k+1],hi[k+1],hi[k]],Vector((0,-1,0)))
 def eye_halos(bm):        # a soft additive glow around each lens (the engine draws it; UVs run 0..1)
     uvl=bm.loops.layers.uv.verify()
@@ -722,7 +689,7 @@ def eye_halos(bm):        # a soft additive glow around each lens (the engine dr
         f=face_out(bm,[bm.verts.new(p) for p in P],Vector((0,-1,0)))
         for l_ in f.loops: l_[uvl].uv=(0.5+(l_.vert.co.x-c[0])/(2*hw_),0.5+(l_.vert.co.z-c[1])/(2*hh))
 pieces.append(prim("Mask_Eyes",eye_lenses,"Head",EYEGLOW)); pieces.append(prim("Mask_Halo",eye_halos,"Head",HALO))
-MASKSET=["Mask_Shell","Mask_Band","Mask_Jaw","Mask_Eyes","Mask_Halo"]; FACEHAIR=["Face_Hair","Face_Beard"]
+MASKSET=["Mask_Face","Mask_Jaw","Mask_Eyes","Mask_Halo"]; FACEHAIR=["Face_Hair","Face_Beard"]
 # ---- mask the body under the clothes (not the hands: the gloves are a style that comes and goes) ----
 bm=bmesh.new(); bm.from_mesh(body.data); bm.verts.ensure_lookup_table(); dgb=dgroup(bm)
 cover=region("spine_","clavicle_","upperarm_","lowerarm_","pelvis","thigh_","calf_","foot_","ball_")

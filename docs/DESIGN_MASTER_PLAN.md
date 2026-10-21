@@ -267,6 +267,9 @@ and the same evidence points at a different client because of the order it is re
 him in every route, working for that route's client: a replayer recognises the face. In Freelance the client faction survives its leader, and the player
 knows what it did.
 
+**Backup settings (Director, 2026-10-21):** if the tailings dam has to change, an OIL REFINERY or a HYDROELECTRIC PLANT carries the same plot (a
+breach for a paid "leak", everyone's hidden failures turning it into a catastrophe).
+
 **The investigation goes abroad (Director, 2026-10-21):** the attack is a FEDERAL-level case, so the Agent travels beyond the disaster area and hunts clues
 in different places of the world; the campaign's locations sit on the game's 3D globe, which is also its mission hub (`COSMETICS_MASTER_PLAN` §6).
 

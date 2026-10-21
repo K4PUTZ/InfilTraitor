@@ -16,6 +16,8 @@
 extends RefCounted
 
 const SHADER_PATH := "res://godot/shaders/actor_mesh3d.gdshader"
+const CLOTH_SHADER_PATH := "res://godot/shaders/actor_cloth3d.gdshader"   ## D70 prototype: the costume's cloth gets a soft sheen
+const CLOTH_MATERIALS: PackedStringArray = ["Suit_Black", "Coat_Fabric", "Shirt_Fabric", "Tie_Silk"]
 const CLOAK_SHADER_PATH := "res://godot/shaders/actor_cloak3d.gdshader"   ## D72 prototype: `hero_*_cloak` draws the figures as the faint ghost, crouched
 const AGENT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live.glb"
 const QUAT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/superhero_male_lean.glb"
@@ -200,7 +202,8 @@ static func _apply_board_light(board: Node3D, body: Node, converted: Dictionary,
 			var src: Material = m.get_active_material(s)
 			if not converted.has(src):
 				var sm := ShaderMaterial.new()
-				sm.shader = BoardLook.graded_shader(CLOAK_SHADER_PATH if cloak else SHADER_PATH)
+				var cloth: bool = src != null and CLOTH_MATERIALS.has(src.resource_name)
+				sm.shader = BoardLook.graded_shader(CLOAK_SHADER_PATH if cloak else (CLOTH_SHADER_PATH if cloth else SHADER_PATH))
 				var std := src as BaseMaterial3D
 				if std != null:
 					sm.set_shader_parameter("albedo", std.albedo_color)

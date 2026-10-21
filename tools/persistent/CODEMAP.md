@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**339 scripts · 100244 lines total** (under `godot/scripts/`)
+**339 scripts · 100247 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -320,7 +320,7 @@ extends `Node2D` · 325 lines
 
 ### `actor_viability_bench.gd`
 
-extends `RefCounted` · 212 lines
+extends `RefCounted` · 215 lines
 
 `godot/scripts/debug/actor_viability_bench.gd`
 
@@ -328,6 +328,8 @@ extends `RefCounted` · 212 lines
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/actor_mesh3d.gdshader"`
+- `CLOTH_SHADER_PATH` = `"res://godot/shaders/actor_cloth3d.gdshader"`
+- `CLOTH_MATERIALS` = `["Suit_Black", "Coat_Fabric", "Shirt_Fabric", "Tie_Silk"]`
 - `CLOAK_SHADER_PATH` = `"res://godot/shaders/actor_cloak3d.gdshader"`
 - `AGENT_RIG` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live.glb"`
 - `QUAT_RIG` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/superhero_male_lean.glb"`

@@ -122,6 +122,19 @@ hub)**; **the player's starting point (his city) opens missions near it on his g
 city is a STARTING point, never an exclusive: every location is reachable by every player through the campaign and Freelance travel. The campaign itself
 travels the world (`DESIGN_MASTER_PLAN` §2.6).
 
+**Personalised by the home city (Director, 2026-10-21):** the missions are the SAME for everyone, set in different cities per player. The game asks the
+player's city and names its places after the cities AROUND it (GeoNames already lists them with coordinates); it infers the country's CAPITAL and
+mentions it; FLAGS in the scenery reflect the base's country; billboards and other in-world text change LANGUAGE. Claude's remarks:
+- **In-world text** goes through the localization system (`tr()`, `LOCALIZATION_REFERENCE`): signage becomes keyed strings and decal textures per
+  language, so a billboard is data, not baked art. The player's language and the base's country can differ (a Brazilian living in Lisbon): ask which.
+- **Flags and real names attached to crimes:** a corrupt agency HQ under a real national flag, or a massacre set beside a real neighbouring town, can offend
+  or be read as an accusation. Proposal: real names and flags only on neutral places (streets, stations, cafés, billboards); the factions' buildings and
+  the crimes keep fictional names and emblems.
+- **⚠️ The dam (`DESIGN` §2.6) — open for the Director:** does the inciting event move to each player's country (a fictional town near his city), or stay
+  in its one fictional Brazilian town, with the personalisation applying to where the investigation travels and to Freelance? Moving it means the
+  tragedy sits next to every player's real neighbours (the sensitivity above, multiplied); keeping it fixed keeps one story and one dedication.
+- **Fallback:** a player who gives no city gets a default set (fictional city names, the game's own country), so nothing depends on the answer.
+
 ## 7. Stages (once ratified; none started)
 
 | Stage | Content | Depends on |

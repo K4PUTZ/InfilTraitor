@@ -1049,9 +1049,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   §2.6: the investigator who holds the archive, the routes and the systems).
 - [ ] Final player agency after the reveal — embrace the Agent's plan, reject
   it, choose among endings, or witness one canonical villain victory.
-- [ ] The town, the company and the river's fictional names (§2.6; check none
-  is a real municipality); the son's reason to be there; the prologue's form
-  (the dam night first, or the phone call first and the dam night last).
+- [ ] The mining company's fictional name (the town is the player's city,
+  §2.6); the son's reason to be there; the prologue's form (the dam night
+  first, or the phone call first and the dam night last).
 - [ ] Exact 1× economy pacing and the catalog of paid boosts beyond the
   permanent gameplay-currency 2×.
 - [ ] Rewarded continue restore point and whether one per mission remains the

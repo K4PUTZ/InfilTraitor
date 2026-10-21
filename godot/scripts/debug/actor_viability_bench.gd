@@ -16,6 +16,7 @@
 extends RefCounted
 
 const SHADER_PATH := "res://godot/shaders/actor_mesh3d.gdshader"
+const CLOAK_SHADER_PATH := "res://godot/shaders/actor_cloak3d.gdshader"   ## D72 prototype: `hero_*_cloak` draws the figures as the faint ghost, crouched
 const AGENT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live.glb"
 const QUAT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/superhero_male_lean.glb"
 ## The agent stands 9.8 voxels of 0.20 m (CHARACTER_MASTER_PLAN §4.7); the candidate is scaled to the same height.
@@ -69,6 +70,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		_ticker = Ticker.new()
 		_ticker.step = tick
 		board.add_child(_ticker)
+	var cloak: bool = model.ends_with("_cloak")
+	model = model.trim_suffix("_cloak")
 	var march: bool = model.ends_with("_march")  ## a video wants them walking along a lane; a measurement wants them still on the grid
 	model = model.trim_suffix("_march")
 	var hero: bool = model.begins_with("hero_")
@@ -98,7 +101,7 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		else:
 			body.scale = Vector3.ONE * METRES_TO_UNITS
 		var converted: Dictionary = {}
-		_apply_board_light(board, body, converted)
+		_apply_board_light(board, body, converted, cloak)
 		var rig := Rig.new()
 		rig.holder = holder
 		rig.lane_start = holder.position
@@ -110,11 +113,12 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		if not players.is_empty():
 			rig.player = players[0] as AnimationPlayer
 		if hero:
-			if rig.player == null or not rig.player.has_animation(HERO_WALK):
-				push_error("[ActorViabilityBench] %s has no %s" % [path, HERO_WALK])
+			var clip: String = "Crouch_Idle" if cloak else HERO_WALK   ## the cloak works only crouched and still (D72)
+			if rig.player == null or not rig.player.has_animation(clip):
+				push_error("[ActorViabilityBench] %s has no %s" % [path, clip])
 			else:
-				rig.player.get_animation(HERO_WALK).loop_mode = Animation.LOOP_LINEAR
-				rig.player.play(HERO_WALK)
+				rig.player.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
+				rig.player.play(clip)
 				rig.player.seek(float(i) * 0.11, true)
 		elif model == "agent" and rig.player != null and rig.player.has_animation("walk_shotgun"):
 			rig.player.play("walk_shotgun")
@@ -175,7 +179,7 @@ static func _mesh_height(body: Node3D) -> float:
 	return maxf(top - bottom, 0.01)
 
 
-static func _apply_board_light(board: Node3D, body: Node, converted: Dictionary) -> void:
+static func _apply_board_light(board: Node3D, body: Node, converted: Dictionary, cloak: bool = false) -> void:
 	for mi in body.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
 		if m.mesh == null:
@@ -185,7 +189,7 @@ static func _apply_board_light(board: Node3D, body: Node, converted: Dictionary)
 			var src: Material = m.get_active_material(s)
 			if not converted.has(src):
 				var sm := ShaderMaterial.new()
-				sm.shader = BoardLook.graded_shader(SHADER_PATH)
+				sm.shader = BoardLook.graded_shader(CLOAK_SHADER_PATH if cloak else SHADER_PATH)
 				var std := src as BaseMaterial3D
 				if std != null:
 					sm.set_shader_parameter("albedo", std.albedo_color)

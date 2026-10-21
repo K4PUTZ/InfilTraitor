@@ -127,12 +127,11 @@ player's city and names its places after the cities AROUND it (GeoNames already 
 mentions it; FLAGS in the scenery reflect the base's country; billboards and other in-world text change LANGUAGE. Claude's remarks:
 - **In-world text** goes through the localization system (`tr()`, `LOCALIZATION_REFERENCE`): signage becomes keyed strings and decal textures per
   language, so a billboard is data, not baked art. The player's language and the base's country can differ (a Brazilian living in Lisbon): ask which.
-- **Flags and real names attached to crimes:** a corrupt agency HQ under a real national flag, or a massacre set beside a real neighbouring town, can offend
+- **Flags and real names attached to crimes (ratified):** a corrupt agency HQ under a real national flag, or a massacre set beside a real neighbouring town, can offend
   or be read as an accusation. Proposal: real names and flags only on neutral places (streets, stations, cafés, billboards); the factions' buildings and
   the crimes keep fictional names and emblems.
-- **⚠️ The dam (`DESIGN` §2.6) — open for the Director:** does the inciting event move to each player's country (a fictional town near his city), or stay
-  in its one fictional Brazilian town, with the personalisation applying to where the investigation travels and to Freelance? Moving it means the
-  tragedy sits next to every player's real neighbours (the sensitivity above, multiplied); keeping it fixed keeps one story and one dedication.
+- **The dam — ruled (Director, 2026-10-21):** it happens in the player's chosen city (`DESIGN` §2.6): a fiction about a tragedy that can happen
+  anywhere. **Flags only in neutral zones — ratified.**
 - **Fallback:** a player who gives no city gets a default set (fictional city names, the game's own country), so nothing depends on the answer.
 
 ## 7. Stages (once ratified; none started)

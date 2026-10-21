@@ -217,9 +217,11 @@ interesses e coisas pra encobrir.")* **Supersedes the first version of this sect
 every share).**
 
 **Fiction, not reportage (Claude, a condition of using a real tragedy).** Inspired by the tailings-dam collapses of Brumadinho (2019) and Mariana (2015),
-never named after them: a fictional town, mining company, river and date, no real person, company or detail that identifies a real case, and the dead
-treated with respect (no spectacle of the mud, no gameplay that makes light of it). The town's name is TBD and must be checked NOT to be a real
-municipality.
+never named after them: a fictional mining company and event, no real person, company or detail that identifies a real case, and the dead treated
+with respect (no spectacle of the mud, no gameplay that makes light of it). **The town is the city the player chooses as his base (Director, 2026-10-21:
+"É uma obra de ficção sobre uma tragédia que pode acontecer em qualquer lugar. A gente não precisa mencionar nada da vida real, com exceção da destruição
+que um evento desse causa").** Real names and flags appear only on neutral places; the factions, the company and the crimes keep fictional names
+(`COSMETICS_MASTER_PLAN` §6). A player who gives no city gets a fictional default.
 
 **The Agent's act.** He is already a law-enforcement agent (which is why he has the equipment and the military training). For his own interest he takes
 a paid job from an UNKNOWN client: breach a barrier and cause a LEAK at the mining company. He does not know who hired him, and he does not know what the

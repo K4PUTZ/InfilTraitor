@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**339 scripts · 100233 lines total** (under `godot/scripts/`)
+**339 scripts · 100244 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -320,7 +320,7 @@ extends `Node2D` · 325 lines
 
 ### `actor_viability_bench.gd`
 
-extends `RefCounted` · 201 lines
+extends `RefCounted` · 212 lines
 
 `godot/scripts/debug/actor_viability_bench.gd`
 

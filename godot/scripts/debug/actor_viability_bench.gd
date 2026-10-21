@@ -72,6 +72,14 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		board.add_child(_ticker)
 	var cloak: bool = model.ends_with("_cloak")
 	model = model.trim_suffix("_cloak")
+	## a costume file holds BOTH styles; the engine will show one (D70): `_black` hides the coat, `_normal` hides the gloves
+	var hidden: Array[String] = []
+	if model.ends_with("_black"):
+		hidden.append("Outfit_Coat")
+		model = model.trim_suffix("_black")
+	elif model.ends_with("_normal"):
+		hidden.append("Outfit_Gloves")
+		model = model.trim_suffix("_normal")
 	var march: bool = model.ends_with("_march")  ## a video wants them walking along a lane; a measurement wants them still on the grid
 	model = model.trim_suffix("_march")
 	var hero: bool = model.begins_with("hero_")
@@ -102,6 +110,9 @@ static func spawn(room: Node, model: String, count: int) -> String:
 			body.scale = Vector3.ONE * METRES_TO_UNITS
 		var converted: Dictionary = {}
 		_apply_board_light(board, body, converted, cloak)
+		for piece_name: String in hidden:
+			for node in body.find_children(piece_name, "MeshInstance3D", true, false):
+				(node as Node3D).visible = false
 		var rig := Rig.new()
 		rig.holder = holder
 		rig.lane_start = holder.position

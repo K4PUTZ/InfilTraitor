@@ -116,6 +116,12 @@ then, on the safety risk: "Vamos sem foto então, mas um nome de cidade".)*
   coordinates, a few MB). Zoom goes from the globe to a city's outline, never to a street (which also protects privacy).
 - **Privacy:** a city is coarse by design; it is stored on the server with the account (C11), shown only as an aggregate, and can be removed.
 
+**Ruled (Director, 2026-10-21, closing the world):** the world is a **3D GLOBE with the countries' political borders only**; the CITIES where people play
+light up, with an indication of how many play where; **landmarks common to every player** sit on it; **the globe is the game's world map (its mission
+hub)**; **the player's starting point (his city) opens missions near it on his globe.** Claude's guard (§16: no content permanently unavailable): the home
+city is a STARTING point, never an exclusive: every location is reachable by every player through the campaign and Freelance travel. The campaign itself
+travels the world (`DESIGN_MASTER_PLAN` §2.6).
+
 ## 7. Stages (once ratified; none started)
 
 | Stage | Content | Depends on |

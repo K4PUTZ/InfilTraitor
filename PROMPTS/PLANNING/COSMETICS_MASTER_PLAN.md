@@ -1,7 +1,8 @@
 # COSMETICS_MASTER_PLAN
-## Cosmetic items, ownership, the backpack, contributions, and the weekly faction war — v0.1
+## Cosmetic items, ownership, the backpack, contributions, the weekly faction war and the world map — v0.2
 
-> 🟡 **v0.1 · 2026-10-21 · PLANNING ONLY, nothing built.** Opened by the Director after the hero v5 (`ACTOR` D70-D77): *"o que mais nosso
+> 🟡 **v0.2 · 2026-10-21 · PLANNING ONLY, nothing built.** v0.2: the factions are decided in `DESIGN_MASTER_PLAN` §2.1/§2.6 (§2 here); the world map, city only, no photo (§6).
+> v0.1: Opened by the Director after the hero v5 (`ACTOR` D70-D77): *"o que mais nosso
 > sistema de objetos precisa ter? Uma hash única por player, a questão da exibição na mochila [...] Vamos chupar o mecanismo do Team Fortress 2, ou
 > possivelmente usar alguma plataforma tipo steamworks ou unreal pros usuários contribuírem"*; then *"vamos criar o plano de cosméticos, e incluir mais
 > alguns detalhes no player pra vender, como tarja de capitão no braço com algum símbolo, de repente um banner atrás do player [...] pelo menos 3
@@ -47,25 +48,13 @@ The rule underneath everything: **the server says what a player owns; the client
 
 ---
 
-## 2. Factions: what the canon has today, and the problem
+## 2. Factions — DECIDED in the narrative (2026-10-21)
 
-**The canon names FOUR factions, in two places that disagree:**
-
-| Where | Factions |
-|---|---|
-| `DESIGN_MASTER_PLAN` §2.1 (narrative, the two principal factions) | **The Agency** (stability through surveillance) · **The Network** (transparency, leaks) |
-| `DESIGN_MASTER_PLAN` §11.1 (enemies) | **The Agency** (control through information) · **The Militia** (brute force, patrols in pairs) · **The Corporation** (technology, drones) |
-
-So the Network is a narrative faction with no guards, and the Militia and the Corporation are enemy factions with no ideology in §2. **A player
-allegiance needs three factions with a CAUSE** (something to fight for weekly). **Recommendation: the Agency, the Network and the Corporation** (order,
-transparency, efficiency); the Militia stays the muscle every side hires, so it is the common enemy and never a team. **This is a canon change and the
-Director's call** (§5, Q1).
-
-**The narrative fits it, and it is worth saying why:** the Agent betrays both sides by design (§2.1, the infiltraitor). In Freelance (after the campaign)
-the player's allegiance is a **CONTRACT**, not a belief: he runs that faction's weekly operation, as the Agent always did. The twist is preserved: no
-faction is the "good" one.
-
----
+**The three factions are `DESIGN_MASTER_PLAN` §2.1's:** the **Agency** (the corrupt law), the **Syndicate** (the criminals; §11.1's Militia are its
+soldiers) and the **Consortium** (a third entity against both; §11.1's Corporation, with the old Network's "transparency" as its public face). The names
+are working names (Director: *"Tanto faz o nome, o importante é serem equilibradas"*). Each is guilty of a share in the dam's fall (§2.6), so no faction is
+the "good" one, and the Agent betrays all three. **The faction the player picks at the police station (§2.6) is his first allegiance here;** switching
+follows §4's cooldown. Balance: §2.1 (one axis each, the same threat budget, measured per faction and per route).
 
 ## 3. The new items the Director asked for
 
@@ -103,15 +92,32 @@ cap, signed mission seeds where possible, and outlier review before prizes are p
 
 ## 5. Open questions for the Director
 
-1. **Which three factions** are player allegiances (§2; recommended: Agency, Network, Corporation, the Militia as the common enemy)? This edits
-   `DESIGN_MASTER_PLAN` §2.1 / §11.1.
+1. ~~Which three factions~~ — **decided 2026-10-21** (§2): the Agency, the Syndicate, the Consortium.
 2. **Prizes:** cosmetic only (armband, emblem, banner, paint), or also currency? (Currency in a competitive prize interacts with the 2× boost.)
 3. **The banner:** profile backdrop + a pack pennant, as proposed, or something on the figure itself (which D70 currently rules out)?
 4. **Backend:** a hosted service (faster) or our own (control, cost at scale)? Decides nothing in the data model (C9).
 5. **Contributions:** revenue share or a flat fee, and from which milestone (contributions need the shop to exist first)?
 6. **Trading between players:** never, or "later, designed" (C8)?
 
-## 6. Stages (once ratified; none started)
+## 6. The world map (Director, 2026-10-21)
+
+*(Director: "um mapa mundi, onde cada jogador se conecta [...] o mundo começa cinza e conforme os players vão se conectando ele vai sendo preenchido";
+then, on the safety risk: "Vamos sem foto então, mas um nome de cidade".)*
+
+- **What a player gives:** optionally, a CITY (chosen from a list, never an address, never a point, no photo). It is the city of his "operational
+  base". Opting out is the default.
+- **What everyone sees:** no individual pins in public; each region glows by how many players are based there and takes the colour of the faction that
+  contributed most to it this week: the map is the weekly war's board (§4). The world starts grey and lights up.
+- **What the region changes in play (proposed):** local FLAVOUR only (architecture, weather, time of day of the missions generated for that region);
+  never content locked to a place (unfair, trivially spoofed with a fake GPS, and the FOMO §16 rules out). Everything here is an online layer over a game
+  that works offline (§16).
+- **How it is built (feasible and cheap):** not a copy of Google Earth (street-level imagery is terabytes and only exists through paid, licensed
+  providers). A stylised globe / map in Godot: country and coast outlines from **Natural Earth** (public domain, a few MB), an optional low-resolution
+  **NASA Blue Marble** texture (public domain), and the cities from **GeoNames** (CC-BY: credit required; ~25 000 cities over 15 000 people, names and
+  coordinates, a few MB). Zoom goes from the globe to a city's outline, never to a street (which also protects privacy).
+- **Privacy:** a city is coarse by design; it is stored on the server with the account (C11), shown only as an aggregate, and can be removed.
+
+## 7. Stages (once ratified; none started)
 
 | Stage | Content | Depends on |
 |---|---|---|
@@ -120,5 +126,5 @@ cap, signed mission seeds where possible, and outlier review before prizes are p
 | **CS-3** | The local item schema (definitions + instances, C1) and the stock catalog shipped in the APK; the backpack / shop scene with masters on demand and pre-rendered icons (C6) | CS-2 |
 | **CS-4** | Server: accounts, signed inventory, the signed asset manifest and the first-load download (C2, C5, D74) | C9 decided |
 | **CS-5** | Store purchases (in-app), paints and counters (C7, C8) | CS-4 |
-| **CS-6** | Factions in play (allegiance, armband, emblem, banner backdrop) and the weekly war (§4) | §5 Q1-Q2, CS-4 |
+| **CS-6** | Factions in play (allegiance, armband, emblem, banner backdrop), the weekly war (§4) and the world map (§6) | §5 Q2, CS-4 |
 | **CS-7** | The contribution portal and curation (C10) | CS-5 |

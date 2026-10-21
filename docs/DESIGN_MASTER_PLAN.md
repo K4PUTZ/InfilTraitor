@@ -67,23 +67,31 @@ system to scale, never to cap (§19 Rule 1).
 
 ## 2. Narrative — `DESIGNED`
 
-### 2.1 The two principal factions
+### 2.1 The three factions (revised 2026-10-21)
 
-| Faction | Public face | Truth |
-|---|---|---|
-| **The Agency** | Stability, protecting global order | Reaches stability through surveillance, manipulating governments, suppressing dissent |
-| **The Network** | Transparency, information freedom | Leaks classified data; sometimes endangers innocents with indiscriminate exposure |
-| **The Agent** | The exceptional operative who keeps changing sides for the right reasons | Knows from the beginning that he is serving his own hidden plan; performs the hero for the player as deliberately as he performs it for both factions |
+*(Director, 2026-10-21: "a lei corrupta, os criminosos, e uma terceira entidade que tem um interesse antagônico aos dois lados"; "Tanto faz o nome, o
+importante é serem equilibradas" — StarCraft's three very different races that are collectively equivalent; not fantasy, but an exotic, technological
+background in the James Bond vein, where there is money and relative freedom to act.)* The names below are working names. **The three leaders do not know
+each other;** they are linked only by the tragedy of §2.6.
 
-**Neither faction is purely heroic, and neither is the final deception.** The
-campaign first invites the player to read the Agency/Network fracture as the
-title's answer. That is the false reveal: the Agent himself is the infiltraitor
-and the traitor, and has known it throughout.
+| Faction | Public face | Truth | Plays as (§11.1) |
+|---|---|---|---|
+| **The Agency** — the corrupt law | The state: intelligence, police, regulators, politicians; order and security | Rules through surveillance, favours and archives; the law is a tool for the next election | Information: radios, check-ins, cameras, lieutenants who read trails |
+| **The Syndicate** — the criminals | Invisible: businessmen, transport, nightlife | Trafficking through legal logistics (trucks, rail, ports); territory is everything | Numbers and money: patrols in pairs, armour, bribery (§11.1's **Militia** are its soldiers) |
+| **The Consortium** — the third entity, against both | Progress: technology, open data, "transparent" systems (the old **Network**'s public face folds in here) | Capital that wants to replace politicians AND gangs with systems it owns: markets, patents, strategic minerals | Technology: drones, automation, precision (§11.1's **Corporation**) |
+| **The Agent** | The grieving father and exceptional investigator | Sabotaged the dam (§2.6); knows everything from the first scene and performs the hero for the player as deliberately as for the factions | — |
 
-**The name is the narrative:** INFILTRAITOR — the agent is both infiltrator
-and traitor. He does not discover that he served the wrong side. **He knows
-that he is the villain while the player does not**, and uses the campaign's
-heroic framing to make the player execute his plan under a false conviction.
+**Balance (Director: equivalent as a whole, different in everything else):** each faction owns one axis and has the weakness another exploits (§11.1's
+counters: visor / weapon / armour); each gets the same total threat budget, spent differently; balance is MEASURED (completion rate per faction and per
+route, §2.6), never asserted on paper, and the weekly war re-targets each faction's objective from that data (`COSMETICS_MASTER_PLAN` §4).
+
+**Neither faction is heroic, and none is the final deception.** The campaign first invites the player to read the three factions' shared guilt as the
+answer (§2.6, twist 1). That is the false resolution: the Agent himself is the infiltraitor and the traitor, and has known it throughout (twist 2).
+
+**The name is the narrative:** INFILTRAITOR — the agent is both infiltrator and traitor. He does not discover that he served the wrong side. **He knows
+that he is the villain while the player does not** (Director, 2026-10-21, after weighing an amnesiac Agent: *"vamos deixar o agente saber de tudo. É mais
+interessante mesmo ele enganar o jogador"* — no amnesia, no recurring flashbacks), and uses the campaign's heroic framing to make the player execute his
+plan under a false conviction.
 
 ### 2.2 Two modes
 
@@ -94,34 +102,43 @@ introduces one enemy faction and a set of new mechanics. It has a beginning,
 middle and end — the traitor is exposed here.
 
 ```
-ELITE PROLOGUE — The Hero at Full Power
-  A flash-forward: premium armour, exceptional powers, information through
-  walls, thermal imaging, night vision and senior-grade tactical overlays.
+ELITE PROLOGUE — The Hero at Full Power            (proposed form: §2.6 "The prologue")
+  A mission at full power: premium armour, exceptional powers, information
+  through walls, thermal imaging, night vision, senior tactical overlays.
   The mission must still be enjoyable and balanced — a taste of the mature
   game, not an invulnerable cheat mode.
-  Apparent truth: the Agent prevents a catastrophe.
-  Hidden truth: his heroic operation advances the plan exposed at the finale.
-  Turn: an Agency-scale melodramatic reversal strips clearance, equipment and
-  powers; the main campaign starts from zero.
+  Apparent truth: the Agent prevents a catastrophe (the night at the dam:
+  he plants the "monitoring devices" that will prove it is failing).
+  Hidden truth: he plants the device that breaches it.
+  Turn: the dam falls, his son dies; the phone call, the body, the
+  deposition. Clearance, equipment and powers are gone; the campaign
+  starts from zero.
+
+OPENING — the police station (Director, 2026-10-21)
+  Leaving his deposition, the Agent is approached by one faction. THE PLAYER
+  CHOOSES IT. It aims his grief at the other two leaders.
 
 CHAPTER 1 — The Asset
-  The Agent performs the Agency's exemplary hero; the player believes him.
+  The Agent performs the chosen faction's exemplary investigator; the player
+  believes him. Target: the first rival leader.
   Teaches: detection, vision cones, shadows.
-  Hidden function: apparently noble objectives can erase evidence, extract a
-  witness or recover one component of the Agent's real plan.
+  Hidden function: apparently noble objectives erase evidence, extract a
+  witness, and hunt the son's phone (§2.6).
 
 CHAPTER 2 — The Fracture
-  First contact with a Network informant.
+  The employer's own share in the disaster surfaces; the Agent changes
+  allegiance to the second faction and turns on the first.
   Teaches: noise, cover, enemy communication.
-  Turn: the Agency's corruption and the Agent's change of allegiance appear
-  to be the story's main revelation. This is the false resolution.
+  Turn (TWIST 1, the false resolution): all three powers helped bring the
+  dam down, each believing it alone did. The grieving father seems to be
+  avenging his son against three corrupt powers.
 
 CHAPTER 3 — The Infiltraitor
-  The Agent continues to perform the hero while using the conflict between
-  factions to complete his own objective.
+  The last leader falls. The Agent performs the hero to the end.
   Teaches: electronics, automated systems, advanced confrontation.
-  Resolution: unfiltered evidence reclassifies the campaign's targets and
-  exposes that the Agent knew he was the villain from the beginning.
+  Resolution (TWIST 2): an outside breach removes the Agent's filter (§2.4):
+  the prologue's SENSOR is relabelled CHARGE, and the son's last photo shows
+  his father's car at the dam before dawn. He knew from the first scene.
   Unlocks: FREELANCE MODE.
 ```
 
@@ -182,6 +199,68 @@ difficulty_tier, faction, segments, objectives, rewards) is engine-owned and
 must work with no narrative attached. `MissionNarrative` (briefing text, NPC
 names, dialogue, secret hints) is a pluggable layer on top. **The engine must
 never depend on narrative content to resolve game logic** (§19 Rule 2).
+
+
+### 2.6 The inciting event: the dam — `DESIGNED` (Director, 2026-10-21; Claude's proposals marked)
+
+*(Director, 2026-10-21: "Vamos usar a tragédia de Brumadinho como base [...] 3 níveis de corrupção separados, onde cada um acha que foi o responsável
+pela queda da barragem, e busca acabar com os outros 2 atribuindo a culpa a eles. Na realidade foi o próprio agente que sabotou a barragem. Por azar do
+destino [...] o filho estava na cidade no exato momento"; the motive: "vamos com a opção 1" (a controlled breach that went wrong), with "a queda do
+mercado e [...] o corpo como complemento para que os outros também tivessem motivos pra destruir a barragem. Impedir a reeleição de um adversário, uma
+disputa de território por drogas".)*
+
+**Fiction, not reportage (Claude, a condition of using a real tragedy).** Inspired by the tailings-dam collapses of Brumadinho (2019) and Mariana (2015),
+never named after them: a fictional town, mining company, river and date, no real person, company or detail that identifies a real case, and the dead
+treated with respect (no spectacle of the mud, no gameplay that makes light of it). The town's name is TBD and must be checked NOT to be a real
+municipality (many plausible Minas Gerais names are).
+
+**The dam.** A tailings dam above a small mining town, known to be unstable and kept running. **Each of the three powers had a reason to want it to
+fail, and each did something real that weakened it; each knows only its own share, so each believes it alone caused the disaster** and tries to destroy
+the other two by pinning it on them:
+
+| | Why it wanted the dam to fail | What it did | What it believes |
+|---|---|---|---|
+| **The Agency** | To end a rival's re-election: the governor / mayor who built his career on the mine; a disaster on his watch ruins him | An Agency-placed regulator signed off falsified stability reports; its leader shelved the inspection that would have forced the dam's closure, so the risk would "surface" before the election | That the shelved inspection killed the town |
+| **The Syndicate** | A drug-route war: the town was a rival gang's hub (the mine's trucks and rail moved its cargo); and a BODY, a murdered witness, lies in the tailings: the mud buries both for ever | Bribed the dam's safety engineer, and ordered an unauthorized blast in the pit that week to destroy the rival's depot | That its blast set the collapse off |
+| **The Consortium** | The market: short positions on the mining company, to buy it (and its mineral and water rights) cheap after a disaster | Its technology arm runs the dam's sensors and sirens: it suppressed the pressure alarms for weeks so a mandatory shutdown would not land before its positions matured; the automatic sirens were off | That its suppressed alarms (or a remote "test" of the system that morning) caused it |
+| **The Agent** | To bring all three down with one scandal: a CONTROLLED partial breach at dawn, sized from the official stability data, with the sirens he took for granted | Planted the device that breached the dam | He knows all four shares. The only one who does |
+
+**What happened:** the official data was false (the Agency), the structure had been shaken (the Syndicate), the alarms were hidden and the sirens dead
+(the Consortium); the "controlled" breach liquefied the whole dam in the morning, with the mine's shift at work and the town awake. Hundreds of people and
+animals died. **Everyone is guilty, each knows only its share, and the Agent's share was the trigger** — the thematic core, and the reason twist 1 feels
+like the end of the story.
+
+**The son.** By bad luck the Agent's son was in the town that morning (Claude's proposal: a geology student on fieldwork, staying in the valley; his
+father did not know). The Agent never meant to kill anyone he loved: **his grief is real**, the player sees real tears and trusts him; on a second
+playthrough the tears are also guilt.
+
+**Who the Agent was (Claude's proposal):** a security and risk consultant contracted by the mining company. It explains everything at once: how he knew of
+the instability and the cover-ups, how he reached the dam at night, why the police depose him, and why every faction sees him as the perfect insider.
+
+**The opening (Director):** the news arrives by phone, off-screen; the scene opens on the son's body and the Agent in tears. He is called to give a
+deposition. Leaving the police station, someone approaches him to investigate: **the player chooses the faction here**. **Why each faction wants him:**
+each believes it caused the disaster and needs someone credible to "find" the guilty, the other two: a grieving father, an insider, an exceptional
+operative. **They hire the culprit to find the culprit**, and he accepts because the investigation is the best cover-up there is: from inside it he
+removes the three leaders and buries the truth with them.
+
+**The son's phone (Claude's proposal), the campaign's MacGuffin.** Recovered from the mud: the son's fieldwork photos of the dam at dawn. The factions hunt
+it because it shows their shares (the regulators' visit, the blast damage, the sensor boxes); the Agent hunts it because one frame shows his own car at the
+dam before dawn. **His hidden thread through the campaign is to recover and erase his son's last photos**: the cover-up and the grief in one object, and,
+at the end, the evidence §2.4's breach turns against him.
+
+**The prologue (Claude's proposal; the Director's opening is kept).** The Elite prologue becomes the NIGHT AT THE DAM, played before the phone call:
+*"prevent a catastrophe: plant the monitoring devices that will prove the dam is failing"*. **The player plants the charge without knowing it**; at dawn the
+Agent drives away; cut to black; the phone rings. It fulfils the canon prologue (apparent truth: he prevents a catastrophe; hidden truth: it advances his
+plan; turn: he loses everything) and §2.4 (`SENSOR` relabelled `CHARGE` at the finale). **Alternative, if the game must open on the phone call itself:**
+the dam night becomes the final mission (the campaign's only flashback), played with the filter removed.
+
+**Routes (Claude's proposal).** The faction chosen at the station decides the ORDER of the targets, not the story: each leader's arc is a module, every
+route has the same length and the same twists, and completion is measured per route (§2.1, balance). The chosen faction is also the player's first
+allegiance in the weekly war (`COSMETICS_MASTER_PLAN` §4).
+
+**The Agent's endgame (Claude's proposal; §18 keeps it open):** with the three leaders dead or disgraced, the man who ran the investigation holds the
+Agency's archive, the Syndicate's routes and the Consortium's systems: a fourth power. *Whoever investigates controls the truth.* In Freelance the factions
+outlive their leaders (successors) and the Agent goes on taking their contracts; the player now knows who he is.
 
 ---
 
@@ -653,6 +732,9 @@ always costs mobility or stealth.***
 One guard archetype ships. Everything below the hierarchy is design only.
 
 ### 11.1 Three factions
+> **2026-10-21:** the enemy factions are the three of §2.1: the Agency, the Syndicate (§11.1's **Militia** are its soldiers) and the Consortium
+> (§11.1's **Corporation**). The play styles below stand; the names are working names.
+
 **The Agency — control through information.** Guards with radios and check-in
 protocols, AI cameras, motion sensors, lieutenants who read trails and predict
 routes, jammers that scramble visor readings. *Natural counter: the agent's
@@ -934,18 +1016,27 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - ✅ **Who knows the Agent is the villain?** → **The Agent knows from the
   beginning; the player does not.** He performs the hero throughout the
   campaign and is exposed at the finale (§2.4).
+- ✅ **The Agent's moral boundary** → **he caused a mass catastrophe**: he
+  sabotaged the dam meaning a controlled breach, and it killed hundreds,
+  his own son among them (Director, 2026-10-21; §2.6).
+- ✅ **The inciting event and the factions** → three powers (the corrupt law,
+  the criminals, a third entity against both), each guilty of a share in the
+  dam's fall and each believing it alone caused it; the player picks the
+  recruiting faction at the police station (Director, 2026-10-21; §2.1, §2.6).
 - ✅ **Premium campaign or shared campaign?** → **Shared.** Free and paying
   players can reach the same campaign, Freelance content and powers; payment
   accelerates progression (§16).
 - ✅ **Purchased loot boxes for an all-ages audience?** → **No.**
 
 **Still open — do not decide these unilaterally:**
-- [ ] The Agent's concrete endgame — control both agencies, destroy them,
-  monopolise global information, or found a third power.
+- [ ] The Agent's concrete endgame — control the factions, destroy them,
+  monopolise information, or found a fourth power (Claude's proposal in
+  §2.6: the investigator who holds the archive, the routes and the systems).
 - [ ] Final player agency after the reveal — embrace the Agent's plan, reject
   it, choose among endings, or witness one canonical villain victory.
-- [ ] The Agent's moral boundary — selective manipulation/assassination versus
-  willingness to cause civilian casualties or mass catastrophe.
+- [ ] The town, the company and the river's fictional names (§2.6; check none
+  is a real municipality); the son's reason to be there; the prologue's form
+  (the dam night first, or the phone call first and the dam night last).
 - [ ] Exact 1× economy pacing and the catalog of paid boosts beyond the
   permanent gameplay-currency 2×.
 - [ ] Rewarded continue restore point and whether one per mission remains the

@@ -77,9 +77,15 @@ each other;** they are linked only by the tragedy of §2.6.
 | Faction | Public face | Truth | Plays as (§11.1) |
 |---|---|---|---|
 | **The Agency** — the corrupt law | The state: intelligence, police, regulators, politicians; order and security | Rules through surveillance, favours and archives; the law is a tool for the next election | Information: radios, check-ins, cameras, lieutenants who read trails |
-| **The Syndicate** — the criminals | Invisible: businessmen, transport, nightlife | Trafficking through legal logistics (trucks, rail, ports); territory is everything | Numbers and money: patrols in pairs, armour, bribery (§11.1's **Militia** are its soldiers) |
-| **The Consortium** — the third entity, against both | Progress: technology, open data, "transparent" systems (the old **Network**'s public face folds in here) | Capital that wants to replace politicians AND gangs with systems it owns: markets, patents, strategic minerals | Technology: drones, automation, precision (§11.1's **Corporation**) |
+| **The Militia** — the criminals (proposed 2026-10-21, replaces "the Syndicate") | Ex-police and ex-soldiers who "keep order" where the state does not | Territory as an economy: protection, rents, transport, trafficking, a private army in uniform | Numbers and force: patrols in pairs, armour, bribery (§11.1's Militia) |
+| **The Corporation** — the third entity, against both (proposed 2026-10-21, replaces "the Consortium") | Security and progress: a private military and security company with its own technology | Capital that wants to replace BOTH the state and the gangs with security it sells: contracts, patents, strategic minerals, markets | Technology: drones, automation, precision (§11.1's Corporation) |
 | **The Agent** | A law-enforcement agent, the grieving father, the exceptional investigator | Breached the dam on a paid contract from an unknown client (§2.6); knows HIS act from the first scene and hides it, but not who hired him nor the others' shares, which he discovers along the way | — |
+
+**Each faction must outlive its leader and wear a uniform (Director, 2026-10-21: the Agent kills all three leaders; the factions need reasons to exist
+without them and must be "minimamente uniformizáveis"; a syndicate or a consortium is weak on both).** Hence the proposed pair above: the Agency is an
+institution (a new director is appointed, the archive and the cover-ups remain; uniform: tactical police / intelligence); the Militia is a territorial
+economy (rents and protection keep paying whoever commands; uniform: improvised tactical gear, its own insignia); the Corporation is contracts and
+shareholders (the board names a successor; uniform: branded corporate armour and drones). Names are working names.
 
 **Balance (Director: equivalent as a whole, different in everything else):** each faction owns one axis and has the weakness another exploits (§11.1's
 counters: visor / weapon / armour); each gets the same total threat budget, spent differently; balance is MEASURED (completion rate per faction and per
@@ -224,11 +230,11 @@ act and hides it from the first scene; he discovers along the way that it was ca
 
 | Gain | Whose (proposed) |
 |---|---|
-| The company's shares crash (buy it cheap) | the Consortium |
-| Banned substances produced at the company's refinery get buried | the Consortium (or the company's own board inside it) |
+| The company's shares crash (buy it cheap) | the Corporation |
+| Banned substances produced at the company's refinery get buried | the Corporation (or the company's own board inside it) |
 | The company's CEO, running for the Senate, is ruined | the Agency (the corrupt law and its politicians) |
-| A BODY in the containment pit disappears for ever | the Syndicate |
-| The authorities are busy while rival gangs attack (the sirens disabled for it) | the Syndicate's war with a rival gang |
+| A BODY in the containment pit disappears for ever | the Militia |
+| The authorities are busy while rival gangs attack (the sirens disabled for it) | the Militia's war with a rival gang |
 
 **Everyone had something to gain and something to hide, so after the fall each power believes it (or its ally) caused it** and tries to pin it on the
 others; the over-full reservoir, the forged report and the dead sirens are their shares. Hundreds of people and animals died.
@@ -251,7 +257,15 @@ Agent at the dam); the prologue as the night at the dam (the player opens the "l
 finale relabels it), or, if the game must open on the phone call, the dam night as the final mission; routes by the recruiting faction (order of targets,
 same length); the chosen faction as the first weekly-war allegiance.
 
-**Open (Director):** who hired the Agent (one of the three, a fourth party, someone close to him, or the dead son's world); what "his own interest" was
+**Who hired him = the faction that recruits him at the police station (Director, 2026-10-21, on Claude's proposal):** the player's choice decides the
+client; the client recruits him to keep him close and aim him at the others before he finds out. **The Agent eliminates all three leaders; only at the
+third does he connect the dots, and the truth is revealed to the player then.** **The clues are the SAME in every route; only the ORDER
+in which he finds them changes (Director, 2026-10-21).** The recruiting faction's leader is the third to fall, so its piece is always the last one,
+and the same evidence points at a different client because of the order it is read in; §2.4's fair reveal is written once. Proposed thread across routes: the same intermediary (a lawyer, a fixer) hires
+him in every route, working for that route's client: a replayer recognises the face. In Freelance the client faction survives its leader, and the player
+knows what it did.
+
+**Open (Director):** what "his own interest" was
 (money, a debt, leverage over him); the fictional names; the prologue's form.
 
 ---
@@ -724,8 +738,8 @@ always costs mobility or stealth.***
 One guard archetype ships. Everything below the hierarchy is design only.
 
 ### 11.1 Three factions
-> **2026-10-21:** the enemy factions are the three of §2.1: the Agency, the Syndicate (§11.1's **Militia** are its soldiers) and the Consortium
-> (§11.1's **Corporation**). The play styles below stand; the names are working names.
+> **2026-10-21:** the enemy factions are the three of §2.1: the Agency, the Militia and the Corporation (a private military and security company).
+> The play styles below stand; the names are working names.
 
 **The Agency — control through information.** Guards with radios and check-in
 protocols, AI cameras, motion sensors, lieutenants who read trails and predict

@@ -50,8 +50,7 @@ The rule underneath everything: **the server says what a player owns; the client
 
 ## 2. Factions — DECIDED in the narrative (2026-10-21)
 
-**The three factions are `DESIGN_MASTER_PLAN` §2.1's:** the **Agency** (the corrupt law), the **Syndicate** (the criminals; §11.1's Militia are its
-soldiers) and the **Consortium** (a third entity against both; §11.1's Corporation, with the old Network's "transparency" as its public face). The names
+**The three factions are `DESIGN_MASTER_PLAN` §2.1's:** the **Agency** (the corrupt law), the **Militia** (the criminals) and the **Corporation** (a private military and security company, against both).The names
 are working names (Director: *"Tanto faz o nome, o importante é serem equilibradas"*). Each is guilty of a share in the dam's fall (§2.6), so no faction is
 the "good" one, and the Agent betrays all three. **The faction the player picks at the police station (§2.6) is his first allegiance here;** switching
 follows §4's cooldown. Balance: §2.1 (one axis each, the same threat budget, measured per faction and per route).
@@ -92,7 +91,7 @@ cap, signed mission seeds where possible, and outlier review before prizes are p
 
 ## 5. Open questions for the Director
 
-1. ~~Which three factions~~ — **decided 2026-10-21** (§2): the Agency, the Syndicate, the Consortium.
+1. ~~Which three factions~~ — **decided 2026-10-21** (§2): the Agency, the Militia, the Corporation.
 2. **Prizes:** cosmetic only (armband, emblem, banner, paint), or also currency? (Currency in a competitive prize interacts with the 2× boost.)
 3. **The banner:** profile backdrop + a pack pennant, as proposed, or something on the figure itself (which D70 currently rules out)?
 4. **Backend:** a hosted service (faster) or our own (control, cost at scale)? Decides nothing in the data model (C9).

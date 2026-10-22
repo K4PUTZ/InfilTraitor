@@ -126,6 +126,15 @@ THE POLICE STATION
   uniform is his first disguise: he moves freely on its turf first, and
   earns access to the others as he goes.
 
+THE AFTERMATH — the backdrop of both laps (Director, 2026-10-22)
+  Leaving the station, the map is revealed: the region is devastated,
+  and the Agent must help the authorities in the chaos. Rescue teams,
+  firefighters, police, workers and other public bodies fight for space
+  and jurisdiction, under the curfew, beside zones the traffickers hold
+  and the Militia's facilities. That chaos is what lets him move through
+  the region's towns, and the same places come back as time passes,
+  changed a little in look and play (the Deus Ex model, §14.4).
+
 LAP 1 — the favours (four chapters, one per faction; the circle stays:
   Director, 2026-10-22)
   Leader A shares what he knows only for a favour: investigate leader B.
@@ -312,10 +321,13 @@ failed to save him" (§16 keeps the child's death off-screen); the wife's surviv
 fugitive freelancer, unless he FAKES HIS OWN DEATH and watches them grow from afar. Then easter eggs at the very start decide it: restoring the
 power first lets the hospital work and saves the mother and the baby; doing anything else first (putting out a fire...) saves only the baby, or
 only the mother. **Claude's recommendation:** (1) an easter egg gives and never takes: the default stays the canon (the mother dies, the baby lives),
-only the hidden act saves both, and no hidden path kills the newborn; (2) "the very start" becomes a short playable night of the disaster, the
-tutorial (`LAUNCH_MASTER_PLAN` L2): a blacked-out town is the stealth lesson, and restoring the power LIGHTS the town, so the right act costs the
-player his cover; (3) the faked death closes every branch, since the baby always survives: he leaves them believing him dead and goes on as a ghost
-freelancer, which also answers where the baby stays.
+only the hidden act saves both, and no hidden path kills the newborn; (2) ~~"the very start" becomes a short playable night of the disaster~~ —
+withdrawn: **the power belongs to the AFTERMATH, after the police station, and needs more thought** (Director, 2026-10-22; §2.2); the idea that
+restoring the power LIGHTS the area, so the right act costs the player his cover, still stands as a proposal; (3) the faked death closes every
+branch, since the baby always survives: he leaves them believing him dead and goes on as a ghost freelancer, which also answers where the baby
+stays. **Also floated (Director, 2026-10-22, undecided):** no baby at all; the wife survives (by the power) or dies along the plot. Claude's
+read: it takes the newborn off the scale of a hidden choice, keeps the easter egg a pure gift, and costs the epilogue's note of hope, a little of
+the motive's pressure (the debt and the foreclosure remain) and a second version of the cemetery scene (with her, or at her grave).
 
 **The circle (Director's structure, 2026-10-22; the table is Claude's, accepted):** each leader trades what he knows for a favour that points at the next:
 Police → Militia → Traffickers → Corporation → Police. The pairs outside the circle are extra clues for free (Police and Traffickers: the bribes; Militia
@@ -994,6 +1006,21 @@ an item · escort or rescue · sabotage a system · survive an ambush.
 | **2 — The Militia** | Industrial site | Light vest, suppressed pistol, binoculars, 2 gadgets | Armoured guard, paired patrol, lieutenant | Noise + cover | Silence has a cost; confrontation has rules |
 | **3 — The Corporation** | Laboratory | Modular armour, shock weapon, night vision, 2 gadgets | Drone, AI camera, high-tech guard | Electronics + automation | No solution is universal |
 
+### 14.4 The same places over time — the aftermath (Director, 2026-10-22)
+After the police station the campaign plays in the devastated region (§2.2, THE AFTERMATH): rescue teams, firefighters, police, workers and other
+public bodies fighting for space and jurisdiction, the curfew, the traffickers' zones, the Militia's facilities. **The same scenes and places come
+back as time passes, with small modifications that change their look and their play** (Deus Ex's revisited hubs): it is what lets the campaign
+reuse its maps, and the restored town of the cemetery finale is the last state of the same place.
+
+Claude's proposals (not ratified):
+- **Jurisdiction is a zone rule.** Each area is held by one body (a police checkpoint, a Militia facility, a traffickers' street, a rescue
+  camp), and who may pass is that body's uniform: the faction disguise (§2.2) extended to the public bodies, so a firefighter's or a worker's
+  uniform can be one more disguise. A change of jurisdiction between visits is the cheapest "modification that changes play".
+- **The rescue is never a battlefield.** Firefighters digging in the mud are the most recognisable image of the real collapses (§2.6,
+  `LAUNCH_MASTER_PLAN` §1): a rescue zone is where the Agent helps or passes, never where the player fights, and no objective counts the dead.
+- **Engine:** no map today has a notion of "the same place at another time"; the need is recorded in `systems/MAP_MASTER_PLAN.md` (the top note
+  of 2026-10-22) and is designed when the campaign's maps are authored.
+
 ---
 
 ## 15. Progression — `DESIGNED`
@@ -1175,8 +1202,8 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - [ ] The reporter's surname; what he does with the Agent's gun in the
   let-him-live branch (§2.2); the epilogue
   per branch; which lap-2 confrontation is the complete mission (§2.2).
-- [ ] Whether anyone in the family survives: the faked death and the
-  power easter egg (§2.6; Claude's recommendation there).
+- [ ] Whether anyone in the family survives, and whether there is a baby at
+  all; the power moment, now in the aftermath; the faked death (§2.6).
 - [ ] A city that lived a real dam disaster (§2.6; Claude's recommendation
   there, to be taken to the association of those affected).
 - [ ] Exact 1× economy pacing and the catalog of paid boosts beyond the

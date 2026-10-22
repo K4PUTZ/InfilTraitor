@@ -53,7 +53,12 @@ remarks in `DESIGN` §2.6). **The reporter RATIFIED:** Thomas, the outlet *Blind
 at the hospital after the wife's death; the canon is in English, names may be localised later. **The family (still in doubt):** the son's death is
 fixed; a survivor would need the Agent to fake his own death and watch them grow from afar, decided by an easter egg at the start (restore the power
 first: mother and baby live); Claude's recommendation (`DESIGN` §2.6): the easter egg only gives, the start becomes a playable night of the
-disaster (the tutorial), the faked death closes every branch.
+disaster (the tutorial), the faked death closes every branch. **Then (Director):** the power moment moves to the AFTERMATH, after the police station,
+and needs more thought (Claude's "night of the disaster" withdrawn); "no baby at all, the wife survives or dies" floated, undecided. **The aftermath
+is the campaign's backdrop (ratified):** the devastated region, the Agent helping the authorities in the chaos, rescue teams / firefighters / police /
+workers fighting for jurisdiction, curfew, traffickers' zones, Militia facilities; the same places revisited over time with small changes (Deus Ex).
+`DESIGN` §2.2, §14.4 (Claude's proposals there: jurisdiction as a zone rule with uniforms, the rescue never a battlefield); the engine need is a
+top note in `docs/systems/MAP_MASTER_PLAN.md`.
 
 **Open after this pass** (items 1, 4, 5, 6 of §2 above still stand; item 3 is ruled): the four class kits and whether later characters replay the
 whole campaign; the reporter's name, outlet, first contact, what the final fight is made of, and whether killing him breaks a no-kill run; where the

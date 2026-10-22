@@ -1,5 +1,13 @@
 # INFILTRAITOR — Map System Master Plan
 
+> 📌 **2026-10-22 — PLANNED, nothing designed or built: the same map over time (`DESIGN_MASTER_PLAN` §14.4).** The campaign plays in a
+> devastated region whose places come back as time passes, changed a little in look and play (the Deus Ex model: the flood receding, rescue camps,
+> checkpoints and jurisdictions moving, the curfew, the town restored at the finale). No map has a notion of "this place at another time" today. What
+> already exists to build it from: maps are data (`.map.json`, owner-registered sections), lights come from the map, props / liquids / ground marks /
+> roofs are map sections, destruction persists in the base records. Open when this is designed: how a time state is expressed (a section of the
+> base map, or a second map naming its base), whether damage done on an earlier visit carries into the next, and how the city naming of
+> `COSMETICS_MASTER_PLAN` §6 applies to it. Design it when the campaign's maps are authored, with the Director.
+
 > ⏭️ **2026-10-17 — `panels` may `block`; a new bench map.** A panel item takes `"blocks": true` (a half-thickness wall of a thin material that blocks movement, sight and rounds like any wall edge; default false: panels are still passed through, `MapCompiler`). Soft-material roofs and walls (cloth, cardboard) are drawn as sheets (`docs/ARCHITECTURE.md` §0.5). `MARKET_LAB` is the new dev fixture (quitandas); PLAYGROUND's cardboard and fabric wall trios became quitandas. `docs/technical/MAPFILE_REFERENCE.md` has the field.
 
 > ⚠️ **2026-10-10 — ACCESS POINTS WILL MOVE (Director, `CAPTURE_RAILS_MASTER_PLAN` R10 / CR-7).** A map's anchors (POIs, regions, objectives, the envelope) live in a new `layout` section; the access points stay in `legacy_compiler.access_points` (and `LevelGraph` for `access_from_graph`) for now, read by `MapLayout.exits()`, and `layout.exits` is a RESERVED key that fails loudly if written. **When this milestone touches access points:** they move to `layout.exits` (`{id, side, cells, role}` with `role` main / secondary / secret, `DESIGN_MASTER_PLAN` §14.1), the legacy field is migrated by a section migration and REMOVED (one authority, never mirrored), and `MapCompiler` / `LevelGraph` read `MapLayout`.

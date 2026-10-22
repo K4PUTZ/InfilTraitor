@@ -959,8 +959,18 @@ game must be enjoyable because of challenge and difficulty, not because an
 artificial barrier is sold back to the player. Revenue may accelerate progress,
 extend a failed run or sell expression. It may not make content permanently
 unavailable to a non-payer, fabricate urgency, punish a missed streak, sell
-random rewards to an all-ages audience, or make an online service necessary to
-enjoy the core game.
+paid random rewards, or make an online service necessary to enjoy the core
+game.
+
+**Audience — 16+ (Director, 2026-10-22: "O jogo assume 16 anos").** The §2.6
+narrative (a policeman who causes a mass-casualty disaster, drug production,
+dumped bodies, militias, a child's death) targets the **16 bracket** (ClassInd
+16, PEGI 16; the US ESRB has no 16, so there it is likely M, 17+). Each store's
+questionnaire (IARC on Google Play) decides the final rating per region. To
+stay at 16: violence without gratuitous gore, the child's death off-screen
+(the opening already gives it by phone), drugs never glamorised, no sexual
+content; anything beyond pushes the game to 18 and is out of scope. **Players
+of 16 and 17 are still minors**, which shapes every social and data rule below.
 
 **Access model — free-to-play, not a premium campaign.** The same curated
 campaign and Freelance mode are eventually available to every player. There is
@@ -976,9 +986,9 @@ the progression difference is barely felt while the player learns the game.
 | Offline death | Normal defeat animation and reload wait. The loss carries consequence without requiring connectivity or payment. Exact duration is presentation tuning, not an economy gate. |
 | Advertising boundary | Ads are wanted, but no automatic pre-level/post-level interstitial placement is ratified. An ad is a voluntary extra option, not the price of entering ordinary play. |
 | Cosmetics | A modest initial catalog of shop-exclusive agent cosmetics. Cosmetics express identity/state but never confer the state (`ACTOR_MASTER_PLAN` D36). |
-| Random rewards | **No purchased loot boxes** in the all-ages product. The status of play-earned random reward boxes is separate and not yet decided. |
+| Random rewards | **No purchased loot boxes, at any age rating:** a company rule (and a regulated mechanic in several countries), not a consequence of the audience. The status of play-earned random reward boxes is separate and not yet decided. |
 | FOMO boundary | No punitive streaks, artificial energy, expiring paid passes, fabricated urgency or content removed merely to force a purchase. |
-| Social surface | Players may eventually meet and talk in a lobby while missions remain short and individual. The communication model is deliberately unresolved pending safety, moderation, parental-control and operational research. No PvP is planned initially. |
+| Social surface (16+; defaults set by Claude on the Director's ruling of 2026-10-22, open to change) | Missions stay short and individual; players meet in a lobby, the weekly war (`COSMETICS_MASTER_PLAN` §4) and the world map (§6 there). **An age gate at account creation** (a declared birth date): under 16, the game plays offline and the online and social features stay off. **Communication at launch: presence, emotes and predefined phrases only;** free text comes later and only with moderation in place (filters, reports, human review); **no private messages between strangers**; report and block from day one. **Profiles:** nicknames (filtered), avatars and tiers, never a real name, and a city only as part of a region's aggregate. **Ads:** rewarded only (above), and no profiling-based ads to users under 18 (the EU's rule for platforms). **Purchases:** the stores' family and parental controls apply; nothing is sold through urgency (the FOMO boundary). No PvP is planned initially. |
 
 **This is paid acceleration, not a claim of zero paid advantage.** A paying
 player reaches powers earlier; a non-paying player reaches the same powers
@@ -1046,7 +1056,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - ✅ **Premium campaign or shared campaign?** → **Shared.** Free and paying
   players can reach the same campaign, Freelance content and powers; payment
   accelerates progression (§16).
-- ✅ **Purchased loot boxes for an all-ages audience?** → **No.**
+- ✅ **Purchased loot boxes?** → **No**, at any age rating (§16).
+- ✅ **The age rating** → **16** (Director, 2026-10-22); 16-17-year-olds are
+  minors, and §16 sets the social defaults for them.
 
 **Still open — do not decide these unilaterally:**
 - [ ] The Agent's concrete endgame — the epilogue (§2.2) leaves him the
@@ -1057,16 +1069,13 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   it, choose among endings, or witness one canonical villain victory.
 - [ ] The fictional federal agency's name and its ranks per country (§2.6);
   §11.1's counters for FOUR factions (they were written for three).
-- [ ] The age rating: §16 speaks of an "all-ages product", but the §2.6
-  narrative (a policeman causing a mass-casualty disaster, drugs, bodies,
-  militias) will be rated 16-18; §16's wording and the social features must
-  follow the rating.
 - [ ] Exact 1× economy pacing and the catalog of paid boosts beyond the
   permanent gameplay-currency 2×.
 - [ ] Rewarded continue restore point and whether one per mission remains the
   final limit after playtesting.
-- [ ] Lobby communication model — presence/emotes, predefined phrases, public
-  text, or private communication; requires safety/operations research first.
+- [ ] Free text in the lobby — after launch, once moderation (filters,
+  reports, human review) exists; the launch defaults (presence, emotes,
+  predefined phrases, no private messages between strangers) are in §16.
 - [ ] Psionic protection — reserved for the future, out of the MVP.
 - [ ] Player-to-player item market — future.
 - [ ] Diagonal movement — blocked at the start, possibly a late-game skill

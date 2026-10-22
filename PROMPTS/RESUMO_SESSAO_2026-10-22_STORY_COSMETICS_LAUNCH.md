@@ -49,7 +49,11 @@ the press; the Agent, at the grave of the son he has just buried, lets slip what
 the revelation in the rain; the Agent draws too; the player KILLS the reporter (discovered: a fugitive) or LETS HIM LIVE (the Agent hands him his own
 gun, tells him to do what he thinks necessary and turns his back; the reporter is tempted to erase him or sets justice after him: endings open; a
 fugitive too). The "kill and stay free" ending is gone; the epilogue is to re-cut. Floated, open: the wife and the son surviving by choices (Claude's
-remarks in `DESIGN` §2.6). The reporter's name / outlet / first contact are Claude's proposals in `DESIGN` §2.2, not yet ratified.
+remarks in `DESIGN` §2.6). **The reporter RATIFIED:** Thomas, the outlet *Blind Spot*, first seen at the police station's door, the real approach
+at the hospital after the wife's death; the canon is in English, names may be localised later. **The family (still in doubt):** the son's death is
+fixed; a survivor would need the Agent to fake his own death and watch them grow from afar, decided by an easter egg at the start (restore the power
+first: mother and baby live); Claude's recommendation (`DESIGN` §2.6): the easter egg only gives, the start becomes a playable night of the
+disaster (the tutorial), the faked death closes every branch.
 
 **Open after this pass** (items 1, 4, 5, 6 of §2 above still stand; item 3 is ruled): the four class kits and whether later characters replay the
 whole campaign; the reporter's name, outlet, first contact, what the final fight is made of, and whether killing him breaks a no-kill run; where the

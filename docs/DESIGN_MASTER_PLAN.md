@@ -173,6 +173,8 @@ EPILOGUE (to re-cut: open)
   "accident" version, the foreign fund buying the company at half price,
   the bet paid, "There is no right or wrong. There are only winners."
   In both branches he goes on infiltrating and charging for information.
+  Proposed (Claude, §2.6): he fakes his own death and watches his family
+  grow from afar.
   Unlocks: FREELANCE MODE for that character (COSMETICS_MASTER_PLAN §4).
 ```
 
@@ -185,10 +187,10 @@ by the full order (24 permutations).
 non-lethal route (knockout, sedative dart, smoke: §8, §10.4, §11.3); the four leaders are the bosses. The reporter is not one (there is no fight),
 so killing him is a kill and a no-kill run must let him live (Claude: follows from the cemetery finale).
 
-**The reporter (Claude's proposals, 2026-10-22, NOT yet ratified).** Name: **Tomás** in each language's form (Thomas, Tomás, Tomasz, Tommaso: the
-doubter who must see to believe), the surname from a per-country list like the agency's ranks, never one that evokes a real case (no "Vale").
-Outlet: an independent, reader-funded local investigative site, **"Ponto Cego" / "Blind Spot"** (localised like signage; a registry check before
-launch). First contact: seen at the police station's door in the opening (he recognises his source being suspended); the real approach at the
+**The reporter (Claude's proposals, RATIFIED by the Director 2026-10-22).** **The canon is in English; names may be swapped per language later**
+(Director). Name: **Thomas** (the doubter who must see to believe; Tomás, Tomasz, Tommaso if localised); his surname is open, and never one that
+evokes a real case (no "Vale"). Outlet: an independent, reader-funded local investigative site, **Blind Spot** (localised like signage; a registry
+check before launch). First contact: seen at the police station's door in the opening (he recognises his source being suspended); the real approach at the
 hospital after the wife's death, with the trade that opens lap 2 (his leads for the leaders' confessions); the cemetery is kept for the finale. Why
 only he can close the case: the Militia's clue speaks of "our informant", and only he knows the informant is his own source, because his scoops
 reached the Militia before he published them. The slip at the memorial: a line about the target only the attacker could know (e.g. "it was only
@@ -306,6 +308,14 @@ is buried late, after the town is restored (the cemetery finale, §2.2). **Varia
 or one of them, depending on the player's choices. Claude's remarks: the son's death comes in the opening, before any choice, and his burial is what
 moves the Agent to hand over his gun, so his survival would rewrite both ends; a child's life hanging on the player's performance reads as "you
 failed to save him" (§16 keeps the child's death off-screen); the wife's survival is cheaper (the midpoint and the epilogue) if tied to a real choice.
+**Refined (Director, 2026-10-22, still in doubt whether anyone survives):** the son's death stays fixed. A surviving family is a liability for a
+fugitive freelancer, unless he FAKES HIS OWN DEATH and watches them grow from afar. Then easter eggs at the very start decide it: restoring the
+power first lets the hospital work and saves the mother and the baby; doing anything else first (putting out a fire...) saves only the baby, or
+only the mother. **Claude's recommendation:** (1) an easter egg gives and never takes: the default stays the canon (the mother dies, the baby lives),
+only the hidden act saves both, and no hidden path kills the newborn; (2) "the very start" becomes a short playable night of the disaster, the
+tutorial (`LAUNCH_MASTER_PLAN` L2): a blacked-out town is the stealth lesson, and restoring the power LIGHTS the town, so the right act costs the
+player his cover; (3) the faked death closes every branch, since the baby always survives: he leaves them believing him dead and goes on as a ghost
+freelancer, which also answers where the baby stays.
 
 **The circle (Director's structure, 2026-10-22; the table is Claude's, accepted):** each leader trades what he knows for a favour that points at the next:
 Police → Militia → Traffickers → Corporation → Police. The pairs outside the circle are extra clues for free (Police and Traffickers: the bribes; Militia
@@ -331,8 +341,7 @@ the front's offshore broker, the traffickers' routes); the campaign's locations 
 
 **Open (Director):** the fictional federal agency's name and
 its ranks per country (the Director's draft says "Tenente", a military rank: Brazil's federal police ranks are agente, escrivão, perito, delegado); the
-dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); the reporter's name, outlet and first contact (Claude's proposals in §2.2, not yet
-ratified); what the reporter does in the let-him-live branch; the epilogue per branch; whether the wife or the son may survive (above); a city that
+dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); the reporter's surname; what the reporter does in the let-him-live branch; the epilogue per branch; whether anyone in the family survives (above); a city that
 lived a real dam disaster (above).
 
 ---
@@ -1163,11 +1172,11 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   §11.1's counters for FOUR factions (they were written for three).
 - [ ] The four class kits (§15), and whether later characters replay the
   whole campaign.
-- [ ] The reporter: name, outlet, first contact (Claude's proposals, §2.2);
-  what he does with the Agent's gun in the let-him-live branch; the epilogue
+- [ ] The reporter's surname; what he does with the Agent's gun in the
+  let-him-live branch (§2.2); the epilogue
   per branch; which lap-2 confrontation is the complete mission (§2.2).
-- [ ] Whether the wife or the son may survive by the player's choices
-  (§2.6; Claude's remarks there).
+- [ ] Whether anyone in the family survives: the faked death and the
+  power easter egg (§2.6; Claude's recommendation there).
 - [ ] A city that lived a real dam disaster (§2.6; Claude's recommendation
   there, to be taken to the association of those affected).
 - [ ] Exact 1× economy pacing and the catalog of paid boosts beyond the

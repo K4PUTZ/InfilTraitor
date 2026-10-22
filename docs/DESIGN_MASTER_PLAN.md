@@ -120,9 +120,10 @@ OPENING — Home (Director)
   dead. He falls to his knees. Titles.
 
 THE POLICE STATION
-  His deposition. Too close to the case, the commissioner "forbids" him
-  to investigate it, and hands him urgent OFFICIAL missions instead, in
-  the zones where the police has limited access (Director, 2026-10-22).
+  His deposition. Too close to the case, the commissioner forbids him,
+  VERBALLY, to work on it, and hands him urgent OFFICIAL missions instead,
+  in the zones where the police has limited access; he keeps his badge
+  for now (Director, 2026-10-22).
   Outside, a faction approaches him: THE PLAYER CHOOSES WHICH, and that
   choice creates the character (his class, §15). Its uniform is his
   first disguise: he moves freely on its turf first, and earns access to
@@ -155,6 +156,11 @@ LAP 1 — the favours (four chapters, one per faction; the circle stays:
   favour earns a piece of information and the access (uniform, credentials)
   to the next turf. Each chapter teaches its faction's mechanics; the
   starting faction is the player's, so no chapter may depend on another's.
+  THE BADGE (Director, 2026-10-22): when lap 1 reaches the police over
+  the pit (the Corporation's favour, §2.6), the commissioner says he is
+  interfering with the investigation for revenge, and takes his badge.
+  From then on he can still walk police zones, but checkpoints stop him
+  and he is discovered.
   Midpoint: his wife dies in intensive care, unless the power came back
   in time (§2.6). There is no baby (Director, 2026-10-22).
 
@@ -348,7 +354,7 @@ and Corporation: the CEO against the shareholders).
 | **Police** (the chief) | Investigate a "leak" off the books → the **Militia**, which receives it | The pit as a dump for bodies; the deal with the traffickers | Blocked the pit's inspections: the containment failed | The official "substation fire" version is his, and he runs the case | Cannot use his own men (the leak); fears federal scrutiny | "Someone passed the road block that night on a police credential" |
 | **Militia** (the commander of the CEO's security) | Prove it was the traffickers (a drone) → the **Traffickers** | Billed the sirens' backup power and never installed it; takes the traffickers' territory; its own men sell access to the traffickers' labs inside the guarded facilities | The sirens stayed silent | Holds the drone's wreck: "proof" of an outside attack | Cannot let any inspector near the siren system, nor near its insiders | "The drone took off inside our perimeter, with codes only we and our informant knew" |
 | **Traffickers** (the club's president) | Find who leaks to the militia; they suspect their financiers → the **Corporation** | The lab in the refinery, run with the Militia's insiders; their dead in the pit | Chemical waste dumped in the dam: the reservoir over its limit | Lost their lab and men: they look like victims | The bodies may surface with the flood; the bought police no longer protect them | "Someone bought drone parts at our chop shop weeks before" |
-| **Corporation** (the minority shareholders' leader) | Prove it was the State's negligence (the chief) → the **Police** | Finances the traffickers; wants a contained leak to sell the company at half price to foreign funds, for a commission | Hid the engineers' risk report, hoping for a contained leak | The fall "hurts" them in public; no weapons | A real investigation finds the report and kills the half-price sale, and the commission with it | "Someone bet against us through a front, on puts expiring that week" |
+| **Corporation** (the minority shareholders' leader) | Prove it was the State's negligence (the chief) → the **Police**; the chapter in which the commissioner takes the Agent's badge (§2.2) | Finances the traffickers; wants a contained leak to sell the company at half price to foreign funds, for a commission | Hid the engineers' risk report, hoping for a contained leak | The fall "hurts" them in public; no weapons | A real investigation finds the report and kills the half-price sale, and the commission with it | "Someone bet against us through a front, on puts expiring that week" |
 
 **The same clues in every route (Director, 2026-10-21; revised 2026-10-22).** Lap 1 is a rotation of the circle from the character's faction; lap 2 is
 in any order. Every route meets the same four pieces and the same four clues, and **the reporter, at the finale, completes the picture: §2.4's fair
@@ -1188,7 +1194,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   wife later unless the power came back in time (Director, 2026-10-21/22; §2.6).
 - ✅ **The family, the aftermath and the official work** → no baby; the flood
   is acid, not mud; after the station the commissioner bars him from the case
-  and hands him official missions (the power station among them) that come
+  verbally (the badge goes later, in the lap-1 chapter that investigates the
+  police over the pit; checkpoints then stop him) and hands him official
+  missions (the power station among them) that come
   first, in the player's order, all of them infiltration; the aftermath is the
   campaign's backdrop, its time states authored maps (Director, 2026-10-22;
   §2.2, §2.6, §14.4).

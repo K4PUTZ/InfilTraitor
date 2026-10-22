@@ -66,7 +66,9 @@ world: a sluice gate, a tank). The rescue is scenery (vehicles, cordons, hoardin
 looters. **Acid, not mud** (the drug waste): dangerous ground, obstacle-heavy scenes; the engine has the liquid. **Time states are AUTHORED maps,
 campaign only;** Freelance plays the places in any time and order; in-mission change is the engine's (fire, glass, lights; a nightfall is NOT built).
 To confirm: Claude's reading that the order of the official missions decides the wife's fate (power first: she lives, and he fakes his death).
-`DESIGN` §2.2, §2.6, §14.2, §14.4, §18; the map plan note rewritten (no mechanism planned).
+`DESIGN` §2.2, §2.6, §14.2, §14.4, §18; the map plan note rewritten (no mechanism planned). **The badge (Director):** at the station the ban is
+VERBAL and he keeps the badge; the commissioner takes it later, in the lap-1 chapter that investigates the police over the pit ("interfering for
+revenge"); police zones stay walkable, but checkpoints stop him and he is discovered. Open: whether the commissioner IS the police chief (the leader).
 
 **Open after this pass** (items 1, 4, 5, 6 of §2 above still stand; item 3 is ruled): the four class kits and whether later characters replay the
 whole campaign; the reporter's name, outlet, first contact, what the final fight is made of, and whether killing him breaks a no-kill run; where the

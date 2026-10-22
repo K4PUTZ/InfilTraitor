@@ -188,7 +188,7 @@ cut-scenes, a low priority). There is no baby (`DESIGN` §2.6, 2026-10-22).
 | Torso | `shirt`, `collar_trim`, `tie`, `jacket` (suit jacket, police shirt, tactical top, biker vest over a shirt), `vest` (armour, the club's patched vest), `coat` |
 | Arms / hands | `gloves`, `armband` (the captain's armband, rank and faction emblems), `watch` |
 | Legs / feet | `trousers`, `shoes` (dress shoes, boots, trainers) |
-| Gear | `pack` (the hero's), `belt` (holster, radio, cuffs, pouches), `pack_pennant`, `badge` (the police badge) |
+| Gear | `pack` (the hero's), `belt` (holster, radio, cuffs, pouches), `pack_pennant`, `badge` (the police badge: the commissioner takes it during lap 1, `DESIGN` §2.2) |
 | Skin (layers, not meshes) | `tattoo` (the campaign ending's mark, §3: permanent per character; its region open) |
 | Held (attachments, not slots: `WEAPON_MASTER_PLAN`) | pistol, rifle, shotgun, grenade, the drone's controller, a phone |
 

@@ -68,7 +68,11 @@ campaign only;** Freelance plays the places in any time and order; in-mission ch
 To confirm: Claude's reading that the order of the official missions decides the wife's fate (power first: she lives, and he fakes his death).
 `DESIGN` §2.2, §2.6, §14.2, §14.4, §18; the map plan note rewritten (no mechanism planned). **The badge (Director):** at the station the ban is
 VERBAL and he keeps the badge; the commissioner takes it later, in the lap-1 chapter that investigates the police over the pit ("interfering for
-revenge"); police zones stay walkable, but checkpoints stop him and he is discovered. **The commissioner IS the police chief** (the lap-2 leader; ruled by the Director).
+revenge"); police zones stay walkable, but checkpoints stop him and he is discovered. **The commissioner IS the police chief** (the lap-2 leader; ruled by the Director). **The wife's fate (Director):** she SURVIVES by default; a run that kills
+too many people leaves the hospital short of a supply and she dies; classes stay equivalent, the violent player of any class sees the sadder
+ending (Dishonored's chaos). Claude's proposals in `DESIGN` §2.6, not yet ratified: the supply is blood, the midpoint is the warning, a generous
+threshold, what counts (player-caused deaths by any means; not knockouts, the leaders or the reporter), a non-lethal option in every class kit.
+Superseded: the power / the official missions' order deciding her fate.
 
 **Open after this pass** (items 1, 4, 5, 6 of §2 above still stand; item 3 is ruled): the four class kits and whether later characters replay the
 whole campaign; the reporter's name, outlet, first contact, what the final fight is made of, and whether killing him breaks a no-kill run; where the

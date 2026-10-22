@@ -147,8 +147,7 @@ THE OFFICIAL WORK — first (Director, 2026-10-22)
   leaving for the investigations; one of them is restoring the power
   station. All are infiltration: gathering evidence, talking to people,
   planting bugs, acting on the world (opening a sluice gate, draining a
-  tank). The power coming back early is what lets the hospital work: the
-  wife's fate (§2.6).
+  tank).
 
 LAP 1 — the favours (four chapters, one per faction; the circle stays:
   Director, 2026-10-22)
@@ -162,8 +161,9 @@ LAP 1 — the favours (four chapters, one per faction; the circle stays:
   interfering with the investigation for revenge, and takes his badge.
   From then on he can still walk police zones, but checkpoints stop him
   and he is discovered.
-  Midpoint: his wife dies in intensive care, unless the power came back
-  in time (§2.6). There is no baby (Director, 2026-10-22).
+  Midpoint: his wife's condition turns critical, and the hospital is
+  short of blood: every shootout's wounded drain the same bank (the
+  warning; Claude's proposal, §2.6). There is no baby (Director, 2026-10-22).
 
 LAP 2 — the confrontations, in ANY order (Director, 2026-10-22: he will
   kill each leader eventually, so the order is free)
@@ -179,7 +179,8 @@ THE CEMETERY — the finale (a scene, no fight: Director, 2026-10-22)
   Time has passed and the town is restored. A public memorial at the
   cemetery, before the four factions and the press, gathered by the
   tragedy; the Agent pays homage at the grave of the son he has just
-  buried. He lets slip something only the attacker could know; to the
+  buried, his wife beside him, or buried there too if the run's violence
+  cost her life (§2.6). He lets slip something only the attacker could know; to the
   player it reads as grief. Cut: walking away from the ceremony, the
   reporter, who has put every piece together, draws a gun. In the rain,
   the revelation (TWIST 2): he knows the Agent is the villain; the only
@@ -197,8 +198,8 @@ THE CEMETERY — the finale (a scene, no fight: Director, 2026-10-22)
 
 EPILOGUE (to re-cut: open)
   Both branches leave him a FUGITIVE (supersedes "kill him and stay
-  free"). If the wife lived, he fakes his own death and watches her from
-  afar (Director). The earlier beats must be re-placed: "I found all of
+  free"). If the wife lived (the common ending), he fakes his own death
+  and watches her from afar (Director). The earlier beats must be re-placed: "I found all of
   them" (said at the son's grave now that there is no neonatal unit), the
   CEO elected on the "accident" version, the foreign fund buying the
   company at half price, the bet paid, "There is no right or wrong. There
@@ -340,15 +341,30 @@ faction is guilty of one and innocent of the attack.** The official version, "a 
 investigation, and each needs one off the books.
 
 **The family (Director, 2026-10-22: no baby).** His wife and son, driving home early from an event in another town (her missed calls), were caught
-near the epicentre. The son dies, and is buried late, after the town is restored (the cemetery finale, §2.2). The wife is in intensive care: **she dies
-at the midpoint, unless the power came back in time.** Restoring the power station is one of the commissioner's official missions, and the player
-picks their order (§2.2). *(Claude's reading of the Director's thread, "restoring the power first lets the hospital work", to confirm: the order of
-the official missions decides it, with no hint on screen, an easter egg that only gives.)* **If she lives,** he fakes his own death and watches her
-from afar (Director), and the cemetery scene has two versions (with her beside him, or at her grave). **Superseded 2026-10-22:** the baby (*"a mãe
-morre mas o bebê sobrevive no fim"*), the son's survival as a variant, Claude's playable "night of the disaster". **The power lights the area
-(Claude, proposal):** restoring it switches the area's lights on, so the right act costs the player his cover; the engine already turns lights on
-and off at runtime for fire (`LightingController.add_extra_lights()` + `rebuild_tactical()`), and a district coming back on is that mechanism at a
-larger scale, its cost unmeasured.
+near the epicentre. The son dies, and is buried late, after the town is restored (the cemetery finale, §2.2). The wife is in intensive care.
+
+**Her fate is the run's violence (Director, 2026-10-22).** **The common ending is that she SURVIVES.** If the player kills too many people, in the end
+the hospital runs short of a supply because of the excess of deaths, and she dies. The classes stay equivalent in play and in Freelance; a player who
+goes in hard with ANY class sees the sadder ending. *(This is Dishonored's chaos, a reference the game already names in §1.)* **If she lives,** he
+fakes his own death and watches her from afar (Director); the cemetery scene has two versions (with her beside him, or at her grave).
+
+Claude's proposals for it (not yet ratified):
+- **The supply is blood:** the wounded of every shootout drain the same blood bank she depends on, which makes "deaths cause a shortage" causal
+  without showing anything (a line on the radio, the hospital's appeal for donors).
+- **It is warned, never a trap:** the midpoint is the warning beat (her condition turns critical, the bank is short, §2.2), and the world reports
+  the shootouts' toll on the radio, so the player is never surprised by a rule he never saw (§11.4). Dishonored was criticised for punishing players
+  who used the combat it handed them; the warning and a GENEROUS threshold ("many" kills, not a few) are the answer.
+- **What counts:** deaths the player causes, by any means (a shot, a blast, a guard pushed into the acid); knockouts do not; the four leaders'
+  mortal confrontations do not (they are required); the reporter does not (the cemetery comes after her fate is sealed). The threshold is data
+  (§19 Rule 1), per character (each route has its own ending).
+- **Every class needs a non-lethal option from the start** (§15), or one class would be pushed toward the sad ending. A no-kill run (the
+  achievement, §2.2) always reaches the common ending.
+
+**Superseded 2026-10-22:** the baby (*"a mãe morre mas o bebê sobrevive no fim"*), the son's survival as a variant, Claude's playable "night of the
+disaster", the power (or the order of the official missions) deciding her fate. **The power lights the area (Claude, proposal, kept):** restoring it
+switches the area's lights on, so the right act costs the player his cover; the engine already turns lights on and off at runtime for fire
+(`LightingController.add_extra_lights()` + `rebuild_tactical()`), and a district coming back on is that mechanism at a larger scale, its cost
+unmeasured.
 
 **The circle (Director's structure, 2026-10-22; the table is Claude's, accepted):** each leader trades what he knows for a favour that points at the next:
 Police → Militia → Traffickers → Corporation → Police. The pairs outside the circle are extra clues for free (Police and Traffickers: the bribes; Militia
@@ -374,7 +390,7 @@ the front's offshore broker, the traffickers' routes); the campaign's locations 
 
 **Open (Director):** the fictional federal agency's name and
 its ranks per country (the Director's draft says "Tenente", a military rank: Brazil's federal police ranks are agente, escrivão, perito, delegado); the
-dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); the reporter's surname; what the reporter does in the let-him-live branch; the epilogue per branch; whether the official missions' order decides the wife's fate (above); a city that
+dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); the reporter's surname; what the reporter does in the let-him-live branch; the epilogue per branch; the violence rule's details (above); a city that
 lived a real dam disaster (above).
 
 ---
@@ -1073,6 +1089,8 @@ and carries its own ending and tattoo (§2.2).
 - **Open:** the four kits (which abilities and equipment each class lacks or
   owns: §10 was written for one Agent); whether a second, third and fourth
   character replays the whole campaign; how this meets §11.1's counters.
+  **Constraint (Claude, from §2.6):** every kit holds a non-lethal option from
+  the start, since the campaign's ending turns on the run's violence.
 
 *(Superseded 2026-10-21/22: the Elite prologue, whose temporary senior loadout
 previewed the destination; the game opens at home, §2.2.)* The mature powers
@@ -1196,7 +1214,11 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - ✅ **The Agent's moral boundary** → **for money (a bet against the company)
   he attacked a dam meaning a small spill, not knowing it would kill**; with
   the four factions' failures it killed hundreds, his son among them, and his
-  wife later unless the power came back in time (Director, 2026-10-21/22; §2.6).
+  wife too if his own violence in the campaign drains the hospital (Director,
+  2026-10-21/22; §2.6).
+- ✅ **The wife's fate** → she survives by default; a run that kills too many
+  people leaves the hospital short and she dies; classes stay equivalent
+  (Director, 2026-10-22; §2.6).
 - ✅ **The family, the aftermath and the official work** → no baby; the flood
   is acid, not mud; after the station the commissioner (the police chief, the
   lap-2 leader) bars him from the case
@@ -1239,8 +1261,8 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - [ ] The reporter's surname; what he does with the Agent's gun in the
   let-him-live branch (§2.2); the epilogue
   per branch; which lap-2 confrontation is the complete mission (§2.2).
-- [ ] Whether the order of the official missions decides the wife's fate
-  (Claude's reading, to confirm), and the faked death's details (§2.6).
+- [ ] The violence rule's details: the supply, the warning, the threshold,
+  what counts (Claude's proposals, §2.6); the faked death's details.
 - [ ] A city that lived a real dam disaster (§2.6; Claude's recommendation
   there, to be taken to the association of those affected).
 - [ ] Exact 1× economy pacing and the catalog of paid boosts beyond the

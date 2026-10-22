@@ -57,7 +57,7 @@ propagation and enemy unpredictability make every run unique and every action
 consequential.
 
 **The game does not end.** The campaign is prehistory — an opening, two laps
-around the four factions and the reporter's finale (§2.2), played once per
+around the four factions and the finale at the cemetery (§2.2), played once per
 character: four story routes, one per faction (§15). It is a narrative
 tutorial that establishes the lore, justifies the title, and introduces the
 mechanics progressively. After it, the agent enters **Freelance mode**:
@@ -104,7 +104,7 @@ uses the campaign's heroic framing to make the player execute his plan under a f
 
 ### 2.2 Two modes
 
-**Campaign — the prehistory (an opening, two laps around the four factions and the reporter's finale; revised 2026-10-22).** Curated, and a
+**Campaign — the prehistory (an opening, two laps around the four factions and the finale at the cemetery; revised 2026-10-22).** Curated, and a
 complete tutorial. It is the same campaign for free and paying players (§16); payment changes progression speed, never access. Each chapter introduces a
 faction and its mechanics. It has a beginning, middle and end — the traitor is exposed here. **The Elite prologue of the earlier canon is superseded:**
 the game opens at home (Director, 2026-10-21). **It is played once per character, four story routes** (Director, 2026-10-22): the faction picked at the
@@ -146,34 +146,53 @@ LAP 2 — the confrontations, in ANY order (Director, 2026-10-22: he will
   resolution) builds: the four shares made the massacre. Every clue
   describes the Agent: he is not following leads, he is killing witnesses.
 
-THE REPORTER — the finale (the complete mission)
-  When the Agent comes back to him, the reporter has had time to put every
-  piece together: he knows the Agent is the villain; the only one who
-  does not is the player. He aims a gun at him and throws it in his face:
-  the drone, the bet, the leak (TWIST 2). The final fight. At its end the
-  player chooses: KILL THE REPORTER — the only one who did not cause his
-  son's death — or FLEE. A permanent tattoo marks the choice on that
-  character (COSMETICS_MASTER_PLAN §3).
+THE CEMETERY — the finale (a scene, no fight: Director, 2026-10-22)
+  Time has passed and the town is restored. A public memorial at the
+  cemetery, before the four factions and the press, gathered by the
+  tragedy; the Agent pays homage at the grave of the son he has just
+  buried. He lets slip something only the attacker could know; to the
+  player it reads as grief. Cut: walking away from the ceremony, the
+  reporter, who has put every piece together, draws a gun. In the rain,
+  the revelation (TWIST 2): he knows the Agent is the villain; the only
+  one who did not is the player. The Agent draws too: a standoff. The
+  player chooses:
+  - KILL THE REPORTER, the only one who did not cause his son's death:
+    he is discovered and becomes a FUGITIVE.
+  - LET HIM LIVE: remorseful, his son just buried, the Agent puts his
+    own gun in the reporter's hand, tells him to do what he thinks
+    necessary, and turns his back. The reporter, implicated himself, is
+    tempted to erase him, or sets justice after him (the endings to
+    explore: open). The Agent becomes a FUGITIVE.
+  A permanent tattoo marks the choice on that character
+  (COSMETICS_MASTER_PLAN §3).
 
-EPILOGUE
-  The neonatal unit, the baby in his arms: "I found all of them." The CEO
-  is elected on the "accident" version, the foreign fund buys the company
-  at half price, the Agent's bet has paid. "There is no right or wrong.
-  There are only winners."
-  Two endings (Director, 2026-10-22): he killed the reporter and stays
-  FREE, or he fled and becomes a FUGITIVE. In both he goes on infiltrating
-  and charging for information.
+EPILOGUE (to re-cut: open)
+  Both branches leave him a FUGITIVE (supersedes "kill him and stay
+  free"). The earlier beats must be re-placed: the neonatal unit with the
+  baby in his arms ("I found all of them"), the CEO elected on the
+  "accident" version, the foreign fund buying the company at half price,
+  the bet paid, "There is no right or wrong. There are only winners."
+  In both branches he goes on infiltrating and charging for information.
   Unlocks: FREELANCE MODE for that character (COSMETICS_MASTER_PLAN §4).
 ```
 
-**Lap 2's lengths (Claude's reading, stated 2026-10-22 and not contested):** the Director's earlier ruling made the last confrontation the complete
-mission; with the reporter as the finale, the four leader confrontations are short missions and the reporter's is the complete one, written ONCE for
-every route. **The reporter's hints (Claude):** keyed by the faction he points at and how many pieces the player already holds (4 x 4 = 16 lines), never
+**Lap 2's lengths:** with the finale a scene, the campaign's last playable mission is a leader confrontation in a free order, so which one is the
+complete mission is open again (Claude's recommendation: four standard missions of one size, so no faction needs both a short and a complete
+version). Superseded: "the reporter's finale is the complete mission". **The reporter's hints (Claude):** keyed by the faction he points at and how many pieces the player already holds (4 x 4 = 16 lines), never
 by the full order (24 permutations).
 
 **The kill count (Director, 2026-10-22):** achievements for a run with no kills, bosses excluded. **Consequence (Claude):** every mission needs a
-non-lethal route (knockout, sedative dart, smoke: §8, §10.4, §11.3); the four leaders are the bosses. **Open:** whether killing the reporter breaks
-a no-kill run (fleeing would then be the only way to keep one).
+non-lethal route (knockout, sedative dart, smoke: §8, §10.4, §11.3); the four leaders are the bosses. The reporter is not one (there is no fight),
+so killing him is a kill and a no-kill run must let him live (Claude: follows from the cemetery finale).
+
+**The reporter (Claude's proposals, 2026-10-22, NOT yet ratified).** Name: **Tomás** in each language's form (Thomas, Tomás, Tomasz, Tommaso: the
+doubter who must see to believe), the surname from a per-country list like the agency's ranks, never one that evokes a real case (no "Vale").
+Outlet: an independent, reader-funded local investigative site, **"Ponto Cego" / "Blind Spot"** (localised like signage; a registry check before
+launch). First contact: seen at the police station's door in the opening (he recognises his source being suspended); the real approach at the
+hospital after the wife's death, with the trade that opens lap 2 (his leads for the leaders' confessions); the cemetery is kept for the finale. Why
+only he can close the case: the Militia's clue speaks of "our informant", and only he knows the informant is his own source, because his scoops
+reached the Militia before he published them. The slip at the memorial: a line about the target only the attacker could know (e.g. "it was only
+supposed to be the lower basin").
 
 **Freelance — the endless game.** Missions come from a procedural generator
 (LLM-authored narrative, §2.5), content packs and seasonal events, community
@@ -282,7 +301,11 @@ faction is guilty of one and innocent of the attack.** The official version, "a 
 investigation, and each needs one off the books.
 
 **The family.** His wife and son, driving home early from an event in another town (her missed calls), were caught near the epicentre. The son dies; the
-wife dies in intensive care at the campaign's midpoint; the baby survives (Director, 2026-10-22: *"a mãe morre mas o bebê sobrevive no fim"*).
+wife dies in intensive care at the campaign's midpoint; the baby survives (Director, 2026-10-22: *"a mãe morre mas o bebê sobrevive no fim"*). The son
+is buried late, after the town is restored (the cemetery finale, §2.2). **Variant floated (Director, 2026-10-22, open):** the wife and the son survive,
+or one of them, depending on the player's choices. Claude's remarks: the son's death comes in the opening, before any choice, and his burial is what
+moves the Agent to hand over his gun, so his survival would rewrite both ends; a child's life hanging on the player's performance reads as "you
+failed to save him" (§16 keeps the child's death off-screen); the wife's survival is cheaper (the midpoint and the epilogue) if tied to a real choice.
 
 **The circle (Director's structure, 2026-10-22; the table is Claude's, accepted):** each leader trades what he knows for a favour that points at the next:
 Police → Militia → Traffickers → Corporation → Police. The pairs outside the circle are extra clues for free (Police and Traffickers: the bribes; Militia
@@ -297,19 +320,20 @@ and Corporation: the CEO against the shareholders).
 
 **The same clues in every route (Director, 2026-10-21; revised 2026-10-22).** Lap 1 is a rotation of the circle from the character's faction; lap 2 is
 in any order. Every route meets the same four pieces and the same four clues, and **the reporter, at the finale, completes the picture: §2.4's fair
-reveal is written once**, whatever the order. Alone, each clue is ambiguous; together they describe one man. The model is Agatha Christie's *The Murder of Roger Ackroyd* (1926): the narrator is the culprit and
+reveal is written once**, whatever the order, with the Agent's own slip at the memorial as the last piece. Alone, each clue is ambiguous; together they describe one man. The model is Agatha Christie's *The Murder of Roger Ackroyd* (1926): the narrator is the culprit and
 every clue is in plain sight.
 
 **The investigation goes abroad (Director, 2026-10-21):** the attack is a FEDERAL case, so the Agent travels beyond the disaster area (the foreign fund,
 the front's offshore broker, the traffickers' routes); the campaign's locations sit on the game's 3D globe, also its mission hub (`COSMETICS_MASTER_PLAN`
 §6).
 
-**Lap 2's lengths:** §2.2 (the four leader confrontations short, the reporter's finale complete; superseded "the first three short, the last complete").
+**Lap 2's lengths:** §2.2 (open again since the finale became a scene; superseded "the first three short, the last complete").
 
 **Open (Director):** the fictional federal agency's name and
 its ranks per country (the Director's draft says "Tenente", a military rank: Brazil's federal police ranks are agente, escrivão, perito, delegado); the
-dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); the reporter's name, outlet and how he first reaches the Agent in the campaign; what the final
-fight is made of (a man with a gun is a short fight for a complete mission: who or what else is there); a city that lived a real dam disaster (above).
+dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); the reporter's name, outlet and first contact (Claude's proposals in §2.2, not yet
+ratified); what the reporter does in the let-him-live branch; the epilogue per branch; whether the wife or the son may survive (above); a city that
+lived a real dam disaster (above).
 
 ---
 
@@ -1114,11 +1138,14 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   into a massacre and innocent of the attack itself; the player picks the
   recruiting faction at the police station; two laps around a circle of
   favours (Director, 2026-10-22; §2.1, §2.2, §2.6).
-- ✅ **The finale and the player's agency after the reveal** → the reporter
-  (a fifth element, innocent of the massacre) exposes the Agent; after the
-  fight the player KILLS him (the Agent stays free) or FLEES (the Agent becomes
-  a fugitive); a permanent tattoo marks the choice on that character
-  (Director, 2026-10-22; §2.2).
+- ✅ **The finale and the player's agency after the reveal** → a scene, no
+  fight: at a public memorial in the cemetery the Agent lets slip what only
+  the attacker could know; walking away, the reporter (a fifth element,
+  innocent of the massacre) draws a gun and exposes him in the rain; a
+  standoff; the player KILLS the reporter (discovered: a fugitive) or LETS
+  HIM LIVE (the Agent hands him his own gun and turns his back: a fugitive
+  too); a permanent tattoo marks the choice on that character (Director,
+  2026-10-22; §2.2).
 - ✅ **The Agent's endgame** → in both endings he goes on infiltrating and
   charging for information: Freelance (Director, 2026-10-22; §2.2).
 - ✅ **Who the player is** → up to four characters, one per faction, each an
@@ -1136,8 +1163,11 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   §11.1's counters for FOUR factions (they were written for three).
 - [ ] The four class kits (§15), and whether later characters replay the
   whole campaign.
-- [ ] The reporter: name, outlet, first contact, what the final fight is made
-  of, and whether killing him breaks a no-kill run (§2.2, §2.6).
+- [ ] The reporter: name, outlet, first contact (Claude's proposals, §2.2);
+  what he does with the Agent's gun in the let-him-live branch; the epilogue
+  per branch; which lap-2 confrontation is the complete mission (§2.2).
+- [ ] Whether the wife or the son may survive by the player's choices
+  (§2.6; Claude's remarks there).
 - [ ] A city that lived a real dam disaster (§2.6; Claude's recommendation
   there, to be taken to the association of those affected).
 - [ ] Exact 1× economy pacing and the catalog of paid boosts beyond the

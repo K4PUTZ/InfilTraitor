@@ -1549,7 +1549,7 @@ campaign's reveal — a **false** resolution, then the Agent himself as the
 infiltraitor who knew from the start. **Rewritten 2026-10-21/22:** four
 factions around GRUB DRILL INC and the dam, an opening at home, two laps (a
 circle of favours, then confrontations in any order) and a reporter who exposes
-the Agent at the finale (kill him or flee: two endings); a player has up to four
+the Agent at the cemetery finale (kill him or let him live: a fugitive either way); a player has up to four
 characters, one per faction, four story routes (`DESIGN_MASTER_PLAN` §2.2,
 §15). The Elite prologue and the Agency/Network pair are superseded. With the
 2026-08-30 ruling came the **fair-reveal contract**

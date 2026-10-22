@@ -41,7 +41,7 @@ Each turn, the agent receives **2 Action Points (AP)**. This constraint forces m
 
 ### Session Structure
 - **Single level:** 1–3 minutes
-- **Campaign:** an opening, two laps around the four factions and the reporter's finale ([`DESIGN_MASTER_PLAN`](../DESIGN_MASTER_PLAN.md) §2.2), played once per character: four story routes, one per faction; its length is not yet estimated
+- **Campaign:** an opening, two laps around the four factions and the finale at the cemetery ([`DESIGN_MASTER_PLAN`](../DESIGN_MASTER_PLAN.md) §2.2), played once per character: four story routes, one per faction; its length is not yet estimated
 - **Replayability:** Procedural generation ensures variety while hand-crafted templates maintain fairness; each class replays the campaign another way (`DESIGN_MASTER_PLAN` §15)
 
 ### Progression Arc
@@ -120,13 +120,13 @@ ENEMY TURN (simultaneous execution)
 Four factions orbit one company, GRUB DRILL INC: **the Federal Police** (a fictional agency in the game), **the Militia** (a private military
 security company), **the Traffickers** (a motorcycle club) and **the Corporation** (the company's executives). A dam collapses; each faction is guilty
 of one failure that turned a small attack into a massacre, and innocent of the attack itself. The Agent, a federal investigator who lost his family
-that day, hunts all four in their own uniforms, until a reporter, the one outsider who put the pieces together, exposes the truth the player never
+that day, hunts all four in their own uniforms, until a reporter, the one outsider who put the pieces together, confronts him with the truth the player never
 suspected: the Agent launched the attack.
 
 None is purely heroic, the Agent least of all. Each faction can recruit him, so the player has up to four characters, one per faction, each a route
 through the same story.
 
-After the campaign, **Freelance mode** unlocks: the agent, free or a fugitive, goes on infiltrating and charging for information, growing in power and
+After the campaign, **Freelance mode** unlocks: the agent, now a fugitive, goes on infiltrating and charging for information, growing in power and
 facing increasingly sophisticated threats.
 
 ---

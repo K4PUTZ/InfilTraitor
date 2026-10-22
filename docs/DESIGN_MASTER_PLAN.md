@@ -67,86 +67,85 @@ system to scale, never to cap (§19 Rule 1).
 
 ## 2. Narrative — `DESIGNED`
 
-### 2.1 The three factions (revised 2026-10-21)
+### 2.1 The four factions (revised 2026-10-22)
 
-*(Director, 2026-10-21: "a lei corrupta, os criminosos, e uma terceira entidade que tem um interesse antagônico aos dois lados"; "Tanto faz o nome, o
-importante é serem equilibradas" — StarCraft's three very different races that are collectively equivalent; not fantasy, but an exotic, technological
-background in the James Bond vein, where there is money and relative freedom to act.)* The names below are working names. **The three leaders do not know
-each other;** they are linked only by the tragedy of §2.6.
+*(Director, 2026-10-21/22: four entities — "Polícia Federal (Uniforme/Autoridade), Milícia Privada (Soldados High Tech), Corporação
+(Engravatados/Gangsters), Traficantes (Paramilitares/Bikers)"; each must outlive its leader and be "minimamente uniformizável"; "Tanto faz o nome, o
+importante é serem equilibradas".)* Names are working names. All four orbit one company, **GRUB DRILL INC** (§2.6).
 
-| Faction | Public face | Truth | Plays as (§11.1) |
-|---|---|---|---|
-| **The Agency** — the corrupt law | The state: intelligence, police, regulators, politicians; order and security | Rules through surveillance, favours and archives; the law is a tool for the next election | Information: radios, check-ins, cameras, lieutenants who read trails |
-| **The Militia** — the criminals (proposed 2026-10-21, replaces "the Syndicate") | Ex-police and ex-soldiers who "keep order" where the state does not | Territory as an economy: protection, rents, transport, trafficking, a private army in uniform | Numbers and force: patrols in pairs, armour, bribery (§11.1's Militia) |
-| **The Corporation** — the third entity, against both (proposed 2026-10-21, replaces "the Consortium") | Security and progress: a private military and security company with its own technology | Capital that wants to replace BOTH the state and the gangs with security it sells: contracts, patents, strategic minerals, markets | Technology: drones, automation, precision (§11.1's Corporation) |
-| **The Agent** | A law-enforcement agent, the grieving father, the exceptional investigator | Breached the dam on a paid contract from an unknown client (§2.6); knows HIS act from the first scene and hides it, but not who hired him nor the others' shares, which he discovers along the way | — |
+| Faction | Uniform / turf | Public face | Truth | Plays as (§11.1) |
+|---|---|---|---|---|
+| **The Federal Police** (in the game a FICTIONAL federal agency, its ranks localised per country: a real institution never plays the corrupt faction) | Official uniforms and equipment; stations, checkpoints | The law | Paid to look away from the traffickers; its leaks reach the militia; its chief knows the company's containment pit is where the traffickers' enemies are dumped | Information: radios, check-ins, cameras, trail reading |
+| **The Militia** — a private military security company | High-tech uniforms and gear; GRUB DRILL's complex across several towns | Security hired by the company's CEO, in exchange for backing his Senate campaign | Takes the traffickers' territory, buys police leaks, bills for security it never delivers | Technology and force: drones, sensors, armour, pairs |
+| **The Traffickers** — paramilitaries behind a motorcycle club | Club vests and patches, bikes; chop shops, the refinery's back rooms | A motorcycle club | Divert banned precursors from the company's refinery into synthetic drugs; their dead go into the pit | Numbers and improvisation: bikes, routes, explosives, chemistry |
+| **The Corporation** — GRUB DRILL's executives and minority shareholders | Suits **of their own cut, palette and earpieces, never the hero's fedora and coat** (D70: on the board at ~190 px the Agent must not read as one of them) | The company's governance | Sabotage the CEO: against his government contract, they drive the stock down so a foreign fund can take the company over; they finance the traffickers and open the facilities to them, for a scandal; they have their own suited agents | Money and access: bribes, hacking, private agents |
+| **The Agent** | His own costume (D70) | A federal investigator, a grieving father | The police leak that sells information to the militia, and the man who breached the dam (§2.6) | — |
 
-**Each faction must outlive its leader and wear a uniform (Director, 2026-10-21: the Agent kills all three leaders; the factions need reasons to exist
-without them and must be "minimamente uniformizáveis"; a syndicate or a consortium is weak on both).** Hence the proposed pair above: the Agency is an
-institution (a new director is appointed, the archive and the cover-ups remain; uniform: tactical police / intelligence); the Militia is a territorial
-economy (rents and protection keep paying whoever commands; uniform: improvised tactical gear, its own insignia); the Corporation is contracts and
-shareholders (the board names a successor; uniform: branded corporate armour and drones). Names are working names.
+**Each faction outlives its leader:** the police are an institution (a new chief, the same cover-ups); the militia is a contract and a territory; the
+club is a business with a chapter structure; the Corporation is a fund and a board. **All four are innocent of the attack and guilty of the massacre**
+(§2.6); the Agent is guilty of the attack.
 
-**Balance (Director: equivalent as a whole, different in everything else):** each faction owns one axis and has the weakness another exploits (§11.1's
-counters: visor / weapon / armour); each gets the same total threat budget, spent differently; balance is MEASURED (completion rate per faction and per
-route, §2.6), never asserted on paper, and the weekly war re-targets each faction's objective from that data (`COSMETICS_MASTER_PLAN` §4).
+**Balance (Director: equivalent as a whole, different in everything else):** each faction owns one axis and has the weakness another exploits; each gets
+the same total threat budget, spent differently; balance is MEASURED (completion rate per faction and per route, §2.6), never asserted on paper, and the
+weekly war re-targets each faction's objective from that data (`COSMETICS_MASTER_PLAN` §4). ⚠️ §11.1's counters (visor / weapon / armour) were written
+for three factions; the fourth needs its own (§18).
 
-**Neither faction is heroic, and none is the final deception.** The campaign first invites the player to read the three factions' shared guilt as the
-answer (§2.6, twist 1). That is the false resolution: the Agent himself is the infiltraitor and the traitor, and has known it throughout (twist 2).
+**None is the final deception.** The campaign first invites the player to read the four factions' shared guilt as the answer (§2.6, twist 1). That is
+the false resolution: the Agent himself is the infiltraitor and the traitor, and has known it throughout (twist 2).
 
-**The name is the narrative:** INFILTRAITOR — the agent is both infiltrator and traitor. He does not discover that he served the wrong side. **He knows
-what he did while the player does not** (no amnesia, no recurring flashbacks), but **not the whole story** (Director, 2026-10-21: *"Seria melhor que ele
-precisasse investigar, e fosse descobrindo pelo caminho que a ação dele foi catalisada pelos erros dos demais"*), and uses the campaign's heroic framing to make the player execute his
-plan under a false conviction.
+**The name is the narrative:** INFILTRAITOR — the agent is both infiltrator and traitor: the police's own leak, then a guest in each faction's uniform who
+betrays it in turn. **He knows what he did while the player does not** (no amnesia, no recurring flashbacks), but **not the whole story** (Director,
+2026-10-21: *"Seria melhor que ele precisasse investigar, e fosse descobrindo pelo caminho que a ação dele foi catalisada pelos erros dos demais"*), and
+uses the campaign's heroic framing to make the player execute his plan under a false conviction.
 
 ### 2.2 Two modes
 
-**Campaign — the prehistory (3 chapters plus an Elite prologue).** Linear,
-curated, and a complete tutorial. It is the same campaign for free and paying
-players (§16); payment changes progression speed, never access. Each chapter
-introduces one enemy faction and a set of new mechanics. It has a beginning,
-middle and end — the traitor is exposed here.
+**Campaign — the prehistory (an opening and two laps around the four factions; revised 2026-10-22).** Linear, curated, and a complete tutorial.
+It is the same campaign for free and paying players (§16); payment changes progression speed, never access. Each chapter introduces a faction and its
+mechanics. It has a beginning, middle and end — the traitor is exposed here. **The Elite prologue of the earlier canon is superseded:** the game opens at
+home (Director, 2026-10-21).
 
 ```
-ELITE PROLOGUE — The Hero at Full Power            (proposed form: §2.6 "The prologue")
-  A mission at full power: premium armour, exceptional powers, information
-  through walls, thermal imaging, night vision, senior tactical overlays.
-  The mission must still be enjoyable and balanced — a taste of the mature
-  game, not an invulnerable cheat mode.
-  Apparent truth: the Agent runs a clean covert job at night (the dam).
-  Hidden truth: it is the paid breach that, with everyone's crimes,
-  becomes the collapse.
-  Turn: the dam falls, his son dies, his wife is hospitalized; the phone call, the body, the
-  deposition. Clearance, equipment and powers are gone; the campaign
-  starts from zero.
+OPENING — Home (Director)
+  The Agent comes home and pours a drink. The news: a fire at a substation
+  failed the dams' containment; a mass collapse floods the town; curfew.
+  He is genuinely stunned. His phone, left at home, shows missed calls
+  from his wife. It rings: his wife is in intensive care; their son is
+  dead. He falls to his knees. Titles.
 
-OPENING — the police station (Director, 2026-10-21)
-  Leaving his deposition, the Agent is approached by one faction. THE PLAYER
-  CHOOSES IT. It aims his grief at the other two leaders.
+THE POLICE STATION
+  His deposition. Too close to the case, he is barred from it, suspended,
+  his badge taken. Outside, a faction approaches him: THE PLAYER CHOOSES
+  WHICH. Its uniform is his first disguise: he moves freely on its turf
+  first, and earns access to the others as he goes.
 
-CHAPTER 1 — The Asset
-  The Agent performs the chosen faction's exemplary investigator; the player
-  believes him. Target: the first rival leader.
-  Teaches: detection, vision cones, shadows.
-  Hidden function: apparently noble objectives erase evidence, extract a
-  witness, and hunt the son's phone (§2.6).
+LAP 1 — the favours (four chapters, one per faction)
+  Leader A shares what he knows only for a favour: investigate leader B.
+  B asks for C, C for D, and D points back at A (the circle, §2.6). Each
+  favour earns a piece of information and the access (uniform, credentials)
+  to the next turf. Each chapter teaches its faction's mechanics; the order
+  is the player's, so no chapter may depend on another's.
+  Midpoint: his wife dies in intensive care; the baby is delivered by an
+  emergency caesarean and survives in the neonatal unit.
 
-CHAPTER 2 — The Fracture
-  The employer's own share in the disaster surfaces; the Agent changes
-  allegiance to the second faction and turns on the first.
-  Teaches: noise, cover, enemy communication.
-  Turn (TWIST 1, the false resolution): all three powers helped bring the
-  dam down, each believing it alone did. The grieving father seems to be
-  avenging his son against three corrupt powers.
+LAP 2 — the confrontations
+  He returns to A with three new pieces: a mortal confrontation, A's
+  confession of its share in the disaster, a clue: "someone did X". Each
+  clue leads to the next leader. TWIST 1 (the false resolution) builds:
+  the four shares made the massacre. Every clue describes the Agent: he is
+  not following leads, he is killing witnesses.
 
-CHAPTER 3 — The Infiltraitor
-  The last leader falls. The Agent performs the hero to the end.
-  Teaches: electronics, automated systems, advanced confrontation.
-  Resolution (TWIST 2): an outside breach removes the Agent's filter (§2.4):
-  the prologue's job is relabelled for what it was, and the son's last photo
-  shows his father at the dam before dawn. He knew his act from the first
-  scene; the player learns it last.
-  Unlocks: FREELANCE MODE.
+THE LAST LEADER
+  In the dialogue the Agent reveals that he planted the bomb, and that he
+  lost everything that day (TWIST 2). They fight to the death.
+
+EPILOGUE
+  The neonatal unit, the baby in his arms: "I found all of them." The CEO
+  is elected on the "accident" version, the foreign fund buys the company,
+  the Agent's bet has paid. "There is no right or wrong. There are only
+  winners."
+  Unlocks: FREELANCE MODE (every week a faction calls; he sells to whoever
+  pays: COSMETICS_MASTER_PLAN §4).
 ```
 
 **Freelance — the endless game.** Missions come from a procedural generator
@@ -208,73 +207,69 @@ names, dialogue, secret hints) is a pluggable layer on top. **The engine must
 never depend on narrative content to resolve game logic** (§19 Rule 2).
 
 
-### 2.6 The inciting event: the dam — `DESIGNED` (Director, 2026-10-21, revised the same day; Claude's proposals marked)
+### 2.6 The inciting event: the dam — `DESIGNED` (Director, 2026-10-21/22; Claude's proposals marked, those accepted say so)
 
-*(Director, 2026-10-21: "Vamos usar a tragédia de Brumadinho como base"; revised: "Ele rompe a barragem com um interesse próprio, sem saber que o nível
-do reservatório foi excedido, que as sirenes foram desligadas, que o laudo foi forjado [...] Ele precisa já ser um agente da lei [...] Foi contratado por
-uma fonte desconhecida, para romper uma barreira e provocar um vazamento na empresa. Ele não sabe quem contratou e nem as consequências [...] Todos têm
-interesses e coisas pra encobrir.")* **Supersedes the first version of this section (the Agent's "controlled breach to bring down all three", knowing
-every share).**
+*(Director, 2026-10-21/22: a federal investigator in debt, his wife pregnant with their second child, the house about to be foreclosed, bets against the
+mining company and attacks it, "apostando que o dano seria pequeno", meaning to blame one of the factions in an investigation he expected to lead; the
+whole structure comes down, the containment pit fails, the sirens stay silent; his wife and son, driving home early from an event in another town, are
+caught near the epicentre; "No fim das contas todos os envolvidos são corruptos, inclusive o agente".)* **Supersedes this section's two earlier versions
+(the "controlled breach" and the "unknown client").**
 
-**Fiction, not reportage (Claude, a condition of using a real tragedy).** Inspired by the tailings-dam collapses of Brumadinho (2019) and Mariana (2015),
-never named after them: a fictional mining company and event, no real person, company or detail that identifies a real case, and the dead treated
-with respect (no spectacle of the mud, no gameplay that makes light of it). **The town is the city the player chooses as his base (Director, 2026-10-21:
-"É uma obra de ficção sobre uma tragédia que pode acontecer em qualquer lugar. A gente não precisa mencionar nada da vida real, com exceção da destruição
-que um evento desse causa").** Real names and flags appear only on neutral places; the factions, the company and the crimes keep fictional names
-(`COSMETICS_MASTER_PLAN` §6). A player who gives no city gets a fictional default.
+**Fiction, not reportage.** Inspired by the tailings-dam collapses of recent years, never named after them: no real person, company or detail that
+identifies a real case, and the dead treated with respect (no spectacle of the mud, no gameplay that makes light of it). **The town is the city the
+player chooses as his base** (Director: *"É uma obra de ficção sobre uma tragédia que pode acontecer em qualquer lugar"*); real names and flags appear
+only on neutral places (`COSMETICS_MASTER_PLAN` §6); a player who gives no city gets a fictional default. **Backup settings:** an OIL REFINERY or a
+HYDROELECTRIC PLANT carries the same plot.
 
-**The Agent's act.** He is already a law-enforcement agent (which is why he has the equipment and the military training). For his own interest he takes
-a paid job from an UNKNOWN client: breach a barrier and cause a LEAK at the mining company. He does not know who hired him, and he does not know what the
-breach will do: **the reservoir was over its limit, the stability report was forged, the sirens were off.** His leak became the collapse. **He knows his
-act and hides it from the first scene; he discovers along the way that it was catalysed by everyone else's crimes.**
+**GRUB DRILL INC** (fictional; a quick web search on 2026-10-21 found no company or mark of that name — a registry search before launch; the only known
+"GRUB"s are unrelated: GNU GRUB, Grubhub). A complex of refinery, mining and chemical-agent production across several towns. Its CEO runs for the Senate
+and wants an exploration contract with the government; he hired the Militia's company to guard the complex in exchange for campaign support. One of its
+sites is the dam.
 
-**Who gained from the fall (Director's list; the faction each belongs to is Claude's proposal):**
+**The Agent (Director; "he is the leak" is Claude's proposal, accepted 2026-10-22).** Before the disaster he already sold police information to the
+Militia (the police's leak is him). His plan: a SMALL spill at a secondary basin far from the town, a bet against the company, and the blame on the
+traffickers (a kamikaze drone is their signature) in an investigation he expected to lead. He left his phone at home (the antennas put him there: his
+alibi) and launched the drone. **He did not know the four failures below.**
 
-| Gain | Whose (proposed) |
-|---|---|
-| The company's shares crash (buy it cheap) | the Corporation |
-| Banned substances produced at the company's refinery get buried | the Corporation (or the company's own board inside it) |
-| The company's CEO, running for the Senate, is ruined | the Agency (the corrupt law and its politicians) |
-| A BODY in the containment pit disappears for ever | the Militia |
-| The authorities are busy while rival gangs attack (the sirens disabled for it) | the Militia's war with a rival gang |
+**The bet (Claude, 2026-10-22, answering the Director's question).** **Short-dated PUT OPTIONS bought through a front ("laranja")**, not a short sale: a
+man in debt can afford a premium (a short needs margin and can lose without limit), and the leverage makes a small spill pay. **Many bettors hide him:**
+the Corporation is openly building a bearish position and has leaked the buried engineering report to the market, so after the disaster the regulator
+finds a crowd of puts and goes after the biggest (the Corporation's fund), which feeds twist 1. **His tell is the expiry:** everyone else bet over months;
+he bought puts expiring days later, which only someone who knew the date would do (the Corporation's clue in lap 2). Proposed origin of the idea: he sees
+the Corporation's bets through police intelligence: if they bet on a fall, he will make the fall, and they will be the suspects. **Not a dark-web
+contract paid in bitcoin:** there is no market for it, and bitcoin's public ledger is traceable at the cash-out; if crypto appears at all, it pays for the
+drone parts or the front, and then it is one more trail.
 
-**Everyone had something to gain and something to hide, so after the fall each power believes it (or its ally) caused it** and tries to pin it on the
-others; the over-full reservoir, the forged report and the dead sirens are their shares. Hundreds of people and animals died.
+**What happened.** The drone struck the substation that powers the pumps and the sirens. **Four failures turned a small spill into a massacre; each
+faction is guilty of one and innocent of the attack.** The official version, "a fire at a substation", suits all four, so none wants a real
+investigation, and each needs one off the books.
 
-**The family.** By the cruelty of chance the Agent's son was among the victims; **his wife survives, with lasting injuries, in hospital** (a living
-stake and a reason to stay; Claude's note: she can be a quiet source of pressure and, later, of truth). His grief is real; the player sees real tears and
-trusts him.
+**The family.** His wife and son, driving home early from an event in another town (her missed calls), were caught near the epicentre. The son dies; the
+wife dies in intensive care at the campaign's midpoint; the baby survives (Director, 2026-10-22: *"a mãe morre mas o bebê sobrevive no fim"*).
 
-**The opening (Director):** the news by phone, off-screen; the son's body, the Agent in tears; he is called to give a deposition; leaving the police
-station he is approached by a faction — **the player chooses which**. **Why each faction wants him:** a law-enforcement agent, an insider to the
-investigation, a grieving father: the perfect instrument to "find" the guilty among the others. **He accepts because the investigation is his cover:**
-from inside it he hunts the evidence of his own act while it leads him through the others' crimes.
+**The circle (Director's structure, 2026-10-22; the table is Claude's, accepted):** each leader trades what he knows for a favour that points at the next:
+Police → Militia → Traffickers → Corporation → Police. The pairs outside the circle are extra clues for free (Police and Traffickers: the bribes; Militia
+and Corporation: the CEO against the shareholders).
 
-**The campaign's questions, answered in layers:** what each power hid (chapters 1-2), that all their shares made a leak into a massacre (twist 1, the
-false resolution), and **who hired him** (open: Q below). Twist 2 stays: the man the player followed as an avenging father opened the breach, and knew it
-from the first scene.
+| Faction | Asks for (and points at) | Really hides | Its failure in the disaster | Alibi | Obstacle | Its clue about the trigger (lap 2) |
+|---|---|---|---|---|---|---|
+| **Police** (the chief) | Investigate a "leak" off the books → the **Militia**, which receives it | The pit as a dump for bodies; the deal with the traffickers | Blocked the pit's inspections: the containment failed | The official "substation fire" version is his, and he runs the case | Cannot use his own men (the leak); fears federal scrutiny | "Someone passed the road block that night on a police credential" |
+| **Militia** (the commander of the CEO's security) | Prove it was the traffickers (a drone) → the **Traffickers** | Billed the sirens' backup power and never installed it; takes the traffickers' territory | The sirens stayed silent | Holds the drone's wreck: "proof" of an outside attack | Cannot let any inspector near the siren system | "The drone took off inside our perimeter, with codes only we and our informant knew" |
+| **Traffickers** (the club's president) | Find who leaks to the militia; they suspect their financiers → the **Corporation** | The lab in the refinery; their dead in the pit | Chemical waste dumped in the dam: the reservoir over its limit | Lost their lab and men: they look like victims | The bodies may surface with the mud; the bought police no longer protect them | "Someone bought drone parts at our chop shop weeks before" |
+| **Corporation** (the minority shareholders' leader) | Prove it was the State's negligence (the chief) → the **Police** | Finances the traffickers; wants the stock down for the foreign fund | Buried the engineers' risk report | The fall "hurts" them in public; no weapons | The market regulator investigates the bets against the company, theirs included | "Someone bet against us through a front, on puts expiring that week" |
 
-**Claude's proposals kept from the first version:** the son's phone as the MacGuffin (fieldwork photos at dawn: the others' shares, and one frame of the
-Agent at the dam); the prologue as the night at the dam (the player opens the "leak" without knowing what it is; the HUD's label is the briefing's, and the
-finale relabels it), or, if the game must open on the phone call, the dam night as the final mission; routes by the recruiting faction (order of targets,
-same length); the chosen faction as the first weekly-war allegiance.
+**The same clues in every route (Director, 2026-10-21).** The circle is a cycle: the player's choice picks where it starts, the order is a rotation, every
+route meets the same four pieces and the same four clues, and the last one always completes the picture: §2.4's fair reveal is written once. Alone, each
+clue is ambiguous; together they describe one man. The model is Agatha Christie's *The Murder of Roger Ackroyd* (1926): the narrator is the culprit and
+every clue is in plain sight.
 
-**Who hired him = the faction that recruits him at the police station (Director, 2026-10-21, on Claude's proposal):** the player's choice decides the
-client; the client recruits him to keep him close and aim him at the others before he finds out. **The Agent eliminates all three leaders; only at the
-third does he connect the dots, and the truth is revealed to the player then.** **The clues are the SAME in every route; only the ORDER
-in which he finds them changes (Director, 2026-10-21).** The recruiting faction's leader is the third to fall, so its piece is always the last one,
-and the same evidence points at a different client because of the order it is read in; §2.4's fair reveal is written once. Proposed thread across routes: the same intermediary (a lawyer, a fixer) hires
-him in every route, working for that route's client: a replayer recognises the face. In Freelance the client faction survives its leader, and the player
-knows what it did.
+**The investigation goes abroad (Director, 2026-10-21):** the attack is a FEDERAL case, so the Agent travels beyond the disaster area (the foreign fund,
+the front's offshore broker, the traffickers' routes); the campaign's locations sit on the game's 3D globe, also its mission hub (`COSMETICS_MASTER_PLAN`
+§6).
 
-**Backup settings (Director, 2026-10-21):** if the tailings dam has to change, an OIL REFINERY or a HYDROELECTRIC PLANT carries the same plot (a
-breach for a paid "leak", everyone's hidden failures turning it into a catastrophe).
-
-**The investigation goes abroad (Director, 2026-10-21):** the attack is a FEDERAL-level case, so the Agent travels beyond the disaster area and hunts clues
-in different places of the world; the campaign's locations sit on the game's 3D globe, which is also its mission hub (`COSMETICS_MASTER_PLAN` §6).
-
-**Open (Director):** what "his own interest" was
-(money, a debt, leverage over him); the fictional names; the prologue's form.
+**Open (Director):** whether lap 2's first three confrontations are shorter than the last (the campaign's length); the fictional federal agency's name and
+its ranks per country (the Director's draft says "Tenente", a military rank: Brazil's federal police ranks are agente, escrivão, perito, delegado); the
+dedication and the partnership (`LAUNCH_MASTER_PLAN` §1).
 
 ---
 
@@ -746,8 +741,9 @@ always costs mobility or stealth.***
 One guard archetype ships. Everything below the hierarchy is design only.
 
 ### 11.1 Three factions
-> **2026-10-21:** the enemy factions are the three of §2.1: the Agency, the Militia and the Corporation (a private military and security company).
-> The play styles below stand; the names are working names.
+> **2026-10-22:** the enemy factions are the FOUR of §2.1: the Federal Police (a fictional agency), the Militia (a private military security company),
+> the Traffickers (a motorcycle club) and the Corporation (GRUB DRILL's executives). The three play styles below were written for the older roster; the
+> mapping and the fourth faction's counter are open (§18).
 
 **The Agency — control through information.** Guards with radios and check-in
 protocols, AI cameras, motion sensors, lieutenants who read trails and predict
@@ -910,6 +906,10 @@ Objectives: reach a terminal · neutralise a guard · pass undetected · recover
 an item · escort or rescue · sabotage a system · survive an ambush.
 
 ### 14.3 The MVP — three focused chapters
+> ⚠️ **2026-10-22: written for the older three-faction, three-chapter campaign.** The campaign is now four factions in two laps, in an order the
+> player picks (§2.2, §2.6), so each faction's chapter must teach its mechanic without depending on the others'. The kit / enemy / lesson ladder below
+> is still the intent per faction; its re-mapping to four factions is open (§18).
+
 | Chapter | Setting | Agent kit | Enemies | Mechanic taught | Lesson |
 |---|---|---|---|---|---|
 | **1 — The Agency** | Corporate HQ | Civilian clothes, knife, normal vision, 1 gadget | Recruit, radio guard, simple camera | Vision cones + shadows | Understand detection |
@@ -1031,27 +1031,34 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   from the beginning (not who hired him, nor the others' shares); the player
   does not.** He performs the hero throughout the
   campaign and is exposed at the finale (§2.4).
-- ✅ **The Agent's moral boundary** → **he opened a breach for money from an
-  unknown client, not knowing it would kill**; with everyone's crimes it
-  killed hundreds, his son among them (Director, 2026-10-21; §2.6).
-- ✅ **The inciting event and the factions** → three powers (the corrupt law,
-  the criminals, a third entity against both), each guilty of a share in the
-  dam's fall and each believing it alone caused it; the player picks the
-  recruiting faction at the police station (Director, 2026-10-21; §2.1, §2.6).
+- ✅ **The Agent's moral boundary** → **for money (a bet against the company)
+  he attacked a dam meaning a small spill, not knowing it would kill**; with
+  the four factions' failures it killed hundreds, his son among them, and his
+  wife later (Director, 2026-10-21/22; §2.6).
+- ✅ **The inciting event and the factions** → four factions around GRUB
+  DRILL INC, each guilty of one failure that turned the Agent's small attack
+  into a massacre and innocent of the attack itself; the player picks the
+  recruiting faction at the police station; two laps around a circle of
+  favours (Director, 2026-10-22; §2.1, §2.2, §2.6).
 - ✅ **Premium campaign or shared campaign?** → **Shared.** Free and paying
   players can reach the same campaign, Freelance content and powers; payment
   accelerates progression (§16).
 - ✅ **Purchased loot boxes for an all-ages audience?** → **No.**
 
 **Still open — do not decide these unilaterally:**
-- [ ] The Agent's concrete endgame — control the factions, destroy them,
-  monopolise information, or found a fourth power (Claude's proposal in
-  §2.6: the investigator who holds the archive, the routes and the systems).
+- [ ] The Agent's concrete endgame — the epilogue (§2.2) leaves him the
+  winner of the bet, the father of the baby and the one man who knows all
+  four factions' secrets; whether that becomes a "broker" role in Freelance
+  is open.
 - [ ] Final player agency after the reveal — embrace the Agent's plan, reject
   it, choose among endings, or witness one canonical villain victory.
-- [ ] The mining company's fictional name (the town is the player's city,
-  §2.6); the son's reason to be there; the prologue's form (the dam night
-  first, or the phone call first and the dam night last).
+- [ ] The fictional federal agency's name and its ranks per country (§2.6);
+  whether lap 2's first three confrontations are shorter (the campaign's
+  length); §11.1's counters for FOUR factions (they were written for three).
+- [ ] The age rating: §16 speaks of an "all-ages product", but the §2.6
+  narrative (a policeman causing a mass-casualty disaster, drugs, bodies,
+  militias) will be rated 16-18; §16's wording and the social features must
+  follow the rating.
 - [ ] Exact 1× economy pacing and the catalog of paid boosts beyond the
   permanent gameplay-currency 2×.
 - [ ] Rewarded continue restore point and whether one per mission remains the

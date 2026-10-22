@@ -60,6 +60,14 @@ workers fighting for jurisdiction, curfew, traffickers' zones, Militia facilitie
 `DESIGN` §2.2, §14.4 (Claude's proposals there: jurisdiction as a zone rule with uniforms, the rescue never a battlefield); the engine need is a
 top note in `docs/systems/MAP_MASTER_PLAN.md`.
 
+**Then ratified (Director):** **no baby.** After the station the commissioner "forbids" the case and hands over urgent OFFICIAL missions in zones
+the police barely reach (the power station among them), done first, in the player's order, all infiltration (evidence, people, bugs, acting on the
+world: a sluice gate, a tank). The rescue is scenery (vehicles, cordons, hoardings, closed zones); the rest of the town is held by factions and
+looters. **Acid, not mud** (the drug waste): dangerous ground, obstacle-heavy scenes; the engine has the liquid. **Time states are AUTHORED maps,
+campaign only;** Freelance plays the places in any time and order; in-mission change is the engine's (fire, glass, lights; a nightfall is NOT built).
+To confirm: Claude's reading that the order of the official missions decides the wife's fate (power first: she lives, and he fakes his death).
+`DESIGN` §2.2, §2.6, §14.2, §14.4, §18; the map plan note rewritten (no mechanism planned).
+
 **Open after this pass** (items 1, 4, 5, 6 of §2 above still stand; item 3 is ruled): the four class kits and whether later characters replay the
 whole campaign; the reporter's name, outlet, first contact, what the final fight is made of, and whether killing him breaks a no-kill run; where the
 tattoo sits on the body; each Agent instance's look per class; the forum in-game or on the web; the Brumadinho question for the association.

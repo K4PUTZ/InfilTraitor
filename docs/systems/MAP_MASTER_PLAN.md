@@ -1,12 +1,9 @@
 # INFILTRAITOR — Map System Master Plan
 
-> 📌 **2026-10-22 — PLANNED, nothing designed or built: the same map over time (`DESIGN_MASTER_PLAN` §14.4).** The campaign plays in a
-> devastated region whose places come back as time passes, changed a little in look and play (the Deus Ex model: the flood receding, rescue camps,
-> checkpoints and jurisdictions moving, the curfew, the town restored at the finale). No map has a notion of "this place at another time" today. What
-> already exists to build it from: maps are data (`.map.json`, owner-registered sections), lights come from the map, props / liquids / ground marks /
-> roofs are map sections, destruction persists in the base records. Open when this is designed: how a time state is expressed (a section of the
-> base map, or a second map naming its base), whether damage done on an earlier visit carries into the next, and how the city naming of
-> `COSMETICS_MASTER_PLAN` §6 applies to it. Design it when the campaign's maps are authored, with the Director.
+> 📌 **2026-10-22 — the same place at another time is AUTHORED, not a mechanism (Director; `DESIGN_MASTER_PLAN` §14.4).** The campaign's places come
+> back as time passes, changed a little (the Deus Ex model); each time state is a hand-made map, campaign only, and Freelance plays the places at any
+> time and in any order. No map mechanism is planned for it. What changes DURING a mission is the engine's (destruction, fire, glass, lights switched
+> at runtime); ⚠️ a nightfall is not built (no time-of-day / ambient change in the code, searched 2026-10-22; `VOXEL_LIGHT_MASTER_PLAN` §LE).
 
 > ⏭️ **2026-10-17 — `panels` may `block`; a new bench map.** A panel item takes `"blocks": true` (a half-thickness wall of a thin material that blocks movement, sight and rounds like any wall edge; default false: panels are still passed through, `MapCompiler`). Soft-material roofs and walls (cloth, cardboard) are drawn as sheets (`docs/ARCHITECTURE.md` §0.5). `MARKET_LAB` is the new dev fixture (quitandas); PLAYGROUND's cardboard and fabric wall trios became quitandas. `docs/technical/MAPFILE_REFERENCE.md` has the field.
 

@@ -114,26 +114,39 @@ police station CREATES that character, whose faction never changes; the same pla
 ```
 OPENING — Home (Director)
   The Agent comes home and pours a drink. The news: a fire at a substation
-  failed the dam's containment; a mass collapse floods the town; curfew.
-  He is genuinely stunned. His phone, left at home, shows missed calls
+  failed the dam's containment; a mass collapse floods the town with
+  acid (§2.6); curfew. He is genuinely stunned. His phone, left at home, shows missed calls
   from his wife. It rings: his wife is in intensive care; their son is
   dead. He falls to his knees. Titles.
 
 THE POLICE STATION
-  His deposition. Too close to the case, he is barred from it, suspended,
-  his badge taken. Outside, a faction approaches him: THE PLAYER CHOOSES
-  WHICH, and that choice creates the character (his class, §15). Its
-  uniform is his first disguise: he moves freely on its turf first, and
-  earns access to the others as he goes.
+  His deposition. Too close to the case, the commissioner "forbids" him
+  to investigate it, and hands him urgent OFFICIAL missions instead, in
+  the zones where the police has limited access (Director, 2026-10-22).
+  Outside, a faction approaches him: THE PLAYER CHOOSES WHICH, and that
+  choice creates the character (his class, §15). Its uniform is his
+  first disguise: he moves freely on its turf first, and earns access to
+  the others as he goes.
 
-THE AFTERMATH — the backdrop of both laps (Director, 2026-10-22)
-  Leaving the station, the map is revealed: the region is devastated,
-  and the Agent must help the authorities in the chaos. Rescue teams,
-  firefighters, police, workers and other public bodies fight for space
-  and jurisdiction, under the curfew, beside zones the traffickers hold
-  and the Militia's facilities. That chaos is what lets him move through
-  the region's towns, and the same places come back as time passes,
-  changed a little in look and play (the Deus Ex model, §14.4).
+THE AFTERMATH — the backdrop of the whole campaign (Director, 2026-10-22)
+  Leaving the station, the map is revealed: the region is devastated.
+  The rescue is heard of more than seen: police vehicles, cordons,
+  hoardings, closed zones. The rest of the town is chaos, held by the
+  factions for lack of authorities, under the curfew; some areas taken
+  by looters, or by faction members using the moment. The flood was
+  ACID, not mud (§2.6): the ground stays dangerous to walk long after,
+  which is why the scenes are full of obstacles. That chaos is what lets
+  him move through the region's towns, and the campaign's places come
+  back as time passes, changed a little (§14.4).
+
+THE OFFICIAL WORK — first (Director, 2026-10-22)
+  The commissioner's missions are his JOB, not the parallel investigation
+  he does for the factions. The player picks which come first, before
+  leaving for the investigations; one of them is restoring the power
+  station. All are infiltration: gathering evidence, talking to people,
+  planting bugs, acting on the world (opening a sluice gate, draining a
+  tank). The power coming back early is what lets the hospital work: the
+  wife's fate (§2.6).
 
 LAP 1 — the favours (four chapters, one per faction; the circle stays:
   Director, 2026-10-22)
@@ -142,8 +155,8 @@ LAP 1 — the favours (four chapters, one per faction; the circle stays:
   favour earns a piece of information and the access (uniform, credentials)
   to the next turf. Each chapter teaches its faction's mechanics; the
   starting faction is the player's, so no chapter may depend on another's.
-  Midpoint: his wife dies in intensive care; the baby is delivered by an
-  emergency caesarean and survives in the neonatal unit.
+  Midpoint: his wife dies in intensive care, unless the power came back
+  in time (§2.6). There is no baby (Director, 2026-10-22).
 
 LAP 2 — the confrontations, in ANY order (Director, 2026-10-22: he will
   kill each leader eventually, so the order is free)
@@ -177,13 +190,13 @@ THE CEMETERY — the finale (a scene, no fight: Director, 2026-10-22)
 
 EPILOGUE (to re-cut: open)
   Both branches leave him a FUGITIVE (supersedes "kill him and stay
-  free"). The earlier beats must be re-placed: the neonatal unit with the
-  baby in his arms ("I found all of them"), the CEO elected on the
-  "accident" version, the foreign fund buying the company at half price,
-  the bet paid, "There is no right or wrong. There are only winners."
-  In both branches he goes on infiltrating and charging for information.
-  Proposed (Claude, §2.6): he fakes his own death and watches his family
-  grow from afar.
+  free"). If the wife lived, he fakes his own death and watches her from
+  afar (Director). The earlier beats must be re-placed: "I found all of
+  them" (said at the son's grave now that there is no neonatal unit), the
+  CEO elected on the "accident" version, the foreign fund buying the
+  company at half price, the bet paid, "There is no right or wrong. There
+  are only winners." In both branches he goes on infiltrating and
+  charging for information.
   Unlocks: FREELANCE MODE for that character (COSMETICS_MASTER_PLAN §4).
 ```
 
@@ -273,10 +286,13 @@ never depend on narrative content to resolve game logic** (§19 Rule 2).
 mining company and attacks it, "apostando que o dano seria pequeno", meaning to blame one of the factions in an investigation he expected to lead; the
 whole structure comes down, the containment pit fails, the sirens stay silent; his wife and son, driving home early from an event in another town, are
 caught near the epicentre; "No fim das contas todos os envolvidos são corruptos, inclusive o agente".)* **Supersedes this section's two earlier versions
-(the "controlled breach" and the "unknown client").**
+(the "controlled breach" and the "unknown client").** The pregnancy was dropped on 2026-10-22: there is no baby.
 
 **Fiction, not reportage.** Inspired by the tailings-dam collapses of recent years, never named after them: no real person, company or detail that
-identifies a real case, and the dead treated with respect (no spectacle of the mud, no gameplay that makes light of it). **The town is the city the
+identifies a real case, and the dead treated with respect (no spectacle of the flood, no gameplay that makes light of it). **Acid, not mud
+(Director, 2026-10-22):** the flood is an acid one, born of the traffickers' drug waste in the reservoir; the ground stays dangerous to walk long
+after the tragedy, which justifies scenes full of obstacles, and it moves the game's image away from the real collapses' mud. The engine already
+has the liquid (`liquids/acido.json`, M6: exposure in the shallows and the deep, footprints, it corrodes floors, curbs and metal). **The town is the city the
 player chooses as his base** (Director: *"É uma obra de ficção sobre uma tragédia que pode acontecer em qualquer lugar"*); real names and flags appear
 only on neutral places (`COSMETICS_MASTER_PLAN` §6); a player who gives no city gets a fictional default. **Backup settings:** an OIL REFINERY or a
 HYDROELECTRIC PLANT carries the same plot. **Open — a city that lived a real dam disaster** (Director, 2026-10-22: barring a player from his own
@@ -307,27 +323,21 @@ make the fall, and they will be the suspects. **Not a dark-web
 contract paid in bitcoin:** there is no market for it, and bitcoin's public ledger is traceable at the cash-out; if crypto appears at all, it pays for the
 drone parts or the front, and then it is one more trail.
 
-**What happened.** The drone struck the substation that powers the pumps and the sirens. **Four failures turned a small spill into a massacre; each
+**What happened.** The drone struck the substation that powers the pumps and the sirens. The flood was acid: the traffickers' waste had turned the
+reservoir (their failure, below). **Four failures turned a small spill into a massacre; each
 faction is guilty of one and innocent of the attack.** The official version, "a fire at a substation", suits all four, so none wants a real
 investigation, and each needs one off the books.
 
-**The family.** His wife and son, driving home early from an event in another town (her missed calls), were caught near the epicentre. The son dies; the
-wife dies in intensive care at the campaign's midpoint; the baby survives (Director, 2026-10-22: *"a mãe morre mas o bebê sobrevive no fim"*). The son
-is buried late, after the town is restored (the cemetery finale, §2.2). **Variant floated (Director, 2026-10-22, open):** the wife and the son survive,
-or one of them, depending on the player's choices. Claude's remarks: the son's death comes in the opening, before any choice, and his burial is what
-moves the Agent to hand over his gun, so his survival would rewrite both ends; a child's life hanging on the player's performance reads as "you
-failed to save him" (§16 keeps the child's death off-screen); the wife's survival is cheaper (the midpoint and the epilogue) if tied to a real choice.
-**Refined (Director, 2026-10-22, still in doubt whether anyone survives):** the son's death stays fixed. A surviving family is a liability for a
-fugitive freelancer, unless he FAKES HIS OWN DEATH and watches them grow from afar. Then easter eggs at the very start decide it: restoring the
-power first lets the hospital work and saves the mother and the baby; doing anything else first (putting out a fire...) saves only the baby, or
-only the mother. **Claude's recommendation:** (1) an easter egg gives and never takes: the default stays the canon (the mother dies, the baby lives),
-only the hidden act saves both, and no hidden path kills the newborn; (2) ~~"the very start" becomes a short playable night of the disaster~~ —
-withdrawn: **the power belongs to the AFTERMATH, after the police station, and needs more thought** (Director, 2026-10-22; §2.2); the idea that
-restoring the power LIGHTS the area, so the right act costs the player his cover, still stands as a proposal; (3) the faked death closes every
-branch, since the baby always survives: he leaves them believing him dead and goes on as a ghost freelancer, which also answers where the baby
-stays. **Also floated (Director, 2026-10-22, undecided):** no baby at all; the wife survives (by the power) or dies along the plot. Claude's
-read: it takes the newborn off the scale of a hidden choice, keeps the easter egg a pure gift, and costs the epilogue's note of hope, a little of
-the motive's pressure (the debt and the foreclosure remain) and a second version of the cemetery scene (with her, or at her grave).
+**The family (Director, 2026-10-22: no baby).** His wife and son, driving home early from an event in another town (her missed calls), were caught
+near the epicentre. The son dies, and is buried late, after the town is restored (the cemetery finale, §2.2). The wife is in intensive care: **she dies
+at the midpoint, unless the power came back in time.** Restoring the power station is one of the commissioner's official missions, and the player
+picks their order (§2.2). *(Claude's reading of the Director's thread, "restoring the power first lets the hospital work", to confirm: the order of
+the official missions decides it, with no hint on screen, an easter egg that only gives.)* **If she lives,** he fakes his own death and watches her
+from afar (Director), and the cemetery scene has two versions (with her beside him, or at her grave). **Superseded 2026-10-22:** the baby (*"a mãe
+morre mas o bebê sobrevive no fim"*), the son's survival as a variant, Claude's playable "night of the disaster". **The power lights the area
+(Claude, proposal):** restoring it switches the area's lights on, so the right act costs the player his cover; the engine already turns lights on
+and off at runtime for fire (`LightingController.add_extra_lights()` + `rebuild_tactical()`), and a district coming back on is that mechanism at a
+larger scale, its cost unmeasured.
 
 **The circle (Director's structure, 2026-10-22; the table is Claude's, accepted):** each leader trades what he knows for a favour that points at the next:
 Police → Militia → Traffickers → Corporation → Police. The pairs outside the circle are extra clues for free (Police and Traffickers: the bribes; Militia
@@ -337,7 +347,7 @@ and Corporation: the CEO against the shareholders).
 |---|---|---|---|---|---|---|
 | **Police** (the chief) | Investigate a "leak" off the books → the **Militia**, which receives it | The pit as a dump for bodies; the deal with the traffickers | Blocked the pit's inspections: the containment failed | The official "substation fire" version is his, and he runs the case | Cannot use his own men (the leak); fears federal scrutiny | "Someone passed the road block that night on a police credential" |
 | **Militia** (the commander of the CEO's security) | Prove it was the traffickers (a drone) → the **Traffickers** | Billed the sirens' backup power and never installed it; takes the traffickers' territory; its own men sell access to the traffickers' labs inside the guarded facilities | The sirens stayed silent | Holds the drone's wreck: "proof" of an outside attack | Cannot let any inspector near the siren system, nor near its insiders | "The drone took off inside our perimeter, with codes only we and our informant knew" |
-| **Traffickers** (the club's president) | Find who leaks to the militia; they suspect their financiers → the **Corporation** | The lab in the refinery, run with the Militia's insiders; their dead in the pit | Chemical waste dumped in the dam: the reservoir over its limit | Lost their lab and men: they look like victims | The bodies may surface with the mud; the bought police no longer protect them | "Someone bought drone parts at our chop shop weeks before" |
+| **Traffickers** (the club's president) | Find who leaks to the militia; they suspect their financiers → the **Corporation** | The lab in the refinery, run with the Militia's insiders; their dead in the pit | Chemical waste dumped in the dam: the reservoir over its limit | Lost their lab and men: they look like victims | The bodies may surface with the flood; the bought police no longer protect them | "Someone bought drone parts at our chop shop weeks before" |
 | **Corporation** (the minority shareholders' leader) | Prove it was the State's negligence (the chief) → the **Police** | Finances the traffickers; wants a contained leak to sell the company at half price to foreign funds, for a commission | Hid the engineers' risk report, hoping for a contained leak | The fall "hurts" them in public; no weapons | A real investigation finds the report and kills the half-price sale, and the commission with it | "Someone bet against us through a front, on puts expiring that week" |
 
 **The same clues in every route (Director, 2026-10-21; revised 2026-10-22).** Lap 1 is a rotation of the circle from the character's faction; lap 2 is
@@ -353,7 +363,7 @@ the front's offshore broker, the traffickers' routes); the campaign's locations 
 
 **Open (Director):** the fictional federal agency's name and
 its ranks per country (the Director's draft says "Tenente", a military rank: Brazil's federal police ranks are agente, escrivão, perito, delegado); the
-dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); the reporter's surname; what the reporter does in the let-him-live branch; the epilogue per branch; whether anyone in the family survives (above); a city that
+dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); the reporter's surname; what the reporter does in the let-him-live branch; the epilogue per branch; whether the official missions' order decides the wife's fate (above); a city that
 lived a real dam disaster (above).
 
 ---
@@ -992,6 +1002,13 @@ cache, traversal restriction, narrative event.
 Objectives: reach a terminal · neutralise a guard · pass undetected · recover
 an item · escort or rescue · sabotage a system · survive an ambush.
 
+**Every mission is a way of infiltrating (Director, 2026-10-22):** gathering
+evidence, talking to people, planting bugs, acting on the world (opening a
+sluice gate, draining a tank). The official missions and the investigations
+alike (§2.2). *(Claude: the liquids engine already re-reads a body's walls when
+the world changes (`FluidContainer`, M6), so a gate opened or a tank breached
+can move water; no interactable for it exists yet.)*
+
 ### 14.3 The MVP — three focused chapters
 > ⚠️ **2026-10-22: written for the older three-faction, three-chapter campaign.** The campaign is now four factions in two laps (§2.2, §2.6), played
 > from four starting factions (four routes, §15), so each faction's chapter must teach its mechanic without depending on the others', and difficulty
@@ -1007,19 +1024,19 @@ an item · escort or rescue · sabotage a system · survive an ambush.
 | **3 — The Corporation** | Laboratory | Modular armour, shock weapon, night vision, 2 gadgets | Drone, AI camera, high-tech guard | Electronics + automation | No solution is universal |
 
 ### 14.4 The same places over time — the aftermath (Director, 2026-10-22)
-After the police station the campaign plays in the devastated region (§2.2, THE AFTERMATH): rescue teams, firefighters, police, workers and other
-public bodies fighting for space and jurisdiction, the curfew, the traffickers' zones, the Militia's facilities. **The same scenes and places come
-back as time passes, with small modifications that change their look and their play** (Deus Ex's revisited hubs): it is what lets the campaign
-reuse its maps, and the restored town of the cemetery finale is the last state of the same place.
+After the police station the campaign plays in the devastated region (§2.2, THE AFTERMATH): the rescue heard of more than seen (police vehicles,
+cordons, hoardings, closed zones), the rest of the town held by the factions for lack of authorities, looters, the curfew, the acid on the ground.
+**The campaign's places come back as time passes, with small modifications that change their look and their play** (Deus Ex's revisited hubs),
+and the restored town of the cemetery finale is the last state of the same place.
 
-Claude's proposals (not ratified):
-- **Jurisdiction is a zone rule.** Each area is held by one body (a police checkpoint, a Militia facility, a traffickers' street, a rescue
-  camp), and who may pass is that body's uniform: the faction disguise (§2.2) extended to the public bodies, so a firefighter's or a worker's
-  uniform can be one more disguise. A change of jurisdiction between visits is the cheapest "modification that changes play".
-- **The rescue is never a battlefield.** Firefighters digging in the mud are the most recognisable image of the real collapses (§2.6,
-  `LAUNCH_MASTER_PLAN` §1): a rescue zone is where the Agent helps or passes, never where the player fights, and no objective counts the dead.
-- **Engine:** no map today has a notion of "the same place at another time"; the need is recorded in `systems/MAP_MASTER_PLAN.md` (the top note
-  of 2026-10-22) and is designed when the campaign's maps are authored.
+- **The time states are AUTHORED and belong to the campaign only (Director).** Each is a hand-made map. In Freelance the same places, though
+  similar, are played at any time and in any order.
+- **What changes during a mission is the engine's (Director):** a fire lit, a pane broken, lights switched on or off (built: destruction, fire,
+  glass; runtime light switching for fire, `LightingController.rebuild_tactical()`). ⚠️ **A nightfall is not built:** no time-of-day or ambient
+  change exists in the code (searched 2026-10-22); it belongs to the light milestone (`VOXEL_LIGHT_MASTER_PLAN` §LE, the light engine parked
+  2026-10-18 until that milestone).
+- *(Superseded 2026-10-22: Claude's "public bodies' uniforms as disguises" and "the rescue is never a battlefield": the rescue is scenery, not
+  play; and the "same map over time" engine mechanism: the time states are authored maps.)*
 
 ---
 
@@ -1168,7 +1185,13 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - ✅ **The Agent's moral boundary** → **for money (a bet against the company)
   he attacked a dam meaning a small spill, not knowing it would kill**; with
   the four factions' failures it killed hundreds, his son among them, and his
-  wife later (Director, 2026-10-21/22; §2.6).
+  wife later unless the power came back in time (Director, 2026-10-21/22; §2.6).
+- ✅ **The family, the aftermath and the official work** → no baby; the flood
+  is acid, not mud; after the station the commissioner bars him from the case
+  and hands him official missions (the power station among them) that come
+  first, in the player's order, all of them infiltration; the aftermath is the
+  campaign's backdrop, its time states authored maps (Director, 2026-10-22;
+  §2.2, §2.6, §14.4).
 - ✅ **The inciting event and the factions** → four factions around GRUB
   DRILL INC, each guilty of one failure that turned the Agent's small attack
   into a massacre and innocent of the attack itself; the player picks the
@@ -1202,8 +1225,8 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - [ ] The reporter's surname; what he does with the Agent's gun in the
   let-him-live branch (§2.2); the epilogue
   per branch; which lap-2 confrontation is the complete mission (§2.2).
-- [ ] Whether anyone in the family survives, and whether there is a baby at
-  all; the power moment, now in the aftermath; the faked death (§2.6).
+- [ ] Whether the order of the official missions decides the wife's fate
+  (Claude's reading, to confirm), and the faked death's details (§2.6).
 - [ ] A city that lived a real dam disaster (§2.6; Claude's recommendation
   there, to be taken to the association of those affected).
 - [ ] Exact 1× economy pacing and the catalog of paid boosts beyond the

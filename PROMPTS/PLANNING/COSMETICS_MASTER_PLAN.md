@@ -177,8 +177,8 @@ Every character in the game is ONE base skeleton (the hero's 65 bones, `ACTOR` D
 same slots, a rank is a few pieces on top, a cosmetic is one piece. **Nothing below is built; the hero's v5.1 pieces are the only ones that exist.**
 
 **8.1 Bases (one skeleton, the animations shared):** male (built: the agile-B body), female (planned, ACTOR D70's female option), a heavier build for
-the militia's and the traffickers' bruisers (a remodel of the same body, like agile-B), a child (the son, the opening; seen only in photographs and
-cut-scenes, a low priority) and a newborn (the epilogue, a prop in the arms, not a rig).
+the militia's and the traffickers' bruisers (a remodel of the same body, like agile-B), and a child (the son, the opening; seen only in photographs and
+cut-scenes, a low priority). There is no baby (`DESIGN` §2.6, 2026-10-22).
 
 **8.2 Slots (each piece declares the body regions it hides, C4):**
 
@@ -188,7 +188,7 @@ cut-scenes, a low priority) and a newborn (the epilogue, a prop in the arms, not
 | Torso | `shirt`, `collar_trim`, `tie`, `jacket` (suit jacket, police shirt, tactical top, biker vest over a shirt), `vest` (armour, the club's patched vest), `coat` |
 | Arms / hands | `gloves`, `armband` (the captain's armband, rank and faction emblems), `watch` |
 | Legs / feet | `trousers`, `shoes` (dress shoes, boots, trainers) |
-| Gear | `pack` (the hero's), `belt` (holster, radio, cuffs, pouches), `pack_pennant`, `badge` (the police badge: taken at the station, `DESIGN` §2.2) |
+| Gear | `pack` (the hero's), `belt` (holster, radio, cuffs, pouches), `pack_pennant`, `badge` (the police badge) |
 | Skin (layers, not meshes) | `tattoo` (the campaign ending's mark, §3: permanent per character; its region open) |
 | Held (attachments, not slots: `WEAPON_MASTER_PLAN`) | pistol, rifle, shotgun, grenade, the drone's controller, a phone |
 
@@ -201,7 +201,7 @@ cut-scenes, a low priority) and a newborn (the epilogue, a prop in the arms, not
 | Traffickers (motorcycle club) | patched vest over a shirt or tee, jeans, boots | bandana or balaclava, chains, a president's colours | bikers: vest and patch, loose shapes |
 | Corporation (executives and their agents) | suit of their own cut and palette, earpiece | sunglasses, a briefcase, the leaders' tailoring | suits, **never** the hero's fedora, coat or palette (§2.1) |
 
-**8.4 Named characters (a base + pieces + a face):** the Agent (built), his wife, his son, the baby, the four leaders (the police chief, the militia
+**8.4 Named characters (a base + pieces + a face):** the Agent (built), his wife, his son, the four leaders (the police chief, the militia
 commander, the club's president, the minority shareholders' leader), the CEO (Senate candidate), the commissioner who takes the badge (may be the chief),
 the official investigator who takes over the case, the front ("laranja"), **the reporter, Thomas** (the finale, `DESIGN` §2.2; civilian clothes, no faction
 set), and civilians (a few base outfits recoloured by the material/palette system). **The Agent himself is four instances** (one per faction, §2): his

@@ -119,7 +119,7 @@ ENEMY TURN (simultaneous execution)
 
 Four factions orbit one company, GRUB DRILL INC: **the Federal Police** (a fictional agency in the game), **the Militia** (a private military
 security company), **the Traffickers** (a motorcycle club) and **the Corporation** (the company's executives). A dam collapses; each faction is guilty
-of one failure that turned a small attack into a massacre, and innocent of the attack itself. The Agent, a federal investigator who lost his family
+of one failure that turned a small attack into a massacre, and innocent of the attack itself. The Agent, a federal investigator who lost his son
 that day, hunts all four in their own uniforms, until a reporter, the one outsider who put the pieces together, confronts him with the truth the player never
 suspected: the Agent launched the attack.
 

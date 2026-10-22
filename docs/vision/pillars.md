@@ -132,7 +132,7 @@ Encounters emerge from interacting systems, not scripted sequences. Players face
 New abilities unlock previously impossible routes and strategies. Learning compounds; mastery of early systems enables mastery of late systems.
 
 **Why It Matters:**
-- Keeps gameplay fresh across 3 campaigns + Freelance mode
+- Keeps gameplay fresh across four campaign routes (one per faction) + Freelance mode
 - Provides clear progression trajectory
 - Rewards skillful play with new options, not just stat inflation
 
@@ -140,7 +140,7 @@ New abilities unlock previously impossible routes and strategies. Learning compo
 - Gadgets and skills must interact with existing systems in surprising ways
 - Early-game tactics remain viable in late-game (not obsoleted)
 - Difficulty increase comes from complex encounters (more guards, more sophisticated coordination), not stat walls
-- Campaign structure teaches systems progressively (Chapter 1: vision; Chapter 2: communication; Chapter 3: coordination)
+- Campaign structure teaches systems progressively by a chapter's POSITION in the lap, not its faction (vision first, then communication, then coordination; `DESIGN_MASTER_PLAN` §14.3)
 
 **Anti-patterns:**
 - Late-game items that trivialize early-game challenges

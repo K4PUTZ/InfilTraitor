@@ -184,7 +184,7 @@ This document is NOT a feature list. It is a set of invariable principles that c
 - Freelance mode has escalating missions; contracts get harder as the player succeeds
 - New gadgets and skills open up possibilities, but old tactics remain viable
 - The "difficulty sweet spot" (challenging but fair) is maintained across the entire game
-- A decisive victory in chapter 1 is an equal match in chapter 3
+- A decisive victory in a lap's first chapter is an equal match in its last
 
 **Anti-patterns to avoid:**
 - Overpowered late-game items that eliminate all challenge

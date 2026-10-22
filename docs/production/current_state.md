@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-10-21 · **Branch:** claude/r3d-actors-y5r8hs
+**Version:** 0.9.107 · **Updated:** 2026-10-22 · **Branch:** claude/r3d-actors-y5r8hs
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -546,6 +546,9 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-17_SOFT_SHEETS.md
 - RESUMO_SESSAO_2026-10-18_LIQUIDS_M6.md
 - RESUMO_SESSAO_2026-10-19_LIQUIDS_CLOSED.md
+- RESUMO_SESSAO_2026-10-21_CHARACTER_HERO.md
+- RESUMO_SESSAO_2026-10-21_HERO_V5.md
+- RESUMO_SESSAO_2026-10-22_STORY_COSMETICS_LAUNCH.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -1542,9 +1545,14 @@ detonation arc took every session after that. It is parked, not blocked.
 ### Narrative (5% — Designed, unbuilt)
 Nothing is implemented and nothing should be until the gameplay milestones land.
 **But it is no longer undesigned:** on 2026-08-30 the Director ratified the
-campaign's structure and its reveal — an Elite prologue plus three chapters, the
-Agency/Network fracture as a **false** resolution, and the Agent himself as the
-infiltraitor who knew from the start. With it came the **fair-reveal contract**
+campaign's reveal — a **false** resolution, then the Agent himself as the
+infiltraitor who knew from the start. **Rewritten 2026-10-21/22:** four
+factions around GRUB DRILL INC and the dam, an opening at home, two laps (a
+circle of favours, then confrontations in any order) and a reporter who exposes
+the Agent at the finale (kill him or flee: two endings); a player has up to four
+characters, one per faction, four story routes (`DESIGN_MASTER_PLAN` §2.2,
+§15). The Elite prologue and the Agency/Network pair are superseded. With the
+2026-08-30 ruling came the **fair-reveal contract**
 (the twist must reinterpret evidence the player really saw, never invent an
 off-screen fact) and the unreliable-narrator rule for the mission interface.
 `docs/DESIGN_MASTER_PLAN.md` §2.2–§2.5; the monetisation half moved in the same

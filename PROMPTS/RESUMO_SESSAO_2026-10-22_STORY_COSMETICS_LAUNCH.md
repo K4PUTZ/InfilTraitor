@@ -25,3 +25,25 @@
 4. `COSMETICS` §5: prizes, the banner, the backend, contributions, trading; ratify C1-C11.
 5. `LAUNCH` L1-L6 scope; whether the dedication / partnership stays now that no real case is named.
 6. Hero: the hair style; D70's black-swap duration; D72's cloak numbers; the adapter to `ActorMesh3D`; the handset measurement of v5.1.
+
+## 3. Review pass (2026-10-22, later the same day)
+
+The Director reviewed the plot against Claude's list of tensions and stale text. Ruled, and written into the docs:
+
+| Ruling | Where |
+|---|---|
+| **The reporter**, a fifth element (not a faction): bought from the Agent, as an anonymous police source, the information about the traffickers that the Militia used; supplies the leads in lap 2 (his hints change with the order); at the finale he has put the pieces together, aims a gun at the Agent and exposes him (twist 2; he is §2.4's outside source); after the fight the player KILLS him (the Agent stays free) or FLEES (the Agent becomes a fugitive); in both endings he goes on infiltrating and charging for information | `DESIGN` §2.1, §2.2, §2.4, §18 |
+| A permanent **tattoo** marks the choice, per character instance; achievements for a no-kill run, bosses excluded | `DESIGN` §2.2; `COSMETICS` §3, §8.2 |
+| **Motives:** the Corporation hid the report hoping for a CONTAINED leak, for a commission on selling the company at half price to foreign funds, and buys no options; the Militia leaks from the inside (its men let the traffickers' labs into the facilities it guards) | `DESIGN` §2.1, §2.6 |
+| **Structure:** lap 1 keeps the circle; lap 2 in any order; the reporter's finale is the complete mission (Claude's reading, stated, not contested) | `DESIGN` §2.2, §2.6 |
+| **Four characters, one per faction**, each an instance of the Agent created at the police station: four story routes; classes restrict some powers early (replay value), converge at the endgame except a few faction specials; equivalent power, any class against any faction; missions need routes per style (stealth, brawl...), possibly per 3×3 segment | `DESIGN` §2.2, §14.3, §15, §18; `COSMETICS` §2 |
+| **Leagues:** many simultaneous leagues of 4 x 30 characters; invite friends; bots fill seats and are shown as bots; prizes to humans only; absence is the player's right; the challenge is a class left empty; the ranking mostly shows the avatar | `COSMETICS` §4; `LAUNCH` L4 |
+| **A forum** moderated by the community through earned privileges (Stack Overflow) | `DESIGN` §16; `LAUNCH` L7 |
+| **Brumadinho:** the Director's doubt (barring a player's city may hurt more) recorded with Claude's recommendation (dam everywhere, ask the association before launch, the backup setting as a silent tool); NOT ruled | `DESIGN` §2.6; `LAUNCH` §1 |
+
+Also applied (Claude's list B, no objection): the stale "3-chapter campaign", Elite prologue, "unknown client", "planted the bomb", Agency /
+Network and league-of-90 text in `DESIGN` §1/§11/§15/§18, `docs/vision/*`, `current_state.md`, `COSMETICS` (v0.4, §7 before §8) and `LAUNCH` (v0.2).
+
+**Open after this pass** (items 1, 4, 5, 6 of §2 above still stand; item 3 is ruled): the four class kits and whether later characters replay the
+whole campaign; the reporter's name, outlet, first contact, what the final fight is made of, and whether killing him breaks a no-kill run; where the
+tattoo sits on the body; each Agent instance's look per class; the forum in-game or on the web; the Brumadinho question for the association.

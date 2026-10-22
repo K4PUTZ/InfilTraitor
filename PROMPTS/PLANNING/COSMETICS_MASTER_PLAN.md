@@ -1,7 +1,10 @@
 # COSMETICS_MASTER_PLAN
-## Cosmetic items, ownership, the backpack, contributions, the weekly faction war and the world map — v0.2
+## Cosmetic items, ownership, the backpack, contributions, the weekly faction war and the world map — v0.4
 
-> 🟡 **v0.3 · 2026-10-22 · PLANNING ONLY, nothing built.** v0.3: four factions (§2), the 16+ audience (C11, §4), the model slot inventory (§8).
+> 🟡 **v0.4 · 2026-10-22 · PLANNING ONLY, nothing built.** v0.4 (Director's review of the plot): a player has up to FOUR characters, one per faction,
+> whose faction never changes (§2); the permanent tattoo of the campaign's ending (§3); many simultaneous leagues of 4 x 30 characters, bots shown as
+> bots, prizes to humans only (§4); the reporter (§8.4).
+> v0.3: four factions (§2), the 16+ audience (C11, §4), the model slot inventory (§8).
 > v0.2 (2026-10-21): v0.2: the factions are decided in `DESIGN_MASTER_PLAN` §2.1/§2.6 (§2 here); the world map, city only, no photo (§6).
 > v0.1: Opened by the Director after the hero v5 (`ACTOR` D70-D77): *"o que mais nosso
 > sistema de objetos precisa ter? Uma hash única por player, a questão da exibição na mochila [...] Vamos chupar o mecanismo do Team Fortress 2, ou
@@ -54,8 +57,12 @@ The rule underneath everything: **the server says what a player owns; the client
 **The FOUR factions are `DESIGN_MASTER_PLAN` §2.1's (revised 2026-10-22):** the **Federal Police** (a fictional agency in the game), the **Militia**
 (a private military security company), the **Traffickers** (a motorcycle club) and the **Corporation** (GRUB DRILL's executives and minority shareholders). The names
 are working names (Director: *"Tanto faz o nome, o importante é serem equilibradas"*). Each is guilty of a share in the dam's fall (§2.6), so no faction is
-the "good" one, and the Agent betrays all four. **The faction the player picks at the police station (§2.6) is his first allegiance here;** switching
-follows §4's cooldown. Balance: §2.1 (one axis each, the same threat budget, measured per faction and per route).
+the "good" one, and the Agent betrays all four. Balance: §2.1 (one axis each, the same threat budget, measured per faction and per route).
+
+**Four characters, one per faction (Director, 2026-10-22; `DESIGN` §15):** the faction picked at the police station (`DESIGN` §2.2) CREATES a
+character of that faction, and its faction never changes; a player has at most one per faction, each levelling on its own. Allegiance is therefore per
+CHARACTER, never per account, and there is no faction switching (supersedes v0.2's "first allegiance + cooldown"). **Consequence for items (Claude):**
+items belong to the account (C1) and are equipped per character; a faction's uniform pieces fit only that faction's character.
 
 ## 3. The new items the Director asked for
 
@@ -64,14 +71,29 @@ follows §4's cooldown. Balance: §2.1 (one axis each, the same threat budget, m
 | **Armband** (`armband` slot) | A band on the upper arm (the costume already had one in D70's first description: "blue shirt and armband"). Its SYMBOL is a texture layer chosen separately: the player's faction emblem, a rank, an event mark. **The "captain's armband"** is the armband earned by the weekly war's top contributors (§4), shown only for that week's winners and kept as a commemorative variant afterwards. In the black style it goes dark with the suit (D70), and it is never the only cue of anything (C3). | ~100 tris; the symbol is one shared atlas (no extra draw call per symbol). |
 | **Banner** | **Not on the figure in play:** D70 rules out capes, and a flag behind a 190 px figure hurts readability and the stealth silhouette. Two places instead: (1) the **profile / lobby / ranking BACKDROP**: a large banner behind the hero in the showcase scene (faction colours, the season's art, the player's emblem); (2) in play, a small **pennant on the pack** (`pack_pennant`), stowed in the black style. | The backdrop costs nothing in play; the pennant ~60 tris. |
 | **Emblem** | The symbol itself (shown on the armband, the banner, the profile card). Earned, bought or contributed; a definition like any other (C1). | A texture in the atlas. |
+| **Tattoo** (Director, 2026-10-22) | The mark of the campaign's ending (`DESIGN` §2.2): killing the reporter or fleeing him leaves a different tattoo, **permanent on that character instance** (not on the player), and everyone can see who is "good" or "bad". **Rules (Claude, proposed):** earned only, never sold, never removed or swapped for money (otherwise a moral status is for sale, §16); a skin LAYER on a body region (`tattoo`, §8.2), not a mesh; shown on the profile, the ranking and the showcase, and in play wherever that region's skin shows. **Open:** where on the body (the Agent wears gloves and a mask: the neck, the forearm?). | A texture layer in the skin atlas. |
 
 ---
 
-## 4. The weekly faction war (proposed)
+## 4. The weekly faction war (the league: Director, 2026-10-22; the rest proposed)
 
-**The loop:** each week every faction gets an **objective** (e.g. "the Network: extract 5 000 files", "the Corporation: disable 2 000 cameras", "the
-Agency: complete 1 500 missions without an alarm"). A player's missions in Freelance count toward HIS faction's objective. At the end of the week the
-winning faction's players get a prize; the top contributors of each faction get the **captain's armband** for the next week.
+**The league (Director, 2026-10-22).** Many simultaneous leagues, not one for everyone: a league holds up to **30 characters per faction, 120 in all**
+(league 00001, while another 120 play in league 00002, and so on), and nobody can predict which faction wins each one. Each of a player's characters
+(§2) plays in a league, so he can win with all four or lose with all four. A character's Freelance missions count toward its faction's points in its
+league; at the end of the week the faction with the most points in each league wins and reaps the prizes, **the bigger contributors taking the larger
+share; prizes go to humans only** (*"Os prêmios são dados somente aos melhores humanos"*). Proposed on top (Claude): a weekly objective per faction
+(e.g. "the Police: complete 1 500 missions without an alarm", "the Corporation: disable 2 000 cameras"), re-targeted from the measured balance
+(`DESIGN` §2.1), and the **captain's armband** for each faction's top contributors the next week.
+
+**Filling a league (Director):** the idea is to invite friends; **bots complete empty seats and are shown as bots**; they raise the points average but
+do not change the result significantly, and never receive a prize.
+
+**Absence is the player's right (Director):** a player may hurt his teams by not playing, but idle players exist on every team, so with 30 per side it
+evens out; whoever comes in every Sunday wants to play. **The real challenge is a class left empty:** a league where everyone plays style X or Y and
+class Z has nobody. (Claude: matchmaking fills each faction's 30 seats with characters of that faction and bots cover a short class; a class short in
+every league is a balance signal for its kit, measured as §2.1 asks.)
+
+**What the ranking is for (Director):** mostly to show each player's avatar (the master model, C6).
 
 **What §16 forces on it (ratified canon), and how the proposal complies:**
 
@@ -79,21 +101,22 @@ winning faction's players get a prize; the top contributors of each faction get 
 |---|---|
 | No FOMO, no punishing a missed streak, no fabricated urgency | Missing a week loses nothing; prizes are **cosmetic and commemorative**; every weekly cosmetic returns later by another route (no item removed only to force a purchase). |
 | The core game must not need an online service | The war is an online LAYER on top of offline play: missions played offline count when the device syncs (with validation, see below); nothing in the single-player game depends on it. |
-| Paid acceleration (the permanent **2× currency** multiplier) is accepted because there is no PvP | **The war IS a competitive surface** (§16 asks for an explicit revisit). Proposal: faction score counts **missions and objective actions, normalised**, never currency, so the 2× boost buys no war advantage; a per-player weekly cap stops one player (or one bot) from carrying a faction. |
+| Paid acceleration (the permanent **2× currency** multiplier) is accepted because there is no PvP | **The war IS a competitive surface** (§16 asks for an explicit revisit). Proposal: faction score counts **missions and objective actions, normalised**, never currency nor character level (a payer levels faster), so the 2× boost buys no war advantage; a per-player weekly cap stops one player from carrying a faction. |
 | No PvP planned | Factions compete through a shared score, never by fighting each other. |
 | A 16+ audience, minors included (§16) | No gambling mechanics in the prizes; no real-money value; the boards show nicknames and avatars, never a player's city. |
 
 **Anti-cheat:** an offline client can claim anything, so the server validates what it counts: plausible mission durations and outcomes, the per-player
-cap, signed mission seeds where possible, and outlier review before prizes are paid. **Balance:** factions can be uneven in size, so the objective is
-**per player** (average contribution) or scaled to each faction's active players; otherwise the biggest faction always wins and the rest leave.
+cap, signed mission seeds where possible, and outlier review before prizes are paid. **Size:** a league seats 30 per faction by construction, so the
+biggest faction can no longer win by numbers alone (v0.2's per-player average is no longer needed).
 
-**Switching faction:** allowed, with a cooldown (e.g. at most once per season) so a player cannot jump to the winning side on the last day.
+**Switching faction:** none: a character's faction never changes (§2; supersedes v0.2's cooldown).
 
 ---
 
 ## 5. Open questions for the Director
 
-1. ~~Which factions~~ — **decided** (§2): four since 2026-10-22: the Federal Police, the Militia, the Traffickers, the Corporation. ⚠️ §4's league numbers assumed three (3 x 30 = 90): with four, e.g. 4 x 25 = 100.
+1. ~~Which factions~~ — **decided** (§2): four since 2026-10-22: the Federal Police, the Militia, the Traffickers, the Corporation; a league is
+   4 x 30 = 120 characters (§4).
 2. **Prizes:** cosmetic only (armband, emblem, banner, paint), or also currency? (Currency in a competitive prize interacts with the 2× boost.)
 3. **The banner:** profile backdrop + a pack pennant, as proposed, or something on the figure itself (which D70 currently rules out)?
 4. **Backend:** a hosted service (faster) or our own (control, cost at scale)? Decides nothing in the data model (C9).
@@ -136,6 +159,18 @@ mentions it; FLAGS in the scenery reflect the base's country; billboards and oth
   anywhere. **Flags only in neutral zones — ratified.**
 - **Fallback:** a player who gives no city gets a default set (fictional city names, the game's own country), so nothing depends on the answer.
 
+## 7. Stages (once ratified; none started)
+
+| Stage | Content | Depends on |
+|---|---|---|
+| **CS-1** | Split the hero into base + one file per piece, the piece JSON (C4), the editable `.blend` per piece, an exporter that never overwrites a hand-edited piece; the body cut into regions | hero v5.1 (`ACTOR` D77) |
+| **CS-2** | The Godot assembler: one skeleton, pieces by loadout, hiding by regions and by style; also the adapter to `ActorMesh3D` (bone / action names) | CS-1 |
+| **CS-3** | The local item schema (definitions + instances, C1) and the stock catalog shipped in the APK; the backpack / shop scene with masters on demand and pre-rendered icons (C6) | CS-2 |
+| **CS-4** | Server: accounts, signed inventory, the signed asset manifest and the first-load download (C2, C5, D74) | C9 decided |
+| **CS-5** | Store purchases (in-app), paints and counters (C7, C8) | CS-4 |
+| **CS-6** | Factions in play (allegiance, armband, emblem, banner backdrop), the weekly war (§4) and the world map (§6) | §5 Q2, CS-4 |
+| **CS-7** | The contribution portal and curation (C10) | CS-5 |
+
 ## 8. The model slot inventory (Director, 2026-10-22: "planejar todos os slots de modelos que vamos precisar construir")
 
 Every character in the game is ONE base skeleton (the hero's 65 bones, `ACTOR` D70-D77) plus pieces in slots (C4). A faction is a uniform set over the
@@ -153,7 +188,8 @@ cut-scenes, a low priority) and a newborn (the epilogue, a prop in the arms, not
 | Torso | `shirt`, `collar_trim`, `tie`, `jacket` (suit jacket, police shirt, tactical top, biker vest over a shirt), `vest` (armour, the club's patched vest), `coat` |
 | Arms / hands | `gloves`, `armband` (the captain's armband, rank and faction emblems), `watch` |
 | Legs / feet | `trousers`, `shoes` (dress shoes, boots, trainers) |
-| Gear | `pack` (the hero's), `belt` (holster, radio, cuffs, pouches), `pack_pennant`, `badge` (the police badge: taken at the station, §2.6) |
+| Gear | `pack` (the hero's), `belt` (holster, radio, cuffs, pouches), `pack_pennant`, `badge` (the police badge: taken at the station, `DESIGN` §2.2) |
+| Skin (layers, not meshes) | `tattoo` (the campaign ending's mark, §3: permanent per character; its region open) |
 | Held (attachments, not slots: `WEAPON_MASTER_PLAN`) | pistol, rifle, shotgun, grenade, the drone's controller, a phone |
 
 **8.3 Uniform sets per faction (one set each, ranks add pieces, `DESIGN` §11.2):**
@@ -167,20 +203,10 @@ cut-scenes, a low priority) and a newborn (the epilogue, a prop in the arms, not
 
 **8.4 Named characters (a base + pieces + a face):** the Agent (built), his wife, his son, the baby, the four leaders (the police chief, the militia
 commander, the club's president, the minority shareholders' leader), the CEO (Senate candidate), the commissioner who takes the badge (may be the chief),
-the official investigator who takes over the case, the front ("laranja"), and civilians (a few base outfits recoloured by the material/palette system).
+the official investigator who takes over the case, the front ("laranja"), **the reporter** (the finale, `DESIGN` §2.2; civilian clothes, no faction
+set), and civilians (a few base outfits recoloured by the material/palette system). **The Agent himself is four instances** (one per faction, §2): his
+look per class is open (the hero's costume over each faction's pieces, or a faction look of his own).
 
 **8.5 Order of work (proposed):** the CS-1 split of the hero (C4) proves the slot pipeline; then one guard set (the Federal Police: the player's own
 institution, first on most routes) at the game LOD; then the other three sets; the named characters reuse the sets plus faces and tailoring. Each set
 has a ~5 k game budget (D73) and is measured on the Moto before the next.
-
-## 7. Stages (once ratified; none started)
-
-| Stage | Content | Depends on |
-|---|---|---|
-| **CS-1** | Split the hero into base + one file per piece, the piece JSON (C4), the editable `.blend` per piece, an exporter that never overwrites a hand-edited piece; the body cut into regions | hero v5.1 (`ACTOR` D77) |
-| **CS-2** | The Godot assembler: one skeleton, pieces by loadout, hiding by regions and by style; also the adapter to `ActorMesh3D` (bone / action names) | CS-1 |
-| **CS-3** | The local item schema (definitions + instances, C1) and the stock catalog shipped in the APK; the backpack / shop scene with masters on demand and pre-rendered icons (C6) | CS-2 |
-| **CS-4** | Server: accounts, signed inventory, the signed asset manifest and the first-load download (C2, C5, D74) | C9 decided |
-| **CS-5** | Store purchases (in-app), paints and counters (C7, C8) | CS-4 |
-| **CS-6** | Factions in play (allegiance, armband, emblem, banner backdrop), the weekly war (§4) and the world map (§6) | §5 Q2, CS-4 |
-| **CS-7** | The contribution portal and curation (C10) | CS-5 |

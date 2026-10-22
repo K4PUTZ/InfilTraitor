@@ -223,7 +223,8 @@ only on neutral places (`COSMETICS_MASTER_PLAN` §6); a player who gives no city
 HYDROELECTRIC PLANT carries the same plot.
 
 **GRUB DRILL INC** (fictional; a quick web search on 2026-10-21 found no company or mark of that name — a registry search before launch; the only known
-"GRUB"s are unrelated: GNU GRUB, Grubhub). A complex of refinery, mining and chemical-agent production across several towns. Its CEO runs for the Senate
+"GRUB"s are unrelated: GNU GRUB, Grubhub). **Logo (Director, 2026-10-22):** a stylised curled grub (reference `REFERENCES/grub.webp`); the symbol is drawn by us, the photo is only a reference.
+A complex of refinery, mining and chemical-agent production across several towns. Its CEO runs for the Senate
 and wants an exploration contract with the government; he hired the Militia's company to guard the complex in exchange for campaign support. One of its
 sites is the dam.
 

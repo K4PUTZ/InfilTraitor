@@ -1,7 +1,8 @@
 # COSMETICS_MASTER_PLAN
 ## Cosmetic items, ownership, the backpack, contributions, the weekly faction war and the world map — v0.2
 
-> 🟡 **v0.2 · 2026-10-21 · PLANNING ONLY, nothing built.** v0.2: the factions are decided in `DESIGN_MASTER_PLAN` §2.1/§2.6 (§2 here); the world map, city only, no photo (§6).
+> 🟡 **v0.3 · 2026-10-22 · PLANNING ONLY, nothing built.** v0.3: four factions (§2), the 16+ audience (C11, §4), the model slot inventory (§8).
+> v0.2 (2026-10-21): v0.2: the factions are decided in `DESIGN_MASTER_PLAN` §2.1/§2.6 (§2 here); the world map, city only, no photo (§6).
 > v0.1: Opened by the Director after the hero v5 (`ACTOR` D70-D77): *"o que mais nosso
 > sistema de objetos precisa ter? Uma hash única por player, a questão da exibição na mochila [...] Vamos chupar o mecanismo do Team Fortress 2, ou
 > possivelmente usar alguma plataforma tipo steamworks ou unreal pros usuários contribuírem"*; then *"vamos criar o plano de cosméticos, e incluir mais
@@ -134,6 +135,43 @@ mentions it; FLAGS in the scenery reflect the base's country; billboards and oth
 - **The dam — ruled (Director, 2026-10-21):** it happens in the player's chosen city (`DESIGN` §2.6): a fiction about a tragedy that can happen
   anywhere. **Flags only in neutral zones — ratified.**
 - **Fallback:** a player who gives no city gets a default set (fictional city names, the game's own country), so nothing depends on the answer.
+
+## 8. The model slot inventory (Director, 2026-10-22: "planejar todos os slots de modelos que vamos precisar construir")
+
+Every character in the game is ONE base skeleton (the hero's 65 bones, `ACTOR` D70-D77) plus pieces in slots (C4). A faction is a uniform set over the
+same slots, a rank is a few pieces on top, a cosmetic is one piece. **Nothing below is built; the hero's v5.1 pieces are the only ones that exist.**
+
+**8.1 Bases (one skeleton, the animations shared):** male (built: the agile-B body), female (planned, ACTOR D70's female option), a heavier build for
+the militia's and the traffickers' bruisers (a remodel of the same body, like agile-B), a child (the son, the opening; seen only in photographs and
+cut-scenes, a low priority) and a newborn (the epilogue, a prop in the arms, not a rig).
+
+**8.2 Slots (each piece declares the body regions it hides, C4):**
+
+| Group | Slots |
+|---|---|
+| Head | `hair`, `beard`, `hat`, `mask` (the hero's crown-mask, guards' balaclavas, helmets), `eyewear` (glasses, night-vision goggles, visors), `earpiece` |
+| Torso | `shirt`, `collar_trim`, `tie`, `jacket` (suit jacket, police shirt, tactical top, biker vest over a shirt), `vest` (armour, the club's patched vest), `coat` |
+| Arms / hands | `gloves`, `armband` (the captain's armband, rank and faction emblems), `watch` |
+| Legs / feet | `trousers`, `shoes` (dress shoes, boots, trainers) |
+| Gear | `pack` (the hero's), `belt` (holster, radio, cuffs, pouches), `pack_pennant`, `badge` (the police badge: taken at the station, §2.6) |
+| Held (attachments, not slots: `WEAPON_MASTER_PLAN`) | pistol, rifle, shotgun, grenade, the drone's controller, a phone |
+
+**8.3 Uniform sets per faction (one set each, ranks add pieces, `DESIGN` §11.2):**
+
+| Faction | Base set | Rank pieces (Recruit → Captain) | Must read at ~190 px as |
+|---|---|---|---|
+| Federal Police (fictional agency) | uniform shirt, trousers, boots, cap, duty belt | radio (Lieutenant up), tactical vest, a commander's jacket | the law: uniform colour and cap |
+| Militia (private security) | tactical top, armour vest, helmet or cap, boots, gloves | goggles / visor, drone controller, a heavier armour | high tech: hard silhouettes, visors |
+| Traffickers (motorcycle club) | patched vest over a shirt or tee, jeans, boots | bandana or balaclava, chains, a president's colours | bikers: vest and patch, loose shapes |
+| Corporation (executives and their agents) | suit of their own cut and palette, earpiece | sunglasses, a briefcase, the leaders' tailoring | suits, **never** the hero's fedora, coat or palette (§2.1) |
+
+**8.4 Named characters (a base + pieces + a face):** the Agent (built), his wife, his son, the baby, the four leaders (the police chief, the militia
+commander, the club's president, the minority shareholders' leader), the CEO (Senate candidate), the commissioner who takes the badge (may be the chief),
+the official investigator who takes over the case, the front ("laranja"), and civilians (a few base outfits recoloured by the material/palette system).
+
+**8.5 Order of work (proposed):** the CS-1 split of the hero (C4) proves the slot pipeline; then one guard set (the Federal Police: the player's own
+institution, first on most routes) at the game LOD; then the other three sets; the named characters reuse the sets plus faces and tailoring. Each set
+has a ~5 k game budget (D73) and is measured on the Moto before the next.
 
 ## 7. Stages (once ratified; none started)
 

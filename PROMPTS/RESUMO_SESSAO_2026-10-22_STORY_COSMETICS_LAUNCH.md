@@ -73,8 +73,19 @@ too many people leaves the hospital short of a supply and she dies; classes stay
 ending (Dishonored's chaos). Claude's proposals in `DESIGN` §2.6, not yet ratified: the supply is blood, the midpoint is the warning, a generous
 threshold, what counts (player-caused deaths by any means; not knockouts, the leaders or the reporter), a non-lethal option in every class kit.
 Superseded: the power / the official missions' order deciding her fate. **Then (Director):** those proposals RATIFIED; and he FAKES HIS OWN DEATH in
-every scenario (wife alive or not, reporter alive or not): he must disappear either way; if she lives, he watches her from afar. Open: how he
-stages it; the threshold's number.
+every scenario (wife alive or not, reporter alive or not): he must disappear either way; if she lives, he watches her from afar. **Then
+(Director, closing the plot for now):** the threshold is an average above 50% of the enemies killed; he fakes his death at the pit (the gun, the
+badge and his DNA into the acid), a TV report confirms it, the camera pulls back from his wife with her relatives, out through the window, to
+the Agent watching outside, who turns and disappears into the horizon. Claude's open joints (`DESIGN` §2.2): the badge taken back from the chief's
+body, the wedding ring (the reporter holds the gun in one branch), his blood on the pit's edge (acid destroys DNA), the empty foreclosed house as
+the sad ending's last shot, the old beats on the same news bulletin.
+
+## 4. Where the plot stands (closed for now, 2026-10-22)
+
+Ratified in `DESIGN_MASTER_PLAN` §2 / §14.4 / §15 / §18. Still open, none blocking: the agency's name and ranks; the reporter's surname; §11.1's
+counters and §14.3's ladder for four factions; the four class kits and whether later characters replay the campaign; which lap-2 confrontation is
+the complete mission; what the reporter does with the gun; the epilogue's open joints; a city that lived a real dam disaster (for the
+association); `COSMETICS` §5 and C1-C11; `LAUNCH` scope; the hero items (§2 item 6).
 
 **Open after this pass** (items 1, 4, 5, 6 of §2 above still stand; item 3 is ruled): the four class kits and whether later characters replay the
 whole campaign; the reporter's name, outlet, first contact, what the final fight is made of, and whether killing him breaks a no-kill run; where the

@@ -196,19 +196,32 @@ THE CEMETERY — the finale (a scene, no fight: Director, 2026-10-22)
   A permanent tattoo marks the choice on that character
   (COSMETICS_MASTER_PLAN §3).
 
-EPILOGUE (to re-cut: open)
+EPILOGUE (Director, 2026-10-22)
   Both branches leave him a FUGITIVE (supersedes "kill him and stay
-  free"), and in EVERY scenario he FAKES HIS OWN DEATH and disappears:
-  whether his wife lives or not, whether the reporter lives or not
-  (Director, 2026-10-22). If she lived (the common ending), he watches
-  her from afar. The earlier beats must be re-placed: "I found all of
-  them" (said at the son's grave now that there is no neonatal unit), the
-  CEO elected on the "accident" version, the foreign fund buying the
-  company at half price, the bet paid, "There is no right or wrong. There
-  are only winners." In both branches he goes on infiltrating and
+  free"), and in EVERY scenario he FAKES HIS OWN DEATH and disappears,
+  whether his wife lives or not, whether the reporter lives or not.
+  At the pit (the police's dump for bodies), he throws his belongings
+  into the acid, the gun, the badge, and his own DNA: the acid explains
+  why there is no body. A TV news report confirms his death. The camera
+  pulls back from the room and finds his wife with her relatives; it
+  keeps pulling back, out through the window, to the Agent outside,
+  watching her with her family, before he turns his back and disappears
+  into the horizon. Dead to the world, he goes on infiltrating and
   charging for information.
   Unlocks: FREELANCE MODE for that character (COSMETICS_MASTER_PLAN §4).
 ```
+
+**The epilogue's open joints (Claude's proposals, not yet ratified):**
+- **The badge** was taken by the commissioner in lap 1 (§2.2); for it to go into the acid he takes it back from the chief's body after the lap-2
+  confrontation, a beat of its own.
+- **The gun:** in the let-him-live branch the reporter holds it; there other belongings go in, and one goes in every branch: his wedding ring.
+- **The DNA:** a strong acid destroys DNA, so his blood is left on the pit's edge (the railing) while the belongings go in; the investigators read
+  "dissolved in the acid". This is the acid's second use in the story.
+- **The sad ending's last shot** (the wife died): the TV plays in the empty house the bank has taken (the debt, §2.6); the camera pulls back
+  through the window to the Agent alone outside, who turns and disappears.
+- **The earlier beats ride the same news bulletin** before his death is reported: the CEO elected on the "accident" version, the foreign fund
+  buying the company at half price. "I found all of them" stays at the son's grave (§2.2); "There is no right or wrong. There are only winners."
+  is his last line before he turns away.
 
 **The commissioner is the police chief (Director, 2026-10-22).** Consequence (Claude): on the Police route the man who bans the Agent verbally at
 the station is the one who recruits him off the books outside, to hunt "a leak" (§2.6), so the ban is official and the job is not; and the badge is
@@ -358,8 +371,9 @@ Claude's proposals for it (RATIFIED by the Director, 2026-10-22):
   the shootouts' toll on the radio, so the player is never surprised by a rule he never saw (§11.4). Dishonored was criticised for punishing players
   who used the combat it handed them; the warning and a GENEROUS threshold ("many" kills, not a few) are the answer.
 - **What counts:** deaths the player causes, by any means (a shot, a blast, a guard pushed into the acid); knockouts do not; the four leaders'
-  mortal confrontations do not (they are required); the reporter does not (the cemetery comes after her fate is sealed). The threshold is data
-  (§19 Rule 1), per character (each route has its own ending).
+  mortal confrontations do not (they are required); the reporter does not (the cemetery comes after her fate is sealed). **The threshold
+  (Director, 2026-10-22): the run kills, on average over its missions, MORE THAN 50% of the enemies** (bosses excluded); it is data (§19 Rule 1),
+  per character (each route has its own ending).
 - **Every class needs a non-lethal option from the start** (§15), or one class would be pushed toward the sad ending. A no-kill run (the
   achievement, §2.2) always reaches the common ending.
 
@@ -393,7 +407,7 @@ the front's offshore broker, the traffickers' routes); the campaign's locations 
 
 **Open (Director):** the fictional federal agency's name and
 its ranks per country (the Director's draft says "Tenente", a military rank: Brazil's federal police ranks are agente, escrivão, perito, delegado); the
-dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); the reporter's surname; what the reporter does in the let-him-live branch; the epilogue per branch; how he stages his own death; a city that
+dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); the reporter's surname; what the reporter does in the let-him-live branch; the epilogue's open joints (§2.2); a city that
 lived a real dam disaster (above).
 
 ---
@@ -1244,9 +1258,13 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   HIM LIVE (the Agent hands him his own gun and turns his back: a fugitive
   too); in every scenario he then fakes his own death; a permanent tattoo marks the choice on that character (Director,
   2026-10-22; §2.2).
-- ✅ **The Agent's endgame** → he fakes his own death in every scenario and,
-  dead to the world, goes on infiltrating and charging for information:
-  Freelance (Director, 2026-10-22; §2.2).
+- ✅ **The Agent's endgame** → he fakes his own death in every scenario (his
+  belongings and his DNA thrown into the acid of the pit; a TV report
+  confirms it; the camera pulls back to him watching his wife, if she lived,
+  then he disappears) and, dead to the world, goes on infiltrating and
+  charging for information: Freelance (Director, 2026-10-22; §2.2).
+- ✅ **The violence threshold** → the run kills, on average, more than 50% of
+  the enemies (bosses excluded): the sad ending (Director, 2026-10-22; §2.6).
 - ✅ **Who the player is** → up to four characters, one per faction, each an
   instance of the Agent created at the police station: four story routes,
   classes of equivalent power and different style (Director, 2026-10-22; §15).
@@ -1265,8 +1283,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - [ ] The reporter's surname; what he does with the Agent's gun in the
   let-him-live branch (§2.2); the epilogue
   per branch; which lap-2 confrontation is the complete mission (§2.2).
-- [ ] How he stages his own death (§2.2); the violence threshold's number
-  (data, tuned in play; §2.6).
+- [ ] The epilogue's open joints: the badge's return, the gun in the
+  let-him-live branch, where the DNA is left, the sad ending's last shot
+  (Claude's proposals, §2.2).
 - [ ] A city that lived a real dam disaster (§2.6; Claude's recommendation
   there, to be taken to the association of those affected).
 - [ ] Exact 1× economy pacing and the catalog of paid boosts beyond the

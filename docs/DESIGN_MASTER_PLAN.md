@@ -128,7 +128,8 @@ LAP 1 — the favours (four chapters, one per faction)
   Midpoint: his wife dies in intensive care; the baby is delivered by an
   emergency caesarean and survives in the neonatal unit.
 
-LAP 2 — the confrontations
+LAP 2 — the confrontations (the first three are SHORT missions, the last
+  one complete: Director, 2026-10-22)
   He returns to A with three new pieces: a mortal confrontation, A's
   confession of its share in the disaster, a clue: "someone did X". Each
   clue leads to the next leader. TWIST 1 (the false resolution) builds:
@@ -267,7 +268,9 @@ every clue is in plain sight.
 the front's offshore broker, the traffickers' routes); the campaign's locations sit on the game's 3D globe, also its mission hub (`COSMETICS_MASTER_PLAN`
 §6).
 
-**Open (Director):** whether lap 2's first three confrontations are shorter than the last (the campaign's length); the fictional federal agency's name and
+**Lap 2's length (Director, 2026-10-22):** its first three confrontations are short missions; only the last is a complete one.
+
+**Open (Director):** the fictional federal agency's name and
 its ranks per country (the Director's draft says "Tenente", a military rank: Brazil's federal police ranks are agente, escrivão, perito, delegado); the
 dedication and the partnership (`LAUNCH_MASTER_PLAN` §1).
 
@@ -1053,8 +1056,7 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - [ ] Final player agency after the reveal — embrace the Agent's plan, reject
   it, choose among endings, or witness one canonical villain victory.
 - [ ] The fictional federal agency's name and its ranks per country (§2.6);
-  whether lap 2's first three confrontations are shorter (the campaign's
-  length); §11.1's counters for FOUR factions (they were written for three).
+  §11.1's counters for FOUR factions (they were written for three).
 - [ ] The age rating: §16 speaks of an "all-ages product", but the §2.6
   narrative (a policeman causing a mass-casualty disaster, drugs, bodies,
   militias) will be rated 16-18; §16's wording and the social features must

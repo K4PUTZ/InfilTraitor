@@ -72,7 +72,9 @@ revenge"); police zones stay walkable, but checkpoints stop him and he is discov
 too many people leaves the hospital short of a supply and she dies; classes stay equivalent, the violent player of any class sees the sadder
 ending (Dishonored's chaos). Claude's proposals in `DESIGN` §2.6, not yet ratified: the supply is blood, the midpoint is the warning, a generous
 threshold, what counts (player-caused deaths by any means; not knockouts, the leaders or the reporter), a non-lethal option in every class kit.
-Superseded: the power / the official missions' order deciding her fate.
+Superseded: the power / the official missions' order deciding her fate. **Then (Director):** those proposals RATIFIED; and he FAKES HIS OWN DEATH in
+every scenario (wife alive or not, reporter alive or not): he must disappear either way; if she lives, he watches her from afar. Open: how he
+stages it; the threshold's number.
 
 **Open after this pass** (items 1, 4, 5, 6 of §2 above still stand; item 3 is ruled): the four class kits and whether later characters replay the
 whole campaign; the reporter's name, outlet, first contact, what the final fight is made of, and whether killing him breaks a no-kill run; where the

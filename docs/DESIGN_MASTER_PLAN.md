@@ -163,7 +163,7 @@ LAP 1 — the favours (four chapters, one per faction; the circle stays:
   and he is discovered.
   Midpoint: his wife's condition turns critical, and the hospital is
   short of blood: every shootout's wounded drain the same bank (the
-  warning; Claude's proposal, §2.6). There is no baby (Director, 2026-10-22).
+  warning, §2.6). There is no baby (Director, 2026-10-22).
 
 LAP 2 — the confrontations, in ANY order (Director, 2026-10-22: he will
   kill each leader eventually, so the order is free)
@@ -198,8 +198,10 @@ THE CEMETERY — the finale (a scene, no fight: Director, 2026-10-22)
 
 EPILOGUE (to re-cut: open)
   Both branches leave him a FUGITIVE (supersedes "kill him and stay
-  free"). If the wife lived (the common ending), he fakes his own death
-  and watches her from afar (Director). The earlier beats must be re-placed: "I found all of
+  free"), and in EVERY scenario he FAKES HIS OWN DEATH and disappears:
+  whether his wife lives or not, whether the reporter lives or not
+  (Director, 2026-10-22). If she lived (the common ending), he watches
+  her from afar. The earlier beats must be re-placed: "I found all of
   them" (said at the son's grave now that there is no neonatal unit), the
   CEO elected on the "accident" version, the foreign fund buying the
   company at half price, the bet paid, "There is no right or wrong. There
@@ -345,10 +347,11 @@ near the epicentre. The son dies, and is buried late, after the town is restored
 
 **Her fate is the run's violence (Director, 2026-10-22).** **The common ending is that she SURVIVES.** If the player kills too many people, in the end
 the hospital runs short of a supply because of the excess of deaths, and she dies. The classes stay equivalent in play and in Freelance; a player who
-goes in hard with ANY class sees the sadder ending. *(This is Dishonored's chaos, a reference the game already names in §1.)* **If she lives,** he
-fakes his own death and watches her from afar (Director); the cemetery scene has two versions (with her beside him, or at her grave).
+goes in hard with ANY class sees the sadder ending. *(This is Dishonored's chaos, a reference the game already names in §1.)* **He fakes his own
+death in every scenario (Director, 2026-10-22)**, whether she lives or not; if she lives, he watches her from afar. The cemetery scene has two
+versions (with her beside him, or at her grave).
 
-Claude's proposals for it (not yet ratified):
+Claude's proposals for it (RATIFIED by the Director, 2026-10-22):
 - **The supply is blood:** the wounded of every shootout drain the same blood bank she depends on, which makes "deaths cause a shortage" causal
   without showing anything (a line on the radio, the hospital's appeal for donors).
 - **It is warned, never a trap:** the midpoint is the warning beat (her condition turns critical, the bank is short, §2.2), and the world reports
@@ -390,7 +393,7 @@ the front's offshore broker, the traffickers' routes); the campaign's locations 
 
 **Open (Director):** the fictional federal agency's name and
 its ranks per country (the Director's draft says "Tenente", a military rank: Brazil's federal police ranks are agente, escrivão, perito, delegado); the
-dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); the reporter's surname; what the reporter does in the let-him-live branch; the epilogue per branch; the violence rule's details (above); a city that
+dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); the reporter's surname; what the reporter does in the let-him-live branch; the epilogue per branch; how he stages his own death; a city that
 lived a real dam disaster (above).
 
 ---
@@ -1089,7 +1092,7 @@ and carries its own ending and tattoo (§2.2).
 - **Open:** the four kits (which abilities and equipment each class lacks or
   owns: §10 was written for one Agent); whether a second, third and fourth
   character replays the whole campaign; how this meets §11.1's counters.
-  **Constraint (Claude, from §2.6):** every kit holds a non-lethal option from
+  **Constraint (ratified 2026-10-22, §2.6):** every kit holds a non-lethal option from
   the start, since the campaign's ending turns on the run's violence.
 
 *(Superseded 2026-10-21/22: the Elite prologue, whose temporary senior loadout
@@ -1239,10 +1242,11 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   innocent of the massacre) draws a gun and exposes him in the rain; a
   standoff; the player KILLS the reporter (discovered: a fugitive) or LETS
   HIM LIVE (the Agent hands him his own gun and turns his back: a fugitive
-  too); a permanent tattoo marks the choice on that character (Director,
+  too); in every scenario he then fakes his own death; a permanent tattoo marks the choice on that character (Director,
   2026-10-22; §2.2).
-- ✅ **The Agent's endgame** → in both endings he goes on infiltrating and
-  charging for information: Freelance (Director, 2026-10-22; §2.2).
+- ✅ **The Agent's endgame** → he fakes his own death in every scenario and,
+  dead to the world, goes on infiltrating and charging for information:
+  Freelance (Director, 2026-10-22; §2.2).
 - ✅ **Who the player is** → up to four characters, one per faction, each an
   instance of the Agent created at the police station: four story routes,
   classes of equivalent power and different style (Director, 2026-10-22; §15).
@@ -1261,8 +1265,8 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - [ ] The reporter's surname; what he does with the Agent's gun in the
   let-him-live branch (§2.2); the epilogue
   per branch; which lap-2 confrontation is the complete mission (§2.2).
-- [ ] The violence rule's details: the supply, the warning, the threshold,
-  what counts (Claude's proposals, §2.6); the faked death's details.
+- [ ] How he stages his own death (§2.2); the violence threshold's number
+  (data, tuned in play; §2.6).
 - [ ] A city that lived a real dam disaster (§2.6; Claude's recommendation
   there, to be taken to the association of those affected).
 - [ ] Exact 1× economy pacing and the catalog of paid boosts beyond the

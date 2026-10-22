@@ -126,7 +126,7 @@ suspected: the Agent launched the attack.
 None is purely heroic, the Agent least of all. Each faction can recruit him, so the player has up to four characters, one per faction, each a route
 through the same story.
 
-After the campaign, **Freelance mode** unlocks: the agent, now a fugitive, goes on infiltrating and charging for information, growing in power and
+After the campaign, **Freelance mode** unlocks: the agent, who faked his own death, goes on infiltrating and charging for information, growing in power and
 facing increasingly sophisticated threats.
 
 ---

@@ -120,7 +120,8 @@ OPENING — Home (Director)
   dead. He falls to his knees. Titles.
 
 THE POLICE STATION
-  His deposition. Too close to the case, the commissioner forbids him,
+  His deposition. Too close to the case, the commissioner (the police
+  chief, the leader he faces in lap 2: Director, 2026-10-22) forbids him,
   VERBALLY, to work on it, and hands him urgent OFFICIAL missions instead,
   in the zones where the police has limited access; he keeps his badge
   for now (Director, 2026-10-22).
@@ -205,6 +206,10 @@ EPILOGUE (to re-cut: open)
   charging for information.
   Unlocks: FREELANCE MODE for that character (COSMETICS_MASTER_PLAN §4).
 ```
+
+**The commissioner is the police chief (Director, 2026-10-22).** Consequence (Claude): on the Police route the man who bans the Agent verbally at
+the station is the one who recruits him off the books outside, to hunt "a leak" (§2.6), so the ban is official and the job is not; and the badge is
+taken by the man the Agent later kills.
 
 **Lap 2's lengths:** with the finale a scene, the campaign's last playable mission is a leader confrontation in a free order, so which one is the
 complete mission is open again (Claude's recommendation: four standard missions of one size, so no faction needs both a short and a complete
@@ -351,7 +356,7 @@ and Corporation: the CEO against the shareholders).
 
 | Faction | Asks for (and points at) | Really hides | Its failure in the disaster | Alibi | Obstacle | Its clue about the trigger (lap 2) |
 |---|---|---|---|---|---|---|
-| **Police** (the chief) | Investigate a "leak" off the books → the **Militia**, which receives it | The pit as a dump for bodies; the deal with the traffickers | Blocked the pit's inspections: the containment failed | The official "substation fire" version is his, and he runs the case | Cannot use his own men (the leak); fears federal scrutiny | "Someone passed the road block that night on a police credential" |
+| **Police** (the chief, who is also the commissioner of §2.2: he bans the Agent verbally, gives him the official missions, later takes his badge) | Investigate a "leak" off the books → the **Militia**, which receives it | The pit as a dump for bodies; the deal with the traffickers | Blocked the pit's inspections: the containment failed | The official "substation fire" version is his, and he runs the case | Cannot use his own men (the leak); fears federal scrutiny | "Someone passed the road block that night on a police credential" |
 | **Militia** (the commander of the CEO's security) | Prove it was the traffickers (a drone) → the **Traffickers** | Billed the sirens' backup power and never installed it; takes the traffickers' territory; its own men sell access to the traffickers' labs inside the guarded facilities | The sirens stayed silent | Holds the drone's wreck: "proof" of an outside attack | Cannot let any inspector near the siren system, nor near its insiders | "The drone took off inside our perimeter, with codes only we and our informant knew" |
 | **Traffickers** (the club's president) | Find who leaks to the militia; they suspect their financiers → the **Corporation** | The lab in the refinery, run with the Militia's insiders; their dead in the pit | Chemical waste dumped in the dam: the reservoir over its limit | Lost their lab and men: they look like victims | The bodies may surface with the flood; the bought police no longer protect them | "Someone bought drone parts at our chop shop weeks before" |
 | **Corporation** (the minority shareholders' leader) | Prove it was the State's negligence (the chief) → the **Police**; the chapter in which the commissioner takes the Agent's badge (§2.2) | Finances the traffickers; wants a contained leak to sell the company at half price to foreign funds, for a commission | Hid the engineers' risk report, hoping for a contained leak | The fall "hurts" them in public; no weapons | A real investigation finds the report and kills the half-price sale, and the commission with it | "Someone bet against us through a front, on puts expiring that week" |
@@ -1193,7 +1198,8 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   the four factions' failures it killed hundreds, his son among them, and his
   wife later unless the power came back in time (Director, 2026-10-21/22; §2.6).
 - ✅ **The family, the aftermath and the official work** → no baby; the flood
-  is acid, not mud; after the station the commissioner bars him from the case
+  is acid, not mud; after the station the commissioner (the police chief, the
+  lap-2 leader) bars him from the case
   verbally (the badge goes later, in the lap-1 chapter that investigates the
   police over the pit; checkpoints then stop him) and hands him official
   missions (the power station among them) that come

@@ -202,7 +202,7 @@ cut-scenes, a low priority). There is no baby (`DESIGN` §2.6, 2026-10-22).
 | Corporation (executives and their agents) | suit of their own cut and palette, earpiece | sunglasses, a briefcase, the leaders' tailoring | suits, **never** the hero's fedora, coat or palette (§2.1) |
 
 **8.4 Named characters (a base + pieces + a face):** the Agent (built), his wife, his son, the four leaders (the police chief, the militia
-commander, the club's president, the minority shareholders' leader), the CEO (Senate candidate), the commissioner who takes the badge (may be the chief),
+commander, the club's president, the minority shareholders' leader), the CEO (Senate candidate), (the police chief is also the commissioner who takes the badge, `DESIGN` §2.2),
 the official investigator who takes over the case, the front ("laranja"), **the reporter, Thomas** (the finale, `DESIGN` §2.2; civilian clothes, no faction
 set), and civilians (a few base outfits recoloured by the material/palette system). **The Agent himself is four instances** (one per faction, §2): his
 look per class is open (the hero's costume over each faction's pieces, or a faction look of his own).

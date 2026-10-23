@@ -203,9 +203,9 @@ cut-scenes, a low priority). There is no baby (`DESIGN` §2.6, 2026-10-22).
 | Corporation (executives and their agents) | suit of their own cut and palette, earpiece | sunglasses, a briefcase, the leaders' tailoring | suits, **never** the hero's fedora, coat or palette (§2.1) |
 
 **8.4 Named characters (a base + pieces + a face; names in `DESIGN` §2.7):** the Agent (built; Victor Rook by default), his wife Claire, his son
-Leo, the four leaders (Commissioner Martin Graves, who is also the commissioner who takes the badge; Commander Dale Kessler; "Deacon"; Evelyn
-Marsh), **the four successors who take their posts** (Deputy Commissioner Irene Barrow; Duke Hardcastle; "Choirboy"; Prudence Vane), the CEO Gordon
-Pryce (Senate candidate), the official investigator who takes over the case, the front's man at Pith & Peel Holdings, **the reporter, Thomas
+Leo, the four leaders (Commissioner Martin Graves, who is also the commissioner who takes the badge; Commander Dale Kessler; "Deacon"; the CEO
+Gordon Pryce, the Senate candidate), **the four successors who take their posts** (Deputy Commissioner Irene Barrow; Duke Hardcastle; "Choirboy";
+Evelyn Marsh), Marsh's counsel Prudence Vane, the official investigator who takes over the case, the front's man at Pith & Peel Holdings, **the reporter, Thomas
 Marlow** of *The Sieve* (the finale; civilian clothes, no faction set), and civilians (a few base outfits recoloured by the material/palette system). **The Agent himself is four instances** (one per faction, §2): his
 look per class is open (the hero's costume over each faction's pieces, or a faction look of his own).
 

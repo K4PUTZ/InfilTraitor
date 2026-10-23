@@ -139,3 +139,9 @@ elects him); the epilogue's half-price sale and the senator steering the contrac
 **Then (Director, 2026-10-23):** the booked contracts are FUTURE ENERGY SALES; the Militia, paid late, presses the CEO to pay before the
 election and sours on the "partnership", but cannot leave: it must defend the facilities against the traffickers, and attack them, to keep its
 hold (`DESIGN` §2.1, §2.6; Claude's remarks there, incl. the late pay as a reason for its insiders to sell access).
+**Then (Director, 2026-10-23): the CEO is the Corporation's leader.** Gordon Pryce heads the Corporation and pays the Militia on paper, nobody in
+practice (the board distrusts his books, Kessler is paid late), so his hold depends on the campaign. Picked from Claude's options: **Evelyn Marsh
+becomes the sub-leader** (Prudence Vane is her counsel); **the report was buried by both ends** (he, to protect the fraud; the bloc knew and kept
+quiet: one failure, two hands); **he dies a candidate** in lap 2: the epilogue's bulletin now has his death blamed on the factions' war, the hole
+laid on the dead man, Marsh selling to Carrion Capital at half price, the Militia never paid. Superseded: "the CEO elected" and Claude's senator
+steering the contract. `DESIGN` §2.1, §2.2, §2.6, §2.7, §11.2, §18; `COSMETICS` §8.4. The four leaders are now Graves / Kessler / "Deacon" / Pryce.

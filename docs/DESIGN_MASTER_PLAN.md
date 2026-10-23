@@ -80,7 +80,7 @@ importante é serem equilibradas".)* Names are working names. All four orbit one
 | **The Federal Police — the FID, Federal Inquiry Directorate** (§2.7; in the game a FICTIONAL federal agency, its ranks localised per country: a real institution never plays the corrupt faction) | Official uniforms and equipment; stations, checkpoints | The law | Paid to look away from the traffickers; its leaks reach the militia; its chief knows the company's containment pit is where the traffickers' enemies are dumped | Information: radios, check-ins, cameras, trail reading |
 | **The Militia** — a private military security company, **Calm Waters Security** (§2.7) | High-tech uniforms and gear; GRUB DRILL's complex across several towns | Security hired by the company's CEO, in exchange for backing his Senate campaign | Takes the traffickers' territory, buys police leaks, bills for security it never delivers; **leaks from the inside** (Director, 2026-10-22): some of its own men sell access, codes and shifts, so the traffickers produce their toxic substances inside the facilities it guards; **unhappy with the "partnership"** (Director, 2026-10-23): the CEO pays late and it presses him to pay before the election, yet it cannot walk away, since it must defend the facilities against the traffickers, and attack them, to keep its hold (§2.6) | Technology and force: drones, sensors, armour, pairs |
 | **The Traffickers** — paramilitaries behind a motorcycle club, the **Bunsen Burners MC** (§2.7) | Club vests and patches, bikes; chop shops, the refinery's back rooms | A motorcycle club | Divert banned precursors from the company's refinery into synthetic drugs, in labs the Militia's insiders let them run; their dead go into the pit | Numbers and improvisation: bikes, routes, explosives, chemistry |
-| **The Corporation** — GRUB DRILL's executives and minority shareholders, led by **Evelyn Marsh** (§2.7) | Suits **of their own cut, palette and earpieces, never the hero's fedora and coat** (D70: on the board at ~190 px the Agent must not read as one of them) | The company's governance | Sabotage the CEO (Director, 2026-10-22): they hid the engineers' risk report hoping for a CONTAINED leak that would drop the company's value without the full accident, and covet a fat commission for selling it at half price to foreign funds; no options of their own; they finance the traffickers, for a scandal; they have their own suited agents; they know the company is not making a profit, its books carried by future energy sales the CEO booked as cash, but cannot prove it (Director, 2026-10-23; §2.6) | Money and access: bribes, hacking, private agents |
+| **The Corporation** — GRUB DRILL INC itself: its CEO **Gordon Pryce**, the leader (Director, 2026-10-23), and the board's minority bloc under **Evelyn Marsh**, the sub-leader (§2.7) | Suits **of their own cut, palette and earpieces, never the hero's fedora and coat** (D70: on the board at ~190 px the Agent must not read as one of them) | The company's governance | A head in name only (Director, 2026-10-23): the CEO cooks the books (future energy sales booked as cash) and buried the engineers' risk report to protect them; the board's bloc knows the company is not making a profit but cannot prove it, knew of the report and kept quiet, hoping for a CONTAINED leak that would drop the company's value without the full accident and bring him down (Director, 2026-10-22: they sabotage the CEO), and covets a fat commission for selling it at half price to foreign funds; no options of their own; the bloc finances the traffickers, for a scandal; they have their own suited agents (§2.6) | Money and access: bribes, hacking, private agents |
 | **The Agent** | His own costume (D70) | A federal investigator, a grieving father | The police leak that sells information to the militia (and to the reporter, below), and the man who breached the dam (§2.6) | — |
 | **The Press** — a reporter, **Thomas Marlow of *The Sieve*** (§2.7), a fifth element, NOT a faction (no guards, no uniform, no league) | — | An investigative journalist | Consulted the Agent as an anonymous police source: bought the information about the traffickers that the Militia used. **Innocent of the massacre: the only one who did not cause the son's death** (Director, 2026-10-22) | The campaign's lead supplier in lap 2 and its final encounter (§2.2) |
 
@@ -245,11 +245,12 @@ EPILOGUE (Director, 2026-10-22)
   "dissolved in the acid". This is the acid's second use in the story.
 - **The sad ending's last shot** (the wife died): the TV plays in the empty house the bank has taken (the debt, §2.6); the camera pulls back
   through the window to the Agent alone outside, who turns and disappears.
-- **The earlier beats ride the same news bulletin** before his death is reported: the CEO elected on the "accident" version, the foreign fund
-  buying the company at half price. "I found all of them" stays at the son's grave (§2.2); "There is no right or wrong. There are only winners."
-  is his last line before he turns away. *(Added 2026-10-23, with the CEO's fraud, §2.6: half price is roughly what a company with that hole is
-  worth, which is why a vulture fund takes it; and the new senator can steer the exploration contract to the company he no longer runs, which
-  honours the contracts he booked. Every survivor wins.)*
+- **The earlier beats ride the same news bulletin** before his death is reported: the CEO dead as a candidate, his death blamed on the war
+  between the factions; the hole in his books, found afterwards and laid on the dead man; Evelyn Marsh in his chair, selling the company to
+  Carrion Capital at half price; the Militia never paid (Director, 2026-10-23: the CEO is the Corporation's leader and dies a candidate, §2.6).
+  "I found all of them" stays at the son's grave (§2.2); "There is no right or wrong. There are only winners." is his last line before he turns
+  away. *(Claude, remark: half price is roughly what a company with that hole is worth, which is why a vulture fund takes it. Superseded
+  2026-10-23: "the CEO elected on the 'accident' version", and Claude's newly elected senator steering the exploration contract.)*
 
 **The commissioner is the police chief (Director, 2026-10-22).** He bans the Agent verbally at the station, gives him the official missions,
 takes his badge in the Corporation's chapter, and is the man the Agent later kills. **On the Police route the off-the-books recruiter is Deputy
@@ -372,14 +373,21 @@ a profit, but cannot prove it:** one more tension, and one more reason for the C
 "partnership" sours. Yet it cannot walk away: it must defend the facilities against the traffickers, and attack them, to keep its hold on the
 complex. That raises the Militia's stake in everything that follows.
 
+**The CEO is the Corporation's leader (Director, 2026-10-23).** In the last instance he represents the Corporation, and he is the Militia's client
+and paymaster, with Commander Kessler at his side as the "contracted partner". On paper he heads both; **in practice he heads nobody**: the board
+does not trust his books and the commander is not being paid, so his hold on both ends depends on the campaign succeeding. He buried the engineers'
+report himself, and the board's bloc under Evelyn Marsh, his sub-leader (§2.7), knew and kept quiet (the Corporation's failure, the table below).
+**He dies a candidate:** the Agent kills him in lap 2, and the campaign, the only thing holding his two ends together, dies with him (the epilogue,
+§2.2).
+
 *(Claude, remarks: the Militia's leverage is the campaign support, worth nothing once he is elected, hence "before the election". Its favour,
 "prove it was the traffickers", now pays twice: a war it needs, and a lever on the CEO, since it is the only thing between him and the
 traffickers. A real investigation would find the sirens and could sink the candidate who owes it, so it needs the official version twice over.
 The late pay is also a reason for its own men to sell access to the traffickers' labs (§2.1), which ties the CEO's fraud to the Militia's
 insiders without making it one of the four failures. The Militia bills for sirens that do not exist and is paid, late, with money that does not
 exist. A contained leak would bring inspectors and auditors in, which is how the bloc would prove what it cannot, one more reason to hide the
-report. And the proof must never be obtainable during the campaign, since the epilogue has him elected, so a sub-mission may brush the fraud but
-never close it (§2.7: sub-missions are leaves).)*
+report. And the proof surfaces only after his death, on the epilogue's bulletin (§2.2), so a sub-mission may brush the fraud but never close it
+(§2.7: sub-missions are leaves).)*
 
 **The Agent (Director; "he is the leak" is Claude's proposal, accepted 2026-10-22).** Before the disaster he already sold police information to the
 Militia (the police's leak is him), and a reporter bought the information about the traffickers from him as an anonymous police source (Director,
@@ -391,8 +399,8 @@ alibi) and launched the drone. **He did not know the four failures below.**
 
 **The bet (Claude, 2026-10-22, answering the Director's question).** **Short-dated PUT OPTIONS bought through a front ("laranja")**, not a short sale: a
 man in debt can afford a premium (a short needs margin and can lose without limit), and the leverage makes a small spill pay. **He bets alone
-(Director, 2026-10-22: the Corporation buys no options):** the Corporation wants the fall for a different payout, the commission on selling the company
-at half price to foreign funds, and hid the engineers' report hoping for a CONTAINED leak to get it. **The Corporation and the Agent wanted the same
+(Director, 2026-10-22: the Corporation buys no options):** the board's bloc wants the fall for a different payout, the commission on selling the company
+at half price to foreign funds, and kept quiet about the engineers' report hoping for a CONTAINED leak to get it (the CEO buried it, below). **The Corporation and the Agent wanted the same
 thing, a small spill (Claude's remark):** that makes the Corporation the natural suspect and feeds twist 1. **His tell is the expiry:** he bought puts
 expiring days later, which only someone who knew the date would do; the Corporation, watching its own stock for the sale, sees them (its clue in lap 2).
 Proposed origin of the idea (Claude, revised 2026-10-22): police intelligence shows him the Corporation's talks with the fund: if they want a fall, he will
@@ -442,7 +450,7 @@ and Corporation: the CEO against the shareholders, the Militia paid with money h
 | **Police** (the chief, who is also the commissioner of §2.2: he bans the Agent verbally, gives him the official missions, later takes his badge) | Investigate a "leak" off the books → the **Militia**, which receives it | The pit as a dump for bodies; the deal with the traffickers | Blocked the pit's inspections: the containment failed | The official "substation fire" version is his, and he runs the case | Cannot use his own men (the leak); fears federal scrutiny | "Someone passed the road block that night on a police credential" |
 | **Militia** (the commander of the CEO's security) | Prove it was the traffickers (a drone) → the **Traffickers** | Billed the sirens' backup power and never installed it; takes the traffickers' territory; its own men sell access to the traffickers' labs inside the guarded facilities | The sirens stayed silent | Holds the drone's wreck: "proof" of an outside attack | Cannot let any inspector near the siren system, nor near its insiders | "The drone took off inside our perimeter, with codes only we and our informant knew" |
 | **Traffickers** (the club's president) | Find who leaks to the militia; they suspect their financiers → the **Corporation** | The lab in the refinery, run with the Militia's insiders; their dead in the pit | Chemical waste dumped in the dam: the reservoir over its limit | Lost their lab and men: they look like victims | The bodies may surface with the flood; the bought police no longer protect them | "Someone bought drone parts at our chop shop weeks before" |
-| **Corporation** (the minority shareholders' leader) | Prove it was the State's negligence (the chief) → the **Police**; the chapter in which the commissioner takes the Agent's badge (§2.2) | Finances the traffickers; wants a contained leak to sell the company at half price to foreign funds, for a commission | Hid the engineers' risk report, hoping for a contained leak | The fall "hurts" them in public; no weapons | A real investigation finds the report and kills the half-price sale, and the commission with it | "Someone bet against us through a front, on puts expiring that week" |
+| **Corporation** (the CEO, Gordon Pryce: Director, 2026-10-23) | Prove it was the State's negligence (the chief) → the **Police**; the chapter in which the commissioner takes the Agent's badge (§2.2) | His cooked books (future energy sales booked as cash); the board's bloc finances the traffickers and wants a contained leak to sell the company at half price to foreign funds, for a commission | The engineers' risk report buried: by him, to protect the fraud (the repairs need money the company does not have, and halting the dam breaks the energy contracts); the bloc knew and kept quiet, hoping for a contained leak. One failure, two hands on the same drawer | The fall "hurts" them in public; no weapons | A real investigation finds the report and the books: it sinks his campaign, and the bloc's sale with it | "Someone bet against us through a front, on puts expiring that week" |
 
 **What he hands over (Director, 2026-10-23).** Two favours ask for the same thing, the Police's "leak" and the Traffickers' "who leaks to the
 Militia", and the answer to both is the Agent himself. **He gives both the same lie, in any order: a policeman killed in the flood** (the dead do not
@@ -488,11 +496,11 @@ before launch**, as for GRUB DRILL INC. Near-match to weigh: the real State Burn
 | FID | **Commissioner Martin Graves** | **Deputy Commissioner Irene Barrow** — the police's top brass all have burial names (graves, a barrow); the next one will be called Tomb |
 | Calm Waters Security | **Commander Dale Kessler** | **Duke Hardcastle**, head of operations, named like an action figure and acting like one |
 | Bunsen Burners MC | **President "Deacon"** (Wade Cutler) | **Vice President "Choirboy"**, whose real name nobody says aloud; the officers' road names are all churchly |
-| The Corporation | **Evelyn Marsh**, the minority bloc's leader | **Prudence Vane**, the bloc's counsel: prudent in name only, a weathervane that turns with the wind |
+| The Corporation | **Gordon Pryce**, GRUB DRILL's CEO and Senate candidate (Director, 2026-10-23): his name is the share price, which his books inflate | **Evelyn Marsh**, leader of the board's minority bloc, who wants his chair and sells the company once he is dead |
 
 **The rest of the cast:** the Agent **Victor Rook** by default ("Victor", the winner; a rook moves straight on a grid, and "to rook" is to cheat);
-his wife **Claire Rook**; his son **Leo Rook**; the reporter **Thomas Marlow**; GRUB DRILL's CEO, the Senate candidate, **Gordon Pryce** (the share
-price); the default town for a player who gives no city, **Lowmere** (not yet web-checked). **Ratified (§2.2):** the deposition at the police
+his wife **Claire Rook**; his son **Leo Rook**; the reporter **Thomas Marlow**; Marsh's counsel **Prudence Vane**
+(prudent in name only, a weathervane that turns with the wind; the Corporation's sub-leader until 2026-10-23, when the CEO became the leader); the default town for a player who gives no city, **Lowmere** (not yet web-checked). **Ratified (§2.2):** the deposition at the police
 station is the character creation; the player names the Agent there, and the TV report of the epilogue reads that name.
 
 **The creator's limits (Claude, proposed):** it shapes LOOKS only; the figure on the board keeps one gameplay size (a cosmetic never changes the game,
@@ -531,7 +539,7 @@ because he is dead, or because he is the head of the character's own faction.
 | Irene Barrow | Graves's chair | Bug Graves's office (the recording goes to her, never to the Agent) → a forged pass that gets him through checkpoints | **The badge:** only once the Agent has lost it |
 | Duke Hardcastle | Command, on camera | A staged heroic rescue so he looks the part → the Militia's drone codes | **The leader alive:** only while Kessler lives |
 | "Choirboy" | The club's "brothers" | Spring a cook from a rival chapter → the recipe for an explosive or smoke gadget | **The violence:** gone if the player killed club members in that chapter |
-| Prudence Vane | Backing the winner | Sells the guard rotations of the Agent's next target | **Progress:** only once two or more leaders are dead |
+| Evelyn Marsh | Pryce's chair, and the sale: she backs whoever is winning | Sells, through her counsel Prudence Vane, the guard rotations of the Agent's next target | **Progress:** only once two or more leaders are dead |
 
 ---
 
@@ -1042,7 +1050,7 @@ agent's armour.*
 | Veteran | Senior Agent | Senior Operator | Patch | Senior Operative |
 | Lieutenant | Inspector | Team Leader | Road Captain | Case Manager |
 | Captain | Chief Inspector | Site Commander | Sergeant-at-Arms | Head of Security |
-| Leader / successor | Commissioner / Deputy Commissioner | Commander / Head of Operations | President / Vice President | Bloc leader / Counsel |
+| Leader / successor | Commissioner / Deputy Commissioner | Commander / Head of Operations | President / Vice President | CEO / Bloc leader |
 
 The Agent's own rank is **Inspector**.
 
@@ -1439,6 +1447,12 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   faction; the Agent sells to the Militia faceless; both "leak" favours get the
   same lie (a policeman killed in the flood); sub-missions are leaves, one kind
   of condition per sub-leader (Director, 2026-10-23; §2.2, §2.6, §2.7).
+- ✅ **The Corporation's leader** → the CEO, Gordon Pryce: head of the
+  Corporation and paymaster of the Militia on paper, of nobody in practice
+  (his books are cooked: future energy sales booked as cash; the Militia is
+  paid late); he buried the engineers' report and the board's bloc kept quiet;
+  Evelyn Marsh is the sub-leader, Prudence Vane her counsel; he dies a
+  candidate in lap 2 (Director, 2026-10-23; §2.1, §2.6, §2.7).
 - ✅ **Who the player is** → up to four characters, one per faction, each an
   instance of the Agent created at the police station: four story routes,
   classes of equivalent power and different style (Director, 2026-10-22; §15).

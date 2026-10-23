@@ -265,7 +265,7 @@ measurements.
 | Tie | regimental stripes, primary / secondary (the tie already has diagonal stripes) | no | free (a stripe mask + two colours) |
 | Coat lining | primary; **while he wears another faction's uniform (its coat or the LED coat), the lining keeps his own** (the traitor's true colours are inside) | when the coat opens or swings | free once the lining is its own surface |
 | Pocket square | secondary (a bandana for the biker) | no | free |
-| Armband (§3) | primary + emblem; the FID's carries the letters, like a real plainclothes police armband. **Part of the UNIFORM: it follows the coat he wears** (Claude's reading, 2026-10-23, `DESIGN` §2.2), so in another faction's coat it is that faction's; the renders show the background's because they show his own mustard coat | yes, side and back (~8 px) | ~100 tris |
+| Armband (§3) | primary + emblem; the FID's carries the letters, like a real plainclothes police armband. **Part of the UNIFORM: it follows the coat he wears** (Director, 2026-10-23, `DESIGN` §2.2), so in another faction's coat it is that faction's; the renders show the background's because they show his own mustard coat | yes, side and back (~8 px) | ~100 tris |
 | Pack patch (velcro) | the emblem, subdued | yes, in the black style (the coat is away) | ~12 tris |
 | Lapel pin, tie bar | emblem, metal | portrait only | menu master only |
 

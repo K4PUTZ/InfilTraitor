@@ -178,15 +178,18 @@ ACCESS — the UNIFORM and the ACCESS are two separate things
     his shoes and the rest. Then:
     - with access he goes on;
     - if that faction WANTS him, he is arrested or killed;
-    - without access (Claude's reading, the obvious middle case) he
-      becomes a target.
+    - without access he becomes a target (Director, 2026-10-23).
   - Per faction his standing is NO ACCESS, ACCESS or WANTED, and wanted
     overrides access. What makes him wanted, and what an arrest is in
     play, is open (§18).
   - Before the LED coat he wears ONE uniform per mission, so he passes as
     one faction at a time (Director). The choice is made before the
-    mission, as a slot of its own beside §10's three classes (Claude's
-    reading). The LED coat (§10.5) carries every uniform he holds and
+    mission, as a slot of its own beside §10's three classes (Director,
+    2026-10-23). The ARMBAND is part of the uniform and follows the coat
+    he wears; his background shows in the lining, the tie, the pocket
+    square, the mark of his past and the banner, which are also among
+    the differences that give him away up close (Director, 2026-10-23;
+    `COSMETICS_MASTER_PLAN` §9.2). The LED coat (§10.5) carries every uniform he holds and
     switches between them.
   - Access can be lost: the police's goes with the badge (lap 1). The
     mustard coat still passes from afar, but checkpoints and officers
@@ -1079,6 +1082,10 @@ visually.
 **The agent picks one item from each class before a mission, plus at most 2
 consumable gadgets.** Three loadout decisions: simple to teach, deep to
 master. Gadgets are found on the map, bought from NPCs, or awarded.
+**Plus the UNIFORM (Director, 2026-10-23):** a pre-mission choice of its own,
+one faction's officer coat among those he holds (his armband follows it),
+which decides where he can walk unbothered (§2.2, ACCESS); the LED coat
+replaces the choice (§10.5).
 
 ### 10.0 The starting kit (Director, 2026-10-23)
 
@@ -1748,8 +1755,7 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   site the club's assassin has infiltrated, his name ("the Confessor",
   proposed) and whether he counts as a boss (§2.2, proposed); when the pack
   battery upgrade comes (§10.5); the energy budget's numbers and recharge
-  (§10.5); what makes a faction WANT him and what an arrest is in play, and
-  whether "recognised without access" makes him a target (Claude's reading)
+  (§10.5); what makes a faction WANT him and what an arrest is in play
   (§2.2, ACCESS); how close counts as "from afar" for a uniform (§2.2); the specialist
   roster and its template (§11.6, proposed); the four backgrounds' abilities
   and equipment (§15); the four trips abroad (§2.6, proposed: one per lap-1

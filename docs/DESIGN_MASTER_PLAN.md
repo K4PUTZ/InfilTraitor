@@ -69,6 +69,9 @@ system to scale, never to cap (§19 Rule 1).
 
 ## 2. Narrative — `DESIGNED`
 
+> 🏁 **The plot is CLOSED (Director, 2026-10-23)** after the faction-dress rulings and a plot pass: what remains is authoring detail and
+> gameplay, none of it structural (§18). Record: `PROMPTS/RESUMO_SESSAO_2026-10-23_FACTION_DRESS_PLOT_CLOSE.md` §4.
+
 ### 2.1 The four factions and the reporter (revised 2026-10-22)
 
 *(Director, 2026-10-21/22: four entities — "Polícia Federal (Uniforme/Autoridade), Milícia Privada (Soldados High Tech), Corporação
@@ -1693,7 +1696,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   official missions (only the power station is named: how many, which, who
   holds each zone); where the investigation abroad sits in the laps (Carrion
   Capital, Pith & Peel's offshore broker, the traffickers' routes, §2.6); the
-  origin of the Agent's debt (the sad ending's foreclosed house leans on it);
+  origin of the Agent's debt (the sad ending's foreclosed house leans on it;
+  his field officer's modest pay explains the pressure, §2.1, but not the
+  debt itself);
   how much he hands over at the Militia's and the Corporation's favours
   (§2.6); each sub-leader's character beyond the name and the motive (§2.7).
 - [ ] A city that lived a real dam disaster (§2.6; Claude's recommendation

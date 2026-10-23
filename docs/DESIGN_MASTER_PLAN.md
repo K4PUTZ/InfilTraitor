@@ -443,7 +443,9 @@ unmeasured.
 
 **The circle (Director's structure, 2026-10-22; the table is Claude's, accepted):** each leader trades what he knows for a favour that points at the next:
 Police → Militia → Traffickers → Corporation → Police. The pairs outside the circle are extra clues for free (Police and Traffickers: the bribes; Militia
-and Corporation: the CEO against the shareholders, the Militia paid with money his books invent).
+and Corporation: the CEO against the shareholders, the Militia paid with money his books invent). **The poster (2026-10-23):**
+`DIAGRAMS/CIRCULO_ENREDO.png`, drawn by `tools/asset_generation/plot_circle_poster.py` (Blender): the four factions in the sheet's corners,
+the favour arrows, the Agent at the centre. Its symbols are placeholders until the faction logos exist; regenerate it when the circle changes.
 
 | Faction | Asks for (and points at) | Really hides | Its failure in the disaster | Alibi | Obstacle | Its clue about the trigger (lap 2) |
 |---|---|---|---|---|---|---|

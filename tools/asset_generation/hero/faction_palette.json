@@ -1,5 +1,5 @@
 {
-  "_doc": "The four factions' dress colours for the D78 decision renders (COSMETICS_MASTER_PLAN \u00a79.4). Families: the Director's (2026-10-23); exact values and roles: Claude's proposal, measured in CIEDE2000 with colour-blind simulation. sRGB hex. 'accents' never carry a faction alone. 'officer_coat' is the field officers' overcoat (COSMETICS \u00a78.3); 'mustard' means the FID investigators' coat texture as built. 'hatband' and 'lining' are the primary except where the primary would vanish on black felt (the Corporation: its purple).",
+  "_doc": "The four factions' dress colours for the D78 decision renders (COSMETICS_MASTER_PLAN \u00a79.4). Families: the Director's (2026-10-23); exact values and roles: Claude's proposal, measured in CIEDE2000 with colour-blind simulation. sRGB hex. 'accents' never carry a faction alone. 'officer_coat' is the field officers' overcoat (COSMETICS \u00a78.3); 'mustard' means the FID investigators' coat texture as built. 'hatband' and 'lining' are the primary except where the primary would vanish on black felt (the Corporation: its purple). 'armband' overrides the armband's colours where the primary would vanish on the mustard coat (the bikers' orange, for deuteranopes: ruled 2026-10-23).",
   "investigators_coat": "#CCA33D",
   "factions": {
     "FID": {
@@ -55,7 +55,13 @@
         "mark2": "#46C2C2"
       },
       "hatband": "#F08A24",
-      "lining": "#F08A24"
+      "lining": "#F08A24",
+      "armband": {
+        "base": "#7A4A22",
+        "stripe": "#F08A24",
+        "mark": "#F08A24",
+        "mark2": "#46C2C2"
+      }
     },
     "CWS": {
       "name": "Calm Waters Security",

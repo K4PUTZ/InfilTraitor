@@ -299,7 +299,7 @@ under a Machado 2009 simulation of deuteranopia / protanopia / tritanopia (sciki
   - the traffickers' brown beside the militia's wine: 10.6 → 13.6 tritan.
   None of these may carry a faction alone.
 - **Against the investigators' mustard coat, the bikers' orange collapses** (2.8 deutan, 4.3 protan). So the bikers' field officers wear a BROWN
-  coat with orange trim (§8.3), and a biker-background Agent's orange accents on his mustard coat lean on the emblem's shape.
+  coat with orange trim (§8.3), and a biker-background Agent's armband is brown with orange stripes (ruled 2026-10-23, §9.9).
 - **The opposites:** the police blue and the bikers' orange are near-complements (the law and the crime, the poster's diagonal); the dark pole
   is the Corporation (black), the warm armed pole the Militia (red).
 - **For colour-blind players the emblem's SHAPE carries the identity,** so the symbol on the coat's back must read as a silhouette. The black
@@ -338,8 +338,10 @@ What the renders show (Claude's reading, for the Director to judge):
 - **At play size the armband is the faction's main cue on the Agent.** The hatband and the lining's edge back it up; the tie, the pins and the
   mark of his past only show in the portrait.
 - **The measurement came true on screen:** under deuteranopia the bikers' orange armband VANISHES into the mustard coat, while the Militia's
-  red turns into a dark band that still reads by value. **Proposed fix:** on the Agent, the bikers' armband becomes BROWN with orange stripes
-  (the inverse of the banner).
+  red turns into a dark band that still reads by value. **Ruled (Director, 2026-10-23): on the Agent, the bikers' armband is BROWN with
+  orange stripes** (the inverse of the banner, which stays orange; `faction_palette.json` "armband"). Against the mustard coat the brown band
+  measures CIEDE2000 **35.2 normal / 32.1 deutan / 34.5 protan**, against the orange's 16.0 / 2.8 / 4.3, and the re-render shows it as a dark
+  band under deuteranopia where the orange one vanished.
 - **The officers' coats separate by the COAT's value even under deuteranopia** (mustard, dark brown, grey, black), so the brown coat for the
   bikers holds. The FID officer and the Corporation officer both show blue accents to a deuteranope, and are told apart by light vs dark coat.
 - **The officers' back roundel reads at play size** (the bluff's distance view); for colour-blind players the emblem's shape carries it.

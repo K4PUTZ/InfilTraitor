@@ -90,11 +90,12 @@ def tie_texture(base, stripe, thin, metal):
 
 def armband(f):
     W, H = 1024, 256
-    im = Image.new("RGB", (W, H), rgb(f["primary"]))
+    ov = f.get("armband", {})       # an override where the primary would vanish on the mustard coat (the bikers' orange, for deuteranopes)
+    im = Image.new("RGB", (W, H), rgb(ov.get("base", f["primary"])))
     d = ImageDraw.Draw(im)
-    trim = f["secondary"] if f["primary"] != "#141416" else f["secondary"]
-    d.rectangle([0, 0, W, 22], fill=rgb(trim))
-    d.rectangle([0, H - 22, W, H], fill=rgb(trim))
+    trim = ov.get("stripe", f["secondary"])
+    d.rectangle([0, 0, W, 22 if not ov else 34], fill=rgb(trim))
+    d.rectangle([0, H - (22 if not ov else 34), W, H], fill=rgb(trim))
     mark = f["secondary"]
     mark2 = None
     if f["emblem"] == "flask_flame":
@@ -103,6 +104,7 @@ def armband(f):
         mark = f["accents"][1]
     if f["emblem"] == "grub":
         mark = f["metal"]
+    mark, mark2 = ov.get("mark", mark), ov.get("mark2", mark2)
     for cx in (W * 0.25, W * 0.75):
         if f.get("armband_text"):
             e = emblem(f["emblem"], mark, mark2, 150)

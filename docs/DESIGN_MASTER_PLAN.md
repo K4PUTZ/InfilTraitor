@@ -447,8 +447,14 @@ station is the character creation; the player names the Agent there, and the TV 
 **The creator's limits (Claude, proposed):** it shapes LOOKS only; the figure on the board keeps one gameplay size (a cosmetic never changes the game,
 `ACTOR_MASTER_PLAN` D36, `COSMETICS_MASTER_PLAN` C3). Height is a narrow cosmetic scale, never the hitbox or a cover rule; eye and skin colour are
 shader uniforms (free); the face is the hero's blend shapes (`ACTOR` D75); hair and beard are the hero's CC0 pieces. Each of a player's four
-characters has his own deposition. **Open:** whether the Agent can be a woman: the story is written for a husband and the father of a son, so a
-female Agent means a husband for her (and every line that names them) or a fixed male Agent; `COSMETICS` §8.1 already plans a female base.
+characters has his own deposition.
+
+**The Agent may be a woman (Director, 2026-10-22).** The spouse then becomes a husband, and the lines adapt. **Wherever this document says "his
+wife", read "the Agent's spouse"**; the son, the debt, the spouse's fate (§2.6) and every beat stay the same. Defaults (Claude, proposed): the
+Agent **Victoria Rook**, her husband **Clement Rook** (Claire's counterpart; a clementine is one more orange). **Consequences (Claude):** every line
+that names the Agent or the spouse is written in two genders for the gendered languages (Portuguese, Spanish, French...: a `tr()` key per variant,
+`LOCALIZATION_REFERENCE`); the female base becomes required, not optional (`COSMETICS` §8.1), and every piece of the Agent's costume must fit
+both bases.
 
 **The successors in the story:** in lap 1 each one stands beside the leader (seen before it matters, §11.4) and often hands over the favour's
 details; in lap 2, when the leader dies, the successor takes the post (each faction outlives its leader, §2.1), and the new orders change the next
@@ -1316,7 +1322,8 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   2026-10-21/22; §2.6).
 - ✅ **The character creation** → the deposition at the police station: the
   camera's light comes on and the player describes the Agent (name, height,
-  eyes...), Fallout 3's model (Director, 2026-10-22; §2.2).
+  eyes...), Fallout 3's model; the Agent may be a woman, her spouse a husband,
+  the lines adapting (Director, 2026-10-22; §2.2, §2.7).
 - ✅ **The names** → the FID, The Sieve, Calm Waters Security, the Bunsen
   Burners MC, Pith & Peel Holdings, Carrion Capital; the four leaders and the
   four successors who take their posts; civil rank names per faction
@@ -1385,7 +1392,6 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   predefined phrases, no private messages between strangers) are in §16.
 - [ ] Named rivals (§11.5): whether to build them, after an IP opinion on
   US 10,926,179.
-- [ ] Whether the Agent can be a woman (§2.7, the creator's limits).
 - [ ] Psionic protection — reserved for the future, out of the MVP.
 - [ ] Player-to-player item market — future.
 - [ ] Diagonal movement — blocked at the start, possibly a late-game skill

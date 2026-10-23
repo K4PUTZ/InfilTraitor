@@ -89,7 +89,9 @@ searches found no exact homonym; a registry check before launch.
 **Then (Director):** the deposition IS the character creation (the camera's light comes on, he describes himself: name, height, eyes; Fallout
 3's model); Claude's limits proposed (looks only, one gameplay size; open: a female Agent). **Considered, nothing ratified:** a pool of named
 sub-enemies and a nemesis-like system (Shadow of Mordor / War); ⚠️ WB's patent US 10,926,179 (reported to 2036-08-11) needs an IP opinion
-before any design; Claude's sketch from our own canon in `DESIGN` §11.5.
+before any design; Claude's sketch from our own canon in `DESIGN` §11.5. **The Agent may be a woman (Director):** the spouse becomes a husband,
+the lines adapt; defaults proposed Victoria / Clement Rook; consequences: two-gender lines in gendered languages, the female base required and every
+costume piece fitted to both bases.
 
 ## 4. Where the plot stands (closed for now, 2026-10-22)
 

@@ -215,8 +215,9 @@ only in photographs (a frame at home, the grave), as a texture. There is no baby
 officers wear an **overcoat** in the faction's colours with its symbol on the back (one coat silhouette, four faction rows, §9's zones): the FID
 investigators' mustard trench with blue and white, and Claude's sketches for the others in the Director's colours (§9.4; to render first): a
 grey tactical coat with red and wine bands for Calm Waters, a BROWN leather duster with orange trim for the Bunsen Burners (never an orange coat:
-for colour-blind players it would merge with the police's mustard, §9.4), a black coat with purple and navy for the Corporation. This coat is what the
-LED coat imitates (`DESIGN` §10.5); the Agent's fedora stays his alone (`ACTOR` D78). Below the officers, the henchmen of each faction may take
+for colour-blind players it would merge with the police's mustard, §9.4), a black coat with purple and navy for the Corporation. This coat is the
+UNIFORM the Agent can steal, find or earn, and what the LED coat imitates (`DESIGN` §2.2, §10.5): it passes from afar and grants no access,
+and up close his fedora, tie and shoes give him away (`ACTOR` D78; Director, 2026-10-23). Below the officers, the henchmen of each faction may take
 any look, as long as the factions stay complementary and equivalent in power (`DESIGN` §11.2, §11.6).
 
 **8.4 Named characters (a base + pieces + a face; names in `DESIGN` §2.7):** the Agent (built; Victor Rook by default), his wife Claire, his son
@@ -262,9 +263,9 @@ measurements.
 |---|---|---|---|
 | Hatband | primary | barely (~2 px tall) | free (palette) |
 | Tie | regimental stripes, primary / secondary (the tie already has diagonal stripes) | no | free (a stripe mask + two colours) |
-| Coat lining | primary; **while the LED coat bluffs another faction, the lining keeps his own** (the traitor's true colours are inside) | when the coat opens or swings | free once the lining is its own surface |
+| Coat lining | primary; **while he wears another faction's uniform (its coat or the LED coat), the lining keeps his own** (the traitor's true colours are inside) | when the coat opens or swings | free once the lining is its own surface |
 | Pocket square | secondary (a bandana for the biker) | no | free |
-| Armband (§3) | primary + emblem; the FID's carries the letters, like a real plainclothes police armband | yes, side and back (~8 px) | ~100 tris |
+| Armband (§3) | primary + emblem; the FID's carries the letters, like a real plainclothes police armband. **Part of the UNIFORM: it follows the coat he wears** (Claude's reading, 2026-10-23, `DESIGN` §2.2), so in another faction's coat it is that faction's; the renders show the background's because they show his own mustard coat | yes, side and back (~8 px) | ~100 tris |
 | Pack patch (velcro) | the emblem, subdued | yes, in the black style (the coat is away) | ~12 tris |
 | Lapel pin, tie bar | emblem, metal | portrait only | menu master only |
 

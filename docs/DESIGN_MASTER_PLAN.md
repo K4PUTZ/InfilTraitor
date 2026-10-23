@@ -96,8 +96,9 @@ the soldiers in ordinary missions: §11.2's Lieutenant tier (Inspector, Team Lea
 senior of them, with distinctions. They wear an overcoat in their faction's colours, with its symbol. **The Agent is one of the FID's**: an
 Inspector, below Deputy Commissioner Barrow, who is more decorated and takes Graves's post. Mustard is the colour of the FID investigators'
 coat; the Agent's hat, shoes and tie set him apart from his colleagues. That rank explains his modest pay (the debt, §2.6) and the police's
-internal dispute (§2.2). **Readability (D78):** other factions' guards may take him for one of their officers from afar (§10.5); the player
-never loses him, because a non-cosmetic cue marks the Agent (`COSMETICS_MASTER_PLAN` C3).
+internal dispute (§2.2). **Readability (D78):** in another faction's uniform its guards may take him for one of their officers from afar (§2.2,
+§10.5), never up close (his hat, tie and shoes give him away); the player never loses him, because a non-cosmetic cue marks the Agent
+(`COSMETICS_MASTER_PLAN` C3).
 
 **Balance (Director: equivalent as a whole, different in everything else):** each faction owns one axis and has the weakness another exploits; each gets
 the same total threat budget, spent differently; balance is MEASURED (completion rate per faction and per route, §2.6), never asserted on paper, and the
@@ -161,23 +162,39 @@ THE POLICE STATION
   *(Supersedes "the faction picked here creates the character; its
   uniform is his first disguise and he moves freely on its turf".)*
 
-ACCESS — passes and bluffs (Director, 2026-10-23; the two-level shape is
-  Claude's, under delegation)
-  - A PASS lets him walk a faction's turf and survives a close look. It
-    comes from that faction's leader's trust (a favour done, lap 1) or
-    from an inside mechanism: the Militia's insiders who sell codes and
-    shifts (§2.1), Barrow's forged pass (§2.7), a bribe (§11.6). A pass
-    can be lost: the police's goes with the badge (lap 1), and from then
-    on Graves's favours earn information, never a police pass (his trust
-    is secret, his ban public): the police turf then takes Barrow's
-    forged pass, an infiltration, or, from lap 2, a bluff.
-  - A BLUFF is the LED coat showing a faction's symbol (§10.5; a mid-to-
-    late-game tool, from lap 2 on every route): from
-    behind and at a distance he passes for one of its field officers. It
-    never survives a close look or a Captain (§11.2).
-  - As he gains each kind of access he INCORPORATES that faction: its
-    symbol joins the coat's repertoire and its technology becomes
-    acquirable (§11.6).
+ACCESS — the UNIFORM and the ACCESS are two separate things
+  (Director, 2026-10-23; supersedes the same day's "passes and bluffs")
+  - A UNIFORM (a faction's field-officer overcoat, §2.1) is EASY: stolen,
+    found or earned. From a distance it lets him pass in that faction's
+    zones, but it grants no access.
+  - ACCESS comes from that faction's leader's trust (a favour done, lap
+    1) or from an inside mechanism: the Militia's insiders who sell
+    codes and shifts (§2.1), Barrow's forged pass (§2.7), a bribe
+    (§11.6). WITH ACCESS AND THE RIGHT UNIFORM he is not bothered. In
+    any other dress he is a TARGET there, the black suit included.
+  - UP CLOSE NOTHING HIDES HIM: at a CHECKPOINT, or in the GU next to an
+    OFFICER (§11.2: Lieutenant and up), he is recognised whatever coat or
+    LED panel he wears, because the coat does not hide his hat, his tie,
+    his shoes and the rest. Then:
+    - with access he goes on;
+    - if that faction WANTS him, he is arrested or killed;
+    - without access (Claude's reading, the obvious middle case) he
+      becomes a target.
+  - Per faction his standing is NO ACCESS, ACCESS or WANTED, and wanted
+    overrides access. What makes him wanted, and what an arrest is in
+    play, is open (§18).
+  - Before the LED coat he wears ONE uniform per mission, so he passes as
+    one faction at a time (Director). The choice is made before the
+    mission, as a slot of its own beside §10's three classes (Claude's
+    reading). The LED coat (§10.5) carries every uniform he holds and
+    switches between them.
+  - Access can be lost: the police's goes with the badge (lap 1). The
+    mustard coat still passes from afar, but checkpoints and officers
+    now stop him. From then on Graves's favours earn information, never
+    a police access (his trust is secret, his ban public); the police
+    turf then takes Barrow's forged pass or an infiltration.
+  - Technology is incorporated by meeting its author (§11.6); each
+    uniform he gets joins the LED coat's wardrobe.
 
 THE AFTERMATH — the backdrop of the whole campaign (Director, 2026-10-22)
   Leaving the station, the map is revealed: the region is devastated.
@@ -230,13 +247,15 @@ LAP 1 — the favours (four chapters, one per faction; the circle stays:
   Director, 2026-10-22)
   Leader A shares what he knows only for a favour: investigate leader B.
   B asks for C, C for D, and D points back at A (the circle, §2.6). Each
-  favour earns a piece of information and the ASKER's trust: the pass to
+  favour earns a piece of information and the ASKER's trust: the access to
   the asker's turf (revised 2026-10-23: the access is the asker's, never
-  a lent uniform). Each chapter teaches its faction's mechanics; the
+  lent; a UNIFORM can come earlier, stolen or found, and passes only from
+  afar, ACCESS above). Each chapter teaches its faction's mechanics; the
   starting faction is the player's, so no chapter may depend on another's.
   WHERE A CHAPTER IS PLAYED (Director, 2026-10-23): on the turf of the
-  faction being INVESTIGATED, as an INFILTRATION: he holds no pass there,
-  only what an inside mechanism or the asker's help can open; the LED
+  faction being INVESTIGATED, as an INFILTRATION: he holds no access there,
+  only what an inside mechanism or the asker's help can open, and a
+  stolen uniform that fools from afar, never at a checkpoint; the LED
   coat comes later, in lap 2 (§10.5) (the police chapter is the exception:
   he walks in on his own badge, and Graves takes it there); the chapter teaches the investigated
   faction's mechanics, and its specialists (§11.6) first appear there.
@@ -252,8 +271,9 @@ LAP 1 — the favours (four chapters, one per faction; the circle stays:
   the pit (the Corporation's favour, §2.6), the commissioner says he is
   interfering with the investigation for revenge, and takes his badge.
   From then on he can still walk police zones, but checkpoints stop him
-  and he is discovered: the police PASS is gone, so his own turf now
-  needs a bluff or Barrow's forged pass (§2.7). That chapter's position moves with the route
+  and he is discovered: the police ACCESS is gone (the mustard coat still
+  passes from afar), so his own turf now needs Barrow's forged pass
+  (§2.7) or an infiltration. That chapter's position moves with the route
   (4th on the Police route, 1st on the Corporation route), and so does
   how long he keeps the badge.
   Midpoint: his wife's condition turns critical, and the hospital is
@@ -1158,14 +1178,17 @@ always costs mobility or stealth.***
 **The LED coat is a Corporation secret project** (its specialist Hedge wears the prototype, §11.6) that **replaces the common overcoat** once
 acquired. It does two things, both electronic:
 - **The cloak** (`ACTOR` D72, unchanged): standing still, he fades into the scenery.
-- **The symbol (new):** the LEDs show any faction's symbol and colours on the coat, so **from behind and at a distance he passes for one of that
-  faction's field officers** (§2.1). **It is a mid-to-late-game tool on EVERY route** (Director, 2026-10-23: "um acessório muito forte,
+- **The wardrobe (new):** the LEDs show the uniform (colours and symbol) of any faction whose uniform he holds, so **from a distance he passes
+  for one of that faction's field officers** (§2.1), and with that faction's ACCESS he is not bothered there. **It is a wardrobe, not an
+  access** (Director, 2026-10-23): before it he wears one uniform per mission; with it he carries all of them at once.
+  **Up close it hides nothing:** at a checkpoint, or in the GU next to an officer, he is recognised as in any coat (his hat, tie and shoes), and
+  only his access decides (§2.2, ACCESS). **It is a mid-to-late-game tool on EVERY route** (Director, 2026-10-23: "um acessório muito forte,
   designado pra meio/fim de jogo"; supersedes the same day's "its arrival varies by route"). The Agent MEETS it in lap 1's Corporation
   chapter, worn against him by Hedge (§11.6: seen before it matters, §11.4), wherever that chapter falls in his route; he can ACQUIRE it only
   once lap 1 is closed, in lap 2 (Claude's anchor, the obvious reading: the one point every route reaches at the same stage, whatever its
-  chapter order). Its reach grows with him: it can only show the factions he has already incorporated. He may switch on the fly, but **not too close and never in a guard's sight**; it only fools at a distance,
-  never a close look or a Captain (§11.2); only the symbols of factions he has incorporated are available (§2.2, access). With several factions on
-  one map (segments, §14), choosing which symbol to show where is the decision: the Militia's colours near the club draw fire.
+  chapter order). Its reach grows with him: it shows only the uniforms he holds. He may switch on the fly, but **not too close and never in a guard's sight**.
+  With several factions on one map (segments, §14), choosing which uniform to show where is the decision: the Militia's colours near the
+  club draw fire.
 
 **It needs energy (Director: a cooldown and an energy and recharge system).** **The battery in the pack is a later UPGRADE that powers both
 the mask and the LED coat** (Director, 2026-10-23). Until he gets it, the mask runs on its own small charge (§10.3 already prices X-ray in
@@ -1173,7 +1196,7 @@ charges). With it, the mask's vision (D71's tether at the nape carries the power
 coat's cloak and symbol draw on one charge, so seeing through walls and hiding compete. When the upgrade comes: open (§18). It recharges slowly per turn and quickly at power points,
 which grow as the power station's restoration brings districts back (§2.2; restored light also costs cover, §2.6). The numbers are open (§18).
 
-**Readability (`COSMETICS_MASTER_PLAN` C3):** the symbol he shows is gameplay state, so the HUD always says which faction he is bluffing as; a
+**Readability (`COSMETICS_MASTER_PLAN` C3):** the symbol he shows is gameplay state, so the HUD always says which uniform he shows and whether he holds that faction's access; a
 cosmetic coat still shows the symbol, because the faction's colours and emblem are filled into the coat's accent zones by the game (D78).
 
 ---
@@ -1228,7 +1251,9 @@ agent's armour.*
 The Agent's own rank is **Inspector**.
 
 **Field officers (Director, 2026-10-23):** Lieutenant and above lead the soldiers in ordinary missions and wear an **overcoat** in their faction's
-colours and symbol (§2.1); the sub-leaders are the most senior field officers, with distinctions. This is what the LED coat imitates (§10.5).
+colours and symbol (§2.1); the sub-leaders are the most senior field officers, with distinctions. This is the uniform the Agent can steal,
+find or earn, and that the LED coat imitates (§2.2, §10.5). **Officers are also the ones who see through it:** in the GU next to an officer,
+as at a checkpoint, the Agent is recognised whatever coat he wears (Director, 2026-10-23; §2.2, ACCESS).
 Below them the factions vary freely: henchmen, super-henchmen and sub-henchmen of any look, as long as they stay complementary and of
 equivalent power across the four factions.
 
@@ -1681,10 +1706,14 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - ✅ **The dress code and access** → every faction's field officers wear
   overcoats; the Agent is an FID one in the investigators' mustard coat; he
   starts with the police's common facilities only and almost no gear (§10.0);
-  other turfs open by a pass (a leader's trust or an inside mechanism); the
-  LED coat is the Corporation's secret project and can show any incorporated
-  faction's symbol from afar, on an energy budget (Director, 2026-10-23;
-  §2.1, §2.2, §10.5).
+  the UNIFORM (easy: stolen, found, earned; passes from afar) and the ACCESS
+  (a leader's trust or an inside mechanism) are separate; with access and the
+  right uniform he is not bothered, in any other dress he is a target; up
+  close (a checkpoint, the GU next to an officer) he is always recognised,
+  and access lets him on while WANTED means arrest or death; one uniform per
+  mission until the LED coat (the Corporation's secret project), which
+  carries them all, on an energy budget (Director, 2026-10-23; §2.1, §2.2,
+  §10.5).
 - ✅ **Specialists** → about three unique enemies per faction, each the author
   of a technology the Agent can acquire after meeting it; enemies and the Agent
   evolve together (Director, 2026-10-23; the roster in §11.6 is a proposal).
@@ -1719,7 +1748,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   site the club's assassin has infiltrated, his name ("the Confessor",
   proposed) and whether he counts as a boss (§2.2, proposed); when the pack
   battery upgrade comes (§10.5); the energy budget's numbers and recharge
-  (§10.5); the bluff's distances and what reveals it (§10.5); the specialist
+  (§10.5); what makes a faction WANT him and what an arrest is in play, and
+  whether "recognised without access" makes him a target (Claude's reading)
+  (§2.2, ACCESS); how close counts as "from afar" for a uniform (§2.2); the specialist
   roster and its template (§11.6, proposed); the four backgrounds' abilities
   and equipment (§15); the four trips abroad (§2.6, proposed: one per lap-1
   chapter, a member abroad per faction); the palette's exact values and roles

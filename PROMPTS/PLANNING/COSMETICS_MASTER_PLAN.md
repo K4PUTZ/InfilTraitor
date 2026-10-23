@@ -1,7 +1,10 @@
 # COSMETICS_MASTER_PLAN
-## Cosmetic items, ownership, the backpack, contributions, the weekly faction war and the world map — v0.4
+## Cosmetic items, ownership, the backpack, contributions, the weekly faction war and the world map — v0.5
 
-> 🟡 **v0.4 · 2026-10-22 · PLANNING ONLY, nothing built.** v0.4 (Director's review of the plot): a player has up to FOUR characters, one per faction,
+> 🟡 **v0.5 · 2026-10-23 · PLANNING ONLY, nothing built.** v0.5: §8 crossed with the plot's closed main arc (`DESIGN_MASTER_PLAN` §2): the
+> sub-leaders rise to the leaders' priority, crowd sets, three cast cuts ruled (no child base, the rescue only as scenery, a 2D TV anchor), and the
+> first slice is the opening every route shares (§8.5). The props side of the same analysis is `PROP_PIPELINE_PLAN` §9.
+> v0.4 (2026-10-22): v0.4 (Director's review of the plot): a player has up to FOUR characters, one per faction,
 > whose faction never changes (§2); the permanent tattoo of the campaign's ending (§3); many simultaneous leagues of 4 x 30 characters, bots shown as
 > bots, prizes to humans only (§4); the reporter (§8.4).
 > v0.3: four factions (§2), the 16+ audience (C11, §4), the model slot inventory (§8).
@@ -178,8 +181,8 @@ Every character in the game is ONE base skeleton (the hero's 65 bones, `ACTOR` D
 same slots, a rank is a few pieces on top, a cosmetic is one piece. **Nothing below is built; the hero's v5.1 pieces are the only ones that exist.**
 
 **8.1 Bases (one skeleton, the animations shared):** male (built: the agile-B body), female (REQUIRED since 2026-10-22: the Agent may be a woman, `DESIGN` §2.7; ACTOR D70's female option; every piece of the Agent's costume must fit both bases, which doubles the fitting work of each hero piece), a heavier build for
-the militia's and the traffickers' bruisers (a remodel of the same body, like agile-B), and a child (the son, the opening; seen only in photographs and
-cut-scenes, a low priority). There is no baby (`DESIGN` §2.6, 2026-10-22).
+the militia's and the traffickers' bruisers (a remodel of the same body, like agile-B). **No child base (Director, 2026-10-23):** the son appears
+only in photographs (a frame at home, the grave), as a texture. There is no baby (`DESIGN` §2.6, 2026-10-22).
 
 **8.2 Slots (each piece declares the body regions it hides, C4):**
 
@@ -203,12 +206,27 @@ cut-scenes, a low priority). There is no baby (`DESIGN` §2.6, 2026-10-22).
 | Corporation (executives and their agents) | suit of their own cut and palette, earpiece | sunglasses, a briefcase, the leaders' tailoring | suits, **never** the hero's fedora, coat or palette (§2.1) |
 
 **8.4 Named characters (a base + pieces + a face; names in `DESIGN` §2.7):** the Agent (built; Victor Rook by default), his wife Claire, his son
-Leo, the four leaders (Commissioner Martin Graves, who is also the commissioner who takes the badge; Commander Dale Kessler; "Deacon"; the CEO
+Leo (photographs only, 8.1), the four leaders (Commissioner Martin Graves, who is also the commissioner who takes the badge; Commander Dale Kessler; "Deacon"; the CEO
 Gordon Pryce, the Senate candidate), **the four successors who take their posts** (Deputy Commissioner Irene Barrow; Duke Hardcastle; "Choirboy";
 Evelyn Marsh), Marsh's counsel Prudence Vane, the official investigator who takes over the case, the front's man at Pith & Peel Holdings, **the reporter, Thomas
 Marlow** of *The Sieve* (the finale; civilian clothes, no faction set), and civilians (a few base outfits recoloured by the material/palette system). **The Agent himself is four instances** (one per faction, §2): his
 look per class is open (the hero's costume over each faction's pieces, or a faction look of his own).
 
-**8.5 Order of work (proposed):** the CS-1 split of the hero (C4) proves the slot pipeline; then one guard set (the Federal Police: the player's own
-institution, first on most routes) at the game LOD; then the other three sets; the named characters reuse the sets plus faces and tailoring. Each set
-has a ~5 k game budget (D73) and is measured on the Moto before the next.
+**From the arc (2026-10-23; Claude's reading of `DESIGN` §2, the cuts ruled by the Director):**
+- **The sub-leaders rise to the leaders' priority:** each is the handler on one route, stands beside the leader in lap 1, takes the post in lap 2,
+  and the four stand at the memorial (`DESIGN` §2.7).
+- **The leaders are bosses** (lap 2's mortal confrontations): Kessler and "Deacon" on the heavier base, Graves and Pryce on the standard one
+  (proposed).
+- **The spouse in both genders:** Claire, or Clement for a female Agent (`DESIGN` §2.7): clothes and a face on the existing bases.
+- **Crowd sets:** the press (camera, microphone), mourners (dark civilian clothes), medical staff (scrubs), looters (civilians with a bandana;
+  hostile).
+- **Cut (Director, 2026-10-23):** no child base (8.1); **the rescue only as scenery** (vehicles, cordons, hoardings: no firefighter or paramedic
+  set, as `DESIGN` §2.2 has it heard of more than seen); **the TV anchor is 2D** (the epilogue's bulletin is an image on the TV).
+- **Out of the arc:** §11.2's Rival Agent boss has no place in the campaign as written.
+
+**8.5 Order of work (proposed; the first slice ruled 2026-10-23):** the CS-1 split of the hero (C4) proves the slot pipeline. **The first kit is the
+opening every route shares** (Director, 2026-10-23; `PROP_PIPELINE_PLAN` §9): the house, the police station, the devastated town, the power
+station of the official work. Its actors: the Agent on both bases; the Federal Police set at the game LOD (the station's officers); Commissioner
+Graves; Thomas Marlow at the door; **the four sub-leaders**, since the faction that approaches him outside the station is the player's choice, so
+all four must exist there as the options (Claude: a consequence of `DESIGN` §2.2); a few civilians. Then the other three faction sets, one per
+territory. Each set has a ~5 k game budget (D73) and is measured on the Moto before the next.

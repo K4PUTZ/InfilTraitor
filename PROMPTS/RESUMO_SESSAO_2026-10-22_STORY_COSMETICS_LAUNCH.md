@@ -145,3 +145,13 @@ becomes the sub-leader** (Prudence Vane is her counsel); **the report was buried
 quiet: one failure, two hands); **he dies a candidate** in lap 2: the epilogue's bulletin now has his death blamed on the factions' war, the hole
 laid on the dead man, Marsh selling to Carrion Capital at half price, the Militia never paid. Superseded: "the CEO elected" and Claude's senator
 steering the contract. `DESIGN` §2.1, §2.2, §2.6, §2.7, §11.2, §18; `COSMETICS` §8.4. The four leaders are now Graves / Kessler / "Deacon" / Pryce.
+
+## 6. The plot closed for now; the 3D models the arc needs (2026-10-23)
+
+The Director closed the plot for now (`DESIGN` §2 as it stands) and asked for the 3D-model (slot) analysis from the main arc. Claude crossed the arc
+with `COSMETICS` §8 (characters) and `PROP_PIPELINE` (props); the Director ruled four questions, all as recommended: **vehicles are MESH models**;
+**cast cuts** (the son only in photographs, no child base; the rescue only as scenery; the TV anchor in 2D); **the first kit is the opening every
+route shares** (the house, the police station, the devastated town, the power station; its actors include the four sub-leaders, the choice at the
+station's door); recorded in `COSMETICS_MASTER_PLAN` v0.5 §8 and `PROP_PIPELINE_PLAN` v0.5 §9 (the places as kits, 11 new slot families, the story's
+objects; PP7, animated props, becomes REQUIRED: the factions' devices move). Also this round: the plot dossier artifact (private) and the circle poster
+`DIAGRAMS/CIRCULO_ENREDO.png` with its generator `tools/asset_generation/plot_circle_poster.py`.

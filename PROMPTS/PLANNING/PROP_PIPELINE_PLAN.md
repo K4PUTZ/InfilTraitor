@@ -1,5 +1,9 @@
 # PROP_PIPELINE_PLAN
-## Drop-in models: a pipeline like the textures', for props, vehicles and voxel objects — v0.4 (PP1 and PP4 BUILT 2026-09-30; the four open questions RULED)
+## Drop-in models: a pipeline like the textures', for props, vehicles and voxel objects — v0.5 (PP1 and PP4 BUILT 2026-09-30; the four open questions RULED; the campaign's slots listed 2026-10-23)
+
+> ⏭️ **2026-10-23 — the campaign's slots (§9).** With the plot's main arc closed (`DESIGN_MASTER_PLAN` §2), §9 lists what it needs: the places as
+> kits, eleven new slot families, the story's unique objects, and the Director's rulings: vehicles are MESH models; the first kit is the opening every
+> route shares; PP7 (animated props) becomes REQUIRED, because the factions' devices move. The characters' side is `COSMETICS_MASTER_PLAN` §8.
 
 > ⏭️ **2026-10-07 — two guard rails the user tier now relies on (AUDIT).** (1) `PropModelFit.is_allowed_model_path()`: a prop's `model` must be a shipped `res://` `.glb` / `.gltf`, refused BEFORE `load()` (a `user://` scene ran its embedded script through the old loader; `prop_model_path_selftest`). A player's model still comes only through the planned data-only `.iprop` (PP2), never through this loader. (2) Every prop / slot row is read through `JsonFile` (loud, path-named errors in `PropRegistry.load_errors`; malformed vectors fall back, `registry_load_errors_selftest`). A per-field schema for PP2/PP3 is still owed (`technical_debt.md`, "Code audit (2026-10-07)").
 
@@ -99,8 +103,8 @@ GLB / .vox  ->  tools/persistent/build_prop.py (offline compiler)  ->  <id>.ipro
 - **PP3 — user tier:** `user://props/`, id collision (user wins), the slot default on rejection, the log line. Test on the Moto (path under `Android/data/<pkg>/files`, as `dev_flags.cfg`).
 - **PP4 — voxel models:** `.vox` parser, scale/hollow/palette mapping, the container registration; first content: 5-10 CC0 objects (crate variants, shelf, barrel, desk, locker) placed in PROPS; blast + firearm + fire on each; the claim count and Moto memory (`alloc` census).
 - **PP5 — material-tint variants** (`painted_metal` red/blue/...): how many fit in the 256-material byte and what they cost per chunk.
-- **PP6 — the first vehicle slot** with our own default model, to prove a swap end to end (two different `.iprop` files in the same slot, same footprint, same cover, **both on screen at once**).
-- **PP7 — optional: glTF animation clips** (data-only) for a prop that moves (wheels, a door); a scripted-mod opt-in tier stays a separate, later product decision.
+- **PP6 — the first vehicle slot** with our own default model, to prove a swap end to end (two different `.iprop` files in the same slot, same footprint, same cover, **both on screen at once**). **Vehicles are MESH models (Director, 2026-10-23, §9):** a GLB fitted to the slot, soot at Tier 3 or the fragment replacement at Tier 4, never a ~2 500-claim voxel shell.
+- **PP7 — glTF animation clips** (data-only) for a prop that moves (wheels, a door). **REQUIRED since 2026-10-23 (§9; it was optional):** the factions' devices move (the Militia's drones, surveillance cameras, sensors: `DESIGN_MASTER_PLAN` §11.1), and so does the sluice gate of the official work; a drone's behaviour belongs to the AI plan, its model and clips come through here. A scripted-mod opt-in tier stays a separate, later product decision.
 
 ## 6. The four questions, RULED (Director, 2026-09-30)
 1. **Sharing / multiplayer — RULED: no.** A model is seen only by its own player on their own device. **But several models of the same slot must run at the same time** (§1b). If models ever have to travel between devices, that is a new product decision (size limits, hashes, review); nothing built now prevents it.
@@ -137,3 +141,69 @@ GLB / .vox  ->  tools/persistent/build_prop.py (offline compiler)  ->  <id>.ipro
 
 **Gates for the scene:** the same `verify.py smoke`; a blast and a shot on each object class; a capture of the whole room at the Moto's zoom next to the agent and a guard; the claim count of the room against the per-map budget (§7); a Moto run.
 
+
+## 9. The campaign's slots (from the plot's main arc, 2026-10-23)
+
+*(Director, 2026-10-23: "agora que já temos o arco principal, podemos continuar com a análise do que vai ser necessário em termos de modelagem 3D
+(slots)".)* Claude crossed the arc (`DESIGN_MASTER_PLAN` §2.2, §2.6, §14.4) with this plan's slots and `COSMETICS_MASTER_PLAN` §8 (the characters);
+the Director ruled the questions in 9.5. **Nothing here is built;** the 14 shipped slots are the DORM's and the labs' (`props/slots/`).
+
+**9.1 Four ways a model enters.** Rule of thumb: box and corner become voxels; thin, organic or on wheels becomes a mesh.
+
+| Kind | Path | Examples |
+|---|---|---|
+| Characters | one skeleton (the hero's 65 bones) + pieces in slots (`COSMETICS` §8) | the Agent, guards, leaders, the reporter |
+| Voxel props (Tier 2) | a `.vox` from a generator script (like `gen_dorm_vox.py`) into a `VoxelStore` container: shots, blasts, fire and soot for free | filing cabinets, drums, barriers, headstones |
+| Mesh props (Tier 3 / 4) | a GLB (ours or CC0) fitted to the slot: soot only, or the fragment replacement | a chair, a motorcycle, a car |
+| Things that move | a mesh with its own clips (PP7) | the Militia's drones, surveillance cameras, the sluice gate |
+
+**9.2 The places are kits, and every route visits all of them** (only the order changes, `DESIGN` §2.2), so no kit belongs to one route. The time
+states (`DESIGN` §14.4) reuse a kit with props swapped (a cordon gone, debris cleared).
+
+| Place | When | What it asks for |
+|---|---|---|
+| The devastated town | the backdrop of everything, in authored time states | street, rubble, acid, cordons, hoardings, police vehicles, looted shops, curfew signs |
+| The Agent's house | the opening; the empty house of the sad ending (a proposal, `DESIGN` §2.2) | living room, TV, sofa, a glass, a phone, photo frames |
+| The police station (FID) | the deposition; the Police's territory; the fight with Graves | deposition room (the camera and its little light), the chief's office, the archive, a checkpoint |
+| The official work's zones | before lap 1 | the power station and substation, the sluice gate, tanks (the pipes exist) |
+| GRUB DRILL's complex (the Militia) | the Militia's territory; the fight with Kessler | guard post, security room, drone hangar, siren tower, the EMPTY pad of the generator never installed |
+| The clubhouse and chop shop (the Traffickers) | the Traffickers' territory; the fight with "Deacon" | bar, motorcycles, workbench, drone parts, the lab, waste drums |
+| HQ and campaign office (the Corporation) | the Corporation's territory; the fight with Pryce | offices, boardroom, servers, the report's archive, the campaign office ("Pryce for Senate") |
+| The hospital | the midpoint warning; Thomas's approach | ICU, monitors, the blood bank, a corridor |
+| The pit and the dam | the epilogue; the Police's failure | the pit's edge and railing, acid (the liquids engine is built), the substation the drone hit |
+| The cemetery | the finale | headstones, the grave, a tent and lectern, the press's cameras, chairs, umbrellas (rain is not built) |
+| Abroad (the fund, the offshore broker) | open in the plot | wait for it |
+
+**9.3 New slot families.**
+
+| Family | Slots | Tier |
+|---|---|---|
+| Office | steel filing cabinet, meeting table, sofa, armchair, lectern | voxel (the sofa a mesh) |
+| Electronics | terminal (the "reach a terminal" objective, `DESIGN` §14.2), server rack, monitor, TV, control panel | voxel |
+| Security | boom gate, concrete barrier, cone, cordon post, guard booth, hoarding, sandbags, floodlight | voxel (the cone a mesh) |
+| Industrial | drum, tank, valve, sluice-gate wheel, transformer, generator, siren tower, pallet, catwalk | voxel |
+| Lab | bench, burner, chemical jugs, fume hood | voxel, with the glass that exists |
+| Clubhouse | pool table, bar counter, stools, tool bench, tyres | voxel |
+| Hospital | bed, IV stand, monitor, gurney, the blood bank's fridge | voxel and mesh |
+| Cemetery | headstones (3-4 variants), the grave, a wreath, a tent | voxel |
+| House | TV stand, kitchen counter, dining table | voxel |
+| Vehicles | police car, rescue vehicle, the Militia's SUV, an executive sedan, a van, a motorcycle | mesh (9.5) |
+| Rubble | wrecked car, fallen pole, looted shelf | mesh and voxel |
+
+**9.4 The story's objects.** Each clue is a thing on screen, so each must be unique and readable at play zoom (the fair reveal, `DESIGN` §2.4: the
+player must have SEEN it): the deposition's camera; the TV of the bulletin; **the generator's empty pad** (the object is an absence: anchor bolts and
+an "installed" tag); the drone's wreck; the waste drums; the report's folder; the screen with the puts; the roadblock's credential reader; the drone
+parts at the chop shop; the badge and the wedding ring; the pit's railing; the graves; Pryce's campaign posters (in-world text through `tr()`,
+`COSMETICS` §6).
+
+**9.5 Rulings (Director, 2026-10-23).**
+- **Vehicles are MESH models** (PP6): a GLB fitted to the slot, soot at Tier 3 or the fragment replacement at Tier 4, few claims.
+- **The first kit is the opening every route shares:** the house, the police station, the devastated town and the official work's power station.
+  It proves the slot pipeline on the widest reuse; its actors are `COSMETICS` §8.5.
+- **PP7 becomes required:** the factions' devices move (drones, cameras, sensors, `DESIGN` §11.1), and so does the sluice gate.
+- **Cast cuts** (`COSMETICS` §8): the son only in photographs (no child base), the rescue only as scenery (no firefighter or paramedic set), the
+  TV anchor in 2D.
+
+**9.6 Order (proposed).** The opening kit (the town, security, office, electronics, house, and the industrial pieces of the power station), then the
+four faction territories (each with its guard set, `COSMETICS` §8.5), then the hospital, the pit and the cemetery. Each new family arrives as slot
+JSONs, a generator script, a bench placement (PROPS or DORM), a blast and a shot on each object, and the map's claim count against its budget (§7).

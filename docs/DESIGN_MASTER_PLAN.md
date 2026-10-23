@@ -77,12 +77,12 @@ importante é serem equilibradas".)* Names are working names. All four orbit one
 
 | Faction | Uniform / turf | Public face | Truth | Plays as (§11.1) |
 |---|---|---|---|---|
-| **The Federal Police** (in the game a FICTIONAL federal agency, its ranks localised per country: a real institution never plays the corrupt faction) | Official uniforms and equipment; stations, checkpoints | The law | Paid to look away from the traffickers; its leaks reach the militia; its chief knows the company's containment pit is where the traffickers' enemies are dumped | Information: radios, check-ins, cameras, trail reading |
-| **The Militia** — a private military security company | High-tech uniforms and gear; GRUB DRILL's complex across several towns | Security hired by the company's CEO, in exchange for backing his Senate campaign | Takes the traffickers' territory, buys police leaks, bills for security it never delivers; **leaks from the inside** (Director, 2026-10-22): some of its own men sell access, codes and shifts, so the traffickers produce their toxic substances inside the facilities it guards | Technology and force: drones, sensors, armour, pairs |
-| **The Traffickers** — paramilitaries behind a motorcycle club | Club vests and patches, bikes; chop shops, the refinery's back rooms | A motorcycle club | Divert banned precursors from the company's refinery into synthetic drugs, in labs the Militia's insiders let them run; their dead go into the pit | Numbers and improvisation: bikes, routes, explosives, chemistry |
-| **The Corporation** — GRUB DRILL's executives and minority shareholders | Suits **of their own cut, palette and earpieces, never the hero's fedora and coat** (D70: on the board at ~190 px the Agent must not read as one of them) | The company's governance | Sabotage the CEO (Director, 2026-10-22): they hid the engineers' risk report hoping for a CONTAINED leak that would drop the company's value without the full accident, and covet a fat commission for selling it at half price to foreign funds; no options of their own; they finance the traffickers, for a scandal; they have their own suited agents | Money and access: bribes, hacking, private agents |
+| **The Federal Police — the FID, Federal Inquiry Directorate** (§2.7; in the game a FICTIONAL federal agency, its ranks localised per country: a real institution never plays the corrupt faction) | Official uniforms and equipment; stations, checkpoints | The law | Paid to look away from the traffickers; its leaks reach the militia; its chief knows the company's containment pit is where the traffickers' enemies are dumped | Information: radios, check-ins, cameras, trail reading |
+| **The Militia** — a private military security company, **Calm Waters Security** (§2.7) | High-tech uniforms and gear; GRUB DRILL's complex across several towns | Security hired by the company's CEO, in exchange for backing his Senate campaign | Takes the traffickers' territory, buys police leaks, bills for security it never delivers; **leaks from the inside** (Director, 2026-10-22): some of its own men sell access, codes and shifts, so the traffickers produce their toxic substances inside the facilities it guards | Technology and force: drones, sensors, armour, pairs |
+| **The Traffickers** — paramilitaries behind a motorcycle club, the **Bunsen Burners MC** (§2.7) | Club vests and patches, bikes; chop shops, the refinery's back rooms | A motorcycle club | Divert banned precursors from the company's refinery into synthetic drugs, in labs the Militia's insiders let them run; their dead go into the pit | Numbers and improvisation: bikes, routes, explosives, chemistry |
+| **The Corporation** — GRUB DRILL's executives and minority shareholders, led by **Evelyn Marsh** (§2.7) | Suits **of their own cut, palette and earpieces, never the hero's fedora and coat** (D70: on the board at ~190 px the Agent must not read as one of them) | The company's governance | Sabotage the CEO (Director, 2026-10-22): they hid the engineers' risk report hoping for a CONTAINED leak that would drop the company's value without the full accident, and covet a fat commission for selling it at half price to foreign funds; no options of their own; they finance the traffickers, for a scandal; they have their own suited agents | Money and access: bribes, hacking, private agents |
 | **The Agent** | His own costume (D70) | A federal investigator, a grieving father | The police leak that sells information to the militia (and to the reporter, below), and the man who breached the dam (§2.6) | — |
-| **The Press** — a reporter, a fifth element, NOT a faction (no guards, no uniform, no league) | — | An investigative journalist | Consulted the Agent as an anonymous police source: bought the information about the traffickers that the Militia used. **Innocent of the massacre: the only one who did not cause the son's death** (Director, 2026-10-22) | The campaign's lead supplier in lap 2 and its final encounter (§2.2) |
+| **The Press** — a reporter, **Thomas Marlow of *The Sieve*** (§2.7), a fifth element, NOT a faction (no guards, no uniform, no league) | — | An investigative journalist | Consulted the Agent as an anonymous police source: bought the information about the traffickers that the Militia used. **Innocent of the massacre: the only one who did not cause the son's death** (Director, 2026-10-22) | The campaign's lead supplier in lap 2 and its final encounter (§2.2) |
 
 **Each faction outlives its leader:** the police are an institution (a new chief, the same cover-ups); the militia is a contract and a territory; the
 club is a business with a chapter structure; the Corporation is a fund and a board. **All four are innocent of the attack and guilty of the massacre**
@@ -237,9 +237,9 @@ non-lethal route (knockout, sedative dart, smoke: §8, §10.4, §11.3); the four
 so killing him is a kill and a no-kill run must let him live (Claude: follows from the cemetery finale).
 
 **The reporter (Claude's proposals, RATIFIED by the Director 2026-10-22).** **The canon is in English; names may be swapped per language later**
-(Director). Name: **Thomas** (the doubter who must see to believe; Tomás, Tomasz, Tommaso if localised); his surname is open, and never one that
-evokes a real case (no "Vale"). Outlet: an independent, reader-funded local investigative site, **Blind Spot** (localised like signage; a registry
-check before launch). First contact: seen at the police station's door in the opening (he recognises his source being suspended); the real approach at the
+(Director). Name: **Thomas Marlow** (the doubter who must see to believe; Marlow, the witness of *Heart of Darkness*; Tomás, Tomasz, Tommaso if
+localised), never a surname that evokes a real case (no "Vale"). Outlet: an independent, reader-funded local investigative site, **The Sieve**
+(§2.7; it replaced *Blind Spot* on 2026-10-22, a real newsletter's name; localised like signage; a registry check before launch). First contact: seen at the police station's door in the opening (he recognises his source being suspended); the real approach at the
 hospital after the wife's death, with the trade that opens lap 2 (his leads for the leaders' confessions); the cemetery is kept for the finale. Why
 only he can close the case: the Militia's clue speaks of "our informant", and only he knows the informant is his own source, because his scoops
 reached the Militia before he published them. The slip at the memorial: a line about the target only the attacker could know (e.g. "it was only
@@ -405,10 +405,43 @@ the front's offshore broker, the traffickers' routes); the campaign's locations 
 
 **Lap 2's lengths:** §2.2 (open again since the finale became a scene; superseded "the first three short, the last complete").
 
-**Open (Director):** the fictional federal agency's name and
-its ranks per country (the Director's draft says "Tenente", a military rank: Brazil's federal police ranks are agente, escrivão, perito, delegado); the
-dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); the reporter's surname; what the reporter does in the let-him-live branch; the epilogue's open joints (§2.2); a city that
+**Open (Director):** the agency's ranks PER COUNTRY when the game is localised (the English canon is §2.7 and §11.2: civil ranks, never military,
+which settles the draft's "Tenente"); the
+dedication and the partnership (`LAUNCH_MASTER_PLAN` §1); what the reporter does in the let-him-live branch; the epilogue's open joints (§2.2); a city that
 lived a real dam disaster (above).
+
+### 2.7 Names (Director, 2026-10-22: ratified, with "pitadas de humor")
+
+**The canon is in English; each language may swap names later** (localisation). The humour lives in the factions' names and characters, never in
+the victims or the tragedy (§2.6). A quick web search on 2026-10-22 found no exact homonym for any organisation below (it replaced three that
+collided: *Blind Spot*, a real newsletter; "Cordon", a real French defence group; "Orchard Holdings", several real firms); **a registry check
+before launch**, as for GRUB DRILL INC. Near-match to weigh: the real State Burner's Motorcycle Club (Philadelphia, 1946, a community club).
+
+| Organisation | Name | The joke |
+|---|---|---|
+| The federal agency | **Federal Inquiry Directorate (FID)** | Motto: *"We'll get back to you."* |
+| The reporter's outlet | **The Sieve** | A site that lives on leaks, named after a leaky utensil. Motto: *"Everything gets through."* |
+| The Militia (a PMC) | **Calm Waters Security** | Paid to keep the dam's waters calm. Motto: *"Peace of mind, billed monthly."* (they billed for the sirens they never installed) |
+| The Traffickers | **Bunsen Burners MC** | Biker chemists: they burn rubber and cook on a Bunsen burner |
+| The Agent's front ("laranja") | **Pith & Peel Holdings** | An orange's pith and peel, dressed as a law firm |
+| The foreign fund | **Carrion Capital** | A vulture fund named after what vultures eat; it buys GRUB DRILL at half price |
+
+| Faction | Leader (dies in lap 2) | The sub-leader who takes the post |
+|---|---|---|
+| FID | **Commissioner Martin Graves** | **Deputy Commissioner Irene Barrow** — the police's top brass all have burial names (graves, a barrow); the next one will be called Tomb |
+| Calm Waters Security | **Commander Dale Kessler** | **Duke Hardcastle**, head of operations, named like an action figure and acting like one |
+| Bunsen Burners MC | **President "Deacon"** (Wade Cutler) | **Vice President "Choirboy"**, whose real name nobody says aloud; the officers' road names are all churchly |
+| The Corporation | **Evelyn Marsh**, the minority bloc's leader | **Prudence Vane**, the bloc's counsel: prudent in name only, a weathervane that turns with the wind |
+
+**The rest of the cast:** the Agent **Victor Rook** by default ("Victor", the winner; a rook moves straight on a grid, and "to rook" is to cheat);
+his wife **Claire Rook**; his son **Leo Rook**; the reporter **Thomas Marlow**; GRUB DRILL's CEO, the Senate candidate, **Gordon Pryce** (the share
+price); the default town for a player who gives no city, **Lowmere** (not yet web-checked). **Proposed, not ratified:** the deposition at the police
+station is the character creation: the player names the Agent there, and the TV report of the epilogue reads that name.
+
+**The successors in the story:** in lap 1 each one stands beside the leader (seen before it matters, §11.4) and often hands over the favour's
+details; in lap 2, when the leader dies, the successor takes the post (each faction outlives its leader, §2.1), and the new orders change the next
+visits to the same places (new checkpoints: the authored time states of §14.4); the "four factions" at the cemetery memorial are the four
+successors before the press; in Freelance they are the clients who pay the "dead" Agent for information, none of them knowing who he is.
 
 ---
 
@@ -910,6 +943,19 @@ agent's armour.*
 | **Captain** | Everything above + immune to smoke, sees through disguises, coordinates subordinate positioning, changes routes on suspicion | Whoever relies on a single trick |
 | **Rival Agent** (boss) | A complete mirror of the player: gadgets, cover changes, retreats and regroups, has HP and armour, heals between encounters | Whoever doesn't adapt |
 
+**Rank names per faction (2026-10-22, English canon; civil ranks, never military; localised per country later):**
+
+| Tier | FID | Calm Waters Security | Bunsen Burners MC | The Corporation |
+|---|---|---|---|---|
+| Recruit | Cadet | Contractor | Hang-around | Staffer |
+| Standard | Agent | Operator | Prospect | Operative |
+| Veteran | Senior Agent | Senior Operator | Patch | Senior Operative |
+| Lieutenant | Inspector | Team Leader | Road Captain | Case Manager |
+| Captain | Chief Inspector | Site Commander | Sergeant-at-Arms | Head of Security |
+| Leader / successor | Commissioner / Deputy Commissioner | Commander / Head of Operations | President / Vice President | Bloc leader / Counsel |
+
+The Agent's own rank is **Inspector**.
+
 ### 11.3 The five point/counterpoint techniques
 Every agent power gets an enemy mirror (the Phoenix Point lesson). *(2026-10-22: the "Introduced by" column names the older roster and its fixed
 chapter order; with four routes a counter is introduced by lap POSITION, not by faction, and §11.4's telegraph rule counts positions too.)*
@@ -1233,6 +1279,10 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   the four factions' failures it killed hundreds, his son among them, and his
   wife too if his own violence in the campaign drains the hospital (Director,
   2026-10-21/22; §2.6).
+- ✅ **The names** → the FID, The Sieve, Calm Waters Security, the Bunsen
+  Burners MC, Pith & Peel Holdings, Carrion Capital; the four leaders and the
+  four successors who take their posts; civil rank names per faction
+  (Director, 2026-10-22; §2.7, §11.2).
 - ✅ **The wife's fate** → she survives by default; a run that kills too many
   people leaves the hospital short and she dies; classes stay equivalent
   (Director, 2026-10-22; §2.6).
@@ -1276,12 +1326,12 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   minors, and §16 sets the social defaults for them.
 
 **Still open — do not decide these unilaterally:**
-- [ ] The fictional federal agency's name and its ranks per country (§2.6);
-  §11.1's counters for FOUR factions (they were written for three).
+- [ ] §11.1's counters for FOUR factions (they were written for three); the
+  agency's ranks per country when localised (the English canon is §2.7, §11.2).
 - [ ] The four class kits (§15), and whether later characters replay the
   whole campaign.
-- [ ] The reporter's surname; what he does with the Agent's gun in the
-  let-him-live branch (§2.2); the epilogue
+- [ ] What the reporter does with the Agent's gun in the let-him-live
+  branch (§2.2); the epilogue
   per branch; which lap-2 confrontation is the complete mission (§2.2).
 - [ ] The epilogue's open joints: the badge's return, the gun in the
   let-him-live branch, where the DNA is left, the sad ending's last shot

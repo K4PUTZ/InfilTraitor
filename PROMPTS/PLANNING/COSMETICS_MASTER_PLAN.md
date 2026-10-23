@@ -54,9 +54,10 @@ The rule underneath everything: **the server says what a player owns; the client
 
 ## 2. Factions — DECIDED in the narrative (2026-10-21)
 
-**The FOUR factions are `DESIGN_MASTER_PLAN` §2.1's (revised 2026-10-22):** the **Federal Police** (a fictional agency in the game), the **Militia**
-(a private military security company), the **Traffickers** (a motorcycle club) and the **Corporation** (GRUB DRILL's executives and minority shareholders). The names
-are working names (Director: *"Tanto faz o nome, o importante é serem equilibradas"*). Each is guilty of a share in the dam's fall (§2.6), so no faction is
+**The FOUR factions are `DESIGN_MASTER_PLAN` §2.1's (revised 2026-10-22):** the **Federal Police** (the fictional **FID**, Federal Inquiry Directorate), the
+**Militia** (**Calm Waters Security**, a private military security company), the **Traffickers** (the **Bunsen Burners MC**) and the **Corporation**
+(GRUB DRILL's executives and minority shareholders). The names were ratified on 2026-10-22 (`DESIGN` §2.7: names, mottos, leaders and successors;
+§11.2: rank names per faction). Each is guilty of a share in the dam's fall (§2.6), so no faction is
 the "good" one, and the Agent betrays all four. Balance: §2.1 (one axis each, the same threat budget, measured per faction and per route).
 
 **Four characters, one per faction (Director, 2026-10-22; `DESIGN` §15):** the faction picked at the police station (`DESIGN` §2.2) CREATES a
@@ -196,15 +197,16 @@ cut-scenes, a low priority). There is no baby (`DESIGN` §2.6, 2026-10-22).
 
 | Faction | Base set | Rank pieces (Recruit → Captain) | Must read at ~190 px as |
 |---|---|---|---|
-| Federal Police (fictional agency) | uniform shirt, trousers, boots, cap, duty belt | radio (Lieutenant up), tactical vest, a commander's jacket | the law: uniform colour and cap |
+| Federal Police (the FID) | uniform shirt, trousers, boots, cap, duty belt | radio (Lieutenant up), tactical vest, a commander's jacket | the law: uniform colour and cap |
 | Militia (private security) | tactical top, armour vest, helmet or cap, boots, gloves | goggles / visor, drone controller, a heavier armour | high tech: hard silhouettes, visors |
 | Traffickers (motorcycle club) | patched vest over a shirt or tee, jeans, boots | bandana or balaclava, chains, a president's colours | bikers: vest and patch, loose shapes |
 | Corporation (executives and their agents) | suit of their own cut and palette, earpiece | sunglasses, a briefcase, the leaders' tailoring | suits, **never** the hero's fedora, coat or palette (§2.1) |
 
-**8.4 Named characters (a base + pieces + a face):** the Agent (built), his wife, his son, the four leaders (the police chief, the militia
-commander, the club's president, the minority shareholders' leader), the CEO (Senate candidate), (the police chief is also the commissioner who takes the badge, `DESIGN` §2.2),
-the official investigator who takes over the case, the front ("laranja"), **the reporter, Thomas** (the finale, `DESIGN` §2.2; civilian clothes, no faction
-set), and civilians (a few base outfits recoloured by the material/palette system). **The Agent himself is four instances** (one per faction, §2): his
+**8.4 Named characters (a base + pieces + a face; names in `DESIGN` §2.7):** the Agent (built; Victor Rook by default), his wife Claire, his son
+Leo, the four leaders (Commissioner Martin Graves, who is also the commissioner who takes the badge; Commander Dale Kessler; "Deacon"; Evelyn
+Marsh), **the four successors who take their posts** (Deputy Commissioner Irene Barrow; Duke Hardcastle; "Choirboy"; Prudence Vane), the CEO Gordon
+Pryce (Senate candidate), the official investigator who takes over the case, the front's man at Pith & Peel Holdings, **the reporter, Thomas
+Marlow** of *The Sieve* (the finale; civilian clothes, no faction set), and civilians (a few base outfits recoloured by the material/palette system). **The Agent himself is four instances** (one per faction, §2): his
 look per class is open (the hero's costume over each faction's pieces, or a faction look of his own).
 
 **8.5 Order of work (proposed):** the CS-1 split of the hero (C4) proves the slot pipeline; then one guard set (the Federal Police: the player's own

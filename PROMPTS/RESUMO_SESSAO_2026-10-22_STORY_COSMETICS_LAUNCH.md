@@ -80,9 +80,15 @@ the Agent watching outside, who turns and disappears into the horizon. Claude's 
 body, the wedding ring (the reporter holds the gun in one branch), his blood on the pit's edge (acid destroys DNA), the empty foreclosed house as
 the sad ending's last shot, the old beats on the same news bulletin.
 
+**The names (Director, ratified after two rounds; "pitadas de humor"; `DESIGN` §2.7, §11.2):** the FID (Federal Inquiry Directorate, "We'll
+get back to you."), The Sieve (replaces *Blind Spot*, a real newsletter), Calm Waters Security, the Bunsen Burners MC, Pith & Peel Holdings (the
+front), Carrion Capital (the fund); leaders Graves / Kessler / "Deacon" / Marsh and the successors who take their posts, Barrow / Hardcastle /
+"Choirboy" / Vane; Victor, Claire and Leo Rook; Thomas Marlow; Gordon Pryce; Lowmere (not yet web-checked); civil rank names per faction. Quick web
+searches found no exact homonym; a registry check before launch.
+
 ## 4. Where the plot stands (closed for now, 2026-10-22)
 
-Ratified in `DESIGN_MASTER_PLAN` §2 / §14.4 / §15 / §18. Still open, none blocking: the agency's name and ranks; the reporter's surname; §11.1's
+Ratified in `DESIGN_MASTER_PLAN` §2 / §14.4 / §15 / §18. Still open, none blocking: the agency's ranks per country when localised; §11.1's
 counters and §14.3's ladder for four factions; the four class kits and whether later characters replay the campaign; which lap-2 confrontation is
 the complete mission; what the reporter does with the gun; the epilogue's open joints; a city that lived a real dam disaster (for the
 association); `COSMETICS` §5 and C1-C11; `LAUNCH` scope; the hero items (§2 item 6).

@@ -224,8 +224,8 @@ CAUGHT, MASKED, ALERT, ARREST (Director, 2026-10-23)
     Claude's reading, to confirm: the rise is more and wider high-
     security zones, authored in the time states (§14.4), climbing one
     step with each leader's death in lap 2 and with each CAUGHT incident.
-  - ARREST is GAME OVER. The Director leans this way; it is Claude's
-    recommendation, to confirm.
+  - ARREST is GAME OVER (Director, 2026-10-23, confirmed on Claude's
+    recommendation).
     - It is never a state of play: the Agent fights, and an arrest or a
       death sends him back to the checkpoint.
     - The failure screen tells the fate by faction: scrutinised by
@@ -1793,7 +1793,8 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   club's assassin still alive, which deflects suspicion. Highly watched zones
   accept no uniform and no LED coat, only hiding. The LED coat comes from the
   Corporation's envoy who has been watching him, with glints as easter eggs
-  in earlier maps. Faction stores: the police's evidence room, and the
+  in earlier maps. Arrest is game over: back to the checkpoint, the failure
+  screen telling the fate by faction. Faction stores: the police's evidence room, and the
   Militia's high-tech weapon and silent boots (Director, 2026-10-23; §2.2,
   §10.5, §11.6).
 - ✅ **The plot pass of 2026-10-23** (Director, on Claude's recommendations):
@@ -1823,8 +1824,7 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   battery upgrade comes (§10.5); the energy budget's numbers and recharge
   (§10.5); the rules of conduct whose breach makes a faction WANT him, how the
   alert's rise is authored and how much each step weighs (Claude's reading:
-  more high-security zones per leader's death and per incident), and the
-  confirmation of ARREST = game over (§2.2, CAUGHT / ALERT / ARREST); how
+  more high-security zones per leader's death and per incident), (§2.2, CAUGHT / ALERT); how
   close counts as "from afar" for a uniform (§2.2); Hedge's ambush point and
   sender (§10.5, proposed); the faction stores' items (§11.6, proposed); the specialist
   roster and its template (§11.6, proposed); the four backgrounds' abilities

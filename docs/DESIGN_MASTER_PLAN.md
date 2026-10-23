@@ -164,7 +164,10 @@ ACCESS — passes and bluffs (Director, 2026-10-23; the two-level shape is
     comes from that faction's leader's trust (a favour done, lap 1) or
     from an inside mechanism: the Militia's insiders who sell codes and
     shifts (§2.1), Barrow's forged pass (§2.7), a bribe (§11.6). A pass
-    can be lost: the police's goes with the badge (lap 1).
+    can be lost: the police's goes with the badge (lap 1), and from then
+    on Graves's favours earn information, never a police pass (his trust
+    is secret, his ban public): the police turf then takes Barrow's
+    forged pass or a bluff.
   - A BLUFF is the LED coat showing a faction's symbol (§10.5): from
     behind and at a distance he passes for one of its field officers. It
     never survives a close look or a Captain (§11.2).
@@ -207,7 +210,8 @@ LAP 1 — the favours (four chapters, one per faction; the circle stays:
   WHERE A CHAPTER IS PLAYED (Director, 2026-10-23): on the turf of the
   faction being INVESTIGATED, as an INFILTRATION: he holds no pass there,
   only what an inside mechanism or the asker's help can open, plus the
-  LED coat's bluff once he owns it; the chapter teaches the investigated
+  LED coat's bluff once he owns it (the police chapter is the exception:
+  he walks in on his own badge, and Graves takes it there); the chapter teaches the investigated
   faction's mechanics, and its specialists (§11.6) first appear there.
   So chapter 1 is the next faction round the circle, and CHAPTER 4 IS
   ALWAYS THE PLAYER'S OWN FACTION: every route closes lap 1 with the
@@ -317,8 +321,9 @@ Graves's payroll who passed it the Militia's codes and the roadblock; the pit, w
 - **It is built out of lap 1:** the Militia's favour ("prove it was the traffickers": the drone, the chop shop) and the Corporation's ("prove the
   State's negligence": the pit) are the evidence, and the Agent hands both over with no name of his on them.
 - **Its fall guy is the Agent's own lie:** the "policeman killed in the flood" he names as the leak (§2.6) is that payroll policeman, and the
-  Militia's codes and the roadblock's police credential (the lap-2 clues, §2.6) both point at him. **Claude proposes** that Pith & Peel Holdings is
-  registered to the same dead colleague, so the puts (the Corporation's clue) stop at him too.
+  Militia's codes and the roadblock's police credential (the lap-2 clues, §2.6) both point at him. **Claude proposes** that Pith & Peel Holdings was
+  registered, before the disaster, to that same colleague, who lent his name for a cut (a "laranja"); his death in the flood is chance, and it
+  is why the Agent names him, so the puts (the Corporation's clue) stop at him too.
 - **The dead do not deny:** Graves and "Deacon" both die in lap 2. Barrow and "Choirboy" each blame their own dead leader, which legitimises
   their coups ("Choirboy" believes Deacon ordered it without the chapter); Hardcastle and Marsh accept it gladly, since it keeps the silent sirens
   and the buried report out of view. The CEO's hole still surfaces only on the epilogue's bulletin, laid on a dead man.
@@ -337,7 +342,7 @@ so killing him is a kill and a no-kill run must let him live (Claude: follows fr
 **The reporter (Claude's proposals, RATIFIED by the Director 2026-10-22).** **The canon is in English; names may be swapped per language later**
 (Director). Name: **Thomas Marlow** (the doubter who must see to believe; Marlow, the witness of *Heart of Darkness*; Tomás, Tomasz, Tommaso if
 localised), never a surname that evokes a real case (no "Vale"). Outlet: an independent, reader-funded local investigative site, **The Sieve**
-(§2.7; it replaced *Blind Spot* on 2026-10-22, a real newsletter's name; localised like signage; a registry check before launch). First contact: seen at the police station's door in the opening (he recognises his source being suspended); the real approach at the
+(§2.7; it replaced *Blind Spot* on 2026-10-22, a real newsletter's name; localised like signage; a registry check before launch). First contact: seen at the police station's door in the opening (he recognises his source being barred from the case); the real approach at the
 hospital after the wife's death, with the trade that opens lap 2 (his leads for the leaders' confessions); the cemetery is kept for the finale. Why
 only he can close the case: the Militia's clue speaks of "our informant", and only he knows the informant is his own source, because his scoops
 reached the Militia before he published them. The slip at the memorial: a line about the target only the attacker could know (e.g. "it was only

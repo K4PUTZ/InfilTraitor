@@ -199,12 +199,32 @@ THE OFFICIAL WORK — first (Director, 2026-10-22)
   tank).
   He starts with almost nothing (§10.0): a common pistol, his overcoat,
   stones, a chokehold; a balaclava hides his face, the coat stowed in his
-  black pack. The MASK must be found soon (Director, 2026-10-23), and it
-  is found in this official work, which every route shares, so every
-  route has it at the same point (ruled 2026-10-23, on Claude's
-  recommendation). He starts in an ordinary fedora; the mask he finds IS
-  a fedora (its crown comes down over the face, `ACTOR` D77) and replaces
-  it. Which mission holds it, and who built it: open (§18).
+  black pack. He starts in an ordinary fedora.
+  THE MASK (Director, 2026-10-23): it belongs to a HIRED ASSASSIN whom
+  "Deacon" contracted to carry out his jobs, and who is investigating
+  the same thing as the Agent. By luck the Agent arrives late: the
+  place has already been infiltrated, but he gets there in time to
+  eliminate the assassin, and takes the mask. It IS a fedora (its crown
+  comes down over the face, `ACTOR` D77) and replaces his own. Nobody
+  in the club knows where the mask came from except "Deacon".
+  - Where (Claude, reconciling the same day's ruling that the mask comes
+    early and at the same point in every route): the assassin has
+    infiltrated one of these official-work sites ahead of him. Which
+    one: open (§18).
+  - The assassin counts as a BOSS (Claude, a consequence to confirm): a
+    mortal confrontation like the four leaders', excluded from the
+    violence threshold and from the no-kill achievement (§2.6), so a
+    required kill never breaks either.
+  - Name (Claude, proposed, in the club's churchly style): "the
+    Confessor", who makes his targets confess before he kills them.
+  - Why it works (Claude's remarks): Deacon's lap-1 favour ("find who
+    leaks to the Militia") is the job his dead assassin was doing, so he
+    hands it to the Agent. Deacon knows the mask, so when he faces the
+    masked intruder in lap 2 he knows who killed his man, and the secret
+    dies with him. And on a second playthrough (§2.4) the "luck" reads
+    as the Agent silencing an investigator who was closing in on him.
+  - The pack battery is a later UPGRADE (§10.5); until then the mask
+    runs on its own small charge.
 
 LAP 1 — the favours (four chapters, one per faction; the circle stays:
   Director, 2026-10-22)
@@ -559,7 +579,24 @@ every clue is in plain sight.
 
 **The investigation goes abroad (Director, 2026-10-21):** the attack is a FEDERAL case, so the Agent travels beyond the disaster area (the foreign fund,
 the front's offshore broker, the traffickers' routes); the campaign's locations sit on the game's 3D globe, also its mission hub (`COSMETICS_MASTER_PLAN`
-§6).
+§6). **The trips (Director, 2026-10-23):** three or four trips abroad, each to find a contact, or a piece of information, about a faction
+member who operates from outside the country. The aim is to vary the scenery and make real use of the globe.
+
+**Claude's proposal:** FOUR trips, one per faction, so the routes stay equal. Each is the last mission of the lap-1 chapter that investigates
+that faction, where the favour's missing piece lies abroad, so every route visits all four in its own order. Afterwards they become Freelance
+places on the globe.
+
+| Faction | Its member abroad | The place |
+|---|---|---|
+| FID | the money man who launders Graves's protection money | a private bank in a tax haven |
+| Calm Waters | the parent holding's finance director, who billed the sirens never installed | the PMC's offshore headquarters |
+| Bunsen Burners | the club's overseas supplier of the banned precursors (canon: the traffickers' routes) | a port and a warehouse |
+| Corporation | Carrion Capital's partner, Marsh's buyer | the fund's tower in a financial city |
+
+- **The Corporation's trip holds a fair-reveal beat** (§2.4): the same city hosts Pith & Peel's offshore broker, and the Agent quietly derails
+  the trail to the front, the account he can never touch (the money, above).
+- **Real names and flags only on neutral places;** the factions' buildings stay fictional (`COSMETICS` §6).
+- **The cost:** four new location kits (`PROP_PIPELINE_PLAN` §9.2) and four new characters (`COSMETICS` §8.4).
 
 **Lap 2's lengths:** §2.2 (open again since the finale became a scene; superseded "the first three short, the last complete").
 
@@ -1033,7 +1070,7 @@ master. Gadgets are found on the map, bought from NPCs, or awarded.
 | His overcoat | The FID investigators' mustard coat, black inside (§2.1, `ACTOR` D78) |
 | Throwing stones | A distraction (a noise on a chosen tile, §5) |
 | A chokehold or a neck snap | The chokehold knocks a guard out and he **wakes after N turns** (N open, §18); the neck snap kills and he never wakes. The knockout is the non-lethal option every class must hold from the start (§2.6) |
-| A balaclava | For the first missions: masked, with the coat stowed in his black pack, he already looks like the Infiltraitor, with no technology. He wears an ordinary fedora; the **mask** (`ACTOR` D71/D77), itself a fedora, is found soon in the official work and replaces it (§2.2) |
+| A balaclava | For the first missions: masked, with the coat stowed in his black pack, he already looks like the Infiltraitor, with no technology. He wears an ordinary fedora; the **mask** (`ACTOR` D71/D77), itself a fedora, is taken soon from the club's hired assassin at an official-work site and replaces it (§2.2) |
 
 **Stealth by shadow works 100% from the start** (§4.3): the progression adds tools, never the core loop. The background (§15) adds its own
 abilities and the equipment it can operate.
@@ -1130,9 +1167,10 @@ acquired. It does two things, both electronic:
   never a close look or a Captain (§11.2); only the symbols of factions he has incorporated are available (§2.2, access). With several factions on
   one map (segments, §14), choosing which symbol to show where is the decision: the Militia's colours near the club draw fire.
 
-**It needs energy (Director: a cooldown and an energy and recharge system).** Claude proposes **one battery in the pack** for every
-electronic tool: the mask's vision (D71's tether at the nape already carries its power; §10.3 already prices X-ray in charges) and the coat's
-cloak and symbol, so seeing through walls and hiding compete for the same charge. It recharges slowly per turn and quickly at power points,
+**It needs energy (Director: a cooldown and an energy and recharge system).** **The battery in the pack is a later UPGRADE that powers both
+the mask and the LED coat** (Director, 2026-10-23). Until he gets it, the mask runs on its own small charge (§10.3 already prices X-ray in
+charges). With it, the mask's vision (D71's tether at the nape carries the power: Claude's reading, the tether arrives with the upgrade) and the
+coat's cloak and symbol draw on one charge, so seeing through walls and hiding compete. When the upgrade comes: open (§18). It recharges slowly per turn and quickly at power points,
 which grow as the power station's restoration brings districts back (§2.2; restored light also costs cover, §2.6). The numbers are open (§18).
 
 **Readability (`COSMETICS_MASTER_PLAN` C3):** the symbol he shows is gameplay state, so the HUD always says which faction he is bluffing as; a
@@ -1661,7 +1699,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   conspiracy theory against the truce and the faked death, §2.2); the puts
   paid into Pith & Peel's account in the dead colleague's name, untouchable
   for the living Agent, a second motive for the faked death (§2.6); he starts
-  in an ordinary fedora and finds the hat-mask in the official work (§2.2);
+  in an ordinary fedora and takes the hat-mask early, from the club's hired
+  assassin at an official-work site (§2.2; the assassin and the pack battery as
+  a later upgrade: Director, later the same day);
   "innocent" means of the dam, and each handler keeps his complicity quiet
   (§2.7); Hardcastle's rescue is a publicity stunt, never the official rescue
   (§2.7); the Corporation has no weapons IN PUBLIC (§2.6); the LED coat is a
@@ -1675,12 +1715,15 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   minors, and §16 sets the social defaults for them.
 
 **Still open — do not decide these unilaterally:**
-- [ ] From 2026-10-23: the chokehold's N turns (§10.0); which official
-  mission holds the mask, and who built it (§2.2); the energy budget's numbers
-  and recharge (§10.5); the bluff's distances and what reveals it (§10.5); the
-  specialist roster and its template (§11.6, proposed); the four backgrounds'
-  abilities and equipment (§15); the faction palette and dress
-  (`COSMETICS_MASTER_PLAN` §9, proposed).
+- [ ] From 2026-10-23: the chokehold's N turns (§10.0); which official-work
+  site the club's assassin has infiltrated, his name ("the Confessor",
+  proposed) and whether he counts as a boss (§2.2, proposed); when the pack
+  battery upgrade comes (§10.5); the energy budget's numbers and recharge
+  (§10.5); the bluff's distances and what reveals it (§10.5); the specialist
+  roster and its template (§11.6, proposed); the four backgrounds' abilities
+  and equipment (§15); the four trips abroad (§2.6, proposed: one per lap-1
+  chapter, a member abroad per faction); the palette's exact values and roles
+  (the families are the Director's, `COSMETICS_MASTER_PLAN` §9.4).
 - [ ] §11.1's counters for FOUR factions (they were written for three; §11.6's
   template proposes them); the
   agency's ranks per country when localised (the English canon is §2.7, §11.2).
@@ -1694,8 +1737,8 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   (Claude's proposals, §2.2).
 - [ ] Lore still to write (found in the circle review, 2026-10-23): the
   official missions (only the power station is named: how many, which, who
-  holds each zone); where the investigation abroad sits in the laps (Carrion
-  Capital, Pith & Peel's offshore broker, the traffickers' routes, §2.6); the
+  holds each zone); the trips abroad's details (the Director set three or
+  four, Claude proposes four, one per lap-1 chapter, §2.6); the
   origin of the Agent's debt (the sad ending's foreclosed house leans on it;
   his field officer's modest pay explains the pressure, §2.1, but not the
   debt itself);

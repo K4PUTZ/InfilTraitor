@@ -172,7 +172,7 @@ states (`DESIGN` §14.4) reuse a kit with props swapped (a cordon gone, debris c
 | The hospital | the midpoint warning; Thomas's approach | ICU, monitors, the blood bank, a corridor |
 | The pit and the dam | the epilogue; the Police's failure | the pit's edge and railing, acid (the liquids engine is built), the substation the drone hit |
 | The cemetery | the finale | headstones, the grave, a tent and lectern, the press's cameras, chairs, umbrellas (rain is not built) |
-| Abroad (the fund, the offshore broker) | open in the plot | wait for it |
+| Abroad: four trips, one per faction (`DESIGN` §2.6; the Director set three or four on 2026-10-23, the four places are Claude's proposal) | the last mission of each lap-1 chapter (proposed); Freelance places afterwards | a private bank in a tax haven (FID); the PMC's offshore headquarters (Calm Waters); a port and a warehouse (Bunsen Burners); the fund's tower in a financial city, with Pith & Peel's broker (Corporation). Four kits; flags and real names only on neutral places |
 
 **9.3 New slot families.**
 

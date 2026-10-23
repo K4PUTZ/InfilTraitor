@@ -2,8 +2,8 @@
 ## Cosmetic items, ownership, the backpack, contributions, the weekly faction war and the world map — v0.6
 
 > 🟡 **v0.6 · 2026-10-23 · PLANNING ONLY, nothing built.** v0.6: **the Agent's faction dress (§9, `ACTOR` D78):** a faction is PACKAGING on
-> the same dress (colours, symbols, pins, accessories), the banner behind the ranking portrait completes it; accent zones, a measured
-> colour-blind-safe palette, the signature accessory per faction, the styles; a character's faction now comes from the BACKGROUND stated in the
+> the same dress (colours, symbols, pins, accessories), the banner behind the ranking portrait completes it; accent zones, the Director's
+> palette families measured for colour-blind players, the signature accessory per faction, the styles; a character's faction now comes from the BACKGROUND stated in the
 > deposition (§2, `DESIGN` §15); every faction's field officers wear an overcoat (§8.3).
 > v0.5: §8 crossed with the plot's closed main arc (`DESIGN_MASTER_PLAN` §2): the
 > sub-leaders rise to the leaders' priority, crowd sets, three cast cuts ruled (no child base, the rescue only as scenery, a 2D TV anchor), and the
@@ -213,8 +213,9 @@ only in photographs (a frame at home, the grave), as a texture. There is no baby
 
 **Field officers (Director, 2026-10-23; `DESIGN` §2.1, §11.2):** from Lieutenant up, and the sub-leaders with distinctions, every faction's
 officers wear an **overcoat** in the faction's colours with its symbol on the back (one coat silhouette, four faction rows, §9's zones): the FID
-investigators' mustard trench, and Claude's sketches for the others (to render first): a grey tactical coat with cyan bands for Calm Waters,
-a black leather duster with vermilion for the Bunsen Burners, a charcoal cashmere coat with a wine band for the Corporation. This coat is what the
+investigators' mustard trench with blue and white, and Claude's sketches for the others in the Director's colours (§9.4; to render first): a
+grey tactical coat with red and wine bands for Calm Waters, a BROWN leather duster with orange trim for the Bunsen Burners (never an orange coat:
+for colour-blind players it would merge with the police's mustard, §9.4), a black coat with purple and navy for the Corporation. This coat is what the
 LED coat imitates (`DESIGN` §10.5); the Agent's fedora stays his alone (`ACTOR` D78). Below the officers, the henchmen of each faction may take
 any look, as long as the factions stay complementary and equivalent in power (`DESIGN` §11.2, §11.6).
 
@@ -222,7 +223,8 @@ any look, as long as the factions stay complementary and equivalent in power (`D
 Leo (photographs only, 8.1), the four leaders (Commissioner Martin Graves, who is also the commissioner who takes the badge; Commander Dale Kessler; "Deacon"; the CEO
 Gordon Pryce, the Senate candidate), **the four successors who take their posts** (Deputy Commissioner Irene Barrow; Duke Hardcastle; "Choirboy";
 Evelyn Marsh), Marsh's counsel Prudence Vane, the official investigator who takes over the case, the front's man at Pith & Peel Holdings, **the reporter, Thomas
-Marlow** of *The Sieve* (the finale; civilian clothes, no faction set), and civilians (a few base outfits recoloured by the material/palette system). **The Agent himself is four instances** (one per background, §2): his
+Marlow** of *The Sieve* (the finale; civilian clothes, no faction set), **the club's hired assassin** whose hat-mask the Agent takes ("the
+Confessor", proposed; `DESIGN` §2.2), **the four faction members abroad** of the trips (`DESIGN` §2.6, proposed), and civilians (a few base outfits recoloured by the material/palette system). **The Agent himself is four instances** (one per background, §2): his
 look per class is **settled by `ACTOR` D78 and §9**: the same dress, the faction as packaging.
 
 **From the arc (2026-10-23; Claude's reading of `DESIGN` §2, the cuts ruled by the Director):**
@@ -275,26 +277,35 @@ measurements.
 | Army veteran → Calm Waters | dog tags at the collar, a subdued velcro patch on the pack | once he holds its pass, the company's access card on a reel (the Militia's leak is access, `DESIGN` §2.1) |
 | Former private security → Corporation | a coiled earpiece, the GRUB DRILL lapel pin, gold cufflinks | the earpiece is the Corporation's code (`DESIGN` §2.1) |
 
-**9.4 The palette (measured).** The poster's placeholder colours (`DIAGRAMS/CIRCULO_ENREDO.png`) fail colour-blind players: worst pair
-CIEDE2000 25.8 in normal vision (FID vs Calm Waters), **7.1** deuteranopia, **9.3** protanopia, **8.2** tritanopia (under ~10 is practically
-one colour at a small size). Hue-only complementary pairs fail too: whenever blue and purple coexist, FID vs Corporation falls to 2.8-8.4. What
-works is two axes at once: hue on the blue ↔ orange axis (the one most colour-blind players keep) and VALUE (dark vs light). Computed 2026-10-23
-(Machado 2009 simulation, scikit-image):
+**9.4 The palette: the Director's families (ratified 2026-10-23), Claude's values and roles (proposed, measured).**
 
-| Faction | Colour | L* | Secondary / metal |
-|---|---|---|---|
-| FID | navy #1A3F94 | 29 (dark) | white / silver |
-| Corporation | wine #6E1630 | 24 (dark) | champagne gold / gold |
-| Calm Waters | aqua #4CC6CF | 74 (light) | graphite / gunmetal |
-| Bunsen Burners | vermilion #E8452E | 54 (vivid) | black / aged iron |
-| FID investigators' coat | mustard #CCA33D | 69 | — |
+*(Director: "azul/branco/amarelo - polícia; laranja/marrom/verde/aqua - traficantes; vermelho/vinho/cinza/branco - milícia; preto/roxo/azul
+marinho - corporação".)* It supersedes the same day's proposal (navy, wine, aqua, vermilion). The measurements are CIEDE2000 in normal vision and
+under a Machado 2009 simulation of deuteranopia / protanopia / tritanopia (scikit-image). Under ~10, two colours read as one at a small size.
 
-Worst pair between factions: **31.5 normal / 33.7 deutan / 23.6 protan / 27.5 tritan.** The opposites tell the story: aqua vs vermilion (the
-Militia's war with the traffickers, `DESIGN` §2.6), navy vs mustard as exact complements (the institution and its leak); the dark pair is the
-establishment (state and capital), the light pair the armed groups. **Weak points:** vermilion vs the mustard coat under deuteranopia (9.9);
-the two dark factions will likely sink into the dark board in play, so their light secondaries carry the symbol (an inference, to measure); for
-colour-blind players the emblem's SHAPE carries the identity, so the symbol on the coat's back must read as a silhouette. The hero's burgundy tie
-collides with the Corporation's wine and changes when this is built. Regenerate the poster once the palette is ratified.
+| Faction | Primary (carries identity) | Secondary | Accents (only on the primary, never a band of their own) | Metal |
+|---|---|---|---|---|
+| FID | blue #2E6FD8 (L* 48) | white #F2F2F2 | yellow: the investigators' mustard #CCA33D, the coat itself | silver |
+| Bunsen Burners | orange #F08A24 (L* 67) | brown #7A4A22 | green #5C8F2A, aqua #46C2C2 (the emblem's flask and flame) | aged iron |
+| Calm Waters | red #B3121E (L* 38) | wine #5A1222 | grey #8A8D91, white | gunmetal |
+| Corporation | black #141416 (L* 6) | purple #6B2FA0 | navy #1B2550 | platinum |
+
+- **The primaries are excellent once their VALUES are pulled apart** (orange lighter, red deeper). Worst pair: **35.9 normal / 26.3 deutan /
+  23.3 protan / 25.0 tritan**, above 20 everywhere and better than the superseded proposal in normal vision (31.5). Taken naively, the same
+  families give 22.8 / 14.3 / 20.1 / 14.2, with orange against red as the weak pair.
+- **The risk is in the SECONDARIES**, hence the accent rule (naive → tuned):
+  - the traffickers' green beside the militia's red: **3.2 → 10.6** under deuteranopia, the classic red/green confusion;
+  - the Corporation's purple beside the police blue: 9.9 → 11.3 deutan;
+  - the traffickers' brown beside the militia's wine: 10.6 → 13.6 tritan.
+  None of these may carry a faction alone.
+- **Against the investigators' mustard coat, the bikers' orange collapses** (2.8 deutan, 4.3 protan). So the bikers' field officers wear a BROWN
+  coat with orange trim (§8.3), and a biker-background Agent's orange accents on his mustard coat lean on the emblem's shape.
+- **The opposites:** the police blue and the bikers' orange are near-complements (the law and the crime, the poster's diagonal); the dark pole
+  is the Corporation (black), the warm armed pole the Militia (red).
+- **For colour-blind players the emblem's SHAPE carries the identity,** so the symbol on the coat's back must read as a silhouette. The black
+  Corporation will vanish on the dark board in play, so its purple and navy accents and its emblem carry it (an inference, to measure).
+- **The hero's burgundy tie now collides with Calm Waters' wine** and changes when this is built. Regenerate the poster
+  (`DIAGRAMS/CIRCULO_ENREDO.png`) with these families.
 
 **9.5 Per style (D70, D72).** Normal: full colour. Black: the subdued variant (dark on dark, like low-visibility military insignia), the pack's
 patch the main sign. Masked: the amber eyes stay the same for every faction (a state cue, never a faction one, D71/C3), the emblem stencilled

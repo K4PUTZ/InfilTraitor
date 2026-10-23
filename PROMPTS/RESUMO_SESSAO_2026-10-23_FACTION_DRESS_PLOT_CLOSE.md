@@ -72,6 +72,26 @@ The structure has no known hole. **What stays open is authoring detail or gamepl
   - an IP opinion before named rivals (§11.5);
   - registry checks of every name.
 
+## 4b. Later the same day (Director)
+
+- **The mask:** it belongs to a hired assassin "Deacon" contracted, who is investigating the same thing; the Agent arrives late at a site
+  already infiltrated, eliminates him in time, and takes the hat-mask. Only "Deacon" knows where it came from.
+  - Claude placed it at an official-work site, so it stays early and at the same point in every route.
+  - Claude proposed that the assassin counts as a boss (excluded from the violence count) and the name "the Confessor".
+  - Claude noted the fair-reveal reading: the "luck" is the Agent silencing an investigator closing in on him (`DESIGN` §2.2).
+- **The pack battery is a later upgrade** powering both the mask and the LED coat (`DESIGN` §10.5, `ACTOR` D72 / D77 notes).
+- **The trips abroad:** three or four, to find a faction member operating from abroad and to vary the scenery on the globe. Claude proposes
+  four, one per lap-1 chapter (`DESIGN` §2.6, `PROP_PIPELINE` §9.2, `COSMETICS` §8.4).
+- **The palette's families are the Director's:**
+  - police blue / white / yellow;
+  - traffickers orange / brown / green / aqua;
+  - militia red / wine / grey / white;
+  - corporation black / purple / navy.
+
+  Measured (`COSMETICS` §9.4): the primaries are excellent once their values are pulled apart (35.9 / 26.3 / 23.3 / 25.0). The risk is in the
+  secondaries (green beside red 3.2 deutan, purple beside blue 9.9), so accents never carry a faction alone. The bikers' officers wear a brown
+  coat, since orange collapses against the mustard coat.
+
 ## 5. Memory
 
 Claude's project memory was consolidated at the Director's request: 189 files → 17, the index 20.8 KB → 2.6 KB; the retired files are archived

@@ -131,3 +131,8 @@ per sub-leader; the Director ratified all of it. Written in `DESIGN_MASTER_PLAN`
 **Added to the open list (`DESIGN` §18):** the official missions (only the power station is named); where the investigation abroad sits in the
 laps; the origin of the Agent's debt; how much he hands over at the Militia's and the Corporation's favours; each sub-leader's character beyond
 the name. §4's list above still stands otherwise.
+
+**Then (Director, 2026-10-23): the CEO's fraud.** Gordon Pryce pays the Militia with money the company does not have, booking future contracts
+as cash; he runs for the Senate (a first election) to win the government contract that would make them real; the board knows the company is not
+profitable but cannot prove it (`DESIGN` §2.1, §2.6). Claude's remarks there: the proof must never be obtainable in the campaign (the epilogue
+elects him); the epilogue's half-price sale and the senator steering the contract (a proposal in §2.2's open joints).

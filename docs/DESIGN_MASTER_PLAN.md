@@ -344,9 +344,9 @@ BETWEEN THE LAPS — the neutral missions (Director, 2026-10-23)
   - They reuse the campaign's kits and the trips' places on the globe,
     and the generator and templates Freelance will use (§2.5).
   - Failing one is the same game over: back to the map.
-  - OPEN: whether their kills count in the violence average (§2.6).
-    Counted, a player can dilute a violent run with peaceful neutral
-    missions; left out, they are free practice.
+  - Their kills COUNT in the violence average (Director, 2026-10-23,
+    §2.6): diluting a violent run by playing them clean is a valid
+    redemption.
 
 LAP 2 — the confrontations, in ANY order (Director, 2026-10-22: he will
   kill each leader eventually, so the order is free)
@@ -630,7 +630,8 @@ Claude's proposals for it (RATIFIED by the Director, 2026-10-22):
 - **What counts:** deaths the player causes, by any means (a shot, a blast, a guard pushed into the acid); knockouts do not; the four leaders'
   mortal confrontations do not (they are required); the reporter does not (the cemetery comes after her fate is sealed). **The threshold
   (Director, 2026-10-22): the run kills, on average over its missions, MORE THAN 50% of the enemies** (bosses excluded); it is data (§19 Rule 1),
-  per character (each route has its own ending).
+  per character (each route has its own ending). **The neutral missions COUNT in that average** (Director, 2026-10-23, §2.2 BETWEEN THE
+  LAPS): diluting a violent run by playing them clean is a valid redemption.
 - **Every class needs a non-lethal option from the start** (§15), or one class would be pushed toward the sad ending. A no-kill run (the
   achievement, §2.2) always reaches the common ending.
 
@@ -1830,7 +1831,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   Militia's high-tech weapon and silent boots. A death or an arrest is game
   over: back to the map, to repeat the mission or choose another. Neutral
   missions between the laps, in the manner of Freelance, raise weak skills
-  and buy gear, their objectives paying dividends (Director, 2026-10-23; §2.2,
+  and buy gear, their objectives paying dividends, and their kills count in
+  the violence average, so playing them clean is a valid redemption
+  (Director, 2026-10-23; §2.2,
   §10.5, §11.6).
 - ✅ **The plot pass of 2026-10-23** (Director, on Claude's recommendations):
   the truth stays buried even if the reporter lives and publishes (a
@@ -1860,9 +1863,8 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   (§10.5); the rules of conduct whose breach makes a faction WANT him, how the
   alert's rise is authored and how much each step weighs (Claude's reading:
   more high-security zones per leader's death and per incident), (§2.2, CAUGHT / ALERT); how
-  close counts as "from afar" for a uniform (§2.2); whether the neutral
-  missions' kills count in the violence average, and their kinds of objective
-  and dividends (§2.2 BETWEEN THE LAPS, proposed); Hedge's ambush point and
+  close counts as "from afar" for a uniform (§2.2); the neutral missions'
+  kinds of objective and dividends (§2.2 BETWEEN THE LAPS, proposed); Hedge's ambush point and
   sender (§10.5, proposed); the faction stores' items (§11.6, proposed); the specialist
   roster and its template (§11.6, proposed); the four backgrounds' abilities
   and equipment (§15); the four trips abroad (§2.6, proposed: one per lap-1

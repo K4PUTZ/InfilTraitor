@@ -549,6 +549,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-21_CHARACTER_HERO.md
 - RESUMO_SESSAO_2026-10-21_HERO_V5.md
 - RESUMO_SESSAO_2026-10-22_STORY_COSMETICS_LAUNCH.md
+- RESUMO_SESSAO_2026-10-23_FACTION_DRESS_PLOT_CLOSE.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

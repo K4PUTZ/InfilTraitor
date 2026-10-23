@@ -1624,6 +1624,93 @@ map.
 **Neutral missions (Director, 2026-10-23; §2.2, BETWEEN THE LAPS):** between the laps, missions in the manner of Freelance let the player
 raise a skill he is weak in or get better equipment; each kind of objective pays its own dividends.
 
+**The tech and skill tree (Director, 2026-10-23: structure ratified, "podemos fechar assim").** Diagram:
+`DIAGRAMS/ARVORE_TECNOLOGICA.png` (generator `tools/asset_generation/tech_tree_poster.py`, whose node data mirrors this list). It
+REDISTRIBUTES §10's catalogue (and the 2026-10-23 additions) by faction and author; it is not a parallel system.
+
+**Structure:**
+- Per faction, THREE BRANCHES: EYE (detect, giving mask modules and intel), HAND (the faction's threat, giving weapons) and WALL (control,
+  giving gadgets and armour).
+- THREE LEVELS:
+  - L1, lap 1: the specialist met on that turf (§11.6);
+  - L2, lap 2: the faction's store with access, or the envoy;
+  - L3, Freelance: research; the endgame converges.
+- Each node carries its author, its §10 class, lethal or not, and its enemy counter.
+- **Unlocking** means meeting the author: seeing the technique used, surviving it, or knocking its author out and searching him. Never a kill.
+  The stores need access.
+- **§10.3's visors become MASK MODULES:** the mask arrives with night vision, and its other modes are nodes, including D71's thermal and X-ray.
+
+| Faction | EYE (L1 → L2 → L3) | HAND (L1 → L2 → L3) | WALL (L1 → L2 → L3) |
+|---|---|---|---|
+| FID | trail reading (Cairn) → predictive (evidence room) → tactical analysis | taser (Pyre) → suppressor (evidence room, lethal) → sonic weapon | radio spoof (Vault) → lockpicks + zip ties (evidence room) → radio scrambler |
+| Calm Waters | scout drone (Ace Skyler) → thermal (armoury) → X-ray | suppressed rifle (Rex Hawke, lethal) → pulse carbine (armoury) → laser (lethal) | EMP charge (Chip Voltz) → silent boots + vest (armoury) → exoskeleton |
+| Bunsen Burners | firework lure (Vespers) → motion vision (chop shop) → street eyes (lookouts) | dart launcher (Censer) → gas + smoke (lab; also "Choirboy"'s sub-mission) → incendiary (lethal) | tripwire flash (Sexton) → getaway bike (chop shop) → breaching charge (lethal) |
+| Corporation | camera loop (Ledger) → WiFi vision (R&D floor) → spectral | shadow generator (Hedge, seen) → LED coat (Hedge, lap 2; §10.1's adaptive skin) → plasma (lethal) | bribe (Escrow) → forged credentials (Escrow / R&D) → master keycard |
+
+**The enemy side (Phoenix Point):**
+- Every node has a counter, shown on the diagram: insulated vests against the taser, respirators against the darts, analogue comms against the
+  radio spoof, highly watched zones against the LED coat, and the rest. §11.3's five pairs are among them.
+- The factions field a counter in the NEXT stage, the Agent's most-used technique first, always telegraphed (§11.4).
+- A counter weakens a technique, never nullifies it.
+
+**Every character shares:** the start kit (§10.0) → the hat-mask (official work) → the pack battery (an upgrade; when: open) → the LED coat
+(lap 2).
+
+**Backgrounds** (§2.2): the own faction's L1 is open from the start (he knows that world; it offsets his own chapter coming last in lap 1),
+plus one passive and one active ability:
+
+| Background | Passive | Active |
+|---|---|---|
+| Lifelong policeman (FID) | Procedure: sees each radio guard's check-in countdown | Interrogate: a knocked-out guard gives one piece of intel |
+| Army veteran (Calm Waters) | Discipline: armour's stealth penalty one step lower | Suppressing fire: pins a guard in cover for a turn, no hit |
+| Former biker (Bunsen Burners) | Road sense: +1 GU sprinting on open ground | Improvise: one smoke or flash per mission, from scrap |
+| Former private security (Corporation) | Systems: sees camera cones and blind spots | Keycard spoof: opens one electronic door per mission |
+
+**Balance pass (Claude, 2026-10-23, proposed; the numbers wait for playtests).**
+
+*Too strong:*
+- **Forged credentials** grant ACCESS, the core progression, so unbounded they skip it. Proposal: one faction for one mission, bought, and
+  checkpoints can verify them (their counter).
+- **The comms stack** (radio spoof + scrambler + camera loop + EMP) could silence a whole map and empty the CAUGHT rule. Proposal: each keeps
+  §10.4's charges, and reinforcements also come by noise and sight, never by radio alone.
+- **The getaway bike** could make every escape trivial. Proposal: an EXTRACTION, not a teleport: it waits only at marked points or segment
+  exits, it is loud (alert up), and roadblocks stop it.
+- **The shadow generator** is a tier-6 gadget (§10.4) at L1, and shadow is the core of stealth. Proposal: L1 is one charge for two turns, and
+  §10.4's full version comes at L3.
+- **The exoskeleton** has no stealth penalty (§10.1: powered). Proposal: it draws on the pack battery, competing with the mask and the LED coat.
+- **Interrogate and the bribe** become universal keys if unlimited. Proposal: actives have charges per mission, captains cannot be bought,
+  and a bribed guard may talk later.
+
+*Too weak:*
+- **Trail reading** overlaps "predictive". Proposal: it shows the Agent HIS OWN trail as the guards read it (§4.7, evidence detection), so he
+  can break it, which pairs with the dogs.
+- **The firework lure** overlaps the start kit's stones. Proposal: it pulls every guard in a radius, at the cost of a step of alert.
+- **The veteran's Discipline** is empty early, when he has no armour. Proposal: it also covers the pack's noise.
+
+*Start parity:*
+- With every own-L1 node open, the biker starts with silent ranged knockouts (the darts) while the private-security character starts with no
+  attack at all. Proposal: at the deposition, the player picks ONE of his faction's three L1 nodes, and the other two are met as usual. That
+  adds a real choice at creation and evens the start.
+
+**What the levels must offer (Claude, proposed; feeds `MAP_MASTER_PLAN` and the generator, §2.5):**
+- **Every obstacle is solvable by the start kit or by at least two branches**, as the canon's multiple-solutions rule asks. Deliberately
+  impossible rooms (below) gate only optional rewards behind one technique.
+- **The official work and the first chapter** are solvable with the start kit alone: shadows, stones, chokeholds, open doors, few cameras,
+  lone guards, no radio guards yet (radio comes at Lieutenant, §11.2).
+- **Each lap-1 chapter brings its faction's systems**, met first in a safe spot (§11.4):
+  - the FID: dogs, check-ins, checkpoints;
+  - Calm Waters: drones, sensors, snipers, armoured pairs;
+  - the Bunsen Burners: firework lookouts, traps, chemical labs, bikes on the routes;
+  - the Corporation: camera nets, electronic doors, agents in the shadows.
+- **Lap 2 and Freelance layer the systems** in multi-faction segments, with the counters in the field and highly watched zones.
+- **Maps carry AFFORDANCE TAGS**, so a technique always has a target and the generator can place them. Data, in the map's `layout` section
+  (`CAPTURE_RAILS` already gives it POIs and regions):
+  - power points (battery recharge) and the faction stores;
+  - highly watched zones (no uniform, no LED coat) and checkpoints;
+  - locked and electronic doors, camera nets, radio relays;
+  - dark zones (the mask's eye-glow trade-off) and thin walls (thermal, X-ray);
+  - open ground (the bike, Road sense) and extraction points.
+
 **The Informant — a guaranteed NPC.** A map may contain a Network contact
 embedded in the location. Reaching their tile (1 AP) **before being detected**
 buys exactly one piece of intel: the primary objective's exact position, one
@@ -1819,6 +1906,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   2026-10-23; §2.2). **The police from inside** → Graves runs him off the
   books in every route; Barrow runs him too on the policeman's background;
   neither knows of the other (same delegation; §2.2).
+- ✅ **The tech and skill tree** → three branches (EYE / HAND / WALL) x three levels (lap 1 specialist, lap 2 store or envoy, Freelance
+  research) per faction, redistributing §10's catalogue by author; every node has an enemy counter; §10.3's visors become mask modules;
+  backgrounds open their own L1 and add a passive and an active (Director, 2026-10-23, the structure; §15, `DIAGRAMS/ARVORE_TECNOLOGICA.png`).
 - ✅ **Caught, masked, alert** → caught breaking conduct, he is WANTED in that
   scenario and must silence the witnesses (killing, a knockout or a dart) and
   escape; the objective may wait, but the alert rises and the mission stays
@@ -1860,7 +1950,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   site the club's assassin has infiltrated, his name ("the Confessor",
   proposed) and whether he counts as a boss (§2.2, proposed); when the pack
   battery upgrade comes (§10.5); the energy budget's numbers and recharge
-  (§10.5); the rules of conduct whose breach makes a faction WANT him, how the
+  (§10.5); the tech tree's balance proposals: bounded forged credentials, the comms stack's charges, the bike as an extraction, a weak L1
+  shadow generator, the exoskeleton on the battery, charges on actives, trail reading on his own trail, and ONE L1 node picked at the
+  deposition instead of all three (§15, proposed); the maps' affordance tags (§15, proposed); the rules of conduct whose breach makes a faction WANT him, how the
   alert's rise is authored and how much each step weighs (Claude's reading:
   more high-security zones per leader's death and per incident), (§2.2, CAUGHT / ALERT); how
   close counts as "from afar" for a uniform (§2.2); the neutral missions'

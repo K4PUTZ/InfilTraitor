@@ -86,6 +86,11 @@ front), Carrion Capital (the fund); leaders Graves / Kessler / "Deacon" / Marsh 
 "Choirboy" / Vane; Victor, Claire and Leo Rook; Thomas Marlow; Gordon Pryce; Lowmere (not yet web-checked); civil rank names per faction. Quick web
 searches found no exact homonym; a registry check before launch.
 
+**Then (Director):** the deposition IS the character creation (the camera's light comes on, he describes himself: name, height, eyes; Fallout
+3's model); Claude's limits proposed (looks only, one gameplay size; open: a female Agent). **Considered, nothing ratified:** a pool of named
+sub-enemies and a nemesis-like system (Shadow of Mordor / War); ⚠️ WB's patent US 10,926,179 (reported to 2036-08-11) needs an IP opinion
+before any design; Claude's sketch from our own canon in `DESIGN` §11.5.
+
 ## 4. Where the plot stands (closed for now, 2026-10-22)
 
 Ratified in `DESIGN_MASTER_PLAN` §2 / §14.4 / §15 / §18. Still open, none blocking: the agency's ranks per country when localised; §11.1's

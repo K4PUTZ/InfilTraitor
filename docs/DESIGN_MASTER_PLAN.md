@@ -125,6 +125,12 @@ THE POLICE STATION
   VERBALLY, to work on it, and hands him urgent OFFICIAL missions instead,
   in the zones where the police has limited access; he keeps his badge
   for now (Director, 2026-10-22).
+  THE DEPOSITION IS THE CHARACTER CREATION (Director, 2026-10-22; the
+  model is Fallout 3's): the camera's little light comes on, it points at
+  the player, and the deposition begins; he states who he is, his height,
+  the colour of his eyes, and so on, and as he describes himself the
+  character is built. The name he gives is the one the epilogue's TV
+  report reads.
   Outside, a faction approaches him: THE PLAYER CHOOSES WHICH, and that
   choice creates the character (his class, §15). Its uniform is his
   first disguise: he moves freely on its turf first, and earns access to
@@ -435,8 +441,14 @@ before launch**, as for GRUB DRILL INC. Near-match to weigh: the real State Burn
 
 **The rest of the cast:** the Agent **Victor Rook** by default ("Victor", the winner; a rook moves straight on a grid, and "to rook" is to cheat);
 his wife **Claire Rook**; his son **Leo Rook**; the reporter **Thomas Marlow**; GRUB DRILL's CEO, the Senate candidate, **Gordon Pryce** (the share
-price); the default town for a player who gives no city, **Lowmere** (not yet web-checked). **Proposed, not ratified:** the deposition at the police
-station is the character creation: the player names the Agent there, and the TV report of the epilogue reads that name.
+price); the default town for a player who gives no city, **Lowmere** (not yet web-checked). **Ratified (§2.2):** the deposition at the police
+station is the character creation; the player names the Agent there, and the TV report of the epilogue reads that name.
+
+**The creator's limits (Claude, proposed):** it shapes LOOKS only; the figure on the board keeps one gameplay size (a cosmetic never changes the game,
+`ACTOR_MASTER_PLAN` D36, `COSMETICS_MASTER_PLAN` C3). Height is a narrow cosmetic scale, never the hitbox or a cover rule; eye and skin colour are
+shader uniforms (free); the face is the hero's blend shapes (`ACTOR` D75); hair and beard are the hero's CC0 pieces. Each of a player's four
+characters has his own deposition. **Open:** whether the Agent can be a woman: the story is written for a husband and the father of a son, so a
+female Agent means a husband for her (and every line that names them) or a fixed male Agent; `COSMETICS` §8.1 already plans a female base.
 
 **The successors in the story:** in lap 1 each one stands beside the leader (seen before it matters, §11.4) and often hands over the favour's
 details; in lap 2, when the leader dies, the successor takes the post (each faction outlives its leader, §2.1), and the new orders change the next
@@ -977,6 +989,29 @@ Chapter N+2: first real encounter with a masked guard — already understood
 **The player is never surprised by a mechanic they have never seen.** Hard,
 never unfair.
 
+### 11.5 Named rivals — a pool of sub-enemies (CONSIDERED, Director 2026-10-22; nothing ratified)
+*(Director: "um pool de sub-inimigos" and a system like Shadow of Mordor / War's nemesis, "não precisa ser exatamente igual, mas bosses difíceis
+dão essa sensação de prazer em vencer. Considerar.")*
+
+⚠️ **A patent stands in the way of a copy.** Warner Bros. holds US 10,926,179, *"Nemesis characters, nemesis forts, social vendettas and followers
+in computer games"* (granted 2021; reported to run to 2036-08-11, if its fees are paid). Its claim 1, as law-firm coverage summarises it, is broad: a
+player avatar and an NPC whose parameters change with their interactions. **Before any design goes past this note: an IP lawyer's opinion,** and the
+system grows from this document's own rules, never from Mordor's structure or its name.
+
+What the canon already holds to grow it from (Claude, proposed):
+- **The pool sits under §11.2's ranks.** Each faction has named Lieutenants and Captains; the four successors of §2.7 are the campaign's authored
+  tip of it. In Freelance the pool is procedural and endless (§1, §19 Rule 3): names and motives from the narrative layer (§2.5, Rule 2), looks
+  from the cosmetics pieces and palettes (`COSMETICS` §8: one skeleton, so variety is cheap).
+- **A rival's memory is §11.3's counterpoint, personalised.** The rival who lost to smoke comes back with a respirator; the one beaten by a
+  suppressed pistol carries a suppressor detector. The counters are already designed; they now belong to one named enemy, and §11.4 still
+  applies (the player sees the new gear before it matters).
+- **A rival's weakness is information.** His traits are hidden and learned through intel (the Informant, §15; documents; eavesdropping), the
+  game's primary resource (§1).
+- **Non-lethal feeds it.** A rival knocked out survives and comes back; a rival killed is replaced by his successor (§2.7). It meets the violence
+  rule (§2.6): the pacifist's enemies return, the killer's are replaced.
+- **Cost:** persistent per-character state across missions (the save model is checkpoint-scoped today), barks as localised text (no voice),
+  portraits in the variable panel (§19 Rule 6).
+
 ---
 
 ## 12. Guard AI depth — `PARTIAL`
@@ -1279,6 +1314,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   the four factions' failures it killed hundreds, his son among them, and his
   wife too if his own violence in the campaign drains the hospital (Director,
   2026-10-21/22; §2.6).
+- ✅ **The character creation** → the deposition at the police station: the
+  camera's light comes on and the player describes the Agent (name, height,
+  eyes...), Fallout 3's model (Director, 2026-10-22; §2.2).
 - ✅ **The names** → the FID, The Sieve, Calm Waters Security, the Bunsen
   Burners MC, Pith & Peel Holdings, Carrion Capital; the four leaders and the
   four successors who take their posts; civil rank names per faction
@@ -1345,6 +1383,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - [ ] Free text in the lobby — after launch, once moderation (filters,
   reports, human review) exists; the launch defaults (presence, emotes,
   predefined phrases, no private messages between strangers) are in §16.
+- [ ] Named rivals (§11.5): whether to build them, after an IP opinion on
+  US 10,926,179.
+- [ ] Whether the Agent can be a woman (§2.7, the creator's limits).
 - [ ] Psionic protection — reserved for the future, out of the MVP.
 - [ ] Player-to-player item market — future.
 - [ ] Diagonal movement — blocked at the start, possibly a late-game skill

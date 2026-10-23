@@ -1,7 +1,11 @@
 # COSMETICS_MASTER_PLAN
-## Cosmetic items, ownership, the backpack, contributions, the weekly faction war and the world map — v0.5
+## Cosmetic items, ownership, the backpack, contributions, the weekly faction war and the world map — v0.6
 
-> 🟡 **v0.5 · 2026-10-23 · PLANNING ONLY, nothing built.** v0.5: §8 crossed with the plot's closed main arc (`DESIGN_MASTER_PLAN` §2): the
+> 🟡 **v0.6 · 2026-10-23 · PLANNING ONLY, nothing built.** v0.6: **the Agent's faction dress (§9, `ACTOR` D78):** a faction is PACKAGING on
+> the same dress (colours, symbols, pins, accessories), the banner behind the ranking portrait completes it; accent zones, a measured
+> colour-blind-safe palette, the signature accessory per faction, the styles; a character's faction now comes from the BACKGROUND stated in the
+> deposition (§2, `DESIGN` §15); every faction's field officers wear an overcoat (§8.3).
+> v0.5: §8 crossed with the plot's closed main arc (`DESIGN_MASTER_PLAN` §2): the
 > sub-leaders rise to the leaders' priority, crowd sets, three cast cuts ruled (no child base, the rescue only as scenery, a 2D TV anchor), and the
 > first slice is the opening every route shares (§8.5). The props side of the same analysis is `PROP_PIPELINE_PLAN` §9.
 > v0.4 (2026-10-22): v0.4 (Director's review of the plot): a player has up to FOUR characters, one per faction,
@@ -63,17 +67,19 @@ The rule underneath everything: **the server says what a player owns; the client
 §11.2: rank names per faction). Each is guilty of a share in the dam's fall (§2.6), so no faction is
 the "good" one, and the Agent betrays all four. Balance: §2.1 (one axis each, the same threat budget, measured per faction and per route).
 
-**Four characters, one per faction (Director, 2026-10-22; `DESIGN` §15):** the faction picked at the police station (`DESIGN` §2.2) CREATES a
-character of that faction, and its faction never changes; a player has at most one per faction, each levelling on its own. Allegiance is therefore per
-CHARACTER, never per account, and there is no faction switching (supersedes v0.2's "first allegiance + cooldown"). **Consequence for items (Claude):**
-items belong to the account (C1) and are equipped per character; a faction's uniform pieces fit only that faction's character.
+**Four characters, one per background (Director, 2026-10-22; revised 2026-10-23; `DESIGN` §15):** the BACKGROUND stated in the deposition
+(`DESIGN` §2.2: a lifelong policeman, a former biker, an army veteran, a former private security guard) creates the character and ties him to one
+faction for good (FID, Bunsen Burners MC, Calm Waters Security, the Corporation), the one shown in the rankings and his league; a player has at
+most four, each levelling on its own. Allegiance is therefore per CHARACTER, never per account, and there is no faction switching (supersedes
+v0.2's "first allegiance + cooldown"). **Consequence for items (Claude):** items belong to the account (C1) and are equipped per character; the
+faction's colours and symbol are filled in by the game on any piece (§9), so no piece is "for one faction only".
 
 ## 3. The new items the Director asked for
 
 | Item | Design (proposed) | Cost |
 |---|---|---|
 | **Armband** (`armband` slot) | A band on the upper arm (the costume already had one in D70's first description: "blue shirt and armband"). Its SYMBOL is a texture layer chosen separately: the player's faction emblem, a rank, an event mark. **The "captain's armband"** is the armband earned by the weekly war's top contributors (§4), shown only for that week's winners and kept as a commemorative variant afterwards. In the black style it goes dark with the suit (D70), and it is never the only cue of anything (C3). | ~100 tris; the symbol is one shared atlas (no extra draw call per symbol). |
-| **Banner** | **Not on the figure in play:** D70 rules out capes, and a flag behind a 190 px figure hurts readability and the stealth silhouette. Two places instead: (1) the **profile / lobby / ranking BACKDROP**: a large banner behind the hero in the showcase scene (faction colours, the season's art, the player's emblem); (2) in play, a small **pennant on the pack** (`pack_pennant`), stowed in the black style. | The backdrop costs nothing in play; the pennant ~60 tris. |
+| **Banner** | **Not on the figure in play:** D70 rules out capes, and a flag behind a 190 px figure hurts readability and the stealth silhouette. Two places instead: (1) the **profile / lobby / ranking BACKDROP**: a large banner behind the hero in the showcase scene (faction colours, the season's art, the player's emblem); **ratified as the ranking portrait's complement (Director, 2026-10-23: "nos retratos do ranking vai ficar mais evidente porque vamos usar o banner no fundo")**; (2) in play, a small **pennant on the pack** (`pack_pennant`), stowed in the black style. | The backdrop costs nothing in play; the pennant ~60 tris. |
 | **Emblem** | The symbol itself (shown on the armband, the banner, the profile card). Earned, bought or contributed; a definition like any other (C1). | A texture in the atlas. |
 | **Tattoo** (Director, 2026-10-22) | The mark of the campaign's ending (`DESIGN` §2.2): killing the reporter or letting him live leaves a different tattoo, **permanent on that character instance** (not on the player), and everyone can see who is "good" or "bad". **Rules (Claude, proposed):** earned only, never sold, never removed or swapped for money (otherwise a moral status is for sale, §16); a skin LAYER on a body region (`tattoo`, §8.2), not a mesh; shown on the profile, the ranking and the showcase, and in play wherever that region's skin shows. **Open:** where on the body (the Agent wears gloves and a mask: the neck, the forearm?). | A texture layer in the skin atlas. |
 
@@ -122,7 +128,7 @@ biggest faction can no longer win by numbers alone (v0.2's per-player average is
 1. ~~Which factions~~ — **decided** (§2): four since 2026-10-22: the Federal Police, the Militia, the Traffickers, the Corporation; a league is
    4 x 30 = 120 characters (§4).
 2. **Prizes:** cosmetic only (armband, emblem, banner, paint), or also currency? (Currency in a competitive prize interacts with the 2× boost.)
-3. **The banner:** profile backdrop + a pack pennant, as proposed, or something on the figure itself (which D70 currently rules out)?
+3. ~~The banner~~ — **the backdrop behind the ranking portrait is ratified** (Director, 2026-10-23, §3, §9.7); the pack pennant stays proposed.
 4. **Backend:** a hosted service (faster) or our own (control, cost at scale)? Decides nothing in the data model (C9).
 5. **Contributions:** revenue share or a flat fee, and from which milestone (contributions need the shop to exist first)?
 6. **Trading between players:** never, or "later, designed" (C8)?
@@ -203,14 +209,21 @@ only in photographs (a frame at home, the grave), as a texture. There is no baby
 | Federal Police (the FID) | uniform shirt, trousers, boots, cap, duty belt | radio (Lieutenant up), tactical vest, a commander's jacket | the law: uniform colour and cap |
 | Militia (private security) | tactical top, armour vest, helmet or cap, boots, gloves | goggles / visor, drone controller, a heavier armour | high tech: hard silhouettes, visors |
 | Traffickers (motorcycle club) | patched vest over a shirt or tee, jeans, boots | bandana or balaclava, chains, a president's colours | bikers: vest and patch, loose shapes |
-| Corporation (executives and their agents) | suit of their own cut and palette, earpiece | sunglasses, a briefcase, the leaders' tailoring | suits, **never** the hero's fedora, coat or palette (§2.1) |
+| Corporation (executives and their agents) | suit of their own cut and palette, earpiece | sunglasses, a briefcase, the leaders' tailoring | suits, **never** the hero's fedora (§2.1) |
+
+**Field officers (Director, 2026-10-23; `DESIGN` §2.1, §11.2):** from Lieutenant up, and the sub-leaders with distinctions, every faction's
+officers wear an **overcoat** in the faction's colours with its symbol on the back (one coat silhouette, four faction rows, §9's zones): the FID
+investigators' mustard trench, and Claude's sketches for the others (to render first): a grey tactical coat with cyan bands for Calm Waters,
+a black leather duster with vermilion for the Bunsen Burners, a charcoal cashmere coat with a wine band for the Corporation. This coat is what the
+LED coat imitates (`DESIGN` §10.5); the Agent's fedora stays his alone (`ACTOR` D78). Below the officers, the henchmen of each faction may take
+any look, as long as the factions stay complementary and equivalent in power (`DESIGN` §11.2, §11.6).
 
 **8.4 Named characters (a base + pieces + a face; names in `DESIGN` §2.7):** the Agent (built; Victor Rook by default), his wife Claire, his son
 Leo (photographs only, 8.1), the four leaders (Commissioner Martin Graves, who is also the commissioner who takes the badge; Commander Dale Kessler; "Deacon"; the CEO
 Gordon Pryce, the Senate candidate), **the four successors who take their posts** (Deputy Commissioner Irene Barrow; Duke Hardcastle; "Choirboy";
 Evelyn Marsh), Marsh's counsel Prudence Vane, the official investigator who takes over the case, the front's man at Pith & Peel Holdings, **the reporter, Thomas
-Marlow** of *The Sieve* (the finale; civilian clothes, no faction set), and civilians (a few base outfits recoloured by the material/palette system). **The Agent himself is four instances** (one per faction, §2): his
-look per class is open (the hero's costume over each faction's pieces, or a faction look of his own).
+Marlow** of *The Sieve* (the finale; civilian clothes, no faction set), and civilians (a few base outfits recoloured by the material/palette system). **The Agent himself is four instances** (one per background, §2): his
+look per class is **settled by `ACTOR` D78 and §9**: the same dress, the faction as packaging.
 
 **From the arc (2026-10-23; Claude's reading of `DESIGN` §2, the cuts ruled by the Director):**
 - **The sub-leaders rise to the leaders' priority:** each is the handler on one route, stands beside the leader in lap 1, takes the post in lap 2,
@@ -227,6 +240,76 @@ look per class is open (the hero's costume over each faction's pieces, or a fact
 **8.5 Order of work (proposed; the first slice ruled 2026-10-23):** the CS-1 split of the hero (C4) proves the slot pipeline. **The first kit is the
 opening every route shares** (Director, 2026-10-23; `PROP_PIPELINE_PLAN` §9): the house, the police station, the devastated town, the power
 station of the official work. Its actors: the Agent on both bases; the Federal Police set at the game LOD (the station's officers); Commissioner
-Graves; Thomas Marlow at the door; **the four sub-leaders**, since the faction that approaches him outside the station is the player's choice, so
-all four must exist there as the options (Claude: a consequence of `DESIGN` §2.2); a few civilians. Then the other three faction sets, one per
-territory. Each set has a ~5 k game budget (D73) and is measured on the Moto before the next.
+Graves; Thomas Marlow at the door; **the four sub-leaders**, since the faction that approaches him outside the station follows the background the
+player states (revised 2026-10-23), so all four must exist there (Claude: a consequence of `DESIGN` §2.2); a few civilians. Then the other three
+faction sets, one per territory. Each set has a ~5 k game budget (D73) and is measured on the Moto before the next.
+
+## 9. The Agent's faction dress (Director, 2026-10-23; `ACTOR` D78)
+
+**9.1 The principle (ratified).** *"A gente não vai mudar o estilo de se vestir propriamente dito, mas a embalagem final. Nos retratos do ranking
+vai ficar mais evidente porque vamos usar o banner no fundo como complemento."* The Agent's dress (D70/D77) is the same for every character; the
+faction shows through colours, symbols, pins and accessories. Every character starts as an FID inspector in the investigators' mustard coat
+(`DESIGN` §2.1, §10.0); his background's faction shows in the accents, the marks of his PAST. Everything below §9.1 is **Claude's proposal**
+until ratified, and gets decision renders first (the four at portrait size and at the game's 132×200).
+
+**9.2 Where the faction shows.** Every piece declares accent zones (`faction_primary`, `faction_secondary`, `faction_metal`,
+`faction_emblem`); the faction fills them (D78). Sizes in play are estimates from the model (~103 px per metre for a ~190 px figure), not
+measurements.
+
+| Point | What changes | Reads in play? | Cost |
+|---|---|---|---|
+| Hatband | primary | barely (~2 px tall) | free (palette) |
+| Tie | regimental stripes, primary / secondary (the tie already has diagonal stripes) | no | free (a stripe mask + two colours) |
+| Coat lining | primary; **while the LED coat bluffs another faction, the lining keeps his own** (the traitor's true colours are inside) | when the coat opens or swings | free once the lining is its own surface |
+| Pocket square | secondary (a bandana for the biker) | no | free |
+| Armband (§3) | primary + emblem; the FID's carries the letters, like a real plainclothes police armband | yes, side and back (~8 px) | ~100 tris |
+| Pack patch (velcro) | the emblem, subdued | yes, in the black style (the coat is away) | ~12 tris |
+| Lapel pin, tie bar | emblem, metal | portrait only | menu master only |
+
+**9.3 The mark of his past (one signature accessory per background).**
+
+| Background → faction | Signature | Notes |
+|---|---|---|
+| Lifelong policeman → FID | a service-star lapel pin; the lettered armband | the badge is NOT the faction's mark: every character is an FID inspector and every route loses it in lap 1 (`DESIGN` §2.2) |
+| Former biker → Bunsen Burners | a wallet chain below the coat, a skull-and-flame ring, a bandana for a pocket square | a support patch grows with his standing, by the club's own ranks (Hang-around → Prospect → Patch, `DESIGN` §11.2) |
+| Army veteran → Calm Waters | dog tags at the collar, a subdued velcro patch on the pack | once he holds its pass, the company's access card on a reel (the Militia's leak is access, `DESIGN` §2.1) |
+| Former private security → Corporation | a coiled earpiece, the GRUB DRILL lapel pin, gold cufflinks | the earpiece is the Corporation's code (`DESIGN` §2.1) |
+
+**9.4 The palette (measured).** The poster's placeholder colours (`DIAGRAMS/CIRCULO_ENREDO.png`) fail colour-blind players: worst pair
+CIEDE2000 25.8 in normal vision (FID vs Calm Waters), **7.1** deuteranopia, **9.3** protanopia, **8.2** tritanopia (under ~10 is practically
+one colour at a small size). Hue-only complementary pairs fail too: whenever blue and purple coexist, FID vs Corporation falls to 2.8-8.4. What
+works is two axes at once: hue on the blue ↔ orange axis (the one most colour-blind players keep) and VALUE (dark vs light). Computed 2026-10-23
+(Machado 2009 simulation, scikit-image):
+
+| Faction | Colour | L* | Secondary / metal |
+|---|---|---|---|
+| FID | navy #1A3F94 | 29 (dark) | white / silver |
+| Corporation | wine #6E1630 | 24 (dark) | champagne gold / gold |
+| Calm Waters | aqua #4CC6CF | 74 (light) | graphite / gunmetal |
+| Bunsen Burners | vermilion #E8452E | 54 (vivid) | black / aged iron |
+| FID investigators' coat | mustard #CCA33D | 69 | — |
+
+Worst pair between factions: **31.5 normal / 33.7 deutan / 23.6 protan / 27.5 tritan.** The opposites tell the story: aqua vs vermilion (the
+Militia's war with the traffickers, `DESIGN` §2.6), navy vs mustard as exact complements (the institution and its leak); the dark pair is the
+establishment (state and capital), the light pair the armed groups. **Weak points:** vermilion vs the mustard coat under deuteranopia (9.9);
+the two dark factions will likely sink into the dark board in play, so their light secondaries carry the symbol (an inference, to measure); for
+colour-blind players the emblem's SHAPE carries the identity, so the symbol on the coat's back must read as a silhouette. The hero's burgundy tie
+collides with the Corporation's wine and changes when this is built. Regenerate the poster once the palette is ratified.
+
+**9.5 Per style (D70, D72).** Normal: full colour. Black: the subdued variant (dark on dark, like low-visibility military insignia), the pack's
+patch the main sign. Masked: the amber eyes stay the same for every faction (a state cue, never a faction one, D71/C3), the emblem stencilled
+dark on the mask's side plate (portrait only). Cloak: nothing (the illusion). LED symbol: the coat's outside shows the bluffed faction, the
+lining keeps his own.
+
+**9.6 Earned and sold (C3, D36).** The faction's identity (palette + emblem) comes with the background and is never sold or swapped; the GRADE
+(the metal and enamel of the pin, the armband's stripes) is earned by standing only; the captain's armband is the war's prize (§3, §4); the
+tattoo is the ending's (§3). Sold or earned: variants of FORM (another tie pattern, ring design, pin style), always filled by the faction's
+zones, so no purchase ever breaks recognition.
+
+**9.7 The ranking portrait.** The master (C6) in three-quarters, the banner behind (primary colour, the emblem large, the league and the
+position), the captain's armband on that week's winners. In play nothing depends on reading the faction at 190 px (the player knows his own;
+what must read is Agent vs guard), so the detail budget goes to the portrait.
+
+**9.8 Cost.** In the game LOD the palette is free; new geometry is the armband, the patch and one visible signature (< 250 tris over ~5.2 k);
+pins, rings, cufflinks and the earpiece live in the menu master only (D73). Small accessories are rigid pieces on bone sockets (lapel, chest,
+wrist, belt), so they fit both bases (§8.1) with one offset per socket and no cloth refitting.

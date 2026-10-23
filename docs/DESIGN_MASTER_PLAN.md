@@ -80,13 +80,21 @@ importante é serem equilibradas".)* Names are working names. All four orbit one
 | **The Federal Police — the FID, Federal Inquiry Directorate** (§2.7; in the game a FICTIONAL federal agency, its ranks localised per country: a real institution never plays the corrupt faction) | Official uniforms and equipment; stations, checkpoints | The law | Paid to look away from the traffickers; its leaks reach the militia; its chief knows the company's containment pit is where the traffickers' enemies are dumped | Information: radios, check-ins, cameras, trail reading |
 | **The Militia** — a private military security company, **Calm Waters Security** (§2.7) | High-tech uniforms and gear; GRUB DRILL's complex across several towns | Security hired by the company's CEO, in exchange for backing his Senate campaign | Takes the traffickers' territory, buys police leaks, bills for security it never delivers; **leaks from the inside** (Director, 2026-10-22): some of its own men sell access, codes and shifts, so the traffickers produce their toxic substances inside the facilities it guards; **unhappy with the "partnership"** (Director, 2026-10-23): the CEO pays late and it presses him to pay before the election, yet it cannot walk away, since it must defend the facilities against the traffickers, and attack them, to keep its hold (§2.6) | Technology and force: drones, sensors, armour, pairs |
 | **The Traffickers** — paramilitaries behind a motorcycle club, the **Bunsen Burners MC** (§2.7) | Club vests and patches, bikes; chop shops, the refinery's back rooms | A motorcycle club | Divert banned precursors from the company's refinery into synthetic drugs, in labs the Militia's insiders let them run; their dead go into the pit | Numbers and improvisation: bikes, routes, explosives, chemistry |
-| **The Corporation** — GRUB DRILL INC itself: its CEO **Gordon Pryce**, the leader (Director, 2026-10-23), and the board's minority bloc under **Evelyn Marsh**, the sub-leader (§2.7) | Suits **of their own cut, palette and earpieces, never the hero's fedora and coat** (D70: on the board at ~190 px the Agent must not read as one of them) | The company's governance | A head in name only (Director, 2026-10-23): the CEO cooks the books (future energy sales booked as cash) and buried the engineers' risk report to protect them; the board's bloc knows the company is not making a profit but cannot prove it, knew of the report and kept quiet, hoping for a CONTAINED leak that would drop the company's value without the full accident and bring him down (Director, 2026-10-22: they sabotage the CEO), and covets a fat commission for selling it at half price to foreign funds; no options of their own; the bloc finances the traffickers, for a scandal; they have their own suited agents (§2.6) | Money and access: bribes, hacking, private agents |
-| **The Agent** | His own costume (D70) | A federal investigator, a grieving father | The police leak that sells information to the militia (and to the reporter, below), and the man who breached the dam (§2.6) | — |
+| **The Corporation** — GRUB DRILL INC itself: its CEO **Gordon Pryce**, the leader (Director, 2026-10-23), and the board's minority bloc under **Evelyn Marsh**, the sub-leader (§2.7) | Suits **of their own cut, palette and earpieces**; their field officers wear overcoats like every faction's (below), never the Agent's fedora; **the LED camouflage coat is their secret project** (Director, 2026-10-23; §10.5) | The company's governance | A head in name only (Director, 2026-10-23): the CEO cooks the books (future energy sales booked as cash) and buried the engineers' risk report to protect them; the board's bloc knows the company is not making a profit but cannot prove it, knew of the report and kept quiet, hoping for a CONTAINED leak that would drop the company's value without the full accident and bring him down (Director, 2026-10-22: they sabotage the CEO), and covets a fat commission for selling it at half price to foreign funds; no options of their own; the bloc finances the traffickers, for a scandal; they have their own suited agents (§2.6) | Money and access: bribes, hacking, private agents, prototypes (the LED camouflage) |
+| **The Agent** | The FID investigators' mustard overcoat; his hat, shoes and tie set him apart (D70, D78) | A federal investigator (a field officer, Inspector), a grieving father | The police leak that sells information to the militia (and to the reporter, below), and the man who breached the dam (§2.6) | — |
 | **The Press** — a reporter, **Thomas Marlow of *The Sieve*** (§2.7), a fifth element, NOT a faction (no guards, no uniform, no league) | — | An investigative journalist | Consulted the Agent as an anonymous police source: bought the information about the traffickers that the Militia used. **Innocent of the massacre: the only one who did not cause the son's death** (Director, 2026-10-22) | The campaign's lead supplier in lap 2 and its final encounter (§2.2) |
 
 **Each faction outlives its leader:** the police are an institution (a new chief, the same cover-ups); the militia is a contract and a territory; the
 club is a business with a chapter structure; the Corporation is a fund and a board. **All four are innocent of the attack and guilty of the massacre**
 (§2.6); the Agent is guilty of the attack.
+
+**Field officers wear overcoats, in every faction (Director, 2026-10-23).** Above the street ranks, each faction has field officers who lead
+the soldiers in ordinary missions: §11.2's Lieutenant tier (Inspector, Team Leader, Road Captain, Case Manager), the sub-leaders being the most
+senior of them, with distinctions. They wear an overcoat in their faction's colours, with its symbol. **The Agent is one of the FID's**: an
+Inspector, below Deputy Commissioner Barrow, who is more decorated and takes Graves's post. Mustard is the colour of the FID investigators'
+coat; the Agent's hat, shoes and tie set him apart from his colleagues. That rank explains his modest pay (the debt, §2.6) and the police's
+internal dispute (§2.2). **Readability (D78):** other factions' guards may take him for one of their officers from afar (§10.5); the player
+never loses him, because a non-cosmetic cue marks the Agent (`COSMETICS_MASTER_PLAN` C3).
 
 **Balance (Director: equivalent as a whole, different in everything else):** each faction owns one axis and has the weakness another exploits; each gets
 the same total threat budget, spent differently; balance is MEASURED (completion rate per faction and per route, §2.6), never asserted on paper, and the
@@ -97,8 +105,8 @@ for three factions; the fourth needs its own (§18).
 the false resolution: the Agent himself is the infiltraitor and the traitor, and has known it throughout (twist 2), which the reporter, the one outsider
 who puts the pieces together, throws in his face at the finale (§2.2, §2.4).
 
-**The name is the narrative:** INFILTRAITOR — the agent is both infiltrator and traitor: the police's own leak, then a guest in each faction's uniform who
-betrays it in turn. **He knows what he did while the player does not** (no amnesia, no recurring flashbacks), but **not the whole story** (Director,
+**The name is the narrative:** INFILTRAITOR — the agent is both infiltrator and traitor: the police's own leak, then a guest on each faction's turf (its pass, or
+its symbol on his coat) who betrays it in turn. **He knows what he did while the player does not** (no amnesia, no recurring flashbacks), but **not the whole story** (Director,
 2026-10-21: *"Seria melhor que ele precisasse investigar, e fosse descobrindo pelo caminho que a ação dele foi catalisada pelos erros dos demais"*), and
 uses the campaign's heroic framing to make the player execute his plan under a false conviction.
 
@@ -107,9 +115,9 @@ uses the campaign's heroic framing to make the player execute his plan under a f
 **Campaign — the prehistory (an opening, two laps around the four factions and the finale at the cemetery; revised 2026-10-22).** Curated, and a
 complete tutorial. It is the same campaign for free and paying players (§16); payment changes progression speed, never access. Each chapter introduces a
 faction and its mechanics. It has a beginning, middle and end — the traitor is exposed here. **The Elite prologue of the earlier canon is superseded:**
-the game opens at home (Director, 2026-10-21). **It is played once per character, four story routes** (Director, 2026-10-22): the faction picked at the
-police station CREATES that character, whose faction never changes; the same player replays the campaign from another faction to get another character
-(§15).
+the game opens at home (Director, 2026-10-21). **It is played once per character, four story routes** (Director, 2026-10-22; revised 2026-10-23): the
+BACKGROUND the player states in the deposition creates that character (his class, §15) and ties him to one faction for good; the same player
+replays the campaign with another background to get another character.
 
 ```
 OPENING — Home (Director)
@@ -124,19 +132,45 @@ THE POLICE STATION
   chief, the leader he faces in lap 2: Director, 2026-10-22) forbids him,
   VERBALLY, to work on it, and hands him urgent OFFICIAL missions instead,
   in the zones where the police has limited access; he keeps his badge
-  for now (Director, 2026-10-22).
+  for now (Director, 2026-10-22). In private, the same commissioner runs
+  him OFF THE BOOKS, hidden from his deputy Barrow (Director, 2026-10-23;
+  the commissioner paragraph below).
   THE DEPOSITION IS THE CHARACTER CREATION (Director, 2026-10-22; the
   model is Fallout 3's): the camera's little light comes on, it points at
   the player, and the deposition begins; he states who he is, his height,
   the colour of his eyes, and so on, and as he describes himself the
   character is built. The name he gives is the one the epilogue's TV
-  report reads.
-  Outside, a faction approaches him: THE PLAYER CHOOSES WHICH, and that
-  choice creates the character (his class, §15). Its uniform is his
-  first disguise: he moves freely on its turf first, and earns access to
-  the others as he goes. The one who approaches him is that faction's
-  SUB-LEADER, not its leader (Director, 2026-10-23; §2.7): his handler
-  for the whole campaign, who wants the leader's post.
+  report reads. He also states WHERE HE GREW UP AND WHAT HE CAN DO: a
+  policeman all his life, a former member of a motorcycle club, an army
+  veteran, or a former private security guard (Director, 2026-10-23).
+  That background is his class (§15): it decides his unique abilities,
+  the equipment he can operate, and the faction he answers for in the
+  rankings (COSMETICS_MASTER_PLAN §2).
+  Outside, the faction of his past approaches him (Claude, under the
+  Director's delegation, 2026-10-23): the old club, the old comrades
+  now at Calm Waters, the old employer, or, for the lifelong policeman,
+  Barrow. The one who approaches is that faction's SUB-LEADER, not its
+  leader (§2.7): his handler for the whole campaign, who wants the
+  leader's post. **Being approached grants NO access** (Director,
+  2026-10-23): he starts with the police's common facilities only, in
+  the FID investigators' overcoat; every other turf is closed until he
+  earns a PASS (the leader's trust, or an inside mechanism: below).
+  *(Supersedes "the faction picked here creates the character; its
+  uniform is his first disguise and he moves freely on its turf".)*
+
+ACCESS — passes and bluffs (Director, 2026-10-23; the two-level shape is
+  Claude's, under delegation)
+  - A PASS lets him walk a faction's turf and survives a close look. It
+    comes from that faction's leader's trust (a favour done, lap 1) or
+    from an inside mechanism: the Militia's insiders who sell codes and
+    shifts (§2.1), Barrow's forged pass (§2.7), a bribe (§11.6). A pass
+    can be lost: the police's goes with the badge (lap 1).
+  - A BLUFF is the LED coat showing a faction's symbol (§10.5): from
+    behind and at a distance he passes for one of its field officers. It
+    never survives a close look or a Captain (§11.2).
+  - As he gains each kind of access he INCORPORATES that faction: its
+    symbol joins the coat's repertoire and its technology becomes
+    acquirable (§11.6).
 
 THE AFTERMATH — the backdrop of the whole campaign (Director, 2026-10-22)
   Leaving the station, the map is revealed: the region is devastated.
@@ -156,17 +190,25 @@ THE OFFICIAL WORK — first (Director, 2026-10-22)
   station. All are infiltration: gathering evidence, talking to people,
   planting bugs, acting on the world (opening a sluice gate, draining a
   tank).
+  He starts with almost nothing (§10.0): a common pistol, his overcoat,
+  stones, a chokehold; a balaclava hides his face, the coat stowed in his
+  black pack. The MASK must be found soon (Director, 2026-10-23); Claude
+  proposes it is found in this official work, which every route shares,
+  so every route has it at the same point (where exactly: open, §18).
 
 LAP 1 — the favours (four chapters, one per faction; the circle stays:
   Director, 2026-10-22)
   Leader A shares what he knows only for a favour: investigate leader B.
   B asks for C, C for D, and D points back at A (the circle, §2.6). Each
-  favour earns a piece of information and the access (uniform, credentials)
-  to the next turf. Each chapter teaches its faction's mechanics; the
+  favour earns a piece of information and the ASKER's trust: the pass to
+  the asker's turf (revised 2026-10-23: the access is the asker's, never
+  a lent uniform). Each chapter teaches its faction's mechanics; the
   starting faction is the player's, so no chapter may depend on another's.
   WHERE A CHAPTER IS PLAYED (Director, 2026-10-23): on the turf of the
-  faction being INVESTIGATED, in that faction's uniform, lent by the one
-  who asked; the chapter teaches the investigated faction's mechanics.
+  faction being INVESTIGATED, as an INFILTRATION: he holds no pass there,
+  only what an inside mechanism or the asker's help can open, plus the
+  LED coat's bluff once he owns it; the chapter teaches the investigated
+  faction's mechanics, and its specialists (§11.6) first appear there.
   So chapter 1 is the next faction round the circle, and CHAPTER 4 IS
   ALWAYS THE PLAYER'S OWN FACTION: every route closes lap 1 with the
   Agent investigating his own leader, at the request of the faction
@@ -179,7 +221,8 @@ LAP 1 — the favours (four chapters, one per faction; the circle stays:
   the pit (the Corporation's favour, §2.6), the commissioner says he is
   interfering with the investigation for revenge, and takes his badge.
   From then on he can still walk police zones, but checkpoints stop him
-  and he is discovered. That chapter's position moves with the route
+  and he is discovered: the police PASS is gone, so his own turf now
+  needs a bluff or Barrow's forged pass (§2.7). That chapter's position moves with the route
   (4th on the Police route, 1st on the Corporation route), and so does
   how long he keeps the badge.
   Midpoint: his wife's condition turns critical, and the hospital is
@@ -198,13 +241,15 @@ LAP 2 — the confrontations, in ANY order (Director, 2026-10-22: he will
   When a leader dies, his SUB-LEADER takes the post and answers for that
   faction from then on (§2.7). The sub-leaders blame EACH OTHER for the
   deaths, never the Agent; that war is why the next visits find new
-  checkpoints (§14.4). Deaths between factions are scenery and never
+  checkpoints (§14.4), until the memorial's truce (who takes the blame,
+  below). Deaths between factions are scenery and never
   count toward the run's violence (§2.6: only the player's kills do).
 
 THE CEMETERY — the finale (a scene, no fight: Director, 2026-10-22)
   Time has passed and the town is restored. A public memorial at the
   cemetery, before the four factions and the press, gathered by the
-  tragedy; the Agent pays homage at the grave of the son he has just
+  tragedy, where the four sub-leaders seal their truce on the official
+  version (who takes the blame, below); the Agent pays homage at the grave of the son he has just
   buried, his wife beside him, or buried there too if the run's violence
   cost her life (§2.6). He lets slip something only the attacker could know; to the
   player it reads as grief. Cut: walking away from the ceremony, the
@@ -253,10 +298,32 @@ EPILOGUE (Director, 2026-10-22)
   2026-10-23: "the CEO elected on the 'accident' version", and Claude's newly elected senator steering the exploration contract.)*
 
 **The commissioner is the police chief (Director, 2026-10-22).** He bans the Agent verbally at the station, gives him the official missions,
-takes his badge in the Corporation's chapter, and is the man the Agent later kills. **On the Police route the off-the-books recruiter is Deputy
-Commissioner Irene Barrow, not Graves** (Director, 2026-10-23; §2.7): *"Graves wants his leak found. I want Graves's chair."* The ban is Graves's
-and official; the job is Barrow's and is not. *(Supersedes Claude's earlier consequence that Graves both banned and recruited him, which had the
-man who hired him take the badge from his own recruit.)*
+takes his badge in the Corporation's chapter, and is the man the Agent later kills.
+
+**The police from inside (Director, 2026-10-23; the arrangement is Claude's, under his delegation).** Graves does not trust his deputy: Irene
+Barrow is more decorated than the Agent and covets the chair, and Graves cannot use his own men either (the leak, §2.6). So, in every route,
+Graves bans the Agent in public, for the record and for Barrow to hear, and **runs him OFF THE BOOKS** ("find the leak, from outside": his favour
+in the circle). **Barrow runs him too, against Graves,** when she is his handler (the lifelong policeman's background, §2.7): *"Graves wants his leak
+found. I want Graves's chair."* Neither knows of the other. **The badge is no contradiction:** when the Corporation's favour brings the Agent to
+the pit, his investigation has reached Graves himself; Graves takes the badge to bury what he found ("revenge", in public) and keeps him as a
+deniable asset who now depends on him alone, so in any route order the channel stays open. *(Supersedes the earlier 2026-10-23 line "the ban is
+Graves's and official; the job is Barrow's", which met the same objection by keeping Graves out of the job.)*
+
+**Who takes the blame (Claude, under the Director's delegation, 2026-10-23).** The Director's constraint: every sub-leader ends believing the
+Agent innocent (only the reporter knows), and the blame lands on leaders, possibly through a leaked deal between two of them. **The deal that leaks
+is Graves and "Deacon"'s:** the police's protection of the club's labs, the pit as the dump for its dead (§2.6), and the kamikaze drone, the
+club's signature. The official version the memorial seals: the club struck the substation in its war with the Militia, through a policeman on
+Graves's payroll who passed it the Militia's codes and the roadblock; the pit, whose inspections Graves had blocked to hide the bodies, gave way.
+- **It is built out of lap 1:** the Militia's favour ("prove it was the traffickers": the drone, the chop shop) and the Corporation's ("prove the
+  State's negligence": the pit) are the evidence, and the Agent hands both over with no name of his on them.
+- **Its fall guy is the Agent's own lie:** the "policeman killed in the flood" he names as the leak (§2.6) is that payroll policeman, and the
+  Militia's codes and the roadblock's police credential (the lap-2 clues, §2.6) both point at him. **Claude proposes** that Pith & Peel Holdings is
+  registered to the same dead colleague, so the puts (the Corporation's clue) stop at him too.
+- **The dead do not deny:** Graves and "Deacon" both die in lap 2. Barrow and "Choirboy" each blame their own dead leader, which legitimises
+  their coups ("Choirboy" believes Deacon ordered it without the chapter); Hardcastle and Marsh accept it gladly, since it keeps the silent sirens
+  and the buried report out of view. The CEO's hole still surfaces only on the epilogue's bulletin, laid on a dead man.
+- **The irony:** the Agent's original plan (the blame on the traffickers, in an investigation he expected to lead) comes true; only the reporter
+  holds the piece that breaks it (the informant is his own source, and alive).
 
 **Lap 2's lengths:** with the finale a scene, the campaign's last playable mission is a leader confrontation in a free order, so which one is the
 complete mission is open again (Claude's recommendation: four standard missions of one size, so no faction needs both a short and a complete
@@ -521,14 +588,16 @@ both bases.
 exist or not depending on the player's choices).** The successors above are the sub-leaders. The rule (Claude's proposal, ratified 2026-10-23):
 **the leader is the one the Agent hunts; the sub-leader speaks for the faction whenever the leader cannot**, because the leader is the target,
 because he is dead, or because he is the head of the character's own faction.
-- **The handler.** On each route the own faction's sub-leader is the one who approaches the Agent outside the police station (§2.2) and runs him.
-  He wants the leader's post, so lap 1's chapter 4 (the Agent investigating his own leader) serves him, and the leader's death in lap 2 is his
-  coup; the faction stays the character's. Each sub-leader leads one route and is an optional support in the other three. On the Police route it is
-  Barrow (§2.2).
+- **The handler.** On each route the sub-leader of the faction of his BACKGROUND (§2.2, §15: revised 2026-10-23) is the one who approaches the
+  Agent outside the police station and runs him; the approach grants no access (§2.2). He wants the leader's post, so lap 1's chapter 4 (the
+  Agent investigating his own leader) serves him, and the leader's death in lap 2 is his coup; the faction stays the character's. Each sub-leader
+  leads one route and is an optional support in the other three. For the lifelong policeman it is Barrow, while Graves also runs him in secret,
+  neither knowing of the other (§2.2).
 - **In lap 1** each one stands beside the leader (seen before it matters, §11.4) and often hands over the favour's details. **In lap 2**, when the
   leader dies, the sub-leader takes the post (each faction outlives its leader, §2.1) and answers for that faction. The sub-leaders blame each
   other for the deaths, and the new orders change the next visits to the same places (new checkpoints: the authored time states of §14.4).
-- **The cemetery memorial's "four factions"** are the four sub-leaders before the press. **In Freelance** they are the clients who pay the "dead"
+- **The cemetery memorial's "four factions"** are the four sub-leaders before the press, sealing their truce on the leaked Graves–"Deacon" deal
+  (§2.2, who takes the blame): all four leave believing the Agent innocent, a grieving father; only the reporter knows (Director, 2026-10-23). **In Freelance** they are the clients who pay the "dead"
   Agent for information, none of them knowing who he is: he sells faceless, as he sold to the Militia (§2.6).
 - **Sub-missions are leaves, not branches.** They READ the state of the world (the lap-2 order, the run's violence, the badge) and pay in access,
   gear, guard rotations or money. **They never carry a piece of the disaster** (the four failures, the four clues, the reveal: §2.6, §2.4), and no
@@ -928,6 +997,21 @@ visually.
 consumable gadgets.** Three loadout decisions: simple to teach, deep to
 master. Gadgets are found on the map, bought from NPCs, or awarded.
 
+### 10.0 The starting kit (Director, 2026-10-23)
+
+**He starts with practically nothing; the rest is unlocked along the way.**
+
+| What | Detail |
+|---|---|
+| A common pistol | The weapon class's tier 1 (§10.2) |
+| His overcoat | The FID investigators' mustard coat, black inside (§2.1, `ACTOR` D78) |
+| Throwing stones | A distraction (a noise on a chosen tile, §5) |
+| A chokehold or a neck snap | The chokehold knocks a guard out and he **wakes after N turns** (N open, §18); the neck snap kills and he never wakes. The knockout is the non-lethal option every class must hold from the start (§2.6) |
+| A balaclava | For the first missions: masked, with the coat stowed in his black pack, he already looks like the Infiltraitor, with no technology. The **mask** (`ACTOR` D71/D77) is found soon (§2.2) |
+
+**Stealth by shadow works 100% from the start** (§4.3): the progression adds tools, never the core loop. The background (§15) adds its own
+abilities and the equipment it can operate.
+
 ### 10.1 Class 1 — Armour
 *Narrative progression: discreet spy → armoured threat. **More protection
 always costs mobility or stealth.***
@@ -1006,6 +1090,24 @@ always costs mobility or stealth.***
 | 5 | Radio scrambler | Blocks communication in a room | 1/mission |
 | 6 | Shadow generator | Artificial shadow tile, 3 turns | 2 |
 
+### 10.5 The LED coat and the energy system — `DESIGNED` (Director, 2026-10-23)
+
+**The LED coat is a Corporation secret project** (its specialist Hedge wears the prototype, §11.6) that **replaces the common overcoat** once
+acquired. It does two things, both electronic:
+- **The cloak** (`ACTOR` D72, unchanged): standing still, he fades into the scenery.
+- **The symbol (new):** the LEDs show any faction's symbol and colours on the coat, so **from behind and at a distance he passes for one of that
+  faction's field officers** (§2.1). He may switch on the fly, but **not too close and never in a guard's sight**; it only fools at a distance,
+  never a close look or a Captain (§11.2); only the symbols of factions he has incorporated are available (§2.2, access). With several factions on
+  one map (segments, §14), choosing which symbol to show where is the decision: the Militia's colours near the club draw fire.
+
+**It needs energy (Director: a cooldown and an energy and recharge system).** Claude proposes **one battery in the pack** for every
+electronic tool: the mask's vision (D71's tether at the nape already carries its power; §10.3 already prices X-ray in charges) and the coat's
+cloak and symbol, so seeing through walls and hiding compete for the same charge. It recharges slowly per turn and quickly at power points,
+which grow as the power station's restoration brings districts back (§2.2; restored light also costs cover, §2.6). The numbers are open (§18).
+
+**Readability (`COSMETICS_MASTER_PLAN` C3):** the symbol he shows is gameplay state, so the HUD always says which faction he is bluffing as; a
+cosmetic coat still shows the symbol, because the faction's colours and emblem are filled into the coat's accent zones by the game (D78).
+
 ---
 
 ## 11. Enemies — `PARTIAL`
@@ -1017,6 +1119,7 @@ One guard archetype ships. Everything below the hierarchy is design only.
 > the Traffickers (a motorcycle club) and the Corporation (GRUB DRILL's executives). The three play styles below were written for the older roster
 > (where the Corporation flew the drones; in §2.1 the Militia does); the mapping and the fourth faction's counter are open (§18). **The same four are
 > also the player's classes (§15):** any class plays against any faction, so a counter is a style the class meets, never a lock.
+> **2026-10-23:** each faction also fields specialists who author its technology (§11.6), whose template proposes the four-faction counters.
 
 **The Agency — control through information.** Guards with radios and check-in
 protocols, AI cameras, motion sensors, lieutenants who read trails and predict
@@ -1055,6 +1158,11 @@ agent's armour.*
 | Leader / successor | Commissioner / Deputy Commissioner | Commander / Head of Operations | President / Vice President | CEO / Bloc leader |
 
 The Agent's own rank is **Inspector**.
+
+**Field officers (Director, 2026-10-23):** Lieutenant and above lead the soldiers in ordinary missions and wear an **overcoat** in their faction's
+colours and symbol (§2.1); the sub-leaders are the most senior field officers, with distinctions. This is what the LED coat imitates (§10.5).
+Below them the factions vary freely: henchmen, super-henchmen and sub-henchmen of any look, as long as they stay complementary and of
+equivalent power across the four factions.
 
 ### 11.3 The five point/counterpoint techniques
 Every agent power gets an enemy mirror (the Phoenix Point lesson). *(2026-10-22: the "Introduced by" column names the older roster and its fixed
@@ -1099,6 +1207,35 @@ What the canon already holds to grow it from (Claude, proposed):
   rule (§2.6): the pacifist's enemies return, the killer's are replaced.
 - **Cost:** persistent per-character state across missions (the save model is checkpoint-scoped today), barks as localised text (no voice),
   portraits in the variable panel (§19 Rule 6).
+
+### 11.6 Specialists — the authors of technology — `DESIGNED` (Director, 2026-10-23; the roster is Claude's proposal)
+
+**The rule (Director):** each faction gets about three more unique members. **Each unique enemy is the AUTHOR of one attack, technology or
+skill;** the first confrontation puts that element on the Agent's radar, and contact with it unlocks the chance to acquire it for himself.
+Enemies and the Agent evolve together, as in Phoenix Point's research tree (or StarCraft's). Since lap 1's chapters are played on the
+investigated faction's turf (§2.2), a route meets the specialists in its own order, so each route grows its arsenal in a different order.
+
+**Constraints (Claude, from the canon):**
+- **No unlock needs a kill:** observing it with the mask, surviving it, or knocking its author out and searching him all count; otherwise the
+  tree pushes the player toward the sad ending (§2.6).
+- **The kamikaze drone is never an unlock:** it is the murder weapon and the club's signature (§2.6). The Militia's drone is a scout.
+- **No acid weapon:** the flood was acid, and the tragedy is never played light (§2.6). The club's chemist works in gas and sedatives.
+- **The specialists are authored, fixed characters:** the evolution is the FACTION's (its tech tree), never a memory per NPC, which keeps the
+  design clear of US 10,926,179 (§11.5) until an IP opinion.
+- **Telegraphed** (§11.4): a specialist is seen before he matters, and his element is shown before it bites.
+- **A class's non-lethal option exists from the start** (§10.0); unlocks add, never replace.
+
+**The template (Claude, proposed): the same three roles in every faction, so the power stays equivalent and the flavour differs.** EYE =
+finds the Agent a new way; HAND = attacks a new way; WALL = closes routes. The names follow each faction's joke (§2.7).
+
+| Faction | EYE | HAND | WALL |
+|---|---|---|---|
+| **FID** (burial names) | **Cairn**, the K9 handler (a cairn terrier, and a burial mound): the dog follows trails (§4.7) → a scent masker | **Pyre**, the taser officer → a taser (non-lethal) | **Vault**, the dispatcher: radio check-ins, roadblocks → faking radio calls |
+| **Calm Waters** (action-figure names) | **Ace Skyler**, the drone pilot → a scout drone | **Rex Hawke**, the marksman → a sniper rifle | **Chip Voltz**, sensors, laser tripwires → a jammer |
+| **Bunsen Burners** (churchly road names) | **Vespers**, the lookout with fireworks that alert the whole segment → flares that lure guards | **Censer**, the chemist: gas and sedatives → **tranquilliser darts** and smoke (the recipe of "Choirboy"'s sub-mission, §2.7) | **Sexton**, booby traps on the routes → breaching charges |
+| **Corporation** (finance puns) | **Ledger**, the hacker of cameras and phones → camera loops | **Hedge**, the agent in the LED prototype (a hedge fund, and D72's bush): an ambush from invisibility → **the LED coat** (§10.5) | **Escrow**, the fixer: a price on the intruder's head, bribes → bribery as an inside access (§2.2) |
+
+This template also answers §11.1's missing fourth counter: every faction meets the Agent on the same three axes.
 
 ---
 
@@ -1255,15 +1392,26 @@ and the restored town of the cemetery finale is the last state of the same place
 
 ## 15. Progression — `DESIGNED`
 
-**Four characters, one per faction — the classes (Director, 2026-10-22).** A
-player has at most one character per faction (a policeman, a militiaman, a
-biker, an executive), like Diablo's separate classes. Each is an instance of
-the Agent: the faction picked at the police station creates it (§2.2), it plays
-the campaign from that faction's start of the circle (four story routes), and
-its faction never changes. Each levels on its own, by the player's dedication,
-and carries its own ending and tattoo (§2.2).
+**Four characters, one per BACKGROUND — the classes (Director, 2026-10-22;
+revised 2026-10-23).** A player has at most four characters, like Diablo's
+separate classes. Each is an instance of the Agent, always an FID inspector by
+trade; **the class is the past he states in the deposition** (§2.2): where he
+grew up and what he can do. That past gives him unique abilities and the
+equipment he can operate, and it is what the rankings show:
+
+| Background | Faction in the rankings and the league | His handler (§2.7) |
+|---|---|---|
+| A policeman all his life | the FID | Irene Barrow |
+| A former member of a motorcycle club | the Bunsen Burners MC | "Choirboy" |
+| An army veteran | Calm Waters Security (it hires veterans) | Duke Hardcastle |
+| A former private security guard | the Corporation (its private agents) | Evelyn Marsh |
+
+*(The mapping and the handlers are Claude's, under the Director's delegation.)* The character plays the campaign from his faction's start
+of the circle (four story routes); his faction never changes. **Being approached by that faction grants no access** (§2.2): every
+character starts with the police's common facilities only, and the background's faction is earned like the others. Each character levels on
+its own, by the player's dedication, and carries its own ending and tattoo (§2.2). The detailed kits are gameplay work still to do (§18).
 - **A class restricts some abilities and equipment early.** That is the replay
-  value: the same player replays the campaign from another faction to play it
+  value: the same player replays the campaign from another background to play it
   another way. The START of the campaign is where it matters most (§14.3:
   routes per style through the same scenarios).
 - **The endgame converges:** a mature character has unlocked every technology
@@ -1283,7 +1431,8 @@ previewed the destination; the game opens at home, §2.2.)* The mature powers
 must expand tactical possibility rather than turn the final game into a solved
 map.
 
-**Item sources:** chests on the map, NPC vendors, mission rewards, and
+**Item sources:** the threats he meets (each specialist's technology becomes acquirable once he has met it,
+§11.6), chests on the map, NPC vendors, mission rewards, and
 [future] a TF2-style player market.
 
 **The Informant — a guaranteed NPC.** A map may contain a Network contact
@@ -1455,9 +1604,28 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   paid late); he buried the engineers' report and the board's bloc kept quiet;
   Evelyn Marsh is the sub-leader, Prudence Vane her counsel; he dies a
   candidate in lap 2 (Director, 2026-10-23; §2.1, §2.6, §2.7).
-- ✅ **Who the player is** → up to four characters, one per faction, each an
-  instance of the Agent created at the police station: four story routes,
-  classes of equivalent power and different style (Director, 2026-10-22; §15).
+- ✅ **Who the player is** → up to four characters, one per BACKGROUND stated
+  in the deposition (a lifelong policeman, a former biker, an army veteran, a
+  former private security guard), each an instance of the Agent and an FID
+  inspector by trade: four story routes, classes of equivalent power and
+  different style; the background's faction is the one in the rankings
+  (Director, 2026-10-22; background revised 2026-10-23; §15).
+- ✅ **The dress code and access** → every faction's field officers wear
+  overcoats; the Agent is an FID one in the investigators' mustard coat; he
+  starts with the police's common facilities only and almost no gear (§10.0);
+  other turfs open by a pass (a leader's trust or an inside mechanism); the
+  LED coat is the Corporation's secret project and can show any incorporated
+  faction's symbol from afar, on an energy budget (Director, 2026-10-23;
+  §2.1, §2.2, §10.5).
+- ✅ **Specialists** → about three unique enemies per faction, each the author
+  of a technology the Agent can acquire after meeting it; enemies and the Agent
+  evolve together (Director, 2026-10-23; the roster in §11.6 is a proposal).
+- ✅ **Who takes the blame** → every sub-leader ends believing the Agent
+  innocent; the leaked Graves–"Deacon" deal carries it, built from lap 1's
+  favours and the Agent's own lie (Claude, under the Director's delegation,
+  2026-10-23; §2.2). **The police from inside** → Graves runs him off the
+  books in every route; Barrow runs him too on the policeman's background;
+  neither knows of the other (same delegation; §2.2).
 - ✅ **Premium campaign or shared campaign?** → **Shared.** Free and paying
   players can reach the same campaign, Freelance content and powers; payment
   accelerates progression (§16).
@@ -1466,7 +1634,15 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   minors, and §16 sets the social defaults for them.
 
 **Still open — do not decide these unilaterally:**
-- [ ] §11.1's counters for FOUR factions (they were written for three); the
+- [ ] From 2026-10-23: the chokehold's N turns (§10.0); where the mask is found
+  (Claude: in the official work, §2.2); the energy budget's numbers and
+  recharge (§10.5); the bluff's distances and what reveals it (§10.5); the
+  specialist roster and its template (§11.6, proposed); the four backgrounds'
+  abilities and equipment (§15); whether Pith & Peel is registered to the dead
+  colleague (§2.2, proposed); the faction palette and dress
+  (`COSMETICS_MASTER_PLAN` §9, proposed).
+- [ ] §11.1's counters for FOUR factions (they were written for three; §11.6's
+  template proposes them); the
   agency's ranks per country when localised (the English canon is §2.7, §11.2).
 - [ ] The four class kits (§15), and whether later characters replay the
   whole campaign.

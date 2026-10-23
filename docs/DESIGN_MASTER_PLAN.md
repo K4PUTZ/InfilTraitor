@@ -167,8 +167,9 @@ ACCESS — passes and bluffs (Director, 2026-10-23; the two-level shape is
     can be lost: the police's goes with the badge (lap 1), and from then
     on Graves's favours earn information, never a police pass (his trust
     is secret, his ban public): the police turf then takes Barrow's
-    forged pass or a bluff.
-  - A BLUFF is the LED coat showing a faction's symbol (§10.5): from
+    forged pass, an infiltration, or, from lap 2, a bluff.
+  - A BLUFF is the LED coat showing a faction's symbol (§10.5; a mid-to-
+    late-game tool, from lap 2 on every route): from
     behind and at a distance he passes for one of its field officers. It
     never survives a close look or a Captain (§11.2).
   - As he gains each kind of access he INCORPORATES that faction: its
@@ -212,8 +213,8 @@ LAP 1 — the favours (four chapters, one per faction; the circle stays:
   starting faction is the player's, so no chapter may depend on another's.
   WHERE A CHAPTER IS PLAYED (Director, 2026-10-23): on the turf of the
   faction being INVESTIGATED, as an INFILTRATION: he holds no pass there,
-  only what an inside mechanism or the asker's help can open, plus the
-  LED coat's bluff once he owns it (the police chapter is the exception:
+  only what an inside mechanism or the asker's help can open; the LED
+  coat comes later, in lap 2 (§10.5) (the police chapter is the exception:
   he walks in on his own badge, and Graves takes it there); the chapter teaches the investigated
   faction's mechanics, and its specialists (§11.6) first appear there.
   So chapter 1 is the next faction round the circle, and CHAPTER 4 IS
@@ -1118,8 +1119,11 @@ always costs mobility or stealth.***
 acquired. It does two things, both electronic:
 - **The cloak** (`ACTOR` D72, unchanged): standing still, he fades into the scenery.
 - **The symbol (new):** the LEDs show any faction's symbol and colours on the coat, so **from behind and at a distance he passes for one of that
-  faction's field officers** (§2.1). **It arrives with the Corporation's chapter, so at a different point per route** (chapter 1 on the
-  Traffickers route, chapter 4 on the Corporation's): kept as route variety (ruled 2026-10-23). He may switch on the fly, but **not too close and never in a guard's sight**; it only fools at a distance,
+  faction's field officers** (§2.1). **It is a mid-to-late-game tool on EVERY route** (Director, 2026-10-23: "um acessório muito forte,
+  designado pra meio/fim de jogo"; supersedes the same day's "its arrival varies by route"). The Agent MEETS it in lap 1's Corporation
+  chapter, worn against him by Hedge (§11.6: seen before it matters, §11.4), wherever that chapter falls in his route; he can ACQUIRE it only
+  once lap 1 is closed, in lap 2 (Claude's anchor, the obvious reading: the one point every route reaches at the same stage, whatever its
+  chapter order). Its reach grows with him: it can only show the factions he has already incorporated. He may switch on the fly, but **not too close and never in a guard's sight**; it only fools at a distance,
   never a close look or a Captain (§11.2); only the symbols of factions he has incorporated are available (§2.2, access). With several factions on
   one map (segments, §14), choosing which symbol to show where is the decision: the Militia's colours near the club draw fire.
 
@@ -1657,8 +1661,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   in an ordinary fedora and finds the hat-mask in the official work (§2.2);
   "innocent" means of the dam, and each handler keeps his complicity quiet
   (§2.7); Hardcastle's rescue is a publicity stunt, never the official rescue
-  (§2.7); the Corporation has no weapons IN PUBLIC (§2.6); the LED coat's
-  arrival varies by route (§10.5).
+  (§2.7); the Corporation has no weapons IN PUBLIC (§2.6); the LED coat is a
+  mid-to-late-game tool on every route, met in lap 1 (Hedge) and acquired in
+  lap 2 (§10.5; the Director revised the same day's "varies by route").
 - ✅ **Premium campaign or shared campaign?** → **Shared.** Free and paying
   players can reach the same campaign, Freelance content and powers; payment
   accelerates progression (§16).

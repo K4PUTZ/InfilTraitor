@@ -324,3 +324,24 @@ what must read is Agent vs guard), so the detail budget goes to the portrait.
 **9.8 Cost.** In the game LOD the palette is free; new geometry is the armband, the patch and one visible signature (< 250 tris over ~5.2 k);
 pins, rings, cufflinks and the earpiece live in the menu master only (D73). Small accessories are rigid pieces on bone sockets (lapel, chest,
 wrist, belt), so they fit both bases (§8.1) with one offset per socket and no cloth refitting.
+
+**9.9 The decision renders (2026-10-23).** The Director's palette on the hero v5 master, rendered in Blender (EEVEE, Standard view transform,
+so a hex renders as itself). This is a MOCK of the look, not the engine's shaders or cost. The sheets are in `Screenshots/history/`:
+- `d78_faction_dress_agent_portraits.png`: the ranking portrait over the banner, plus a chest detail.
+- `d78_faction_dress_agent_game.png`: 132×200 at the game camera on a dark board, ×3, and the ×3 under deuteranopia.
+- `d78_faction_dress_officer_coats.png`: the field officers' coats from behind, the LED coat's bluff view, with the same rows.
+
+To regenerate (the palette is data, `tools/asset_generation/hero/faction_palette.json`):
+`faction_dress_art.py textures <dir>`, then `HERO_REPO=<repo>/ FD_OUT=<dir> blender -b -P hero_faction_dress.py`, then `faction_dress_art.py sheets <dir>`.
+
+What the renders show (Claude's reading, for the Director to judge):
+- **At play size the armband is the faction's main cue on the Agent.** The hatband and the lining's edge back it up; the tie, the pins and the
+  mark of his past only show in the portrait.
+- **The measurement came true on screen:** under deuteranopia the bikers' orange armband VANISHES into the mustard coat, while the Militia's
+  red turns into a dark band that still reads by value. **Proposed fix:** on the Agent, the bikers' armband becomes BROWN with orange stripes
+  (the inverse of the banner).
+- **The officers' coats separate by the COAT's value even under deuteranopia** (mustard, dark brown, grey, black), so the brown coat for the
+  bikers holds. The FID officer and the Corporation officer both show blue accents to a deuteranope, and are told apart by light vs dark coat.
+- **The officers' back roundel reads at play size** (the bluff's distance view); for colour-blind players the emblem's shape carries it.
+- **Mock limits:** emblems are the poster's placeholders; the officers wear the Agent's coat silhouette and go bald (the hair is shaped for the
+  fedora); the Corporation's earpiece sits on the side the cameras do not see.

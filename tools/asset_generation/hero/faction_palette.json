@@ -1,0 +1,120 @@
+{
+  "_doc": "The four factions' dress colours for the D78 decision renders (COSMETICS_MASTER_PLAN \u00a79.4). Families: the Director's (2026-10-23); exact values and roles: Claude's proposal, measured in CIEDE2000 with colour-blind simulation. sRGB hex. 'accents' never carry a faction alone. 'officer_coat' is the field officers' overcoat (COSMETICS \u00a78.3); 'mustard' means the FID investigators' coat texture as built. 'hatband' and 'lining' are the primary except where the primary would vanish on black felt (the Corporation: its purple).",
+  "investigators_coat": "#CCA33D",
+  "factions": {
+    "FID": {
+      "name": "FID",
+      "background": "Lifelong policeman",
+      "primary": "#2E6FD8",
+      "secondary": "#F2F2F2",
+      "accents": [
+        "#CCA33D"
+      ],
+      "metal": "#C9CED6",
+      "emblem": "shield_star",
+      "armband_text": "FID",
+      "tie": {
+        "base": "#1F4FA6",
+        "stripe": "#F2F2F2",
+        "thin": "#CCA33D"
+      },
+      "pocket": "#F2F2F2",
+      "officer_coat": {
+        "base": "mustard",
+        "band": "#2E6FD8",
+        "hem": "#F2F2F2",
+        "roundel": "#2E6FD8",
+        "mark": "#F2F2F2"
+      },
+      "hatband": "#2E6FD8",
+      "lining": "#2E6FD8"
+    },
+    "BBM": {
+      "name": "Bunsen Burners MC",
+      "background": "Former biker",
+      "primary": "#F08A24",
+      "secondary": "#7A4A22",
+      "accents": [
+        "#5C8F2A",
+        "#46C2C2"
+      ],
+      "metal": "#7D7A74",
+      "emblem": "flask_flame",
+      "tie": {
+        "base": "#7A4A22",
+        "stripe": "#F08A24",
+        "thin": "#46C2C2"
+      },
+      "pocket": "#F08A24",
+      "officer_coat": {
+        "base": "#5E3A1C",
+        "band": "#F08A24",
+        "hem": "#F08A24",
+        "roundel": "#F08A24",
+        "mark": "#5C8F2A",
+        "mark2": "#46C2C2"
+      },
+      "hatband": "#F08A24",
+      "lining": "#F08A24"
+    },
+    "CWS": {
+      "name": "Calm Waters Security",
+      "background": "Army veteran",
+      "primary": "#B3121E",
+      "secondary": "#5A1222",
+      "accents": [
+        "#8A8D91",
+        "#F2F2F2"
+      ],
+      "metal": "#5B5E63",
+      "emblem": "quad_drone",
+      "tie": {
+        "base": "#5A1222",
+        "stripe": "#B3121E",
+        "thin": "#F2F2F2"
+      },
+      "pocket": "#8A8D91",
+      "officer_coat": {
+        "base": "#6E7175",
+        "band": "#B3121E",
+        "hem": "#5A1222",
+        "roundel": "#B3121E",
+        "mark": "#F2F2F2"
+      },
+      "hatband": "#B3121E",
+      "lining": "#B3121E"
+    },
+    "CORP": {
+      "name": "The Corporation",
+      "background": "Former private security",
+      "primary": "#141416",
+      "secondary": "#6B2FA0",
+      "accents": [
+        "#1B2550"
+      ],
+      "metal": "#E3E1DA",
+      "emblem": "grub",
+      "tie": {
+        "base": "#141416",
+        "stripe": "#6B2FA0",
+        "thin": "#1B2550"
+      },
+      "pocket": "#6B2FA0",
+      "officer_coat": {
+        "base": "#161618",
+        "band": "#6B2FA0",
+        "hem": "#1B2550",
+        "roundel": "#6B2FA0",
+        "mark": "#E3E1DA"
+      },
+      "hatband": "#6B2FA0",
+      "lining": "#6B2FA0"
+    }
+  },
+  "order": [
+    "FID",
+    "BBM",
+    "CWS",
+    "CORP"
+  ]
+}

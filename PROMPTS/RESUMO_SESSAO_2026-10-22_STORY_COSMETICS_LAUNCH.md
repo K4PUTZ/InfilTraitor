@@ -93,13 +93,21 @@ before any design; Claude's sketch from our own canon in `DESIGN` §11.5. **The 
 the lines adapt; defaults proposed Victoria / Clement Rook; consequences: two-gender lines in gendered languages, the female base required and every
 costume piece fitted to both bases.
 
-## 4. Where the plot stands (closed for now, 2026-10-22)
+## 4. Where the plot stands (session closed, 2026-10-22)
 
-Ratified in `DESIGN_MASTER_PLAN` §2 / §14.4 / §15 / §18. Still open, none blocking: the agency's ranks per country when localised; §11.1's
-counters and §14.3's ladder for four factions; the four class kits and whether later characters replay the campaign; which lap-2 confrontation is
-the complete mission; what the reporter does with the gun; the epilogue's open joints; a city that lived a real dam disaster (for the
-association); `COSMETICS` §5 and C1-C11; `LAUNCH` scope; the hero items (§2 item 6).
+Ratified in `DESIGN_MASTER_PLAN` §2 (incl. §2.7 names), §11.2 (ranks), §14.2 / §14.4, §15, §16, §18; `COSMETICS` v0.4; `LAUNCH` v0.2. Every
+commit is on `origin/main` (last: the female Agent). **Still open, none blocking:**
 
-**Open after this pass** (items 1, 4, 5, 6 of §2 above still stand; item 3 is ruled): the four class kits and whether later characters replay the
-whole campaign; the reporter's name, outlet, first contact, what the final fight is made of, and whether killing him breaks a no-kill run; where the
-tattoo sits on the body; each Agent instance's look per class; the forum in-game or on the web; the Brumadinho question for the association.
+1. The agency's ranks per country when localised (the English canon is settled).
+2. §11.1's counters and §14.3's ladder for four factions; the four class kits (each with a non-lethal option from the start) and whether later
+   characters replay the whole campaign.
+3. Which lap-2 confrontation is the complete mission (Claude: four standard missions of one size).
+4. What the reporter does with the Agent's gun in the let-him-live branch.
+5. The epilogue's open joints (Claude's proposals, `DESIGN` §2.2): the badge taken back from the chief, the wedding ring, his blood on the pit's
+   edge, the empty foreclosed house as the sad ending's last shot.
+6. The female Agent's default names (Victoria / Clement Rook, proposed); where the tattoo sits on the body; each Agent instance's look per class.
+7. Named rivals (`DESIGN` §11.5): an IP opinion on WB's US 10,926,179 before any design.
+8. The forum in-game or on the web; Lowmere not yet web-checked; a registry check of every name before launch.
+9. A city that lived a real dam disaster: a question for the association of those affected.
+10. `COSMETICS` §5 and C1-C11; `LAUNCH` L1-L7 scope; the hero items of §2 item 6 (hair, D70's black swap, D72's cloak, the adapter to
+    `ActorMesh3D`, the handset measurement of v5.1).

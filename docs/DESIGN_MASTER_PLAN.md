@@ -195,9 +195,12 @@ THE OFFICIAL WORK — first (Director, 2026-10-22)
   tank).
   He starts with almost nothing (§10.0): a common pistol, his overcoat,
   stones, a chokehold; a balaclava hides his face, the coat stowed in his
-  black pack. The MASK must be found soon (Director, 2026-10-23); Claude
-  proposes it is found in this official work, which every route shares,
-  so every route has it at the same point (where exactly: open, §18).
+  black pack. The MASK must be found soon (Director, 2026-10-23), and it
+  is found in this official work, which every route shares, so every
+  route has it at the same point (ruled 2026-10-23, on Claude's
+  recommendation). He starts in an ordinary fedora; the mask he finds IS
+  a fedora (its crown comes down over the face, `ACTOR` D77) and replaces
+  it. Which mission holds it, and who built it: open (§18).
 
 LAP 1 — the favours (four chapters, one per faction; the circle stays:
   Director, 2026-10-22)
@@ -268,6 +271,12 @@ THE CEMETERY — the finale (a scene, no fight: Director, 2026-10-22)
     necessary, and turns his back. The reporter, implicated himself, is
     tempted to erase him, or sets justice after him (the endings to
     explore: open). The Agent becomes a FUGITIVE.
+  THE TRUTH STAYS BURIED in both branches (Director, 2026-10-23): the
+  blame must never fall on the Agent. If the reporter publishes, the
+  faked death (his DNA "dissolved" in the pit) and the truce the four
+  factions sealed at the memorial make the story read as a conspiracy
+  theory against the official version; The Sieve's motto, "Everything
+  gets through", is the irony. Only the reporter, and the player, know.
   A permanent tattoo marks the choice on that character
   (COSMETICS_MASTER_PLAN §3).
 
@@ -321,8 +330,8 @@ Graves's payroll who passed it the Militia's codes and the roadblock; the pit, w
 - **It is built out of lap 1:** the Militia's favour ("prove it was the traffickers": the drone, the chop shop) and the Corporation's ("prove the
   State's negligence": the pit) are the evidence, and the Agent hands both over with no name of his on them.
 - **Its fall guy is the Agent's own lie:** the "policeman killed in the flood" he names as the leak (§2.6) is that payroll policeman, and the
-  Militia's codes and the roadblock's police credential (the lap-2 clues, §2.6) both point at him. **Claude proposes** that Pith & Peel Holdings was
-  registered, before the disaster, to that same colleague, who lent his name for a cut (a "laranja"); his death in the flood is chance, and it
+  Militia's codes and the roadblock's police credential (the lap-2 clues, §2.6) both point at him. Pith & Peel Holdings was registered, before the
+  disaster (ruled 2026-10-23, on Claude's recommendation; the money, §2.6), to that same colleague, who lent his name for a cut (a "laranja"); his death in the flood is chance, and it
   is why the Agent names him, so the puts (the Corporation's clue) stop at him too.
 - **The dead do not deny:** Graves and "Deacon" both die in lap 2. Barrow and "Choirboy" each blame their own dead leader, which legitimises
   their coups ("Choirboy" believes Deacon ordered it without the chapter); Hardcastle and Marsh accept it gladly, since it keeps the silent sirens
@@ -480,6 +489,12 @@ make the fall, and they will be the suspects. **Not a dark-web
 contract paid in bitcoin:** there is no market for it, and bitcoin's public ledger is traceable at the cash-out; if crypto appears at all, it pays for the
 drone parts or the front, and then it is one more trail.
 
+**The money (Director, 2026-10-23, on Claude's recommendation).** The puts PAID, into Pith & Peel's offshore account, which stands in the name of
+the colleague who lent his name for a cut and died in the flood (§2.2, who takes the blame). For the living Agent that money is untouchable: a
+dead man's account under a federal case. That is why the debt still stands and the bank can take the house in the sad ending, and it gives the
+faked death a second motive beside watching his wife from afar: only a dead man can reach a dead man's money, abroad (the investigation's
+offshore broker, below).
+
 **What happened.** The drone struck the substation that powers the pumps and the sirens. The flood was acid: the traffickers' waste had turned the
 reservoir (their failure, below). **Four failures turned a small spill into a massacre; each
 faction is guilty of one and innocent of the attack.** The official version, "a fire at a substation", suits all four, so none wants a real
@@ -524,7 +539,7 @@ the favour arrows, the Agent at the centre. Its symbols are placeholders until t
 | **Police** (the chief, who is also the commissioner of §2.2: he bans the Agent verbally, gives him the official missions, later takes his badge) | Investigate a "leak" off the books → the **Militia**, which receives it | The pit as a dump for bodies; the deal with the traffickers | Blocked the pit's inspections: the containment failed | The official "substation fire" version is his, and he runs the case | Cannot use his own men (the leak); fears federal scrutiny | "Someone passed the road block that night on a police credential" |
 | **Militia** (the commander of the CEO's security) | Prove it was the traffickers (a drone) → the **Traffickers** | Billed the sirens' backup power and never installed it; takes the traffickers' territory; its own men sell access to the traffickers' labs inside the guarded facilities | The sirens stayed silent | Holds the drone's wreck: "proof" of an outside attack | Cannot let any inspector near the siren system, nor near its insiders | "The drone took off inside our perimeter, with codes only we and our informant knew" |
 | **Traffickers** (the club's president) | Find who leaks to the militia; they suspect their financiers → the **Corporation** | The lab in the refinery, run with the Militia's insiders; their dead in the pit | Chemical waste dumped in the dam: the reservoir over its limit | Lost their lab and men: they look like victims | The bodies may surface with the flood; the bought police no longer protect them | "Someone bought drone parts at our chop shop weeks before" |
-| **Corporation** (the CEO, Gordon Pryce: Director, 2026-10-23) | Prove it was the State's negligence (the chief) → the **Police**; the chapter in which the commissioner takes the Agent's badge (§2.2) | His cooked books (future energy sales booked as cash); the board's bloc finances the traffickers and wants a contained leak to sell the company at half price to foreign funds, for a commission | The engineers' risk report buried: by him, to protect the fraud (the repairs need money the company does not have, and halting the dam breaks the energy contracts); the bloc knew and kept quiet, hoping for a contained leak. One failure, two hands on the same drawer | The fall "hurts" them in public; no weapons | A real investigation finds the report and the books: it sinks his campaign, and the bloc's sale with it | "Someone bet against us through a front, on puts expiring that week" |
+| **Corporation** (the CEO, Gordon Pryce: Director, 2026-10-23) | Prove it was the State's negligence (the chief) → the **Police**; the chapter in which the commissioner takes the Agent's badge (§2.2) | His cooked books (future energy sales booked as cash); the board's bloc finances the traffickers and wants a contained leak to sell the company at half price to foreign funds, for a commission | The engineers' risk report buried: by him, to protect the fraud (the repairs need money the company does not have, and halting the dam breaks the energy contracts); the bloc knew and kept quiet, hoping for a contained leak. One failure, two hands on the same drawer | The fall "hurts" them in public; no weapons in public (their private agents are covert: §11.6, ruled 2026-10-23) | A real investigation finds the report and the books: it sinks his campaign, and the bloc's sale with it | "Someone bet against us through a front, on puts expiring that week" |
 
 **What he hands over (Director, 2026-10-23).** Two favours ask for the same thing, the Police's "leak" and the Traffickers' "who leaks to the
 Militia", and the answer to both is the Agent himself. **He gives both the same lie, in any order: a policeman killed in the flood** (the dead do not
@@ -602,7 +617,9 @@ because he is dead, or because he is the head of the character's own faction.
   leader dies, the sub-leader takes the post (each faction outlives its leader, §2.1) and answers for that faction. The sub-leaders blame each
   other for the deaths, and the new orders change the next visits to the same places (new checkpoints: the authored time states of §14.4).
 - **The cemetery memorial's "four factions"** are the four sub-leaders before the press, sealing their truce on the leaked Graves–"Deacon" deal
-  (§2.2, who takes the blame): all four leave believing the Agent innocent, a grieving father; only the reporter knows (Director, 2026-10-23). **In Freelance** they are the clients who pay the "dead"
+  (§2.2, who takes the blame): all four leave believing the Agent innocent OF THE DAM, a grieving father; only the reporter knows (Director,
+  2026-10-23). **Each handler knows a little more and keeps quiet** (ruled 2026-10-23): he blessed the Agent's chapter against his own leader
+  and profits from that leader's death, so his post depends on his silence. **In Freelance** they are the clients who pay the "dead"
   Agent for information, none of them knowing who he is: he sells faceless, as he sold to the Militia (§2.6).
 - **Sub-missions are leaves, not branches.** They READ the state of the world (the lap-2 order, the run's violence, the badge) and pay in access,
   gear, guard rotations or money. **They never carry a piece of the disaster** (the four failures, the four clues, the reveal: §2.6, §2.4), and no
@@ -613,7 +630,7 @@ because he is dead, or because he is the head of the character's own faction.
 | Sub-leader | Motive | Sub-mission (example) | Exists if |
 |---|---|---|---|
 | Irene Barrow | Graves's chair | Bug Graves's office (the recording goes to her, never to the Agent) → a forged pass that gets him through checkpoints | **The badge:** only once the Agent has lost it |
-| Duke Hardcastle | Command, on camera | A staged heroic rescue so he looks the part → the Militia's drone codes | **The leader alive:** only while Kessler lives |
+| Duke Hardcastle | Command, on camera | A staged heroic rescue so he looks the part (a Militia publicity stunt for the cameras, never the official rescue, which stays scenery: ruled 2026-10-23) → the Militia's drone codes | **The leader alive:** only while Kessler lives |
 | "Choirboy" | The club's "brothers" | Spring a cook from a rival chapter → the recipe for an explosive or smoke gadget | **The violence:** gone if the player killed club members in that chapter |
 | Evelyn Marsh | Pryce's chair, and the sale: she backs whoever is winning | Sells, through her counsel Prudence Vane, the guard rotations of the Agent's next target | **Progress:** only once two or more leaders are dead |
 
@@ -1012,7 +1029,7 @@ master. Gadgets are found on the map, bought from NPCs, or awarded.
 | His overcoat | The FID investigators' mustard coat, black inside (§2.1, `ACTOR` D78) |
 | Throwing stones | A distraction (a noise on a chosen tile, §5) |
 | A chokehold or a neck snap | The chokehold knocks a guard out and he **wakes after N turns** (N open, §18); the neck snap kills and he never wakes. The knockout is the non-lethal option every class must hold from the start (§2.6) |
-| A balaclava | For the first missions: masked, with the coat stowed in his black pack, he already looks like the Infiltraitor, with no technology. The **mask** (`ACTOR` D71/D77) is found soon (§2.2) |
+| A balaclava | For the first missions: masked, with the coat stowed in his black pack, he already looks like the Infiltraitor, with no technology. He wears an ordinary fedora; the **mask** (`ACTOR` D71/D77), itself a fedora, is found soon in the official work and replaces it (§2.2) |
 
 **Stealth by shadow works 100% from the start** (§4.3): the progression adds tools, never the core loop. The background (§15) adds its own
 abilities and the equipment it can operate.
@@ -1101,7 +1118,8 @@ always costs mobility or stealth.***
 acquired. It does two things, both electronic:
 - **The cloak** (`ACTOR` D72, unchanged): standing still, he fades into the scenery.
 - **The symbol (new):** the LEDs show any faction's symbol and colours on the coat, so **from behind and at a distance he passes for one of that
-  faction's field officers** (§2.1). He may switch on the fly, but **not too close and never in a guard's sight**; it only fools at a distance,
+  faction's field officers** (§2.1). **It arrives with the Corporation's chapter, so at a different point per route** (chapter 1 on the
+  Traffickers route, chapter 4 on the Corporation's): kept as route variety (ruled 2026-10-23). He may switch on the fly, but **not too close and never in a guard's sight**; it only fools at a distance,
   never a close look or a Captain (§11.2); only the symbols of factions he has incorporated are available (§2.2, access). With several factions on
   one map (segments, §14), choosing which symbol to show where is the decision: the Militia's colours near the club draw fire.
 
@@ -1631,6 +1649,16 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   2026-10-23; §2.2). **The police from inside** → Graves runs him off the
   books in every route; Barrow runs him too on the policeman's background;
   neither knows of the other (same delegation; §2.2).
+- ✅ **The plot pass of 2026-10-23** (Director, on Claude's recommendations):
+  the truth stays buried even if the reporter lives and publishes (a
+  conspiracy theory against the truce and the faked death, §2.2); the puts
+  paid into Pith & Peel's account in the dead colleague's name, untouchable
+  for the living Agent, a second motive for the faked death (§2.6); he starts
+  in an ordinary fedora and finds the hat-mask in the official work (§2.2);
+  "innocent" means of the dam, and each handler keeps his complicity quiet
+  (§2.7); Hardcastle's rescue is a publicity stunt, never the official rescue
+  (§2.7); the Corporation has no weapons IN PUBLIC (§2.6); the LED coat's
+  arrival varies by route (§10.5).
 - ✅ **Premium campaign or shared campaign?** → **Shared.** Free and paying
   players can reach the same campaign, Freelance content and powers; payment
   accelerates progression (§16).
@@ -1639,12 +1667,11 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   minors, and §16 sets the social defaults for them.
 
 **Still open — do not decide these unilaterally:**
-- [ ] From 2026-10-23: the chokehold's N turns (§10.0); where the mask is found
-  (Claude: in the official work, §2.2); the energy budget's numbers and
-  recharge (§10.5); the bluff's distances and what reveals it (§10.5); the
+- [ ] From 2026-10-23: the chokehold's N turns (§10.0); which official
+  mission holds the mask, and who built it (§2.2); the energy budget's numbers
+  and recharge (§10.5); the bluff's distances and what reveals it (§10.5); the
   specialist roster and its template (§11.6, proposed); the four backgrounds'
-  abilities and equipment (§15); whether Pith & Peel is registered to the dead
-  colleague (§2.2, proposed); the faction palette and dress
+  abilities and equipment (§15); the faction palette and dress
   (`COSMETICS_MASTER_PLAN` §9, proposed).
 - [ ] §11.1's counters for FOUR factions (they were written for three; §11.6's
   template proposes them); the
@@ -1652,7 +1679,7 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - [ ] The four class kits (§15), and whether later characters replay the
   whole campaign.
 - [ ] What the reporter does with the Agent's gun in the let-him-live
-  branch (§2.2); the epilogue
+  branch (§2.2; whatever he does, the truth stays buried: ruled 2026-10-23); the epilogue
   per branch; which lap-2 confrontation is the complete mission (§2.2).
 - [ ] The epilogue's open joints: the badge's return, the gun in the
   let-him-live branch, where the DNA is left, the sad ending's last shot

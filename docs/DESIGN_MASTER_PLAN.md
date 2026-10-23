@@ -78,9 +78,9 @@ importante é serem equilibradas".)* Names are working names. All four orbit one
 | Faction | Uniform / turf | Public face | Truth | Plays as (§11.1) |
 |---|---|---|---|---|
 | **The Federal Police — the FID, Federal Inquiry Directorate** (§2.7; in the game a FICTIONAL federal agency, its ranks localised per country: a real institution never plays the corrupt faction) | Official uniforms and equipment; stations, checkpoints | The law | Paid to look away from the traffickers; its leaks reach the militia; its chief knows the company's containment pit is where the traffickers' enemies are dumped | Information: radios, check-ins, cameras, trail reading |
-| **The Militia** — a private military security company, **Calm Waters Security** (§2.7) | High-tech uniforms and gear; GRUB DRILL's complex across several towns | Security hired by the company's CEO, in exchange for backing his Senate campaign | Takes the traffickers' territory, buys police leaks, bills for security it never delivers; **leaks from the inside** (Director, 2026-10-22): some of its own men sell access, codes and shifts, so the traffickers produce their toxic substances inside the facilities it guards | Technology and force: drones, sensors, armour, pairs |
+| **The Militia** — a private military security company, **Calm Waters Security** (§2.7) | High-tech uniforms and gear; GRUB DRILL's complex across several towns | Security hired by the company's CEO, in exchange for backing his Senate campaign | Takes the traffickers' territory, buys police leaks, bills for security it never delivers; **leaks from the inside** (Director, 2026-10-22): some of its own men sell access, codes and shifts, so the traffickers produce their toxic substances inside the facilities it guards; **unhappy with the "partnership"** (Director, 2026-10-23): the CEO pays late and it presses him to pay before the election, yet it cannot walk away, since it must defend the facilities against the traffickers, and attack them, to keep its hold (§2.6) | Technology and force: drones, sensors, armour, pairs |
 | **The Traffickers** — paramilitaries behind a motorcycle club, the **Bunsen Burners MC** (§2.7) | Club vests and patches, bikes; chop shops, the refinery's back rooms | A motorcycle club | Divert banned precursors from the company's refinery into synthetic drugs, in labs the Militia's insiders let them run; their dead go into the pit | Numbers and improvisation: bikes, routes, explosives, chemistry |
-| **The Corporation** — GRUB DRILL's executives and minority shareholders, led by **Evelyn Marsh** (§2.7) | Suits **of their own cut, palette and earpieces, never the hero's fedora and coat** (D70: on the board at ~190 px the Agent must not read as one of them) | The company's governance | Sabotage the CEO (Director, 2026-10-22): they hid the engineers' risk report hoping for a CONTAINED leak that would drop the company's value without the full accident, and covet a fat commission for selling it at half price to foreign funds; no options of their own; they finance the traffickers, for a scandal; they have their own suited agents; they know the company is not making a profit, its books carried by future contracts the CEO booked as cash, but cannot prove it (Director, 2026-10-23; §2.6) | Money and access: bribes, hacking, private agents |
+| **The Corporation** — GRUB DRILL's executives and minority shareholders, led by **Evelyn Marsh** (§2.7) | Suits **of their own cut, palette and earpieces, never the hero's fedora and coat** (D70: on the board at ~190 px the Agent must not read as one of them) | The company's governance | Sabotage the CEO (Director, 2026-10-22): they hid the engineers' risk report hoping for a CONTAINED leak that would drop the company's value without the full accident, and covet a fat commission for selling it at half price to foreign funds; no options of their own; they finance the traffickers, for a scandal; they have their own suited agents; they know the company is not making a profit, its books carried by future energy sales the CEO booked as cash, but cannot prove it (Director, 2026-10-23; §2.6) | Money and access: bribes, hacking, private agents |
 | **The Agent** | His own costume (D70) | A federal investigator, a grieving father | The police leak that sells information to the militia (and to the reporter, below), and the man who breached the dam (§2.6) | — |
 | **The Press** — a reporter, **Thomas Marlow of *The Sieve*** (§2.7), a fifth element, NOT a faction (no guards, no uniform, no league) | — | An investigative journalist | Consulted the Agent as an anonymous police source: bought the information about the traffickers that the Militia used. **Innocent of the massacre: the only one who did not cause the son's death** (Director, 2026-10-22) | The campaign's lead supplier in lap 2 and its final encounter (§2.2) |
 
@@ -363,13 +363,23 @@ A complex of refinery, mining and chemical-agent production across several towns
 and wants an exploration contract with the government; he hired the Militia's company to guard the complex in exchange for campaign support. One of its
 sites is the dam.
 
-**The CEO's fraud (Director, 2026-10-23).** He pays the Militia with money the company does not have: he books FUTURE contracts (sales and the
-hoped-for government concession, not yet delivered) as cash in hand. He runs for the Senate (his first election) to win the government exploration
-contract, the resources that would make those contracts real and let him honour them, so the seat is existential for him. **The board knows the
-company is not making a profit, but cannot prove it:** one more tension, and one more reason for the Corporation to want him down. *(Claude,
-remarks: the Militia is paid with money that does not exist for sirens that do not exist (§2.1); a contained leak would bring inspectors and auditors
-in, which is how the bloc would prove what it cannot, one more reason to hide the report; and the proof must never be obtainable during the
-campaign, since the epilogue has him elected, so a sub-mission may brush the fraud but never close it (§2.7: sub-missions are leaves).)*
+**The CEO's fraud (Director, 2026-10-23).** He pays the Militia with money the company does not have: he books contracts for FUTURE ENERGY SALES
+(energy not yet delivered) as cash in hand. He runs for the Senate (his first election) to win the government exploration contract, the resources
+that would let him deliver that energy and honour those contracts, so the seat is existential for him. **The board knows the company is not making
+a profit, but cannot prove it:** one more tension, and one more reason for the Corporation to want him down.
+
+**The Militia is not satisfied either (Director, 2026-10-23).** The payments run late, and it presses the CEO to pay before the election: the
+"partnership" sours. Yet it cannot walk away: it must defend the facilities against the traffickers, and attack them, to keep its hold on the
+complex. That raises the Militia's stake in everything that follows.
+
+*(Claude, remarks: the Militia's leverage is the campaign support, worth nothing once he is elected, hence "before the election". Its favour,
+"prove it was the traffickers", now pays twice: a war it needs, and a lever on the CEO, since it is the only thing between him and the
+traffickers. A real investigation would find the sirens and could sink the candidate who owes it, so it needs the official version twice over.
+The late pay is also a reason for its own men to sell access to the traffickers' labs (§2.1), which ties the CEO's fraud to the Militia's
+insiders without making it one of the four failures. The Militia bills for sirens that do not exist and is paid, late, with money that does not
+exist. A contained leak would bring inspectors and auditors in, which is how the bloc would prove what it cannot, one more reason to hide the
+report. And the proof must never be obtainable during the campaign, since the epilogue has him elected, so a sub-mission may brush the fraud but
+never close it (§2.7: sub-missions are leaves).)*
 
 **The Agent (Director; "he is the leak" is Claude's proposal, accepted 2026-10-22).** Before the disaster he already sold police information to the
 Militia (the police's leak is him), and a reporter bought the information about the traffickers from him as an anonymous police source (Director,

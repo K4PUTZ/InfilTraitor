@@ -136,3 +136,6 @@ the name. §4's list above still stands otherwise.
 as cash; he runs for the Senate (a first election) to win the government contract that would make them real; the board knows the company is not
 profitable but cannot prove it (`DESIGN` §2.1, §2.6). Claude's remarks there: the proof must never be obtainable in the campaign (the epilogue
 elects him); the epilogue's half-price sale and the senator steering the contract (a proposal in §2.2's open joints).
+**Then (Director, 2026-10-23):** the booked contracts are FUTURE ENERGY SALES; the Militia, paid late, presses the CEO to pay before the
+election and sours on the "partnership", but cannot leave: it must defend the facilities against the traffickers, and attack them, to keep its
+hold (`DESIGN` §2.1, §2.6; Claude's remarks there, incl. the late pay as a reason for its insiders to sell access).

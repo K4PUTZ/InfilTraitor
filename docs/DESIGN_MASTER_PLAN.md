@@ -199,6 +199,42 @@ ACCESS — the UNIFORM and the ACCESS are two separate things
   - Technology is incorporated by meeting its author (§11.6); each
     uniform he gets joins the LED coat's wardrobe.
 
+CAUGHT, MASKED, ALERT, ARREST (Director, 2026-10-23)
+  - CAUGHT: if he breaks a rule of conduct and is caught, that faction
+    WANTS him in that scenario, which basically means a shootout. He
+    must silence the witnesses: killing them, knocking them out and
+    tranquilliser darts all count. Above all he must ESCAPE before more
+    of them arrive, to stay anonymous.
+    - He need not finish the objective, but the ALERT rises and the
+      mission must still be done at some point: it stays open.
+    - If he dies, he dies: back to the checkpoint (the save model, §19).
+    - The knockout and the dart keep §2.6's no-kill run and non-lethal
+      option intact. A knocked-out witness wakes knowing there was an
+      intruder, never who (Claude).
+  - MASKED: seen in the black suit and the mask, he leads the factions to
+    the WRONG conclusion that the club's masked assassin is still alive,
+    supposing more people know of him, which deflects suspicion. Only
+    "Deacon" knows the man is dead and his mask taken (THE MASK, above).
+    Claude: it feeds the official version that the club did it (who
+    takes the blame, below).
+  - ALERT: between scenarios, toward the end, the alert level rises.
+    HIGHLY WATCHED ZONES accept no uniform and no LED coat: there only
+    hiding works (the LED coat's cloak, §10.5). Elsewhere the LED coat
+    stays useful always.
+    Claude's reading, to confirm: the rise is more and wider high-
+    security zones, authored in the time states (§14.4), climbing one
+    step with each leader's death in lap 2 and with each CAUGHT incident.
+  - ARREST is GAME OVER. The Director leans this way; it is Claude's
+    recommendation, to confirm.
+    - It is never a state of play: the Agent fights, and an arrest or a
+      death sends him back to the checkpoint.
+    - The failure screen tells the fate by faction: scrutinised by
+      justice for the police, executed by the bandits.
+    - Considered and set aside: a jailbreak, which makes him a fugitive
+      before the finale; and buying his escape from a leader with
+      another's secret, which spreads knowledge across the circle and
+      breaks the leaves rule (§2.6, §2.7).
+
 THE AFTERMATH — the backdrop of the whole campaign (Director, 2026-10-22)
   Leaving the station, the map is revealed: the region is devastated.
   The rescue is heard of more than seen: police vehicles, cordons,
@@ -1190,10 +1226,15 @@ acquired. It does two things, both electronic:
   access** (Director, 2026-10-23): before it he wears one uniform per mission; with it he carries all of them at once.
   **Up close it hides nothing:** at a checkpoint, or in the GU next to an officer, he is recognised as in any coat (his hat, tie and shoes), and
   only his access decides (§2.2, ACCESS). **It is a mid-to-late-game tool on EVERY route** (Director, 2026-10-23: "um acessório muito forte,
-  designado pra meio/fim de jogo"; supersedes the same day's "its arrival varies by route"). The Agent MEETS it in lap 1's Corporation
-  chapter, worn against him by Hedge (§11.6: seen before it matters, §11.4), wherever that chapter falls in his route; he can ACQUIRE it only
-  once lap 1 is closed, in lap 2 (Claude's anchor, the obvious reading: the one point every route reaches at the same stage, whatever its
-  chapter order). Its reach grows with him: it shows only the uniforms he holds. He may switch on the fly, but **not too close and never in a guard's sight**.
+  designado pra meio/fim de jogo"; supersedes the same day's "its arrival varies by route"). **It comes from the Corporation's ENVOY**
+  (Director, 2026-10-23): Hedge (§11.6) has been WATCHING the Agent on several occasions. Earlier maps carry an easter egg of his presence, a
+  glint or a shimmer of the LEDs (§11.4: seen before it matters). The Agent meets him in lap 1's Corporation chapter, where Hedge wears the
+  coat against him, and takes it from him in lap 2, as he took the mask from the club's assassin.
+  - **Claude's proposals:** the ambush comes at the opening of lap 2 on every route, the one point all routes reach at the same stage; Hedge
+    counts as a boss like the assassin (excluded from the violence count); he was sent by Pryce to watch the investigator who could find the
+    books, so what he saw dies with Pryce in lap 2; the glints start in the official work.
+  - **It does not work in HIGHLY WATCHED ZONES** (Director): there only its cloak hides him; everywhere else the wardrobe stays useful
+    (§2.2, ALERT). Its reach grows with him: it shows only the uniforms he holds. He may switch on the fly, but **not too close and never in a guard's sight**.
   With several factions on one map (segments, §14), choosing which uniform to show where is the decision: the Militia's colours near the
   club draw fire.
 
@@ -1335,7 +1376,22 @@ finds the Agent a new way; HAND = attacks a new way; WALL = closes routes. The n
 | **Bunsen Burners** (churchly road names) | **Vespers**, the lookout with fireworks that alert the whole segment → flares that lure guards | **Censer**, the chemist: gas and sedatives → **tranquilliser darts** and smoke (the recipe of "Choirboy"'s sub-mission, §2.7) | **Sexton**, booby traps on the routes → breaching charges |
 | **Corporation** (finance puns) | **Ledger**, the hacker of cameras and phones → camera loops | **Hedge**, the agent in the LED prototype (a hedge fund, and D72's bush): an ambush from invisibility → **the LED coat** (§10.5) | **Escrow**, the fixer: a price on the intruder's head, bribes → bribery as an inside access (§2.2) |
 
-This template also answers §11.1's missing fourth counter: every faction meets the Agent on the same three axes.
+This template also answers §11.1's missing fourth counter: every faction meets the Agent on the same three axes. **Hedge is the
+Corporation's envoy who watches the Agent across maps** (glints of his LEDs as easter eggs) and gives up the LED coat in lap 2 (§10.5).
+
+**Faction stores, gated by ACCESS (Director, 2026-10-23).** More gadgets come from the police's EVIDENCE ROOM and from the Militia: a
+high-tech weapon, and possibly super-silent shoes. With a faction's access the Agent draws from its store; without it, the store is an
+infiltration target. The specific items and the two other stores (for an equal power per faction) are Claude's proposal.
+
+| Faction | Store | Items |
+|---|---|---|
+| FID | the **evidence room** at the police station (seized gear) | lockpicks (silent doors); a suppressor for the common pistol; **zip ties**, so a knocked-out guard stays down (the non-lethal path's partner); a phone cloner (a guard's phone shows his rounds). After the badge is lost, it takes Barrow's forged pass or an infiltration |
+| Calm Waters | the **armoury** at GRUB DRILL's complex | a **pulse carbine**, a high-tech weapon that stuns at range (non-lethal); **silent boots** with acoustic soles: walking and running make less noise (§5) |
+| Bunsen Burners | the **lab** and the chop shop | the cook's recipes: darts, smoke ("Choirboy"'s sub-mission, §2.7) |
+| Corporation | the **R&D floor** | prototypes: camera-loop rigs, and the LED coat's later upgrades |
+
+The items sit in §10's classes: the pulse carbine and the suppressor in the weapon class (§10.2), the silent boots in the armour class
+(§10.1), the rest as gadgets (§10.4).
 
 ---
 
@@ -1730,6 +1786,16 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   2026-10-23; §2.2). **The police from inside** → Graves runs him off the
   books in every route; Barrow runs him too on the policeman's background;
   neither knows of the other (same delegation; §2.2).
+- ✅ **Caught, masked, alert** → caught breaking conduct, he is WANTED in that
+  scenario and must silence the witnesses (killing, a knockout or a dart) and
+  escape; the objective may wait, but the alert rises and the mission stays
+  open; dying sends him to the checkpoint. Seen masked, he is taken for the
+  club's assassin still alive, which deflects suspicion. Highly watched zones
+  accept no uniform and no LED coat, only hiding. The LED coat comes from the
+  Corporation's envoy who has been watching him, with glints as easter eggs
+  in earlier maps. Faction stores: the police's evidence room, and the
+  Militia's high-tech weapon and silent boots (Director, 2026-10-23; §2.2,
+  §10.5, §11.6).
 - ✅ **The plot pass of 2026-10-23** (Director, on Claude's recommendations):
   the truth stays buried even if the reporter lives and publishes (a
   conspiracy theory against the truce and the faked death, §2.2); the puts
@@ -1755,8 +1821,12 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   site the club's assassin has infiltrated, his name ("the Confessor",
   proposed) and whether he counts as a boss (§2.2, proposed); when the pack
   battery upgrade comes (§10.5); the energy budget's numbers and recharge
-  (§10.5); what makes a faction WANT him and what an arrest is in play
-  (§2.2, ACCESS); how close counts as "from afar" for a uniform (§2.2); the specialist
+  (§10.5); the rules of conduct whose breach makes a faction WANT him, how the
+  alert's rise is authored and how much each step weighs (Claude's reading:
+  more high-security zones per leader's death and per incident), and the
+  confirmation of ARREST = game over (§2.2, CAUGHT / ALERT / ARREST); how
+  close counts as "from afar" for a uniform (§2.2); Hedge's ambush point and
+  sender (§10.5, proposed); the faction stores' items (§11.6, proposed); the specialist
   roster and its template (§11.6, proposed); the four backgrounds' abilities
   and equipment (§15); the four trips abroad (§2.6, proposed: one per lap-1
   chapter, a member abroad per faction); the palette's exact values and roles

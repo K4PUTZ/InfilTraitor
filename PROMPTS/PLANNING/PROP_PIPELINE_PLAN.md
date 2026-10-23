@@ -164,9 +164,9 @@ states (`DESIGN` §14.4) reuse a kit with props swapped (a cordon gone, debris c
 |---|---|---|
 | The devastated town | the backdrop of everything, in authored time states | street, rubble, acid, cordons, hoardings, police vehicles, looted shops, curfew signs |
 | The Agent's house | the opening; the empty house of the sad ending (a proposal, `DESIGN` §2.2) | living room, TV, sofa, a glass, a phone, photo frames |
-| The police station (FID) | the deposition; the Police's territory; the fight with Graves | deposition room (the camera and its little light), the chief's office, the archive, a checkpoint |
+| The police station (FID) | the deposition; the Police's territory; the fight with Graves | deposition room (the camera and its little light), the chief's office, the archive, the EVIDENCE ROOM (seized gear, a faction store: `DESIGN` §11.6), a checkpoint |
 | The official work's zones | before lap 1 | the power station and substation, the sluice gate, tanks (the pipes exist) |
-| GRUB DRILL's complex (the Militia) | the Militia's territory; the fight with Kessler | guard post, security room, drone hangar, siren tower, the EMPTY pad of the generator never installed |
+| GRUB DRILL's complex (the Militia) | the Militia's territory; the fight with Kessler | guard post, security room, drone hangar, the ARMOURY (a faction store: `DESIGN` §11.6), siren tower, the EMPTY pad of the generator never installed |
 | The clubhouse and chop shop (the Traffickers) | the Traffickers' territory; the fight with "Deacon" | bar, motorcycles, workbench, drone parts, the lab, waste drums |
 | HQ and campaign office (the Corporation) | the Corporation's territory; the fight with Pryce | offices, boardroom, servers, the report's archive, the campaign office ("Pryce for Senate") |
 | The hospital | the midpoint warning; Thomas's approach | ICU, monitors, the blood bank, a corridor |

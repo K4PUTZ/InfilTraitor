@@ -134,7 +134,9 @@ THE POLICE STATION
   Outside, a faction approaches him: THE PLAYER CHOOSES WHICH, and that
   choice creates the character (his class, §15). Its uniform is his
   first disguise: he moves freely on its turf first, and earns access to
-  the others as he goes.
+  the others as he goes. The one who approaches him is that faction's
+  SUB-LEADER, not its leader (Director, 2026-10-23; §2.7): his handler
+  for the whole campaign, who wants the leader's post.
 
 THE AFTERMATH — the backdrop of the whole campaign (Director, 2026-10-22)
   Leaving the station, the map is revealed: the region is devastated.
@@ -162,11 +164,24 @@ LAP 1 — the favours (four chapters, one per faction; the circle stays:
   favour earns a piece of information and the access (uniform, credentials)
   to the next turf. Each chapter teaches its faction's mechanics; the
   starting faction is the player's, so no chapter may depend on another's.
+  WHERE A CHAPTER IS PLAYED (Director, 2026-10-23): on the turf of the
+  faction being INVESTIGATED, in that faction's uniform, lent by the one
+  who asked; the chapter teaches the investigated faction's mechanics.
+  So chapter 1 is the next faction round the circle, and CHAPTER 4 IS
+  ALWAYS THE PLAYER'S OWN FACTION: every route closes lap 1 with the
+  Agent investigating his own leader, at the request of the faction
+  before it, with his handler's blessing (§2.7). The order per route:
+    Police route:       Militia, Traffickers, Corporation, Police
+    Militia route:      Traffickers, Corporation, Police, Militia
+    Traffickers route:  Corporation, Police, Militia, Traffickers
+    Corporation route:  Police, Militia, Traffickers, Corporation
   THE BADGE (Director, 2026-10-22): when lap 1 reaches the police over
   the pit (the Corporation's favour, §2.6), the commissioner says he is
   interfering with the investigation for revenge, and takes his badge.
   From then on he can still walk police zones, but checkpoints stop him
-  and he is discovered.
+  and he is discovered. That chapter's position moves with the route
+  (4th on the Police route, 1st on the Corporation route), and so does
+  how long he keeps the badge.
   Midpoint: his wife's condition turns critical, and the hospital is
   short of blood: every shootout's wounded drain the same bank (the
   warning, §2.6). There is no baby (Director, 2026-10-22).
@@ -180,6 +195,11 @@ LAP 2 — the confrontations, in ANY order (Director, 2026-10-22: he will
   share in the disaster, a clue: "someone did X". TWIST 1 (the false
   resolution) builds: the four shares made the massacre. Every clue
   describes the Agent: he is not following leads, he is killing witnesses.
+  When a leader dies, his SUB-LEADER takes the post and answers for that
+  faction from then on (§2.7). The sub-leaders blame EACH OTHER for the
+  deaths, never the Agent; that war is why the next visits find new
+  checkpoints (§14.4). Deaths between factions are scenery and never
+  count toward the run's violence (§2.6: only the player's kills do).
 
 THE CEMETERY — the finale (a scene, no fight: Director, 2026-10-22)
   Time has passed and the town is restored. A public memorial at the
@@ -229,9 +249,11 @@ EPILOGUE (Director, 2026-10-22)
   buying the company at half price. "I found all of them" stays at the son's grave (§2.2); "There is no right or wrong. There are only winners."
   is his last line before he turns away.
 
-**The commissioner is the police chief (Director, 2026-10-22).** Consequence (Claude): on the Police route the man who bans the Agent verbally at
-the station is the one who recruits him off the books outside, to hunt "a leak" (§2.6), so the ban is official and the job is not; and the badge is
-taken by the man the Agent later kills.
+**The commissioner is the police chief (Director, 2026-10-22).** He bans the Agent verbally at the station, gives him the official missions,
+takes his badge in the Corporation's chapter, and is the man the Agent later kills. **On the Police route the off-the-books recruiter is Deputy
+Commissioner Irene Barrow, not Graves** (Director, 2026-10-23; §2.7): *"Graves wants his leak found. I want Graves's chair."* The ban is Graves's
+and official; the job is Barrow's and is not. *(Supersedes Claude's earlier consequence that Graves both banned and recruited him, which had the
+man who hired him take the badge from his own recruit.)*
 
 **Lap 2's lengths:** with the finale a scene, the campaign's last playable mission is a leader confrontation in a free order, so which one is the
 complete mission is open again (Claude's recommendation: four standard missions of one size, so no faction needs both a short and a complete
@@ -341,7 +363,9 @@ sites is the dam.
 
 **The Agent (Director; "he is the leak" is Claude's proposal, accepted 2026-10-22).** Before the disaster he already sold police information to the
 Militia (the police's leak is him), and a reporter bought the information about the traffickers from him as an anonymous police source (Director,
-2026-10-22; §2.1). His plan: a SMALL spill at a secondary basin far from the town, a bet against the company, and the blame on the
+2026-10-22; §2.1). **He sells to the Militia FACELESS** (Director, 2026-10-23): a dead drop and a burner phone, so nobody in the Militia knows who
+their informant is; otherwise the Militia route, which recruits him, and Kessler's clue ("codes only we and our informant knew") both break. The
+reporter is the only buyer who knows his face (§2.2). His plan: a SMALL spill at a secondary basin far from the town, a bet against the company, and the blame on the
 traffickers (a kamikaze drone is their signature) in an investigation he expected to lead. He left his phone at home (the antennas put him there: his
 alibi) and launched the drone. **He did not know the four failures below.**
 
@@ -400,6 +424,13 @@ and Corporation: the CEO against the shareholders).
 | **Traffickers** (the club's president) | Find who leaks to the militia; they suspect their financiers → the **Corporation** | The lab in the refinery, run with the Militia's insiders; their dead in the pit | Chemical waste dumped in the dam: the reservoir over its limit | Lost their lab and men: they look like victims | The bodies may surface with the flood; the bought police no longer protect them | "Someone bought drone parts at our chop shop weeks before" |
 | **Corporation** (the minority shareholders' leader) | Prove it was the State's negligence (the chief) → the **Police**; the chapter in which the commissioner takes the Agent's badge (§2.2) | Finances the traffickers; wants a contained leak to sell the company at half price to foreign funds, for a commission | Hid the engineers' risk report, hoping for a contained leak | The fall "hurts" them in public; no weapons | A real investigation finds the report and kills the half-price sale, and the commission with it | "Someone bet against us through a front, on puts expiring that week" |
 
+**What he hands over (Director, 2026-10-23).** Two favours ask for the same thing, the Police's "leak" and the Traffickers' "who leaks to the
+Militia", and the answer to both is the Agent himself. **He gives both the same lie, in any order: a policeman killed in the flood** (the dead do not
+deny). The lie is a clue of its own: the reporter knows the informant is his own source, and alive (§2.2), so at the finale it is one more piece
+that points at the Agent. *(Claude, remark: the other two favours need no lie. The Militia's "prove it was the traffickers" is the blame he planned
+all along, and the Corporation's "prove it was the State" is true, since the chief blocked the pit's inspections. How much of each he hands over is
+open, §18.)*
+
 **The same clues in every route (Director, 2026-10-21; revised 2026-10-22).** Lap 1 is a rotation of the circle from the character's faction; lap 2 is
 in any order. Every route meets the same four pieces and the same four clues, and **the reporter, at the finale, completes the picture: §2.4's fair
 reveal is written once**, whatever the order, with the Agent's own slip at the memorial as the last piece. Alone, each clue is ambiguous; together they describe one man. The model is Agatha Christie's *The Murder of Roger Ackroyd* (1926): the narrator is the culprit and
@@ -456,10 +487,31 @@ that names the Agent or the spouse is written in two genders for the gendered la
 `LOCALIZATION_REFERENCE`); the female base becomes required, not optional (`COSMETICS` §8.1), and every piece of the Agent's costume must fit
 both bases.
 
-**The successors in the story:** in lap 1 each one stands beside the leader (seen before it matters, §11.4) and often hands over the favour's
-details; in lap 2, when the leader dies, the successor takes the post (each faction outlives its leader, §2.1), and the new orders change the next
-visits to the same places (new checkpoints: the authored time states of §14.4); the "four factions" at the cemetery memorial are the four
-successors before the press; in Freelance they are the clients who pay the "dead" Agent for information, none of them knowing who he is.
+**The sub-leaders: optional supports for the narrative (Director, 2026-10-23: they create variability and prevent collisions; sub-missions
+exist or not depending on the player's choices).** The successors above are the sub-leaders. The rule (Claude's proposal, ratified 2026-10-23):
+**the leader is the one the Agent hunts; the sub-leader speaks for the faction whenever the leader cannot**, because the leader is the target,
+because he is dead, or because he is the head of the character's own faction.
+- **The handler.** On each route the own faction's sub-leader is the one who approaches the Agent outside the police station (§2.2) and runs him.
+  He wants the leader's post, so lap 1's chapter 4 (the Agent investigating his own leader) serves him, and the leader's death in lap 2 is his
+  coup; the faction stays the character's. Each sub-leader leads one route and is an optional support in the other three. On the Police route it is
+  Barrow (§2.2).
+- **In lap 1** each one stands beside the leader (seen before it matters, §11.4) and often hands over the favour's details. **In lap 2**, when the
+  leader dies, the sub-leader takes the post (each faction outlives its leader, §2.1) and answers for that faction. The sub-leaders blame each
+  other for the deaths, and the new orders change the next visits to the same places (new checkpoints: the authored time states of §14.4).
+- **The cemetery memorial's "four factions"** are the four sub-leaders before the press. **In Freelance** they are the clients who pay the "dead"
+  Agent for information, none of them knowing who he is: he sells faceless, as he sold to the Militia (§2.6).
+- **Sub-missions are leaves, not branches.** They READ the state of the world (the lap-2 order, the run's violence, the badge) and pay in access,
+  gear, guard rotations or money. **They never carry a piece of the disaster** (the four failures, the four clues, the reveal: §2.6, §2.4), and no
+  beat of the main plot depends on one, so any of them may exist or not without contradicting the plot in any route or order.
+
+**One kind of condition per sub-leader (Claude's examples, ratified 2026-10-23):**
+
+| Sub-leader | Motive | Sub-mission (example) | Exists if |
+|---|---|---|---|
+| Irene Barrow | Graves's chair | Bug Graves's office (the recording goes to her, never to the Agent) → a forged pass that gets him through checkpoints | **The badge:** only once the Agent has lost it |
+| Duke Hardcastle | Command, on camera | A staged heroic rescue so he looks the part → the Militia's drone codes | **The leader alive:** only while Kessler lives |
+| "Choirboy" | The club's "brothers" | Spring a cook from a rival chapter → the recipe for an explosive or smoke gadget | **The violence:** gone if the player killed club members in that chapter |
+| Prudence Vane | Backing the winner | Sells the guard rotations of the Agent's next target | **Progress:** only once two or more leaders are dead |
 
 ---
 
@@ -1360,6 +1412,13 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   charging for information: Freelance (Director, 2026-10-22; §2.2).
 - ✅ **The violence threshold** → the run kills, on average, more than 50% of
   the enemies (bosses excluded): the sad ending (Director, 2026-10-22; §2.6).
+- ✅ **The sub-leaders and the circle per route** → the leader is hunted, the
+  sub-leader speaks for the faction when the leader cannot; the own faction's
+  sub-leader is the handler (Barrow on the Police route); a lap-1 chapter is
+  played on the investigated faction's turf, so chapter 4 is always the own
+  faction; the Agent sells to the Militia faceless; both "leak" favours get the
+  same lie (a policeman killed in the flood); sub-missions are leaves, one kind
+  of condition per sub-leader (Director, 2026-10-23; §2.2, §2.6, §2.7).
 - ✅ **Who the player is** → up to four characters, one per faction, each an
   instance of the Agent created at the police station: four story routes,
   classes of equivalent power and different style (Director, 2026-10-22; §15).
@@ -1381,6 +1440,13 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - [ ] The epilogue's open joints: the badge's return, the gun in the
   let-him-live branch, where the DNA is left, the sad ending's last shot
   (Claude's proposals, §2.2).
+- [ ] Lore still to write (found in the circle review, 2026-10-23): the
+  official missions (only the power station is named: how many, which, who
+  holds each zone); where the investigation abroad sits in the laps (Carrion
+  Capital, Pith & Peel's offshore broker, the traffickers' routes, §2.6); the
+  origin of the Agent's debt (the sad ending's foreclosed house leans on it);
+  how much he hands over at the Militia's and the Corporation's favours
+  (§2.6); each sub-leader's character beyond the name and the motive (§2.7).
 - [ ] A city that lived a real dam disaster (§2.6; Claude's recommendation
   there, to be taken to the association of those affected).
 - [ ] Exact 1× economy pacing and the catalog of paid boosts beyond the

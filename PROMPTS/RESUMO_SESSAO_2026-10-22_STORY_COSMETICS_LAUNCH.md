@@ -111,3 +111,23 @@ commit is on `origin/main` (last: the female Agent). **Still open, none blocking
 9. A city that lived a real dam disaster: a question for the association of those affected.
 10. `COSMETICS` §5 and C1-C11; `LAUNCH` L1-L7 scope; the hero items of §2 item 6 (hair, D70's black swap, D72's cloak, the adapter to
     `ActorMesh3D`, the handset measurement of v5.1).
+
+## 5. The circle reviewed with the sub-leaders (2026-10-23)
+
+The Director: the sub-leaders are optional supports for the narrative, to create variability and prevent collisions; sub-missions exist or not
+depending on the player's choices. Claude walked lap 1 on all four routes, found five collisions, proposed a fix for each and one kind of condition
+per sub-leader; the Director ratified all of it. Written in `DESIGN_MASTER_PLAN` §2.2, §2.6, §2.7, §18.
+
+| Ruling | Where |
+|---|---|
+| The leader is hunted; the sub-leader speaks for the faction when the leader cannot (target, dead, or head of the own faction) | §2.7 |
+| The own faction's sub-leader is the handler who approaches him outside the station; on the Police route Barrow recruits him off the books, Graves only bans him and takes the badge | §2.2, §2.7 |
+| A lap-1 chapter is played on the INVESTIGATED faction's turf, in its uniform lent by the asker; chapter 4 is always the own faction; the badge's chapter moves with the route (4th on Police, 1st on Corporation) | §2.2 |
+| He sells to the Militia faceless (dead drop, burner): the Militia route and Kessler's clue hold | §2.6 |
+| Both "leak" favours (the Police's, the Traffickers') get the same lie: a policeman killed in the flood; the reporter knows the informant is alive | §2.6 |
+| In lap 2 the sub-leaders blame each other, never the Agent; their war explains new checkpoints; deaths between factions never count toward the violence threshold | §2.2 |
+| Sub-missions are leaves: they read the world (order, violence, badge), pay in access / gear / rotations / money, never carry a piece of the disaster; Barrow = the badge, Hardcastle = Kessler alive, Choirboy = no club kills in that chapter, Vane = two or more leaders dead | §2.7 |
+
+**Added to the open list (`DESIGN` §18):** the official missions (only the power station is named); where the investigation abroad sits in the
+laps; the origin of the Agent's debt; how much he hands over at the Militia's and the Corporation's favours; each sub-leader's character beyond
+the name. §4's list above still stands otherwise.

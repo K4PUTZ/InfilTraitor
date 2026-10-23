@@ -421,4 +421,15 @@ for fk in ONLY:
             o.hide_render = True
         shot(OUT + f"officer_{fk}_back.png", 205, 8, 2.15, Vector((0, 0, 0.92)), (600, 860))
         shot(OUT + f"officer_{fk}_game.png", 225, 30, 2.1, Vector((0, 0, 0.9)), (132, 200))
+    if "uniform" in PARTS:      # the Agent in that faction's officer coat (DESIGN §2.2: the uniform he wears; his fedora stays, the armband follows the coat)
+        set_officer(f)
+        CM.materials[0] = OFFICER
+        set_col(LINING, f["officer_coat"]["band"])
+        for o in HAT + ([HAIR] if HAIR else []):
+            o.hide_render = False
+        for o in ACCESSORIES:
+            o.hide_render = o is not ARMOBJ
+        shot(OUT + f"uniform_{fk}_portrait.png", 30, 8, 2.15, Vector((0, 0, 0.92)), (600, 860))
+        shot(OUT + f"uniform_{fk}_back.png", 205, 8, 2.15, Vector((0, 0, 0.92)), (600, 860))
+        shot(OUT + f"uniform_{fk}_game.png", 45, 30, 2.1, Vector((0, 0, 0.9)), (132, 200))
 print("[FD] done", ONLY, PARTS)

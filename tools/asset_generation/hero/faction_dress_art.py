@@ -238,6 +238,15 @@ def sheets(out):
     sheet_rows([ob, ogb, [deutan(b) for b in ogb]], short, os.path.join(out, "sheet_officer_coats.png"),
                row_labels=["from behind", "play size x3", "deuteranopia"],
                title="D78 · field officers' overcoats from behind (the LED coat's bluff view) · Blender mock")
+    # 4. the Agent in each faction's uniform (the coat changes colour; his fedora does not), if rendered
+    if os.path.exists(os.path.join(out, f"uniform_{order[0]}_portrait.png")):
+        fr = [on_bg(os.path.join(out, f"uniform_{k}_portrait.png"), "#3A3C42") for k in order]
+        bk = [on_bg(os.path.join(out, f"uniform_{k}_back.png"), "#3A3C42") for k in order]
+        ug = [on_bg(os.path.join(out, f"uniform_{k}_game.png"), board) for k in order]
+        ugb = [g.resize((g.width * 3, g.height * 3), Image.NEAREST) for g in ug]
+        sheet_rows([fr, bk, ugb, [deutan(b) for b in ugb]], short, os.path.join(out, "sheet_agent_uniforms.png"),
+                   row_labels=["front", "behind", "play size x3", "deuteranopia"],
+                   title="D78 · the Agent in each faction's uniform (fedora his own, armband follows the coat) · Blender mock")
 
 
 if __name__ == "__main__":

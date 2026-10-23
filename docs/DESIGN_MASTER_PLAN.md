@@ -207,7 +207,7 @@ CAUGHT, MASKED, ALERT, ARREST (Director, 2026-10-23)
     of them arrive, to stay anonymous.
     - He need not finish the objective, but the ALERT rises and the
       mission must still be done at some point: it stays open.
-    - If he dies, he dies: back to the checkpoint (the save model, §19).
+    - If he dies, he dies: GAME OVER (below).
     - The knockout and the dart keep §2.6's no-kill run and non-lethal
       option intact. A knocked-out witness wakes knowing there was an
       intruder, never who (Claude).
@@ -224,12 +224,16 @@ CAUGHT, MASKED, ALERT, ARREST (Director, 2026-10-23)
     Claude's reading, to confirm: the rise is more and wider high-
     security zones, authored in the time states (§14.4), climbing one
     step with each leader's death in lap 2 and with each CAUGHT incident.
-  - ARREST is GAME OVER (Director, 2026-10-23, confirmed on Claude's
-    recommendation).
-    - It is never a state of play: the Agent fights, and an arrest or a
-      death sends him back to the checkpoint.
+  - GAME OVER, on a death or an arrest (Director, 2026-10-23). An arrest
+    is never a state of play: the Agent fights.
     - The failure screen tells the fate by faction: scrutinised by
       justice for the police, executed by the bandits.
+    - Then he is back on the MAP (the globe, the mission hub,
+      `COSMETICS_MASTER_PLAN` §6) and may REPEAT the mission or CHOOSE
+      ANOTHER; the mission stays open.
+    - Claude's readings: §16's single optional rewarded continue comes
+      before the return to the map; a repeat starts the mission over,
+      since leaving a level clears its checkpoint state (the save model).
     - Considered and set aside: a jailbreak, which makes him a fugitive
       before the finale; and buying his escape from a leader with
       another's secret, which spreads knowledge across the circle and
@@ -318,6 +322,31 @@ LAP 1 — the favours (four chapters, one per faction; the circle stays:
   Midpoint: his wife's condition turns critical, and the hospital is
   short of blood: every shootout's wounded drain the same bank (the
   warning, §2.6). There is no baby (Director, 2026-10-22).
+
+BETWEEN THE LAPS — the neutral missions (Director, 2026-10-23)
+  A series of NEUTRAL missions between the laps. They let the player raise
+  his stats where he is weak in a kind of skill, or get better equipment.
+  They resemble Freelance mode (below), with different kinds of
+  objectives that pay DIVIDENDS.
+  Claude's proposals:
+  - They are LEAVES like the sub-missions (§2.7): they read the world
+    (access, the alert, the time state) and never carry a piece of the
+    disaster.
+  - Each kind of objective trains one family of skills and pays in its
+    own way:
+    - RECOVERY (goods from the acid zone or a depot): gear;
+    - SURVEILLANCE (photographs, a bug planted): information sold
+      faceless, money;
+    - SABOTAGE (a camera net, a drone hub): one faction's alert down a
+      step, the counterweight to CAUGHT;
+    - DELIVERY (courier runs across the zones): money, and practice with
+      uniforms and access.
+  - They reuse the campaign's kits and the trips' places on the globe,
+    and the generator and templates Freelance will use (§2.5).
+  - Failing one is the same game over: back to the map.
+  - OPEN: whether their kills count in the violence average (§2.6).
+    Counted, a player can dilute a violent run with peaceful neutral
+    missions; left out, they are free practice.
 
 LAP 2 — the confrontations, in ANY order (Director, 2026-10-22: he will
   kill each leader eventually, so the order is free)
@@ -1591,6 +1620,9 @@ map.
 §11.6), chests on the map, NPC vendors, mission rewards, and
 [future] a TF2-style player market.
 
+**Neutral missions (Director, 2026-10-23; §2.2, BETWEEN THE LAPS):** between the laps, missions in the manner of Freelance let the player
+raise a skill he is weak in or get better equipment; each kind of objective pays its own dividends.
+
 **The Informant — a guaranteed NPC.** A map may contain a Network contact
 embedded in the location. Reaching their tile (1 AP) **before being detected**
 buys exactly one piece of intel: the primary objective's exact position, one
@@ -1789,13 +1821,16 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - ✅ **Caught, masked, alert** → caught breaking conduct, he is WANTED in that
   scenario and must silence the witnesses (killing, a knockout or a dart) and
   escape; the objective may wait, but the alert rises and the mission stays
-  open; dying sends him to the checkpoint. Seen masked, he is taken for the
+  open; a death or an arrest is game over, back to the map to repeat the
+  mission or pick another. Seen masked, he is taken for the
   club's assassin still alive, which deflects suspicion. Highly watched zones
   accept no uniform and no LED coat, only hiding. The LED coat comes from the
   Corporation's envoy who has been watching him, with glints as easter eggs
-  in earlier maps. Arrest is game over: back to the checkpoint, the failure
-  screen telling the fate by faction. Faction stores: the police's evidence room, and the
-  Militia's high-tech weapon and silent boots (Director, 2026-10-23; §2.2,
+  in earlier maps. The failure screen tells the fate by faction. Faction stores: the police's evidence room, and the
+  Militia's high-tech weapon and silent boots. A death or an arrest is game
+  over: back to the map, to repeat the mission or choose another. Neutral
+  missions between the laps, in the manner of Freelance, raise weak skills
+  and buy gear, their objectives paying dividends (Director, 2026-10-23; §2.2,
   §10.5, §11.6).
 - ✅ **The plot pass of 2026-10-23** (Director, on Claude's recommendations):
   the truth stays buried even if the reporter lives and publishes (a
@@ -1825,7 +1860,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   (§10.5); the rules of conduct whose breach makes a faction WANT him, how the
   alert's rise is authored and how much each step weighs (Claude's reading:
   more high-security zones per leader's death and per incident), (§2.2, CAUGHT / ALERT); how
-  close counts as "from afar" for a uniform (§2.2); Hedge's ambush point and
+  close counts as "from afar" for a uniform (§2.2); whether the neutral
+  missions' kills count in the violence average, and their kinds of objective
+  and dividends (§2.2 BETWEEN THE LAPS, proposed); Hedge's ambush point and
   sender (§10.5, proposed); the faction stores' items (§11.6, proposed); the specialist
   roster and its template (§11.6, proposed); the four backgrounds' abilities
   and equipment (§15); the four trips abroad (§2.6, proposed: one per lap-1

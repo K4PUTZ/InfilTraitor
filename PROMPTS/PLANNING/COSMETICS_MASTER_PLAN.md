@@ -168,6 +168,12 @@ mentions it; FLAGS in the scenery reflect the base's country; billboards and oth
 - **The dam — ruled (Director, 2026-10-21):** it happens in the player's chosen city (`DESIGN` §2.6): a fiction about a tragedy that can happen
   anywhere. **Flags only in neutral zones — ratified.**
 - **Fallback:** a player who gives no city gets a default set (fictional city names, the game's own country), so nothing depends on the answer.
+- **The deposition's form (Director, 2026-10-24; `DESIGN` §2.2):** the STORY's city is now the HOME TOWN on the police form that opens the game,
+  filtered by the NATIONALITY: the country's cities in alphabetical order with a search field, "Custom" at the top for a free name (an empty one
+  reads Lowmere). The towns AROUND it come from GeoNames' coordinates; a Custom name has none, so they come from the country's largest cities.
+  **Claude's guard:** that home town is per character and stays on the device; this section's world-map base is still the account's OPT-IN (it
+  may offer the form's city pre-filled, never send it without the opt-in), which keeps §16's minors rule and the privacy line above. The list is
+  the GeoNames set already chosen here (~25 000 cities over 15 000 people); a smaller home town is what "Custom" is for.
 
 ## 7. Stages (once ratified; none started)
 

@@ -124,12 +124,27 @@ BACKGROUND the player states in the deposition creates that character (his class
 replays the campaign with another background to get another character.
 
 ```
+THE FORM — before the opening (Director, 2026-10-24)
+  The game opens on a police form for a DEPONENT. The player fills in
+  the name, sex, race, eye colour, nationality and home town. The HOME
+  TOWN is the story's city (§2.6): the nationality's cities in
+  alphabetical order with a search field, and "Custom" at the top for a
+  free name; the towns AROUND it (the event in another town, the
+  complex's sites) come from the nationality's country (COSMETICS §6).
+  The sex sets the base model, so the opening already shows the right
+  Agent and the right spouse (§2.7). In the story the form is the
+  deposition's intake sheet, filled at the station: the opening that
+  follows is the night before (Claude's framing).
+
 OPENING — Home (Director)
-  The Agent comes home and pours a drink. The news: a fire at a substation
+  The Agent comes home on his MOTORCYCLE (the spouse has the car; the
+  helmet hangs on the handlebar, §2.6; Director, 2026-10-24) and pours a drink. The news: a fire at a substation
   failed the dam's containment; a mass collapse floods the town with
   acid (§2.6); curfew. He is genuinely stunned. His phone, left at home, shows missed calls
   from his wife. It rings: his wife is in intensive care; their son is
-  dead. He falls to his knees. Titles.
+  dead. He answers in the Agent's own voice (male or female, from the
+  form; Director, 2026-10-24; scope open, §18). He falls to his knees.
+  Titles.
 
 THE POLICE STATION
   His deposition. Too close to the case, the commissioner (the police
@@ -141,10 +156,11 @@ THE POLICE STATION
   the commissioner paragraph below).
   THE DEPOSITION IS THE CHARACTER CREATION (Director, 2026-10-22; the
   model is Fallout 3's): the camera's little light comes on, it points at
-  the player, and the deposition begins; he states who he is, his height,
-  the colour of his eyes, and so on, and as he describes himself the
-  character is built. The name he gives is the one the epilogue's TV
-  report reads. He also states WHERE HE GREW UP AND WHAT HE CAN DO: a
+  the player, and the deposition begins. WHO he is (name, sex, race,
+  eyes, nationality, home town) is already on the FORM above (revised
+  Director, 2026-10-24); the deposition's questions choose the rest, the
+  attributes of his PAST, and finish the profile. The name on the form
+  is the one the epilogue's TV report reads. He also states WHERE HE GREW UP AND WHAT HE CAN DO: a
   policeman all his life, a former member of a motorcycle club, an army
   veteran, or a former private security guard (Director, 2026-10-23).
   That background is his class (§15): it decides his unique abilities,
@@ -507,7 +523,8 @@ the evidence reads as atmosphere; on a second it reads as confession:
 - objectives that appear independent form one visible chain when placed in
   their real order;
 - **the start kit is the attack's gear** (Director, 2026-10-23, §10.0): what the player carried from the first mission is what the Agent wore
-  that night; the rope and hook got him over the Militia's wall.
+  that night; the rope and hook got him over the Militia's wall. **His helmet** (2026-10-24, §2.6) is on the handlebar in the opening with
+  a fresh graze, and gone after the official work.
 
 The preferred reveal mechanism is the project's own information grammar: an
 outside breach or recovered source removes the Agent's filter and relabels
@@ -547,8 +564,11 @@ identifies a real case, and the dead treated with respect (no spectacle of the f
 (Director, 2026-10-22):** the flood is an acid one, born of the traffickers' drug waste in the reservoir; the ground stays dangerous to walk long
 after the tragedy, which justifies scenes full of obstacles, and it moves the game's image away from the real collapses' mud. The engine already
 has the liquid (`liquids/acido.json`, M6: exposure in the shallows and the deep, footprints, it corrodes floors, curbs and metal). **The town is the city the
-player chooses as his base** (Director: *"É uma obra de ficção sobre uma tragédia que pode acontecer em qualquer lugar"*); real names and flags appear
-only on neutral places (`COSMETICS_MASTER_PLAN` §6); a player who gives no city gets a fictional default. **Backup settings:** an OIL REFINERY or a
+player chooses as his base** (since 2026-10-24: the HOME TOWN on the deposition's form, §2.2) (Director: *"É uma obra de ficção sobre uma tragédia que pode acontecer em qualquer lugar"*); real names and flags appear
+only on neutral places (`COSMETICS_MASTER_PLAN` §6); a player who types a Custom name gets the towns around it from his nationality's country (COSMETICS §6), and an empty Custom field reads **Lowmere** (§2.7).
+**The form's fields (Claude's guards, 2026-10-24):** "race" follows each country's own form (Brazil's *cor/raça*, the US census...) and sets the
+SKIN TONE only; the face's features are separate choices, never derived from it. The home town is the STORY's city, kept on the device per
+character; the world map's base stays its own opt-in (COSMETICS §6). **Backup settings:** an OIL REFINERY or a
 HYDROELECTRIC PLANT carries the same plot. **Open — a city that lived a real dam disaster** (Director, 2026-10-22: barring a player from his own
 city might be even more unpleasant than the fiction). Claude's recommendation: the dam stays in every city, as ruled; the question goes to the
 association of those affected before launch (`LAUNCH_MASTER_PLAN` §1); the backup setting is kept as a tool, swapped silently if they ask for it, never
@@ -592,6 +612,22 @@ their informant is; otherwise the Militia route, which recruits him, and Kessler
 reporter is the only buyer who knows his face (§2.2). His plan: a SMALL spill at a secondary basin far from the town, a bet against the company, and the blame on the
 traffickers (a kamikaze drone is their signature) in an investigation he expected to lead. He left his phone at home (the antennas put him there: his
 alibi) and launched the drone. **He did not know the four failures below.**
+
+**The motorcycle and the helmet (Director, 2026-10-24; the clue chain is Claude's, under the Director's delegation: "conforme for mais útil").**
+- **His wife had the car** (the event in another town, below), so that night he rode his own **motorcycle**: an old, modest one (his pay; on the
+  former biker's route, his old club bike with the patches stripped). It is how he travels the whole campaign (the map's trips, the insertion
+  points); the chop shop's L2 node is Tithe's work on THIS bike (swapped plates, a stash), never a second one (§15).
+- **The Militia's perimeter camera** caught a RIDER at the complex's wall, the face hidden by the helmet, and a guard's round GRAZED the helmet as
+  he went over (the rope and hook, §2.4). A rider by a kamikaze drone reads as a Bunsen Burner, which is what he wanted: the bike is part of
+  his frame-up, and its risk. The Militia hides the intruder in public (an attack would bring the investigation that finds the sirens) and keeps
+  the frame as its private proof against the traffickers (its favour, §2.2).
+- **The helmet is on screen from the first scene:** on the handlebar at home, the graze fresh. Shown, never pointed at (§2.4).
+- **The Confessor** (§2.2, the hat-mask) was hunting that rider for "Deacon", whose club knows none of its own was there; his copy of the frame
+  came from the Militia's insiders who sell to the traffickers (§2.1). When the Agent takes the mask he takes the Confessor's file too, and from
+  the next scene **the helmet is gone from the handlebar** (its ABSENCE is the clue): he rides in the start kit's black balaclava.
+- **The Sieve lives on leaks:** at the finale the frame's helmet is one more piece the reporter puts together, the one he saw on the Agent's
+  bike at their meetings (he is the only buyer who knows his face, above).
+- **The helmet is a story object, never a disguise:** a third concealment beside the uniform and the mask would blur ACCESS (§2.2).
 
 **The bet (Claude, 2026-10-22, answering the Director's question).** **Short-dated PUT OPTIONS bought through a front ("laranja")**, not a short sale: a
 man in debt can afford a premium (a short needs margin and can lose without limit), and the leverage makes a small spill pay. **He bets alone
@@ -722,7 +758,7 @@ before launch**, as for GRUB DRILL INC. Near-match to weigh: the real State Burn
 
 **The rest of the cast:** the Agent **Victor Rook** by default ("Victor", the winner; a rook moves straight on a grid, and "to rook" is to cheat);
 his wife **Claire Rook**; his son **Leo Rook**; the reporter **Thomas Marlow**; Marsh's counsel **Prudence Vane**
-(prudent in name only, a weathervane that turns with the wind; the Corporation's sub-leader until 2026-10-23, when the CEO became the leader); the default town for a player who gives no city, **Lowmere** (not yet web-checked). **Ratified (§2.2):** the deposition at the police
+(prudent in name only, a weathervane that turns with the wind; the Corporation's sub-leader until 2026-10-23, when the CEO became the leader); the town an empty Custom field on the form reads (§2.2), **Lowmere** (not yet web-checked). **Ratified (§2.2):** the deposition at the police
 station is the character creation; the player names the Agent there, and the TV report of the epilogue reads that name.
 
 **The creator's limits (Claude, proposed):** it shapes LOOKS only; the figure on the board keeps one gameplay size (a cosmetic never changes the game,
@@ -1493,11 +1529,14 @@ Diagram: `DIAGRAMS/ELENCO_ARVORE.png` (generator `tools/asset_generation/tech_tr
 
 - **L1 (lap 1):** the twelve specialists above, fixed authored characters.
 - **L2 (lap 2):** each store has a named KEEPER, seen in lap 1 before he matters (§11.4): **Urn**, the FID evidence clerk (one more burial
-  name); **Tank Mercer**, Calm Waters' quartermaster (an action figure); **Tithe**, the Bunsen Burners' chop-shop mechanic (he takes his cut;
+  name); **Tank Mercer**, Calm Waters' quartermaster (an action figure); **Tithe**, the Bunsen Burners' chop-shop mechanic (she takes her cut;
   gas and smoke come from Censer's lab recipe); **Margin**, head of the Corporation's R&D floor. The LED coat stays Hedge's.
 - **L3 (Freelance):** a Captain of each faction fields the prototype; the Agent knocks him out and takes the SAMPLE, and **Zest** researches
   it: a fence and engineer outside the factions, met in the neutral missions between the laps (one more orange, like Pith & Peel).
-- **Unlock never needs a kill** (§11.6): see it with the mask, survive it, or knock the author out and search him.
+- **Unlock never needs a kill** (§11.6): see it with the mask, survive it, or knock the author out and search them.
+- **Genders (Claude, under the Director's delegation, 2026-10-24): two women per faction among its four named people, spread over the
+  roles:** FID **Pyre** (HAND) and **Vault** (WALL); Calm Waters **Ace Skyler** (EYE) and **Tank Mercer** (keeper); Bunsen Burners **Censer**
+  (HAND) and **Tithe** (keeper); Corporation **Ledger** (EYE) and **Escrow** (WALL). **Zest** is a woman too. The others are men.
 - **Counters: twelve enemy UNITS, one per faction and lane, each with three gear stages** (one per tree level):
 
 | Faction | EYE unit (stages) | HAND unit (stages) | WALL unit (stages) |
@@ -1762,7 +1801,7 @@ chapter coming last in lap 1; the balance pass below), plus one passive and one 
   checkpoints can verify them (their counter).
 - **The comms stack** (radio spoof + scrambler + camera loop + EMP) could silence a whole map and empty the CAUGHT rule. Rule: each keeps
   §10.4's charges, and reinforcements also come by noise and sight, never by radio alone.
-- **The getaway bike** could make every escape trivial. Rule: an EXTRACTION, not a teleport: it waits only at marked points or segment
+- **The getaway bike** (2026-10-24: the Agent's OWN motorcycle, §2.6, reworked at the chop shop) could make every escape trivial. Rule: an EXTRACTION, not a teleport: it waits only at marked points or segment
   exits, it is loud (alert up), and roadblocks stop it.
 - **The shadow generator** is a tier-6 gadget (§10.4) at L1, and shadow is the core of stealth. Rule: L1 is one charge for two turns, and
   §10.4's full version comes at L3.
@@ -1918,9 +1957,10 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   the four factions' failures it killed hundreds, his son among them, and his
   wife too if his own violence in the campaign drains the hospital (Director,
   2026-10-21/22; §2.6).
-- ✅ **The character creation** → the deposition at the police station: the
-  camera's light comes on and the player describes the Agent (name, height,
-  eyes...), Fallout 3's model; the Agent may be a woman, her spouse a husband,
+- ✅ **The character creation** → a police FORM before the opening (name, sex,
+  race, eyes, nationality, home town = the story's city; Director, 2026-10-24),
+  then the deposition at the police station, whose questions choose his PAST
+  (the camera's light, Fallout 3's model); the Agent may be a woman, her spouse a husband,
   the lines adapting (Director, 2026-10-22; §2.2, §2.7).
 - ✅ **The names** → the FID, The Sieve, Calm Waters Security, the Bunsen
   Burners MC, Pith & Peel Holdings, Carrion Capital; the four leaders and the
@@ -2047,6 +2087,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   minors, and §16 sets the social defaults for them.
 
 **Still open — do not decide these unilaterally:**
+- [ ] From 2026-10-24: the phone call's VOICE (Claude: wordless reactions, a breath, a sob, a broken "no", recorded once per sex and
+  subtitled, so nothing is voiced per language; full lines would mean two voices × every language); where hair, face and height are chosen
+  (the form or the deposition); the race field's options per country (§2.2, §2.6).
 - [ ] From 2026-10-23: the chokehold's N turns (§10.0); which official-work
   site the club's assassin has infiltrated, his name ("the Confessor",
   proposed) and whether he counts as a boss (§2.2, proposed); when the pack

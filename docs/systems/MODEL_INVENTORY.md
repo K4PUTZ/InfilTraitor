@@ -48,7 +48,8 @@ and the screen effect, no new mesh.
 | Distractions (`DESIGN` §5.4) | baseball, glass cup / bottle, can, universal remote |
 | Story, carried | the report's folder, the wedding ring, the badge, a phone, the sample case (L3 prototypes to Zest) |
 
-Vehicle the Agent rides: the **getaway bike** (Bunsen Burners chop shop) — see §6 Q1.
+Vehicle the Agent rides: **his own motorcycle** (mesh; old and modest, the former biker's with stripped patches; Tithe's rework at L2: swapped
+plates, a stash) and its **helmet** (worn, M/F, a fresh bullet graze; gone after the Confessor, then the balaclava) — `DESIGN` §2.6.
 
 ## 4. Factions: guards, officers and counter units
 
@@ -89,9 +90,9 @@ jeans, boots, bandana; Corporation suits, earpiece, sunglasses. Rank pieces: rad
 | The official investigator who takes the case | standard (open) | |
 | Pith & Peel's front man | standard M | |
 | Four faction members abroad | standard (open) | one per trip |
-| **Specialists (12):** Cairn (+ dog), Pyre, Vault · Ace Skyler, Rex Hawke, Chip Voltz · Vespers, Censer, Sexton · Ledger, Hedge, Escrow | standard / heavy; **two women per faction among its specialists + keeper** (ratified; who is open) | each carries his node's item (§3) |
-| **Store keepers:** Urn, Tank Mercer, Tithe, Margin | open | `DESIGN` §11.7 |
-| **Zest** | open | the researcher of the neutral missions |
+| **Specialists (12):** Cairn (+ dog), Pyre (F), Vault (F) · Ace Skyler (F), Rex Hawke, Chip Voltz · Vespers, Censer (F), Sexton · Ledger (F), Hedge, Escrow (F) | standard / heavy; unmarked = M (`DESIGN` §11.7) | each carries his node's item (§3) |
+| **Store keepers:** Urn (M), Tank Mercer (F), Tithe (F), Margin (M) | standard | `DESIGN` §11.7 |
+| **Zest** | standard F | the researcher of the neutral missions |
 | Four Freelance prototype captains | the faction's officer set + the L3 item | not named |
 
 Crowd sets (M/F): civilians (recoloured), press (camera, microphone), mourners, medical staff (scrubs), looters (bandana). The TV anchor is 2D.
@@ -123,7 +124,7 @@ umbrellas, chairs, cones, Pryce's **campaign posters** (in-world text via `tr()`
 3. **The alarm clock is an old wind-up clock** (a held mesh), later replaced by the radio-clock (`DESIGN` §10.0).
 4. **Some women in every faction's rank-and-file, not on every model:** the female base carries a share of each faction's set, not all of it.
 5. **Two women per faction among its four named people** (three specialists + the store keeper; the question said "five", a miscount);
-   which ones is still to write.
+   chosen 2026-10-24 (`DESIGN` §11.7).
 
 ## 8. Counts (proposal)
 

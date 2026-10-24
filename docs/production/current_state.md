@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-10-23 · **Branch:** claude/r3d-actors-y5r8hs
+**Version:** 0.9.107 · **Updated:** 2026-10-24 · **Branch:** claude/r3d-actors-y5r8hs
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -550,6 +550,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-21_HERO_V5.md
 - RESUMO_SESSAO_2026-10-22_STORY_COSMETICS_LAUNCH.md
 - RESUMO_SESSAO_2026-10-23_FACTION_DRESS_PLOT_CLOSE.md
+- RESUMO_SESSAO_2026-10-24_CAST_MODELS_FORM_VOICES.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

@@ -1,6 +1,6 @@
 # MODEL INVENTORY — every model the campaign needs (consolidated 2026-10-24)
 
-🟡 **PROPOSAL** (Claude, at the Director's request: *"uma lista de todos os modelos, incluindo versões masculina e feminina, mais os props
+🟢 **RATIFIED 2026-10-24** (the five questions answered; Claude's list, at the Director's request: *"uma lista de todos os modelos, incluindo versões masculina e feminina, mais os props
 associados com a história"*). Nothing below is built except the hero's v5.1 pieces. This list **derives** from its owners and never overrides
 them: characters and slots `COSMETICS_MASTER_PLAN` §8-§9, places and props `PROP_PIPELINE_PLAN` §9, cast and tree `DESIGN_MASTER_PLAN` §2.7,
 §10.0, §11.6-§11.7, §15. When an owner changes, this file follows.
@@ -16,12 +16,11 @@ Legend: **M/F** = a piece fitted to both the male and the female base; **M** or 
 | Base | Who | Gender |
 |---|---|---|
 | Standard ✅ (agile-B) | the Agent, civilians, every rank-and-file guard, most named characters | M ✅ / F (required) |
-| Heavy (a remodel of the same body) | the bruisers of Calm Waters and the Bunsen Burners; Kessler, "Deacon" | M / F (proposed: rank-and-file of both genders in every faction) |
-| **Quadruped (NEW, a second skeleton)** | Cairn's K9 dog (`DESIGN` §11.6; dogs follow trails, §4.7) | — |
+| Heavy (a remodel of the same body) | the bruisers of Calm Waters and the Bunsen Burners; Kessler, "Deacon" | M / F (some women in every faction, not on every model: Director, 2026-10-24) |
+| **Quadruped (a second skeleton; Director, 2026-10-24)** | Cairn's K9 dog (`DESIGN` §11.6; dogs follow trails, §4.7) | — |
 | Child | **none** (the son only in photographs, `COSMETICS` §8.1) | — |
 
-⚠️ **The dog is the only model outside the one-skeleton rule:** its own rig and clips (walk, sniff, alert, bark, down). Cost to weigh; the
-alternative is a K9 that only exists as a sound and a trail effect.
+**The dog is the one model outside the one-skeleton rule (ratified):** its own rig and clips (walk, sniff, alert, bark, down).
 
 ## 2. The Agent (four instances, one per background; every piece M/F)
 
@@ -29,7 +28,7 @@ alternative is a K9 that only exists as a sound and a trail effect.
 |---|---|
 | Head | fedora (start) ✅, the **hat-mask** (the Confessor's) ✅, balaclava, hair and beard (the hero's CC0 pieces; the female base needs its own set) |
 | Torso | shirt ✅, tie ✅, the FID **mustard coat** (black inside) ✅ — the same coat silhouette carries the four **officer coats** (FID mustard, Calm Waters grey, Bunsen Burners brown, Corporation black) and the **LED coat** (a shader on it, `DESIGN` §10.5) |
-| Arms | gloves, **armband** ×4 factions (the bikers' brown with orange stripes, `ACTOR` D78), watch (the alarm-clock watch? see §6 Q3), wedding ring |
+| Arms | gloves, **armband** ×4 factions (the bikers' brown with orange stripes, `ACTOR` D78), watch, wedding ring |
 | Legs / feet | trousers ✅, dress shoes ✅, **silent boots** (Calm Waters armoury) |
 | Gear | pack ✅, pack + **battery** (the upgrade), belt with holster, police **badge** (taken in lap 1), **vest** (Calm Waters, armour T3), **exoskeleton** (L3, a worn frame over both bases) |
 | Skin layer | the ending's tattoo (a texture, not a mesh) |
@@ -41,7 +40,7 @@ and the screen effect, no new mesh.
 
 | Source | Items |
 |---|---|
-| Start kit = the attack's gear (`DESIGN` §10.0) | common pistol, stone (and the pile), **alarm clock**, **spray can**, **chloroform** bottle + rag, short **rope with hook** |
+| Start kit = the attack's gear (`DESIGN` §10.0) | common pistol, stone (and the pile), **an old wind-up alarm clock** (later the **radio-clock**, Director 2026-10-24), **spray can**, **chloroform** bottle + rag, short **rope with hook** |
 | FID tree | taser, suppressor (attachment), **sonic weapon**, radio (spoof), **radio scrambler**, lockpicks, zip ties, phone cloner |
 | Calm Waters tree | **scout drone** + its controller (PP7, moves), **suppressed rifle**, **pulse carbine**, **laser** rifle, **EMP charge** |
 | Bunsen Burners tree | **firework lure**, **dart launcher**, gas grenade, smoke grenade, **incendiary**, **tripwire flash**, **breaching charge** |
@@ -53,7 +52,7 @@ Vehicle the Agent rides: the **getaway bike** (Bunsen Burners chop shop) — see
 
 ## 4. Factions: guards, officers and counter units
 
-**Rank-and-file sets (M/F, standard base; the heavy base where the faction uses bruisers), one per faction, ranks adding pieces** (`COSMETICS`
+**Rank-and-file sets (standard base, with SOME women in every faction, not on every model: Director 2026-10-24; the heavy base where the faction uses bruisers), one per faction, ranks adding pieces** (`COSMETICS`
 §8.3): FID uniform shirt, trousers, boots, cap, duty belt; Calm Waters tactical top, armour vest, helmet, gloves; Bunsen Burners patched vest,
 jeans, boots, bandana; Corporation suits, earpiece, sunglasses. Rank pieces: radio, tactical vest, goggles / visor, chains, briefcase. **Officers
 (Lieutenant up):** the faction's overcoat (§2's coat row) + armband.
@@ -90,7 +89,7 @@ jeans, boots, bandana; Corporation suits, earpiece, sunglasses. Rank pieces: rad
 | The official investigator who takes the case | standard (open) | |
 | Pith & Peel's front man | standard M | |
 | Four faction members abroad | standard (open) | one per trip |
-| **Specialists (12):** Cairn (+ dog), Pyre, Vault · Ace Skyler, Rex Hawke, Chip Voltz · Vespers, Censer, Sexton · Ledger, Hedge, Escrow | standard / heavy, **genders open** | each carries his node's item (§3) |
+| **Specialists (12):** Cairn (+ dog), Pyre, Vault · Ace Skyler, Rex Hawke, Chip Voltz · Vespers, Censer, Sexton · Ledger, Hedge, Escrow | standard / heavy; **two women per faction among its specialists + keeper** (ratified; who is open) | each carries his node's item (§3) |
 | **Store keepers:** Urn, Tank Mercer, Tithe, Margin | open | `DESIGN` §11.7 |
 | **Zest** | open | the researcher of the neutral missions |
 | Four Freelance prototype captains | the faction's officer set + the L3 item | not named |
@@ -117,20 +116,20 @@ umbrellas, chairs, cones, Pryce's **campaign posters** (in-world text via `tr()`
 
 **Moving (PP7):** the Militia's drones, surveillance cameras, sensors, the sluice gate, the TV and radio states, car alarm, light switches.
 
-## 7. Questions for the Director
+## 7. Rulings (Director, 2026-10-24)
 
-1. **Vehicles:** `PROP_PIPELINE` §9.5 ruled them MESH; are they "large objects" now, i.e. voxel? (Claude: keep them mesh — wheels and curves
-   read badly in voxels, and the bike moves.)
-2. **The dog:** a second skeleton, or the K9 as sound + trail only?
-3. **The alarm clock:** a hand-held clock or the Agent's watch? (one fewer model if it is the watch.)
-4. **Rank-and-file of both genders** in all four factions (the parity of the Agent's own choice), and the heavy base in F too?
-5. **Specialists' and keepers' genders:** Claude proposes two women per faction among its five named people (specialists + keeper).
+1. **Vehicles stay MESH** (`PROP_PIPELINE` §9.5 stands); the voxel rule covers architecture and large static objects.
+2. **The K9 dog gets its own quadruped skeleton.**
+3. **The alarm clock is an old wind-up clock** (a held mesh), later replaced by the radio-clock (`DESIGN` §10.0).
+4. **Some women in every faction's rank-and-file, not on every model:** the female base carries a share of each faction's set, not all of it.
+5. **Two women per faction among its four named people** (three specialists + the store keeper; the question said "five", a miscount);
+   which ones is still to write.
 
 ## 8. Counts (proposal)
 
 | Kind | Count |
 |---|---|
-| Skeletons | 2 (biped; quadruped if Q2 = yes) |
+| Skeletons | 2 (biped, quadruped) |
 | Bases | 4 (standard M ✅ / F, heavy M / F) |
 | Agent pieces (M/F) | ~22 pieces × 2 bases, ~9 exist on M |
 | Faction sets | 4 sets × ~8 pieces × 2-4 bases |

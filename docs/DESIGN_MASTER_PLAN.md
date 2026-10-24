@@ -161,7 +161,15 @@ THE POLICE STATION
   eyes, nationality, home town) is already on the FORM above (revised
   Director, 2026-10-24); the deposition's questions choose the rest, the
   attributes of his PAST, and finish the profile. The name on the form
-  is the one the epilogue's TV report reads. He also states WHERE HE GREW UP AND WHAT HE CAN DO: a
+  is the one the epilogue's TV report reads.
+  He also RECAPS THE NIGHT (Director, 2026-10-24), so the player is sure
+  of what happened: "I was at home, I heard a noise, I turned on the TV
+  and saw the dam give way, I got a call; my wife and my son were in
+  the other town..." Every sentence is TECHNICALLY TRUE (Claude, §2.4):
+  he was at home when the news came; he leaves out that he had just
+  come in on the bike. It is his alibi (the phone left at home, §2.6),
+  read as grief on a first playthrough and as a statement on a second.
+  He also states WHERE HE GREW UP AND WHAT HE CAN DO: a
   policeman all his life, a former member of a motorcycle club, an army
   veteran, or a former private security guard (Director, 2026-10-23).
   That background is his class (§15): it decides his unique abilities,
@@ -543,7 +551,8 @@ the evidence reads as atmosphere; on a second it reads as confession:
   their real order;
 - **the start kit is the attack's gear** (Director, 2026-10-23, §10.0): what the player carried from the first mission is what the Agent wore
   that night; the rope and hook got him over the Militia's wall. **His helmet** (2026-10-24, §2.6) is on the handlebar in the opening with
-  a fresh graze, and gone after the official work.
+  a fresh graze, and gone after the official work. **His deposition's recap** (§2.2) is technically true and leaves out the ride home the
+  opening showed.
 
 The preferred reveal mechanism is the project's own information grammar: an
 outside breach or recovered source removes the Agent's filter and relabels

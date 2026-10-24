@@ -258,7 +258,7 @@ THE OFFICIAL WORK — first (Director, 2026-10-22)
   planting bugs, acting on the world (opening a sluice gate, draining a
   tank).
   He starts with almost nothing (§10.0): a common pistol, his overcoat,
-  stones, a chokehold; a balaclava hides his face, the coat stowed in his
+  stones, a chokehold, an alarm clock, a spray can, chloroform; a balaclava hides his face, the coat stowed in his
   black pack. He starts in an ordinary fedora.
   THE MASK (Director, 2026-10-23): it belongs to a HIRED ASSASSIN whom
   "Deacon" contracted to carry out his jobs, and who is investigating
@@ -1163,7 +1163,13 @@ replaces the choice (§10.5).
 | His overcoat | The FID investigators' mustard coat, black inside (§2.1, `ACTOR` D78) |
 | Throwing stones | A distraction (a noise on a chosen tile, §5) |
 | A chokehold or a neck snap | The chokehold knocks a guard out and he **wakes after N turns** (N open, §18); the neck snap kills and he never wakes. The knockout is the non-lethal option every class must hold from the start (§2.6) |
+| An ALARM CLOCK | ONE per mission (Director, 2026-10-23): he sets it for N turns, and when it rings it draws several guards to that zone at once, opening him a way. Later upgraded to a battery RADIO-CLOCK playing a "song" of sirens, shots and screams. **Claude's proposals:** the radio-clock draws more guards from further away, but they arrive ALERT (weapons out, searching); it comes from the evidence room (§15) or is bought. **Retrieval (to confirm):** he may go back for the clock, but a guard who reaches it first CONFISCATES it as evidence (knock him out and search him to get it back), re-arming costs 1 AP, and a second ring in the same mission makes the guards suspect a trick: it raises the alert instead of simply drawing them. That keeps one clock from becoming an endless loop |
+| A SPRAY CAN | Blinds cameras (Director). **Claude:** a few sprays per can, from the camera's blind side; a blinded camera is EVIDENCE that guards come to check, unlike the Corporation's clean camera loop (§15) |
+| CHLOROFORM | Puts BIGGER enemies to sleep, those a chokehold cannot drop (Director): fragile, volatile, one bottle at a time, found in the world. **Claude:** it breaks if he takes a hit or falls; once opened it evaporates within a few turns; it is found in labs, clinics and chemical stores (an affordance tag, §15). It keeps §2.6's non-lethal promise against the heavies (the heavier base, `COSMETICS_MASTER_PLAN` §8.1) |
 | A balaclava | For the first missions: masked, with the coat stowed in his black pack, he already looks like the Infiltraitor, with no technology. He wears an ordinary fedora; the **mask** (`ACTOR` D71/D77), itself a fedora, is taken soon from the club's hired assassin at an official-work site and replaces it (§2.2) |
+
+**The start kit is CRUDE, the trees are CLEAN (Claude, 2026-10-23).** The start kit's tools are one-shot and leave traces; the trees give
+the clean versions (§15): stones → alarm clock → firework lure; spray → camera loop; chokehold → taser and darts; chloroform → darts and gas.
 
 **Stealth by shadow works 100% from the start** (§4.3): the progression adds tools, never the core loop. The background (§15) adds its own
 abilities and the equipment it can operate.
@@ -1656,8 +1662,8 @@ REDISTRIBUTES §10's catalogue (and the 2026-10-23 additions) by faction and aut
 **Every character shares:** the start kit (§10.0) → the hat-mask (official work) → the pack battery (an upgrade; when: open) → the LED coat
 (lap 2).
 
-**Backgrounds** (§2.2): the own faction's L1 is open from the start (he knows that world; it offsets his own chapter coming last in lap 1),
-plus one passive and one active ability:
+**Backgrounds** (§2.2): the player picks ONE of his own faction's three L1 nodes at the deposition (he knows that world; it offsets his own
+chapter coming last in lap 1; the balance pass below), plus one passive and one active ability:
 
 | Background | Passive | Active |
 |---|---|---|
@@ -1666,33 +1672,33 @@ plus one passive and one active ability:
 | Former biker (Bunsen Burners) | Road sense: +1 GU sprinting on open ground | Improvise: one smoke or flash per mission, from scrap |
 | Former private security (Corporation) | Systems: sees camera cones and blind spots | Keycard spoof: opens one electronic door per mission |
 
-**Balance pass (Claude, 2026-10-23, proposed; the numbers wait for playtests).**
+**Balance pass (Claude, 2026-10-23; ADOPTED by the Director the same day; the numbers wait for playtests).**
 
 *Too strong:*
-- **Forged credentials** grant ACCESS, the core progression, so unbounded they skip it. Proposal: one faction for one mission, bought, and
+- **Forged credentials** grant ACCESS, the core progression, so unbounded they skip it. Rule: one faction for one mission, bought, and
   checkpoints can verify them (their counter).
-- **The comms stack** (radio spoof + scrambler + camera loop + EMP) could silence a whole map and empty the CAUGHT rule. Proposal: each keeps
+- **The comms stack** (radio spoof + scrambler + camera loop + EMP) could silence a whole map and empty the CAUGHT rule. Rule: each keeps
   §10.4's charges, and reinforcements also come by noise and sight, never by radio alone.
-- **The getaway bike** could make every escape trivial. Proposal: an EXTRACTION, not a teleport: it waits only at marked points or segment
+- **The getaway bike** could make every escape trivial. Rule: an EXTRACTION, not a teleport: it waits only at marked points or segment
   exits, it is loud (alert up), and roadblocks stop it.
-- **The shadow generator** is a tier-6 gadget (§10.4) at L1, and shadow is the core of stealth. Proposal: L1 is one charge for two turns, and
+- **The shadow generator** is a tier-6 gadget (§10.4) at L1, and shadow is the core of stealth. Rule: L1 is one charge for two turns, and
   §10.4's full version comes at L3.
-- **The exoskeleton** has no stealth penalty (§10.1: powered). Proposal: it draws on the pack battery, competing with the mask and the LED coat.
-- **Interrogate and the bribe** become universal keys if unlimited. Proposal: actives have charges per mission, captains cannot be bought,
+- **The exoskeleton** has no stealth penalty (§10.1: powered). Rule: it draws on the pack battery, competing with the mask and the LED coat.
+- **Interrogate and the bribe** become universal keys if unlimited. Rule: actives have charges per mission, captains cannot be bought,
   and a bribed guard may talk later.
 
 *Too weak:*
-- **Trail reading** overlaps "predictive". Proposal: it shows the Agent HIS OWN trail as the guards read it (§4.7, evidence detection), so he
+- **Trail reading** overlaps "predictive". Rule: it shows the Agent HIS OWN trail as the guards read it (§4.7, evidence detection), so he
   can break it, which pairs with the dogs.
-- **The firework lure** overlaps the start kit's stones. Proposal: it pulls every guard in a radius, at the cost of a step of alert.
-- **The veteran's Discipline** is empty early, when he has no armour. Proposal: it also covers the pack's noise.
+- **The firework lure** overlaps the start kit's stones. Rule: it pulls every guard in a radius, at the cost of a step of alert.
+- **The veteran's Discipline** is empty early, when he has no armour. Rule: it also covers the pack's noise.
 
 *Start parity:*
 - With every own-L1 node open, the biker starts with silent ranged knockouts (the darts) while the private-security character starts with no
-  attack at all. Proposal: at the deposition, the player picks ONE of his faction's three L1 nodes, and the other two are met as usual. That
+  attack at all. Rule: at the deposition, the player picks ONE of his faction's three L1 nodes, and the other two are met as usual. That
   adds a real choice at creation and evens the start.
 
-**What the levels must offer (Claude, proposed; feeds `MAP_MASTER_PLAN` and the generator, §2.5):**
+**What the levels must offer (Claude; adopted 2026-10-23; feeds `MAP_MASTER_PLAN` and the generator, §2.5):**
 - **Every obstacle is solvable by the start kit or by at least two branches**, as the canon's multiple-solutions rule asks. Deliberately
   impossible rooms (below) gate only optional rewards behind one technique.
 - **The official work and the first chapter** are solvable with the start kit alone: shadows, stones, chokeholds, open doors, few cameras,
@@ -1908,7 +1914,11 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   neither knows of the other (same delegation; §2.2).
 - ✅ **The tech and skill tree** → three branches (EYE / HAND / WALL) x three levels (lap 1 specialist, lap 2 store or envoy, Freelance
   research) per faction, redistributing §10's catalogue by author; every node has an enemy counter; §10.3's visors become mask modules;
-  backgrounds open their own L1 and add a passive and an active (Director, 2026-10-23, the structure; §15, `DIAGRAMS/ARVORE_TECNOLOGICA.png`).
+  backgrounds pick one of their own L1 nodes at the deposition and add a passive and an active; Claude's balance pass and level
+  affordances adopted (Director, 2026-10-23; §15, `DIAGRAMS/ARVORE_TECNOLOGICA.png`).
+- ✅ **The start kit grows** → an alarm clock (one per mission, set for N turns, draws several guards; later a battery radio-clock with
+  sirens, shots and screams), a spray can for cameras, and chloroform for the heavies (fragile, volatile, one bottle, found in the world)
+  (Director, 2026-10-23; §10.0).
 - ✅ **Caught, masked, alert** → caught breaking conduct, he is WANTED in that
   scenario and must silence the witnesses (killing, a knockout or a dart) and
   escape; the objective may wait, but the alert rises and the mission stays
@@ -1950,9 +1960,7 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   site the club's assassin has infiltrated, his name ("the Confessor",
   proposed) and whether he counts as a boss (§2.2, proposed); when the pack
   battery upgrade comes (§10.5); the energy budget's numbers and recharge
-  (§10.5); the tech tree's balance proposals: bounded forged credentials, the comms stack's charges, the bike as an extraction, a weak L1
-  shadow generator, the exoskeleton on the battery, charges on actives, trail reading on his own trail, and ONE L1 node picked at the
-  deposition instead of all three (§15, proposed); the maps' affordance tags (§15, proposed); the rules of conduct whose breach makes a faction WANT him, how the
+  (§10.5); the alarm clock's retrieval rule, where the radio-clock comes from, and chloroform's numbers (§10.0, proposed); the rules of conduct whose breach makes a faction WANT him, how the
   alert's rise is authored and how much each step weighs (Claude's reading:
   more high-security zones per leader's death and per incident), (§2.2, CAUGHT / ALERT); how
   close counts as "from afar" for a uniform (§2.2); the neutral missions'

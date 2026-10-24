@@ -23,7 +23,7 @@ LEVELS = [("L1 · LAP 1", "meet the specialist on that turf"), ("L2 · LAP 2", "
           ("L3 · FREELANCE", "research; the endgame converges")]
 # (name, §10 class, author, non-lethal, enemy counter) per faction -> lane -> level
 N = {
- 0: [[("Trail reading", "mask module · new", "Cairn (K9)", 1, "decoy trails"),
+ 0: [[("Trail reading", "mask module · his own trail", "Cairn (K9)", 1, "decoy trails"),
       ("Predictive", "visor T5", "evidence room", 1, "patrols re-rolled"),
       ("Tactical analysis", "visor T5", "research", 1, "analysis jammers")],
      [("Taser", "weapon T2 · shock", "Pyre", 1, "insulated vests"),
@@ -40,24 +40,24 @@ N = {
       ("Laser", "weapon T4", "research", 0, "reflective plating")],
      [("EMP charge", "gadget T3", "Chip Voltz", 1, "hardened electronics"),
       ("Silent boots + vest", "armour T3", "armoury", 1, "pressure plates"),
-      ("Exoskeleton", "armour T5", "research", 1, "heavy pairs")]],
- 2: [[("Firework lure", "gadget T4 · lure", "Vespers", 1, "lone noises ignored"),
+      ("Exoskeleton", "armour T5 · on the battery", "research", 1, "heavy pairs")]],
+ 2: [[("Firework lure", "gadget T4 · radius, alert +1", "Vespers", 1, "lone noises ignored"),
       ("Motion vision", "mask module · T3", "chop shop", 1, "still sentries"),
       ("Street eyes", "lookouts · new", "research", 1, "informant hunts")],
      [("Dart launcher", "weapon T3", "Censer", 1, "antidote, respirator §11.3"),
       ("Gas + smoke", "gadgets T2", "lab (recipe)", 1, "respirators"),
       ("Incendiary", "gadget T3", "research", 0, "foam crews")],
      [("Tripwire flash", "gadget T2", "Sexton", 1, "doorways swept"),
-      ("Getaway bike", "vehicle · new", "chop shop", 1, "roadblocks, spikes"),
+      ("Getaway bike", "extraction points only", "chop shop", 1, "roadblocks, spikes"),
       ("Breaching charge", "gadget T3", "research", 0, "reinforced doors")]],
  3: [[("Camera loop", "gadget T5", "Ledger", 1, "guards check feeds"),
       ("WiFi vision", "mask module · T4", "R&D floor", 1, "shielded rooms"),
       ("Spectral", "mask module · T6", "research", 1, "multi-spectrum camo")],
-     [("Shadow generator", "gadget T6", "Hedge (seen)", 1, "flares, floodlights"),
+     [("Shadow generator", "gadget · 1 charge (T6 at L3)", "Hedge (seen)", 1, "flares, floodlights"),
       ("LED coat", "armour T7 · adaptive", "Hedge, lap 2", 1, "highly watched zones"),
       ("Plasma", "weapon T5", "R&D research", 0, "heavy plating")],
      [("Bribe", "money · new", "Escrow", 1, "incorruptible captains"),
-      ("Forged credentials", "access · new", "Escrow / R&D", 1, "checkpoint checks"),
+      ("Forged credentials", "access · 1 faction, 1 mission", "Escrow / R&D", 1, "checkpoint checks"),
       ("Master keycard", "gadget · new", "research", 1, "keypad + guard")]],
 }
 BG = [
@@ -77,7 +77,7 @@ d.text((40, 82), "Each node: the technique the Agent takes from its AUTHOR · it
 y0 = 130
 d.rounded_rectangle([40, y0, W - 40, y0 + 120], 14, fill=(34, 35, 41), outline=(90, 92, 100), width=2)
 d.text((60, y0 + 14), "EVERY CHARACTER", fill=(240, 240, 240), font=f(26))
-steps = [("START", "common pistol · chokehold / neck snap · stones · balaclava · the FID mustard coat"),
+steps = [("START (crude, one-shot)", "pistol · chokehold / neck snap · stones · alarm clock · spray can · chloroform · balaclava · mustard coat"),
          ("OFFICIAL WORK", "the hat-MASK from the club's assassin: base mode night vision (T2); modules from the trees"),
          ("UPGRADE (when: open)", "the pack BATTERY: one charge for mask modules + LED coat"),
          ("LAP 2", "the LED COAT from Hedge: wardrobe of every uniform held + the cloak")]
@@ -126,7 +126,7 @@ for fi, (name, axis, col, bg) in enumerate(FAC):
 
 # backgrounds
 by0 = gy0 + 110 + 3 * rowh + 10
-d.text((40, by0), "BACKGROUNDS (the class, stated in the deposition): its faction's L1 is open from the start, plus a passive and an active ability",
+d.text((40, by0), "BACKGROUNDS (the class, stated in the deposition): ONE of its faction's L1 nodes from the start, plus a passive and an active ability",
        fill=(240, 240, 240), font=f(26))
 for i, (t, p, a) in enumerate(BG):
     cx = gx0 + [0, 1, 2, 3][i] * colw
@@ -135,12 +135,12 @@ for i, (t, p, a) in enumerate(BG):
     d.text((cx + 24, by0 + 56), t, fill=(245, 245, 245), font=f(23, FN))
     d.text((cx + 24, by0 + 96), "passive · " + p, fill=(210, 210, 215), font=f(19, FR))
     d.text((cx + 24, by0 + 128), "active · " + a, fill=(210, 210, 215), font=f(19, FR))
-    d.text((cx + 24, by0 + 160), "own tree's L1 open at start", fill=(250, 200, 90), font=f(19, FN))
+    d.text((cx + 24, by0 + 160), "picks ONE own L1 node at the deposition", fill=(250, 200, 90), font=f(19, FN))
 # rules
 ry = by0 + 222
 rules = ["UNLOCK: meet the author (see it used, survive it, or knock him out and search him) — never a kill. Stores need that faction's ACCESS.",
          "ENEMY SIDE: every node has a counter; the factions field it in the next stage, the Agent's most-used technique first, always telegraphed (§11.4); a counter weakens, never nullifies.",
-         "BALANCE: same three lanes and levels per faction; every L1 row holds non-lethal options; no kamikaze drone, no acid weapon; mask modules = §10.3 visors."]
+         "BALANCE (adopted): same lanes and levels per faction; non-lethal options in every L1 row; charges on actives and comms gadgets; no kamikaze drone, no acid weapon."]
 for k, r in enumerate(rules):
     d.text((40, ry + k * 34), r, fill=(200, 200, 205), font=f(22, FR))
 im.save(OUT)

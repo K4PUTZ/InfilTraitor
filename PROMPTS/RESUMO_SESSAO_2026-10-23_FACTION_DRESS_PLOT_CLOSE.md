@@ -99,8 +99,35 @@ in the memory folder (`_archive/retired-2026-10-23.tar.gz`). Lessons merged by t
 Director's preferences grouped, the stale "Agency vs Network" premise removed, the "severed motors" (`NoiseSystem.emit()` with no callers,
 `PassageQuery` unread, as of 2026-08-30) kept as open threads to check before gameplay work.
 
+## 5b. Later the same day (after the plot closed)
+
+- **D78 renders:** `Screenshots/history/d78_faction_dress_*.png` (portraits, game size with a deuteranopia row, officer coats, the Agent in each uniform). Tools: `tools/asset_generation/hero/hero_faction_dress.py`, `faction_dress_art.py`, `faction_palette.json`. The bikers' armband on the Agent is brown with orange stripes.
+- **Uniform ≠ access** (`DESIGN` §2.2):
+  - a uniform passes from afar;
+  - access plus the right uniform means he is left alone;
+  - up close (a checkpoint, the GU next to an officer) he is always recognised;
+  - standing per faction: none / access / wanted;
+  - one uniform per mission until the LED coat;
+  - the armband follows the coat.
+- **Failure and alert** (`DESIGN` §2.2):
+  - caught → wanted → silence the witnesses (a knockout or a dart counts) and escape; the alert rises;
+  - seen masked, he is taken for the club's assassin;
+  - highly watched zones block the LED coat;
+  - death or arrest → game over, back to the map; the failure screen tells his fate.
+- **Neutral missions between the laps** (Freelance-like, dividends); their kills count in the violence average (redemption).
+- **The tech and skill tree** (`DESIGN` §15, `DIAGRAMS/ARVORE_TECNOLOGICA.png`):
+  - 4 factions × EYE / HAND / WALL × lap 1 / lap 2 / Freelance;
+  - each node has an enemy counter; visors become mask modules;
+  - backgrounds pick ONE own-faction L1 node plus a passive and an active;
+  - the balance pass and the map affordance tags were adopted.
+- **The LED coat** comes from Hedge, the Corporation envoy who watches the Agent (glints in earlier maps). Faction stores: the evidence room and the armoury.
+- **Start kit = the attack's gear** (a fair-reveal clue): alarm clock (retrievable under a rule), spray can, chloroform, a short rope and hook for authored traversals. Perches (Arkham predator) come later; still one playable plane.
+- **Distractions** (`DESIGN` §5.4): stones are the bread and butter (a limited stack, swappable items), scenery distractions, a universal remote. They depend on wiring the noise pipeline (`AI_MASTER_PLAN`).
+
 ## 6. Natural next steps
 
-- The decision renders for D78 (the four faction versions at portrait size and at 132×200, the palette on the real hero), as the Director's
+- Wire the noise pipeline (the Director: next).
+- The consolidated model inventory (slots + cast + props from the tree).
+- (done) The decision renders for D78 (the four faction versions at portrait size and at 132×200, the palette on the real hero), as the Director's
   "render, don't describe" rule asks.
 - The hero adapter to `ActorMesh3D` (bone and action names), still the first job before the hero is playable (`ACTOR` D77).

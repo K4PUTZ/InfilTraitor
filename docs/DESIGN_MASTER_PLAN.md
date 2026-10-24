@@ -1463,10 +1463,12 @@ finds the Agent a new way; HAND = attacks a new way; WALL = closes routes. The n
 
 | Faction | EYE | HAND | WALL |
 |---|---|---|---|
-| **FID** (burial names) | **Cairn**, the K9 handler (a cairn terrier, and a burial mound): the dog follows trails (§4.7) → a scent masker | **Pyre**, the taser officer → a taser (non-lethal) | **Vault**, the dispatcher: radio check-ins, roadblocks → faking radio calls |
-| **Calm Waters** (action-figure names) | **Ace Skyler**, the drone pilot → a scout drone | **Rex Hawke**, the marksman → a sniper rifle | **Chip Voltz**, sensors, laser tripwires → a jammer |
-| **Bunsen Burners** (churchly road names) | **Vespers**, the lookout with fireworks that alert the whole segment → flares that lure guards | **Censer**, the chemist: gas and sedatives → **tranquilliser darts** and smoke (the recipe of "Choirboy"'s sub-mission, §2.7) | **Sexton**, booby traps on the routes → breaching charges |
-| **Corporation** (finance puns) | **Ledger**, the hacker of cameras and phones → camera loops | **Hedge**, the agent in the LED prototype (a hedge fund, and D72's bush): an ambush from invisibility → **the LED coat** (§10.5) | **Escrow**, the fixer: a price on the intruder's head, bribes → bribery as an inside access (§2.2) |
+| **FID** (burial names) | **Cairn**, the K9 handler (a cairn terrier, and a burial mound) → trail reading | **Pyre**, the taser officer → a taser (non-lethal) | **Vault**, the dispatcher: radio check-ins, roadblocks → radio spoof |
+| **Calm Waters** (action-figure names) | **Ace Skyler**, the drone pilot → a scout drone | **Rex Hawke**, the marksman → a suppressed rifle | **Chip Voltz**, sensors, laser tripwires → an EMP charge |
+| **Bunsen Burners** (churchly road names) | **Vespers**, the lookout with fireworks → a firework lure | **Censer**, the chemist: gas and sedatives → **a dart launcher** | **Sexton**, booby traps on the routes → a tripwire flash |
+| **Corporation** (finance puns) | **Ledger**, the hacker of cameras and phones → camera loops | **Hedge**, the envoy in the LED prototype → a shadow generator (seen); **the LED coat** in lap 2 (§10.5) | **Escrow**, the fixer → bribery as an inside access (§2.2) |
+
+*(Synced to §15's tree on 2026-10-24: Cairn, Rex, Chip, Censer, Sexton and Hedge's L1 nodes follow the tree; breaching charges moved to L3.)*
 
 This template also answers §11.1's missing fourth counter: every faction meets the Agent on the same three axes. **Hedge is the
 Corporation's envoy who watches the Agent across maps** (glints of his LEDs as easter eggs) and gives up the LED coat in lap 2 (§10.5).
@@ -1484,6 +1486,31 @@ infiltration target. The specific items and the two other stores (for an equal p
 
 The items sit in §10's classes: the pulse carbine and the suppressor in the weapon class (§10.2), the silent boots in the armour class
 (§10.1), the rest as gadgets (§10.4).
+
+### 11.7 Who introduces each node, and who fields its counter — `DESIGNED` (Director, 2026-10-24; Claude's proposal ratified)
+
+Diagram: `DIAGRAMS/ELENCO_ARVORE.png` (generator `tools/asset_generation/tech_tree_cast_poster.py`; its data mirrors §15 and this section).
+
+- **L1 (lap 1):** the twelve specialists above, fixed authored characters.
+- **L2 (lap 2):** each store has a named KEEPER, seen in lap 1 before he matters (§11.4): **Urn**, the FID evidence clerk (one more burial
+  name); **Tank Mercer**, Calm Waters' quartermaster (an action figure); **Tithe**, the Bunsen Burners' chop-shop mechanic (he takes his cut;
+  gas and smoke come from Censer's lab recipe); **Margin**, head of the Corporation's R&D floor. The LED coat stays Hedge's.
+- **L3 (Freelance):** a Captain of each faction fields the prototype; the Agent knocks him out and takes the SAMPLE, and **Zest** researches
+  it: a fence and engineer outside the factions, met in the neutral missions between the laps (one more orange, like Pith & Peel).
+- **Unlock never needs a kill** (§11.6): see it with the mask, survive it, or knock the author out and search him.
+- **Counters: twelve enemy UNITS, one per faction and lane, each with three gear stages** (one per tree level):
+
+| Faction | EYE unit (stages) | HAND unit (stages) | WALL unit (stages) |
+|---|---|---|---|
+| FID | Forensic tech: decoy trails · patrols re-rolled · analysis jammer | Riot officer: insulated vest · suppressor detector · ear protection | Radio sergeant: analogue comms · checks the downed · foot runners |
+| Calm Waters | Counter-drone crew: anti-drone gun · insulation suit · lead-lined rooms | Spotter + heavy: counter-sniper · insulated armour · reflective plating | Hardened tech: hardened electronics · pressure plates · heavy pairs |
+| Bunsen Burners | Sentry: ignores lone noise · still sentries · informant hunts | Gas-mask cook: antidote · respirator · foam crew | Road crew: doorways swept · roadblocks, spikes · reinforced doors |
+| Corporation | Feed monitor: checks feeds · shielded rooms · multi-spectrum camo | Floodlight team: flares, floodlights · high-watch zones · heavy plating | Compliance officer: incorruptible captain · checkpoint check · keypad + guard |
+
+- **Who fields a counter first:** the AUTHOR's faction (it knows its own tech's weakness); the others adopt it one stage later, the Agent's
+  most-used technique first; always telegraphed (§11.4); a counter weakens, never nullifies.
+- **Models:** the units are slot pieces on each faction's guard base (one skeleton), not 36 characters. New named cast: Urn, Tank Mercer,
+  Tithe, Margin, Zest — registry checks before launch, like every name (§2.7).
 
 ---
 
@@ -1687,7 +1714,7 @@ map.
 raise a skill he is weak in or get better equipment; each kind of objective pays its own dividends.
 
 **The tech and skill tree (Director, 2026-10-23: structure ratified, "podemos fechar assim").** Diagram:
-`DIAGRAMS/ARVORE_TECNOLOGICA.png` (generator `tools/asset_generation/tech_tree_poster.py`, whose node data mirrors this list). It
+`DIAGRAMS/ARVORE_TECNOLOGICA.png` (who introduces each node and the counter units: §11.7, `DIAGRAMS/ELENCO_ARVORE.png`) (generator `tools/asset_generation/tech_tree_poster.py`, whose node data mirrors this list). It
 REDISTRIBUTES §10's catalogue (and the 2026-10-23 additions) by faction and author; it is not a parallel system.
 
 **Structure:**

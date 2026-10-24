@@ -204,6 +204,9 @@ res://assets/intro_title.es.png
 ```
 
 ### Dubbed Audio
+> **Not used (Director, 2026-10-24; `DESIGN_MASTER_PLAN` §2.3):** the game's voices are an unintelligible babble with the words on screen, so
+> one recording serves every language and only the text is localised. The resolver below stays a capability, not a plan.
+
 Same locale-variant resolution for voice streams:
 ```
 res://audio/dialogue/<key>.<locale>.ogg

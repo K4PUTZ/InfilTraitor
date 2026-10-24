@@ -143,7 +143,8 @@ OPENING — Home (Director)
   acid (§2.6); curfew. He is genuinely stunned. His phone, left at home, shows missed calls
   from his wife. It rings: his wife is in intensive care; their son is
   dead. He answers in the Agent's own voice (male or female, from the
-  form; Director, 2026-10-24; scope open, §18). He falls to his knees.
+  form; unintelligible, the words on screen: §2.3; Director, 2026-10-24).
+  He falls to his knees.
   Titles.
 
 THE POLICE STATION
@@ -501,6 +502,24 @@ rule (§9.2) still kills. Tension never disappears.
 - **Victory/defeat screen** — brief narrative outcome + stats + rewards.
 - **Dossier** — accumulated intel log between missions, for players who want
   the full narrative.
+
+**Voices: unintelligible, the words on screen (Director, 2026-10-24).** Every character speaks in a wordless babble, like the teacher in
+*Charlie Brown*, and the line itself is TEXT on screen. The voice tells WHO is speaking (a man, a woman, young, old, a child, the dog) and in
+what MOOD; the content is written, through `tr()`. Consequences (Claude, proposed):
+- **One recording serves every language:** the voices carry no language, so nothing is dubbed and localisation is the text alone
+  (`LOCALIZATION_REFERENCE`'s per-locale voice streams are not used).
+- **The bank:** per VOICE TYPE (adult man and adult woman, two or three performers each so that people of the same sex can talk to each other;
+  a young man, a young woman, an old man, an old woman, a child, the dog), a handful of EMOTIONS (neutral, angry, afraid, sad, warm / relieved,
+  urgent, suspicious), each in short / medium / long phrases with a few takes; plus INTERJECTIONS (huh?, hey!, oh no), COMMAND SHOUTS (halt!,
+  over there!, move!), ACKNOWLEDGEMENTS (roger, okay, mm-hm), effort and pain, laughter, sobbing, screams. Roughly 80-100 clips per performer.
+- **A named character is a voice type + a performer + a small pitch offset** (a free per-character parameter, like a shader uniform): the cast
+  stays recognisable without a recording per character.
+- **A line is data:** speaker, emotion, text key. The clip is picked by the emotion and by the text's reading time in the player's language,
+  never repeating the last take; the text stays independent of the logic (§19, inviolable rule 6).
+- **Barks** (§11.5) and guards' shouts work the same way: a babble and a short text. Whether a shout is also a gameplay NOISE belongs to
+  `AI_MASTER_PLAN` (the noise pipeline).
+- **The child's voice has no body on the board** (no child base, `COSMETICS` §8.1): it is heard only off it, on a phone, a video, in a crowd.
+- **Accessibility:** the text is always on, and each line opens with the speaker's name in his faction's colour.
 
 **The mission interface is an unreliable narrator because the Agent controls
 its intelligence.** The player chooses tactics, routes and actions, but the
@@ -1474,7 +1493,7 @@ What the canon already holds to grow it from (Claude, proposed):
   game's primary resource (§1).
 - **Non-lethal feeds it.** A rival knocked out survives and comes back; a rival killed is replaced by his successor (§2.7). It meets the violence
   rule (§2.6): the pacifist's enemies return, the killer's are replaced.
-- **Cost:** persistent per-character state across missions (the save model is checkpoint-scoped today), barks as localised text (no voice),
+- **Cost:** persistent per-character state across missions (the save model is checkpoint-scoped today), barks as localised text over an unintelligible voice (§2.3),
   portraits in the variable panel (§19 Rule 6).
 
 ### 11.6 Specialists — the authors of technology — `DESIGNED` (Director, 2026-10-23; the roster is Claude's proposal)
@@ -1962,6 +1981,8 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   then the deposition at the police station, whose questions choose his PAST
   (the camera's light, Fallout 3's model); the Agent may be a woman, her spouse a husband,
   the lines adapting (Director, 2026-10-22; §2.2, §2.7).
+- ✅ **Voices** → unintelligible babble by voice type and emotion, the words on
+  screen, nothing dubbed (Director, 2026-10-24; §2.3).
 - ✅ **The names** → the FID, The Sieve, Calm Waters Security, the Bunsen
   Burners MC, Pith & Peel Holdings, Carrion Capital; the four leaders and the
   four successors who take their posts; civil rank names per faction
@@ -2087,8 +2108,7 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   minors, and §16 sets the social defaults for them.
 
 **Still open — do not decide these unilaterally:**
-- [ ] From 2026-10-24: the phone call's VOICE (Claude: wordless reactions, a breath, a sob, a broken "no", recorded once per sex and
-  subtitled, so nothing is voiced per language; full lines would mean two voices × every language); where hair, face and height are chosen
+- [ ] From 2026-10-24: the voice bank's performers and sizes (§2.3, proposed); where hair, face and height are chosen
   (the form or the deposition); the race field's options per country (§2.2, §2.6).
 - [ ] From 2026-10-23: the chokehold's N turns (§10.0); which official-work
   site the club's assassin has infiltrated, his name ("the Confessor",

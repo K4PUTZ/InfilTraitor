@@ -960,6 +960,43 @@ Reference amplitudes: agent walking 1 AP · agent running 2 AP · guard whistle
 2 AP (deliberately equal to a run) · radio open mic 3 AP (it leaks) · alarm
 panel = whole scene · body falling 1 AP · breaking glass 2 AP.
 
+### 5.4 Distractions — throwables and the scenery — `DESIGNED` (Director, 2026-10-23)
+
+**Throwing a stone and running is the game's bread and butter** (Director). Around it:
+
+- **THROWABLES (Director):** the pack holds a LIMITED number at once, restocked at certain places or replaced by similar objects: baseballs,
+  glass cups, anything that makes a noise and is easy to handle.
+  - **Claude's proposals:** a stack of 3; each lands as a noise at a point, on §5.3's scale.
+
+    | Object | Noise and range | Reuse | Trace |
+    |---|---|---|---|
+    | stone | 2, medium range | can be picked up again | none in rubble |
+    | baseball | 2, it bounces further | can be picked up again | none |
+    | glass cup or bottle | 2, breaking glass | single use | leaves SHARDS, evidence that also crunches underfoot |
+    | can | 1-2, it rolls | can be picked up again | none |
+
+  - **Restock points** are map affordances (§15): rubble for stones (everywhere in the aftermath, and the destruction engine makes more),
+    bars and kitchens for glasses, parks and sports shops for baseballs, bins for cans.
+  - The throw reuses the grenade's wall-aware throw line.
+- **THE SCENERY (Director, after Dishonored):** distractions in the world itself, so a player with no items always has an alternative.
+  Claude's catalogue:
+  - **unpowered:** objects to knock over, a door slammed, a valve (steam: the vent exists; water: the liquids engine moves it);
+  - **powered:** TVs, radios, ringing phones, car alarms (a stone at a car sets one off: throwables and scenery combine), vending machines,
+    a fire alarm (a big pull and a step of alert), and the LIGHTS: switching one off makes shadow and brings a guard to fix it (light is
+    tactical, §4.4).
+  - Powered devices only work where the power is back: the official work's power station brings districts back (§2.2), so the scenery's
+    options grow as the campaign advances.
+- **THE UNIVERSAL REMOTE (Director: "uma forma engraçada"):** switches TVs on and off, and radios, so guards go and check.
+  **Claude's proposals:** it is the Agent's own TV remote, picked up in the opening at home (the scene with the TV news, §2.2); it works on a
+  powered device in line of sight within a few GU.
+- **Repetition (Claude, as for the alarm clock, §10.0):**
+  - Guards investigate a noise and return. The same trick in the same zone in the same mission makes them SUSPECT a trick: the alert goes up
+    instead of a guard simply walking over (guards never forget, §1's anti-patterns).
+  - Thrown objects stay where they land: in rubble a stone blends in; in a clean corridor it is evidence (§4.7).
+- ⚠️ **Dependency:** none of this works until the noise pipeline is wired. As measured 2026-08-30, `NoiseSystem.emit()` had no caller and
+  the noise → detection bonus only counted when the guard already saw the Agent. Planned in `AI_MASTER_PLAN` (planned from the faction
+  dress).
+
 ---
 
 ## 6. Organic patrol — `PARTIAL`
@@ -1161,9 +1198,9 @@ replaces the choice (§10.5).
 |---|---|
 | A common pistol | The weapon class's tier 1 (§10.2) |
 | His overcoat | The FID investigators' mustard coat, black inside (§2.1, `ACTOR` D78) |
-| Throwing stones | A distraction (a noise on a chosen tile, §5) |
+| Throwing stones | A distraction (a noise on a chosen tile): the bread and butter, a limited stack restocked in the world or replaced by baseballs, glasses, cans (§5.4) |
 | A chokehold or a neck snap | The chokehold knocks a guard out and he **wakes after N turns** (N open, §18); the neck snap kills and he never wakes. The knockout is the non-lethal option every class must hold from the start (§2.6) |
-| An ALARM CLOCK | ONE per mission (Director, 2026-10-23): he sets it for N turns, and when it rings it draws several guards to that zone at once, opening him a way. Later upgraded to a battery RADIO-CLOCK playing a "song" of sirens, shots and screams. **Claude's proposals:** the radio-clock draws more guards from further away, but they arrive ALERT (weapons out, searching); it comes from the evidence room (§15) or is bought. **Retrieval (to confirm):** he may go back for the clock, but a guard who reaches it first CONFISCATES it as evidence (knock him out and search him to get it back), re-arming costs 1 AP, and a second ring in the same mission makes the guards suspect a trick: it raises the alert instead of simply drawing them. That keeps one clock from becoming an endless loop |
+| An ALARM CLOCK | ONE per mission (Director, 2026-10-23): he sets it for N turns, and when it rings it draws several guards to that zone at once, opening him a way. Later upgraded to a battery RADIO-CLOCK playing a "song" of sirens, shots and screams. **Claude's proposals:** the radio-clock draws more guards from further away, but they arrive ALERT (weapons out, searching); it comes from the evidence room (§15) or is bought. **Retrieval (adopted 2026-10-23):** he may go back for the clock, but a guard who reaches it first CONFISCATES it as evidence (knock him out and search him to get it back), re-arming costs 1 AP, and a second ring in the same mission makes the guards suspect a trick: it raises the alert instead of simply drawing them. That keeps one clock from becoming an endless loop |
 | A SPRAY CAN | Blinds cameras (Director). **Claude:** a few sprays per can, from the camera's blind side; a blinded camera is EVIDENCE that guards come to check, unlike the Corporation's clean camera loop (§15) |
 | CHLOROFORM | Puts BIGGER enemies to sleep, those a chokehold cannot drop (Director): fragile, volatile, one bottle at a time, found in the world. **Claude:** it breaks if he takes a hit or falls; once opened it evaporates within a few turns; it is found in labs, clinics and chemical stores (an affordance tag, §15). It keeps §2.6's non-lethal promise against the heavies (the heavier base, `COSMETICS_MASTER_PLAN` §8.1) |
 | A balaclava | For the first missions: masked, with the coat stowed in his black pack, he already looks like the Infiltraitor, with no technology. He wears an ordinary fedora; the **mask** (`ACTOR` D71/D77), itself a fedora, is taken soon from the club's hired assassin at an official-work site and replaces it (§2.2) |
@@ -1712,6 +1749,7 @@ chapter coming last in lap 1; the balance pass below), plus one passive and one 
 - **Maps carry AFFORDANCE TAGS**, so a technique always has a target and the generator can place them. Data, in the map's `layout` section
   (`CAPTURE_RAILS` already gives it POIs and regions):
   - power points (battery recharge) and the faction stores;
+  - throwable restock points and scenery distractions, powered or not (§5.4);
   - highly watched zones (no uniform, no LED coat) and checkpoints;
   - locked and electronic doors, camera nets, radio relays;
   - dark zones (the mask's eye-glow trade-off) and thin walls (thermal, X-ray);
@@ -1919,6 +1957,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - ✅ **The start kit grows** → an alarm clock (one per mission, set for N turns, draws several guards; later a battery radio-clock with
   sirens, shots and screams), a spray can for cameras, and chloroform for the heavies (fragile, volatile, one bottle, found in the world)
   (Director, 2026-10-23; §10.0).
+- ✅ **Distractions** → throwing a stone and running is the bread and butter; a limited stack of throwables, restocked in the world or
+  swapped for baseballs, glasses or cans; distractions in the scenery itself (Dishonored); a universal remote that switches TVs on and off;
+  the alarm clock may be fetched back, under the confiscation and suspicion rule (Director, 2026-10-23; §5.4, §10.0).
 - ✅ **Caught, masked, alert** → caught breaking conduct, he is WANTED in that
   scenario and must silence the witnesses (killing, a knockout or a dart) and
   escape; the objective may wait, but the alert rises and the mission stays
@@ -1960,7 +2001,8 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   site the club's assassin has infiltrated, his name ("the Confessor",
   proposed) and whether he counts as a boss (§2.2, proposed); when the pack
   battery upgrade comes (§10.5); the energy budget's numbers and recharge
-  (§10.5); the alarm clock's retrieval rule, where the radio-clock comes from, and chloroform's numbers (§10.0, proposed); the rules of conduct whose breach makes a faction WANT him, how the
+  (§10.5); where the radio-clock comes from and chloroform's numbers (§10.0, proposed); the throwables' stack size and noises, the scenery catalogue,
+  and the universal remote's source and range (§5.4, proposed); the rules of conduct whose breach makes a faction WANT him, how the
   alert's rise is authored and how much each step weighs (Claude's reading:
   more high-security zones per leader's death and per incident), (§2.2, CAUGHT / ALERT); how
   close counts as "from afar" for a uniform (§2.2); the neutral missions'

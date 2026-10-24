@@ -395,6 +395,19 @@ Recorded here by the Director's rule of 2026-10-18 ("o que for de outras milesto
    player can lure a guard into.
 4. **Noise and smell.** A splash already goes through `NoiseSystem`; the liquids' `smell` value has no reader.
 
+## Planned from the faction dress and the distractions (2026-10-23) — `DESIGNED`, nothing built
+
+Owner of the guard side of `DESIGN_MASTER_PLAN` §2.2 (CAUGHT / ALERT), §5.4 (distractions) and §15 (the tech tree's enemy counters).
+
+- **Wire the noise pipeline first.** As of 2026-08-30, `NoiseSystem.emit()` had no caller, and the noise → detection bonus counted only when
+  the guard already saw the Agent (`result.visible`), which is backwards for stealth. Every distraction (stone, clock, remote, scenery) is a
+  noise event at a point, so this is their common dependency.
+- **INVESTIGATE:** go to the source, look, return. A repeated trick in the same zone in the same mission raises SUSPICION and a step of alert.
+  Thrown objects and blinded cameras are evidence (§4.7).
+- **Uniform and access:** recognition up close, at checkpoints and in the GU next to an officer; standing per faction (no access / access /
+  wanted); a wanted Agent means a shootout; the alert climbs across scenarios.
+- **Counters:** the factions field the tech tree's counters in the next stage, the Agent's most-used technique first, always telegraphed.
+
 ## Related Documentation
 
 - **`CLAUDE.md`** (repo root) — architectural invariants and workflow (it replaced the retired OPERATOR_CONTEXT on 2026-07-27)

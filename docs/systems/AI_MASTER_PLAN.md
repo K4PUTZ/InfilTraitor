@@ -407,6 +407,8 @@ Owner of the guard side of `DESIGN_MASTER_PLAN` §2.2 (CAUGHT / ALERT), §5.4 (d
 - **Uniform and access:** recognition up close, at checkpoints and in the GU next to an officer; standing per faction (no access / access /
   wanted); a wanted Agent means a shootout; the alert climbs across scenarios.
 - **Counters:** the factions field the tech tree's counters in the next stage, the Agent's most-used technique first, always telegraphed.
+- **Perches and the rope** (`DESIGN` §10.0): an Agent on a perch is seen only by a guard who looks up (from a set alert, with a flashlight) or by
+  a drone; a traversal over a wall forces the guards to path around; the rope's throw is a noise.
 
 ## Related Documentation
 

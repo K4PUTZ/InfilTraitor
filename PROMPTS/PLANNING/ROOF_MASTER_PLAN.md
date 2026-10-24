@@ -19,7 +19,7 @@
 
 | Rule | Source | Consequence here |
 |---|---|---|
-| **Roof destruction is a LIGHTING event, never an access route.** The upper storeys compose the scene's height; the player never goes up. | EXPLOSION_REBUILD D18; Director 2026-08-06 | A hole matters for what it lets IN (light) and for what falls DOWN. No pathing, no "entry from above". |
+| **Roof destruction is a LIGHTING event, never an access route.** The upper storeys compose the scene's height; the player never goes up. *(2026-10-23, `DESIGN` §10.0: the grapple's authored PERCHES on a roof edge or a water tower are cells with a height, never a storey, and never connect to an interior; this rule holds.)* | EXPLOSION_REBUILD D18; Director 2026-08-06 | A hole matters for what it lets IN (light) and for what falls DOWN. No pathing, no "entry from above". |
 | **The support rule (G-D50) and the collapse (G-D51/52/55).** A voxel stands while it is connected to something that holds it; what loses support falls after the blast, crossfaded. | `GLASS_MASTER_PLAN` 1a, 1f | The roof's collapse is the SAME machinery, generalised from panes to roof slabs. |
 | **G-D53 — all roofs, by material; shots count.** Each material its own chance to hold: stone barely affected, plywood collapses more easily than wood; fabric may SAG (a partial fall by distance, the cloth hanging down) — to be designed. Glass first. | `GLASS_MASTER_PLAN` 1a | The per-material table of §3 and the fabric stage. |
 | A roof is an entity (`roofs`: gu, size, storeys, material, kind); 2 levels thick; built as `Slab` Role.CEILING; only `kind: flat` exists. | RENDER3D roof entity; `room_builder.gd:258, 269-340` | Pointed / diagonal roofs stay out of scope. |

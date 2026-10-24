@@ -257,8 +257,9 @@ THE OFFICIAL WORK — first (Director, 2026-10-22)
   station. All are infiltration: gathering evidence, talking to people,
   planting bugs, acting on the world (opening a sluice gate, draining a
   tank).
-  He starts with almost nothing (§10.0): a common pistol, his overcoat,
-  stones, a chokehold, an alarm clock, a spray can, chloroform; a balaclava hides his face, the coat stowed in his
+  He starts with almost nothing (§10.0), the gear of the attack: a common
+  pistol, his overcoat, stones, a chokehold, an alarm clock, a spray can,
+  chloroform, a short rope and hook; a balaclava hides his face, the coat stowed in his
   black pack. He starts in an ordinary fedora.
   THE MASK (Director, 2026-10-23): it belongs to a HIRED ASSASSIN whom
   "Deacon" contracted to carry out his jobs, and who is investigating
@@ -504,7 +505,9 @@ the evidence reads as atmosphere; on a second it reads as confession:
 - some "hostiles" flee, protect civilians or guard evidence rather than attack;
 - mission language remains technically true while its moral subject is false;
 - objectives that appear independent form one visible chain when placed in
-  their real order.
+  their real order;
+- **the start kit is the attack's gear** (Director, 2026-10-23, §10.0): what the player carried from the first mission is what the Agent wore
+  that night; the rope and hook got him over the Militia's wall.
 
 The preferred reveal mechanism is the project's own information grammar: an
 outside breach or recovered source removes the Agent's filter and relabels
@@ -1203,7 +1206,23 @@ replaces the choice (§10.5).
 | An ALARM CLOCK | ONE per mission (Director, 2026-10-23): he sets it for N turns, and when it rings it draws several guards to that zone at once, opening him a way. Later upgraded to a battery RADIO-CLOCK playing a "song" of sirens, shots and screams. **Claude's proposals:** the radio-clock draws more guards from further away, but they arrive ALERT (weapons out, searching); it comes from the evidence room (§15) or is bought. **Retrieval (adopted 2026-10-23):** he may go back for the clock, but a guard who reaches it first CONFISCATES it as evidence (knock him out and search him to get it back), re-arming costs 1 AP, and a second ring in the same mission makes the guards suspect a trick: it raises the alert instead of simply drawing them. That keeps one clock from becoming an endless loop |
 | A SPRAY CAN | Blinds cameras (Director). **Claude:** a few sprays per can, from the camera's blind side; a blinded camera is EVIDENCE that guards come to check, unlike the Corporation's clean camera loop (§15) |
 | CHLOROFORM | Puts BIGGER enemies to sleep, those a chokehold cannot drop (Director): fragile, volatile, one bottle at a time, found in the world. **Claude:** it breaks if he takes a hit or falls; once opened it evaporates within a few turns; it is found in labs, clinics and chemical stores (an affordance tag, §15). It keeps §2.6's non-lethal promise against the heavies (the heavier base, `COSMETICS_MASTER_PLAN` §8.1) |
+| A SHORT ROPE AND HOOK | TRAVERSAL only (Director, 2026-10-23): from one AUTHORED anchor to another, over a wall, a fence, a dug channel, a pool of acid. He never stands on anything: he lands on the ground beyond. The rope's length and the anchors are the scene builder's (affordance tags, §15). It doubles as an evasion: a wall the guards must walk around. Costs AP and makes a noise on the throw (numbers open) |
 | A balaclava | For the first missions: masked, with the coat stowed in his black pack, he already looks like the Infiltraitor, with no technology. He wears an ordinary fedora; the **mask** (`ACTOR` D71/D77), itself a fedora, is taken soon from the club's hired assassin at an official-work site and replaces it (§2.2) |
+
+**The start kit is the gear of the ATTACK (Director, 2026-10-23):** the "uniform" he wore the night he breached the dam, which is why he
+starts with some skills. It is a fair-reveal clue (§2.4): the gear the player has carried since the first mission is the attack's. Claude: the
+rope and hook is how he got over the Militia's perimeter wall to launch the drone from inside (its clue, §2.6).
+
+**PERCHES, later (Director, 2026-10-23; Batman Arkham's predator):** a better grapple brings PERCHES: isolated high points AUTHORED by the
+scene builder (a roof edge, a water tower, a catwalk).
+- What he does there: climbs, watches, swings from perch to perch, and drops onto a passing guard for a knockout.
+- **One playable plane still (the canon below holds):** a perch is a cell with a height, never a storey. It never connects to an interior,
+  so a roof stays a lighting event and never an access.
+- **Seeing him up there is a GAMEPLAY rule:** guards look up only at higher alert, with flashlights, or through drones, as with the revealed
+  guards.
+- **Counters:** guards who look up and sweep flashlights from a set alert; the Militia's drones; snipers; no perches in highly watched
+  zones; few per map; the mask's eye glow betrays a still Agent in the dark (D71).
+- **Open:** where the better grapple comes from and when (Claude: lap 2, like the other mid-game tools).
 
 **The start kit is CRUDE, the trees are CLEAN (Claude, 2026-10-23).** The start kit's tools are one-shot and leave traces; the trees give
 the clean versions (§15): stones → alarm clock → firework lure; spray → camera loop; chokehold → taser and darts; chloroform → darts and gas.
@@ -1750,6 +1769,7 @@ chapter coming last in lap 1; the balance pass below), plus one passive and one 
   (`CAPTURE_RAILS` already gives it POIs and regions):
   - power points (battery recharge) and the faction stores;
   - throwable restock points and scenery distractions, powered or not (§5.4);
+  - grapple ANCHORS (traversal pairs) and PERCHES (§10.0);
   - highly watched zones (no uniform, no LED coat) and checkpoints;
   - locked and electronic doors, camera nets, radio relays;
   - dark zones (the mask's eye-glow trade-off) and thin walls (thermal, X-ray);
@@ -1960,6 +1980,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - ✅ **Distractions** → throwing a stone and running is the bread and butter; a limited stack of throwables, restocked in the world or
   swapped for baseballs, glasses or cans; distractions in the scenery itself (Dishonored); a universal remote that switches TVs on and off;
   the alarm clock may be fetched back, under the confiscation and suspicion rule (Director, 2026-10-23; §5.4, §10.0).
+- ✅ **The rope and hook, in two stages** → a short rope in the start kit for traversals between authored anchors (over a wall, a
+  channel, acid; an evasion), then perches like Batman Arkham's predator, with their counters; still one playable plane. **The start kit is
+  the attack's gear**, a fair-reveal clue (Director, 2026-10-23; §10.0, §2.4).
 - ✅ **Caught, masked, alert** → caught breaking conduct, he is WANTED in that
   scenario and must silence the witnesses (killing, a knockout or a dart) and
   escape; the objective may wait, but the alert rises and the mission stays
@@ -2001,7 +2024,7 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   site the club's assassin has infiltrated, his name ("the Confessor",
   proposed) and whether he counts as a boss (§2.2, proposed); when the pack
   battery upgrade comes (§10.5); the energy budget's numbers and recharge
-  (§10.5); where the radio-clock comes from and chloroform's numbers (§10.0, proposed); the throwables' stack size and noises, the scenery catalogue,
+  (§10.5); where the radio-clock comes from and chloroform's numbers (§10.0, proposed); the rope's length, AP and noise, and where and when the perch grapple comes (§10.0); the throwables' stack size and noises, the scenery catalogue,
   and the universal remote's source and range (§5.4, proposed); the rules of conduct whose breach makes a faction WANT him, how the
   alert's rise is authored and how much each step weighs (Claude's reading:
   more high-security zones per leader's death and per incident), (§2.2, CAUGHT / ALERT); how
@@ -2054,7 +2077,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   settled. See `PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md` D44.
 - [ ] Multi-floor / elevation — future, out of the MVP. *(Note: the voxel
   render system now supports vertical storeys; the open question is the
-  gameplay rule, not the renderer.)*
+  gameplay rule, not the renderer. 2026-10-23: the rope and hook's
+  traversals and the perches do NOT open it: a perch is a cell with a
+  height, never a storey, §10.0.)*
 - [ ] Exact AP cost per terrain type — needs playtesting.
 - [ ] Overlay palette (1 AP, 2 AP, danger, interactable, quest).
 - [ ] Do weapons use ammunition, cooldown, or only noise?

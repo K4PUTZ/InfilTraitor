@@ -190,6 +190,7 @@ states (`DESIGN` §14.4) reuse a kit with props swapped (a cordon gone, debris c
 | Vehicles | police car, rescue vehicle, the Militia's SUV, an executive sedan, a van, a motorcycle | mesh (9.5) |
 | Rubble | wrecked car, fallen pole, looted shelf | mesh and voxel |
 | Distractions (`DESIGN` §5.4, 2026-10-23) | throwable pickups (a stone pile, a baseball, a glass cup or bottle, a can); STATES on existing slots: a TV and radio on/off, a car alarm, a phone ringing, a light switch, a fire alarm, a valve | small props: mesh; the states are PP7 (animated / stateful props) |
+| Traversal (`DESIGN` §10.0, 2026-10-23) | grapple ANCHORS (a hook point, a pipe, a beam; authored in pairs) and PERCHES (a roof edge, a water tower, a catwalk, a gantry) | the anchor a small mesh; the perch a slot with a height |
 
 **9.4 The story's objects.** Each clue is a thing on screen, so each must be unique and readable at play zoom (the fair reveal, `DESIGN` §2.4: the
 player must have SEEN it): the deposition's camera; the TV of the bulletin; **the generator's empty pad** (the object is an absence: anchor bolts and

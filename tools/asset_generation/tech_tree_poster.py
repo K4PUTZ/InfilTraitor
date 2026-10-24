@@ -77,9 +77,9 @@ d.text((40, 82), "Each node: the technique the Agent takes from its AUTHOR · it
 y0 = 130
 d.rounded_rectangle([40, y0, W - 40, y0 + 120], 14, fill=(34, 35, 41), outline=(90, 92, 100), width=2)
 d.text((60, y0 + 14), "EVERY CHARACTER", fill=(240, 240, 240), font=f(26))
-steps = [("START (crude, one-shot)", "pistol · chokehold / neck snap · stones · alarm clock · spray can · chloroform · balaclava · mustard coat"),
+steps = [("START (crude, one-shot)", "the ATTACK's gear: pistol · chokehold · stones · alarm clock · spray · chloroform · rope & hook · balaclava"),
          ("OFFICIAL WORK", "the hat-MASK from the club's assassin: base mode night vision (T2); modules from the trees"),
-         ("UPGRADE (when: open)", "the pack BATTERY: one charge for mask modules + LED coat"),
+         ("UPGRADES (when: open)", "the pack BATTERY (mask modules + LED coat) · a grapple for PERCHES"),
          ("LAP 2", "the LED COAT from Hedge: wardrobe of every uniform held + the cloak")]
 x = 60
 for i, (t, s) in enumerate(steps):

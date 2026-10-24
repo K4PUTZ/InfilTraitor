@@ -326,4 +326,6 @@ The engine side is built; what follows is MOVEMENT's to design, and nothing is d
 2. **Poses in a liquid.** Wading (the legs under the surface), sinking in quicksand (a struggle, the escape's 2 AP), standing on a crust plate that is about to break, slipping on ice and oil. `MATERIALS_MASTER_PLAN` F9 (swimming, `swim_ap`) is the same family.
 3. **The agent on fire.** Today the only sign is an orange pulse on the figure (`ActorMesh3D.set_status_tint`): flames on the body, a pose (patting down, running to water) are to design. The stain (biohazard) and the glow (nuclear) are tints too.
 4. **The height a shot and a throw start from.** The agent's muzzle and throw origin are a 2D head offset above the FLOOR plane: an agent standing in a pit still fires and throws from floor height. The anchor must follow the figure's real height (`WEAPON_MASTER_PLAN` §7b item 6).
+5. **The rope and hook and the perches** (`DESIGN` §10.0, Director 2026-10-23): throwing the hook, crossing between two authored anchors
+   (over a wall, a channel, acid), and later climbing to a perch, swinging perch to perch, and dropping onto a guard; the rope is a mesh.
 

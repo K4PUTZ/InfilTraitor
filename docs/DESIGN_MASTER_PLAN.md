@@ -135,6 +135,22 @@ THE FORM — before the opening (Director, 2026-10-24)
   Agent and the right spouse (§2.7). In the story the form is the
   deposition's intake sheet, filled at the station: the opening that
   follows is the night before (Claude's framing).
+  REVISED (Director, 2026-10-25): the form is typed on the station's
+  COMPUTER, not paper, so the PHOTO on it changes as the player clicks:
+  one face per ethnicity, all with the same traits (a middle-aged man
+  with a goatee), plus the equivalent women. Under it the CLERK's
+  questions are heard (name, sex, the other fields; a babble with the
+  words on screen, §2.3). The Agent's AGE IS FIXED: she only confirms
+  it ("It says here you are 45, is that right?"). The faces are
+  ACTOR D81's; the reference photos the Director showed are TRAIT
+  references (age, goatee, build), never a likeness (the right-of-
+  publicity lesson of D81). This supersedes the "race sets the skin
+  tone only" guard below for the photo: a choice is a whole face.
+  THE INTRODUCTION (Director, 2026-10-25): while the clue objects are on
+  screen (the grazed helmet, his hand taking the remote...), the Agent's
+  own voice NARRATES the night to the interrogator, who asks to confirm
+  ("You were alone?" "Yes."): it makes the account feel true and paints
+  him as a VICTIM of the disaster, never its perpetrator.
 
 OPENING — Home (Director)
   The Agent comes home on his MOTORCYCLE (the spouse has the car; the

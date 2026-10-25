@@ -24,6 +24,7 @@ const HALO_SHADER_PATH := "res://godot/shaders/actor_mask_halo3d.gdshader"
 const MASK_PIECES: Array[String] = ["Mask_Face", "Mask_Jaw", "Mask_Eyes", "Mask_Halo"]
 const HAT_UPRIGHT: Array[String] = ["Outfit_HatCrown", "Outfit_HatBrim", "Outfit_HatBand"]
 const FACE_HAIR: Array[String] = ["Face_Hair", "Face_Beard"]
+const COAT_PIECES := "Outfit_Coat*"   ## v5.2: the coat is a kit of modules (Outfit_Coat_Body / _Sleeves / _Collar / _Skirt); a find_children() pattern hides them all
 const EYES_ON_SECONDS: float = 0.7
 const CLOAK_SHADER_PATH := "res://godot/shaders/actor_cloak3d.gdshader"   ## D72 prototype: `hero_*_cloak` draws the figures as the faint ghost, crouched
 const AGENT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live.glb"
@@ -95,7 +96,7 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		model = model.trim_suffix("_shaved")
 	var face_camera: bool = false      ## the mask view: stand still and look at the camera (the iso camera looks along the grid diagonal)
 	if model.ends_with("_black"):
-		hidden.append("Outfit_Coat")
+		hidden.append(COAT_PIECES)
 		hidden.append_array(MASK_PIECES)
 		model = model.trim_suffix("_black")
 	elif model.ends_with("_normal"):
@@ -103,7 +104,7 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		hidden.append_array(MASK_PIECES)
 		model = model.trim_suffix("_normal")
 	elif model.ends_with("_mask"):      ## the black style with the hat's crown come down over the face as the mask, the eyes lit
-		hidden.append("Outfit_Coat")
+		hidden.append(COAT_PIECES)
 		hidden.append_array(HAT_UPRIGHT)
 		hidden.append_array(FACE_HAIR)
 		model = model.trim_suffix("_mask")

@@ -6,7 +6,7 @@
 # and orange bandana, the Corporation's coiled earpiece. The coat itself stays the FID investigators' mustard (DESIGN §2.1). Officers: the same coat
 # silhouette tinted to the faction (faction_palette.json "officer_coat"), bands at the yoke / cuffs / hem, a roundel on the back, no fedora.
 # Inputs: faction_palette.json; textures from faction_dress_art.py (run "textures" first, into the same folder).
-# Env: HERO_REPO (repo root, trailing /), FD_OUT (render + texture folder), FD_ONLY (e.g. "FID,CWS"), FD_PARTS ("agent,officer"), FD_SAMPLES (32).
+# Env: HERO_REPO (repo root, trailing /), FD_GLB (the hero master; default hero_tailor5.glb), FD_OUT (render + texture folder), FD_ONLY (e.g. "FID,CWS"), FD_PARTS ("agent,officer"), FD_SAMPLES (32).
 # Usage: blender -b -P hero_faction_dress.py      then: python3 faction_dress_art.py sheets <FD_OUT>
 # ⚠️ Traps: +x is the WEARER's left and the front faces -y (hero_tailor's convention). The coat's lining is an inward duplicate (hero_tailor's lining()),
 # not stored as a separate surface, so it is found here by normal direction; a face classified wrongly shows up as a stray coloured patch.
@@ -23,7 +23,7 @@ OUT = OUT if OUT.endswith("/") else OUT + "/"
 PAL = json.load(open(HERE + "faction_palette.json"))
 ONLY = [s for s in os.environ.get("FD_ONLY", "").split(",") if s] or PAL["order"]
 PARTS = os.environ.get("FD_PARTS", "agent,officer").split(",")
-GLB = REPO + "ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/hero_tailor5.glb"
+GLB = os.environ.get("FD_GLB", REPO + "ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/hero_tailor5.glb")
 
 
 def to_lin(h):
@@ -37,6 +37,13 @@ bpy.ops.import_scene.gltf(filepath=GLB)
 sc = bpy.context.scene
 arm = [o for o in sc.objects if o.type == 'ARMATURE'][0]
 ad = arm.animation_data
+COAT_MODS = [o for o in sc.objects if o.type == 'MESH' and o.name.startswith("Outfit_Coat_")]
+if COAT_MODS:      # hero v5.2: the coat is a kit of modules (body, sleeves, collar, skirt); these renders dress it as one cloth
+    for o in sc.objects:
+        o.select_set(o in COAT_MODS)
+    bpy.context.view_layer.objects.active = COAT_MODS[0]
+    bpy.ops.object.join()
+    bpy.context.view_layer.objects.active.name = "Outfit_Coat"
 for t in ad.nla_tracks:
     t.mute = True
 for nm in ("Icosphere", "Outfit_Gloves", "Mask_Face", "Mask_Jaw", "Mask_Eyes", "Mask_Halo"):

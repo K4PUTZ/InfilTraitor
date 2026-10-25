@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**339 scripts · 100286 lines total** (under `godot/scripts/`)
+**339 scripts · 100287 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -320,7 +320,7 @@ extends `Node2D` · 325 lines
 
 ### `actor_viability_bench.gd`
 
-extends `RefCounted` · 254 lines
+extends `RefCounted` · 255 lines
 
 `godot/scripts/debug/actor_viability_bench.gd`
 
@@ -335,6 +335,7 @@ extends `RefCounted` · 254 lines
 - `MASK_PIECES` = `["Mask_Face", "Mask_Jaw", "Mask_Eyes", "Mask_Halo"]`
 - `HAT_UPRIGHT` = `["Outfit_HatCrown", "Outfit_HatBrim", "Outfit_HatBand"]`
 - `FACE_HAIR` = `["Face_Hair", "Face_Beard"]`
+- `COAT_PIECES` = `"Outfit_Coat*"`
 - `EYES_ON_SECONDS` = `0.7`
 - `CLOAK_SHADER_PATH` = `"res://godot/shaders/actor_cloak3d.gdshader"`
 - `AGENT_RIG` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live.glb"`

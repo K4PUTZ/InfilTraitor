@@ -1,6 +1,7 @@
-# hero_tailor.py — our OWN costume, face and mask for the agile-B body, skinned to the same 65-bone skeleton (no CC0 suit was found; see ACTOR D74-D77).
-# v5 (2026-10-21). ONE file holds every state; the engine shows a subset:
-#   normal = everything except Outfit_Gloves and the MASK kit;   black = hides Outfit_Coat and the MASK kit (shirt/tie/trim go dark);
+# hero_tailor.py — our OWN costume, face and mask for the agile-B body, skinned to the same 65-bone skeleton (no CC0 suit was found; see ACTOR D74-D79).
+# v5 (2026-10-21); v5.2 (2026-10-24, D79): the overcoat is a KIT of modules (Outfit_Coat_Body / _Sleeves / _Collar / _Skirt) fitted on a tailor's dummy
+# instead of the muscles, its skirt hung from the hips; AGE / MARKS weather the face. ONE file holds every state; the engine shows a subset:
+#   normal = everything except Outfit_Gloves and the MASK kit;   black = hides the coat (Outfit_Coat_*, its modules) and the MASK kit (shirt/tie/trim go dark);
 #   mask   = black + the MASK kit (Mask_Face, Mask_Jaw, Mask_Eyes, Mask_Halo) with the hat AND Face_Hair / Face_Beard hidden: the hat's crown IS
 #            the mask (D77), so the masked agent wears no hat. Face_Beard is optional in the unmasked states (the bench's `_shaved` hides it).
 # Pieces: shirt, contrast trim (turned-down collar, cuffs, pocket square), a thick tie (knot, diagonal stripes, tie bar), jacket (V opening, lapels), trousers
@@ -10,7 +11,9 @@
 # the skin / eyes / eyebrows / beard (smile, frown, brow_up, brow_down, blink, eyes_wide, jaw_open; the decimated LOD has none by design).
 # Env: HERO_REPO (repo root, trailing /), HERO_UAL_GLB (UAL1_Standard.glb), HERO_HAIR_DIR (the pack's "Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/",
 # trailing /; empty = no hair), BODY_FILE (default superhero_male_agile_b_lean.glb), OUT_SUFFIX, COAT (mustard | beige | lightblue; default mustard), BEARD
-# (1 | 0), DECIMATE (LOD ratio; 0.2 for the game LOD, weighted per piece by LOD_WEIGHT), HERO_TMP (preview folder), PREVIEW (full | quick | none).
+# (1 | 0), DECIMATE (LOD ratio; 0.2 for the game LOD, weighted per piece by LOD_WEIGHT), HERO_TMP (preview folder), PREVIEW (full | quick | none),
+# HERO_OUT_DIR (GLB folder, trailing /; default the body's folder), HERO_HAIR_GLB (a previous master whose fitted hair is reused when the CC0 hair pack is
+# not at hand), AGE (0..1) and MARKS (brow_scar, cheek_scar, broken_nose): the signs of age and of life, below.
 # Usage: blender -b -P hero_tailor.py
 # ⚠️ Traps, all paid for: (0) THE GLTF IMPORT SPLITS VERTICES ALONG UV SEAMS: offset along per-vertex normals the seams drift apart and every piece CRACKS
 # (the "openings at the shoulders"); weld with remove_doubles when copying the body. (1) A copy of the body carries its Armature modifier (a second one poses
@@ -23,21 +26,35 @@
 # brim have a thickness. (10) Blender 5.2's shape_key_add() makes a key at value 1.0: v4 EXPORTED every expression switched on at once (the "pouty, open"
 # mouth); set each to 0. (11) drape() takes the cut rings' heights BEFORE its first offset (taken after, the neck ring tilted and the collar skipped the
 # edges no longer level: two slits). (12) A cloth that starts INSIDE the pack is pushed back toward the body by the pack's inner face: over_pack() first.
+# (13) Decimate with a vertex group KEEPS the group's vertices only with invert_vertex_group=True (measured: invert off kept 1 of 41 seam vertices and
+# barely decimated; on kept 41 of 41 at the ratio): that is how the LOD keeps the coat's module seams shared. (14) The CC0 packs (UAL1_Standard.glb, the
+# hair) are downloads kept outside the repo: on 2026-10-25 the temporary folder holding them was wiped mid-session. Keep them somewhere permanent;
+# meanwhile HERO_UAL_GLB and HERO_HAIR_GLB accept a previous master, which carries the tracks (sampled per frame) and the fitted hair.
 import bpy, bmesh, math, os
 import numpy as np
 from mathutils import Vector, Matrix, noise
 from mathutils.bvhtree import BVHTree
 SP=os.environ.get("HERO_TMP","/tmp/")
-UAL=os.environ.get("HERO_UAL_GLB","")
+UAL=os.environ.get("HERO_UAL_GLB","")     # the CC0 animation library; a previous hero master also works (it carries the same 43 tracks, sampled per frame)
 HAIRD=os.environ.get("HERO_HAIR_DIR","")
+HAIRG=os.environ.get("HERO_HAIR_GLB","")  # without the CC0 hair pack: the fitted, tinted Face_Hair of a previous hero master (already pressed under the fedora)
 D=os.environ.get("HERO_REPO","")+"ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/"
 BODY=D+os.environ.get("BODY_FILE","superhero_male_agile_b_lean.glb"); SUF=os.environ.get("OUT_SUFFIX","_tailor5")
 DEC=float(os.environ.get("DECIMATE","1.0")); PREVIEW=os.environ.get("PREVIEW","full")
+OUTD=os.environ.get("HERO_OUT_DIR",D)       # where the GLB goes (default: next to the body, the game's folder); a scratch folder keeps trial builds out of Godot's import
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=BODY)
 arm=[o for o in bpy.context.scene.objects if o.type=='ARMATURE'][0]
 body=max([o for o in bpy.context.scene.objects if o.type=='MESH'],key=lambda o:len(o.data.polygons))
-before=set(bpy.data.objects); bpy.ops.import_scene.gltf(filepath=UAL)
+DATA=lambda: (bpy.data.meshes,bpy.data.materials,bpy.data.images)
+def snapshot(): return [set(c_) for c_ in DATA()]
+def purge_orphans(before):
+    """what an import left behind once its objects are gone (only what it brought: `before` is a snapshot()): a hero master used as the animation
+    source brings materials named like ours (Coat_Fabric...), and ours would then be created as Coat_Fabric.001, a name the bench's cloth shader no
+    longer finds"""
+    for coll,old in zip(DATA(),before):
+        for d_ in [d_ for d_ in coll if d_.users==0 and d_ not in old]: coll.remove(d_)
+before=set(bpy.data.objects); _snap=snapshot(); bpy.ops.import_scene.gltf(filepath=UAL)
 extra=[o for o in bpy.data.objects if o not in before]
 ad=arm.animation_data_create()
 for act in list(bpy.data.actions):
@@ -45,6 +62,7 @@ for act in list(bpy.data.actions):
     tr=ad.nla_tracks.new(); tr.name=act.name; st=tr.strips.new(act.name,0,act); st.action_slot=act.slots[0]
 ad.action=None
 for o in extra: bpy.data.objects.remove(o,do_unlink=True)
+purge_orphans(_snap)
 ico=bpy.data.objects.get("Icosphere")
 if ico: bpy.data.objects.remove(ico,do_unlink=True)
 arm.data.pose_position='REST'   # 43 overlapping NLA tracks pose the rig at frame 1: fit and weight everything against the REST body
@@ -89,6 +107,124 @@ def tmat(name,image,rough=0.9):
 def mat(name,rgb,rough=0.85):
     m=bpy.data.materials.new(name); m.use_nodes=True; b=m.node_tree.nodes["Principled BSDF"]
     b.inputs["Base Color"].default_value=(*rgb,1); b.inputs["Roughness"].default_value=rough; m.diffuse_color=(*rgb,1); return m
+# ---------- AGE (v5.2; Director 2026-10-24: "the agent needs to be a bit older [...] a man already punished by life", then: "but not completely
+# finished: a man who still has energy and agility. Aim at a Geralt. Not all-white hair, semi-grey"). So AGE (0..1) WEATHERS him and barely DECLINES
+# him: at full strength the rugged signs (forehead and frown lines, crow's feet, the nasolabial fold, a lean hollow under the cheekbones, sun-worn skin)
+# are whole, the signs of decline (bags, a heavier jowl, the outer brows coming down, hollow temples, age spots) come in at DECLINE of that, and the hair
+# turns salt-and-pepper all over, whiter at the temples (after the hair, below). MARKS adds life's scars (brow_scar, cheek_scar,
+# broken_nose). Both are 0 / empty by default until the Director picks a level. The texture is painted in 3-D: every texel of the head's UV island
+# learns the rest position it is drawn at (rasterised from the mesh), and each sign is a field of that position, so nothing depends on the UV layout ----------
+AGE=float(os.environ.get("AGE","0")); MARKS=[m for m in os.environ.get("MARKS","").split(",") if m]
+DECLINE=0.3                 # the share of AGE that the signs of decline get (the Geralt brief: weathered, still fit)
+def gauss3(p,c,sx,sy,sz): return math.exp(-0.5*(((p.x-c[0])/sx)**2+((p.y-c[1])/sy)**2+((p.z-c[2])/sz)**2))
+def seg_dist2(px,pz,a,b):
+    """distance in the x-z plane (the face seen from the front) from (px, pz) to the segment a-b, and the position along it (0..1)"""
+    ax,az=a; bx,bz=b; dx,dz=bx-ax,bz-az; L2=dx*dx+dz*dz
+    t=np.clip(((px-ax)*dx+(pz-az)*dz)/L2,0.0,1.0); return np.hypot(px-(ax+t*dx),pz-(az+t*dz)),t
+NASOLABIAL=((0.023,1.650),(0.040,1.610)); MARIONETTE=((0.029,1.618),(0.034,1.597))
+def age_delta(p,a,eyebrows=False):
+    """the large forms of age, in metres (the head is ~16 cm wide); only the front of the head above the neck"""
+    d=Vector((0,0,0))
+    if p.z<1.55 or p.y>0.0 or a<=0.0: return d
+    s=1.0 if p.x>=0 else -1.0; ax=abs(p.x)
+    if not eyebrows:
+        d.y-=0.0018*a*DECLINE*gauss3(p,(s*0.034,-0.079,1.680),0.013,0.010,0.0045)      # the bags under the eyes
+        d.y+=0.0010*a*DECLINE*gauss3(p,(s*0.034,-0.077,1.671),0.014,0.010,0.0035)      # and the hollow under them
+        dd,t=seg_dist2(ax,p.z,*NASOLABIAL); fade=math.sin(math.pi*float(t))**0.5
+        d.y-=0.0016*a*fade*math.exp(-((float(dd)-0.005)/0.004)**2)*(1.0 if ax>0.023+0.425*(1.650-p.z) else 0.0)   # the cheek rolls over the fold
+        d.y+=0.0008*a*fade*math.exp(-(float(dd)/0.002)**2)                              # the fold itself
+        d.y+=0.0018*a*gauss3(p,(s*0.050,-0.060,1.636),0.012,0.02,0.012)                # lean under the cheekbones (rugged, not gaunt)
+        d.z-=0.0015*a*DECLINE*gauss3(p,(s*0.040,-0.070,1.592),0.012,0.02,0.010)        # a heavier jowl
+        d.x+=s*0.0008*a*DECLINE*gauss3(p,(s*0.040,-0.070,1.592),0.012,0.02,0.010)
+        d.x-=s*0.0012*a*DECLINE*gauss3(p,(s*0.064,-0.040,1.725),0.010,0.02,0.014)      # hollow temples
+    d.z-=0.0020*a*DECLINE*gauss3(p,(s*0.050,-0.070,1.718),0.012,0.03,0.010)            # the outer brows come down: a tired look
+    if "broken_nose" in MARKS:
+        d.y-=0.0018*gauss3(p,(0.0,-0.100,1.677),0.006,0.02,0.006)                       # a bump on the bridge
+        if p.z<1.672 and ax<0.022 and p.y<-0.085: d.x+=0.0015*min(1.0,(1.672-p.z)/0.017)   # and the tip a little off true
+    if "cheek_scar" in MARKS and p.x<0:
+        dd,t=seg_dist2(p.x,p.z,(-0.045,1.660),(-0.060,1.632)); d.y+=0.0006*math.exp(-(float(dd)/0.0015)**2)
+    return d
+if AGE>0.0 or MARKS:
+    for o_,eb in ((body,False),(bpy.data.objects.get("Eyebrows"),True)):
+        if o_ is not None:
+            for v in o_.data.vertices: v.co+=age_delta(v.co,AGE,eb)
+    if "brow_scar" in MARKS and bpy.data.objects.get("Eyebrows"):        # a gap through the left brow (the wearer's left is +x)
+        _eb=bmesh.new(); _eb.from_mesh(bpy.data.objects["Eyebrows"].data)
+        bmesh.ops.delete(_eb,geom=[f for f in _eb.faces if abs(f.calc_center_median().x-0.033)<0.0028],context='FACES')
+        _eb.to_mesh(bpy.data.objects["Eyebrows"].data); _eb.free()
+def texel_positions(o,W,H,keep):
+    """for each texel of the image o's render UV map draws, the rest position on the mesh (NaN where nothing is drawn), from the faces keep() accepts;
+    grown 3 texels past each island so the seams sample a position too"""
+    me=o.data; uv=me.uv_layers[[l.name for l in me.uv_layers if l.active_render][0]].data; co=[v.co for v in me.vertices]
+    P=np.full((H,W,3),np.nan)
+    for poly in me.polygons:
+        if not keep(poly.center): continue
+        L=list(poly.loop_indices)
+        for k in range(1,len(L)-1):
+            tri=(L[0],L[k],L[k+1]); U=np.array([[uv[l].uv[0]*W,uv[l].uv[1]*H] for l in tri]); X=np.array([co[me.loops[l].vertex_index][:] for l in tri])
+            x0,y0=np.floor(U.min(0)).astype(int); x1,y1=np.ceil(U.max(0)).astype(int)
+            gx,gy=np.meshgrid(np.arange(max(x0,0),min(x1,W-1)+1)+0.5,np.arange(max(y0,0),min(y1,H-1)+1)+0.5)
+            den=(U[1,1]-U[2,1])*(U[0,0]-U[2,0])+(U[2,0]-U[1,0])*(U[0,1]-U[2,1])
+            if abs(den)<1e-12: continue
+            w0=((U[1,1]-U[2,1])*(gx-U[2,0])+(U[2,0]-U[1,0])*(gy-U[2,1]))/den; w1=((U[2,1]-U[0,1])*(gx-U[2,0])+(U[0,0]-U[2,0])*(gy-U[2,1]))/den; w2=1-w0-w1
+            m=(w0>=-1e-4)&(w1>=-1e-4)&(w2>=-1e-4)
+            if not m.any(): continue
+            iy=(gy[m]-0.5).astype(int); ix=(gx[m]-0.5).astype(int)
+            P[iy,ix]=w0[m][:,None]*X[0]+w1[m][:,None]*X[1]+w2[m][:,None]*X[2]
+    for _ in range(3):
+        bad=np.isnan(P[...,0]); src=None
+        for sh in ((0,1),(0,-1),(1,0),(-1,0)):
+            R=np.roll(P,sh,axis=(0,1)); fill=bad&~np.isnan(R[...,0]); P[fill]=R[fill]
+    return P
+def line_mask(P,pts,w,axes=(0,2)):
+    """a soft line along the polyline pts (in the plane of two axes), w its half-width, faded toward the polyline's two ENDS (a fade per segment
+    dashed every joint: the bag's crease came out as stitches)"""
+    a0,a1=axes; px,pz=P[...,a0],P[...,a1]; best=np.full(px.shape,np.inf); along=np.zeros(px.shape)
+    lens=[math.hypot(b[0]-a[0],b[1]-a[1]) for a,b in zip(pts[:-1],pts[1:])]; tot=sum(lens); acc=0.0
+    for (a,b),L in zip(zip(pts[:-1],pts[1:]),lens):
+        dd,t=seg_dist2(px,pz,a,b); upd=dd<best; best=np.where(upd,dd,best); along=np.where(upd,(acc+t*L)/tot,along); acc+=L
+    return np.exp(-(best/w)**2)*np.clip(np.sin(np.pi*along)*1.6,0.0,1.0)
+def age_skin(o):
+    """paint the signs of age and the scars onto a COPY of the skin texture (the original stays the CC0 file's)"""
+    nt=o.data.materials[0].node_tree; tex=[n for n in nt.nodes if n.type=='TEX_IMAGE'][0]; src=tex.image; W,H=src.size
+    px=np.empty(W*H*4,dtype=np.float32); src.pixels.foreach_get(px); img=px.reshape(H,W,4)[...,:3].astype(np.float64)
+    P=texel_positions(o,W,H,lambda c: c.z>1.50); ok=~np.isnan(P[...,0]); Q=np.where(ok[...,None],P,0.0)
+    X,Y,Z=Q[...,0],Q[...,1],Q[...,2]; AX=np.abs(X); front=(Y<-0.03)&ok; face=(Y<-0.02)&ok      # (x, z) alone would print on the back of the head too
+    dark=np.zeros((H,W)); a=AGE; rng=np.random.default_rng(23)
+    if a>0.0:
+        for k,z0 in enumerate((1.746,1.758,1.770)):                                       # forehead lines, wavy, longer in the middle one
+            zz=Z-0.0015*np.sin(X*95.0+k*1.7); half=0.040+0.008*(k==1)
+            dark+=0.24*a*np.exp(-((zz-z0)/0.0013)**2)*np.clip((half-AX)/0.012,0,1)*front
+            dark-=0.07*a*np.exp(-((zz-z0+0.0028)/0.0016)**2)*np.clip((half-AX)/0.012,0,1)*front   # the ridge under each crease catches the light
+        for s in (1,-1):
+            dark+=0.20*a*line_mask(P,[(s*0.0055,1.712),(s*0.0062,1.733)],0.0011)*front   # the frown's "11"
+            for ang in (-28,-6,16):                                                         # crow's feet, fanning back from the outer corner
+                r=math.radians(ang); o_=(s*0.051,1.700); e_=(s*(0.051+0.015*math.cos(r)),1.700+0.015*math.sin(r))
+                dark+=0.24*a*line_mask(P,[o_,e_],0.0011)*face
+            arc=[(s*(0.020+0.032*t),1.674+0.006*((t-0.5)/0.5)**2) for t in np.linspace(0,1,9)]
+            dark+=0.20*a*(0.4+0.6*DECLINE)*line_mask(P,arc,0.0014)*front                    # the crease under the eye
+            dark+=0.12*a*DECLINE*np.exp(-(((AX-0.034)/0.014)**2+((Z-1.681)/0.004)**2))*front   # a darker crescent under the eye
+            dark+=0.26*a*line_mask(P,[(s*NASOLABIAL[0][0],NASOLABIAL[0][1]),(s*0.031,1.630),(s*NASOLABIAL[1][0],NASOLABIAL[1][1])],0.0016)*front
+            dark+=0.16*a*DECLINE*line_mask(P,[(s*MARIONETTE[0][0],MARIONETTE[0][1]),(s*MARIONETTE[1][0],MARIONETTE[1][1])],0.0013)*front
+        tint=np.array((0.80,1.00,1.15))                                                     # lines go warm (less blue, less green than red)
+        img*=np.clip(1.0-dark[...,None]*tint,0.0,1.2)
+        nz=np.zeros((H,W))                                                                  # weathering: low blotches, red nose / cheeks, less saturation, spots
+        for f_,amp in ((60.0,0.5),(140.0,0.3),(320.0,0.2)):
+            ph=rng.uniform(0,6.3,3); nz+=amp*np.sin(X*f_+ph[0])*np.sin(Z*f_*1.1+ph[1])*np.sin(Y*f_*0.9+ph[2])
+        img*=(1.0+0.07*a*nz)[...,None]*ok[...,None]+(~ok)[...,None]
+        red=np.exp(-((X/0.012)**2+((Z-1.660)/0.012)**2))+0.6*np.exp(-(((AX-0.045)/0.015)**2+((Z-1.650)/0.012)**2))
+        img*=1.0+(0.10*a*red*front)[...,None]*np.array((0.6,-0.25,-0.35))
+        lum=img.mean(axis=2,keepdims=True); img=np.where(ok[...,None],lum+(img-lum)*(1.0-0.12*a*DECLINE),img)
+        for _ in range(9):
+            c_=(rng.choice((-1,1))*rng.uniform(0.03,0.065),rng.uniform(1.70,1.78)); r_=rng.uniform(0.0012,0.0022)
+            img*=1.0-(0.14*a*DECLINE*np.exp(-(((X-c_[0])**2+(Z-c_[1])**2)/r_**2))*face)[...,None]*np.array((0.7,0.9,1.0))
+    pale=np.zeros((H,W))
+    if "brow_scar" in MARKS: pale+=line_mask(P,[(0.031,1.737),(0.034,1.716),(0.037,1.703)],0.0008)*front
+    if "cheek_scar" in MARKS: pale+=line_mask(P,[(-0.045,1.660),(-0.053,1.646),(-0.060,1.632)],0.0010)*front
+    img=img*(1-0.45*pale[...,None])+0.45*pale[...,None]*np.array((0.92,0.66,0.62))           # scars heal pale and a little pink
+    out=image("T_Hero_Skin",np.clip(img,0,1)); tex.image=out
+    print("T5 age",AGE,"marks",MARKS,"head texels",int(ok.sum()),"darkened",int((dark>0.02).sum()))
+if AGE>0.0 or MARKS: age_skin(body)
 SUITIMG=fabric("Fabric_Pinstripe",(0.034,0.034,0.040),stripe=(0.15,0.15,0.17),weave=0.20,grain=0.03)
 SUIT=tmat("Suit_Black",SUITIMG)                         # a black wool suit with a faint pinstripe and a twill weave: not latex
 BLACK=mat("Hat_Black",(0.03,0.03,0.036))               # hat felt (and the mask's crown shell: it is the same felt, D77)
@@ -217,12 +353,15 @@ def vopen(bm,zb,ztop,halfw):
     bm.faces.ensure_lookup_table()
     bad=[f for f in bm.faces if f.calc_center_median().y<0.0 and f.calc_center_median().z>zb and abs(f.calc_center_median().x)<halfw*(f.calc_center_median().z-zb)/(ztop-zb)]
     bmesh.ops.delete(bm,geom=bad,context='FACES'); sweep(bm)
-def lapels(bm,zb,width,lift):
+def lapels(bm,zb,width,lift,taper=0.0):
+    """taper (m): the lapel grows from nothing at the break point zb to its full width that far above it (0 = a constant width)"""
     es=[e for e in bm.edges if e.is_boundary and all(v.co.y<0.0 and abs(v.co.x)<0.14 and v.co.z>zb-0.02 and v.co.z<zn+0.05 for v in e.verts)
         and abs(e.verts[0].co.z-e.verts[1].co.z)>0.35*(e.verts[0].co-e.verts[1].co).length]
     if not es: return
     ret=bmesh.ops.extrude_edge_only(bm,edges=es); nv=[g for g in ret['geom'] if isinstance(g,bmesh.types.BMVert)]
-    for v in nv: v.co.x+=(1 if v.co.x>0 else -1)*width; v.co.y-=lift
+    for v in nv:
+        k=sstep(zb,zb+taper,v.co.z) if taper>0.0 else 1.0
+        v.co.x+=(1 if v.co.x>0 else -1)*width*k; v.co.y-=lift*k
 def folds(bm,joints,amp,span=0.085,freq=85.0):
     for hname,tname in joints:
         a=bw(hname); b=bt(hname); ax=(b-a).normalized()
@@ -363,9 +502,95 @@ plane(bm,(wx-0.015,0,0),(1,0,0)); plane(bm,(-(wx-0.015),0,0),(-1,0,0))       # s
 bm.faces.ensure_lookup_table(); bmesh.ops.delete(bm,geom=[f for f in bm.faces if abs(f.calc_center_median().x)<wx-0.0149],context='FACES'); sweep(bm)
 displace(bm,0.0045); cuffs(bm,wx-0.015,-0.035,1.12)
 pieces.append(finish(o,bm,GLOVE))
-# ---- the overcoat: DRAPED (never inflated) over the suit and the pack, hanging half open like Dick Tracy's, lined so its inside is never see-through ----
-o,bm=blank("Outfit_Coat"); keep_groups(bm,region(*TORSO))
-plane(bm,(0,0,1.03),(0,0,1),inner=True); plane(bm,(0,0,zn+0.015),(0,0,1),outer=True)
+# ---- THE TAILOR'S DUMMY (v5.2) the coat is fitted on. Director 2026-10-24 on the v5.1 coat: "it has a whole muscular shape and no malleability to
+# adapt to the agent's body". It was the body pushed out, so every muscle stayed in it. The dummy is the body as a tailor sees it: per slice, the convex
+# hull of the torso (the pack included) and of each arm; the torso hangs from its widest slice down (a curtain off the chest, the blades and the pack),
+# each sleeve from the shoulder down to the cuff; fused into ONE surface (voxel remesh) and smoothed. The coat drapes on that, so no muscle reaches it ----
+def hull2(P):
+    P=sorted(set(P))
+    if len(P)<3: return P
+    cr=lambda o,a,b: (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0])
+    lo=[];hi=[]
+    for p in P:
+        while len(lo)>=2 and cr(lo[-2],lo[-1],p)<=0: lo.pop()
+        lo.append(p)
+    for p in reversed(P):
+        while len(hi)>=2 and cr(hi[-2],hi[-1],p)<=0: hi.pop()
+        hi.append(p)
+    return lo[:-1]+hi[:-1]
+def ray_out(H,c,a):
+    """distance from c (inside the hull H) to its edge along angle a"""
+    dx,dy=math.cos(a),math.sin(a); best=0.0
+    for i in range(len(H)):
+        p,q=H[i],H[(i+1)%len(H)]; ex,ey=q[0]-p[0],q[1]-p[1]; den=dx*ey-dy*ex
+        if abs(den)<1e-12: continue
+        t=((p[0]-c[0])*ey-(p[1]-c[1])*ex)/den; s=((p[0]-c[0])*dy-(p[1]-c[1])*dx)/den
+        if t>0 and -1e-6<=s<=1+1e-6: best=max(best,t)
+    return best
+def curtain(R,step,taper):
+    """rows in hanging order: each may come in by at most taper*step from the row above it, so the cloth falls from the widest row, never follows a waist"""
+    for k in range(1,len(R)): R[k]=np.maximum(R[k],R[k-1]-taper*step)
+    return R
+def soften(R,passes=2):
+    for _ in range(passes):
+        R=(np.roll(R,1,1)+2*R+np.roll(R,-1,1))/4.0                                       # around
+        R[1:-1]=(R[:-2]+2*R[1:-1]+R[2:])/4.0                                               # along
+    return R
+def loft(bm,rings):
+    V=[[bm.verts.new(p) for p in r] for r in rings]; n=len(rings[0])
+    for a in range(len(V)-1):
+        for i in range(n): bm.faces.new([V[a][i],V[a][(i+1)%n],V[a+1][(i+1)%n],V[a+1][i]])
+    bm.faces.new(V[0]); bm.faces.new(V[-1][::-1])
+def tailor_dummy(voxel=0.007):
+    src=bmesh.new(); src.from_mesh(full.data); dg=dgroup(src)
+    TOR=[v.co.copy() for v in src.verts if (dg(v) or "").startswith(("spine_","pelvis","neck_","clavicle_")) or ((dg(v) or "").startswith("thigh_") and v.co.z>0.95)]
+    for _n,(sx,sy,sz),(cx_,cy_,cz_) in PACK:      # the pack's outline, 13 mm proud of it (what over_pack() used to lift the cloth to)
+        for ix in (-1,1):
+            for iy in (-1,1):
+                for iz in (-1,1): TOR.append(Vector((cx_+ix*sx/2,cy_+iy*(sy/2+(0.013 if iy>0 else 0)),cz_+iz*sz/2)))
+    bm=bmesh.new(); NA=72; ANG=[2*math.pi*k/NA for k in range(NA)]
+    # the torso: rows from the top of the shoulders down, a fixed axis
+    yc0=(front+back)/2; dz=0.012; zs=np.arange(zn+0.035,0.955,-dz); R=np.zeros((len(zs),NA))
+    for j,z in enumerate(zs):
+        H=hull2([(p.x,p.y) for p in TOR if abs(p.z-z)<dz*0.75])
+        R[j]=[ray_out(H,(0.0,yc0),a) if len(H)>=3 else 0.0 for a in ANG]
+    R=soften(curtain(R,dz,0.10),2)
+    loft(bm,[[Vector((R[j,k]*math.cos(a),yc0+R[j,k]*math.sin(a),z)) for k,a in enumerate(ANG)] for j,z in enumerate(zs)])
+    # the sleeves: rows along each arm from inside the shoulder to past the wrist, round the bone line (T-pose: the arms are near level)
+    for s,sfx in ((1,"l"),(-1,"r")):
+        A=bw("upperarm_"+sfx); Wr=bw("hand_"+sfx); u=(Wr-A).normalized(); L=(Wr-A).length
+        e1=u.cross(Vector((0,0,1))).normalized(); e2=e1.cross(u).normalized()
+        ARM=[v.co.copy() for v in src.verts if (dg(v) or "").startswith(("upperarm_","lowerarm_","hand_")) and s*v.co.x>0]
+        ts=np.arange(-0.05,L+0.035,0.015); Rs=np.zeros((len(ts),NA))
+        for j,t in enumerate(ts):
+            H=hull2([((p-A).dot(e1),(p-A).dot(e2)) for p in ARM if abs((p-A).dot(u)-t)<0.011])
+            Rs[j]=[ray_out(H,(0.0,0.0),a) if len(H)>=3 else 0.0 for a in ANG]
+        Rs=soften(curtain(Rs,0.015,0.12),3)
+        rnd=np.clip(ts/L,0.0,1.0)[:,None]*0.35+0.25                 # a sleeve is a TUBE: rounder than the flat wrist under it (an oval one let the round
+        Rs=Rs+rnd*(Rs.max(axis=1,keepdims=True)-Rs)                 # shirt cuff through), most of all at the cuff
+        loft(bm,[[A+u*float(t)+(e1*math.cos(a)+e2*math.sin(a))*Rs[j,k] for k,a in enumerate(ANG)] for j,t in enumerate(ts)])
+    src.free()
+    me=bpy.data.meshes.new("TailorDummy"); bm.to_mesh(me); bm.free(); o=bpy.data.objects.new("TailorDummy",me); bpy.context.scene.collection.objects.link(o)
+    bpy.context.view_layer.objects.active=o
+    rm=o.modifiers.new("R",'REMESH'); rm.mode='VOXEL'; rm.voxel_size=voxel; bpy.ops.object.modifier_apply(modifier="R")
+    sm=o.modifiers.new("S",'SMOOTH'); sm.factor=0.6; sm.iterations=6; bpy.ops.object.modifier_apply(modifier="S")
+    b2=bmesh.new(); b2.from_mesh(o.data); tree=BVHTree.FromBMesh(b2); b2.free()
+    if os.environ.get("KEEP_DUMMY","0")=="0": bpy.data.objects.remove(o,do_unlink=True)
+    return tree
+DUMMYBVH=tailor_dummy()
+# ---- the overcoat: DRAPED on the tailor's dummy (above) over the suit and the pack, hanging half open like Dick Tracy's, lined so its inside is never see-through ----
+# THE COAT IS A KIT OF MODULES (Director 2026-10-24: "the coat is the most important garment [...] it defines the factions and it is also the LED coat
+# [...] it needs more than one piece instead of one model"). Every face carries its module in the int layer "mod"; the coat is built, weighted and (for the
+# LOD) decimated WHOLE, so its seams are shared vertices, and split into one mesh per module just before the export (split_coat()). The seams are
+# the waist (z = COAT_WAIST, the body above, the skirt below), the armholes (x = +-COAT_ARMHOLE) and the neckline / front edges (the collar and lapels).
+COAT_MODULES=("Body","Sleeves","Collar","Skirt"); COAT_WAIST=1.03; COAT_ARMHOLE=abs(bw("upperarm_l").x)+0.02
+def tagged(bm_,layer,mod,fn,*args,**kw):
+    """run a builder and give every face it adds the module `mod`"""
+    before=set(bm_.faces); fn(bm_,*args,**kw)
+    for f in bm_.faces:
+        if f not in before: f[layer]=mod
+o,bm=blank("Outfit_Coat"); keep_groups(bm,region(*TORSO)); MODL=bm.faces.layers.int.new("mod")
+plane(bm,(0,0,COAT_WAIST),(0,0,1),inner=True); plane(bm,(0,0,zn+0.015),(0,0,1),outer=True)
 plane(bm,(wx+0.02,0,0),(1,0,0),outer=True); plane(bm,(-(wx+0.02),0,0),(-1,0,0),outer=True)
 sh=shoulder_pad(0.008)
 def over_pack(bm_):
@@ -379,30 +604,57 @@ def over_pack(bm_):
                 yb=cy_+sy/2+0.013-0.02*(max(dx,dz)/m)**2                  # 13 mm behind the pack, easing back toward the body past its edges
                 if v.co.y<yb: v.co.y=yb
 def coat_gap(v,i):
-    if i>=NBODYF: return 0.012
-    arm_=sstep(0.20,0.30,abs(v.co.x))                              # the sleeves sit closer than the body of the coat
-    return 0.030-0.006*arm_+sh(v)
-drape(bm,coat_gap,40,bvh=BODYPACKBVH,outside=over_pack)      # the body face indices come first; past them, the pack's
-folds(bm,[("lowerarm_l",None),("lowerarm_r",None)],0.0040)
-def coat_w(z): return 0.045 if z>=zn+0.03 else 0.045+0.085*min(1.0,(zn+0.03-z)/(zn+0.03-1.03))
+    arm_=sstep(0.20,0.30,abs(v.co.x))                              # off the DUMMY, which already holds the ease: the suit under it, a sleeve a little closer
+    return 0.024-0.008*arm_+sh(v)
+drape(bm,coat_gap,40,bvh=DUMMYBVH,outside=over_pack)
+for s_ in (1,-1): plane(bm,(s_*COAT_ARMHOLE,0,0),(s_,0,0))          # the armhole seams: cut only, then everything past them is the sleeves
+for f in bm.faces:
+    if abs(f.calc_center_median().x)>COAT_ARMHOLE: f[MODL]=1
+folds(bm,[("lowerarm_l",None),("lowerarm_r",None)],0.0050)
+def coat_w(z): return 0.045 if z>=zn+0.03 else 0.045+0.085*min(1.0,(zn+0.03-z)/(zn+0.03-COAT_WAIST))
 bm.faces.ensure_lookup_table()
 bmesh.ops.delete(bm,geom=[f for f in bm.faces if f.calc_center_median().y<0.0 and abs(f.calc_center_median().x)<coat_w(f.calc_center_median().z)],context='FACES'); sweep(bm)
 smooth_boundary(bm,lambda c: c.y<0.0 and abs(c.x)<0.18 and c.z>zc-0.60,iters=5)
-lapels(bm,zc-0.25,0.074,0.012)
-hem(bm,lambda c: 0.98<c.z<1.07 and abs(c.x)<0.50,0.58,1.10,5)
-collar(bm,0.064,1.20,3); cuffs(bm,wx+0.02,0.02,1.04)
+COAT_BREAK=zc-0.03            # the lapels roll from the top button up (v5.1 ran them down to the waist: two loose boards hanging the coat's length)
+tagged(bm,MODL,2,lapels,COAT_BREAK,0.074,0.012,taper=0.10)
+def coat_skirt(bm_,length=0.58,flare=0.16,rows=8,n_folds=8,amp=0.015):
+    """the SKIRT module, hung from the waist seam: the body's boundary ring at COAT_WAIST (an open C: the coat is open in front), doubled in density, ordered
+    from one front edge round the back to the other; each row below it is that ring flared out from the torso's axis, in soft folds that deepen toward the
+    hem and are not evenly spaced. Built row by row (v5.1 extruded the ring five times and subdivided: a coarse board, a ladder of flipped faces)"""
+    ring=lambda: [e for e in bm_.edges if e.is_boundary and all(abs(v.co.z-COAT_WAIST)<0.004 for v in e.verts)]
+    bmesh.ops.subdivide_edges(bm_,edges=ring(),cuts=1)
+    adj={}
+    for e in ring():
+        a_,b_=e.verts; adj.setdefault(a_,[]).append(b_); adj.setdefault(b_,[]).append(a_)
+    ends=[v for v,n in adj.items() if len(n)==1]
+    chain=[min(ends,key=lambda v: v.co.x)]
+    while True:
+        nxt=[w for w in adj[chain[-1]] if w not in chain[-2:]]
+        if not nxt: break
+        chain.append(nxt[0])
+    yc0=(front+back)/2; prev=chain; cen=Vector((0.0,yc0,0.0))
+    for r in range(1,rows+1):
+        t=r/rows; z=COAT_WAIST-length*t; row=[]
+        for v in chain:
+            d=Vector((v.co.x,v.co.y-yc0,0.0)); R=d.length; th=math.atan2(d.y,d.x); d.normalize()
+            Rn=R*(1.0+flare*t**1.3)+amp*t**1.2*math.sin(n_folds*th+0.9*math.sin(3*th+1.3))
+            row.append(bm_.verts.new(Vector((d.x*Rn,yc0+d.y*Rn,z))))
+        for i in range(len(chain)-1):
+            mid=(prev[i].co+prev[i+1].co)/2; face_out(bm_,[prev[i],prev[i+1],row[i+1],row[i]],Vector((mid.x,mid.y-yc0,0.0)))
+        prev=row
+    print("T5 coat skirt ring",len(chain),"verts x",rows,"rows")
+tagged(bm,MODL,3,coat_skirt)
+tagged(bm,MODL,2,collar,0.064,1.20,3); tagged(bm,MODL,1,cuffs,wx+0.02,0.02,1.04)
 noisy(bm,0.0030); buttons(bm,[(coat_w(z)+0.030,z) for z in (zc-0.02,zc-0.12,zc-0.22)],0.013)
 COATBVH=BVHTree.FromBMesh(bm); BVH["coat"]=COATBVH
 lining(bm,0.0025)
+print("T5 coat faces per module",{nm:sum(1 for f in bm.faces if f[MODL]==k) for k,nm in enumerate(COAT_MODULES)})
 pushed=0
-for v in JAC[1].verts:      # wherever the jacket would show THROUGH the coat (shoulders, arms, back), sink it under; the open front and the collar stay
-    c=v.co
-    if (c.y<0.0 and abs(c.x)<0.17 and c.z>zc-0.5) or c.z>zn-0.04: continue
-    loc,nrm,idx,dist=COATBVH.find_nearest(c)
-    if loc is None: continue
-    out=(c-loc).dot(nrm)
-    if out>-0.012:
-        v.co-=v.normal*(max(out,0.0)+0.016); pushed+=1
+for v in JAC[1].verts:      # wherever the jacket would show THROUGH the coat, sink it under: look back in from 8 cm out along its normal; a coat face met
+    c=v.co; n=v.normal      # less than 15 mm out (or behind the vertex) covers it. Where the ray meets no coat (the open front) the jacket stays
+    hit,nrm,idx,dist=COATBVH.ray_cast(c+n*0.08,-n,0.16)
+    if hit is None or dist<0.08-0.015: continue
+    v.co=hit-n*0.018; pushed+=1
 print("T5 jacket verts pushed under the coat",pushed)
 pieces.append(finish(*JAC,SUIT,uv=0.22))
 pieces.append(finish(o,bm,WHITE,uv=0.22))
@@ -420,6 +672,31 @@ def lean_on(o,group,wfn):
         vg.add([v.index],w,'ADD'); n+=1
     return n
 print("T5 coat verts leaning on the pack",lean_on(pieces[-1],"spine_03",pack_weight))
+def hang_weights(o,follow=0.45):
+    """a coat's skirt HANGS from the hips: the nearest-body weights glued it to the thighs, so it parted like trousers whenever the legs moved. Below the
+    waist the weights ease (over 15 cm) to the pelvis plus a share of each thigh that grows toward the hem (`follow` at the hem): it swings with a stride"""
+    gi={g.name:g.index for g in o.vertex_groups}; n=0
+    for v in o.data.vertices:
+        a=sstep(0.0,0.15,COAT_WAIST-v.co.z)
+        if a<=0.0: continue
+        k=follow*min(1.0,(COAT_WAIST-v.co.z)/0.58); kl=k*sstep(-0.06,0.06,v.co.x)
+        target={"pelvis":1.0-k,"thigh_l":kl,"thigh_r":k-kl}
+        old_={o.vertex_groups[g.group].name:g.weight for g in v.groups}
+        for name in set(old_)|set(target):
+            w=(1.0-a)*old_.get(name,0.0)+a*target.get(name,0.0)
+            if name in gi: o.vertex_groups[name].add([v.index],w,'REPLACE')
+        n+=1
+    return n
+print("T5 coat skirt verts re-weighted to hang",hang_weights(pieces[-1]))
+def forearm_cuffs(o):
+    """the coat's sleeve end follows the FOREARM, as the shirt's cuffs do (weighted to the hand, it swung away from them and the white cuffs came through)"""
+    n=0
+    for v in o.data.vertices:
+        if abs(v.co.x)<=wx-0.04: continue
+        for g in v.groups: g.weight=0.0
+        o.vertex_groups["lowerarm_l" if v.co.x>0 else "lowerarm_r"].add([v.index],1.0,'REPLACE'); n+=1
+    return n
+print("T5 coat cuff verts on the forearm",forearm_cuffs(pieces[-1]))
 # ---- the shirt's contrast trim: a turned-down collar, two cuffs, a pocket square (ONE piece, one surface) ----
 def shirt_collar(bm):
     """a band standing on the shirt's neckline and a leaf folded over it, lower at the front, spreading into two points that frame the knot; both have a
@@ -606,9 +883,23 @@ def skin_to_head(o):
     vg=o.vertex_groups.new(name="Head"); vg.add(list(range(len(o.data.vertices))),1.0,'REPLACE')
     o.parent=arm; am=o.modifiers.new("Armature",'ARMATURE'); am.object=arm; return o
 HAT_Z0=HZ0
-if HAIRD:
-    hair=cc0_piece("Hair_SimpleParted","Face_Hair")
-    for v in hair.data.vertices:     # the fedora sits ON the hair: what would show through the crown is pressed inside it (the hair stays whole for a hatless look)
+def hair_from_master(path):
+    """the Face_Hair of a previous master, unskinned (skin_to_head() skins it again); its material becomes HAIRMAT, so the brows match it"""
+    global HAIRMAT
+    before=set(bpy.data.objects); snap=snapshot(); bpy.ops.import_scene.gltf(filepath=path); new=list(set(bpy.data.objects)-before)
+    h=[o_ for o_ in new if o_.type=='MESH' and o_.name.startswith("Face_Hair")][0]
+    mw=h.matrix_world.copy(); h.parent=None
+    for m_ in list(h.modifiers): h.modifiers.remove(m_)
+    h.data.transform(mw); h.matrix_world=Matrix.Identity(4)
+    for g_ in list(h.vertex_groups): h.vertex_groups.remove(g_)
+    for o_ in new:
+        if o_ is not h: bpy.data.objects.remove(o_,do_unlink=True)
+    purge_orphans(snap); h.name="Face_Hair"; HAIRMAT=h.data.materials[0]
+    if "Hair_DarkBrown" not in bpy.data.materials: HAIRMAT.name="Hair_DarkBrown"
+    return h
+if HAIRD or HAIRG:
+    hair=cc0_piece("Hair_SimpleParted","Face_Hair") if HAIRD else hair_from_master(HAIRG)
+    for v in (hair.data.vertices if HAIRD else ()):     # the fedora sits ON the hair: what would show through the crown is pressed inside it (the hair stays whole for a hatless look)
         p=v.co
         if p.z>1.75: p.z=1.75+(p.z-1.75)*0.75
         if p.z>HAT_Z0-0.035:         # inside the oval crown, 7 mm clear of its wall (the front pinches included)
@@ -616,6 +907,18 @@ if HAIRD:
             th=math.atan2(p.x-hx,-(p.y-hy)); w=crown_pt(th,t)-Vector((hx,hy,0)); R=Vector((w.x,w.y,0)).length-0.007
             d=Vector((p.x-hx,p.y-hy,0)); r=d.length
             if r>R: p.x,p.y=hx+(d.x/r)*(r+(R-r)*k),hy+(d.y/r)*(r+(R-r)*k)
+    if AGE>0.0:          # SALT-AND-PEPPER all over, whiter at the temples and over the ears (Director: "semi-grisalho", never all white); the hair's
+                         # OWN copy (the brows share HAIRMAT). The lighter strands of the texture go grey first: that is the salt, with no noise
+        nt_=HAIRMAT.node_tree; src_=[n for n in nt_.nodes if n.type=='TEX_IMAGE'][0].image; W_,H_=src_.size
+        px_=np.empty(W_*H_*4,dtype=np.float32); src_.pixels.foreach_get(px_); himg=px_.reshape(H_,W_,4)[...,:3].astype(np.float64)
+        HP=texel_positions(hair,W_,H_,lambda c: True); hok=~np.isnan(HP[...,0]); HQ=np.where(hok[...,None],HP,0.0)
+        g=np.clip((np.abs(HQ[...,0])-0.048)/0.022,0,1)*np.clip((1.775-HQ[...,2])/0.035,0,1)
+        lum=himg.mean(axis=2,keepdims=True)/0.15
+        strand=np.clip((lum[...,0]-0.7)/0.6,0,1)                           # the texture's own light strands (a per-texel random salt read as a sponge)
+        g=np.clip(AGE*(0.30+0.45*strand+0.45*g),0,0.9)*hok
+        himg=himg*(1-g[...,None])+g[...,None]*np.clip(lum,0.6,1.4)*np.array((0.46,0.45,0.43))
+        HAIRMAT_AGED=tmat("Hair_Aged",image("Hair_Aged",np.clip(himg,0,1)),0.7); hair.data.materials.clear(); hair.data.materials.append(HAIRMAT_AGED)
+        print("T5 hair greyed texels",int((g>0.05).sum()),"of",int(hok.sum()))
     pieces.append(skin_to_head(hair))
     brows=bpy.data.objects.get("Eyebrows")
     if brows: brows.data.materials.clear(); brows.data.materials.append(HAIRMAT)   # the pack's brows were drawn white-grey
@@ -748,18 +1051,41 @@ bpy.data.objects.remove(full,do_unlink=True)
 # per-piece LOD weights (x DECIMATE): at play zoom the face is ~10 px under a brim, so the beard, the hair and the head go further; the coat is lined (two
 # layers), so it can lose more. DECIMATE=0.2 gives ~5.4k visible triangles in the normal style, ~4.9k black, ~5.2k masked (D73's ~5k)
 LOD_WEIGHT={"Face_Beard":0.4,"Face_Hair":0.75,"Outfit_Coat":0.8,"SuperHero_Male":0.8}
+def coat_seam_group(o):
+    """the vertices where two modules meet: the LOD keeps them (Decimate with this group inverted leaves every one in place), so the split modules
+    still share their seams exactly"""
+    me=o.data; mod=[a.value for a in me.attributes["mod"].data]; owner={}
+    for p in me.polygons:
+        for vi in p.vertices: owner.setdefault(vi,set()).add(mod[p.index])
+    vg=o.vertex_groups.new(name="coat_seam"); vg.add([vi for vi,s in owner.items() if len(s)>1],1.0,'REPLACE'); return vg
 if DEC<1.0:
     for o in [o for o in bpy.context.scene.objects if o.type=='MESH' and len(o.data.polygons)>150]:
-        bpy.context.view_layer.objects.active=o; m=o.modifiers.new("Decimate",'DECIMATE'); m.ratio=DEC*LOD_WEIGHT.get(o.name,1.0); bpy.ops.object.modifier_apply(modifier="Decimate")
+        bpy.context.view_layer.objects.active=o; m=o.modifiers.new("Decimate",'DECIMATE'); m.ratio=DEC*LOD_WEIGHT.get(o.name,1.0)
+        if o.name=="Outfit_Coat": m.vertex_group=coat_seam_group(o).name; m.invert_vertex_group=True
+        bpy.ops.object.modifier_apply(modifier="Decimate")
+def split_coat(o):
+    """one mesh per module (Outfit_Coat_<Module>), each keeping the whole coat's weights and its shading at the seams (the corner normals are frozen
+    as custom normals first, or every seam would show as a crease)"""
+    me=o.data; me.normals_split_custom_set([tuple(cn.vector) for cn in me.corner_normals]); out=[]
+    for k,nm in enumerate(COAT_MODULES):
+        c=o.copy(); c.data=me.copy(); c.name="Outfit_Coat_"+nm; c.data.name=c.name; bpy.context.scene.collection.objects.link(c)
+        if "coat_seam" in c.vertex_groups: c.vertex_groups.remove(c.vertex_groups["coat_seam"])
+        b=bmesh.new(); b.from_mesh(c.data); L=b.faces.layers.int["mod"]
+        bmesh.ops.delete(b,geom=[f for f in b.faces if f[L]!=k],context='FACES'); sweep(b); b.to_mesh(c.data); b.free()
+        c.data.attributes.remove(c.data.attributes["mod"]); out.append(c.name)
+        f0=len(c.data.polygons)
+        if c.data.validate(clean_customdata=False): print("T5 coat module",c.name,"cleaned: faces",f0,"->",len(c.data.polygons))   # the LOD's collapse can fold the lining onto the cloth (duplicate faces)
+    bpy.data.objects.remove(o,do_unlink=True); return out
+COATSET=split_coat(bpy.data.objects["Outfit_Coat"])
 arm.data.pose_position='POSE'
 tot=0
 for o in bpy.context.scene.objects:
     if o.type=='MESH': n=sum(len(p.vertices)-2 for p in o.data.polygons); tot+=n; print("T5 piece",o.name,n)
 print("T5 TOTAL tris",tot,"meshes",sum(1 for o in bpy.context.scene.objects if o.type=='MESH'))
 TRIS={o.name:sum(len(p.vertices)-2 for p in o.data.polygons) for o in bpy.context.scene.objects if o.type=='MESH'}
-for st_,hid in (("normal",["Outfit_Gloves"]+MASKSET),("black",["Outfit_Coat"]+MASKSET),("mask",["Outfit_Coat"]+HATUP+FACEHAIR)):
+for st_,hid in (("normal",["Outfit_Gloves"]+MASKSET),("black",COATSET+MASKSET),("mask",COATSET+HATUP+FACEHAIR)):
     print("T5 visible tris",st_,sum(n for k,n in TRIS.items() if k not in hid),"(shaved",sum(n for k,n in TRIS.items() if k not in hid+["Face_Beard"]),")")
-bpy.ops.export_scene.gltf(filepath=D+f"hero{SUF}.glb",export_format='GLB',export_image_format='JPEG',export_jpeg_quality=85,export_animations=True,export_animation_mode='NLA_TRACKS',export_force_sampling=True)
+bpy.ops.export_scene.gltf(filepath=OUTD+f"hero{SUF}.glb",export_format='GLB',export_image_format='JPEG',export_jpeg_quality=85,export_animations=True,export_animation_mode='NLA_TRACKS',export_force_sampling=True)
 
 # ---------- previews (EEVEE: textures show; the game's own look is the board shader's) ----------
 if PREVIEW!="none":
@@ -778,7 +1104,7 @@ if PREVIEW!="none":
     DARK=fabric("Fabric_Dark",(0.035,0.035,0.042),weave=0.10,grain=0.02)
     def tex_node(m): return [n for n in m.node_tree.nodes if n.type=='TEX_IMAGE'][0]
     def style(name):
-        hide={"normal":["Outfit_Gloves"]+MASKSET,"black":["Outfit_Coat"]+MASKSET,"mask":["Outfit_Coat","Mask_Halo"]+HATUP+FACEHAIR}[name]
+        hide={"normal":["Outfit_Gloves"]+MASKSET,"black":COATSET+MASKSET,"mask":COATSET+["Mask_Halo"]+HATUP+FACEHAIR}[name]
         for o_ in bpy.context.scene.objects:
             if o_.type=='MESH': o_.hide_render=o_.name in hide
         dark=name!="normal"

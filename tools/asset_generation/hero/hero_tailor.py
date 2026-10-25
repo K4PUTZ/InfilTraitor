@@ -29,7 +29,9 @@
 # (13) Decimate with a vertex group KEEPS the group's vertices only with invert_vertex_group=True (measured: invert off kept 1 of 41 seam vertices and
 # barely decimated; on kept 41 of 41 at the ratio): that is how the LOD keeps the coat's module seams shared. (14) The CC0 packs (UAL1_Standard.glb, the
 # hair) are downloads kept outside the repo: on 2026-10-25 the temporary folder holding them was wiped mid-session. Keep them somewhere permanent;
-# meanwhile HERO_UAL_GLB and HERO_HAIR_GLB accept a previous master, which carries the tracks (sampled per frame) and the fitted hair.
+# meanwhile HERO_UAL_GLB and HERO_HAIR_GLB accept a previous master, which carries the tracks (sampled per frame) and the fitted hair. (15) A material
+# node's colour is LINEAR, a generated image's pixels are sRGB: the same "0.034" is a black in fabric() and a ~20% grey in mat(). The hat went grey for
+# that (fixed with srgb()); the other mat() darks (shoes, gloves, pack, mask) still carry the slip, untouched until the Director takes them one by one.
 import bpy, bmesh, math, os
 import numpy as np
 from mathutils import Vector, Matrix, noise
@@ -104,9 +106,12 @@ def tmat(name,image,rough=0.9):
     for k in ("Specular IOR Level","Specular"):
         if k in b.inputs: b.inputs[k].default_value=0.12
     px=np.array(image.pixels[:]).reshape(-1,4); m.diffuse_color=(*[float(v) for v in px[:,:3].mean(axis=0)],1); return m
-def mat(name,rgb,rough=0.85):
+def mat(name,rgb,rough=0.85,spec=None):
     m=bpy.data.materials.new(name); m.use_nodes=True; b=m.node_tree.nodes["Principled BSDF"]
-    b.inputs["Base Color"].default_value=(*rgb,1); b.inputs["Roughness"].default_value=rough; m.diffuse_color=(*rgb,1); return m
+    b.inputs["Base Color"].default_value=(*rgb,1); b.inputs["Roughness"].default_value=rough; m.diffuse_color=(*rgb,1)
+    for k in (("Specular IOR Level","Specular") if spec is not None else ()):
+        if k in b.inputs: b.inputs[k].default_value=spec
+    return m
 # ---------- AGE (v5.2; Director 2026-10-24: "the agent needs to be a bit older [...] a man already punished by life", then: "but not completely
 # finished: a man who still has energy and agility. Aim at a Geralt. Not all-white hair, semi-grey"). So AGE (0..1) WEATHERS him and barely DECLINES
 # him: at full strength the rugged signs (forehead and frown lines, crow's feet, the nasolabial fold, a lean hollow under the cheekbones, sun-worn skin)
@@ -227,7 +232,10 @@ def age_skin(o):
 if AGE>0.0 or MARKS: age_skin(body)
 SUITIMG=fabric("Fabric_Pinstripe",(0.034,0.034,0.040),stripe=(0.15,0.15,0.17),weave=0.20,grain=0.03)
 SUIT=tmat("Suit_Black",SUITIMG)                         # a black wool suit with a faint pinstripe and a twill weave: not latex
-BLACK=mat("Hat_Black",(0.03,0.03,0.036))               # hat felt (and the mask's crown shell: it is the same felt, D77)
+def srgb(*c): return tuple(x/12.92 if x<=0.04045 else ((x+0.055)/1.055)**2.4 for x in c)   # a node's colour is LINEAR, an image's pixels are sRGB
+BLACK=mat("Hat_Black",srgb(0.036,0.036,0.042),0.9,0.12)  # hat felt: the suit's black and its low sheen. Director 2026-10-25: "the hat is grey, we want it black
+                         # like the suit". The suit's 0.034 is an sRGB PIXEL (linear ~0.003), the felt's 0.034 was a LINEAR node value (an sRGB ~0.20 grey,
+                         # ~13x the suit's albedo); Blender's default specular 0.5 added a sky sheen on top. Measured in renders: felt luma 66 vs suit 20
 COATS={"beige":(0.70,0.62,0.48),"lightblue":(0.60,0.72,0.85),"mustard":(0.80,0.64,0.24)}
 COATIMGS={k:fabric("Fabric_Coat_"+k,v,weave=0.09,grain=0.03,period=6) for k,v in COATS.items()}
 WHITE=tmat("Coat_Fabric",COATIMGS[os.environ.get("COAT","mustard")])
@@ -242,7 +250,7 @@ def tie_texture():
     img[n-24:,:24]=np.array((0.86,0.72,0.42)); img[n-24:,:24]*=(0.85+0.15*(X[n-24:,:24]%3==0))[...,None]
     return image("Fabric_Tie",img)
 TIEIMG=tie_texture(); TIEW=tmat("Tie_Silk",TIEIMG,0.45)
-OLIVE=mat("Pack_Black",(0.05,0.052,0.058),0.7); GLOVE=mat("Glove_Leather",(0.016,0.016,0.02),0.55); BAND=mat("Hat_Band",(0.12,0.12,0.14)); SHOE=mat("Shoe_Leather",(0.022,0.022,0.026),0.4)
+OLIVE=mat("Pack_Black",(0.05,0.052,0.058),0.7); GLOVE=mat("Glove_Leather",(0.016,0.016,0.02),0.55); BAND=mat("Hat_Band",srgb(0.024,0.024,0.028),0.55,0.25); SHOE=mat("Shoe_Leather",(0.022,0.022,0.026),0.4)
 TRIM=mat("Shirt_Collar",(0.90,0.91,0.93),0.8)           # the contrast collar, cuffs and pocket square (a blue shirt with a white collar: the 1930s executive)
 bw=lambda a: arm.matrix_world@arm.data.bones[a].head_local
 bt=lambda a: arm.matrix_world@arm.data.bones[a].tail_local
@@ -905,6 +913,7 @@ def band(bm):
     for side_ in (-1,1): band_box(bm,BOW_TH+side_*ang,tm,0.017,HH*BAND_T*0.40,0.0005,0.0035)
     band_box(bm,BOW_TH,tm,0.0065,HH*BAND_T*0.46,0.0030,0.0035)
 pieces.append(prim("Outfit_HatCrown",crown,"Head",BLACK,True)); pieces.append(prim("Outfit_HatBrim",brim,"Head",BLACK,True)); pieces.append(prim("Outfit_HatBand",band,"Head",BAND,True))
+# the band: a black grosgrain, a touch glossier than the felt so it still reads as a ribbon (the v5 band was a light grey); a faction packages it (D78)
 for _n,_s,_c in PACK: pieces.append(prim(_n,bevelbox(_s,_c),"spine_03",OLIVE))
 HATUP=["Outfit_HatCrown","Outfit_HatBrim","Outfit_HatBand"]
 

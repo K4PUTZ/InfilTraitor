@@ -353,15 +353,19 @@ def vopen(bm,zb,ztop,halfw):
     bm.faces.ensure_lookup_table()
     bad=[f for f in bm.faces if f.calc_center_median().y<0.0 and f.calc_center_median().z>zb and abs(f.calc_center_median().x)<halfw*(f.calc_center_median().z-zb)/(ztop-zb)]
     bmesh.ops.delete(bm,geom=bad,context='FACES'); sweep(bm)
-def lapels(bm,zb,width,lift,taper=0.0):
-    """taper (m): the lapel grows from nothing at the break point zb to its full width that far above it (0 = a constant width)"""
+def lapels(bm,zb,width,lift,taper=0.0,peak=0.0):
+    """taper (m): the lapel grows from nothing at the break point zb to its full width that far above it (0 = a constant width); peak (m): a PEAK
+    lapel, its top corner rising that far and leaning out toward the shoulder (0 = the plain top)"""
     es=[e for e in bm.edges if e.is_boundary and all(v.co.y<0.0 and abs(v.co.x)<0.14 and v.co.z>zb-0.02 and v.co.z<zn+0.05 for v in e.verts)
         and abs(e.verts[0].co.z-e.verts[1].co.z)>0.35*(e.verts[0].co-e.verts[1].co).length]
     if not es: return
     ret=bmesh.ops.extrude_edge_only(bm,edges=es); nv=[g for g in ret['geom'] if isinstance(g,bmesh.types.BMVert)]
+    ztop=max(v.co.z for v in nv)
     for v in nv:
-        k=sstep(zb,zb+taper,v.co.z) if taper>0.0 else 1.0
-        v.co.x+=(1 if v.co.x>0 else -1)*width*k; v.co.y-=lift*k
+        k=sstep(zb,zb+taper,v.co.z) if taper>0.0 else 1.0; s_=1 if v.co.x>0 else -1
+        v.co.x+=s_*width*k; v.co.y-=lift*k
+        if peak>0.0:
+            q=sstep(ztop-0.045,ztop,v.co.z); v.co.z+=peak*q; v.co.x+=s_*0.4*peak*q
 def folds(bm,joints,amp,span=0.085,freq=85.0):
     for hname,tname in joints:
         a=bw(hname); b=bt(hname); ax=(b-a).normalized()
@@ -616,7 +620,7 @@ bm.faces.ensure_lookup_table()
 bmesh.ops.delete(bm,geom=[f for f in bm.faces if f.calc_center_median().y<0.0 and abs(f.calc_center_median().x)<coat_w(f.calc_center_median().z)],context='FACES'); sweep(bm)
 smooth_boundary(bm,lambda c: c.y<0.0 and abs(c.x)<0.18 and c.z>zc-0.60,iters=5)
 COAT_BREAK=zc-0.03            # the lapels roll from the top button up (v5.1 ran them down to the waist: two loose boards hanging the coat's length)
-tagged(bm,MODL,2,lapels,COAT_BREAK,0.074,0.012,taper=0.10)
+tagged(bm,MODL,2,lapels,COAT_BREAK,0.080,0.012,taper=0.10,peak=0.026)   # Dick Tracy's: wide PEAK lapels (bamfstyle, 2021)
 def coat_skirt(bm_,length=0.58,flare=0.16,rows=8,n_folds=8,amp=0.015):
     """the SKIRT module, hung from the waist seam: the body's boundary ring at COAT_WAIST (an open C: the coat is open in front), doubled in density, ordered
     from one front edge round the back to the other; each row below it is that ring flared out from the torso's axis, in soft folds that deepen toward the
@@ -644,7 +648,42 @@ def coat_skirt(bm_,length=0.58,flare=0.16,rows=8,n_folds=8,amp=0.015):
         prev=row
     print("T5 coat skirt ring",len(chain),"verts x",rows,"rows")
 tagged(bm,MODL,3,coat_skirt)
-tagged(bm,MODL,2,collar,0.064,1.20,3); tagged(bm,MODL,1,cuffs,wx+0.02,0.02,1.04)
+def turn_collar(bm_,stand=0.034,fall=0.052,drop=0.040):
+    """a TURNED-DOWN collar (Director 2026-10-25: the standing one "looks odd"; a trench's or Dick Tracy's collar lies down): a STAND rising from the
+    neckline and hugging the neck, folded at its top into a FALL that lies down and out over the stand and the shoulders, its two ends dipping into
+    collar points over the lapels' peaks. The fall is SNAPPED onto the coat it lies on (4-6 mm off it, both ways: only pushed out, its back stood off
+    the sloping shoulders like a hood); the stand is lower at the front than at the nape, as a real one is"""
+    zc_=zn+0.015; ring=[e for e in bm_.edges if e.is_boundary and all(abs(v.co.z-zc_)<0.004 for v in e.verts)]
+    adj={}
+    for e in ring:
+        a_,b_=e.verts; adj.setdefault(a_,[]).append(b_); adj.setdefault(b_,[]).append(a_)
+    ends=[v for v,n in adj.items() if len(n)==1]
+    if len(ends)!=2: print("T5 WARNING turn_collar: the neckline is not one open chain",len(ends)); return
+    chain=[min(ends,key=lambda v: v.co.x)]
+    while True:
+        nxt=[w for w in adj[chain[-1]] if w not in chain[-2:]]
+        if not nxt: break
+        chain.append(nxt[0])
+    cyc=sum(v.co.y for v in chain)/len(chain); tree=BVHTree.FromBMesh(bm_); n=len(chain)
+    def off(q,gap=0.004):
+        loc,nrm,_i,_d=tree.find_nearest(q)
+        return q if loc is None else loc+nrm*gap
+    rows=[[v for v in chain]]; dirs=[]
+    for i,v in enumerate(chain):
+        d=Vector((v.co.x,v.co.y-cyc,0.0)).normalized(); dirs.append(d)
+    R1=[bm_.verts.new(v.co+Vector((0,0,stand*(0.62+0.38*sstep(-0.6,0.6,dirs[i].y))))-dirs[i]*0.006) for i,v in enumerate(chain)]   # the stand leans in to the neck, lower in front
+    RF=[bm_.verts.new(R1[i].co+Vector((0,0,0.004))+dirs[i]*0.008) for i in range(n)]                             # the fold, rounded
+    RM=[]; R2=[]
+    for i in range(n):
+        e_=max(0.0,1.0-min(i,n-1-i)/4.0)                                                                          # the collar points at both ends
+        RM.append(bm_.verts.new(off(RF[i].co+dirs[i]*fall*0.45-Vector((0,0,drop*0.35)),0.009)))
+        R2.append(bm_.verts.new(off(RF[i].co+dirs[i]*fall+Vector((0,-0.010*e_,0))-Vector((0,0,drop+0.020*e_)),0.005)))
+    rows+=[R1,RF,RM,R2]
+    for r in range(len(rows)-1):
+        for i in range(n-1):
+            mid=(rows[r][i].co+rows[r][i+1].co)/2; ref=Vector((mid.x,mid.y-cyc,0.0))+(Vector((0,0,0.6)) if r>=1 else Vector())
+            face_out(bm_,[rows[r][i],rows[r][i+1],rows[r+1][i+1],rows[r+1][i]],ref)
+tagged(bm,MODL,2,turn_collar); tagged(bm,MODL,1,cuffs,wx+0.02,0.02,1.04)
 noisy(bm,0.0030); buttons(bm,[(coat_w(z)+0.030,z) for z in (zc-0.02,zc-0.12,zc-0.22)],0.013)
 COATBVH=BVHTree.FromBMesh(bm); BVH["coat"]=COATBVH
 lining(bm,0.0025)
@@ -815,26 +854,33 @@ def prim(name,build,group,material,smooth=False):
     vg=o.vertex_groups.new(name=group); vg.add(list(range(len(me.vertices))),1.0,'REPLACE'); me.materials.append(material)
     o.parent=arm; m=o.modifiers.new("Armature",'ARMATURE'); m.object=arm; return o
 # THE FEDORA, rebuilt (v5): OVAL like the head under it (the v4 round crown let the forehead poke through its front: the pale patch on the band), a tapered
-# crown with the teardrop crease and two front pinches (what reads as a fedora from the game's camera, 30 degrees above), a rounded top edge, a snap brim
-hx,hy=0.0,-0.003; HZ0,HH,HRX,HRY=1.728,0.110,0.095,0.105     # centre, crown base, crown height, base radii (the head is 15.6 x 17.4 cm at 1.73 m)
+# crown with the teardrop crease and two front pinches (what reads as a fedora from the game's camera, 30 degrees above), a rounded top edge, a snap brim.
+# v5.2 (Director 2026-10-25: "leave it exactly like Michael Jackson's (Moonwalker), but black"): the proportions of the "Smooth Criminal" fedora as
+# photographed for its 2025 auction (Propstore lot 211; 33 x 31 x 12 cm overall): the crown narrows more toward the top (to ~0.70 of its base) and its
+# front pinches are deeper, the crease is a teardrop (wider at the back), the BAND is wide (~40% of the crown's height, ours was 21%) with a flat bow on
+# the wearer's left, the brim is ~6 cm all round, flat by the crown, dipping at the front and turned up at the back. Ours stays black, as asked.
+hx,hy=0.0,-0.003; HZ0,HH,HRX,HRY=1.728,0.114,0.095,0.105     # centre, crown base, crown height, base radii (the head is 15.6 x 17.4 cm at 1.73 m)
+BAND_T=0.40; BOW_TH=1.95                                       # the band's top (fraction of the crown's height); the bow's angle (0 = front, + = his left)
 def crown_pt(th,t,grow=1.0):
-    tap=1.0-0.20*t; pin=1.0-0.17*max(0.0,(t-0.30)/0.70)*(math.exp(-((th-0.62)/0.30)**2)+math.exp(-((th+0.62)/0.30)**2))
+    tap=1.0-0.30*t; pin=1.0-0.24*max(0.0,(t-0.30)/0.70)*(math.exp(-((th-0.62)/0.32)**2)+math.exp(-((th+0.62)/0.32)**2))
     k=tap*pin*grow; return Vector((hx+math.sin(th)*HRX*k,hy-math.cos(th)*HRY*k,HZ0+HH*t))
 def crown(bm):
     N=40; ths=[2*math.pi*i/N for i in range(N)]
     rings=[[crown_pt(th,t) for th in ths] for t in (0.0,0.3,0.6,0.86,0.96)]
     rings.append([Vector((p.x*0.955+hx*0.045,hy+(p.y-hy)*0.955,HZ0+HH)) for p in rings[-1]])
+    def crease(x,y):             # the teardrop: narrow at the front pinch, wide and deepest toward the back
+        w=0.015+0.011*sstep(-0.06,0.07,y-hy); return 0.028*math.exp(-((x-hx)/w)**2)
     for rho in (0.8,0.55,0.3):          # the top: a soft dome with the crease running front to back, deepest in the middle
-        rings.append([Vector((hx+(p.x-hx)*rho,hy+(p.y-hy)*rho,HZ0+HH+0.004*(1-rho*rho)-0.026*math.exp(-((p.x-hx)*rho/0.022)**2)*(1-rho**4))) for p in rings[5]])
-    V=[[bm.verts.new(p) for p in r] for r in rings]; c=bm.verts.new(Vector((hx,hy,HZ0+HH+0.004-0.026)))
+        rings.append([Vector((hx+(p.x-hx)*rho,hy+(p.y-hy)*rho,HZ0+HH+0.004*(1-rho*rho)-crease(hx+(p.x-hx)*rho,hy+(p.y-hy)*rho)*(1-rho**4))) for p in rings[5]])
+    V=[[bm.verts.new(p) for p in r] for r in rings]; c=bm.verts.new(Vector((hx,hy,HZ0+HH+0.004-crease(hx,hy))))
     for a in range(len(V)-1):
         for i in range(N): face_out(bm,[V[a][i],V[a][(i+1)%N],V[a+1][(i+1)%N],V[a+1][i]],(V[a][i].co+V[a+1][i].co)/2-Vector((hx,hy,HZ0+0.03)))
     for i in range(N): face_out(bm,[V[-1][i],V[-1][(i+1)%N],c],Vector((0,0,1)))
-def brim(bm,front=0.060,side=0.050):
+def brim(bm,front=0.064,side=0.060):
     N=40; th_=0.005
     def ring(th,k):
         p=crown_pt(th,0.0,0.985); d=Vector((math.sin(th),-math.cos(th),0))
-        w=side+(front-side)*abs(math.cos(th)); z=HZ0+0.004+(0.014*abs(math.sin(th))-0.024*max(0.0,math.cos(th))+0.012*max(0.0,-math.cos(th)))*k*k
+        w=side+(front-side)*abs(math.cos(th)); z=HZ0+0.004+(0.008*abs(math.sin(th))-0.016*max(0.0,math.cos(th))+0.017*max(0.0,-math.cos(th)))*k*k
         return Vector((p.x+d.x*w*k,p.y+d.y*w*k,z))
     ths=[2*math.pi*i/N for i in range(N)]
     ti=[bm.verts.new(ring(t,0.0)+Vector((0,0,th_))) for t in ths]; tm=[bm.verts.new(ring(t,0.55)+Vector((0,0,th_))) for t in ths]; to=[bm.verts.new(ring(t,1.0)+Vector((0,0,th_))) for t in ths]
@@ -844,10 +890,20 @@ def brim(bm,front=0.060,side=0.050):
         for A,B in ((ti,tm),(tm,to)): face_out(bm,[A[i],A[j],B[j],B[i]],Vector((0,0,1)))
         for A,B in ((bi,bmid),(bmid,bo)): face_out(bm,[A[i],A[j],B[j],B[i]],Vector((0,0,-1)))
         face_out(bm,[to[i],to[j],bo[j],bo[i]],Vector((math.sin(ths[i]),-math.cos(ths[i]),0)))
+def band_box(bm,th,t,half_u,half_v,lift,depth):
+    """a flat block lying on the band at (th, t): half_u along the band, half_v up it, from `lift` to `lift + depth` off the crown"""
+    e=0.02; c=crown_pt(th,t,1.022); u=(crown_pt(th+e,t,1.022)-crown_pt(th-e,t,1.022)).normalized(); v=(crown_pt(th,t+e,1.022)-crown_pt(th,t-e,1.022)).normalized()
+    n=u.cross(v).normalized()
+    if n.dot(Vector((math.sin(th),-math.cos(th),0)))<0: n=-n
+    P=[bm.verts.new(c+u*a*half_u+v*b*half_v+n*(lift+depth*d)) for d in (0,1) for b in (-1,1) for a in (-1,1)]
+    for q,ref in (((4,5,7,6),n),((0,1,3,2),-n),((0,1,5,4),-v),((2,3,7,6),v),((0,2,6,4),-u),((1,3,7,5),u)): face_out(bm,[P[k] for k in q],ref)
 def band(bm):
     N=40; ths=[2*math.pi*i/N for i in range(N)]
-    lo=[bm.verts.new(crown_pt(t,0.0,1.022)+Vector((0,0,0.003))) for t in ths]; hi=[bm.verts.new(crown_pt(t,0.21,1.022)) for t in ths]
+    lo=[bm.verts.new(crown_pt(t,0.0,1.022)+Vector((0,0,0.003))) for t in ths]; hi=[bm.verts.new(crown_pt(t,BAND_T,1.022)) for t in ths]
     for i in range(N): face_out(bm,[lo[i],lo[(i+1)%N],hi[(i+1)%N],hi[i]],Vector((math.sin(ths[i]),-math.cos(ths[i]),0)))
+    tm=BAND_T*0.5; ang=0.019/math.hypot(HRX,HRY)*math.sqrt(2)                       # the flat bow: two folded loops either side of a knot
+    for side_ in (-1,1): band_box(bm,BOW_TH+side_*ang,tm,0.017,HH*BAND_T*0.40,0.0005,0.0035)
+    band_box(bm,BOW_TH,tm,0.0065,HH*BAND_T*0.46,0.0030,0.0035)
 pieces.append(prim("Outfit_HatCrown",crown,"Head",BLACK,True)); pieces.append(prim("Outfit_HatBrim",brim,"Head",BLACK,True)); pieces.append(prim("Outfit_HatBand",band,"Head",BAND,True))
 for _n,_s,_c in PACK: pieces.append(prim(_n,bevelbox(_s,_c),"spine_03",OLIVE))
 HATUP=["Outfit_HatCrown","Outfit_HatBrim","Outfit_HatBand"]

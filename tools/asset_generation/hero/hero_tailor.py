@@ -32,6 +32,9 @@
 # meanwhile HERO_UAL_GLB and HERO_HAIR_GLB accept a previous master, which carries the tracks (sampled per frame) and the fitted hair. (15) A material
 # node's colour is LINEAR, a generated image's pixels are sRGB: the same "0.034" is a black in fabric() and a ~20% grey in mat(). The hat went grey for
 # that (fixed with srgb()); the other mat() darks (shoes, gloves, pack, mask) still carry the slip, untouched until the Director takes them one by one.
+# (16) A hat drawn to a target's proportions must still FIT THE HEAD: the v5.2 crown was 5 mm inside the nape's scalp, and the hair pressed inside the
+# crown went under the skin (279 of 757 vertices): bare scalp under the brim at the back, and the "bald" patches without the hat. fit_crown() sizes the
+# crown from the head, and the press never puts a hair vertex under the skin (measured after: 0).
 import bpy, bmesh, math, os
 import numpy as np
 from mathutils import Vector, Matrix, noise
@@ -872,6 +875,24 @@ BAND_T=0.40; BOW_TH=1.95                                       # the band's top 
 def crown_pt(th,t,grow=1.0):
     tap=1.0-0.30*t; pin=1.0-0.24*max(0.0,(t-0.30)/0.70)*(math.exp(-((th-0.62)/0.32)**2)+math.exp(-((th+0.62)/0.32)**2))
     k=tap*pin*grow; return Vector((hx+math.sin(th)*HRX*k,hy-math.cos(th)*HRY*k,HZ0+HH*t))
+def fit_crown(seat=0.008,above=0.004):
+    """size the crown ON THE HEAD under it (Director 2026-10-25, the defect at the back of the hat: the nape's scalp stood 5 mm past the crown's back
+    wall at the band, and the hair pressed inside the crown went under the skin, a band of bare scalp under the brim). The crown is moved to the
+    head's own front-to-back centre at the seat, then grown uniformly until the scalp is `seat` inside its wall at the band and `above` inside it
+    higher up (room for the hair, pressed thin), the front pinches included. The design proportions stay; only the size follows the head"""
+    global hy,HRX,HRY
+    o_=Vector((hx,0.0,HZ0+0.012)); fb=[BODYBVH.ray_cast(o_,Vector((0,s_,0)),0.3)[0] for s_ in (1,-1)]
+    if all(h_ is not None for h_ in fb): hy=(fb[0].y+fb[1].y)/2
+    s_=1.0
+    for t in (0.0,0.05,0.12,0.25,0.4,0.55,0.7,0.85,0.95):
+        z=HZ0+HH*t; c0=Vector((hx,hy,z)); clr=seat if t<0.15 else above
+        for k_ in range(48):
+            th=2*math.pi*k_/48; w=crown_pt(th,t)-c0; w.z=0.0; R=w.length
+            hit=BODYBVH.ray_cast(c0,w/R,0.3)[0]
+            if hit is not None: s_=max(s_,((hit-c0).length+clr)/R)
+    HRX*=s_; HRY*=s_
+    print("T5 crown fitted to the head: centre y %.4f, base radii %.4f x %.4f (x%.3f)"%(hy,HRX,HRY,s_))
+fit_crown()
 def crown(bm):
     N=40; ths=[2*math.pi*i/N for i in range(N)]
     rings=[[crown_pt(th,t) for th in ths] for t in (0.0,0.3,0.6,0.86,0.96)]
@@ -964,14 +985,18 @@ def hair_from_master(path):
     return h
 if HAIRD or HAIRG:
     hair=cc0_piece("Hair_SimpleParted","Face_Hair") if HAIRD else hair_from_master(HAIRG)
-    for v in (hair.data.vertices if HAIRD else ()):     # the fedora sits ON the hair: what would show through the crown is pressed inside it (the hair stays whole for a hatless look)
+    under=0
+    for v in hair.data.vertices:     # the fedora sits ON the hair: what would show through the crown is pressed inside it (the hair stays whole for a hatless look)
         p=v.co
-        if p.z>1.75: p.z=1.75+(p.z-1.75)*0.75
+        if HAIRD and p.z>1.75: p.z=1.75+(p.z-1.75)*0.75     # (a master's hair was flattened already)
         if p.z>HAT_Z0-0.035:         # inside the oval crown, 7 mm clear of its wall (the front pinches included)
             k=max(0.0,min(1.0,(p.z-(HAT_Z0-0.035))/0.035)); t=max(0.0,min(1.0,(p.z-HZ0)/HH))
             th=math.atan2(p.x-hx,-(p.y-hy)); w=crown_pt(th,t)-Vector((hx,hy,0)); R=Vector((w.x,w.y,0)).length-0.007
             d=Vector((p.x-hx,p.y-hy,0)); r=d.length
             if r>R: p.x,p.y=hx+(d.x/r)*(r+(R-r)*k),hy+(d.y/r)*(r+(R-r)*k)
+        loc,nrm,_i,_d=BODYBVH.find_nearest(p)      # NEVER under the skin (v5 pressed 279 of 757 hair vertices into the scalp: the bare patches at the nape and
+        if loc is not None and (p-loc).dot(nrm)<0.002: v.co=loc+nrm*0.002; under+=1     # on top, under the hat and without it); fit_crown() left the room
+    print("T5 hair vertices lifted out of the scalp",under,"of",len(hair.data.vertices))
     if AGE>0.0:          # SALT-AND-PEPPER all over, whiter at the temples and over the ears (Director: "semi-grisalho", never all white); the hair's
                          # OWN copy (the brows share HAIRMAT). The lighter strands of the texture go grey first: that is the salt, with no noise
         nt_=HAIRMAT.node_tree; src_=[n for n in nt_.nodes if n.type=='TEX_IMAGE'][0].image; W_,H_=src_.size

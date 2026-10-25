@@ -13,7 +13,9 @@
 # trailing /; empty = no hair), BODY_FILE (default superhero_male_agile_b_lean.glb), OUT_SUFFIX, COAT (mustard | beige | lightblue; default mustard), BEARD
 # (1 | 0), DECIMATE (LOD ratio; 0.2 for the game LOD, weighted per piece by LOD_WEIGHT), HERO_TMP (preview folder), PREVIEW (full | quick | none),
 # HERO_OUT_DIR (GLB folder, trailing /; default the body's folder), HERO_HAIR_GLB (a previous master whose fitted hair is reused when the CC0 hair pack is
-# not at hand), AGE (0..1) and MARKS (brow_scar, cheek_scar, broken_nose): the signs of age and of life, below.
+# not at hand), AGE (0..1) and MARKS (brow_scar, cheek_scar, broken_nose): the signs of age and of life, below; CHIN, EYEBAGS, GREY, SKIN, NOSE (the
+# base nose pulled back, 0 = off), FEATURES ("name[:strength]", default hawk_nose:0.25), FEATURE_GAIN (2.4), HAIR_CUT (short | full). The quick loop that
+# builds into a scratch folder and renders the face is hero_quick.sh (D81, 2026-10-25).
 # Usage: blender -b -P hero_tailor.py
 # ⚠️ Traps, all paid for: (0) THE GLTF IMPORT SPLITS VERTICES ALONG UV SEAMS: offset along per-vertex normals the seams drift apart and every piece CRACKS
 # (the "openings at the shoulders"); weld with remove_doubles when copying the body. (1) A copy of the body carries its Armature modifier (a second one poses
@@ -29,7 +31,8 @@
 # (13) Decimate with a vertex group KEEPS the group's vertices only with invert_vertex_group=True (measured: invert off kept 1 of 41 seam vertices and
 # barely decimated; on kept 41 of 41 at the ratio): that is how the LOD keeps the coat's module seams shared. (14) The CC0 packs (UAL1_Standard.glb, the
 # hair) are downloads kept outside the repo: on 2026-10-25 the temporary folder holding them was wiped mid-session. Keep them somewhere permanent;
-# meanwhile HERO_UAL_GLB and HERO_HAIR_GLB accept a previous master, which carries the tracks (sampled per frame) and the fitted hair. (15) A material
+# meanwhile HERO_UAL_GLB and HERO_HAIR_GLB accept a previous master, which carries the tracks (sampled per frame) and the fitted hair: the v5.1 master
+# rebuilt from the packs on 2026-10-24 is kept at ARCHIVE/hero_sources/hero_source_v51.glb (git-ignored, Godot-ignored). Never build over that file. (15) A material
 # node's colour is LINEAR, a generated image's pixels are sRGB: the same "0.034" is a black in fabric() and a ~20% grey in mat(). The hat went grey for
 # that (fixed with srgb()); the other mat() darks (shoes, gloves, pack, mask) still carry the slip, untouched until the Director takes them one by one.
 # (16) A hat drawn to a target's proportions must still FIT THE HEAD: the v5.2 crown was 5 mm inside the nape's scalp, and the hair pressed inside the
@@ -131,7 +134,9 @@ CHIN=float(os.environ.get("CHIN","1")); EYEBAGS=float(os.environ.get("EYEBAGS","
 # little down), crooked_nose (broken once, set a few millimetres off true), heavy_brow (a forward brow ridge: deep-set eyes), high_cheeks (cheekbones out,
 # hollow under), square_jaw (the jaw's angles out, a flat chin), cleft_chin, smirk (the left mouth corner set higher: a permanent half-smile).
 # Hair: widows_peak (the hairline dips to a point), grey_streak (one pale forelock). Eyes: steel_eyes (a pale grey-blue iris)
-FEATURES=[f for f in os.environ.get("FEATURES","").split(",") if f]
+NOSE=float(os.environ.get("NOSE","0"))     # 0..1: how much the base nose is pulled back toward the face (a study knob, uncommitted)
+FEATURES={f.split(":")[0]:(float(f.split(":")[1]) if ":" in f else 1.0) for f in os.environ.get("FEATURES","hawk_nose:0.25").split(",") if f}   # name[:strength]; the hawk nose softened (Director 2026-10-25)
+FEATURE_GAIN=float(os.environ.get("FEATURE_GAIN","2.4"))   # at 1 (3-4 mm on a 16 cm head) the first catalogue's faces read nearly the same
 # (Director, later the same day: "the brows match the hair, and leave more black hair: he is still halfway between youth and middle age": GREY 1 -> 0.5,
 # AGE 0.5 -> 0.4, and the brows take the hair's greying)
 DECLINE=0.3                 # the share of AGE that the signs of decline get (the Geralt brief: weathered, still fit)
@@ -148,6 +153,11 @@ def age_delta(p,a,eyebrows=False):
     s=1.0 if p.x>=0 else -1.0; ax=abs(p.x)
     if not eyebrows:
         d.x+=s*0.0030*CHIN*gauss3(p,(s*0.020,-0.080,1.590),0.012,0.03,0.012)          # a slightly wider chin (3 mm a side)
+        if NOSE>0.0 and p.y<-0.088:          # a SMALLER nose (Director 2026-10-25: "this nose is too big, let's soften it"; the base head's own nose is the size)
+            m_=math.exp(-(p.x/0.018)**2)*math.exp(-((p.z-1.666)/0.020)**2)
+            d.y+=NOSE*m_*(-0.088-p.y)                                                    # less projection: the tip comes back toward the face
+            d.x-=NOSE*0.25*p.x*m_                                                        # a little narrower
+            d.z+=NOSE*0.0025*math.exp(-(p.x/0.012)**2)*math.exp(-((p.z-1.655)/0.008)**2) # and shorter (the tip lifts)
         d.y-=0.0013*EYEBAGS*gauss3(p,(s*0.034,-0.079,1.680),0.013,0.010,0.0045)          # the Director's bags under the eyes
         d.y+=0.0007*EYEBAGS*gauss3(p,(s*0.034,-0.077,1.671),0.014,0.010,0.0035)
         d.y-=0.0018*a*DECLINE*gauss3(p,(s*0.034,-0.079,1.680),0.013,0.010,0.0045)      # the bags under the eyes
@@ -160,27 +170,28 @@ def age_delta(p,a,eyebrows=False):
         d.x+=s*0.0008*a*DECLINE*gauss3(p,(s*0.040,-0.070,1.592),0.012,0.02,0.010)
         d.x-=s*0.0012*a*DECLINE*gauss3(p,(s*0.064,-0.040,1.725),0.010,0.02,0.014)      # hollow temples
     d.z-=0.0020*a*DECLINE*gauss3(p,(s*0.050,-0.070,1.718),0.012,0.03,0.010)            # the outer brows come down: a tired look
-    F=FEATURES
-    if "hawk_nose" in F and not eyebrows:
-        d.y-=0.0034*gauss3(p,(0.0,-0.100,1.673),0.0075,0.03,0.0085)                       # the hump of the bridge
-        d.z-=0.0020*gauss3(p,(0.0,-0.110,1.655),0.0085,0.03,0.0060)                       # the tip turns down
-        d.x-=s*0.0012*gauss3(p,(s*0.011,-0.100,1.662),0.0060,0.03,0.0100)                 # a narrower nose
-    if "crooked_nose" in F and not eyebrows:
-        w_=gauss3(p,(0.0,-0.100,1.662),0.0110,0.03,0.0130)*sstep(1.690,1.672,p.z)
-        d.x+=0.0032*w_; d.y-=0.0015*gauss3(p,(0.0,-0.100,1.676),0.0060,0.03,0.0050)        # set off true below a knock on the bridge
-    if "heavy_brow" in F:
-        d.y-=0.0028*gauss3(p,(s*0.030,-0.088,1.722),0.020,0.03,0.0075)                    # the ridge comes forward: the eyes sit deep under it
-        d.z-=0.0012*gauss3(p,(s*0.030,-0.088,1.718),0.020,0.03,0.0060)
-    if "high_cheeks" in F and not eyebrows:
-        d.x+=s*0.0026*gauss3(p,(s*0.058,-0.060,1.668),0.012,0.03,0.010); d.y-=0.0012*gauss3(p,(s*0.052,-0.065,1.668),0.012,0.03,0.010)
-        d.y+=0.0026*gauss3(p,(s*0.047,-0.062,1.633),0.012,0.03,0.012)
-    if "square_jaw" in F and not eyebrows:
-        d.x+=s*0.0042*gauss3(p,(s*0.062,-0.020,1.600),0.016,0.04,0.016)                   # the jaw's angles out
-        d.z-=0.0015*gauss3(p,(0.0,-0.080,1.578),0.022,0.03,0.008)                          # a flatter, squarer chin
-    if "cleft_chin" in F and not eyebrows:
-        d.y+=0.0013*math.exp(-(p.x/0.0030)**2)*gauss3(p,(0.0,-0.085,1.586),1.0,0.03,0.0080)
-    if "smirk" in F and not eyebrows:
-        d.z+=0.0017*gauss3(p,(0.027,-0.080,1.622),0.0075,0.03,0.0060); d.y+=0.0006*gauss3(p,(0.027,-0.080,1.622),0.0075,0.03,0.0060)
+    F=FEATURES; fd=Vector((0,0,0)); w=lambda n: F.get(n,0.0)      # each feature at its own strength (FEATURES="hawk_nose:0.5,...")
+    if w("hawk_nose") and not eyebrows:
+        fd.y-=w("hawk_nose")*0.0034*gauss3(p,(0.0,-0.100,1.673),0.0075,0.03,0.0085)       # the hump of the bridge
+        fd.z-=w("hawk_nose")*0.0020*gauss3(p,(0.0,-0.110,1.655),0.0085,0.03,0.0060)       # the tip turns down
+        fd.x-=w("hawk_nose")*s*0.0012*gauss3(p,(s*0.011,-0.100,1.662),0.0060,0.03,0.0100) # a narrower nose
+    if w("crooked_nose") and not eyebrows:
+        w_=w("crooked_nose")*gauss3(p,(0.0,-0.100,1.662),0.0110,0.03,0.0130)*min(1.0,max(0.0,(1.690-p.z)/0.018))     # (sstep is defined further down)
+        fd.x+=0.0032*w_; fd.y-=w("crooked_nose")*0.0015*gauss3(p,(0.0,-0.100,1.676),0.0060,0.03,0.0050)   # set off true below a knock on the bridge
+    if w("heavy_brow"):
+        fd.y-=w("heavy_brow")*0.0028*gauss3(p,(s*0.030,-0.088,1.722),0.020,0.03,0.0075)   # the ridge comes forward: the eyes sit deep under it
+        fd.z-=w("heavy_brow")*0.0012*gauss3(p,(s*0.030,-0.088,1.718),0.020,0.03,0.0060)
+    if w("high_cheeks") and not eyebrows:
+        fd.x+=w("high_cheeks")*s*0.0026*gauss3(p,(s*0.058,-0.060,1.668),0.012,0.03,0.010); fd.y-=w("high_cheeks")*0.0012*gauss3(p,(s*0.052,-0.065,1.668),0.012,0.03,0.010)
+        fd.y+=w("high_cheeks")*0.0026*gauss3(p,(s*0.047,-0.062,1.633),0.012,0.03,0.012)
+    if w("square_jaw") and not eyebrows:
+        fd.x+=w("square_jaw")*s*0.0042*gauss3(p,(s*0.062,-0.020,1.600),0.016,0.04,0.016)  # the jaw's angles out
+        fd.z-=w("square_jaw")*0.0015*gauss3(p,(0.0,-0.080,1.578),0.022,0.03,0.008)         # a flatter, squarer chin
+    if w("cleft_chin") and not eyebrows:
+        fd.y+=w("cleft_chin")*0.0013*math.exp(-(p.x/0.0030)**2)*gauss3(p,(0.0,-0.085,1.586),1.0,0.03,0.0080)
+    if w("smirk") and not eyebrows:
+        fd.z+=w("smirk")*0.0017*gauss3(p,(0.027,-0.080,1.622),0.0075,0.03,0.0060); fd.y+=w("smirk")*0.0006*gauss3(p,(0.027,-0.080,1.622),0.0075,0.03,0.0060)
+    d+=fd*FEATURE_GAIN
     if "broken_nose" in MARKS:
         d.y-=0.0018*gauss3(p,(0.0,-0.100,1.677),0.006,0.02,0.006)                       # a bump on the bridge
         if p.z<1.672 and ax<0.022 and p.y<-0.085: d.x+=0.0015*min(1.0,(1.672-p.z)/0.017)   # and the tip a little off true
@@ -1065,6 +1076,17 @@ if HAIRD or HAIRG:
         loc,nrm,_i,_d=BODYBVH.find_nearest(p)      # NEVER under the skin (v5 pressed 279 of 757 hair vertices into the scalp: the bare patches at the nape and
         if loc is not None and (p-loc).dot(nrm)<0.002: v.co=loc+nrm*0.002; under+=1     # on top, under the hat and without it); fit_crown() left the room
     print("T5 hair vertices lifted out of the scalp",under,"of",len(hair.data.vertices))
+    if os.environ.get("HAIR_CUT","short")=="short":      # SHORT (Director 2026-10-25: "a spy would not leave a liability", nothing to grab): the hair lies
+        for v in hair.data.vertices:                      # close to the scalp, a little longer on top, clipped at the sides and the nape
+            loc,nrm,_i,_d=BODYBVH.find_nearest(v.co)
+            if loc is None: continue
+            top=sstep(1.74,1.79,v.co.z)*sstep(0.06,0.00,v.co.y)
+            v.co=loc+nrm*max(0.0012,min((v.co-loc).dot(nrm),0.0025+0.0030*top))
+        hb=bmesh.new(); hb.from_mesh(hair.data)               # the nape and the sides clipped high: the hairline at the back above the collar, none below the ear
+        cut=[f for f in hb.faces if (f.calc_center_median().z<1.690 and f.calc_center_median().y>0.035) or (f.calc_center_median().z<1.675 and abs(f.calc_center_median().x)>0.060)]
+        bmesh.ops.delete(hb,geom=cut,context='FACES'); sweep(hb)
+        smooth_boundary(hb,lambda c: c.z<1.705,iters=8)              # a clean hairline, not the sawtooth of the deleted faces
+        hb.to_mesh(hair.data); hb.free(); print("T5 short cut: hair faces clipped",len(cut))
     if GREY>0.0 or "grey_streak" in FEATURES:         # SALT-AND-PEPPER all over, whiter at the temples and over the ears (Director: "semi-grisalho", never all white); the hair's
                          # OWN copy (the brows share HAIRMAT). The lighter strands of the texture go grey first: that is the salt, with no noise
         nt_=HAIRMAT.node_tree; src_=[n for n in nt_.nodes if n.type=='TEX_IMAGE'][0].image; W_,H_=src_.size

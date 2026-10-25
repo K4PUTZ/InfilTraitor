@@ -2118,7 +2118,7 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 
 **Still open — do not decide these unilaterally:**
 - [ ] From 2026-10-24: the voice bank's performers and sizes (§2.3, proposed); where hair, face and height are chosen
-  (the form or the deposition); the race field's options per country (§2.2, §2.6).
+  (the form or the deposition; Claude's proposal 2026-10-25: the FORM, as the station's mugshot, front and profile: `ACTOR` D81); the race field's options per country (§2.2, §2.6).
 - [ ] From 2026-10-23: the chokehold's N turns (§10.0); which official-work
   site the club's assassin has infiltrated, his name ("the Confessor",
   proposed) and whether he counts as a boss (§2.2, proposed); when the pack

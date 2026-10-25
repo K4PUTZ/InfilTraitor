@@ -192,7 +192,7 @@ mentions it; FLAGS in the scenery reflect the base's country; billboards and oth
 Every character in the game is ONE base skeleton (the hero's 65 bones, `ACTOR` D70-D77) plus pieces in slots (C4). A faction is a uniform set over the
 same slots, a rank is a few pieces on top, a cosmetic is one piece. **Nothing below is built; the hero's v5.1 pieces are the only ones that exist.**
 
-**8.1 Bases (one skeleton, the animations shared):** male (built: the agile-B body), female (REQUIRED since 2026-10-22: the Agent may be a woman, `DESIGN` §2.7; ACTOR D70's female option; every piece of the Agent's costume must fit both bases, which doubles the fitting work of each hero piece), a heavier build for
+**8.1 Bases (one skeleton, the animations shared):** male (built: the agile-B body), female (REQUIRED since 2026-10-22: the Agent may be a woman, `DESIGN` §2.7; ACTOR D70's female option; every piece of the Agent's costume must fit both bases, which doubles the fitting work of each hero piece; the pack's Superhero_Female, same 65-bone skeleton, is already exported as `superhero_female_lean.glb`, not yet remodelled, given a face (`ACTOR` D81) or dressed), a heavier build for
 the militia's and the traffickers' bruisers (a remodel of the same body, like agile-B). **No child base (Director, 2026-10-23):** the son appears
 only in photographs (a frame at home, the grave), as a texture. There is no baby (`DESIGN` §2.6, 2026-10-22).
 

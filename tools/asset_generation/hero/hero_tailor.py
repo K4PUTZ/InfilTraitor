@@ -120,9 +120,20 @@ def mat(name,rgb,rough=0.85,spec=None):
 # him: at full strength the rugged signs (forehead and frown lines, crow's feet, the nasolabial fold, a lean hollow under the cheekbones, sun-worn skin)
 # are whole, the signs of decline (bags, a heavier jowl, the outer brows coming down, hollow temples, age spots) come in at DECLINE of that, and the hair
 # turns salt-and-pepper all over, whiter at the temples (after the hair, below). MARKS adds life's scars (brow_scar, cheek_scar,
-# broken_nose). Both are 0 / empty by default until the Director picks a level. The texture is painted in 3-D: every texel of the head's UV island
+# broken_nose). THE DIRECTOR'S FACE (2026-10-25: "a slightly wider chin, some bags under the eyes and grey hair; a discreet scar on the brow is welcome
+# (it tells the agent apart from any other character); and a little texture on the skin so it is not so perfect") is the default: CHIN, EYEBAGS, GREY
+# (the hair, on its own knob now), SKIN (pores and unevenness), MARKS=brow_scar, and a light AGE for the lines. The texture is painted in 3-D: every texel of the head's UV island
 # learns the rest position it is drawn at (rasterised from the mesh), and each sign is a field of that position, so nothing depends on the UV layout ----------
-AGE=float(os.environ.get("AGE","0")); MARKS=[m for m in os.environ.get("MARKS","").split(",") if m]
+AGE=float(os.environ.get("AGE","0.4")); MARKS=[m for m in os.environ.get("MARKS","brow_scar").split(",") if m]
+CHIN=float(os.environ.get("CHIN","1")); EYEBAGS=float(os.environ.get("EYEBAGS","0.7")); GREY=float(os.environ.get("GREY","0.5")); SKIN=float(os.environ.get("SKIN","1"))
+# SIGNATURE features (Director 2026-10-25: "we are trying to be original (avoid being ordinary), so if we could shape his face to be unique, it would be
+# awesome"): each is a knob in FEATURES, none on by default until the Director composes his face. Geometry: hawk_nose (an aquiline bridge, the tip a
+# little down), crooked_nose (broken once, set a few millimetres off true), heavy_brow (a forward brow ridge: deep-set eyes), high_cheeks (cheekbones out,
+# hollow under), square_jaw (the jaw's angles out, a flat chin), cleft_chin, smirk (the left mouth corner set higher: a permanent half-smile).
+# Hair: widows_peak (the hairline dips to a point), grey_streak (one pale forelock). Eyes: steel_eyes (a pale grey-blue iris)
+FEATURES=[f for f in os.environ.get("FEATURES","").split(",") if f]
+# (Director, later the same day: "the brows match the hair, and leave more black hair: he is still halfway between youth and middle age": GREY 1 -> 0.5,
+# AGE 0.5 -> 0.4, and the brows take the hair's greying)
 DECLINE=0.3                 # the share of AGE that the signs of decline get (the Geralt brief: weathered, still fit)
 def gauss3(p,c,sx,sy,sz): return math.exp(-0.5*(((p.x-c[0])/sx)**2+((p.y-c[1])/sy)**2+((p.z-c[2])/sz)**2))
 def seg_dist2(px,pz,a,b):
@@ -133,9 +144,12 @@ NASOLABIAL=((0.023,1.650),(0.040,1.610)); MARIONETTE=((0.029,1.618),(0.034,1.597
 def age_delta(p,a,eyebrows=False):
     """the large forms of age, in metres (the head is ~16 cm wide); only the front of the head above the neck"""
     d=Vector((0,0,0))
-    if p.z<1.55 or p.y>0.0 or a<=0.0: return d
+    if p.z<1.55 or p.y>0.0: return d
     s=1.0 if p.x>=0 else -1.0; ax=abs(p.x)
     if not eyebrows:
+        d.x+=s*0.0030*CHIN*gauss3(p,(s*0.020,-0.080,1.590),0.012,0.03,0.012)          # a slightly wider chin (3 mm a side)
+        d.y-=0.0013*EYEBAGS*gauss3(p,(s*0.034,-0.079,1.680),0.013,0.010,0.0045)          # the Director's bags under the eyes
+        d.y+=0.0007*EYEBAGS*gauss3(p,(s*0.034,-0.077,1.671),0.014,0.010,0.0035)
         d.y-=0.0018*a*DECLINE*gauss3(p,(s*0.034,-0.079,1.680),0.013,0.010,0.0045)      # the bags under the eyes
         d.y+=0.0010*a*DECLINE*gauss3(p,(s*0.034,-0.077,1.671),0.014,0.010,0.0035)      # and the hollow under them
         dd,t=seg_dist2(ax,p.z,*NASOLABIAL); fade=math.sin(math.pi*float(t))**0.5
@@ -146,13 +160,35 @@ def age_delta(p,a,eyebrows=False):
         d.x+=s*0.0008*a*DECLINE*gauss3(p,(s*0.040,-0.070,1.592),0.012,0.02,0.010)
         d.x-=s*0.0012*a*DECLINE*gauss3(p,(s*0.064,-0.040,1.725),0.010,0.02,0.014)      # hollow temples
     d.z-=0.0020*a*DECLINE*gauss3(p,(s*0.050,-0.070,1.718),0.012,0.03,0.010)            # the outer brows come down: a tired look
+    F=FEATURES
+    if "hawk_nose" in F and not eyebrows:
+        d.y-=0.0034*gauss3(p,(0.0,-0.100,1.673),0.0075,0.03,0.0085)                       # the hump of the bridge
+        d.z-=0.0020*gauss3(p,(0.0,-0.110,1.655),0.0085,0.03,0.0060)                       # the tip turns down
+        d.x-=s*0.0012*gauss3(p,(s*0.011,-0.100,1.662),0.0060,0.03,0.0100)                 # a narrower nose
+    if "crooked_nose" in F and not eyebrows:
+        w_=gauss3(p,(0.0,-0.100,1.662),0.0110,0.03,0.0130)*sstep(1.690,1.672,p.z)
+        d.x+=0.0032*w_; d.y-=0.0015*gauss3(p,(0.0,-0.100,1.676),0.0060,0.03,0.0050)        # set off true below a knock on the bridge
+    if "heavy_brow" in F:
+        d.y-=0.0028*gauss3(p,(s*0.030,-0.088,1.722),0.020,0.03,0.0075)                    # the ridge comes forward: the eyes sit deep under it
+        d.z-=0.0012*gauss3(p,(s*0.030,-0.088,1.718),0.020,0.03,0.0060)
+    if "high_cheeks" in F and not eyebrows:
+        d.x+=s*0.0026*gauss3(p,(s*0.058,-0.060,1.668),0.012,0.03,0.010); d.y-=0.0012*gauss3(p,(s*0.052,-0.065,1.668),0.012,0.03,0.010)
+        d.y+=0.0026*gauss3(p,(s*0.047,-0.062,1.633),0.012,0.03,0.012)
+    if "square_jaw" in F and not eyebrows:
+        d.x+=s*0.0042*gauss3(p,(s*0.062,-0.020,1.600),0.016,0.04,0.016)                   # the jaw's angles out
+        d.z-=0.0015*gauss3(p,(0.0,-0.080,1.578),0.022,0.03,0.008)                          # a flatter, squarer chin
+    if "cleft_chin" in F and not eyebrows:
+        d.y+=0.0013*math.exp(-(p.x/0.0030)**2)*gauss3(p,(0.0,-0.085,1.586),1.0,0.03,0.0080)
+    if "smirk" in F and not eyebrows:
+        d.z+=0.0017*gauss3(p,(0.027,-0.080,1.622),0.0075,0.03,0.0060); d.y+=0.0006*gauss3(p,(0.027,-0.080,1.622),0.0075,0.03,0.0060)
     if "broken_nose" in MARKS:
         d.y-=0.0018*gauss3(p,(0.0,-0.100,1.677),0.006,0.02,0.006)                       # a bump on the bridge
         if p.z<1.672 and ax<0.022 and p.y<-0.085: d.x+=0.0015*min(1.0,(1.672-p.z)/0.017)   # and the tip a little off true
     if "cheek_scar" in MARKS and p.x<0:
         dd,t=seg_dist2(p.x,p.z,(-0.045,1.660),(-0.060,1.632)); d.y+=0.0006*math.exp(-(float(dd)/0.0015)**2)
     return d
-if AGE>0.0 or MARKS:
+FACE_ON=AGE>0.0 or bool(MARKS) or CHIN>0.0 or EYEBAGS>0.0 or SKIN>0.0 or bool(FEATURES)
+if FACE_ON:
     for o_,eb in ((body,False),(bpy.data.objects.get("Eyebrows"),True)):
         if o_ is not None:
             for v in o_.data.vertices: v.co+=age_delta(v.co,AGE,eb)
@@ -226,13 +262,40 @@ def age_skin(o):
         for _ in range(9):
             c_=(rng.choice((-1,1))*rng.uniform(0.03,0.065),rng.uniform(1.70,1.78)); r_=rng.uniform(0.0012,0.0022)
             img*=1.0-(0.14*a*DECLINE*np.exp(-(((X-c_[0])**2+(Z-c_[1])**2)/r_**2))*face)[...,None]*np.array((0.7,0.9,1.0))
+    if EYEBAGS>0.0:          # OLHEIRAS: a brown-violet shadow under each eye and the soft crease that closes it
+        circ=np.zeros((H,W))
+        for s in (1,-1):
+            circ+=0.20*EYEBAGS*np.exp(-(((X-s*0.034)/0.015)**2+((Z-1.6805)/0.0042)**2))*front
+            arc=[(s*(0.021+0.030*t),1.6745+0.005*((t-0.5)/0.5)**2) for t in np.linspace(0,1,9)]
+            circ+=0.16*EYEBAGS*line_mask(P,arc,0.0013)*front
+        img*=np.clip(1.0-circ[...,None]*np.array((0.85,1.10,0.80)),0.0,1.0)
+    if SKIN>0.0:             # TEXTURE: pores (per-texel grain, softened over a texel) and a mottling of tone, so the skin is not a plastic gradient
+        g_=rng.normal(0.0,1.0,(H,W)); g_=(g_+np.roll(g_,1,0)+np.roll(g_,-1,0)+np.roll(g_,1,1)+np.roll(g_,-1,1))/5.0
+        mot=np.zeros((H,W))
+        for f_,amp in ((90.0,0.6),(210.0,0.4)):
+            ph=rng.uniform(0,6.3,3); mot+=amp*np.sin(X*f_+ph[0])*np.sin(Z*f_*1.13+ph[1])*np.sin(Y*f_*0.87+ph[2])
+        img*=(1.0+(SKIN*(0.028*g_+0.035*mot)*ok)[...,None]*np.array((1.0,1.05,1.1)))     # (a 7.5% grain read as a sponge)
+    if "cleft_chin" in FEATURES:
+        img*=(1.0-(0.14*np.exp(-(X/0.0018)**2)*np.exp(-((Z-1.586)/0.007)**2)*front))[...,None]
     pale=np.zeros((H,W))
     if "brow_scar" in MARKS: pale+=line_mask(P,[(0.031,1.737),(0.034,1.716),(0.037,1.703)],0.0008)*front
     if "cheek_scar" in MARKS: pale+=line_mask(P,[(-0.045,1.660),(-0.053,1.646),(-0.060,1.632)],0.0010)*front
     img=img*(1-0.45*pale[...,None])+0.45*pale[...,None]*np.array((0.92,0.66,0.62))           # scars heal pale and a little pink
     out=image("T_Hero_Skin",np.clip(img,0,1)); tex.image=out
-    print("T5 age",AGE,"marks",MARKS,"head texels",int(ok.sum()),"darkened",int((dark>0.02).sum()))
-if AGE>0.0 or MARKS: age_skin(body)
+    print("T5 age",AGE,"marks",MARKS,"chin",CHIN,"eyebags",EYEBAGS,"skin",SKIN,"head texels",int(ok.sum()),"darkened",int((dark>0.02).sum()))
+if FACE_ON: age_skin(body)
+def steel_eyes(o):
+    """a pale grey-blue iris on a copy of the eye texture: every texel learns its point on the eyeball, the iris is what faces forward (the pupil stays)"""
+    nt=o.data.materials[0].node_tree; tex=[n for n in nt.nodes if n.type=='TEX_IMAGE'][0]; src=tex.image; W,H=src.size
+    px=np.empty(W*H*4,dtype=np.float32); src.pixels.foreach_get(px); img=px.reshape(H,W,4)[...,:3].astype(np.float64)
+    P=texel_positions(o,W,H,lambda c: True); ok=~np.isnan(P[...,0]); Q=np.where(ok[...,None],P,0.0)
+    cen=np.where((Q[...,0]>0)[...,None],np.array((0.0338,-0.0696,1.6985)),np.array((-0.0338,-0.0696,1.6985))); v=Q-cen
+    cosf=-v[...,1]/np.maximum(np.linalg.norm(v,axis=2),1e-6); ang=np.degrees(np.arccos(np.clip(cosf,-1,1)))
+    iris=ok&(ang<34)&(ang>11); lum=img.mean(axis=2,keepdims=True)
+    tgt=np.clip(lum/max(1e-3,float(lum[iris].mean())),0.4,1.8)*np.array((0.50,0.54,0.56))
+    k_=np.clip((34-ang)/4.0,0,1)[...,None]*iris[...,None]; img=img*(1-k_)+tgt*k_
+    tex.image=image("T_Hero_Eyes",np.clip(img,0,1)); print("T5 steel eyes: iris texels",int(iris.sum()))
+if "steel_eyes" in FEATURES and bpy.data.objects.get("Eyes"): steel_eyes(bpy.data.objects["Eyes"])
 SUITIMG=fabric("Fabric_Pinstripe",(0.034,0.034,0.040),stripe=(0.15,0.15,0.17),weave=0.20,grain=0.03)
 SUIT=tmat("Suit_Black",SUITIMG)                         # a black wool suit with a faint pinstripe and a twill weave: not latex
 def srgb(*c): return tuple(x/12.92 if x<=0.04045 else ((x+0.055)/1.055)**2.4 for x in c)   # a node's colour is LINEAR, an image's pixels are sRGB
@@ -407,7 +470,7 @@ def box_uv(bm,tile):
             p=l.vert.co
             u,v=((p.y,p.z) if ax==0 else (p.x,p.z) if ax==1 else (p.x,p.y))
             l[uvl].uv=(u/tile,v/tile)
-def finish(o,bm,material,uv=None,facet=None):
+def finish(o,bm,material,uv=None,facet=None,extra=()):
     sweep(bm); bm.normal_update()
     if uv: box_uv(bm,uv)
     bm.to_mesh(o.data); bm.free()
@@ -416,7 +479,10 @@ def finish(o,bm,material,uv=None,facet=None):
         for p_ in o.data.polygons: p_.use_smooth=False
     else:
         for p_ in o.data.polygons: p_.use_smooth=True
+    idx=[p_.material_index for p_ in o.data.polygons]          # materials.clear() resets every face's material_index to 0 (the extra slots stood empty)
     o.data.materials.clear(); o.data.materials.append(material)
+    for m_ in extra: o.data.materials.append(m_)             # slots 1.. for faces whose material_index the builder set
+    if extra: o.data.polygons.foreach_set("material_index",idx)
     for g_ in list(o.vertex_groups): o.vertex_groups.remove(g_)
     for n_ in names: o.vertex_groups.new(name=n_)
     m=o.modifiers.new("DT",'DATA_TRANSFER'); m.object=full; m.use_vert_data=True; m.data_types_verts={'VGROUP_WEIGHTS'}
@@ -989,6 +1055,8 @@ if HAIRD or HAIRG:
     for v in hair.data.vertices:     # the fedora sits ON the hair: what would show through the crown is pressed inside it (the hair stays whole for a hatless look)
         p=v.co
         if HAIRD and p.z>1.75: p.z=1.75+(p.z-1.75)*0.75     # (a master's hair was flattened already)
+        if "widows_peak" in FEATURES and p.y<-0.035:            # the hairline dips to a point over the middle of the brow
+            p.z-=0.011*math.exp(-(p.x/0.011)**2)*max(0.0,min(1.0,(1.80-p.z)/0.05))*max(0.0,min(1.0,(-0.035-p.y)/0.03))
         if p.z>HAT_Z0-0.035:         # inside the oval crown, 7 mm clear of its wall (the front pinches included)
             k=max(0.0,min(1.0,(p.z-(HAT_Z0-0.035))/0.035)); t=max(0.0,min(1.0,(p.z-HZ0)/HH))
             th=math.atan2(p.x-hx,-(p.y-hy)); w=crown_pt(th,t)-Vector((hx,hy,0)); R=Vector((w.x,w.y,0)).length-0.007
@@ -997,7 +1065,7 @@ if HAIRD or HAIRG:
         loc,nrm,_i,_d=BODYBVH.find_nearest(p)      # NEVER under the skin (v5 pressed 279 of 757 hair vertices into the scalp: the bare patches at the nape and
         if loc is not None and (p-loc).dot(nrm)<0.002: v.co=loc+nrm*0.002; under+=1     # on top, under the hat and without it); fit_crown() left the room
     print("T5 hair vertices lifted out of the scalp",under,"of",len(hair.data.vertices))
-    if AGE>0.0:          # SALT-AND-PEPPER all over, whiter at the temples and over the ears (Director: "semi-grisalho", never all white); the hair's
+    if GREY>0.0 or "grey_streak" in FEATURES:         # SALT-AND-PEPPER all over, whiter at the temples and over the ears (Director: "semi-grisalho", never all white); the hair's
                          # OWN copy (the brows share HAIRMAT). The lighter strands of the texture go grey first: that is the salt, with no noise
         nt_=HAIRMAT.node_tree; src_=[n for n in nt_.nodes if n.type=='TEX_IMAGE'][0].image; W_,H_=src_.size
         px_=np.empty(W_*H_*4,dtype=np.float32); src_.pixels.foreach_get(px_); himg=px_.reshape(H_,W_,4)[...,:3].astype(np.float64)
@@ -1005,13 +1073,20 @@ if HAIRD or HAIRG:
         g=np.clip((np.abs(HQ[...,0])-0.048)/0.022,0,1)*np.clip((1.775-HQ[...,2])/0.035,0,1)
         lum=himg.mean(axis=2,keepdims=True)/0.15
         strand=np.clip((lum[...,0]-0.7)/0.6,0,1)                           # the texture's own light strands (a per-texel random salt read as a sponge)
-        g=np.clip(AGE*(0.30+0.45*strand+0.45*g),0,0.9)*hok
+        g=np.clip(GREY*(0.30+0.45*strand+0.45*g),0,0.9)*hok
+        if "grey_streak" in FEATURES:                            # one pale forelock, off the parting on his left, from the hairline back
+            st=np.exp(-((HQ[...,0]-0.024)/0.010)**2)*np.clip((-0.012-HQ[...,1])/0.035,0,1)*(HQ[...,2]>1.72)   # (front only: to the crown it read as a stripe)
+            g=np.maximum(g,0.88*st)*hok
         himg=himg*(1-g[...,None])+g[...,None]*np.clip(lum,0.6,1.4)*np.array((0.46,0.45,0.43))
         HAIRMAT_AGED=tmat("Hair_Aged",image("Hair_Aged",np.clip(himg,0,1)),0.7); hair.data.materials.clear(); hair.data.materials.append(HAIRMAT_AGED)
+        gm=float(g[hok].mean()); bimg=px_.reshape(H_,W_,4)[...,:3].astype(np.float64)                # the BROWS match the hair: their own copy, greyed by the
+        blum=bimg.mean(axis=2,keepdims=True)/0.15                                                      # hair's mean (their UVs are not the hair's: no per-texel mask)
+        bimg=bimg*(1-gm)+gm*np.clip(blum,0.6,1.4)*np.array((0.46,0.45,0.43))
+        BROWMAT=tmat("Brow_Aged",image("Brow_Aged",np.clip(bimg,0,1)),0.7)
         print("T5 hair greyed texels",int((g>0.05).sum()),"of",int(hok.sum()))
     pieces.append(skin_to_head(hair))
     brows=bpy.data.objects.get("Eyebrows")
-    if brows: brows.data.materials.clear(); brows.data.materials.append(HAIRMAT)   # the pack's brows were drawn white-grey
+    if brows: brows.data.materials.clear(); brows.data.materials.append(BROWMAT if GREY>0.0 else HAIRMAT)   # the pack's brows were drawn white-grey
 
 def ramp(d,w=0.012): return max(0.0,min(1.0,0.5+d/w))          # LINEAR across the outline, 0.5 exactly on it: the contour snap needs that
 def beard_mask(p):

@@ -25,7 +25,8 @@ for o in MESHES:
         for kb in o.data.shape_keys.key_blocks[1:]:
             kb.value = 0.0
 COAT = [o.name for o in MESHES if o.name.startswith("Outfit_Coat")]
-NORMAL_HIDE = {"Outfit_Gloves", "Mask_Face", "Mask_Jaw", "Mask_Eyes", "Mask_Halo", "Icosphere", "TailorDummy"}
+NORMAL_HIDE = {"Outfit_Gloves", "Mask_Face", "Mask_Jaw", "Mask_Eyes", "Mask_Halo", "Icosphere", "TailorDummy",
+               "Outfit_ShirtSleeves", "Face_HairFree"}   # v6: the shirt's sleeves are worn only without the coat; the free hair is hatless
 
 sc.render.engine = 'BLENDER_EEVEE'
 try:

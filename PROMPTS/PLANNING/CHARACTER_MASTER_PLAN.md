@@ -437,7 +437,7 @@ on or off at the end, never an assumption baked into the machine.
 | Closes | stylisation degree, joint legibility, silhouette across D44's four facings, §4.8 palette, the §9 #2 class count, hat height | import + scale + assembly, so execution is mechanical once A lands |
 | Inherits | **S1's rule: every concept is also checked at 196 px** — six variants were obvious at 8× and indistinguishable at ship size | §4.7's measured scale; the ruler is already in `agent_sculpt_start.blend` |
 
-**Generative 3D stays on the PC as an experiment, never a pipeline dependency.**
+**Generative 3D stays on the PC as an experiment, never a pipeline dependency.** *(2026-10-26, `ACTOR` D84: the PC runs it now, in `D:\gen3d` (uv, Python 3.11, torch 2.7.1+cu126, Hunyuan3D-2mini, shape only) driven over JAMES's SSH (`ARCHIVE/wip/gen3d/pc.sh`); `hero_tailor.py`'s `COAT_SRC` takes the coat it makes as a SHAPE, re-cut to our body; the pipeline never depends on the generator, and a look-only licence never ships.)*
 The Mac has no CUDA: Hunyuan3D's texturing path alone wants ~38 GB there and its
 rasteriser fails **silently**, which is the worst failure mode this project has
 a standing rule against (B6, loud-fail).

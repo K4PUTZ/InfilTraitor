@@ -23,7 +23,7 @@ LEVELS = [("L1 · LAP 1", "meet the specialist on that turf"), ("L2 · LAP 2", "
           ("L3 · FREELANCE", "research; the endgame converges")]
 # (name, §10 class, author, non-lethal, enemy counter) per faction -> lane -> level
 N = {
- 0: [[("Trail reading", "mask module · his own trail", "Cairn (K9)", 1, "decoy trails"),
+ 0: [[("Trail reading", "goggle module · his own trail", "Cairn (K9)", 1, "decoy trails"),
       ("Predictive", "visor T5", "evidence room", 1, "patrols re-rolled"),
       ("Tactical analysis", "visor T5", "research", 1, "analysis jammers")],
      [("Taser", "weapon T2 · shock", "Pyre", 1, "insulated vests"),
@@ -33,8 +33,8 @@ N = {
       ("Lockpicks + zip ties", "gadgets", "evidence room", 1, "patrols check the downed"),
       ("Radio scrambler", "gadget T5", "research", 1, "runners on foot")]],
  1: [[("Scout drone", "gadget T4", "Ace Skyler", 1, "anti-drone guns"),
-      ("Thermal", "mask module · T3", "armoury", 1, "insulation suits §11.3"),
-      ("X-ray", "mask module · T4", "research", 1, "lead-lined rooms")],
+      ("Thermal", "goggle module · T3", "armoury", 1, "insulation suits §11.3"),
+      ("X-ray", "goggle module · T4", "research", 1, "lead-lined rooms")],
      [("Suppressed rifle", "weapon T3", "Rex Hawke", 0, "counter-snipers"),
       ("Pulse carbine", "weapon · new", "armoury", 1, "insulated armour"),
       ("Laser", "weapon T4", "research", 0, "reflective plating")],
@@ -42,7 +42,7 @@ N = {
       ("Silent boots + vest", "armour T3", "armoury", 1, "pressure plates"),
       ("Exoskeleton", "armour T5 · on the battery", "research", 1, "heavy pairs")]],
  2: [[("Firework lure", "gadget T4 · radius, alert +1", "Vespers", 1, "lone noises ignored"),
-      ("Motion vision", "mask module · T3", "chop shop", 1, "still sentries"),
+      ("Motion vision", "goggle module · T3", "chop shop", 1, "still sentries"),
       ("Street eyes", "lookouts · new", "research", 1, "informant hunts")],
      [("Dart launcher", "weapon T3", "Censer", 1, "antidote, respirator §11.3"),
       ("Gas + smoke", "gadgets T2", "lab (recipe)", 1, "respirators"),
@@ -51,8 +51,8 @@ N = {
       ("Getaway bike", "extraction points only", "chop shop", 1, "roadblocks, spikes"),
       ("Breaching charge", "gadget T3", "research", 0, "reinforced doors")]],
  3: [[("Camera loop", "gadget T5", "Ledger", 1, "guards check feeds"),
-      ("WiFi vision", "mask module · T4", "R&D floor", 1, "shielded rooms"),
-      ("Spectral", "mask module · T6", "research", 1, "multi-spectrum camo")],
+      ("WiFi vision", "goggle module · T4", "R&D floor", 1, "shielded rooms"),
+      ("Spectral", "goggle module · T6", "research", 1, "multi-spectrum camo")],
      [("Shadow generator", "gadget · 1 charge (T6 at L3)", "Hedge (seen)", 1, "flares, floodlights"),
       ("LED coat", "armour T7 · adaptive", "Hedge, lap 2", 1, "highly watched zones"),
       ("Plasma", "weapon T5", "R&D research", 0, "heavy plating")],
@@ -78,8 +78,8 @@ y0 = 130
 d.rounded_rectangle([40, y0, W - 40, y0 + 120], 14, fill=(34, 35, 41), outline=(90, 92, 100), width=2)
 d.text((60, y0 + 14), "EVERY CHARACTER", fill=(240, 240, 240), font=f(26))
 steps = [("START (crude, one-shot)", "the ATTACK's gear: pistol · chokehold · stones · alarm clock · spray · chloroform · rope & hook · balaclava"),
-         ("OFFICIAL WORK", "the hat-MASK from the club's assassin: base mode night vision (T2); modules from the trees"),
-         ("UPGRADES (when: open)", "the pack BATTERY (mask modules + LED coat) · a grapple for PERCHES"),
+         ("OFFICIAL WORK", "the hat-MASK from the club's assassin: hides the face, gives NO vision"),
+         ("UPGRADES (when: open)", "the GOGGLES (vision; possibly the Militia) · the pack BATTERY (goggles + LED coat) · a grapple"),
          ("LAP 2", "the LED COAT from Hedge: wardrobe of every uniform held + the cloak")]
 x = 60
 for i, (t, s) in enumerate(steps):

@@ -325,8 +325,15 @@ THE OFFICIAL WORK — first (Director, 2026-10-22)
     masked intruder in lap 2 he knows who killed his man, and the secret
     dies with him. And on a second playthrough (§2.4) the "luck" reads
     as the Agent silencing an investigator who was closing in on him.
-  - The pack battery is a later UPGRADE (§10.5); until then the mask
-    runs on its own small charge.
+  - THE GOGGLES (Director, 2026-10-26, `ACTOR` D83): the vision is NOT
+    the mask's. It lives in goggles, a piece of their own, which come
+    from another faction (possibly the Militia; when: open) and take on
+    their vision types over time (§15's EYE nodes). The mask only hides
+    the face, and the club's assassin wears it with NO goggles. The eye
+    glow that betrays him in the dark is the goggles'. Without the
+    hat-mask he may wear the balaclava with the goggles.
+  - The pack battery is a later UPGRADE (§10.5); until then the goggles
+    run on their own small charge (2026-10-26, D83; it said the mask).
 
 LAP 1 — the favours (four chapters, one per faction; the circle stays:
   Director, 2026-10-22)
@@ -1287,7 +1294,7 @@ replaces the choice (§10.5).
 | A SPRAY CAN | Blinds cameras (Director). **Claude:** a few sprays per can, from the camera's blind side; a blinded camera is EVIDENCE that guards come to check, unlike the Corporation's clean camera loop (§15) |
 | CHLOROFORM | Puts BIGGER enemies to sleep, those a chokehold cannot drop (Director): fragile, volatile, one bottle at a time, found in the world. **Claude:** it breaks if he takes a hit or falls; once opened it evaporates within a few turns; it is found in labs, clinics and chemical stores (an affordance tag, §15). It keeps §2.6's non-lethal promise against the heavies (the heavier base, `COSMETICS_MASTER_PLAN` §8.1) |
 | A SHORT ROPE AND HOOK | TRAVERSAL only (Director, 2026-10-23): from one AUTHORED anchor to another, over a wall, a fence, a dug channel, a pool of acid. He never stands on anything: he lands on the ground beyond. The rope's length and the anchors are the scene builder's (affordance tags, §15). It doubles as an evasion: a wall the guards must walk around. Costs AP and makes a noise on the throw (numbers open) |
-| A balaclava | For the first missions: masked, with the coat stowed in his black pack, he already looks like the Infiltraitor, with no technology. He wears an ordinary fedora; the **mask** (`ACTOR` D71/D77), itself a fedora, is taken soon from the club's hired assassin at an official-work site and replaces it (§2.2) |
+| A balaclava | For the first missions: masked, with the coat stowed in his black pack, he already looks like the Infiltraitor, with no technology. He wears an ordinary fedora; the **mask** (`ACTOR` D71/D77), itself a fedora, is taken soon from the club's hired assassin at an official-work site and replaces it (§2.2). The vision is the GOGGLES', worn with either the balaclava or the mask (`ACTOR` D83, 2026-10-26) |
 
 **The start kit is the gear of the ATTACK (Director, 2026-10-23):** the "uniform" he wore the night he breached the dam, which is why he
 starts with some skills. It is a fair-reveal clue (§2.4): the gear the player has carried since the first mission is the attack's. Claude: the
@@ -1301,7 +1308,7 @@ scene builder (a roof edge, a water tower, a catwalk).
 - **Seeing him up there is a GAMEPLAY rule:** guards look up only at higher alert, with flashlights, or through drones, as with the revealed
   guards.
 - **Counters:** guards who look up and sweep flashlights from a set alert; the Militia's drones; snipers; no perches in highly watched
-  zones; few per map; the mask's eye glow betrays a still Agent in the dark (D71).
+  zones; few per map; the goggles' eye glow betrays a still Agent in the dark (D71, D83).
 - **Open:** where the better grapple comes from and when (Claude: lap 2, like the other mid-game tools).
 
 **The start kit is CRUDE, the trees are CLEAN (Claude, 2026-10-23).** The start kit's tools are one-shot and leave traces; the trees give
@@ -1358,6 +1365,8 @@ always costs mobility or stealth.***
 ### 10.3 Class 3 — Visor
 *Each visor fundamentally changes how the player reads the map.*
 
+**Since 2026-10-26 these are modes of the GOGGLES (`ACTOR` D83), never of the mask:** each is a technology on the goggles, unlocked over time (§15's EYE nodes); tier 1 is the Agent without goggles.
+
 | Tier | Visor | Reveals | Limitation |
 |---|---|---|---|
 | 1 | Normal vision | Standard cone | No overlay |
@@ -1411,8 +1420,8 @@ acquired. It does two things, both electronic:
   club draw fire.
 
 **It needs energy (Director: a cooldown and an energy and recharge system).** **The battery in the pack is a later UPGRADE that powers both
-the mask and the LED coat** (Director, 2026-10-23). Until he gets it, the mask runs on its own small charge (§10.3 already prices X-ray in
-charges). With it, the mask's vision (D71's tether at the nape carries the power: Claude's reading, the tether arrives with the upgrade) and the
+the goggles and the LED coat** (Director, 2026-10-23; the goggles since 2026-10-26, `ACTOR` D83, where it said the mask). Until he gets it, the goggles run on their own small charge (§10.3 already prices X-ray in
+charges). With it, the goggles' vision (D71's tether at the nape carries the power: Claude's reading, the tether arrives with the upgrade) and the
 coat's cloak and symbol draw on one charge, so seeing through walls and hiding compete. When the upgrade comes: open (§18). It recharges slowly per turn and quickly at power points,
 which grow as the power station's restoration brings districts back (§2.2; restored light also costs cover, §2.6). The numbers are open (§18).
 
@@ -1529,7 +1538,7 @@ Enemies and the Agent evolve together, as in Phoenix Point's research tree (or S
 investigated faction's turf (§2.2), a route meets the specialists in its own order, so each route grows its arsenal in a different order.
 
 **Constraints (Claude, from the canon):**
-- **No unlock needs a kill:** observing it with the mask, surviving it, or knocking its author out and searching him all count; otherwise the
+- **No unlock needs a kill:** seeing it used, surviving it, or knocking its author out and searching him all count; otherwise the
   tree pushes the player toward the sad ending (§2.6).
 - **The kamikaze drone is never an unlock:** it is the murder weapon and the club's signature (§2.6). The Militia's drone is a scout.
 - **No acid weapon:** the flood was acid, and the tragedy is never played light (§2.6). The club's chemist works in gas and sedatives.
@@ -1577,7 +1586,7 @@ Diagram: `DIAGRAMS/ELENCO_ARVORE.png` (generator `tools/asset_generation/tech_tr
   gas and smoke come from Censer's lab recipe); **Margin**, head of the Corporation's R&D floor. The LED coat stays Hedge's.
 - **L3 (Freelance):** a Captain of each faction fields the prototype; the Agent knocks him out and takes the SAMPLE, and **Zest** researches
   it: a fence and engineer outside the factions, met in the neutral missions between the laps (one more orange, like Pith & Peel).
-- **Unlock never needs a kill** (§11.6): see it with the mask, survive it, or knock the author out and search them.
+- **Unlock never needs a kill** (§11.6): see it used, survive it, or knock the author out and search them.
 - **Genders (Claude, under the Director's delegation, 2026-10-24): two women per faction among its four named people, spread over the
   roles:** FID **Pyre** (HAND) and **Vault** (WALL); Calm Waters **Ace Skyler** (EYE) and **Tank Mercer** (keeper); Bunsen Burners **Censer**
   (HAND) and **Tithe** (keeper); Corporation **Ledger** (EYE) and **Escrow** (WALL). **Zest** is a woman too. The others are men.
@@ -1801,7 +1810,7 @@ raise a skill he is weak in or get better equipment; each kind of objective pays
 REDISTRIBUTES §10's catalogue (and the 2026-10-23 additions) by faction and author; it is not a parallel system.
 
 **Structure:**
-- Per faction, THREE BRANCHES: EYE (detect, giving mask modules and intel), HAND (the faction's threat, giving weapons) and WALL (control,
+- Per faction, THREE BRANCHES: EYE (detect, giving goggle modules and intel), HAND (the faction's threat, giving weapons) and WALL (control,
   giving gadgets and armour).
 - THREE LEVELS:
   - L1, lap 1: the specialist met on that turf (§11.6);
@@ -1810,7 +1819,7 @@ REDISTRIBUTES §10's catalogue (and the 2026-10-23 additions) by faction and aut
 - Each node carries its author, its §10 class, lethal or not, and its enemy counter.
 - **Unlocking** means meeting the author: seeing the technique used, surviving it, or knocking its author out and searching him. Never a kill.
   The stores need access.
-- **§10.3's visors become MASK MODULES:** the mask arrives with night vision, and its other modes are nodes, including D71's thermal and X-ray.
+- **§10.3's visors become GOGGLE MODULES** (2026-10-26, `ACTOR` D83; it said mask modules): the goggles arrive with night vision (Claude's reading, carried over from the mask), and their other modes are nodes, including D71's thermal and X-ray. Where and when the goggles come: open (the Director: possibly the Militia).
 
 | Faction | EYE (L1 → L2 → L3) | HAND (L1 → L2 → L3) | WALL (L1 → L2 → L3) |
 |---|---|---|---|
@@ -1825,7 +1834,7 @@ REDISTRIBUTES §10's catalogue (and the 2026-10-23 additions) by faction and aut
 - The factions field a counter in the NEXT stage, the Agent's most-used technique first, always telegraphed (§11.4).
 - A counter weakens a technique, never nullifies it.
 
-**Every character shares:** the start kit (§10.0) → the hat-mask (official work) → the pack battery (an upgrade; when: open) → the LED coat
+**Every character shares:** the start kit (§10.0) → the hat-mask (official work; concealment only) → the GOGGLES (`ACTOR` D83; when and from whom: open) → the pack battery (an upgrade; when: open) → the LED coat
 (lap 2).
 
 **Backgrounds** (§2.2): the player picks ONE of his own faction's three L1 nodes at the deposition (he knows that world; it offsets his own
@@ -1849,7 +1858,7 @@ chapter coming last in lap 1; the balance pass below), plus one passive and one 
   exits, it is loud (alert up), and roadblocks stop it.
 - **The shadow generator** is a tier-6 gadget (§10.4) at L1, and shadow is the core of stealth. Rule: L1 is one charge for two turns, and
   §10.4's full version comes at L3.
-- **The exoskeleton** has no stealth penalty (§10.1: powered). Rule: it draws on the pack battery, competing with the mask and the LED coat.
+- **The exoskeleton** has no stealth penalty (§10.1: powered). Rule: it draws on the pack battery, competing with the goggles and the LED coat.
 - **Interrogate and the bribe** become universal keys if unlimited. Rule: actives have charges per mission, captains cannot be bought,
   and a bribed guard may talk later.
 
@@ -1882,7 +1891,7 @@ chapter coming last in lap 1; the balance pass below), plus one passive and one 
   - grapple ANCHORS (traversal pairs) and PERCHES (§10.0);
   - highly watched zones (no uniform, no LED coat) and checkpoints;
   - locked and electronic doors, camera nets, radio relays;
-  - dark zones (the mask's eye-glow trade-off) and thin walls (thermal, X-ray);
+  - dark zones (the goggles' eye-glow trade-off) and thin walls (thermal, X-ray);
   - open ground (the bike, Road sense) and extraction points.
 
 **The Informant — a guaranteed NPC.** A map may contain a Network contact
@@ -2084,7 +2093,7 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   books in every route; Barrow runs him too on the policeman's background;
   neither knows of the other (same delegation; §2.2).
 - ✅ **The tech and skill tree** → three branches (EYE / HAND / WALL) x three levels (lap 1 specialist, lap 2 store or envoy, Freelance
-  research) per faction, redistributing §10's catalogue by author; every node has an enemy counter; §10.3's visors become mask modules;
+  research) per faction, redistributing §10's catalogue by author; every node has an enemy counter; §10.3's visors become mask modules (goggle modules since 2026-10-26, `ACTOR` D83);
   backgrounds pick one of their own L1 nodes at the deposition and add a passive and an active; Claude's balance pass and level
   affordances adopted (Director, 2026-10-23; §15, `DIAGRAMS/ARVORE_TECNOLOGICA.png`).
 - ✅ **The start kit grows** → an alarm clock (one per mission, set for N turns, draws several guards; later a battery radio-clock with
@@ -2125,6 +2134,10 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   (§2.7); the Corporation has no weapons IN PUBLIC (§2.6); the LED coat is a
   mid-to-late-game tool on every route, met in lap 1 (Hedge) and acquired in
   lap 2 (§10.5; the Director revised the same day's "varies by route").
+- ✅ **The mask and the goggles split** → the vision (thermal, X-ray, infrared and the rest) lives in GOGGLES, a piece of their own,
+  not in the hat-mask: the club's assassin wears the mask without them; they come from another faction (possibly the Militia); their
+  vision types unlock over time; they are a cosmetic family to sell; the eye glow and its penalty in the dark are theirs; without the
+  hat-mask he may wear the balaclava with them (Director, 2026-10-26; §2.2, §10.3, §10.5, §15, `ACTOR` D83).
 - ✅ **Premium campaign or shared campaign?** → **Shared.** Free and paying
   players can reach the same campaign, Freelance content and powers; payment
   accelerates progression (§16).
@@ -2133,6 +2146,10 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   minors, and §16 sets the social defaults for them.
 
 **Still open — do not decide these unilaterally:**
+- [ ] From 2026-10-26 (`ACTOR` D83): what "hired to attack the player" means for the club's assassin (canon: Deacon's man on the same
+  leak, met by luck, §2.2); when and from whom the goggles come (a Militia node that varies by route, or one point on every route);
+  whether he may wear them bare-faced, and whether that is suspicious; whether infrared is a mode of its own (Claude: near-infrared,
+  showing IR beams and tripwires) or §10.3's night vision.
 - [ ] From 2026-10-24: the voice bank's performers and sizes (§2.3, proposed); where hair, face and height are chosen
   (the form or the deposition; Claude's proposal 2026-10-25: the FORM, as the station's mugshot, front and profile: `ACTOR` D81); the race field's options per country (§2.2, §2.6).
 - [ ] From 2026-10-23: the chokehold's N turns (§10.0); which official-work

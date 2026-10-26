@@ -71,7 +71,7 @@ for fi, (nm, col) in enumerate(FAC):
             d.text((bx + 10, by + 132 + k * 62), c, fill=(235, 200, 200), font=f(20, FR))
 ry = ys[3] + rh[3] + 10
 for k, r in enumerate([
-    "UNLOCK never needs a kill: see it with the mask, survive it, or knock the author out and search him. Every introducer is SEEN one stage before he matters (§11.4).",
+    "UNLOCK never needs a kill: see it used, survive it, or knock the author out and search him. Every introducer is SEEN one stage before he matters (§11.4).",
     "COUNTER: the author's faction fields it first (it knows its own tech's weakness), the others a stage later; the Agent's most-used technique first; a counter weakens, never nullifies.",
     "MODELS: 12 counter units x 3 gear stages are slot pieces on the faction's guard base (one skeleton), not 36 new characters. New cast: 4 store keepers (Urn, Tank Mercer, Tithe, Margin) + Zest."]):
     d.text((40, ry + k * 34), r, fill=(200, 200, 205), font=f(22, FR))

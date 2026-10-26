@@ -200,7 +200,7 @@ only in photographs (a frame at home, the grave), as a texture. There is no baby
 
 | Group | Slots |
 |---|---|
-| Head | `hair`, `beard`, `hat`, `mask` (the hero's crown-mask, guards' balaclavas, helmets), `eyewear` (glasses, night-vision goggles, visors), `earpiece` |
+| Head | `hair`, `beard`, `hat`, `mask` (the hero's crown-mask, guards' balaclavas, helmets), `eyewear` (glasses, night-vision goggles, visors; the hero's VISION GOGGLES, `ACTOR` D83: their FRAMES are a family to sell, while the lenses' amber glow is state and the same on every frame), `earpiece` |
 | Torso | `shirt`, `collar_trim`, `tie`, `jacket` (suit jacket, police shirt, tactical top, biker vest over a shirt), `vest` (armour, the club's patched vest), `coat` |
 | Arms / hands | `gloves`, `armband` (the captain's armband, rank and faction emblems), `watch` |
 | Legs / feet | `trousers`, `shoes` (dress shoes, boots, trainers) |
@@ -315,7 +315,7 @@ under a Machado 2009 simulation of deuteranopia / protanopia / tritanopia (sciki
   (`DIAGRAMS/CIRCULO_ENREDO.png`) with these families.
 
 **9.5 Per style (D70, D72).** Normal: full colour. Black: the subdued variant (dark on dark, like low-visibility military insignia), the pack's
-patch the main sign. Masked: the amber eyes stay the same for every faction (a state cue, never a faction one, D71/C3), the emblem stencilled
+patch the main sign. Masked: the goggles' amber lenses (the glow moved there from the mask, `ACTOR` D83, 2026-10-26) stay the same for every faction (a state cue, never a faction one, D71/C3), the emblem stencilled
 dark on the mask's side plate (portrait only). Cloak: nothing (the illusion). LED symbol: the coat's outside shows the bluffed faction, the
 lining keeps his own.
 

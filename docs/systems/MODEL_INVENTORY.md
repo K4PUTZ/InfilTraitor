@@ -26,14 +26,14 @@ Legend: **M/F** = a piece fitted to both the male and the female base; **M** or 
 
 | Group | Pieces |
 |---|---|
-| Head | fedora (start) ✅, the **hat-mask** (the Confessor's) ✅, balaclava, hair and beard (the hero's CC0 pieces; the female base needs its own set) |
+| Head | fedora (start) ✅, the **hat-mask** (the Confessor's; concealment only) ✅, the **vision goggles** (`ACTOR` D83: from another faction, the eye glow, cosmetic frames; worn over the mask or the balaclava), balaclava, hair and beard (the hero's CC0 pieces; the female base needs its own set) |
 | Torso | shirt ✅, tie ✅, the FID **mustard coat** (black inside) ✅ — the same coat silhouette carries the four **officer coats** (FID mustard, Calm Waters grey, Bunsen Burners brown, Corporation black) and the **LED coat** (a shader on it, `DESIGN` §10.5) |
 | Arms | gloves, **armband** ×4 factions (the bikers' brown with orange stripes, `ACTOR` D78), watch, wedding ring |
 | Legs / feet | trousers ✅, dress shoes ✅, **silent boots** (Calm Waters armoury) |
 | Gear | pack ✅, pack + **battery** (the upgrade), belt with holster, police **badge** (taken in lap 1), **vest** (Calm Waters, armour T3), **exoskeleton** (L3, a worn frame over both bases) |
 | Skin layer | the ending's tattoo (a texture, not a mesh) |
 
-Mask modules (thermal, motion, WiFi, X-ray, spectral, tactical analysis, predictive, trail reading) are **visor STATES of the hat-mask**: a shader
+Mask modules (thermal, motion, WiFi, X-ray, spectral, tactical analysis, predictive, trail reading) are **visor STATES of the goggles** (`ACTOR` D83; the hat-mask's until 2026-10-26): a shader
 and the screen effect, no new mesh.
 
 ## 3. Held items and gadgets (meshes, small; all on one hand bone)
@@ -86,7 +86,7 @@ jeans, boots, bandana; Corporation suits, earpiece, sunglasses. Rank pieces: rad
 | Evelyn Marsh | standard F | sub-leader |
 | Prudence Vane | standard F | Marsh's counsel |
 | Thomas Marlow (The Sieve) | standard M | the reporter; civilian |
-| "The Confessor" | standard M | the hired assassin; wears the hat-mask |
+| "The Confessor" | standard M | the hired assassin; wears the hat-mask, NO goggles (`ACTOR` D83) |
 | The official investigator who takes the case | standard (open) | |
 | Pith & Peel's front man | standard M | |
 | Four faction members abroad | standard (open) | one per trip |

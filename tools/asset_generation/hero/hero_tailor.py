@@ -133,7 +133,8 @@ CHIN=float(os.environ.get("CHIN","1")); EYEBAGS=float(os.environ.get("EYEBAGS","
 # awesome"): each is a knob in FEATURES, none on by default until the Director composes his face. Geometry: hawk_nose (an aquiline bridge, the tip a
 # little down), crooked_nose (broken once, set a few millimetres off true), heavy_brow (a forward brow ridge: deep-set eyes), high_cheeks (cheekbones out,
 # hollow under), square_jaw (the jaw's angles out, a flat chin), cleft_chin, smirk (the left mouth corner set higher: a permanent half-smile).
-# Hair: widows_peak (the hairline dips to a point), grey_streak (one pale forelock). Eyes: steel_eyes (a pale grey-blue iris)
+# Hair: widows_peak (the hairline dips to a point), grey_streak (one pale forelock). Eyes: steel_eyes (a pale grey-blue iris), hooded_eyes (narrowed and
+# hooded, its own pass after the face fields: below)
 NOSE=float(os.environ.get("NOSE","0"))     # 0..1: how much the base nose is pulled back toward the face (a study knob, uncommitted)
 FEATURES={f.split(":")[0]:(float(f.split(":")[1]) if ":" in f else 1.0) for f in os.environ.get("FEATURES","hawk_nose:0.25").split(",") if f}   # name[:strength]; the hawk nose softened (Director 2026-10-25)
 FEATURE_GAIN=float(os.environ.get("FEATURE_GAIN","2.4"))   # at 1 (3-4 mm on a 16 cm head) the first catalogue's faces read nearly the same
@@ -207,6 +208,87 @@ if FACE_ON:
         _eb=bmesh.new(); _eb.from_mesh(bpy.data.objects["Eyebrows"].data)
         bmesh.ops.delete(_eb,geom=[f for f in _eb.faces if abs(f.calc_center_median().x-0.033)<0.0028],context='FACES')
         _eb.to_mesh(bpy.data.objects["Eyebrows"].data); _eb.free()
+# hooded_eyes (Director 2026-10-26, a photo crop of narrowed, hooded eyes: "vamos começar pelo shape do olho"). Measured on that crop against the fissure's
+# width: the opening is ~0.27 of it (v5.2: 0.37), the iris ~0.45 (v5.2: ~0.52), the upper lid sits just above the pupil, the lower lid on the iris, the
+# corners level (the pack's outer corner rises ~9 deg). So the lid skin ROLLS about the eye's axis (the outer corner comes down), the lids ROTATE about the
+# eyeball's centre (they stay on it: the upper one down, the lower one up, most in the middle, nothing at the corners, the outer half of the upper lid a
+# little more), and the eyeball's front is remapped so the painted iris shrinks. The pack's upper LASHES are a dark ~3 mm strip inside Eyebrows (the
+# "eyeliner" band): the same move carries them with the lid, then each strip is thinned toward its root. The margins (+2.8 / -8.0 mm from the eye's centre,
+# the middle column) were measured on v5.2 by a front ray cast. The brows sit outside the lid's reach and barely move.
+HOOD=FEATURES.get("hooded_eyes",0.0)
+if HOOD>0.0 and bpy.data.objects.get("Eyes"):
+    _EV=np.array([v.co[:] for v in bpy.data.objects["Eyes"].data.vertices]); EYEF={}
+    for s_ in (1.0,-1.0):        # each eyeball's centre and radius, read from the mesh
+        _P=_EV[_EV[:,0]*s_>0]; _lo,_hi=_P.min(0),_P.max(0); EYEF[s_]=(Vector(((_lo+_hi)/2).tolist()),float(_hi[1]-_lo[1])/2)
+    LID_UP,LID_LO,LID_ROLL,IRIS_K,LASH_K,LASH_TAIL=math.radians(6.0),math.radians(6.3),math.radians(5.0),0.87,0.45,math.radians(32.0)
+    def _ss(t): t=min(1.0,max(0.0,t)); return t*t*(3-2*t)
+    def _pitch(q,a):             # rotate q (relative to the eye's centre) about the eye's x axis: +a lifts the front
+        f,u=-q.y,q.z; return Vector((q.x,-(f*math.cos(a)-u*math.sin(a)),f*math.sin(a)+u*math.cos(a)))
+    def lid_move(p):
+        s=1.0 if p.x>=0 else -1.0; C,R=EYEF[s]; q=p-C
+        if q.y>-0.002 or abs(q.x)>0.032 or abs(q.z)>0.028: return p
+        fy=_ss((-0.002-q.y)/0.006)                                              # nothing behind the eye's front half (the socket)
+        rho=math.hypot(q.x,q.z); wr=fy*(1.0-_ss((rho-0.016)/0.010))
+        a=s*LID_ROLL*HOOD*wr                                                     # the roll: the outer corner comes down
+        q=Vector((q.x*math.cos(a)+q.z*math.sin(a),q.y,-q.x*math.sin(a)+q.z*math.cos(a)))
+        wx=math.cos(0.5*math.pi*min(1.0,abs(q.x)/0.0165))**2; xo=max(-1.0,min(1.0,s*q.x/0.015))
+        if q.z>-0.0025:          # the upper lid, its lash plate and the fold over it
+            dz=q.z-0.0028; wv=1.0 if dz<=0 else math.exp(-(dz/0.007)**2)
+            q=_pitch(q,-LID_UP*HOOD*wx*(1.0+0.3*xo)*wv*fy)
+        else:                    # the lower lid
+            dz=-0.0080-q.z; wv=1.0 if dz<=0 else math.exp(-(dz/0.006)**2)
+            q=_pitch(q,LID_LO*HOOD*wx*wv*fy)
+        return C+q
+    _brows=bpy.data.objects.get("Eyebrows")
+    for o_ in (body,_brows):
+        if o_ is not None:
+            for v in o_.data.vertices: v.co=lid_move(v.co)
+    if _brows is not None:   # the lash strips: the islands of Eyebrows that never rise above the lid (the brows start ~0.7 mm higher)
+        _bm=bmesh.new(); _bm.from_mesh(_brows.data); _bm.verts.ensure_lookup_table(); _seen=set(); _lash=[]
+        for v0 in _bm.verts:
+            if v0.index in _seen: continue
+            st=[v0]; comp=[]
+            while st:
+                v=st.pop()
+                if v.index in _seen: continue
+                _seen.add(v.index); comp.append(v.index); st.extend(e.other_vert(v) for e in v.link_edges)
+            s=1.0 if _bm.verts[comp[0]].co.x>=0 else -1.0
+            if max(_bm.verts[i].co.z for i in comp)<EYEF[s][0].z+0.0065: _lash+=comp
+        _bm.free(); co_=_brows.data.vertices; roots={}
+        for i in _lash:              # the root line: the lowest vertex of each 1.5 mm column (on the lid's margin), smoothed and interpolated along x
+            k=(co_[i].co.x>=0,int(math.floor(co_[i].co.x/0.0015)))
+            if k not in roots or co_[i].co.z<roots[k].z: roots[k]=co_[i].co.copy()
+        rline={}                     # (a vertex's own column alone tore the top edge into teeth: the strip leans, so a tip's root is in the next column)
+        for side in (True,False):
+            R_=sorted((r for k,r in roots.items() if k[0]==side),key=lambda r:r.x)
+            if not R_: continue
+            xs=np.array([r.x for r in R_]); ys=np.array([r.y for r in R_]); zs=np.array([r.z for r in R_])
+            sm=lambda a: np.convolve(np.pad(a,1,mode='edge'),[0.25,0.5,0.25],mode='valid')
+            rline[side]=(xs,sm(ys),sm(zs))
+        for i in _lash:
+            p=co_[i].co; xs,ys,zs=rline[p.x>=0]; ry,rz=float(np.interp(p.x,xs,ys)),float(np.interp(p.x,xs,zs)); kk=1-(1-LASH_K)*HOOD
+            co_[i].co=Vector((p.x,ry+(p.y-ry)*kk,rz+max(0.0,p.z-rz)*kk))
+        _sk=BVHTree.FromPolygons([v.co.copy() for v in body.data.vertices],[list(f.vertices) for f in body.data.polygons])
+        def _skin_y(x,z):            # the skin's depth seen from the front at (x, z)
+            h=_sk.ray_cast(Vector((x,-0.5,z)),Vector((0,1,0))); return h[0].y if h[0] is not None else None
+        for i in _lash:              # the lash's TAIL past the outer corner curls down (Director 2026-10-26: "só rotacionar essa pontinha mais escura"),
+            p=co_[i].co; s=1.0 if p.x>=0 else -1.0; C,R=EYEF[s]; xo=s*(p.x-C.x)   # and LIES DOWN on the skin toward its end: a strip
+            if xo<=0.011: continue   # that stands off the skin read as a spike in 3/4 and cast a stripe of shadow (the v5.2 tail cast one too)
+            xs,ys,zs=rline[p.x>=0]; px_=C.x+s*0.011; pz_=float(np.interp(px_,xs,zs)); t_=_ss((xo-0.011)/0.008); a=s*LASH_TAIL*HOOD*t_
+            dx,dz=p.x-px_,p.z-pz_; q=Vector((px_+dx*math.cos(a)+dz*math.sin(a),p.y,pz_-dx*math.sin(a)+dz*math.cos(a)))
+            y1=_skin_y(q.x,q.z)
+            if y1 is not None: q.y+=(y1-0.00025-q.y)*t_*HOOD
+            co_[i].co=q
+        print("T5 hooded_eyes lash vertices",len(_lash),"columns",len(roots))
+    th_i=math.asin(min(1.0,0.0075/EYEF[1.0][1])); th_s=math.radians(75.0); k_=1.0-(1.0-IRIS_K)*HOOD
+    for v in bpy.data.objects["Eyes"].data.vertices:   # the iris: angles from the eye's forward axis remapped, the sclera stretched to meet it
+        s=1.0 if v.co.x>=0 else -1.0; C,R=EYEF[s]; q=v.co-C; L=q.length; rho=math.hypot(q.x,q.z)
+        if rho<1e-7 or L<1e-7: continue
+        th=math.atan2(rho,-q.y)
+        if th>=th_s: continue
+        th2=k_*th if th<=th_i else k_*th_i+(th-th_i)*(th_s-k_*th_i)/(th_s-th_i)
+        v.co=C+Vector((q.x/rho*math.sin(th2)*L,-math.cos(th2)*L,q.z/rho*math.sin(th2)*L))
+    print("T5 hooded_eyes",HOOD,"eye centres",[tuple(round(c,4) for c in EYEF[s_][0]) for s_ in (1.0,-1.0)],"radius",round(EYEF[1.0][1],4))
 def texel_positions(o,W,H,keep):
     """for each texel of the image o's render UV map draws, the rest position on the mesh (NaN where nothing is drawn), from the faces keep() accepts;
     grown 3 texels past each island so the seams sample a position too"""
@@ -280,7 +362,7 @@ def age_skin(o):
             arc=[(s*(0.021+0.030*t),1.6745+0.005*((t-0.5)/0.5)**2) for t in np.linspace(0,1,9)]
             circ+=0.16*EYEBAGS*line_mask(P,arc,0.0013)*front
         img*=np.clip(1.0-circ[...,None]*np.array((0.85,1.10,0.80)),0.0,1.0)
-    if SKIN>0.0:             # TEXTURE: pores (per-texel grain, softened over a texel) and a mottling of tone, so the skin is not a plastic gradient
+    if SKIN>0.0:           # TEXTURE: pores (per-texel grain, softened over a texel) and a mottling of tone, so the skin is not a plastic gradient
         g_=rng.normal(0.0,1.0,(H,W)); g_=(g_+np.roll(g_,1,0)+np.roll(g_,-1,0)+np.roll(g_,1,1)+np.roll(g_,-1,1))/5.0
         mot=np.zeros((H,W))
         for f_,amp in ((90.0,0.6),(210.0,0.4)):

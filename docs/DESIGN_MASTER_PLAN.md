@@ -313,7 +313,9 @@ THE OFFICIAL WORK — first (Director, 2026-10-22)
     early and at the same point in every route): the assassin has
     infiltrated one of these official-work sites ahead of him. Which
     one: open (§18).
-  - The assassin counts as a BOSS (Claude, a consequence to confirm): a
+  - The assassin counts as a BOSS (Claude's proposal; CONFIRMED by the
+    Director, 2026-10-26: his attack on the Agent "era só o confronto de
+    chefe", and he stays Deacon's man on the same leak): a
     mortal confrontation like the four leaders', excluded from the
     violence threshold and from the no-kill achievement (§2.6), so a
     required kill never breaks either.
@@ -2146,15 +2148,14 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   minors, and §16 sets the social defaults for them.
 
 **Still open — do not decide these unilaterally:**
-- [ ] From 2026-10-26 (`ACTOR` D83): what "hired to attack the player" means for the club's assassin (canon: Deacon's man on the same
-  leak, met by luck, §2.2); when and from whom the goggles come (a Militia node that varies by route, or one point on every route);
+- [ ] From 2026-10-26 (`ACTOR` D83): when and from whom the goggles come (a Militia node that varies by route, or one point on every route);
   whether he may wear them bare-faced, and whether that is suspicious; whether infrared is a mode of its own (Claude: near-infrared,
   showing IR beams and tripwires) or §10.3's night vision.
 - [ ] From 2026-10-24: the voice bank's performers and sizes (§2.3, proposed); where hair, face and height are chosen
   (the form or the deposition; Claude's proposal 2026-10-25: the FORM, as the station's mugshot, front and profile: `ACTOR` D81); the race field's options per country (§2.2, §2.6).
 - [ ] From 2026-10-23: the chokehold's N turns (§10.0); which official-work
   site the club's assassin has infiltrated, his name ("the Confessor",
-  proposed) and whether he counts as a boss (§2.2, proposed); when the pack
+  proposed); when the pack
   battery upgrade comes (§10.5); the energy budget's numbers and recharge
   (§10.5); where the radio-clock comes from and chloroform's numbers (§10.0, proposed); the rope's length, AP and noise, and where and when the perch grapple comes (§10.0); the throwables' stack size and noises, the scenery catalogue,
   and the universal remote's source and range (§5.4, proposed); the rules of conduct whose breach makes a faction WANT him, how the

@@ -1,6 +1,11 @@
 # CHARACTER_MASTER_PLAN
 ## The Agent — Model, Rig, Poses, Animation, Layering — v2.0
 
+> 🧭 **2026-10-26 — the build moves to TRIPO (`ACTOR` D85).** Every character is a whole model generated and auto-rigged by Tripo (paid plan, Mixamo
+> skeleton, 65 joints, 4 influences, Tripo's own clips); our code adapts to that rig. The hero track below (`tools/asset_generation/hero/`, the
+> Quaternius body and the 65-bone UE skeleton) is no longer extended. The Tripo tools live in `tools/asset_generation/tripo/` (first:
+> `tripo_coat_weights.py`, a long coat's auto-weights cleaned). Record: `PROMPTS/RESUMO_SESSAO_2026-10-26_TRIPO_PIVOT.md`.
+
 > 🧭 **2026-09-27 — reorganization pointer.** The build now targets D64's live-mesh rig, executed by `RENDER3D_MASTER_PLAN`'s `R3D-ACTORS` track. Read `RENDER3D_MASTER_PLAN` for current status.
 
 > 🧭 **2026-10-21 — the HERO costume track (new body, new costume, a face, a mask).** The Director asked for a richer, agile character built from free

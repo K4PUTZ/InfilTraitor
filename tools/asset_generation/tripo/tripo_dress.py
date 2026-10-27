@@ -32,6 +32,7 @@ COAT_GAP, SMOOTH_ITERS = 0.004, 10                       # COAT_GAP a fraction o
 HAT_DY = float(os.environ.get("HAT_DY", "0.015"))         # back (+) / forward (-), a fraction of H; per figure (the male: 0.005)
 HAT_DROP = float(os.environ.get("HAT_DROP", "0"))         # down after the fit, a fraction of H (the male: 0.01, Director 2026-10-27)
 HAT_TILT, HAT_MAX_LIFT = 8.0, 0.012                     # degrees; a fraction of H
+COAT_FIT = os.environ.get("COAT_FIT", "1") != "0"
 UNDER_COAT = ("Outfit_Shirt", "Outfit_Tie", "Outfit_Belt", "Outfit_Buckle", "Outfit_Trousers")
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -156,7 +157,7 @@ set_world(coat, CV); m3 = coat.matrix_world.to_3x3()        # the field is a DIS
 NRM = np.zeros((NR, 3))                                         # smoothed across a thin sleeve mixed its two sides' opposite pushes and diverged
 np.add.at(NRM, rep_, np.array([(m3 @ v.normal)[:] for v in coat.data.vertices])); NRM /= np.maximum(np.linalg.norm(NRM, axis=1), 1e-12)[:, None]
 orig = CV.copy(); field = np.zeros(NR); floor_ = np.zeros(NR); best = (None, None, 0)    # the pass with the fewest left, its field
-for it in range(12):
+for it in range(12 if COAT_FIT else 0):                 # COAT_FIT=0: the coat only moved by the skeleton delta (a review)
     need = {}
     for i in mi:
         q = CV[i]; p = Vector(q)

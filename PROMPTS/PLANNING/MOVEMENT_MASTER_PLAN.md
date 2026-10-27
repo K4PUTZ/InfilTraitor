@@ -1,331 +1,206 @@
 # MOVEMENT_MASTER_PLAN
-## How the Agent Moves — Situations, Poses, Transitions and the Motion-Design Pipeline — v0.1 (BRIEF CAPTURED, NOT YET A PLAN)
+## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.0
 
-> 🧭 **2026-09-27 — reorganization pointer.** Motion is now scoped as keyed actions on the live rig (D64), executed inside `RENDER3D_MASTER_PLAN`'s `R3D-ACTORS` track ("motion as actions"). This brief stays the design source; not yet its own active plan.
-
-> ⏭️ **2026-09-23 — motion becomes ACTIONS on a live mesh (`ACTOR` D64).** The key-poses-first method stands, but the output is
-> a keyed action on the rig (in-betweens are interpolation, blends and transitions happen in the engine), not a baked frame
-> sequence; the dev-only bake mode below matters only until `RENDER3D` R3D-ACTORS. D44's four facings lost their rendering
-> reason: whether gameplay keeps four facings is now a design question.
-
-
-> **⏸ Status check, 2026-09-15:**
-> - This is still a brief. The milestone has not opened, and nothing has been committed to
->   this plan since 2026-08-16.
-> - The dev-only bake mode it prepared is OFF: `AgentSprite.DEV_ONLY_MILESTONE := false`
->   since 2026-08-17. Flip it when the milestone opens.
-> - The board is moving to Godot 3D (`RENDER3D_MASTER_PLAN`). The figure's pipeline and
->   D26's camera are unchanged by that, so nothing here needs re-planning.
->
-> **Status: 🟡 OPENED 2026-08-16. This is the Director's brief, recorded, plus
-> the questions that have to be answered before it becomes executable.**
->
-> It is deliberately NOT a finished plan. Three of its inputs do not exist yet:
-> the Director's pose references, a survey of the animation literature, and a
-> survey of open-source resources. Writing an execution plan on top of missing
-> research is exactly the "theoretical visual mechanism" D30 refused to test
-> against.
->
-> **The movement milestone does not open yet.** Director, 2026-08-16: five items
-> come first (see §6).
+> **Status: 🟢 MILESTONE OPENED 2026-10-27 (Director: "vamos abrir a milestone de movimento e escrever o MASTER PLAN"; "vamos fazer
+> um banco de animações, e depois mapear o que precisa, o que tem e o que falta").** Nothing in §3-§9 is built yet. The brief this
+> replaces (v0.1, 2026-08-16, written for the retired sprite bake) is `docs/history/MOVEMENT_BRIEF_v0.1_2026-08-16.md`; what in it is
+> still design is carried into §2 below and cited there, never restated twice.
 
 ---
 
-## 0. Ownership boundary — read before editing this or CHARACTER_MASTER_PLAN
+## 0. Ownership boundary
 
 | Document | Owns |
 |---|---|
 | `ACTOR_MASTER_PLAN` §2 | the **decision register** (D-rows). Cite by number, never restate |
-| `CHARACTER_MASTER_PLAN` | the **figure**: model, rig, sockets, scale, bake pipeline, the Parts |
-| **this document** | **what the figure DOES**: which situations produce which pose, which transitions exist, and how motion gets authored and judged |
+| `CHARACTER_MASTER_PLAN` | the **figure**: the model, the rig, the slots, how a Tripo character is assembled (`tripo_assemble.py`) |
+| **this document** | **what the figure DOES**: the animation bank, the catalogue of situations, which clip plays where, how a clip is made game-ready, and how motion is judged |
 
-The split matters because they answer different questions. `CHARACTER` answers
-*can we draw him at all* — and as of 2026-08-16 that is settled (§1). This one
-answers *is what he is doing the right thing to be doing*.
-
----
-
-## 1. ✅ THE PIPELINE IS PROVEN — Director, 2026-08-16
-
-*"Está ficando muito bom. […] para a nossa intenção aqui de avaliar proporção e
-viabilidade da nossa pipeline de criação, já serve esse mecanismo. Então podemos
-concluir que nosso workflow vai funcionar."*
-
-**This closes the question Part 0 was created to answer.** Rig → posed GLB →
-Godot bake → relit sprite → the playable agent, at three postures, four facings
-and a 32-phase walk, all gated end to end. Proportion and viability are no longer
-open; what remains is *quality of motion*, which is this document's subject.
-
-**And the same message says the motion is not there yet:** *"Ainda parece
-mecânico. Falta mais 'molejo' nas articulações, mais micro movimentos que fazem
-um movimento natural e orgânico."* Recorded as the standing quality bar, not as a
-defect to fix in isolation — §5 is where it gets a method.
+The engine's actor today (`ActorMesh3D`, `godot/scripts/geometry/actor_mesh3d.gd`) drives the old 20-bone rig from `agent_live*.glb`
+(D64). Moving it onto the Mixamo rig is this milestone's work (§6), because the bank is useless until the engine plays it.
 
 ---
 
-## 2. 🔴 THE REAL GAP: the movement is not COHERENT WITH THE SITUATION
+## 1. What changed since the brief, and what it settles
 
-Director, 2026-08-16, and this is the finding that opens this document:
-
-> *"O personagem não vai andar dessa forma robótica para frente. Ele é um agente
-> numa missão stealth."*
-
-The walk that exists is a **neutral locomotion cycle**. It is correct as a cycle
-and wrong as a character: nothing about it says *infiltrator*. The agent's motion
-has to read as a job being done under threat of being seen — which is the same
-thing `DESIGN_MASTER_PLAN` asks of every other system, arriving at animation.
-
-### 2.1 The poses the Director specified
-
-Verbatim intent, structured. **These are examples he gave, explicitly not an
-exhaustive list** — *"Esses são só alguns exemplos."*
-
-| # | Situation | Pose |
-|---|---|---|
-| **M1** | Moving, open ground | A **quiet little run** (*"corridinha silenciosa"*) — head and shoulders **hunched**, weapon **pointing down but ready to use**, head **looking around** to check nobody is watching |
-| **M2** | Arriving at a GU that has a **wall** | **Presses himself against it**, to offer less visible area |
-| **M3** | At a **corner** | The **Wolfenstein 3D cover pose** |
-| **M4** | **Crouched with no wall** | One knee **touching the ground**, the other up and bent; one hand holding the **pistol raised**, the other supported on the ground on **five fingertips** |
-| **M5** | **Crawling** | One leg extended, the other half-bent **pushing the ground backward**; aiming forward with the **weapon in front of the head** |
-
-**Note what M1 does to the current asset.** The shipped walk is upright, level-
-headed and forward-facing — the opposite of hunched, and with no looking around
-at all. M1 is not a tweak to it; it is a different cycle. The existing walk is
-not wasted (it proved the pipeline, §1) but it is not the ship asset.
-
-**Note what M2/M3 introduce that nothing in the project has:** a pose that
-depends on **what is adjacent to the GU**, not only on the agent's own state.
-`agent.gd` already computes `cover_state`/`cover_direction` (NONE/PARTIAL/FULL
-and which side), so the *data* exists; nothing has ever driven a visual from it.
-
-**Note what M4 costs against §4.7's band.** The crouch that ships is a symmetric
-squat at 5.60 voxels. M4 is asymmetric — one knee down, one hand down — which is
-a different silhouette AND a different height. §4.7's 5.0–6.2 voxel band was
-measured against a squat; whether it still describes M4 is an open question, not
-an assumption.
-
-### 2.2 The method the Director proposed
-
-> *"Eu proponho que a gente comece só com as poses iniciais e finais, e depois
-> crie todas as animações intermediárias."*
-
-**Key poses first, in-betweens second.** This is classic pose-to-pose animation
-rather than straight-ahead, and it is the right call for this pipeline for a
-reason worth stating: every asset here is a **baked sprite**, so an in-between is
-a bake, and bakes are the expensive step. Settling the extremes first means the
-expensive step runs once against a ratified target instead of repeatedly against
-a moving one.
-
-It also matches what the project already learned: the walk's phase count was
-raised from 8 to 32 only *after* the cycle's shape was right, and the shape was
-what "mechanical" was actually about.
+1. **Characters come from Tripo on the Mixamo skeleton (`ACTOR` D85).** The motion comes with them: Tripo's AI clips, generated on the
+   paid plan, so they are ours (D85's licence reading; D57 widened to geometry and outputs we own).
+2. **One skeleton for every figure — MEASURED, 2026-10-27.** The female base (`female+no+coat.glb`) and the male
+   (`MaleCharacterNoCoat.glb`) have the same 65 joints with the same `mixamorig:` names; their joint positions differ by about 2 % of
+   the height (hips at 0.557 vs 0.552 on the 1 m figure Tripo exports). D85's open question "is Tripo's Mixamo rig identical on every
+   biped" is answered for these two.
+3. **A clip of one figure plays on the other — MEASURED, 2026-10-27.** The male's `walk` and `box_01` on the female, in Blender: as
+   exported and with rotations only (the Hips' location scaled by the ratio of the two hips' heights, 1.009) read the same. **Rule for
+   the bank (§3): keep the ROTATIONS, and the Hips' translation normalised by hip height.** Tripo keys a location on all 65 bones;
+   those carry the source figure's bone lengths, and a 2 % difference is invisible today but would not be on a child, a giant or a
+   cosmetic that changes the proportions.
+4. **Motion is authored as ACTIONS on the live rig (D64), not baked frames.** In-betweens are interpolation; blends, layers and
+   transitions happen in the engine. The brief's argument for key-poses-first (bakes are the expensive step) no longer holds as
+   stated; the method survives for authored clips (§7).
+5. **What stays ratified, cited:** four facings and diagonal = two orthogonal steps (D44, kept for gameplay by D64); facing changes by
+   SNAP at the GU boundary, no transition frames (D47); the step is 0.56 s per GU (D61).
 
 ---
 
-## 3. What has to be enumerated before anything is authored
+## 2. The design inputs (Director's rulings, carried from the brief)
 
-The Director's own framing: *"Precisamos elencar as situações mais comuns e fazer
-uma lista de movimentos que vamos utilizar, incluindo as transições, quando
-necessárias."*
+Each is in the archived brief in full; here is the list the catalogue (§4) must cover.
 
-**The list does not exist yet and must not be invented here.** What this section
-records is the SHAPE the list has to have, so that filling it is a session's work
-rather than a design negotiation:
-
-1. **Situations** — the game states that demand a distinct pose. Sources that
-   already constrain this and must be read rather than guessed:
-   `agent.gd`'s three postures and its cover state; `DESIGN_MASTER_PLAN` §8's
-   cover model and §10's equipment; D37's hood/stealth mode; D40's three grips.
-2. **Poses** — one per situation, as M1–M5 above.
-3. **Transitions** — which pairs need authored motion between them and which can
-   snap. **D47 is the precedent and the budget guard**: ordinary movement changes
-   facing by a hard snap with no transition frames, judged blind, and that single
-   ruling is what keeps the body budget at 744 sets instead of 4608. The same
-   question has to be asked of every transition here, and the default answer is
-   *snap until proven otherwise*.
-4. **Cost** — every entry priced in `archetype × silhouette × pose × yaw` terms
-   (`CHARACTER_MASTER_PLAN` §8), because the pose count is the multiplicative
-   axis and this document is the thing that grows it.
-
----
-
-## 4. Part 0 — RESEARCH, and it runs before authoring
-
-Director: *"precisamos dar uma pesquisada na literatura sobre animação fluída,
-verificar o que existe de recursos open source, e montar o pipeline de trabalho."*
-
-**Not yet done, and deliberately not faked here.** Three deliverables:
-
-- **R1 — Fluid-animation literature.** What makes motion read as organic: the
-  established principles (anticipation, overlap and follow-through, secondary
-  action, ease, arcs), and specifically which of them survive at **~200 px tall,
-  4 facings, baked sprites**. Several will not; the point of the survey is to
-  find out which, rather than to apply all twelve out of reverence.
-- **R2 — Open-source resources.** Motion-capture libraries, rigged CC0 humanoids,
-  animation sets. **The licence filter is already ratified and is hard: D57 — CC0
-  only.** Two known failures are recorded there (Meshy free tier is CC BY 4.0;
-  SMPL-X/MANO are non-commercial research) and must not be re-litigated.
-- **R3 — The authoring pipeline.** How a pose gets from reference → rig → baked
-  frames → judged. The bake half is built and proven (§1); the **authoring** half
-  is currently "a Python function that writes joint angles", which produced a
-  moonwalk and a face-planting prone before gates caught them. Whether that
-  scales to M1–M5 and their in-betweens is exactly what R3 has to answer.
-
-**The Director supplies pose references** (*"Eu posso fornecer referências das
-poses prontas"*), which is an input this plan waits on rather than substitutes
-for.
-
----
-
-## 5. The quality bar, and why "molejo" needs a method rather than a knob
-
-*"Falta mais 'molejo' nas articulações, mais micro movimentos."*
-
-Recorded honestly: **the refinement pass already done is not it.** Foot roll,
-eased swing, head stabilisation and a small torso counter-rotation all landed on
-2026-08-16 and the answer was still *"ainda parece mecânico"*. So the next attempt
-must not be another handful of hand-authored offsets — that approach has now been
-tried and measured against the Director's eye once.
-
-What that suggests, as a question for R1 rather than an answer: the missing
-quality may be **secondary motion** (parts that lag and settle rather than
-arriving with the joint that drives them), which is a *simulation* property, not
-a pose property — and simulation is the one thing a fixed set of baked poses
-cannot express unless it is baked in. That is a real tension between D34's budget
-and the quality bar, and it belongs in R1's findings, not in a guess here.
-
----
-
-### 6.0 🔒 PREREQUISITE — the final 3D model of the agent is locked FIRST (Director, 2026-10-08)
-
-Nothing in this plan is authored until the model the demo ships with is decided: *"a gente precisa cravar qual vai ser o modelo 3D final do agente (pelo menos pro demo), antes de fazer o movimento, pra não correr o risco de dar problema depois."* Reason: an action is keyed on one rig (D64, `r3d_live_rig_export.py`); a change of skeleton, proportion or attachment points after the poses exist is a re-keying of all of them. This is roadmap step **A1b**. The decision list (model, skeleton and bone names, proportions, mobile budget, silhouette classes and faction palette, whether the guards share the rig) and the done-criterion are in the roadmap row; the choice is the Director's. Until it is signed, sections 6.1-6.5 are design only.
-
-## 6. ⛔ Sequencing — five items come FIRST
-
-Director, 2026-08-16: *"Entretanto, antes de entrar na milestone de movimento,
-vamos aproveitar que já temos o personagem empunhando a arma, e finalizar:"*
-
-| | Item | Where it lives | State found 2026-08-16 |
-|---|---|---|---|
-| 1 | **Firearm pre-production (W-PRECOOK)** | `WEAPON_MASTER_PLAN` §0 / D30 | **Its deferral condition is now DISCHARGED.** D30 postponed it *"until the character exists and can hold the weapons"* — that is true as of today |
-| 2 | **Firing with the wielded weapon**, decorative projectiles | `WEAPON_MASTER_PLAN` D21 | ⚠️ **Amends D21**, which ratified *"the projectile does not exist in the scene — no travel, only its consequences are drawn (animations are later)"*. "Later" is now |
-| 3 | **An enemy variant of the figure** — other appearance and colours | `CHARACTER_MASTER_PLAN` Part 7 | Guards are still red vector diamonds. D34 says colour is a **free shader uniform**, so a tint variant should be cheap; a different *appearance* is not the same claim |
-| 4 | **A shot that MISSES and hits a wall**, no combat yet | `WEAPON_MASTER_PLAN` D27/D30 | The miss path is **built and shipped** — on the bench, which has *"no turn and no shooter"*. What is new is firing it from the AGENT |
-| 5 | **Close the destruction milestone** + glass, fabric, cardboard | `DESTRUCTION_MASTER_PLAN` | That plan is **CLOSED (2026-08-13)**, so this REOPENS it. Glass was deferred with a stated reason (D32: no DENTED/CRACKED tier, cracks become a future multi-voxel system); **fabric and cardboard are entirely new materials** |
-
-### 6.1 ✅ SCOPED DOWN by the Director, same day — and it collapses to three
-
-Asked where to start given that items 1, 2 and 4 all hang off an aim mode that is
-ratified but unbuilt, the Director **removed the dependency instead of ordering
-around it**:
-
-> *"Isso já é coisa da fase de combate, o que a gente quer testar agora é só a
-> mecânica de mirar da GU A para a GU B e o tiro acertar a parede C atrás. Pra
-> isso só precisamos de um inimigo em qualquer posição, e ao clicar nele +
-> 'disparar', como fizemos com a granada, o agente atira, e por falta de outra
-> opção, erra sempre o alvo (por enquanto)."*
-
-**That is D25 literally** — a shot always targets an actor picked through the
-contextual menu — and the interaction pattern already exists on `GrenadeProp`.
-D32's aim mode (the `S` key, Tab-cycled targets, class name and hit percentage on
-screen) is combat-phase surface and is NOT being built now.
-
-| Was | Now |
+| Source (brief §) | What |
 |---|---|
-| 1 · W-PRECOOK | ⏸ **back to D30's own home**: the last item of the combat milestone, once a real aim window exists to hide inside. Not mocked. |
-| 2 · firing + decorative projectile | **merged with 4** — one path: shooter → miss → wall |
-| 3 · enemy variant | **promoted**: the shoot test needs something to click |
-| 4 · miss hits the wall | merged into 2. The miss path is already shipped; what is new is that it leaves a **shooter** instead of a static bench prop |
-| 5 · destruction materials | scoped in §6.2 |
+| §2.1 M1 | A **quiet little run** on open ground: hunched head and shoulders, weapon pointing down but ready, head looking around |
+| §2.1 M2 | At a GU with a **wall**: pressed against it, to show less |
+| §2.1 M3 | At a **corner**: the Wolfenstein 3D cover pose |
+| §2.1 M4 | **Crouched with no wall**: one knee down, the other up and bent, pistol raised, the other hand on the ground on five fingertips |
+| §2.1 M5 | **Crawling**: one leg extended, the other pushing back, the weapon in front of the head |
+| §2.1 | M2 / M3 depend on what is ADJACENT to the GU; `agent.gd`'s `cover_state` / `cover_direction` exist and have never driven a visual |
+| §5 | The quality bar: *"falta mais 'molejo' nas articulações, mais micro movimentos"*; the 2026-08-16 hand-keyed refinement did not reach it |
+| §6.4 | A looping **idle** for every entity standing still (the revealed-actor silhouette is the mesh itself on the live rig, so it follows) |
+| §6.5 | **Equip, aim, fire, return, and the CANCEL of everything**: every weapon / accessory change animates both ways; the resting / alert pose depends on the situation (hurried: weapon down, two hands, head scanning; stealthy: another) |
+| §7a | From liquids and gravity: down into a pit and out, wading, quicksand, crust, ice / oil slips, the agent on fire, the muzzle / throw origin at the figure's real height, rope and hook, perches |
+| `DESIGN_MASTER_PLAN` | Confrontation and cover, distractions (§5.4), rope & hook + perches (§10.0), the LED cloak's crouch (D72) |
 
-**"Erra sempre" is a scaffold with an expiry**, and it is worth naming as one: the
-hit roll (D12) and its forceable dev override (D21) are the real mechanism, and
-always-miss stands in for them only until there is something to hit for. It is
-the honest choice today — a hit needs damage on an actor, which is Part 9 — but
-it must not quietly become the design.
-
-### 6.2 ✅ Destruction scope — Director, 2026-08-16
-
-> *"Vamos construir o vidro agora, que é mais trabalhoso, e botar fogo/buracos de
-> bala em papelão e tecido. A partir daí a gente já tem uma base bem sólida para
-> construir os cenários e trabalhar mais no personagem."*
-
-- **Glass** — the laborious one. D32 already ruled it gets **no DENTED/CRACKED
-  tier**, its cracks becoming a future multi-voxel system; that ruling is the
-  starting point, not something to rediscover.
-- **Cardboard and fabric** — **fire** and bullet holes.
-- **Brick is OUT**, with a reason: *"entra quase na categoria de concreto,
-  mudando um pouco a resistência, então não tem muita importância agora."*
-- **A dedicated materials milestone comes later** — so this pass closes
-  destruction, it does not try to finish materials.
-
-### 6.3 🔴 A milestone the Director surfaced while answering — INTERFACE
-
-Recorded here because it was raised in passing and would otherwise be lost:
-
-> *"Tem outra milestone que eu estou adiando faz tempo que é a interface. Estamos
-> fazendo tudo improvisado usando teclas, tipo G para granada, mas a gente vai ter
-> que perder um tempo em algum momento para criar botões e um sistema lógico
-> coerente, principalmente para testar no celular."*
-
-**The game is mobile-first portrait** (`DESIGN_MASTER_PLAN`), and every control
-added so far is a desktop key: `G` for grenade, `1/2/3`+`S` designed for weapons
-(D31, which already says the keys are *"the desktop mirror of on-screen controls,
-not the primary interface"*). The debt is that the thing they mirror does not
-exist. Not this milestone's work; named so it stops being invisible.
-
-This document resumes when §6's items close.
+Also ruled (Director, 2026-10-26, D85's record): **Tripo's clips give the raw motion; we make them game-ready** (strip the root
+motion, loops, D61's step timing, mirrors); **for cover → run → cover, generate ONE multi-segment take, cut it into pieces and chain
+the pieces in code.**
 
 ---
 
-### 6.4 Idle loop, and the revealed-actor silhouette must follow it — Director, 2026-09-20
+## 3. MV-1 — the ANIMATION BANK
 
-While an entity stands still it will play a looping idle (the agent breathing a little, a soft movement in place),
-and the guards the same. **The striped silhouette a revealed actor gets behind a wall (`RENDER3D_MASTER_PLAN` R3D-7,
-`actor_silhouette3d.gdshader`) is not a mask of its own: it is drawn from the sprite's CURRENT frame, mirrored every
-frame from the same `Sprite2D` the body billboard reads.** (Measured 2026-09-21 on the Moto g04s: 8 revealed guards cost +12 draw calls and no measurable GPU time.) So the idle needs no silhouette work of its own — as long
-as the idle is frames on that sprite. If an idle is ever built any other way (a shader deformation, a bone pose that
-does not change the sprite's texture), the silhouette will NOT follow it, and that is the thing to check. Two knobs
-exist for driving it: `ActorMesh3D.silhouette_phase` (stripes; the billboard's retired at R3D-ACTORS step 5) and the shader's `scroll_px_per_s`. On the live mesh the silhouette is the mesh itself, so it follows any animation.
+**What:** every clip we hold, extracted from every Tripo GLB into one place, on the canonical skeleton, with a catalogue row each.
+Clips arrive inside character files (66 in `MaleCharacterNoCoat.glb` on 2026-10-27, 2 in `female+no+coat.glb`) and the same name can
+come from several files; the bank makes a clip independent of the figure it was generated with.
 
-### 6.5 Equip, aim, fire, return — and the CANCEL of everything — Director, 2026-10-08
+**Design (proposed, Claude):**
+- **Tool:** `tools/asset_generation/tripo/tripo_anim_bank.py` (Blender, `blender -b -P`), sharing `tripo_common.py`. Input: any number
+  of Tripo GLBs. Output: `ASSETS/ANIMATIONS/bank/` (git-ignored like the rest of `ASSETS/`): one GLB per clip (the canonical
+  skeleton + that action, rotations + normalised Hips translation, §1.3) and `bank.json`, the catalogue.
+- **The canonical skeleton:** the Mixamo joint NAMES and hierarchy, with the hips' height as the one length the bank records.
+  Not a figure: a clip is stored as rotations, so any figure on these names plays it.
+- **A catalogue row:** `id`, the source file and its original name, frames, fps, duration, the root's travel (metres per second
+  horizontally, and its height range: a jump, a crouch), whether it loops (first and last pose within a measured tolerance), the
+  side that leads (for a mirror), tags (locomotion / combat / reaction / gesture / interaction / idle), and a contact sheet path.
+- **Duplicates:** the same name from two files is kept once if the curves match within a tolerance, both kept (`_b`) otherwise,
+  reported either way.
+- **Review:** a contact sheet per clip (4 frames, 3/4 and side, on ONE reference figure) and an index sheet of the whole bank, so the
+  Director judges by looking (`render-dont-describe`).
+- **Done:** every clip of every Tripo GLB in `ASSETS/MODELS/` is in the bank, each plays on both bases with no joint flipped
+  (checked on the sheets), the catalogue is complete, a re-run is byte-identical.
 
-Recorded as the brief for a LATER detailed plan (the Director: *"vamos depois fazer um planejamento mais detalhado, catalogando todas as situações possíveis. Depois planejado e depois pode continuar"*). Nothing here is built; the grenade is the only case that exists, and its cancel is the first owed item.
+---
 
-**The rule: every change of weapon or accessory animates BOTH ways — the draw AND the return** (the cancel / holster / stow). The grenade's cancel today is the raise sequence played backwards (`play_throw_cancel`) and its fuse spark is cut at once (`cancel_targeting()`); the owed piece is the spark dying down while the agent stows the grenade on the back pack (`technical_debt.md`, "Fuse FX"). The same two-way rule holds for weapon A / B / C and for any accessory.
+## 4. MV-2 — THE MAP: what the game needs, what the bank has, what is missing
 
-**The flow the Director described (a shot):**
-1. **Select** weapon A, B or C. The interface has its own time to show the handling of the objects: the draw animation plays here.
-2. **Click an enemy**: the agent raises the weapon further and AIMS (the aim pose).
-3. **The hit chances (percentages) appear.** From here on every datum to execute the shot exists, so **the consequences can be computed while the player has not decided**, under a LOOPING animation so the scene is not frozen. (This is the prediction pipeline: `build_plan()` is pure and sliced, see `PREDICTION_MASTER_PLAN`; the question of doing it without disturbing the animation is §7 item 6.)
-4. **The player decides and clicks "fire"**: the agent shoots with recoil, then returns to the belt, or to the ALERT position pointing UP (in cover), while waiting for the next action.
-5. **The resting/alert position depends on the situation**: moving in a hurry, the weapon points DOWN, held with both hands, the head looking around; stealthy, another pose; and so on. The catalogue of every situation (posture × weapon × tempo × cover × stealth × the transition between each pair) is the planning work to do BEFORE authoring (see §3, which this extends).
+**What:** one table, the situation catalogue the brief asked for (brief §3) crossed with the bank. Lives in this plan as §4.1 once
+built. Each row:
 
-## 7. Open questions
+| Column | Meaning |
+|---|---|
+| Situation | a game state that needs its own motion (posture × tempo × cover × weapon × stealth, and the world: pit, liquid, rope) |
+| Need | the clip(s): a loop, a one-shot, an enter / exit pair, a transition |
+| Have | the bank clip that serves it as is, or with processing (§5) |
+| Combine | how to get it from bank clips with no generation: layers, blend, mirror, retime, a cut (§5) |
+| Missing | what only a new generation gives; priced in Tripo credits |
+| Priority | what the demo needs first |
 
-1. **Does the shipped walk survive M1?** It is upright and level-headed; M1 is
-   hunched and looking around. Probably a replacement rather than a revision —
-   but it stays as the proof of §1 either way.
-2. **What drives a pose from the WORLD rather than from the agent?** M2 and M3
-   depend on adjacency. `cover_state`/`cover_direction` exist and have never
-   driven a visual.
-3. **Does §4.7's crouch band still describe M4?** It was measured against a
-   symmetric squat, not against one-knee-down.
-4. **How many transitions actually need frames?** D47's precedent says assume
-   snap and make each exception earn itself.
-5. **Can baked sprites carry secondary motion at all** (§5), or does "organic"
-   have a hard ceiling in this rendering model? The most consequential one, and
-   the reason R1 is a survey rather than a formality.
-6. **Can the numbers be computed without disturbing the animation?** (Director, 2026-10-08.) Today the prediction runs on the main thread in budgeted slices (`predict_budget_ms`, 4 ms a frame), which keeps an animation moving but makes the answer arrive over many frames (a second grenade's prediction took ~100 frames on the Galaxy). Real parallelism needs a worker thread, and the pure pipeline is a candidate (it writes only to its own Delta) but it reads live `Voxel` / store state that is not thread-safe, so it would need a snapshot or a read-only discipline first. To be answered with a measurement before the planning, not by reasoning.
+**The first pass, from the bank's names alone (2026-10-27; to be checked against the clips themselves):**
+- **Probably have:** `idle`, `standing_relax`, `wait`, `look_around` (idle family); `walk`, `run`, `run_upstairs`, `turn`, `jump`,
+  `jump_down`, `climb`, `flee_01/02` (locomotion); `shoot`, `fire`, `box_01-03`, `front_kick_01/02`, `slash`, `chop` (combat);
+  `hit_to_body_01/02`, `hit_to_head`, `hit_to_side`, `hit_to_stomach`, `fall`, `dive`, `defeat_02/03` (reactions); `sit`, `dig`,
+  `lift_heavy`, `swim`, `press-up`, `make_a_call_02` (interactions); a set of gestures and emotions for the cast (`agree`, `bow`,
+  `greet_*`, `laugh_*`, `angry_*`, `scared_*`, `afraid`, `frightened`, `fold_arms`, `complain_*`, `frustrated_*`, `depressed`, `cheer`).
+- **Missing, the stealth core (the credits' priority, Claude's proposal):** (1) a crouched / sneaking walk (M1; the old male model
+  had "Caminhar apressado furtivamente", not in the new 66); (2) wall cover: press against it, peek, fire from it, and the
+  multi-segment cover → run → cover take of §2 (M2, M3); (3) a takedown from behind; (4) a grenade throw (`pitch_baseball` is a stand-in);
+  (5) crawl (M5) and the one-knee crouch (M4); (6) rope and hook. Equip / holster / reload / aim-idle per weapon class are likely
+  missing too.
 
-### 7a. Planned here from the liquids and gravity work (M6 F5, RF-G v0.52; Director, 2026-10-18: "o que for de outras milestones pode deixar planejado")
+---
 
-The engine side is built; what follows is MOVEMENT's to design, and nothing is decided.
+## 5. MV-3 — making a clip GAME-READY (the processing, all in our code)
 
-1. **Going down into a pit and climbing out.** An actor now rests on what is under its feet (`Board3DLive.stand_height`: a dug pit's bed, a crater, a crust plate, ice, quicksand). The grid lets the agent walk into a pit 4 voxels deep (0.8 m) and out of it at no extra cost, and the figure just slides down and up (3 GU/s down, 1.5 up). To decide: from what depth a step down is a drop and a step up is a climb (an AP cost, a pose), whether a pit deeper than a storey is a fall, and how this meets the grapple / ceiling hooks note (`PROPS_TIER4_PLAN`).
-2. **Poses in a liquid.** Wading (the legs under the surface), sinking in quicksand (a struggle, the escape's 2 AP), standing on a crust plate that is about to break, slipping on ice and oil. `MATERIALS_MASTER_PLAN` F9 (swimming, `swim_ap`) is the same family.
-3. **The agent on fire.** Today the only sign is an orange pulse on the figure (`ActorMesh3D.set_status_tint`): flames on the body, a pose (patting down, running to water) are to design. The stain (biohazard) and the glow (nuclear) are tints too.
-4. **The height a shot and a throw start from.** The agent's muzzle and throw origin are a 2D head offset above the FLOOR plane: an agent standing in a pit still fires and throws from floor height. The anchor must follow the figure's real height (`WEAPON_MASTER_PLAN` §7b item 6).
-5. **The rope and hook and the perches** (`DESIGN` §10.0, Director 2026-10-23): throwing the hook, crossing between two authored anchors
-   (over a wall, a channel, acid), and later climbing to a perch, swinging perch to perch, and dropping onto a guard; the rope is a mesh.
+Each item is a transform on a bank clip; the bank keeps the raw clip, the game uses the processed one (so a better rule re-runs).
 
+1. **Root motion stripped:** Tripo bakes the travel in the Hips (D85: the run goes 3 m in 1.29 s). The engine moves the actor (D61);
+   the clip keeps the Hips' vertical motion and loses the horizontal, and its measured speed is recorded (it decides the playback
+   rate on the grid).
+2. **Step timing (D61):** a locomotion loop is retimed so its stride lands on 0.56 s per GU (walk); run and sneak get their own
+   tempo from the design, never from the clip.
+3. **Loops:** the cut points chosen where the pose repeats (measured), and a short cross-fade where it does not.
+4. **Mirror:** left / right by the Mixamo names (`Left*` ↔ `Right*`); doubles every asymmetric pose (a corner on either side, M3).
+5. **Cut and chain:** one long take cut into enter / loop / exit pieces, chained by the engine (the cover take of §2).
+6. **Layers:** lower body from one clip, upper body from another, by bone mask (walk + aim, run + weapon down, idle + reload);
+   additive layers for small overlays (breathing, a flinch, looking around: M1's scanning head may be an additive, not a clip).
+7. **Transitions:** D47's default is snap; a transition is authored only where the Director judges a snap bad, blind (the D47
+   method).
+
+---
+
+## 6. MV-4 — the engine plays the bank
+
+- **`ActorMesh3D` on the Mixamo rig:** bone names (`mixamorig:Head`, `mixamorig:RightHand`, `mixamorig:LeftHand` replace `head`,
+  `hand_R`, `hand_L`), the weapon and hand attachments, the head turn (`actor_head_turn3d.gd`), the muzzle / throw origin read from
+  the real head (fixes §7a item 4 for free if it reads the posed bone, as it already does).
+- **One `AnimationLibrary` built from the bank, shared by every actor** (one skeleton), loaded once.
+- **An `AnimationTree` per actor:** the state machine (idle / move / cover / aim / fire / react), blend spaces for tempo, the layer
+  masks of §5.6.
+- **Scale and import:** the 1 m Tripo figure to the game's height (D85's import steps); the four facings and the snap (D44, D47) are
+  the actor's yaw, untouched by the clip.
+- **⚠️ Cost, unmeasured: 65 joints against today's 20**, on every actor, with an `AnimationTree` each. RAM is the constraint (D42),
+  and the Moto g04s is the floor device (`PERFORMANCE_BUDGET` PB-0). Measure before building the state machine: N actors on the
+  Mixamo rig playing a clip, on the Moto, against today's rig (`device_run.py`), uncapped (`MAX_FPS=0`). If it does not fit, the
+  options are a reduced skeleton for guards (the fingers are 30 of the 65 joints) or fewer distinct clips loaded at once, and the
+  Director chooses.
+
+---
+
+## 7. MV-5 onwards — the situations (after the map ranks them)
+
+Built in the map's priority order; each one done = the Director has seen it on the board (a capture through `capture.py`, desktop,
+HUD off) and ratified it. Expected order, to confirm on the map: locomotion on the grid (walk / run / sneak, the idle, the stop) →
+cover (M2, M3) → weapon flow (§6.5 of the brief: equip, aim, fire, return, cancel) → reactions (hit, fall) → crouch and crawl (M4,
+M5) → the world (pit, liquid, rope: brief §7a).
+
+**For a clip we have to make (credits or none):** key poses first, in-betweens second (the brief's method, §2.2), now meaning: the
+pose stills are agreed before a generation is spent.
+
+---
+
+## 8. Quality, and how it is judged
+
+- **The bar is the Director's eye:** *"molejo"*, micro-movement, coherence with the situation (an infiltrator under threat, not a
+  neutral cycle: brief §2). Tripo's clips are AI-generated whole-body motion, which is the kind of secondary motion the hand-keyed
+  pass lacked; whether they reach the bar is judged on the bank's sheets, not assumed.
+- **Blind comparisons** where there is a choice (the D47 / D61 method).
+- **On the handset:** motion is judged at the zoom of play on a real phone video (`device_record.py`) before a situation is closed.
+
+---
+
+## 9. Prerequisites and open questions
+
+1. **The model lock (brief §6.0, Director 2026-10-08).** D85 settles the SOURCE (Tripo, Mixamo) and the skeleton is shared (§1.2), so
+   the bank (MV-1) and the map (MV-2) do not wait on it. What does wait: anything keyed to a figure's attachments (the weapon in the
+   hand, the hat, the coat's skirt in motion). The male with coat and hat is being generated (2026-10-27).
+2. **The assembly's rules on the male** (`tripo_assemble.py`, measured 2026-10-27): the forearm sleeves went to the hands, the hair to
+   the hat on a hatless model, the ears to the hair, and Tripo segmented his belt as a part of its own, which the band search does
+   not expect. `CHARACTER`'s work; it blocks the male's figure, not the bank.
+3. **The brief's §6 "five items first"** (2026-08-16) predate the later milestones: the shot from the agent that misses into a wall is
+   on the board (the `SHOT_AGENT_CELL` / `SHOT_GUARD_CELL` captures), glass, fabric and cardboard closed with `MATERIALS` (M2,
+   2026-10-11; soft materials 2026-10-17). The enemy variant: to confirm against the guards' current look. None blocks the bank.
+4. **How much of the catalogue is a layer, not a clip** (§5.6). M1's scanning head, the weapon held down while running, breathing:
+   each one that works as an overlay saves a clip on every tempo.
+5. **Can the numbers be computed without disturbing the animation** (brief §7 item 6: the prediction on a worker): stands.
+6. **The cost of 65 joints on the Moto** (§6): the first measurement of MV-4.
+
+---
+
+## 10. Stages
+
+| Stage | Deliverable | Done when |
+|---|---|---|
+| **MV-1** | The bank: `tripo_anim_bank.py`, `ASSETS/ANIMATIONS/bank/`, `bank.json`, the sheets | §3's done line |
+| **MV-2** | The map (§4.1): need / have / combine / missing / priority; the credits list | the Director ranks it |
+| **MV-3** | The processing (§5) on the first situations' clips | each processed clip judged on a sheet |
+| **MV-4** | The engine plays the bank (§6), the Moto measured first | an actor walks the grid on the Mixamo rig at D61's step, measured on the Moto |
+| **MV-5+** | The situations in the map's order (§7) | each ratified on the board and on a handset video |

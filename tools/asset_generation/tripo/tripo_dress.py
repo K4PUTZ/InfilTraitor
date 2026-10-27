@@ -30,8 +30,8 @@ BASE, FROM, OUT = os.environ["DRESS_BASE"], os.environ["DRESS_FROM"], os.environ
 RV_OUT = os.environ.get("RV_OUT", "").rstrip("/")
 # LIGHT (Director, 2026-10-27: "vamos usar como veio mesmo [...] deslocar essas zonas do casaco ligeiramente pra fora do corpo [...] coisa de
 # milimetros"; the full fit, 0.4 % gap, 10 relax steps, no cap, swelled the coat out of character): a small gap, a short relax, a cap
-COAT_GAP = float(os.environ.get("COAT_GAP", "0.002")); SMOOTH_ITERS = int(os.environ.get("COAT_SMOOTH", "3"))
-COAT_MAX = float(os.environ.get("COAT_MAX", "0.01"))    # fractions of H; a coat point never moves farther than COAT_MAX
+COAT_GAP = float(os.environ.get("COAT_GAP", "0.004")); SMOOTH_ITERS = int(os.environ.get("COAT_SMOOTH", "3"))
+COAT_MAX = float(os.environ.get("COAT_MAX", "0.012"))    # fractions of H; a coat point never moves farther than COAT_MAX
 HAT_DY = float(os.environ.get("HAT_DY", "0.015"))         # back (+) / forward (-), a fraction of H; per figure (the male: 0.005)
 HAT_DROP = float(os.environ.get("HAT_DROP", "0"))         # down after the fit, a fraction of H (the male: 0.01, Director 2026-10-27)
 HAT_TILT, HAT_MAX_LIFT = 8.0, 0.012                     # degrees; a fraction of H
@@ -144,14 +144,15 @@ coat_arm = armness(tc.read_weights(coat)) >= 0.5
 body = {**body_t, **body_a}
 # the push is a SMOOTH field on the coat's welded surface (Tripo splits vertices along hard edges): each pass adds every coming-through
 # point's push to the field, then relaxes the field over the surface (SMOOTH_ITERS Laplacian steps, a pushed point never below its own
-# push), so the coat inflates evenly; a local push with a cosine falloff left lumps and tents on the first male. Small islands of the coat
-# (buttons, epaulettes, the rest of its details) take the field of the nearest vertex of its main surface.
+# push), so the coat inflates evenly; a local push with a cosine falloff left lumps and tents on the first male. Every island over 50
+# vertices is fitted itself (the female's lapels are islands of their own, and her bust came through them); the smaller ones (buttons) take the
+# field of the nearest vertex of a fitted island.
 key = {}; rep_ = np.zeros(len(CV), np.int64)
 for i, q in enumerate(np.round(CV / (1e-5 * H)).astype(np.int64)):
     rep_[i] = key.setdefault(tuple(q), len(key))
 NR = len(key); E = np.array([(rep_[e.vertices[0]], rep_[e.vertices[1]]) for e in coat.data.edges]); E = E[E[:, 0] != E[:, 1]]
 deg = np.bincount(E.ravel(), minlength=NR).astype(float)
-isl = tc.welded_islands(CV, coat.data.edges, H); main = np.bincount(isl).argmax(); on_main = isl == main
+isl = tc.welded_islands(CV, coat.data.edges, H); cnt = np.bincount(isl); on_main = cnt[isl] > 50   # every island but the buttons is fitted itself
 mi = np.nonzero(on_main)[0]; kd = KDTree(len(mi))
 for k, i in enumerate(mi):
     kd.insert(Vector(CV[i]), k)
@@ -162,7 +163,7 @@ np.add.at(NRM, rep_, np.array([(m3 @ v.normal)[:] for v in coat.data.vertices]))
 orig = CV.copy(); field = np.zeros(NR); floor_ = np.zeros(NR); best = (None, None, 0)    # the pass with the fewest left, its field
 for it in range(12 if COAT_FIT else 0):                 # COAT_FIT=0: the coat only moved by the skeleton delta (a review)
     need = {}
-    for i in mi:
+    for i in np.nonzero(on_main)[0]:
         q = CV[i]; p = Vector(q)
         for T in (body_a if coat_arm[i] else body_t).values():
             loc, nrm, _f, dist = T.find_nearest(p, 0.05 * H)

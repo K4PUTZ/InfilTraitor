@@ -156,11 +156,17 @@ def new_skinned(name, verts, faces, W, like):
 # The BELT is REBUILT, not kept (Director, 2026-10-27): buckles are sold, so the buckle is a slot of its own and the strap is ours.
 # (1) BUCKLE: the band's faces in the front (|x| < BUCKLE_HALF_W of the waist axis, in front of it) standing proud of the band's own surface
 #     by > BUCKLE_PROUD are copied out as Outfit_Buckle (its slot: BUCKLE_SLOT, the box a buckle must fit; a replacement comes from BUCKLE_SRC).
-# (2) TROUSERS: the band's vertices are pulled IN to the trousers' radius just above and below it, per sector (a slimmer waist, closed, no hole).
-# (3) STRAP: a closed band of STRAP_T thickness, STRAP_GAP off the flattened trousers, following the measured curve (each sector's low and
-#     high ledges) over 96 steps around the waist; weighted from the trousers.
+# (2) TROUSERS: the band's vertices are pulled IN to the HIP LINE (a slimmer waist, closed, no hole). The hip line is one line r = c + b z per
+#     step around the waist, fitted to the trousers' radius at 6 heights 0.4-2.4 % of H under the belt's bottom edge (the band itself stands
+#     proud), its radius averaged over +-3 steps and its lean over +-6: the body's taper there, measured per figure (Director, 2026-10-27: the
+#     strap follows the hip; as a cylinder on the hip's widest point it stood 1.4 % of H off the waist at the sides and 1.7 % at the back on the
+#     first female).
+# (3) STRAP: a closed band of STRAP_T thickness, STRAP_GAP off the hip line (pushed out only where the trousers would come through its outer
+#     face), LEANING with it, between the measured edges (each sector's low and high ledges), over STRAP_STEPS steps around the waist;
+#     weighted from the trousers. The buckle is tilted with the strap's lean at its angle.
 BUCKLE_HALF_W, BUCKLE_PROUD = 0.035, 0.004             # fractions of H
 STRAP_T, STRAP_GAP = 0.004, 0.0015                     # fractions of H
+STRAP_STEPS = 96
 BUCKLE_SLOT = {"max_w": 0.060, "max_h": 0.045, "max_d": 0.015, "max_tris": 500}   # fractions of H (a 1.80 m figure: 10.8 x 8.1 x 2.7 cm)
 
 
@@ -192,6 +198,26 @@ def belt_from_band(tn, to, band, LO, HI, ax, ang, NS, zlo, zhi):
     good = ~np.isnan(ref); idx = np.arange(NS)
     ref = np.interp(idx, idx[good], ref[good], period=NS)
     rref = lambda q: np.interp(ang(q), np.arange(NS + 1), np.append(ref, ref[0]))
+    # the hip line (header, (2)), read on the trousers before they are flattened
+    edge = lambda arr, a: float(np.interp(a / (2 * math.pi) * NS % NS, np.arange(NS + 1), np.append(arr, arr[0])))
+    hip = np.zeros((STRAP_STEPS, 2)); T0 = D[tn]["bvh"]
+    for k in range(STRAP_STEPS):
+        a = 2 * math.pi * k / STRAP_STEPS; d2 = np.array([math.cos(a), math.sin(a)]); zs, rs = [], []
+        for z in edge(LO, a) - H * np.linspace(0.004, 0.024, 6):
+            h = T0.ray_cast(Vector((ax[0] + d2[0] * 0.5 * H, ax[1] + d2[1] * 0.5 * H, z)), Vector((-d2[0], -d2[1], 0)), 0.5 * H)
+            if h[0] is not None:
+                zs.append(z); rs.append(0.5 * H - h[3])
+        hip[k] = np.polyfit(zs, rs, 1) if len(zs) >= 3 else (0.0, rref(np.array([ax[0] + d2[0], ax[1] + d2[1], 0.0])))
+    # averaged as (radius at the band's mid-height, lean): the radius over +-3 steps, the lean over +-6 (the pockets' openings under the belt
+    # bend the fit, and the strap kinked where the front's upright lean met the sides')
+    zm = np.array([(edge(LO, a) + edge(HI, a)) / 2.0 for a in 2 * math.pi * np.arange(STRAP_STEPS) / STRAP_STEPS])
+    rm = sum(np.roll(hip[:, 1] + hip[:, 0] * zm, s) for s in range(-3, 4)) / 7.0
+    hip[:, 0] = sum(np.roll(hip[:, 0], s) for s in range(-6, 7)) / 13.0; hip[:, 1] = rm - hip[:, 0] * zm
+    hgrid = np.linspace(0, 2 * math.pi, STRAP_STEPS + 1); hb, hc = np.append(hip[:, 0], hip[0, 0]), np.append(hip[:, 1], hip[0, 1])
+    hipr = lambda q: (lambda a: np.interp(a, hgrid, hb) * q[2] + np.interp(a, hgrid, hc))(math.atan2(q[1] - ax[1], q[0] - ax[0]) % (2 * math.pi))
+    lean = np.degrees(np.arctan(-hip[:, 0]))
+    print(f"[{TAG}] hip line: the strap leans in {lean.min():.1f} to {lean.max():.1f} deg (front {lean[STRAP_STEPS * 3 // 4]:.1f}, "
+          f"sides {lean[0]:.1f} / {lean[STRAP_STEPS // 2]:.1f}, back {lean[STRAP_STEPS // 4]:.1f})")
     # (1) buckle
     front = -1.0                                        # glTF forward: the front is -Y
     bfaces = []
@@ -203,9 +229,9 @@ def belt_from_band(tn, to, band, LO, HI, ax, ang, NS, zlo, zhi):
     if bfaces:
         vids = sorted({v for i in bfaces for v in to.data.polygons[i].vertices}); remap = {v: k for k, v in enumerate(vids)}
         bverts = V[vids]; bf = [[remap[v] for v in to.data.polygons[i].vertices] for i in bfaces]
-    # (2) flatten the band into the trousers
+    # (2) flatten the band into the trousers, down to the hip line
     for v in bandv:
-        q = V[v]; r = rad[v]; r0 = rref(q)
+        q = V[v]; r = rad[v]; r0 = hipr(q)
         if r > r0:
             d = (q[:2] - ax) / max(r, 1e-9); V[v, :2] = ax + d * r0
     inv = mw.inverted()
@@ -213,11 +239,14 @@ def belt_from_band(tn, to, band, LO, HI, ax, ang, NS, zlo, zhi):
         to.data.vertices[v].co = inv @ Vector(V[v])
     to.data.update(); D[tn] = part_entry(to)
     print(f"[{TAG}] belt band: {len(band)} faces of {tn} flattened into the trousers (sector radii {ref.min():.3f}-{ref.max():.3f})")
-    strap_out = make_strap(tn, LO, HI, ax, NS, rref)
-    if bfaces:                                          # seated ON the new strap: its back face on the strap's outer surface, at its own angle
+    strap_out = make_strap(tn, LO, HI, ax, edge, hip)
+    if bfaces:                                          # seated ON the new strap: tilted with its lean, its back on the strap's outer face, at its own angle
         bc_ = bverts.mean(0); a_ = math.atan2(bc_[1] - ax[1], bc_[0] - ax[0]); d2 = np.array([math.cos(a_), math.sin(a_)])
-        back = float(((bverts[:, :2] - ax) @ d2).min()); push = strap_out(a_) + 0.0005 * H - back
-        bverts = bverts.copy(); bverts[:, :2] += d2 * push
+        c_, b_ = strap_out(a_); phi = -math.atan(b_)    # upright -> the strap's slope dr/dz, about the buckle's centre
+        u = (bverts[:, :2] - ax) @ d2; z = bverts[:, 2]; side = bverts[:, :2] - ax - np.outer(u, d2); du, dz = u - u.mean(), z - z.mean()
+        u = u.mean() + du * math.cos(phi) - dz * math.sin(phi); z = z.mean() + du * math.sin(phi) + dz * math.cos(phi)
+        u += 0.0005 * H - float((u - (c_ + b_ * z)).min())
+        bverts = np.column_stack([ax + side + np.outer(u, d2), z])
         bW = weights_from(D[tn], bverts); buckle = new_skinned("Buckle_src", bverts, bf, bW, to)
         D[buckle.name] = part_entry(buckle); slot[buckle.name] = "Outfit_Buckle"; why[buckle.name] = f"the band's front faces standing proud ({len(bfaces)})"
         bs = D[buckle.name]["size"] / H; tris = len(D[buckle.name]["tri"])
@@ -226,24 +255,28 @@ def belt_from_band(tn, to, band, LO, HI, ax, ang, NS, zlo, zhi):
               f"{'fits' if fits else 'DOES NOT FIT'} the slot {BUCKLE_SLOT}")
 
 
-def make_strap(tn, LO, HI, ax, NS, rref):
-    """(3) the strap; returns the strap's outer radius as a function of the angle around the waist"""
-    N = 96; T = D[tn]["bvh"]; rings = []; outer = []
+def make_strap(tn, LO, HI, ax, edge, hip):
+    """(3) the strap, leaning on the hip line; returns, for an angle around the waist, its outer face as (c, b): radius = c + b z"""
+    N = STRAP_STEPS; T = D[tn]["bvh"]; rings = []; outer = []; off = np.zeros(N)
+    # pushed out only where the trousers would come THROUGH it, over its own height: what stays inside it is hidden, and a belt loop's end
+    # under it (0.4-0.5 % of H proud on the first female; it pushed the whole front out) is the loop
     for k in range(N):
-        a = 2 * math.pi * k / N; d2 = np.array([math.cos(a), math.sin(a)]); t_ = k / N * NS; i0 = int(t_) % NS; i1 = (i0 + 1) % NS; f_ = t_ - int(t_)
-        z0 = LO[i0] * (1 - f_) + LO[i1] * f_; z1 = HI[i0] * (1 - f_) + HI[i1] * f_
-        ring = []; rs = []
-        for z in np.linspace(z0 - 0.003 * H, z1 + 0.003 * H, 7):     # the trousers' outermost point over the whole band, not at its edges
-            o_ = Vector((ax[0] + d2[0] * 0.5 * H, ax[1] + d2[1] * 0.5 * H, z))
-            h = T.ray_cast(o_, Vector((-d2[0], -d2[1], 0)), 0.5 * H)
+        a = 2 * math.pi * k / N; d2 = np.array([math.cos(a), math.sin(a)]); b, c = hip[k]
+        for z in np.linspace(edge(LO, a), edge(HI, a), 7):
+            h = T.ray_cast(Vector((ax[0] + d2[0] * 0.5 * H, ax[1] + d2[1] * 0.5 * H, z)), Vector((-d2[0], -d2[1], 0)), 0.5 * H)
             if h[0] is not None:
-                rs.append(0.5 * H - h[3])
-        r = max(rs) if rs else rref(np.array([ax[0] + d2[0], ax[1] + d2[1], z0]))
-        outer.append(r + (STRAP_GAP + STRAP_T) * H)
-        for z in (z0, z1):
-            ri, ro = r + STRAP_GAP * H, r + (STRAP_GAP + STRAP_T) * H
-            ring.append((ax[0] + d2[0] * ri, ax[1] + d2[1] * ri, z)); ring.append((ax[0] + d2[0] * ro, ax[1] + d2[1] * ro, z))
+                off[k] = max(off[k], 0.5 * H - h[3] - (c + b * z) - (STRAP_GAP + STRAP_T - 0.0005) * H)
+    off = np.maximum.reduce([np.roll(off, s) for s in range(-2, 3)])     # a stiff strap: the running max, then its average (never below
+    off = sum(np.roll(off, s) for s in range(-2, 3)) / 5.0               # any step's own need)
+    for k in range(N):
+        a = 2 * math.pi * k / N; d2 = np.array([math.cos(a), math.sin(a)]); b, c = hip[k]; c = c + off[k] + STRAP_GAP * H
+        n = np.array([1.0, -b]) / math.hypot(1.0, b)     # the strap's outward normal in (radius, z): the thickness is square to its lean
+        ring = []
+        for z in (edge(LO, a), edge(HI, a)):
+            for t in (0.0, STRAP_T * H):
+                r_ = c + b * z + t * n[0]; ring.append((ax[0] + d2[0] * r_, ax[1] + d2[1] * r_, z + t * n[1]))
         rings.append([ring[0], ring[1], ring[3], ring[2]])   # inner-low, outer-low, outer-high, inner-high
+        outer.append((c + STRAP_T * H * math.hypot(1.0, b), b))
     sv = [p for r in rings for p in r]; sf = []
     for k in range(N):
         a_, b_ = 4 * k, 4 * ((k + 1) % N)
@@ -251,9 +284,10 @@ def make_strap(tn, LO, HI, ax, NS, rref):
             sf.append([a_ + j, a_ + (j + 1) % 4, b_ + (j + 1) % 4, b_ + j])
     sW = weights_from(D[tn], sv); strap = new_skinned("Belt_strap", sv, sf, sW, to)
     D[strap.name] = part_entry(strap); slot[strap.name] = "Outfit_Belt"; why[strap.name] = "generated: the measured belt curve"
-    print(f"[{TAG}] strap: {len(sf)} quads, height {np.mean(HI - LO) * 100:.1f} % of H, {STRAP_T * 100:.1f} % thick")
+    print(f"[{TAG}] strap: {len(sf)} quads, height {np.mean(HI - LO) * 100:.1f} % of H, {STRAP_T * 100:.1f} % thick, "
+          f"pushed off the hip line by up to {off.max() / H * 100:.2f} % of H")
     oa = np.array(outer + [outer[0]]); grid = np.linspace(0, 2 * math.pi, N + 1)
-    return lambda a: float(np.interp(a % (2 * math.pi), grid, oa))
+    return lambda a: (float(np.interp(a % (2 * math.pi), grid, oa[:, 0])), float(np.interp(a % (2 * math.pi), grid, oa[:, 1])))
 
 
 hz = float(B["Hips"][2])

@@ -154,8 +154,10 @@ def new_skinned(name, verts, faces, W, like):
 
 
 # The BELT is REBUILT, not kept (Director, 2026-10-27): buckles are sold, so the buckle is a slot of its own and the strap is ours.
-# (1) BUCKLE: the band's faces in the front (|x| < BUCKLE_HALF_W of the waist axis, in front of it) standing proud of the band's own surface
-#     by > BUCKLE_PROUD are copied out as Outfit_Buckle (its slot: BUCKLE_SLOT, the box a buckle must fit; a replacement comes from BUCKLE_SRC).
+# (1) BUCKLE: ours, the slot's default (Outfit_Buckle; BUCKLE_SLOT is the box a buckle must fit; a sold one replaces it): a frame with a centre
+#     bar, BUCKLE_H times the strap's height, BUCKLE_ASPECT as wide, its bars BUCKLE_BAR of its height, BUCKLE_D deep, centred on the strap at
+#     the front and wrapped onto its outer face (Director, 2026-10-27: "bem proporcional"; the one cut from Tripo's band hung 0.3 % of H low,
+#     its top ragged, a flat plate whose ends floated off the curved strap).
 # (2) TROUSERS: the band's vertices are pulled IN to the HIP LINE (a slimmer waist, closed, no hole). The hip line is one line r = c + b z per
 #     step around the waist, fitted to the trousers' radius at 6 heights 0.4-2.4 % of H under the belt's bottom edge (the band itself stands
 #     proud), its radius averaged over +-3 steps and its lean over +-6: the body's taper there, measured per figure (Director, 2026-10-27: the
@@ -163,8 +165,8 @@ def new_skinned(name, verts, faces, W, like):
 #     first female).
 # (3) STRAP: a closed band of STRAP_T thickness, STRAP_GAP off the hip line (pushed out only where the trousers would come through its outer
 #     face), LEANING with it, between the measured edges (each sector's low and high ledges), over STRAP_STEPS steps around the waist;
-#     weighted from the trousers. The buckle is tilted with the strap's lean at its angle.
-BUCKLE_HALF_W, BUCKLE_PROUD = 0.035, 0.004             # fractions of H
+#     weighted from the trousers.
+BUCKLE_H, BUCKLE_ASPECT, BUCKLE_BAR, BUCKLE_D = 1.25, 1.5, 0.17, 0.0035   # see (1); BUCKLE_D a fraction of H
 STRAP_T, STRAP_GAP = 0.004, 0.0015                     # fractions of H
 STRAP_STEPS = 96
 BUCKLE_SLOT = {"max_w": 0.060, "max_h": 0.045, "max_d": 0.015, "max_tris": 500}   # fractions of H (a 1.80 m figure: 10.8 x 8.1 x 2.7 cm)
@@ -218,17 +220,6 @@ def belt_from_band(tn, to, band, LO, HI, ax, ang, NS, zlo, zhi):
     lean = np.degrees(np.arctan(-hip[:, 0]))
     print(f"[{TAG}] hip line: the strap leans in {lean.min():.1f} to {lean.max():.1f} deg (front {lean[STRAP_STEPS * 3 // 4]:.1f}, "
           f"sides {lean[0]:.1f} / {lean[STRAP_STEPS // 2]:.1f}, back {lean[STRAP_STEPS // 4]:.1f})")
-    # (1) buckle
-    front = -1.0                                        # glTF forward: the front is -Y
-    bfaces = []
-    for i in band:
-        pts = [V[v] for v in to.data.polygons[i].vertices]; c = np.mean(pts, axis=0)
-        if abs(c[0] - ax[0]) < BUCKLE_HALF_W * H and (c[1] - ax[1]) * front > 0 and np.linalg.norm(c[:2] - ax) > rref(c) + BUCKLE_PROUD * H:
-            bfaces.append(i)
-    buckle = None
-    if bfaces:
-        vids = sorted({v for i in bfaces for v in to.data.polygons[i].vertices}); remap = {v: k for k, v in enumerate(vids)}
-        bverts = V[vids]; bf = [[remap[v] for v in to.data.polygons[i].vertices] for i in bfaces]
     # (2) flatten the band into the trousers, down to the hip line
     for v in bandv:
         q = V[v]; r = rad[v]; r0 = hipr(q)
@@ -253,19 +244,37 @@ def belt_from_band(tn, to, band, LO, HI, ax, ang, NS, zlo, zhi):
     to.data.update(); D[tn] = part_entry(to)
     print(f"[{TAG}] belt band: {len(band)} faces of {tn} flattened into the trousers (sector radii {ref.min():.3f}-{ref.max():.3f})")
     strap_out = make_strap(tn, LO, HI, ax, edge, hip)
-    if bfaces:                                          # seated ON the new strap: tilted with its lean, its back on the strap's outer face, at its own angle
-        bc_ = bverts.mean(0); a_ = math.atan2(bc_[1] - ax[1], bc_[0] - ax[0]); d2 = np.array([math.cos(a_), math.sin(a_)])
-        c_, b_ = strap_out(a_); phi = -math.atan(b_)    # upright -> the strap's slope dr/dz, about the buckle's centre
-        u = (bverts[:, :2] - ax) @ d2; z = bverts[:, 2]; side = bverts[:, :2] - ax - np.outer(u, d2); du, dz = u - u.mean(), z - z.mean()
-        u = u.mean() + du * math.cos(phi) - dz * math.sin(phi); z = z.mean() + du * math.sin(phi) + dz * math.cos(phi)
-        u += 0.0005 * H - float((u - (c_ + b_ * z)).min())
-        bverts = np.column_stack([ax + side + np.outer(u, d2), z])
-        bW = weights_from(D["Belt_strap"], bverts); buckle = new_skinned("Buckle_src", bverts, bf, bW, to)
-        D[buckle.name] = part_entry(buckle); slot[buckle.name] = "Outfit_Buckle"; why[buckle.name] = f"the band's front faces standing proud ({len(bfaces)})"
-        bs = D[buckle.name]["size"] / H; tris = len(D[buckle.name]["tri"])
-        fits = bs[0] <= BUCKLE_SLOT["max_w"] and bs[2] <= BUCKLE_SLOT["max_h"] and bs[1] <= BUCKLE_SLOT["max_d"] and tris <= BUCKLE_SLOT["max_tris"]
-        print(f"[{TAG}] buckle: {len(bfaces)} faces, {bs[0]*100:.1f} x {bs[2]*100:.1f} x {bs[1]*100:.1f} % of H, {tris} tris -> "
-              f"{'fits' if fits else 'DOES NOT FIT'} the slot {BUCKLE_SLOT}")
+    make_buckle(LO, HI, ax, edge, strap_out)
+
+
+def make_buckle(LO, HI, ax, edge, strap_out):
+    """(1) the default buckle: a frame with a centre bar, centred on the strap at the front, wrapped onto its outer face"""
+    ac = 1.5 * math.pi                                  # glTF forward: the front is -Y
+    z0, z1 = edge(LO, ac), edge(HI, ac); zm = (z0 + z1) / 2.0; c_, b_ = strap_out(ac); h_ = math.hypot(1.0, b_)
+    bh = BUCKLE_H * (z1 - z0) * h_; bw = BUCKLE_ASPECT * bh; bar = BUCKLE_BAR * bh; dep = BUCKLE_D * H; r0 = c_ + b_ * zm
+    def place(s_, t, n):                                # s_ along the strap (arc), t up its face, n out of it
+        r = r0 + t * b_ / h_ + (0.0005 * H + n) / h_; z = zm + t / h_ - (0.0005 * H + n) * b_ / h_; a = ac + s_ / r
+        return (ax[0] + math.cos(a) * r, ax[1] + math.sin(a) * r, z)
+    verts, faces = [], []
+    def box(sa, sb, ta, tb, k):                         # a bar of the frame, k segments along the strap so it follows its curve
+        o = len(verts)
+        for i in range(k + 1):
+            s_ = sa + (sb - sa) * i / k
+            verts.extend(place(s_, t, n) for t, n in ((ta, 0.0), (ta, dep), (tb, dep), (tb, 0.0)))
+        for i in range(k):
+            a, b = o + 4 * i, o + 4 * (i + 1)
+            faces.extend([a + j, b + j, b + (j + 1) % 4, a + (j + 1) % 4] for j in range(4))
+        faces.extend([[o, o + 3, o + 2, o + 1], [o + 4 * k, o + 4 * k + 1, o + 4 * k + 2, o + 4 * k + 3]])
+    hw, hh = bw / 2.0, bh / 2.0
+    box(-hw, hw, hh - bar, hh, 8); box(-hw, hw, -hh, -hh + bar, 8)                      # top, bottom
+    box(-hw, -hw + bar, -hh + bar, hh - bar, 1); box(hw - bar, hw, -hh + bar, hh - bar, 1)   # sides
+    box(-bar * 0.4, bar * 0.4, -hh + bar, hh - bar, 1)                                   # the centre bar
+    W = weights_from(D["Belt_strap"], verts); o = new_skinned("Buckle", verts, faces, W, to)
+    D[o.name] = part_entry(o); slot[o.name] = "Outfit_Buckle"; why[o.name] = "generated: a frame on the strap's front"
+    bs = np.array([bw, bh, dep]) / H; tris = len(D[o.name]["tri"])
+    fits = bs[0] <= BUCKLE_SLOT["max_w"] and bs[1] <= BUCKLE_SLOT["max_h"] and bs[2] <= BUCKLE_SLOT["max_d"] and tris <= BUCKLE_SLOT["max_tris"]
+    print(f"[{TAG}] buckle: {bs[0]*100:.1f} x {bs[1]*100:.1f} x {bs[2]*100:.2f} % of H (the strap {(z1 - z0) / H * 100:.1f} % tall), {tris} tris -> "
+          f"{'fits' if fits else 'DOES NOT FIT'} the slot {BUCKLE_SLOT}")
 
 
 def make_strap(tn, LO, HI, ax, edge, hip):

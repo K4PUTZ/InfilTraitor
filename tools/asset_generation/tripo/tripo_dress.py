@@ -29,7 +29,9 @@ TAG = "tripo_dress"
 BASE, FROM, OUT = os.environ["DRESS_BASE"], os.environ["DRESS_FROM"], os.environ["DRESS_OUT"]
 RV_OUT = os.environ.get("RV_OUT", "").rstrip("/")
 COAT_GAP, SMOOTH_ITERS = 0.004, 10                       # COAT_GAP a fraction of H
-HAT_DY, HAT_TILT, HAT_MAX_LIFT = 0.015, 8.0, 0.012      # HAT_DY and HAT_MAX_LIFT fractions of H, HAT_TILT degrees
+HAT_DY = float(os.environ.get("HAT_DY", "0.015"))         # back (+) / forward (-), a fraction of H; per figure (the male: 0.005)
+HAT_DROP = float(os.environ.get("HAT_DROP", "0"))         # down after the fit, a fraction of H (the male: 0.01, Director 2026-10-27)
+HAT_TILT, HAT_MAX_LIFT = 8.0, 0.012                     # degrees; a fraction of H
 UNDER_COAT = ("Outfit_Shirt", "Outfit_Tie", "Outfit_Belt", "Outfit_Buckle", "Outfit_Trousers")
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -223,8 +225,8 @@ while through(HV) > 0 and lift < HAT_MAX_LIFT * H:
 ctr = (HV.min(0) + HV.max(0)) / 2; bottom = HV[:, 2].min()
 while through(HV) > 0 and scale < 1.3:
     scale += 0.01; HV = (base_hat + np.array([0, 0, lift]) - [ctr[0], ctr[1], bottom]) * scale + [ctr[0], ctr[1], bottom]
-n1 = through(HV)
-print(f"[{TAG}] hat: {n0} head vertices came through it as placed; lifted {lift / H * 100:.1f} % of H, scaled x{scale:.2f} -> {n1} left")
+HV[:, 2] -= HAT_DROP * H; n1 = through(HV)
+print(f"[{TAG}] hat: {n0} head vertices came through it as placed; lifted {lift / H * 100:.1f} % of H, scaled x{scale:.2f}, then {HAT_DY * 100:.1f} % back and {HAT_DROP * 100:.1f} % down -> {n1} left")
 set_world(hat, HV); rebind(hat); tc.write_weights(hat, [{"mixamorig:Head": 1.0}] * len(hat.data.vertices))
 
 # (3) the masks

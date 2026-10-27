@@ -46,7 +46,27 @@ def load(tag, glb):
             t.mute = True
     arm.data.pose_position = 'REST'; bpy.context.view_layer.update()
     B = {n: np.array((arm.matrix_world @ arm.data.bones[P + n].head_local)[:]) for n in NEED}
+    fix_unrigged(tag, meshes, P)
     return arm, P, B, meshes
+
+
+def fix_unrigged(tag, meshes, P):
+    """Tripo binds a few vertices to a 'neutral_bone' outside the Mixamo set, which no clip moves: in motion they stay at the rest pose and a
+    face stretches from the figure back to where it started (measured on the first male with the coat, 2026-10-27: 1 coat vertex and 2 under
+    the hat, edges 2.4 m long). Each such vertex takes the weights of the nearest vertex of its own mesh weighted to Mixamo bones only."""
+    n_fix = 0
+    for o in meshes:
+        W = read_weights(o); bad = [i for i, w in enumerate(W) if any(not g.startswith(P) for g in w)]
+        if not bad:
+            continue
+        V = world_verts(o); good = np.array([i for i in range(len(W)) if i not in set(bad)])
+        if not len(good):
+            fail(tag, f"{o.name}: every vertex is weighted to a bone outside {P}*")
+        for i in bad:
+            W[i] = dict(W[good[np.argmin(np.linalg.norm(V[good] - V[i], axis=1))]])
+        write_weights(o, W); n_fix += len(bad)
+    if n_fix:
+        print(f"[{tag}] {n_fix} vertices bound to a bone outside the Mixamo set (Tripo's neutral_bone) took their nearest neighbour's weights")
 
 
 def world_verts(o):

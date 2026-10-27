@@ -108,6 +108,85 @@ for i, v in enumerate(coat.data.vertices):
             acc += (M @ Vector(CV[i])) * g.weight; ws += g.weight
     if ws > 0:
         CV[i] = acc[:] if ws == 1.0 else (acc / ws)[:]
+# (0) THE BASE FITTED TO THE COAT, once (Director, 2026-10-27: "a gente adaptaria o modelo sem casaco primeiro, pra ser a base universal, sem
+# atrapalhar tanto o casaco"; the coat should keep the geometry it was generated with). The base's SHIRT is pulled in toward its bone
+# where the coat covers it (a ray away from the bone meets the coat within BASE_REACH, nearer than COAT_GAP) or where it comes through
+# the coat (a ray toward the bone meets the coat within BASE_REACH): a smooth field on the shirt's welded surface, like the coat's below.
+# The shirt shown between the lapels and above the collar is touched by neither ray and stays. The tie rides the shirt (each tie vertex takes
+# the move of the nearest shirt vertex). The fitted shirt IS the base from here on, in every version.
+def welded(V_, edges):
+    key_ = {}; r_ = np.zeros(len(V_), np.int64)
+    for i, q in enumerate(np.round(V_ / (1e-5 * H)).astype(np.int64)):
+        r_[i] = key_.setdefault(tuple(q), len(key_))
+    E_ = np.array([(r_[e.vertices[0]], r_[e.vertices[1]]) for e in edges]); E_ = E_[E_[:, 0] != E_[:, 1]]
+    return r_, len(key_), E_, np.bincount(E_.ravel(), minlength=len(key_)).astype(float)
+
+
+def relax(field, floor_, E_, deg_, iters):
+    for _ in range(iters):
+        acc = np.zeros(len(field)); np.add.at(acc, E_[:, 0], field[E_[:, 1]]); np.add.at(acc, E_[:, 1], field[E_[:, 0]])
+        field = np.maximum(0.5 * field + 0.5 * np.where(deg_ > 0, acc / np.maximum(deg_, 1), field), floor_)
+    return field
+
+
+BASE_REACH, FIT_MAX = 0.04, 0.03                        # fractions of H: a point never moves farther than FIT_MAX (past it the fit diverged)
+base_moved = 0.0
+if "Outfit_Shirt" in mB:
+    set_world(coat, CV); Tcoat = shell(coat); shirt = mB["Outfit_Shirt"]; SV0 = wverts(shirt)
+    sr, SNR, SE, sdeg = welded(SV0, shirt.data.edges); m3s = shirt.matrix_world.to_3x3()
+    # the pull is TOWARD THE BONE (the nearest point of the spine chain or of an arm), not against the shirt's normal: the faces inside the
+    # collar and the hem face inward, and a pull against their normal threw them OUT (a torn collar, frilled shoulders on the first male)
+    bh = lambda n: np.array((armB.matrix_world @ armB.data.bones["mixamorig:" + n].head_local)[:])
+    segs = [(bh(a), bh(b)) for a, b in (("Hips", "Spine"), ("Spine", "Spine1"), ("Spine1", "Spine2"), ("Spine2", "Neck"), ("Neck", "Head"))]
+    segs += [(bh(sd + a), bh(sd + b)) for sd in ("Left", "Right") for a, b in (("Shoulder", "Arm"), ("Arm", "ForeArm"), ("ForeArm", "Hand"))]
+    def outward(q):
+        best_ = None
+        for a, b in segs:
+            ab = b - a; t = np.clip((q - a) @ ab / (ab @ ab), 0, 1); c = a + t * ab; d = np.linalg.norm(q - c)
+            if best_ is None or d < best_[0]:
+                best_ = (d, (q - c) / max(d, 1e-12))
+        return best_[1]
+    SN = np.zeros((SNR, 3)); np.add.at(SN, sr, np.array([outward(q) for q in SV0])); SN /= np.maximum(np.linalg.norm(SN, axis=1), 1e-12)[:, None]
+    # the pull fades out toward the belt: nothing at its top, all of it 4 % of H above (the hem pulled in over a belt and trousers that stay
+    # left a step and a notch at the waist); below, the coat is fitted instead
+    btop = max(wverts(mB[n])[:, 2].max() for n in ("Outfit_Belt", "Outfit_Trousers") if n in mB) if any(n in mB for n in ("Outfit_Belt", "Outfit_Trousers")) else -1e9
+    SZ = np.zeros(SNR); np.maximum.at(SZ, sr, SV0[:, 2]); fade = tc.sstep(btop, btop + 0.04 * H, SZ)
+    sfield = np.zeros(SNR); sfloor = np.zeros(SNR); SV = SV0.copy(); sbest = (None, np.zeros(SNR), 0)
+    for it in range(10):
+        need = {}
+        for i, q in enumerate(SV):
+            r = sr[i]; n_ = Vector(SN[r]); p = Vector(q)
+            up = Tcoat.ray_cast(p + n_ * 1e-6, n_, BASE_REACH * H); dn = Tcoat.ray_cast(p - n_ * 1e-6, -n_, BASE_REACH * H)
+            d = 0.0
+            if dn[0] is not None and (up[0] is None or dn[3] < up[3]):
+                d = dn[3] + COAT_GAP * H                 # through the coat: back inside it, by the gap
+            elif up[0] is not None and up[3] < COAT_GAP * H:
+                d = COAT_GAP * H - up[3]                 # under it but too near
+            if d > need.get(r, 0.0):
+                need[r] = d
+        if sbest[0] is None or len(need) < sbest[0]:
+            sbest = (len(need), sfield.copy(), it)
+        elif it - sbest[2] >= 2:
+            break
+        if not need:
+            break
+        for r, d in need.items():
+            sfloor[r] = min(FIT_MAX * H, max(sfloor[r], sfield[r] + d)) * fade[r]
+        sfield = relax(np.maximum(sfield, sfloor), sfloor, SE, sdeg, SMOOTH_ITERS) * fade
+        SV = SV0 - (sfield[:, None] * SN)[sr]
+        print(f"[{TAG}] base fit pass {it + 1}: {len(need)} shirt points through or nearer than {COAT_GAP * 100:.1f} % of H under the coat; "
+              f"deepest pull {sfield.max() / H * 100:.2f} % of H")
+    sfield = sbest[1]; SV = SV0 - (sfield[:, None] * SN)[sr]
+    print(f"[{TAG}] base fit kept pass {sbest[2]} ({sbest[0]} points left), deepest pull {sfield.max() / H * 100:.2f} % of H")
+    move_s = SV - SV0; set_world(shirt, SV); base_moved = sfield.max()
+    if "Outfit_Tie" in mB:
+        kd_ = KDTree(len(SV0))
+        for i, q in enumerate(SV0):
+            kd_.insert(Vector(q), i)
+        kd_.balance(); TV_ = wverts(mB["Outfit_Tie"])
+        set_world(mB["Outfit_Tie"], np.array([q + move_s[kd_.find(Vector(q))[1]] for q in TV_]))
+
+
 # by REGION: a coat vertex on the arm (arm-family weights >= 0.5) is fitted to the shirt's sleeves, every other one to the shirt's torso and the
 # rest of UNDER_COAT. The base's arms hang nearer the body than the dresser's, so a sleeve of the shirt lies inside the coat's side under the
 # arm; that contact inflated the whole coat (12 % of H and growing) when the coat's torso was fitted to the whole shirt.
@@ -179,7 +258,7 @@ for it in range(12):
     if not any(d > 1e-6 * H for d in need.values()):
         break
     for r, d in need.items():
-        floor_[r] = max(floor_[r], field[r] + d)
+        floor_[r] = min(FIT_MAX * H, max(floor_[r], field[r] + d))
     field = np.maximum(field, floor_)
     for _ in range(SMOOTH_ITERS):
         acc = np.zeros(NR); np.add.at(acc, E[:, 0], field[E[:, 1]]); np.add.at(acc, E[:, 1], field[E[:, 0]])

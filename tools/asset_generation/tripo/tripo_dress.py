@@ -32,6 +32,10 @@ RV_OUT = os.environ.get("RV_OUT", "").rstrip("/")
 # milimetros"; the full fit, 0.4 % gap, 10 relax steps, no cap, swelled the coat out of character): a small gap, a short relax, a cap
 COAT_GAP = float(os.environ.get("COAT_GAP", "0.004")); SMOOTH_ITERS = int(os.environ.get("COAT_SMOOTH", "3"))
 COAT_MAX = float(os.environ.get("COAT_MAX", "0.012"))    # fractions of H; a coat point never moves farther than COAT_MAX
+# ONE LAPEL may go farther, to make room for a bust (Director, 2026-10-27, on the female: "deslocar a lapela da esquerda mais pra frente"):
+# LAPEL_SIDE = R or L (the FIGURE's side; the female's is R, the viewer's left from the front), its coat points on the chest's front
+# (in front of the waist axis, 62-82 % of H high, more than 0.5 % of H to that side) capped at LAPEL_MAX instead
+LAPEL_SIDE = os.environ.get("LAPEL_SIDE", ""); LAPEL_MAX = float(os.environ.get("LAPEL_MAX", "0.03"))
 HAT_DY = float(os.environ.get("HAT_DY", "0.015"))         # back (+) / forward (-), a fraction of H; per figure (the male: 0.005)
 HAT_DROP = float(os.environ.get("HAT_DROP", "0"))         # down after the fit, a fraction of H (the male: 0.01, Director 2026-10-27)
 HAT_TILT, HAT_MAX_LIFT = 8.0, 0.012                     # degrees; a fraction of H
@@ -103,6 +107,8 @@ def rebind(o):                                          # onto the base's armatu
 
 
 # (1) the coat
+B_left_x = (armB.matrix_world @ armB.data.bones["mixamorig:LeftHand"].head_local).x
+waist_y = (armB.matrix_world @ armB.data.bones["mixamorig:Spine"].head_local).y
 DM = {b.name: (armB.matrix_world @ armB.data.bones[b.name].matrix_local) @ (armA.matrix_world @ b.matrix_local).inverted()
       for b in armA.data.bones if b.name in armB.data.bones}
 coat = mA["Outfit_Coat"]; gn = {g.index: g.name for g in coat.vertex_groups}; CV = wverts(coat)
@@ -160,7 +166,13 @@ kd.balance(); stick = np.array([i if on_main[i] else mi[kd.find(Vector(CV[i]))[1
 set_world(coat, CV); m3 = coat.matrix_world.to_3x3()        # the field is a DISTANCE along the coat's own outward normal: a vector field
 NRM = np.zeros((NR, 3))                                         # smoothed across a thin sleeve mixed its two sides' opposite pushes and diverged
 np.add.at(NRM, rep_, np.array([(m3 @ v.normal)[:] for v in coat.data.vertices])); NRM /= np.maximum(np.linalg.norm(NRM, axis=1), 1e-12)[:, None]
-orig = CV.copy(); field = np.zeros(NR); floor_ = np.zeros(NR); best = (None, None, 0)    # the pass with the fewest left, its field
+orig = CV.copy(); field = np.zeros(NR); floor_ = np.zeros(NR); best = (None, None, 0)
+RP = np.zeros((NR, 3)); RP[rep_] = CV; cap = np.full(NR, COAT_MAX * H)
+if LAPEL_SIDE:
+    sgn = -np.sign(B_left_x) if LAPEL_SIDE.upper() == "R" else np.sign(B_left_x)
+    lap = (RP[:, 0] * sgn > 0.005 * H) & (RP[:, 1] < waist_y) & (RP[:, 2] > 0.62 * H) & (RP[:, 2] < 0.82 * H)
+    cap[lap] = LAPEL_MAX * H
+    print(f"[{TAG}] lapel {LAPEL_SIDE}: {int(lap.sum())} coat points may move up to {LAPEL_MAX * 100:.1f} % of H")    # the pass with the fewest left, its field
 for it in range(12 if COAT_FIT else 0):                 # COAT_FIT=0: the coat only moved by the skeleton delta (a review)
     need = {}
     for i in np.nonzero(on_main)[0]:
@@ -186,7 +198,7 @@ for it in range(12 if COAT_FIT else 0):                 # COAT_FIT=0: the coat o
     if not any(d > 1e-6 * H for d in need.values()):
         break
     for r, d in need.items():
-        floor_[r] = min(COAT_MAX * H, max(floor_[r], field[r] + d))
+        floor_[r] = min(cap[r], max(floor_[r], field[r] + d))
     field = np.maximum(field, floor_)
     for _ in range(SMOOTH_ITERS):
         acc = np.zeros(NR); np.add.at(acc, E[:, 0], field[E[:, 1]]); np.add.at(acc, E[:, 1], field[E[:, 0]])
@@ -268,8 +280,16 @@ if "Outfit_Shirt" in mB:
             ab = b - a; t = np.clip((q - a) @ ab / (ab @ ab), 0, 1); c = a + t * ab; d = np.linalg.norm(c - q)
             if best_ is None or d < best_[0]:
                 best_ = (d, (c - q) / max(d, 1e-12))
-        return best_[1]
-    out_ = [not inside(Tc, q) and Tc.ray_cast(Vector(q), Vector(to_bone(q)), 0.03 * H)[0] is not None for q in SV]
+        return best_
+    def through_coat(q):                                 # the coat met BEFORE the bone: a hit past it is the coat's collar behind the neck,
+        d, n_ = to_bone(q)                               # which took the female's shirt collar (2026-10-27)
+        h = Tc.ray_cast(Vector(q), Vector(n_), min(0.03 * H, d))
+        return h[0] is not None
+    out_ = [not inside(Tc, q) and through_coat(q) for q in SV]
+    # the COLLAR is never masked: from 4 % of H under the neck bone up (the female's shirt collar lies over her coat's collar stand, which
+    # reads locally exactly like a spot coming through the coat, and both rules took it)
+    keep = SV[:, 2] > bh("Neck")[2] - 0.04 * H
+    deep = [d_ and not k_ for d_, k_ in zip(deep, keep)]; out_ = [o_ and not k_ for o_, k_ in zip(out_, keep)]
     sc_, nd = masked_copy(mB["Outfit_Shirt"], "Outfit_Shirt_Coated", lambda f: all(deep[v.index] for v in f.verts) or any(out_[v.index] for v in f.verts))
     print(f"[{TAG}] shirt mask: {nd} of {len(mB['Outfit_Shirt'].data.polygons)} shirt faces deep inside the coat or out through it ({sum(out_)} vertices out)"); extra.append(sc_)
 for o in mA.values():

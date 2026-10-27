@@ -237,6 +237,19 @@ def belt_from_band(tn, to, band, LO, HI, ax, ang, NS, zlo, zhi):
     inv = mw.inverted()
     for v in bandv:
         to.data.vertices[v].co = inv @ Vector(V[v])
+    # the band under the belt is as stiff as the belt (its leg shares to the Hips), or the thigh bends it out through the strap on a deep
+    # step; blended in over 1.5 % of H below the belt so the trousers do not crease at its edge
+    TW = tc.read_weights(to)
+    for v in range(len(V)):
+        k = 1.0 if inb[v] else float(tc.sstep(LH[v, 0] - 0.015 * H, LH[v, 0], V[v, 2])) * (V[v, 2] <= LH[v, 1])
+        if k > 0:
+            m = {}
+            for g, x in TW[v].items():
+                m[g] = m.get(g, 0.0) + x * (1 - k) if family(g[len(P):]) == "Leg" else m.get(g, 0.0) + x
+                if family(g[len(P):]) == "Leg":
+                    m[P + "Hips"] = m.get(P + "Hips", 0.0) + x * k
+            TW[v] = tc.top4({g: x for g, x in m.items() if x > 1e-6}, P + "Hips")
+    tc.write_weights(to, TW)
     to.data.update(); D[tn] = part_entry(to)
     print(f"[{TAG}] belt band: {len(band)} faces of {tn} flattened into the trousers (sector radii {ref.min():.3f}-{ref.max():.3f})")
     strap_out = make_strap(tn, LO, HI, ax, edge, hip)

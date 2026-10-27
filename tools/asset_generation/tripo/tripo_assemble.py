@@ -7,13 +7,14 @@
 # Body_Hair. The front is -Y (glTF's +Z forward, as Blender imports it).
 # (1) ANCHORS, the big pieces, from each part's bone FAMILY (Head / Torso / Arm / Hand / Leg / Foot, by summed weight) and size:
 #     coat = the largest part (bbox volume) weighted to both Arm and Leg (>= 5 % each); hands, shoes = the 2 largest Hand / Foot parts; trousers =
-#     the Leg parts with >= 2 % of all vertices; hat = the Head part reaching highest among those >= 12 % of H wide; head = the largest other Head
-#     part; shirt = the largest remaining Torso + Arm part with >= 2 % of the vertices; tie = a Torso + Arm part 3x taller than wide, centred
+#     the Leg parts with >= 2 % of all vertices; hat = the Head part reaching highest among those >= 12 % of H wide; head = the other Head
+#     part a ray from the front meets first at nose height (the face; the hair can be larger); shirt = the largest remaining Torso + Arm part with >= 2 % of the vertices; tie = a Torso + Arm part 3x taller than wide, centred
 #     (|x| < 2 % H), >= 10 % of H tall.
 # (2) DETAILS: a Head detail RESTING on the hat (its vertices' rays down meet the hat more than their rays up, by > 0.1: the band; measured on the first female: band +0.20 to +0.43, hair -1.00 to 0.00) is the hat's; one
 #     in front of the face (centre within 30 % of the head's width of its axis, and in its front 30 %) is the head's (eyes, brows, lips); any other
-#     Head detail is hair (its rays up meet the brim). A Hand detail is the hands' (a thumb). Every other detail joins the anchor whose surface is
-#     nearest (median over its vertices). SLOT_OVERRIDE="tripo_part_85=Body_Head,..." corrects a part by hand; check the table printed at the end.
+#     Head detail is hair (its rays up meet the brim). A Hand detail is the hands' (a thumb). A Head detail nearer a garment than the head, or within 1 % of H of it, is that garment's (a collar).
+#     Every other detail joins the nearest GARMENT anchor (median over its vertices) that shares
+#     its bone family (>= 10 %): a forearm sleeve is neither a hand nor a trouser leg. SLOT_OVERRIDE="tripo_part_85=Body_Head,..." corrects a part by hand; check the table printed at the end.
 # (3) WEIGHTS: the coat gets tripo_common.coat_fix; a detail of a GARMENT (coat, shirt, tie, trousers, shoes, hat) takes the weights of the nearest
 #     point of its garment's anchors (barycentric, after the coat fix); head, hands and hair details keep Tripo's (the fingers, the head).
 # (4) Each slot is joined into one mesh named after it (vertex groups merge by name).
@@ -90,9 +91,14 @@ hat = max(c, key=lambda n: D[n]["hi"][2]) if c else None
 if hat:
     take([hat], "Outfit_Hat", "anchor: Head, highest, wide")
 c = [n for n in free if dom(n) == "Head"]
-head = max(c, key=lambda n: D[n]["n"]) if c else None
+head = None
+if c:                                                    # the FACE: the first Head part a ray from the front meets at nose height (hair may be larger)
+    hz_ = (arm.matrix_world @ arm.data.bones[P + "Head"].head_local).z + 0.03 * H
+    hits = [(D[n]["bvh"].ray_cast(Vector((0.0, -2.0 * H, hz_)), Vector((0, 1, 0)), 4.0 * H), n) for n in c]
+    hits = [(h[3], n) for h, n in hits if h[0] is not None]
+    head = min(hits)[1] if hits else max(c, key=lambda n: D[n]["n"])
 if head:
-    take([head], "Body_Head", "anchor: largest Head")
+    take([head], "Body_Head", "anchor: the face")
 c = [n for n in free if famw(n, "Torso", "Arm") >= 0.5 and D[n]["n"] >= 0.02 * NV]
 if c:
     take([max(c, key=lambda n: D[n]["n"])], "Outfit_Shirt", "anchor: largest Torso + Arm")
@@ -115,7 +121,10 @@ def med_dist(n, m):
 hd = D[head]
 for n in sorted(free):
     d = D[n]; f = dom(n)
-    if f == "Head":
+    gar = min((med_dist(n, m), m) for m in sorted(ANCHORS) if slot[m] in GARMENTS) if any(slot[m] in GARMENTS for m in ANCHORS) else None
+    if f == "Head" and gar and slot[gar[1]] != "Outfit_Hat" and (gar[0] < med_dist(n, head) or gar[0] < 0.01 * H):
+        take([n], slot[gar[1]], f"head-weighted, but nearest {gar[1]} (a collar)")
+    elif f == "Head":
         score = 0.0
         if hat:
             T = D[hat]["bvh"]; eps = Vector((0, 0, 1e-4 * H)); up = dn = 0
@@ -134,7 +143,9 @@ for n in sorted(free):
     elif f == "Hand":
         take([n], "Body_Hands", "hand detail")
     else:
-        dist, m = min((med_dist(n, m), m) for m in sorted(ANCHORS))
+        cand = [m for m in sorted(ANCHORS) if slot[m] not in ("Body_Head", "Body_Hands")]          # a sleeve is not a hand
+        cand = [m for m in cand if famw(m, f) >= 0.1] or cand                                    # nor a trouser leg: same bones
+        dist, m = min((med_dist(n, m), m) for m in cand)
         take([n], slot[m], f"nearest {m} ({1000 * dist / H:.1f} per mille of H)")
 for n, s in OVR.items():
     if n not in D:

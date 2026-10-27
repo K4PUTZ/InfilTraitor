@@ -15,8 +15,8 @@
 #     Head detail is hair (its rays up meet the brim). A Hand detail is the hands' (a thumb). A Head detail nearer a garment than the head, or within 1 % of H of it, is that garment's (a collar).
 #     Every other detail joins the nearest GARMENT anchor (median over its vertices) that shares
 #     its bone family (>= 10 %): a forearm sleeve is neither a hand nor a trouser leg. SLOT_OVERRIDE="tripo_part_85=Body_Head,..." corrects a part by hand; check the table printed at the end.
-# (3) WEIGHTS: the coat gets tripo_common.coat_fix; a detail of a GARMENT (coat, shirt, tie, trousers, shoes, hat) takes the weights of the nearest
-#     point of its garment's anchors (barycentric, after the coat fix); head, hands and hair details keep Tripo's (the fingers, the head).
+# (3) WEIGHTS: the coat gets tripo_common.coat_fix; a detail of a GARMENT (coat, shirt, tie, trousers, shoes, hat) lying ON it (within 1 % of H) takes the weights of the
+#     nearest point of its garment's anchors (a detail farther off, like a forearm sleeve, keeps Tripo's) (barycentric, after the coat fix); head, hands and hair details keep Tripo's (the fingers, the head).
 # (4) Each slot is joined into one mesh named after it (vertex groups merge by name).
 # Env: TRIPO_GLB, TRIPO_OUT, SLOT_OVERRIDE, RV_OUT (optional folder: slots.png, the slots coloured in rest pose, then without the coat, then the
 # head without the hat; clip_<i>.png, 4 frames of each of RV_CLIPS at 3/4 and from the side), RV_CLIPS (default every action).
@@ -24,7 +24,7 @@
 import math, os, sys
 import numpy as np
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 from mathutils.bvhtree import BVHTree
 from mathutils.geometry import barycentric_transform
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -33,8 +33,8 @@ import tripo_common as tc
 TAG = "tripo_assemble"
 GLB, OUT = os.environ["TRIPO_GLB"], os.environ["TRIPO_OUT"]
 RV_OUT = os.environ.get("RV_OUT", "").rstrip("/")
-SLOTS = ("Outfit_Coat", "Outfit_Shirt", "Outfit_Tie", "Outfit_Belt", "Outfit_Trousers", "Outfit_Shoes", "Outfit_Hat", "Body_Head", "Body_Hands", "Body_Hair")
-GARMENTS = SLOTS[:7]
+SLOTS = ("Outfit_Coat", "Outfit_Shirt", "Outfit_Tie", "Outfit_Belt", "Outfit_Buckle", "Outfit_Trousers", "Outfit_Shoes", "Outfit_Hat", "Body_Head", "Body_Hands", "Body_Hair")
+GARMENTS = SLOTS[:8]
 OVR = dict(kv.split("=", 1) for kv in os.environ.get("SLOT_OVERRIDE", "").split(",") if kv)
 bad = [s for s in OVR.values() if s not in SLOTS]
 if bad:
@@ -122,6 +122,140 @@ def part_entry(o):
             "ctr": (lo + hi) / 2, "n": len(V), "bvh": BVHTree.FromPolygons([tuple(p) for p in V], tri)}
 
 
+def weights_from(entry, pts):
+    """skin weights for world points `pts`, interpolated from the nearest point of `entry`'s surface (barycentric)"""
+    T = entry["bvh"]; AV = entry["V"]; out = []
+    for p in pts:
+        loc, _n, fi, _d = T.find_nearest(Vector(p)); tri = entry["tri"][fi]
+        bc = np.clip(np.array(barycentric_transform(loc, Vector(AV[tri[0]]), Vector(AV[tri[1]]), Vector(AV[tri[2]]),
+                                                    Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1)))[:]), 0.0, None); bc /= bc.sum() or 1.0
+        mix = {}
+        for k, wk in zip(tri, bc):
+            for g, x in entry["W"][k].items():
+                mix[g] = mix.get(g, 0.0) + x * wk
+        out.append(tc.top4(mix, P + "Hips"))
+    return out
+
+
+def new_skinned(name, verts, faces, W, like):
+    """a new mesh object skinned to the armature like `like` (parent, Armature modifier), with weights W"""
+    me = bpy.data.meshes.new(name); me.from_pydata([tuple(v) for v in verts], [], faces); me.update()
+    o = bpy.data.objects.new(name, me); bpy.context.scene.collection.objects.link(o)
+    o.parent = like.parent; o.matrix_parent_inverse = like.matrix_parent_inverse.copy()
+    o.matrix_world = Matrix.Identity(4) if like.parent is None else o.matrix_world
+    mw_inv = o.matrix_world.inverted()
+    for v, q in zip(o.data.vertices, verts):
+        v.co = mw_inv @ Vector(q)
+    md = o.modifiers.new("Armature", 'ARMATURE'); md.object = arm
+    tc.write_weights(o, W)
+    for p_ in o.data.polygons:
+        p_.use_smooth = False
+    return o
+
+
+# The BELT is REBUILT, not kept (Director, 2026-10-27): buckles are sold, so the buckle is a slot of its own and the strap is ours.
+# (1) BUCKLE: the band's faces in the front (|x| < BUCKLE_HALF_W of the waist axis, in front of it) standing proud of the band's own surface
+#     by > BUCKLE_PROUD are copied out as Outfit_Buckle (its slot: BUCKLE_SLOT, the box a buckle must fit; a replacement comes from BUCKLE_SRC).
+# (2) TROUSERS: the band's vertices are pulled IN to the trousers' radius just above and below it, per sector (a slimmer waist, closed, no hole).
+# (3) STRAP: a closed band of STRAP_T thickness, STRAP_GAP off the flattened trousers, following the measured curve (each sector's low and
+#     high ledges) over 96 steps around the waist; weighted from the trousers.
+BUCKLE_HALF_W, BUCKLE_PROUD = 0.035, 0.004             # fractions of H
+STRAP_T, STRAP_GAP = 0.004, 0.0015                     # fractions of H
+BUCKLE_SLOT = {"max_w": 0.060, "max_h": 0.045, "max_d": 0.015, "max_tris": 500}   # fractions of H (a 1.80 m figure: 10.8 x 8.1 x 2.7 cm)
+
+
+def belt_from_band(tn, to, band, LO, HI, ax, ang, NS, zlo, zhi):
+    mw = to.matrix_world; V = np.array([(mw @ v.co)[:] for v in to.data.vertices])
+    rad = np.linalg.norm(V[:, :2] - ax, axis=1); sec = np.array([int(ang(q)) % NS for q in V])
+
+    def lohi(q):
+        t_ = ang(q); i0 = int(t_) % NS; f_ = t_ - int(t_); i1 = (i0 + 1) % NS
+        return LO[i0] * (1 - f_) + LO[i1] * f_, HI[i0] * (1 - f_) + HI[i1] * f_
+    LH = np.array([lohi(q) for q in V])
+    bandv = sorted({v for i in band for v in to.data.polygons[i].vertices})
+    inb = np.zeros(len(V), bool); inb[bandv] = True
+    # a belt is a TILTED RING: each edge is fitted with one harmonic around the waist (z = c + a cos + b sin) instead of the per-sector ledges,
+    # which follow pocket edges and folds (the strap came out wavy)
+    th = (np.arange(NS) + 0.5) / NS * 2 * math.pi; A_ = np.stack([np.ones(NS), np.cos(th), np.sin(th)], 1)
+    for arr in (LO, HI):
+        c_ = np.linalg.lstsq(A_, arr, rcond=None)[0]
+        for _ in range(3):                                 # drop the sectors far off the fit, refit
+            r_ = arr - A_ @ c_; keep = np.abs(r_) <= max(1e-6, 2.0 * np.median(np.abs(r_)))
+            c_ = np.linalg.lstsq(A_[keep], arr[keep], rcond=None)[0]
+        arr[:] = A_ @ c_
+    LH = np.array([lohi(q) for q in V])
+    # the trousers' radius just outside the band, per sector
+    ref = np.zeros(NS)
+    for i in range(NS):
+        m = (sec == i) & ~inb & (((V[:, 2] < LH[:, 0]) & (V[:, 2] > LH[:, 0] - 0.015 * H)) | ((V[:, 2] > LH[:, 1]) & (V[:, 2] < LH[:, 1] + 0.015 * H)))
+        ref[i] = np.median(rad[m]) if m.sum() >= 3 else np.nan
+    good = ~np.isnan(ref); idx = np.arange(NS)
+    ref = np.interp(idx, idx[good], ref[good], period=NS)
+    rref = lambda q: np.interp(ang(q), np.arange(NS + 1), np.append(ref, ref[0]))
+    # (1) buckle
+    front = -1.0                                        # glTF forward: the front is -Y
+    bfaces = []
+    for i in band:
+        pts = [V[v] for v in to.data.polygons[i].vertices]; c = np.mean(pts, axis=0)
+        if abs(c[0] - ax[0]) < BUCKLE_HALF_W * H and (c[1] - ax[1]) * front > 0 and np.linalg.norm(c[:2] - ax) > rref(c) + BUCKLE_PROUD * H:
+            bfaces.append(i)
+    buckle = None
+    if bfaces:
+        vids = sorted({v for i in bfaces for v in to.data.polygons[i].vertices}); remap = {v: k for k, v in enumerate(vids)}
+        bverts = V[vids]; bf = [[remap[v] for v in to.data.polygons[i].vertices] for i in bfaces]
+    # (2) flatten the band into the trousers
+    for v in bandv:
+        q = V[v]; r = rad[v]; r0 = rref(q)
+        if r > r0:
+            d = (q[:2] - ax) / max(r, 1e-9); V[v, :2] = ax + d * r0
+    inv = mw.inverted()
+    for v in bandv:
+        to.data.vertices[v].co = inv @ Vector(V[v])
+    to.data.update(); D[tn] = part_entry(to)
+    print(f"[{TAG}] belt band: {len(band)} faces of {tn} flattened into the trousers (sector radii {ref.min():.3f}-{ref.max():.3f})")
+    strap_out = make_strap(tn, LO, HI, ax, NS, rref)
+    if bfaces:                                          # seated ON the new strap: its back face on the strap's outer surface, at its own angle
+        bc_ = bverts.mean(0); a_ = math.atan2(bc_[1] - ax[1], bc_[0] - ax[0]); d2 = np.array([math.cos(a_), math.sin(a_)])
+        back = float(((bverts[:, :2] - ax) @ d2).min()); push = strap_out(a_) + 0.0005 * H - back
+        bverts = bverts.copy(); bverts[:, :2] += d2 * push
+        bW = weights_from(D[tn], bverts); buckle = new_skinned("Buckle_src", bverts, bf, bW, to)
+        D[buckle.name] = part_entry(buckle); slot[buckle.name] = "Outfit_Buckle"; why[buckle.name] = f"the band's front faces standing proud ({len(bfaces)})"
+        bs = D[buckle.name]["size"] / H; tris = len(D[buckle.name]["tri"])
+        fits = bs[0] <= BUCKLE_SLOT["max_w"] and bs[2] <= BUCKLE_SLOT["max_h"] and bs[1] <= BUCKLE_SLOT["max_d"] and tris <= BUCKLE_SLOT["max_tris"]
+        print(f"[{TAG}] buckle: {len(bfaces)} faces, {bs[0]*100:.1f} x {bs[2]*100:.1f} x {bs[1]*100:.1f} % of H, {tris} tris -> "
+              f"{'fits' if fits else 'DOES NOT FIT'} the slot {BUCKLE_SLOT}")
+
+
+def make_strap(tn, LO, HI, ax, NS, rref):
+    """(3) the strap; returns the strap's outer radius as a function of the angle around the waist"""
+    N = 96; T = D[tn]["bvh"]; rings = []; outer = []
+    for k in range(N):
+        a = 2 * math.pi * k / N; d2 = np.array([math.cos(a), math.sin(a)]); t_ = k / N * NS; i0 = int(t_) % NS; i1 = (i0 + 1) % NS; f_ = t_ - int(t_)
+        z0 = LO[i0] * (1 - f_) + LO[i1] * f_; z1 = HI[i0] * (1 - f_) + HI[i1] * f_
+        ring = []; rs = []
+        for z in np.linspace(z0 - 0.003 * H, z1 + 0.003 * H, 7):     # the trousers' outermost point over the whole band, not at its edges
+            o_ = Vector((ax[0] + d2[0] * 0.5 * H, ax[1] + d2[1] * 0.5 * H, z))
+            h = T.ray_cast(o_, Vector((-d2[0], -d2[1], 0)), 0.5 * H)
+            if h[0] is not None:
+                rs.append(0.5 * H - h[3])
+        r = max(rs) if rs else rref(np.array([ax[0] + d2[0], ax[1] + d2[1], z0]))
+        outer.append(r + (STRAP_GAP + STRAP_T) * H)
+        for z in (z0, z1):
+            ri, ro = r + STRAP_GAP * H, r + (STRAP_GAP + STRAP_T) * H
+            ring.append((ax[0] + d2[0] * ri, ax[1] + d2[1] * ri, z)); ring.append((ax[0] + d2[0] * ro, ax[1] + d2[1] * ro, z))
+        rings.append([ring[0], ring[1], ring[3], ring[2]])   # inner-low, outer-low, outer-high, inner-high
+    sv = [p for r in rings for p in r]; sf = []
+    for k in range(N):
+        a_, b_ = 4 * k, 4 * ((k + 1) % N)
+        for j in range(4):
+            sf.append([a_ + j, a_ + (j + 1) % 4, b_ + (j + 1) % 4, b_ + j])
+    sW = weights_from(D[tn], sv); strap = new_skinned("Belt_strap", sv, sf, sW, to)
+    D[strap.name] = part_entry(strap); slot[strap.name] = "Outfit_Belt"; why[strap.name] = "generated: the measured belt curve"
+    print(f"[{TAG}] strap: {len(sf)} quads, height {np.mean(HI - LO) * 100:.1f} % of H, {STRAP_T * 100:.1f} % thick")
+    oa = np.array(outer + [outer[0]]); grid = np.linspace(0, 2 * math.pi, N + 1)
+    return lambda a: float(np.interp(a % (2 * math.pi), grid, oa))
+
+
 hz = float(B["Hips"][2])
 waist = [n for n in slot if slot[n] == "Outfit_Trousers" and D[n]["lo"][2] < hz - 0.04 * H and D[n]["hi"][2] > hz]
 if waist:
@@ -165,15 +299,7 @@ if waist:
             band = [p.index for p in to.data.polygons if all(inband(mw @ to.data.vertices[v].co) for v in p.vertices)]
             print(f"[{TAG}] belt band per sector: low {LO.min():.3f}-{LO.max():.3f}, high {HI.min():.3f}-{HI.max():.3f}")
             if band:
-                bpy.ops.object.select_all(action='DESELECT'); to.select_set(True); bpy.context.view_layer.objects.active = to
-                bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='DESELECT'); bpy.ops.object.mode_set(mode='OBJECT')
-                for i in band:
-                    to.data.polygons[i].select = True
-                bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.separate(type='SELECTED'); bpy.ops.object.mode_set(mode='OBJECT')
-                bo = [o for o in bpy.context.selected_objects if o is not to][0]; bo.name = tn + "_belt"
-                D[tn] = part_entry(to); D[bo.name] = part_entry(bo)
-                slot[bo.name] = "Outfit_Belt"; why[bo.name] = f"cut from {tn}: the band z {zlo:.3f}-{zhi:.3f} between its two ledges"
-                print(f"[{TAG}] belt: {len(band)} faces of {tn} between z {zlo:.3f} and {zhi:.3f}")
+                belt_from_band(tn, to, band, LO, HI, ax, ang, NS, zlo, zhi)
     if "Outfit_Belt" not in slot.values():
         print(f"[{TAG}] WARNING: no belt band found on {tn}")
 NV = sum(d["n"] for d in D.values())
@@ -246,6 +372,8 @@ for s in GARMENTS:
         off = len(AV); AV += [Vector(p) for p in D[m]["V"]]; AT += [(a + off, b + off, c + off) for a, b, c in D[m]["tri"]]; AW += W[m]
     T = BVHTree.FromPolygons(AV, AT); u3 = (Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1)))
     for n in det:
+        if med_dist(n, an[0]) > 0.01 * H and all(med_dist(n, m) > 0.01 * H for m in an):
+            continue                                     # not ON the garment (a forearm sleeve 11 cm off the shirt's torso): keep its own weights
         new = []
         for p in D[n]["V"]:
             loc, _nrm, fi, _d = T.find_nearest(Vector(p)); tri = AT[fi]
@@ -290,7 +418,7 @@ if RV_OUT:
     if unknown:
         tc.fail(TAG, f"no action {unknown}; the file has {[a.name for a in bpy.data.actions]}")
     orig = {o.name: (list(o.data.materials), [p.use_smooth for p in o.data.polygons]) for o in joined}
-    pal = {"Outfit_Belt": (0.95, 0.45, 0.10), "Outfit_Coat": (0.80, 0.35, 0.30), "Outfit_Shirt": (0.85, 0.55, 0.85), "Outfit_Tie": (0.95, 0.85, 0.30), "Outfit_Trousers": (0.35, 0.50, 0.85),
+    pal = {"Outfit_Belt": (0.95, 0.45, 0.10), "Outfit_Buckle": (0.95, 0.95, 0.95), "Outfit_Coat": (0.80, 0.35, 0.30), "Outfit_Shirt": (0.85, 0.55, 0.85), "Outfit_Tie": (0.95, 0.85, 0.30), "Outfit_Trousers": (0.35, 0.50, 0.85),
            "Outfit_Shoes": (0.45, 0.30, 0.20), "Outfit_Hat": (0.30, 0.75, 0.70), "Body_Head": (0.90, 0.70, 0.55), "Body_Hands": (0.95, 0.60, 0.45),
            "Body_Hair": (0.45, 0.80, 0.35)}
     cam, co = tc.setup_renders(joined, {o.name: pal[o.name] for o in joined})

@@ -247,7 +247,7 @@ def belt_from_band(tn, to, band, LO, HI, ax, ang, NS, zlo, zhi):
         u = u.mean() + du * math.cos(phi) - dz * math.sin(phi); z = z.mean() + du * math.sin(phi) + dz * math.cos(phi)
         u += 0.0005 * H - float((u - (c_ + b_ * z)).min())
         bverts = np.column_stack([ax + side + np.outer(u, d2), z])
-        bW = weights_from(D[tn], bverts); buckle = new_skinned("Buckle_src", bverts, bf, bW, to)
+        bW = weights_from(D["Belt_strap"], bverts); buckle = new_skinned("Buckle_src", bverts, bf, bW, to)
         D[buckle.name] = part_entry(buckle); slot[buckle.name] = "Outfit_Buckle"; why[buckle.name] = f"the band's front faces standing proud ({len(bfaces)})"
         bs = D[buckle.name]["size"] / H; tris = len(D[buckle.name]["tri"])
         fits = bs[0] <= BUCKLE_SLOT["max_w"] and bs[2] <= BUCKLE_SLOT["max_h"] and bs[1] <= BUCKLE_SLOT["max_d"] and tris <= BUCKLE_SLOT["max_tris"]
@@ -282,7 +282,15 @@ def make_strap(tn, LO, HI, ax, edge, hip):
         a_, b_ = 4 * k, 4 * ((k + 1) % N)
         for j in range(4):
             sf.append([a_ + j, a_ + (j + 1) % 4, b_ + (j + 1) % 4, b_ + j])
-    sW = weights_from(D[tn], sv); strap = new_skinned("Belt_strap", sv, sf, sW, to)
+    # a belt is STIFF: the trousers' thigh weights bent it into a U at the back on a deep step, so every leg share goes to their parent,
+    # the Hips; the Spine shares stay (it follows the torso as it bends)
+    sW = []
+    for w in weights_from(D[tn], sv):
+        m = {}
+        for g, x in w.items():
+            g = P + "Hips" if family(g[len(P):]) == "Leg" else g; m[g] = m.get(g, 0.0) + x
+        sW.append(tc.top4(m, P + "Hips"))
+    strap = new_skinned("Belt_strap", sv, sf, sW, to)
     D[strap.name] = part_entry(strap); slot[strap.name] = "Outfit_Belt"; why[strap.name] = "generated: the measured belt curve"
     print(f"[{TAG}] strap: {len(sf)} quads, height {np.mean(HI - LO) * 100:.1f} % of H, {STRAP_T * 100:.1f} % thick, "
           f"pushed off the hip line by up to {off.max() / H * 100:.2f} % of H")
@@ -451,7 +459,7 @@ if RV_OUT:
     unknown = [c for c in clips if c not in bpy.data.actions]
     if unknown:
         tc.fail(TAG, f"no action {unknown}; the file has {[a.name for a in bpy.data.actions]}")
-    orig = {o.name: (list(o.data.materials), [p.use_smooth for p in o.data.polygons]) for o in joined}
+    orig = {o.name: (list(o.data.materials), [p.use_smooth for p in o.data.polygons], [p.material_index for p in o.data.polygons]) for o in joined}
     pal = {"Outfit_Belt": (0.95, 0.45, 0.10), "Outfit_Buckle": (0.95, 0.95, 0.95), "Outfit_Coat": (0.80, 0.35, 0.30), "Outfit_Shirt": (0.85, 0.55, 0.85), "Outfit_Tie": (0.95, 0.85, 0.30), "Outfit_Trousers": (0.35, 0.50, 0.85),
            "Outfit_Shoes": (0.45, 0.30, 0.20), "Outfit_Hat": (0.30, 0.75, 0.70), "Body_Head": (0.90, 0.70, 0.55), "Body_Hands": (0.95, 0.60, 0.45),
            "Body_Hair": (0.45, 0.80, 0.35)}
@@ -474,7 +482,7 @@ if RV_OUT:
         o.data.materials.clear()
         for m in orig[o.name][0]:
             o.data.materials.append(m)
-        for p, sm in zip(o.data.polygons, orig[o.name][1]):
-            p.use_smooth = sm
+        for p, sm, mi in zip(o.data.polygons, orig[o.name][1], orig[o.name][2]):   # clearing the slots reset every face to slot 0
+            p.use_smooth = sm; p.material_index = mi
 tc.export(OUT, joined, arm)
 print(f"[{TAG}] wrote {OUT}: {[o.name for o in joined]}")

@@ -206,7 +206,21 @@ for it in range(12 if COAT_FIT else 0):                 # COAT_FIT=0: the coat o
     CV = orig + (field[:, None] * NRM)[rep_[stick]]
     print(f"[{TAG}] coat fit pass {it + 1}: {len(need)} surface points came through the body or sat nearer than {COAT_GAP * 100:.1f} % of H; "
           f"largest push {field.max() / H * 100:.2f} % of H")
-field = best[1] if best[1] is not None else field; CV = orig + (field[:, None] * NRM)[rep_[stick]]
+field = best[1] if best[1] is not None else field; DISP = field[:, None] * NRM
+if LAPEL_SIDE and lap.any():
+    # the lapel moves as a SLAB, both walls together: the coat is double, and a push along the normal moved only its outer wall (its inner
+    # wall faces the body), which showed the lapel's thickness as a band (Director, 2026-10-27). Each lapel point moves FORWARD by the
+    # largest push of the lapel within 2 % of H of it, faded out over 2 % of H at the zone's edges.
+    li = np.nonzero(lap)[0]; kdl = KDTree(len(li))
+    for k, r in enumerate(li):
+        kdl.insert(Vector(RP[r]), k)
+    kdl.balance(); fwd = np.array([0.0, np.sign(RP[li, 1].mean() - waist_y) or -1.0, 0.0])
+    for r in li:
+        m = max(field[li[j]] for (_c, j, _d) in kdl.find_range(Vector(RP[r]), 0.02 * H))
+        x, z = RP[r, 0] * sgn, RP[r, 2]
+        w = tc.sstep(0.005 * H, 0.025 * H, x) * tc.sstep(0.62 * H, 0.64 * H, z) * tc.sstep(0.82 * H, 0.80 * H, z)
+        DISP[r] = DISP[r] * (1 - w) + fwd * m * w
+CV = orig + DISP[rep_[stick]]
 print(f"[{TAG}] coat fit kept pass {best[2]} ({best[0]} points left within {COAT_GAP * 100:.1f} % of H), largest push {field.max() / H * 100:.2f} % of H")
 set_world(coat, CV); rebind(coat)
 left = 0

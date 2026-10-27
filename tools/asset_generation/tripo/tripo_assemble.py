@@ -21,7 +21,7 @@
 # Env: TRIPO_GLB, TRIPO_OUT, SLOT_OVERRIDE, RV_OUT (optional folder: slots.png, the slots coloured in rest pose, then without the coat, then the
 # head without the hat; clip_<i>.png, 4 frames of each of RV_CLIPS at 3/4 and from the side), RV_CLIPS (default every action).
 # Usage: blender -b -P tripo_assemble.py
-import os, sys
+import math, os, sys
 import numpy as np
 import bpy
 from mathutils import Vector
@@ -144,7 +144,26 @@ if waist:
         _bg, a_, b_ = max(pairs)
         if True:
             zlo, zhi = min(a_, b_) * 0.002 * H - 0.002 * H, max(a_, b_) * 0.002 * H + 0.002 * H
-            band = [p.index for p in to.data.polygons if all(zlo <= (mw @ to.data.vertices[v].co).z <= zhi for v in p.vertices)]
+            # the belt is not level (it rides higher at the back): each of 24 sectors around the waist finds its own two ledges within 2 % of H
+            # of the global ones, smoothed around the circle; a face is cut when all its vertices lie inside its sector's band
+            NS = 24; ang = lambda q: (math.atan2(q[1] - ax[1], q[0] - ax[0]) % (2 * math.pi)) / (2 * math.pi) * NS
+            sb = [dict() for _ in range(NS)]
+            for p in to.data.polygons:
+                c = mw @ p.center
+                if zlo - 0.025 * H < c.z < zhi + 0.025 * H and abs((m3 @ p.normal).normalized().z) > 0.7:
+                    k = int(round(c.z / (0.002 * H))); d_ = sb[int(ang(c)) % NS]; d_[k] = d_.get(k, 0) + 1
+            def ledge(d_, z0):
+                ks = [(n_, k) for k, n_ in d_.items() if abs(k * 0.002 * H - z0) <= 0.02 * H]
+                return max(ks)[1] * 0.002 * H if ks else z0
+            LO = np.array([ledge(d_, zlo + 0.002 * H) - 0.002 * H for d_ in sb]); HI = np.array([ledge(d_, zhi - 0.002 * H) + 0.002 * H for d_ in sb])
+            LO = np.maximum(LO, HI - 1.15 * (zhi - zlo))   # the belt keeps its width: a pocket's edge below it is not its bottom
+            for arr in (LO, HI):
+                arr[:] = (np.roll(arr, 1) + arr + np.roll(arr, -1)) / 3.0
+            def inband(q):
+                t_ = ang(q); i0 = int(t_) % NS; f_ = t_ - int(t_); i1 = (i0 + 1) % NS
+                return LO[i0] * (1 - f_) + LO[i1] * f_ <= q[2] <= HI[i0] * (1 - f_) + HI[i1] * f_
+            band = [p.index for p in to.data.polygons if all(inband(mw @ to.data.vertices[v].co) for v in p.vertices)]
+            print(f"[{TAG}] belt band per sector: low {LO.min():.3f}-{LO.max():.3f}, high {HI.min():.3f}-{HI.max():.3f}")
             if band:
                 bpy.ops.object.select_all(action='DESELECT'); to.select_set(True); bpy.context.view_layer.objects.active = to
                 bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='DESELECT'); bpy.ops.object.mode_set(mode='OBJECT')

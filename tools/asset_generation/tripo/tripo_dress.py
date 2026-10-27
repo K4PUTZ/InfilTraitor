@@ -240,8 +240,12 @@ def masked_copy(o, name, dead_vert):
 
 Th = shell(hat); hairV = wverts(mB["Body_Hair"])
 cov = [(lambda h: h[0] is not None and q[2] > h[0].z - 0.002 * H)(Th.ray_cast(Vector((q[0], q[1], q[2] - H)), Vector((0, 0, 1)), 2 * H)) for q in hairV]
-hh, nd = masked_copy(mB["Body_Hair"], "Body_Hair_Hat", lambda f: any(cov[v.index] for v in f.verts))
-print(f"[{TAG}] hair mask: {nd} of {len(mB['Body_Hair'].data.polygons)} hair faces under the hat")
+# a face goes only when ALL its vertices are covered: with ANY, the locks that start under the brim and rise into the crown went whole and the
+# scalp showed in a band under the brim (the male, 2026-10-27); what is left inside the crown is hidden by it
+hh, nd = masked_copy(mB["Body_Hair"], "Body_Hair_Hat", lambda f: all(cov[v.index] for v in f.verts))
+poke = sum(1 for i, q in enumerate(hairV) if cov[i] and not inside(Th, q))
+print(f"[{TAG}] hair mask: {nd} of {len(mB['Body_Hair'].data.polygons)} hair faces under the hat; {poke} kept vertices above the brim's underside "
+      f"lie outside the hat (through its crown)")
 extra = [hh]
 if "Outfit_Shirt" in mB:
     Tc = shell(coat); SV = wverts(mB["Outfit_Shirt"])

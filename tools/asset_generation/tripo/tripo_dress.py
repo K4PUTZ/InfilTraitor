@@ -28,7 +28,10 @@ import tripo_common as tc
 TAG = "tripo_dress"
 BASE, FROM, OUT = os.environ["DRESS_BASE"], os.environ["DRESS_FROM"], os.environ["DRESS_OUT"]
 RV_OUT = os.environ.get("RV_OUT", "").rstrip("/")
-COAT_GAP, SMOOTH_ITERS = 0.004, 10                       # COAT_GAP a fraction of H
+# LIGHT (Director, 2026-10-27: "vamos usar como veio mesmo [...] deslocar essas zonas do casaco ligeiramente pra fora do corpo [...] coisa de
+# milimetros"; the full fit, 0.4 % gap, 10 relax steps, no cap, swelled the coat out of character): a small gap, a short relax, a cap
+COAT_GAP = float(os.environ.get("COAT_GAP", "0.002")); SMOOTH_ITERS = int(os.environ.get("COAT_SMOOTH", "3"))
+COAT_MAX = float(os.environ.get("COAT_MAX", "0.01"))    # fractions of H; a coat point never moves farther than COAT_MAX
 HAT_DY = float(os.environ.get("HAT_DY", "0.015"))         # back (+) / forward (-), a fraction of H; per figure (the male: 0.005)
 HAT_DROP = float(os.environ.get("HAT_DROP", "0"))         # down after the fit, a fraction of H (the male: 0.01, Director 2026-10-27)
 HAT_TILT, HAT_MAX_LIFT = 8.0, 0.012                     # degrees; a fraction of H
@@ -182,7 +185,7 @@ for it in range(12 if COAT_FIT else 0):                 # COAT_FIT=0: the coat o
     if not any(d > 1e-6 * H for d in need.values()):
         break
     for r, d in need.items():
-        floor_[r] = max(floor_[r], field[r] + d)
+        floor_[r] = min(COAT_MAX * H, max(floor_[r], field[r] + d))
     field = np.maximum(field, floor_)
     for _ in range(SMOOTH_ITERS):
         acc = np.zeros(NR); np.add.at(acc, E[:, 0], field[E[:, 1]]); np.add.at(acc, E[:, 1], field[E[:, 0]])
@@ -252,8 +255,22 @@ extra = [hh]
 if "Outfit_Shirt" in mB:
     Tc = shell(coat); SV = wverts(mB["Outfit_Shirt"])
     deep = [inside(Tc, q) and Tc.find_nearest(Vector(q))[3] > COAT_GAP * H for q in SV]
-    sc_, nd = masked_copy(mB["Outfit_Shirt"], "Outfit_Shirt_Coated", lambda f: all(deep[v.index] for v in f.verts))
-    print(f"[{TAG}] shirt mask: {nd} of {len(mB['Outfit_Shirt'].data.polygons)} shirt faces deep inside the coat"); extra.append(sc_)
+    # and what comes OUT through the coat where it covers the shirt: a ray from the vertex toward its bone (the nearest point of the spine
+    # chain or of an arm) meets the coat within 3 % of H, the coat lying between it and the body (the male's upper back and shoulder kept a
+    # few such spots under the light fit); the shirt shown between the lapels has no coat toward its bone and stays
+    bh = lambda n: np.array((armB.matrix_world @ armB.data.bones["mixamorig:" + n].head_local)[:])
+    segs = [(bh(a), bh(b)) for a, b in (("Hips", "Spine"), ("Spine", "Spine1"), ("Spine1", "Spine2"), ("Spine2", "Neck"))]
+    segs += [(bh(sd + a), bh(sd + b)) for sd in ("Left", "Right") for a, b in (("Shoulder", "Arm"), ("Arm", "ForeArm"), ("ForeArm", "Hand"))]
+    def to_bone(q):
+        best_ = None
+        for a, b in segs:
+            ab = b - a; t = np.clip((q - a) @ ab / (ab @ ab), 0, 1); c = a + t * ab; d = np.linalg.norm(c - q)
+            if best_ is None or d < best_[0]:
+                best_ = (d, (c - q) / max(d, 1e-12))
+        return best_[1]
+    out_ = [not inside(Tc, q) and Tc.ray_cast(Vector(q), Vector(to_bone(q)), 0.03 * H)[0] is not None for q in SV]
+    sc_, nd = masked_copy(mB["Outfit_Shirt"], "Outfit_Shirt_Coated", lambda f: all(deep[v.index] for v in f.verts) or any(out_[v.index] for v in f.verts))
+    print(f"[{TAG}] shirt mask: {nd} of {len(mB['Outfit_Shirt'].data.polygons)} shirt faces deep inside the coat or out through it ({sum(out_)} vertices out)"); extra.append(sc_)
 for o in mA.values():
     if o not in (coat, hat):
         bpy.data.objects.remove(o)

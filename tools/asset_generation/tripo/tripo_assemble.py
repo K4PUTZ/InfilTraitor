@@ -23,7 +23,7 @@
 # Usage: blender -b -P tripo_assemble.py
 import math, os, sys
 import numpy as np
-import bpy
+import bpy, bmesh
 from mathutils import Matrix, Vector
 from mathutils.bvhtree import BVHTree
 from mathutils.geometry import barycentric_transform
@@ -70,6 +70,11 @@ def famw(n, *ks): return sum(D[n]["fam"].get(k, 0.0) for k in ks)
 def dom(n): return max(D[n]["fam"].items(), key=lambda kv: kv[1])[0]
 
 
+def med_dist(n, m):
+    pts = D[n]["V"][::max(1, D[n]["n"] // 60)]
+    return float(np.median([D[m]["bvh"].find_nearest(Vector(p))[3] for p in pts]))
+
+
 # (1) anchors
 slot, why, free = {}, {}, set(D)
 
@@ -83,13 +88,19 @@ c = [n for n in free if famw(n, "Arm") >= 0.05 and famw(n, "Leg") >= 0.05]
 coat = max(c, key=lambda n: float(np.prod(D[n]["size"]))) if c else None
 if coat:
     take([coat], "Outfit_Coat", "anchor: largest, arms + legs")
-for s, f in (("Body_Hands", "Hand"), ("Outfit_Shoes", "Foot")):
-    take(sorted((n for n in free if dom(n) == f), key=lambda n: (-D[n]["n"], n))[:2], s, f"anchor: 2 largest {f}")
+
+
+def past_wrist(n):
+    """how far along its side's forearm -> hand line a part's centre lies (1 = the wrist): a hand is past it, a cuff short of it"""
+    side = "Left" if np.sign(D[n]["ctr"][0]) == np.sign(B["LeftHand"][0]) else "Right"
+    a, b = B[side + "ForeArm"], B[side + "Hand"]; ab = b - a
+    return float((D[n]["V"].mean(0) - a) @ ab / (ab @ ab))     # the vertices' mean: a hand fused with its sleeve still reads as a hand
+
+
+take(sorted((n for n in free if dom(n) == "Hand" and past_wrist(n) >= 0.9), key=lambda n: (-D[n]["n"], n))[:2], "Body_Hands",
+     "anchor: 2 largest Hand, past the wrist")       # the male's forearm sleeves are Hand-weighted parts short of the wrist (2026-10-27)
+take(sorted((n for n in free if dom(n) == "Foot"), key=lambda n: (-D[n]["n"], n))[:2], "Outfit_Shoes", "anchor: 2 largest Foot")
 take([n for n in free if dom(n) == "Leg" and D[n]["n"] >= 0.02 * NV], "Outfit_Trousers", "anchor: Leg, >= 2 % of the vertices")
-c = [n for n in free if dom(n) == "Head" and D[n]["size"][0] >= 0.12 * H]
-hat = max(c, key=lambda n: D[n]["hi"][2]) if c else None
-if hat:
-    take([hat], "Outfit_Hat", "anchor: Head, highest, wide")
 c = [n for n in free if dom(n) == "Head"]
 head = None
 if c:                                                    # the FACE: the first Head part a ray from the front meets at nose height (hair may be larger)
@@ -97,11 +108,18 @@ if c:                                                    # the FACE: the first H
     hits = [(D[n]["bvh"].ray_cast(Vector((0.0, -2.0 * H, hz_)), Vector((0, 1, 0)), 4.0 * H), n) for n in c]
     hits = [(h[3], n) for h, n in hits if h[0] is not None]
     head = min(hits)[1] if hits else max(c, key=lambda n: D[n]["n"])
+# the HAT is a brim: as wide as 1.4 faces and 1.6 times as wide as it is tall (measured 2026-10-27: hats 1.6-1.8 faces, 2.0-2.2 wide per
+# tall; the hair masses 1.1-1.3 faces, 1.0; the 0.12 * H width alone took the male's hair for a hat on a hatless model)
+c = [n for n in free if n != head and dom(n) == "Head" and head and D[n]["size"][0] >= 1.4 * D[head]["size"][0]
+     and D[n]["size"][0] >= 1.6 * D[n]["size"][2]]
+hat = max(c, key=lambda n: D[n]["hi"][2]) if c else None
+if hat:
+    take([hat], "Outfit_Hat", "anchor: Head, a brim")
 if head:
     take([head], "Body_Head", "anchor: the face")
-c = [n for n in free if famw(n, "Torso", "Arm") >= 0.5 and D[n]["n"] >= 0.02 * NV]
-if c:
-    take([max(c, key=lambda n: D[n]["n"])], "Outfit_Shirt", "anchor: largest Torso + Arm")
+c = [n for n in free if famw(n, "Torso") >= 0.3 and famw(n, "Torso", "Arm") >= 0.5 and D[n]["n"] >= 0.02 * NV]
+if c:                                                    # a TORSO: under the male's coat there is none, and a coat sleeve was taken for the shirt
+    take([max(c, key=lambda n: D[n]["n"])], "Outfit_Shirt", "anchor: largest Torso + Arm, with a torso")
 c = [n for n in free if famw(n, "Torso", "Arm") >= 0.5 and D[n]["size"][2] >= 3 * D[n]["size"][0] and abs(D[n]["ctr"][0]) < 0.02 * H
      and D[n]["size"][2] >= 0.1 * H]
 if c:
@@ -320,7 +338,66 @@ def make_strap(tn, LO, HI, ax, edge, hip):
     return lambda a: (float(np.interp(a % (2 * math.pi), grid, oa[:, 0])), float(np.interp(a % (2 * math.pi), grid, oa[:, 1])))
 
 
+# a HAND FUSED WITH ITS SLEEVE (the male without the coat, 2026-10-27: one shell from the elbow to the fingertips) is cut at the cuff: along
+# the forearm -> hand line, the largest drop of the surface's radius (90th percentile, bins of 5 % of the forearm) between 75 % and 115 %
+# of the way to the wrist, if it drops by >= 0.3 % of H; the faces short of it become a part of their own (a sleeve: it joins the shirt).
+def split_cuff(n):
+    o = D[n]["o"]; V_ = D[n]["V"]; side = "Left" if np.sign(D[n]["ctr"][0]) == np.sign(B["LeftHand"][0]) else "Right"
+    a, b = B[side + "ForeArm"], B[side + "Hand"]; ab = b - a; t = (V_ - a) @ ab / (ab @ ab)
+    r = np.linalg.norm(V_ - (a + np.outer(t, ab)), axis=1); edges_ = np.arange(0.40, 1.35, 0.05)
+    r90 = np.array([np.percentile(r[(t >= e) & (t < e + 0.05)], 90) if ((t >= e) & (t < e + 0.05)).sum() >= 5 else np.nan for e in edges_])
+    best = (0.0, None)
+    for i in range(len(edges_) - 1):
+        cut_ = edges_[i] + 0.05
+        if 0.75 <= cut_ <= 1.15 and not np.isnan(r90[i]) and not np.isnan(r90[i + 1]) and r90[i] - r90[i + 1] > best[0]:
+            best = (r90[i] - r90[i + 1], cut_)
+    if best[1] is None or best[0] < 0.003 * H:
+        return
+    sf = [p_.index for p_ in o.data.polygons if all(t[v] < best[1] for v in p_.vertices)]
+    if not sf:
+        return
+    vids = sorted({v for i in sf for v in o.data.polygons[i].vertices}); remap = {v: k for k, v in enumerate(vids)}
+    sl = new_skinned(n + "_sleeve", V_[vids], [[remap[v] for v in o.data.polygons[i].vertices] for i in sf], [D[n]["W"][v] for v in vids], o)
+    bm = bmesh.new(); bm.from_mesh(o.data); bm.faces.ensure_lookup_table(); drop = set(sf)
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.index in drop], context='FACES')
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context='VERTS'); bm.to_mesh(o.data); bm.free(); o.data.update()
+    D[n] = part_entry(o); D[sl.name] = part_entry(sl); free.add(sl.name)
+    print(f"[{TAG}] {n}: its sleeve cut at the cuff ({best[1]:.2f} of the forearm, the radius drops {best[0] / H * 100:.2f} % of H): "
+          f"{len(sf)} faces -> {sl.name}")
+
+
+for n in [n for n in slot if slot[n] == "Body_Hands"]:
+    split_cuff(n)
 hz = float(B["Hips"][2])
+# the BELT as PARTS of its own (the male, 2026-10-27; the female's was fused into the trousers): Tripo cut his belt into ~8 pieces around the
+# waist (and only its front piece under the coat, the rest fused). The pieces are free Torso / Leg parts under 5 % of H tall, centred
+# -4 %..+8 % of H around the hips, nearer the trousers than the coat (the coat's buttons are not the belt), within 1.5 % of H of the
+# trousers, inside the height of the largest of them (+-0.5 % of H). They are DROPPED (the strap and buckle are rebuilt, as on the female);
+# their edges, per sector, give the band where they are, the fit around the waist the rest.
+tr_ = sorted((n for n in slot if slot[n] == "Outfit_Trousers"), key=lambda n: -D[n]["n"])
+if len(tr_) > 1:                                         # the male's trousers come as one part per leg: the waist is read on them joined
+    bpy.ops.object.select_all(action='DESELECT')
+    for n in tr_:
+        D[n]["o"].select_set(True)
+    bpy.context.view_layer.objects.active = D[tr_[0]]["o"]; bpy.ops.object.join()
+    for n in tr_[1:]:
+        del D[n], slot[n], why[n]
+    D[tr_[0]] = part_entry(D[tr_[0]]["o"]); why[tr_[0]] = f"anchor: Leg, >= 2 % of the vertices ({len(tr_)} parts joined)"; tr_ = tr_[:1]
+def near_trousers(n):
+    dt = min(med_dist(n, m) for m in tr_)
+    return dt < 0.015 * H and (coat is None or dt < med_dist(n, coat))
+bp = [n for n in free if tr_ and dom(n) in ("Torso", "Leg") and D[n]["size"][2] <= 0.05 * H and hz - 0.04 * H <= D[n]["ctr"][2] <= hz + 0.08 * H
+      and near_trousers(n)]
+belt_parts = []
+if bp:
+    seed = max(bp, key=lambda n: D[n]["n"]); z0_, z1_ = D[seed]["lo"][2] - 0.005 * H, D[seed]["hi"][2] + 0.005 * H
+    belt_parts = sorted(n for n in bp if D[n]["lo"][2] >= z0_ and D[n]["hi"][2] <= z1_)
+    U = np.concatenate([D[n]["V"] for n in belt_parts]); blo = U.min(0) - np.array([0.015, 0.015, 0.005]) * H
+    bhi = U.max(0) + np.array([0.015, 0.015, 0.005]) * H     # and what lies inside them (the buckle's bits): >= 80 % of it in their box
+    bits = sorted(n for n in free if n not in belt_parts and D[n]["n"] < min(D[m]["n"] for m in belt_parts)
+                  and np.mean(np.all((D[n]["V"] >= blo) & (D[n]["V"] <= bhi), axis=1)) >= 0.8)
+    take(belt_parts + bits, "_drop", "a piece of the Tripo belt, rebuilt")
+    print(f"[{TAG}] belt in {len(belt_parts)} parts of its own (+ {len(bits)} on it), dropped: {belt_parts + bits}")
 waist = [n for n in slot if slot[n] == "Outfit_Trousers" and D[n]["lo"][2] < hz - 0.04 * H and D[n]["hi"][2] > hz]
 if waist:
     tn = max(waist, key=lambda n: D[n]["n"]); to = D[tn]["o"]; mw = to.matrix_world; m3 = mw.to_3x3()
@@ -338,7 +415,21 @@ if waist:
         inb = (TV[:, 2] > z1) & (TV[:, 2] < z2); out = ((TV[:, 2] > z1 - 0.012 * H) & (TV[:, 2] < z1)) | ((TV[:, 2] > z2) & (TV[:, 2] < z2 + 0.012 * H))
         return (np.percentile(rad[inb], 90) - np.percentile(rad[out], 90)) if inb.sum() > 8 and out.sum() > 8 else -1.0
     pairs = [(bulge(k1, k2), k1, k2) for i, k1 in enumerate(led) for k2 in led[i + 1:] if 0.012 <= abs(k1 - k2) * 0.002 <= 0.05]
-    if pairs:
+    if belt_parts:                                       # the band is the dropped pieces' own edges, per sector
+        NS = 24; ang = lambda q: (math.atan2(q[1] - ax[1], q[0] - ax[0]) % (2 * math.pi)) / (2 * math.pi) * NS
+        BV = np.concatenate([D[n]["V"] for n in belt_parts]); sec_ = np.array([int(ang(q)) % NS for q in BV])
+        LO = np.array([BV[sec_ == i, 2].min() if (sec_ == i).any() else np.nan for i in range(NS)])
+        HI = np.array([BV[sec_ == i, 2].max() if (sec_ == i).any() else np.nan for i in range(NS)])
+        for arr in (LO, HI):                             # a sector no piece covers (under the coat only the front is a piece) takes the median
+            arr[np.isnan(arr)] = np.nanmedian(arr)
+        zlo, zhi = float(np.median(LO)), float(np.median(HI))
+        def inband(q):
+            t_ = ang(q); i0 = int(t_) % NS; f_ = t_ - int(t_); i1 = (i0 + 1) % NS
+            return LO[i0] * (1 - f_) + LO[i1] * f_ <= q[2] <= HI[i0] * (1 - f_) + HI[i1] * f_
+        band = [p.index for p in to.data.polygons if all(inband(mw @ to.data.vertices[v].co) for v in p.vertices)]
+        print(f"[{TAG}] belt band from its parts: low {LO.min():.3f}-{LO.max():.3f}, high {HI.min():.3f}-{HI.max():.3f}")
+        belt_from_band(tn, to, band, LO, HI, ax, ang, NS, zlo, zhi)
+    elif pairs:
         _bg, a_, b_ = max(pairs)
         if True:
             zlo, zhi = min(a_, b_) * 0.002 * H - 0.002 * H, max(a_, b_) * 0.002 * H + 0.002 * H
@@ -367,16 +458,13 @@ if waist:
     if "Outfit_Belt" not in slot.values():
         print(f"[{TAG}] WARNING: no belt band found on {tn}")
 NV = sum(d["n"] for d in D.values())
-ANCHORS = set(slot)
+ANCHORS = {n for n in slot if slot[n] != "_drop"}       # a dropped part anchors nothing
 missing = [s for s in ("Body_Head", "Body_Hands", "Outfit_Shoes") if s not in slot.values()]
 if missing:
     tc.fail(TAG, f"{GLB}: no anchor for {missing} (is this a segmented Tripo character?)")
 
 
 # (2) details
-def med_dist(n, m):
-    pts = D[n]["V"][::max(1, D[n]["n"] // 60)]
-    return float(np.median([D[m]["bvh"].find_nearest(Vector(p))[3] for p in pts]))
 
 
 hd = D[head]
@@ -395,17 +483,23 @@ for n in sorted(free):
                 up += T.ray_cast(v + eps, Vector((0, 0, 1)), 0.06 * H)[0] is not None
             score = (dn - up) / d["n"]
         face = abs(d["ctr"][0] - hd["ctr"][0]) < 0.3 * hd["size"][0] and d["ctr"][1] < hd["lo"][1] + 0.3 * hd["size"][1]
+        # an EAR: small (each side under a quarter of the head's height), on the head's side (|x| >= 38 % of its width off its axis), at
+        # its middle height, touching it (male, 2026-10-27: 0.9 x 1.8 x 2.1 % of H at |x| 4.5 %; they went to the hair)
+        ear = (max(d["size"]) <= 0.25 * hd["size"][2] and abs(d["ctr"][0] - hd["ctr"][0]) >= 0.38 * hd["size"][0]
+               and hd["lo"][2] + 0.3 * hd["size"][2] <= d["ctr"][2] <= hd["lo"][2] + 0.7 * hd["size"][2] and med_dist(n, head) < 0.005 * H)
         if hat and score > 0.1:
             take([n], "Outfit_Hat", f"rests on the hat (rays {score:+.2f})")
+        elif ear:
+            take([n], "Body_Head", "an ear")
         elif face:
             take([n], "Body_Head", "in front of the face")
         else:
             take([n], "Body_Hair", f"head detail off the hat (rays {score:+.2f})")
-    elif f == "Hand":
+    elif f == "Hand" and past_wrist(n) >= 0.9:
         take([n], "Body_Hands", "hand detail")
     else:
         cand = [m for m in sorted(ANCHORS) if slot[m] not in ("Body_Head", "Body_Hands")]          # a sleeve is not a hand
-        cand = [m for m in cand if famw(m, f) >= 0.1] or cand                                    # nor a trouser leg: same bones
+        cand = [m for m in cand if famw(m, f if f != "Hand" else "Arm") >= 0.1] or cand                                    # nor a trouser leg: same bones
         dist, m = min((med_dist(n, m), m) for m in cand)
         take([n], slot[m], f"nearest {m} ({1000 * dist / H:.1f} per mille of H)")
 for n, s in OVR.items():

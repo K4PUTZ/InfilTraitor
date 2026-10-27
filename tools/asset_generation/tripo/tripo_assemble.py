@@ -3,7 +3,7 @@
 # weights fixed; exported as one GLB with the armature and every clip.
 # Why: Tripo names the parts tripo_part_N; about half are hair locks, the rest buttons, pocket flaps, laces, cuff straps, a hat band..., and each part
 # is skinned ON ITS OWN, so a detail drifts off its garment (the coat's pocket flaps followed the thighs while the skirt followed the hands).
-# SLOTS (a slot with no part is skipped): Outfit_Coat, Outfit_Shirt, Outfit_Tie, Outfit_Trousers, Outfit_Shoes, Outfit_Hat, Body_Head, Body_Hands,
+# SLOTS (a slot with no part is skipped): Outfit_Coat, Outfit_Shirt, Outfit_Tie, Outfit_Belt (cut from the trousers, below), Outfit_Trousers, Outfit_Shoes, Outfit_Hat, Body_Head, Body_Hands,
 # Body_Hair. The front is -Y (glTF's +Z forward, as Blender imports it).
 # (1) ANCHORS, the big pieces, from each part's bone FAMILY (Head / Torso / Arm / Hand / Leg / Foot, by summed weight) and size:
 #     coat = the largest part (bbox volume) weighted to both Arm and Leg (>= 5 % each); hands, shoes = the 2 largest Hand / Foot parts; trousers =
@@ -33,8 +33,8 @@ import tripo_common as tc
 TAG = "tripo_assemble"
 GLB, OUT = os.environ["TRIPO_GLB"], os.environ["TRIPO_OUT"]
 RV_OUT = os.environ.get("RV_OUT", "").rstrip("/")
-SLOTS = ("Outfit_Coat", "Outfit_Shirt", "Outfit_Tie", "Outfit_Trousers", "Outfit_Shoes", "Outfit_Hat", "Body_Head", "Body_Hands", "Body_Hair")
-GARMENTS = SLOTS[:6]
+SLOTS = ("Outfit_Coat", "Outfit_Shirt", "Outfit_Tie", "Outfit_Belt", "Outfit_Trousers", "Outfit_Shoes", "Outfit_Hat", "Body_Head", "Body_Hands", "Body_Hair")
+GARMENTS = SLOTS[:7]
 OVR = dict(kv.split("=", 1) for kv in os.environ.get("SLOT_OVERRIDE", "").split(",") if kv)
 bad = [s for s in OVR.values() if s not in SLOTS]
 if bad:
@@ -106,6 +106,58 @@ c = [n for n in free if famw(n, "Torso", "Arm") >= 0.5 and D[n]["size"][2] >= 3 
      and D[n]["size"][2] >= 0.1 * H]
 if c:
     take([max(c, key=lambda n: D[n]["n"])], "Outfit_Tie", "anchor: tall, narrow, centred")
+
+# the BELT is not a part: Tripo fuses it into the trousers. It is the band between two of the strongest horizontal ledges (its bottom and top
+# edges: faces facing up or down, binned by 2 mm; of the 8 strongest, the pair 1.2-5 % of H apart whose band stands proudest of the trousers) within -4 %..+5 % of H around the hips; that band of the
+# trousers is cut out as an anchor of its own (first female: 0.562-0.590 with the coat, 0.554-0.597 without).
+def part_entry(o):
+    V = tc.world_verts(o); W = tc.read_weights(o); fam = {}
+    for w in W:
+        for n, x in w.items():
+            f = family(n[len(P):]); fam[f] = fam.get(f, 0.0) + x
+    s_ = sum(fam.values()) or 1.0
+    o.data.calc_loop_triangles(); tri = [tuple(t.vertices) for t in o.data.loop_triangles]
+    lo, hi = V.min(0), V.max(0)
+    return {"o": o, "V": V, "W": W, "fam": {k: v / s_ for k, v in fam.items()}, "tri": tri, "lo": lo, "hi": hi, "size": hi - lo,
+            "ctr": (lo + hi) / 2, "n": len(V), "bvh": BVHTree.FromPolygons([tuple(p) for p in V], tri)}
+
+
+hz = float(B["Hips"][2])
+waist = [n for n in slot if slot[n] == "Outfit_Trousers" and D[n]["lo"][2] < hz - 0.04 * H and D[n]["hi"][2] > hz]
+if waist:
+    tn = max(waist, key=lambda n: D[n]["n"]); to = D[tn]["o"]; mw = to.matrix_world; m3 = mw.to_3x3()
+    bins = {}
+    for p in to.data.polygons:
+        c = mw @ p.center
+        if hz - 0.04 * H < c.z < hz + 0.05 * H and abs((m3 @ p.normal).normalized().z) > 0.7:
+            k = int(round(c.z / (0.002 * H))); bins[k] = bins.get(k, 0) + 1
+    led = [k for k, _ in sorted(bins.items(), key=lambda kv: -kv[1])[:8]]
+    TV = np.array([(mw @ v.co)[:] for v in to.data.vertices]); ax = TV[(TV[:, 2] > hz - 0.04 * H) & (TV[:, 2] < hz + 0.05 * H)][:, :2].mean(0)
+    rad = np.linalg.norm(TV[:, :2] - ax, axis=1)
+
+    def bulge(k1, k2):                                   # the band's radius over the trousers' just above and below it: a belt stands proud
+        z1, z2 = min(k1, k2) * 0.002 * H, max(k1, k2) * 0.002 * H
+        inb = (TV[:, 2] > z1) & (TV[:, 2] < z2); out = ((TV[:, 2] > z1 - 0.012 * H) & (TV[:, 2] < z1)) | ((TV[:, 2] > z2) & (TV[:, 2] < z2 + 0.012 * H))
+        return (np.percentile(rad[inb], 90) - np.percentile(rad[out], 90)) if inb.sum() > 8 and out.sum() > 8 else -1.0
+    pairs = [(bulge(k1, k2), k1, k2) for i, k1 in enumerate(led) for k2 in led[i + 1:] if 0.012 <= abs(k1 - k2) * 0.002 <= 0.05]
+    if pairs:
+        _bg, a_, b_ = max(pairs)
+        if True:
+            zlo, zhi = min(a_, b_) * 0.002 * H - 0.002 * H, max(a_, b_) * 0.002 * H + 0.002 * H
+            band = [p.index for p in to.data.polygons if all(zlo <= (mw @ to.data.vertices[v].co).z <= zhi for v in p.vertices)]
+            if band:
+                bpy.ops.object.select_all(action='DESELECT'); to.select_set(True); bpy.context.view_layer.objects.active = to
+                bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='DESELECT'); bpy.ops.object.mode_set(mode='OBJECT')
+                for i in band:
+                    to.data.polygons[i].select = True
+                bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.separate(type='SELECTED'); bpy.ops.object.mode_set(mode='OBJECT')
+                bo = [o for o in bpy.context.selected_objects if o is not to][0]; bo.name = tn + "_belt"
+                D[tn] = part_entry(to); D[bo.name] = part_entry(bo)
+                slot[bo.name] = "Outfit_Belt"; why[bo.name] = f"cut from {tn}: the band z {zlo:.3f}-{zhi:.3f} between its two ledges"
+                print(f"[{TAG}] belt: {len(band)} faces of {tn} between z {zlo:.3f} and {zhi:.3f}")
+    if "Outfit_Belt" not in slot.values():
+        print(f"[{TAG}] WARNING: no belt band found on {tn}")
+NV = sum(d["n"] for d in D.values())
 ANCHORS = set(slot)
 missing = [s for s in ("Body_Head", "Body_Hands", "Outfit_Shoes") if s not in slot.values()]
 if missing:
@@ -219,7 +271,7 @@ if RV_OUT:
     if unknown:
         tc.fail(TAG, f"no action {unknown}; the file has {[a.name for a in bpy.data.actions]}")
     orig = {o.name: (list(o.data.materials), [p.use_smooth for p in o.data.polygons]) for o in joined}
-    pal = {"Outfit_Coat": (0.80, 0.35, 0.30), "Outfit_Shirt": (0.85, 0.55, 0.85), "Outfit_Tie": (0.95, 0.85, 0.30), "Outfit_Trousers": (0.35, 0.50, 0.85),
+    pal = {"Outfit_Belt": (0.95, 0.45, 0.10), "Outfit_Coat": (0.80, 0.35, 0.30), "Outfit_Shirt": (0.85, 0.55, 0.85), "Outfit_Tie": (0.95, 0.85, 0.30), "Outfit_Trousers": (0.35, 0.50, 0.85),
            "Outfit_Shoes": (0.45, 0.30, 0.20), "Outfit_Hat": (0.30, 0.75, 0.70), "Body_Head": (0.90, 0.70, 0.55), "Body_Hands": (0.95, 0.60, 0.45),
            "Body_Hair": (0.45, 0.80, 0.35)}
     cam, co = tc.setup_renders(joined, {o.name: pal[o.name] for o in joined})

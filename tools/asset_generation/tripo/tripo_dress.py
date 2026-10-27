@@ -242,10 +242,11 @@ Th = shell(hat); hairV = wverts(mB["Body_Hair"])
 cov = [(lambda h: h[0] is not None and q[2] > h[0].z - 0.002 * H)(Th.ray_cast(Vector((q[0], q[1], q[2] - H)), Vector((0, 0, 1)), 2 * H)) for q in hairV]
 # a face goes only when ALL its vertices are covered: with ANY, the locks that start under the brim and rise into the crown went whole and the
 # scalp showed in a band under the brim (the male, 2026-10-27); what is left inside the crown is hidden by it
-hh, nd = masked_copy(mB["Body_Hair"], "Body_Hair_Hat", lambda f: all(cov[v.index] for v in f.verts))
-poke = sum(1 for i, q in enumerate(hairV) if cov[i] and not inside(Th, q))
-print(f"[{TAG}] hair mask: {nd} of {len(mB['Body_Hair'].data.polygons)} hair faces under the hat; {poke} kept vertices above the brim's underside "
-      f"lie outside the hat (through its crown)")
+# and a face goes when one of its vertices comes OUT through the hat: the hat below it, none above it, and not inside it (the female's locks
+# came through the band once the rule kept half-covered faces); a vertex under the brim has the brim above it and stays
+poke = [cov[i] and not inside(Th, q) and Th.ray_cast(Vector((q[0], q[1], q[2] + 1e-5 * H)), Vector((0, 0, 1)), 2 * H)[0] is None for i, q in enumerate(hairV)]
+hh, nd = masked_copy(mB["Body_Hair"], "Body_Hair_Hat", lambda f: all(cov[v.index] for v in f.verts) or any(poke[v.index] for v in f.verts))
+print(f"[{TAG}] hair mask: {nd} of {len(mB['Body_Hair'].data.polygons)} hair faces under the hat ({sum(poke)} vertices came out through it)")
 extra = [hh]
 if "Outfit_Shirt" in mB:
     Tc = shell(coat); SV = wverts(mB["Outfit_Shirt"])

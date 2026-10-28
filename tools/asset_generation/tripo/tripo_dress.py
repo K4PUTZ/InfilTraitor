@@ -5,7 +5,7 @@
 # (1) COAT: each vertex moved by its own skin weights from the dresser's rest skeleton to the base's (a linear blend of base_rest @ dresser_rest^-1
 #     per bone), then PUSHED OUT wherever the base's body would come through it: a coat vertex inside a body part (shirt, tie, belt, buckle,
 #     trousers; a ray-parity test on their closed shells) or nearer its surface than COAT_GAP is pushed to COAT_GAP outside it, the push
-#     spread over the coat as a smooth field (see the code), repeated until nothing comes through
+#     carried to every wall around it by a field in space (see the code), repeated until nothing comes through
 #     (first male, 2026-10-27: the no-coat body is broader than the coat generation's, 467 of 2 068 shirt-torso vertices came through).
 #     It keeps the dresser's weights (tripo_assemble already fixed the coat's).
 # (2) HAT: RIGID on the head, weighted to the Head bone alone; placed by the face (the head slot's box centre), HAT_DY back and its back tilted
@@ -30,8 +30,9 @@ BASE, FROM, OUT = os.environ["DRESS_BASE"], os.environ["DRESS_FROM"], os.environ
 RV_OUT = os.environ.get("RV_OUT", "").rstrip("/")
 # LIGHT (Director, 2026-10-27: "vamos usar como veio mesmo [...] deslocar essas zonas do casaco ligeiramente pra fora do corpo [...] coisa de
 # milimetros"; the full fit, 0.4 % gap, 10 relax steps, no cap, swelled the coat out of character): a small gap, a short relax, a cap
-COAT_GAP = float(os.environ.get("COAT_GAP", "0.004")); SMOOTH_ITERS = int(os.environ.get("COAT_SMOOTH", "3"))
+COAT_GAP = float(os.environ.get("COAT_GAP", "0.004"))
 COAT_MAX = float(os.environ.get("COAT_MAX", "0.012"))    # fractions of H; a coat point never moves farther than COAT_MAX
+COAT_RADIUS = float(os.environ.get("COAT_RADIUS", "0.03"))   # a fraction of H: how far a push carries (see the coat fit)
 # ONE LAPEL may go farther, to make room for a bust (Director, 2026-10-27, on the female: "deslocar a lapela da esquerda mais pra frente"):
 # LAPEL_SIDE = R or L (the FIGURE's side; the female's is R, the viewer's left from the front), its coat points on the chest's front
 # (in front of the waist axis, 62-82 % of H high, more than 0.5 % of H to that side) capped at LAPEL_MAX instead
@@ -148,80 +149,67 @@ for n in UNDER_COAT:
 body_t = {k: v for k, v in body_t.items() if v}; body_a = {k: v for k, v in body_a.items() if v}
 coat_arm = armness(tc.read_weights(coat)) >= 0.5
 body = {**body_t, **body_a}
-# the push is a SMOOTH field on the coat's welded surface (Tripo splits vertices along hard edges): each pass adds every coming-through
-# point's push to the field, then relaxes the field over the surface (SMOOTH_ITERS Laplacian steps, a pushed point never below its own
-# push), so the coat inflates evenly; a local push with a cosine falloff left lumps and tents on the first male. Every island over 50
-# vertices is fitted itself (the female's lapels are islands of their own, and her bust came through them); the smaller ones (buttons) take the
-# field of the nearest vertex of a fitted island.
-key = {}; rep_ = np.zeros(len(CV), np.int64)
-for i, q in enumerate(np.round(CV / (1e-5 * H)).astype(np.int64)):
-    rep_[i] = key.setdefault(tuple(q), len(key))
-NR = len(key); E = np.array([(rep_[e.vertices[0]], rep_[e.vertices[1]]) for e in coat.data.edges]); E = E[E[:, 0] != E[:, 1]]
-deg = np.bincount(E.ravel(), minlength=NR).astype(float)
-isl = tc.welded_islands(CV, coat.data.edges, H); cnt = np.bincount(isl); on_main = cnt[isl] > 50   # every island but the buttons is fitted itself
-mi = np.nonzero(on_main)[0]; kd = KDTree(len(mi))
-for k, i in enumerate(mi):
-    kd.insert(Vector(CV[i]), k)
-kd.balance(); stick = np.array([i if on_main[i] else mi[kd.find(Vector(CV[i]))[1]] for i in range(len(CV))])
-set_world(coat, CV); m3 = coat.matrix_world.to_3x3()        # the field is a DISTANCE along the coat's own outward normal: a vector field
-NRM = np.zeros((NR, 3))                                         # smoothed across a thin sleeve mixed its two sides' opposite pushes and diverged
-np.add.at(NRM, rep_, np.array([(m3 @ v.normal)[:] for v in coat.data.vertices])); NRM /= np.maximum(np.linalg.norm(NRM, axis=1), 1e-12)[:, None]
-orig = CV.copy(); field = np.zeros(NR); floor_ = np.zeros(NR); best = (None, None, 0)
-RP = np.zeros((NR, 3)); RP[rep_] = CV; cap = np.full(NR, COAT_MAX * H)
+# the push is a field IN SPACE, not on the surface (Director, 2026-10-27: "deslocando um conjunto de nós que incluam todas as paredes envolvidas
+# simultaneamente, de maneira mais coesa"): a push along each vertex's normal moved the coat's walls apart (it is double: its inner wall faces
+# the body) and rippled its surface. Each coat point that sits inside the body is a CONSTRAINT: how far it must go (out by COAT_GAP),
+# AWAY FROM ITS BONE (the nearest point of the spine chain or of an arm). Every coat vertex then moves by the strongest constraint around it,
+# faded over COAT_RADIUS (a cosine), so the outer wall, the inner wall and an edge at one place move as one; repeated while points remain,
+# each point's total capped at COAT_MAX (LAPEL_MAX in the lapel zone).
+bh_ = lambda n: np.array((armB.matrix_world @ armB.data.bones["mixamorig:" + n].head_local)[:])
+SEGS = [(bh_(a), bh_(b)) for a, b in (("Hips", "Spine"), ("Spine", "Spine1"), ("Spine1", "Spine2"), ("Spine2", "Neck"))]
+SEGS += [(bh_(sd + a), bh_(sd + b)) for sd in ("Left", "Right") for a, b in (("Shoulder", "Arm"), ("Arm", "ForeArm"), ("ForeArm", "Hand"))]
+
+
+def away(q):
+    best_ = None
+    for a, b in SEGS:
+        ab = b - a; t = np.clip((q - a) @ ab / (ab @ ab), 0, 1); c = a + t * ab; d = np.linalg.norm(q - c)
+        if best_ is None or d < best_[0]:
+            best_ = (d, (q - c) / max(d, 1e-12))
+    return best_[1]
+
+
+orig = CV.copy(); RP = CV; cap = np.full(len(CV), COAT_MAX * H)
 if LAPEL_SIDE:
     sgn = -np.sign(B_left_x) if LAPEL_SIDE.upper() == "R" else np.sign(B_left_x)
-    lap = (RP[:, 0] * sgn > 0.005 * H) & (RP[:, 1] < waist_y) & (RP[:, 2] > 0.62 * H) & (RP[:, 2] < 0.82 * H)
+    lap = (CV[:, 0] * sgn > 0.005 * H) & (CV[:, 1] < waist_y) & (CV[:, 2] > 0.62 * H) & (CV[:, 2] < 0.82 * H)
     cap[lap] = LAPEL_MAX * H
-    print(f"[{TAG}] lapel {LAPEL_SIDE}: {int(lap.sum())} coat points may move up to {LAPEL_MAX * 100:.1f} % of H")    # the pass with the fewest left, its field
-for it in range(12 if COAT_FIT else 0):                 # COAT_FIT=0: the coat only moved by the skeleton delta (a review)
-    need = {}
-    for i in np.nonzero(on_main)[0]:
-        q = CV[i]; p = Vector(q)
+    print(f"[{TAG}] lapel {LAPEL_SIDE}: {int(lap.sum())} coat vertices may move up to {LAPEL_MAX * 100:.1f} % of H")
+total = np.zeros_like(CV); left_ = None
+for it in range(12 if COAT_FIT else 0):
+    cons = []                                            # (position, push vector)
+    for i in range(len(CV)):
+        p = Vector(CV[i])
         for T in (body_a if coat_arm[i] else body_t).values():
             loc, nrm, _f, dist = T.find_nearest(p, 0.05 * H)
             if loc is None:
                 continue
-            ins = (p - loc).dot(Vector(nrm)) < 0
-            if ins or dist < COAT_GAP * H:
-                out_ = (p - loc).normalized() if not ins and dist > 1e-9 else Vector(nrm).normalized()
-                if out_.dot(Vector(nrm)) < 0:
-                    out_ = Vector(nrm).normalized()
-                r = rep_[i]; d = float(np.array(((loc + out_ * COAT_GAP * H) - p)[:]) @ NRM[r])   # how far out along the coat's normal
-                if d > need.get(r, 0.0):
-                    need[r] = d
-    if not need:
+            ins = (p - loc).dot(Vector(nrm)) < 0                # INSIDE only: the lining lies near the body by design, and as a constraint
+            if ins:                                              # it held ~1 000 points at the cap on the female
+                u = away(CV[i]); need = COAT_GAP * H + dist      # out of the body, by the gap, along u
+                if need > 1e-6 * H:
+                    cons.append((CV[i].copy(), u * need))
+                break
+    left_ = len(cons)
+    print(f"[{TAG}] coat fit pass {it + 1}: {len(cons)} coat points inside the body")
+    if not cons:
         break
-    if best[0] is None or len(need) < best[0]:
-        best = (len(need), field.copy(), it)
-    elif it - best[2] >= 2:                              # no better for two passes: what is left does not yield to a push along the coat's
-        break                                            # normal (its lining faces the body), keep the best
-    if not any(d > 1e-6 * H for d in need.values()):
+    kdc = KDTree(len(cons))
+    for k, (q, _v) in enumerate(cons):
+        kdc.insert(Vector(q), k)
+    kdc.balance(); move = np.zeros_like(CV)
+    for i in range(len(CV)):
+        best_ = 0.0
+        for (_c, k, r) in kdc.find_range(Vector(CV[i]), COAT_RADIUS * H):
+            w = 0.5 * (1 + math.cos(math.pi * r / (COAT_RADIUS * H))); v = cons[k][1] * w
+            if np.linalg.norm(v) > best_:
+                best_ = np.linalg.norm(v); move[i] = v
+    room = np.maximum(cap - np.linalg.norm(total, axis=1), 0.0); ln = np.linalg.norm(move, axis=1)
+    move *= np.minimum(1.0, room / np.maximum(ln, 1e-12))[:, None]
+    if np.abs(move).max() < 1e-6 * H:
         break
-    for r, d in need.items():
-        floor_[r] = min(cap[r], max(floor_[r], field[r] + d))
-    field = np.maximum(field, floor_)
-    for _ in range(SMOOTH_ITERS):
-        acc = np.zeros(NR); np.add.at(acc, E[:, 0], field[E[:, 1]]); np.add.at(acc, E[:, 1], field[E[:, 0]])
-        field = np.maximum(0.5 * field + 0.5 * np.where(deg > 0, acc / np.maximum(deg, 1), field), floor_)
-    CV = orig + (field[:, None] * NRM)[rep_[stick]]
-    print(f"[{TAG}] coat fit pass {it + 1}: {len(need)} surface points came through the body or sat nearer than {COAT_GAP * 100:.1f} % of H; "
-          f"largest push {field.max() / H * 100:.2f} % of H")
-field = best[1] if best[1] is not None else field; DISP = field[:, None] * NRM
-if LAPEL_SIDE and lap.any():
-    # the lapel moves as a SLAB, both walls together: the coat is double, and a push along the normal moved only its outer wall (its inner
-    # wall faces the body), which showed the lapel's thickness as a band (Director, 2026-10-27). Each lapel point moves FORWARD by the
-    # largest push of the lapel within 2 % of H of it, faded out over 2 % of H at the zone's edges.
-    li = np.nonzero(lap)[0]; kdl = KDTree(len(li))
-    for k, r in enumerate(li):
-        kdl.insert(Vector(RP[r]), k)
-    kdl.balance(); fwd = np.array([0.0, np.sign(RP[li, 1].mean() - waist_y) or -1.0, 0.0])
-    for r in li:
-        m = max(field[li[j]] for (_c, j, _d) in kdl.find_range(Vector(RP[r]), 0.02 * H))
-        x, z = RP[r, 0] * sgn, RP[r, 2]
-        w = tc.sstep(0.005 * H, 0.025 * H, x) * tc.sstep(0.62 * H, 0.64 * H, z) * tc.sstep(0.82 * H, 0.80 * H, z)
-        DISP[r] = DISP[r] * (1 - w) + fwd * m * w
-CV = orig + DISP[rep_[stick]]
-print(f"[{TAG}] coat fit kept pass {best[2]} ({best[0]} points left within {COAT_GAP * 100:.1f} % of H), largest push {field.max() / H * 100:.2f} % of H")
+    total += move; CV = orig + total
+print(f"[{TAG}] coat fit: {left_} points left, largest move {np.linalg.norm(total, axis=1).max() / H * 100:.2f} % of H")
 set_world(coat, CV); rebind(coat)
 left = 0
 for i in range(0, len(CV), 3):

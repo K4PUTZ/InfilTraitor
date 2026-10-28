@@ -312,6 +312,7 @@ if COAT_SETTLE > 0:
     cm = so.modifiers.new("Cloth", 'CLOTH'); cs = cm.settings
     cs.quality = 15; cs.mass = 0.15; cs.tension_stiffness = cs.compression_stiffness = float(os.environ.get("SETTLE_STIFF", "600")); cs.shear_stiffness = 200.0
     cs.bending_stiffness = 20.0; cs.vertex_group_mass = "pin"; cs.pin_stiffness = 5.0
+    cs.effector_weights.gravity = float(os.environ.get("SETTLE_GRAVITY", "1"))   # 0: collision alone, no weight (Director, 2026-10-28)
     cm.collision_settings.distance_min = COAT_GAP * H; cm.collision_settings.use_self_collision = False
     cm.point_cache.frame_start = 1; cm.point_cache.frame_end = COAT_SETTLE
     cols = []

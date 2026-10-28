@@ -1,5 +1,5 @@
 # MOVEMENT_MASTER_PLAN
-## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.0
+## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.1
 
 > **Status: 🟢 MILESTONE OPENED 2026-10-27 (Director: "vamos abrir a milestone de movimento e escrever o MASTER PLAN"; "vamos fazer
 > um banco de animações, e depois mapear o que precisa, o que tem e o que falta").** Nothing in §3-§9 is built yet. The brief this
@@ -7,6 +7,9 @@
 > prontos").** MV-1 starts once the male (with coat and hat, and without) and the female are assembled (`CHARACTER`, §9 items 1-2).
 > replaces (v0.1, 2026-08-16, written for the retired sprite bake) is `docs/history/MOVEMENT_BRIEF_v0.1_2026-08-16.md`; what in it is
 > still design is carried into §2 below and cited there, never restated twice.
+>
+> **v1.1 (2026-10-28):** MV-2's map is §4.1, by clip NAME only (to confirm on MV-1's sheets), with the credits ranking and the
+> Director's open questions. Docs only; nothing built.
 
 ---
 
@@ -118,6 +121,155 @@ built. Each row:
   (5) crawl (M5) and the one-knee crouch (M4); (6) rope and hook. Equip / holster / reload / aim-idle per weapon class are likely
   missing too.
 
+### 4.1 The map (v1.1, 2026-10-28) — BY NAME, to confirm on the bank's sheets (MV-1)
+
+**Every "Have" below was matched on the clip's NAME only; no motion was looked at.** A row moves from BY NAME to HAVE when its
+sheet (§3) shows the motion fits. Sources: `MaleCharacterNoCoat.glb` (66 clips, plain names), `MaleCharacterHatAndCoat.glb` (three
+custom stealth takes, names truncated by the exporter; written here as **S1** "Caminhar apressado furtivamente", **S2** "Correr
+furtivamente segurando uma pistola apontada para baixo e…", **S3** "Walking briskly and stealthily, holding a pistol with both
+hand…"), `female+no+coat.glb` (`dive`, `fall`, duplicates of the male's: §3's duplicate rule). Correction to §4's first pass: the
+stealth walk was NOT lost, S1-S3 are in the coat-and-hat file. Every locomotion clip also gets §5.1 (root motion out) and §5.2 (tempo);
+the Combine column names only what comes on top. Priority: **P0** = the demo cannot ship without it, **P1** = the demo is poorer
+without it, **P2** = after the demo. Priorities are Claude's proposal, for the Director to rank (§10's done line).
+
+#### Locomotion on the grid (D44 four facings, D47 snap, D61 0.56 s / GU)
+
+| Situation | Need | Have (BY NAME) | Combine | Missing | Priority |
+|---|---|---|---|---|---|
+| Walk, open ground | loop | `walk` | loop cut (§5.3) | — | P0 |
+| Run (hurried, chase) | loop | `run`, `flee_01/02` (panic run, guards / civilians) | loop cut; tempo from design | — | P0 |
+| Start / stop a move | enter / exit | — | snap (D47) from idle; author only if the snap reads badly | maybe a stop, judged blind | P2 |
+| Facing change | snap | `turn` (in place) | D47 says snap: `turn` only for an idle actor turning without a step, if ever | — | P2 |
+| Stairs (up / down) | loop | `run_upstairs` | down = ? (reverse plays badly on stairs) | walk up / down stairs, if the maps keep stairs (single plane canon: question 6) | P2 |
+| Step down into a pit / climb out (brief §7a.1) | one-shot each | `jump_down`, `climb` | retime to the depth; threshold open | — until §7a.1's depth rule is set | P2 |
+| Jump a gap | one-shot | `jump` | — | — | P2 |
+
+#### Stealth (M1, the LED cloak D72, styles D70)
+
+| Situation | Need | Have (BY NAME) | Combine | Missing | Priority |
+|---|---|---|---|---|---|
+| Sneak walk, no weapon out (M1) | loop | **S1** | loop cut; head scan as an additive (§5.6) if S1 has none | — if S1 is hunched enough | P0 |
+| Sneak, pistol down two hands (M1, brief §6.5 item 5) | loop | **S3** (walk), **S2** (run) | S2 / S3 upper body over S1's legs gives "sneak + weapon" at every tempo (§5.6) | — | P0 |
+| Look around while standing (M1 scanning) | additive / loop | `look_around` | head / neck-only mask as an additive on any idle or move | — | P1 |
+| Crouch, no wall (M4: one knee, hand on the fingertips) | enter / loop / exit | — | — | the M4 pose as a hold + down / up | P1 |
+| Crouched move | loop | — | — | a crouch walk (half cover's transit, §8.2) | P1 |
+| Crawl / prone (M5, minimal cover §8.2) | enter / loop / exit | `dive` (a way down?) | `dive` cut to its landing as the enter, if it lands prone | crawl loop, get up (1 AP and a pin, §8.2) | P1 |
+| Cloak on / off (D72, 1 AP each, standing still) | one-shot each + held still | `idle` underneath | the cloak is a shader on a still figure; the switch may be a gesture layer | a small "activate" gesture, if wanted (question 4) | P1 |
+| Style swap normal ↔ black (D70: the pack takes the coat, gloves on) | one-shot each way | — | — | both directions (D70's two-way rule; brief §6.5) | P1 |
+| Mask on / off (D71: hat forward, plates rise) | one-shot each way | — | upper-body layer over any idle | both directions | P2 |
+
+#### Cover (`DESIGN` §8.2-§8.4; M2, M3)
+
+| Situation | Need | Have (BY NAME) | Combine | Missing | Priority |
+|---|---|---|---|---|---|
+| Full cover against a wall (M2) | enter / loop / exit | — | mirror for the other side (§5.4) | pressed-to-wall hold, in and out | P0 |
+| Corner cover (M3, Wolfenstein) | enter / loop / exit | — | mirror (§5.4) | corner hold | P0 |
+| Peek and fire from full cover (§8.3) | enter / one-shot / exit | `shoot` (upper body) | `shoot` masked over a lean-out pose | the lean-out | P0 |
+| Cover → run → cover (§2: one take, cut) | one multi-segment take | — | cut into enter / run / exit and chained (§5.5) | the one take, both sides by mirror | P0 |
+| Half cover, crouched behind a low object (§8.2) | enter / loop / exit | — | could reuse M4 (question 3) | a crouch-behind hold | P1 |
+| Fire from half cover | one-shot | `shoot` | upper body over the crouch hold | — if the mask holds | P1 |
+| Fire from prone (50 % aim, §8.2) | one-shot | — | — | prone fire | P2 |
+
+#### Weapon flow (brief §6.5: select, aim, fire, return, cancel; `WEAPON` classes)
+
+| Situation | Need | Have (BY NAME) | Combine | Missing | Priority |
+|---|---|---|---|---|---|
+| Draw / holster, pistol (both ways) | one-shot each | — | holster = draw reversed only if it reads right (the grenade's cancel does this today) | draw, holster | P0 |
+| Draw / holster, long gun (shotgun) | one-shot each | — | — | draw, holster | P1 |
+| Aim, held while the hit chances are computed (brief §6.5 item 3) | loop | `shoot` (first frames?) | cut its aim frames into a held loop + breathing additive | an aim idle, if `shoot` has no clean hold | P0 |
+| Fire with recoil | one-shot | `shoot`, `fire` | upper-body mask so it plays standing, crouched, in cover | — | P0 |
+| Alert rest, weapon up (in cover) / down (moving) | loop | **S2** / **S3** (down) | their upper body over idle | weapon-up rest | P1 |
+| Reload | one-shot | — | upper-body layer | reload per class | P2 |
+| Grenade: raise, throw, cancel (exists today on the old rig) | one-shot ×3 | `pitch_baseball` (stand-in, §4) | cancel = raise reversed (today's `play_throw_cancel`) | an overhand / lob grenade throw | P0 |
+| Throw a stone (distraction, `DESIGN` §5.4) | one-shot | `pitch_baseball` | shorter, underhand if possible: retime / cut | a lob (could share the grenade's) | P1 |
+| Dart launcher (knockout at range) | one-shot | `shoot` | as the pistol | — | P2 |
+| Place C4 / set the alarm clock (`DESIGN` §5.4) | one-shot | `dig` (crouch and work?) | cut a short kneel-and-place | a place-on-floor / on-wall | P2 |
+| Melee: chokehold (knockout), neck snap (`DESIGN` §10, the knockout every class must hold) | paired one-shot (agent + guard) | `box_01-03`, `front_kick_01/02`, `slash`, `chop` (none is from behind) | — | **the takedown from behind, paired** | P0 |
+
+#### Reactions
+
+| Situation | Need | Have (BY NAME) | Combine | Missing | Priority |
+|---|---|---|---|---|---|
+| Hit (body / head / side / stomach) | one-shot | `hit_to_body_01/02`, `hit_to_head`, `hit_to_side`, `hit_to_stomach` | additive flinch over any pose (§5.6); mirror for the other side | — | P1 |
+| Death / knocked down | one-shot + held | `defeat_02/03`, `fall` | hold the last frame as the body (it is minimal cover, §8.4) | a death from cover / prone | P1 |
+| Knocked out, then waking after N turns (`DESIGN` §10) | one-shot + loop + one-shot | `fall` | hold; reverse to get up? | wake up / get up | P1 |
+| Surprised / startled guard (PATROL → SUSPICIOUS, AI FSM) | one-shot | `afraid`, `frightened`, `scared_01/02` | cut to a short start | — | P1 |
+| On fire (brief §7a.3) | loop | `flee_01/02`, `freaky`? | + the status tint already built | patting down / running to water | P2 |
+| Smoke / gas (gas bomb knocks out, 2 turns) | one-shot + held | `fall` | — | coughing | P2 |
+
+#### The world (brief §7a)
+
+| Situation | Need | Have (BY NAME) | Combine | Missing | Priority |
+|---|---|---|---|---|---|
+| Rope and hook: throw, cross, land (`DESIGN` §10.0) | one-shot ×3 | `pitch_baseball` (throw), `climb` | cut `climb` for the cross; the rope is a mesh | the hand-over-hand cross, the hook throw | P1 |
+| Perches: climb up, watch, swing, drop onto a guard | several | `climb`, `jump_down` | — | swing, the drop takedown (paired) | P2 (later, by the canon) |
+| Wading (legs under the surface) | loop | `walk` | slower retime + the surface clips the legs | — maybe | P2 |
+| Quicksand: sinking, the 2 AP escape | loop + one-shot | — | — | struggle, pull out | P2 |
+| Slipping on ice / oil | one-shot | `fall` | cut the slip | a slip-and-recover | P2 |
+| Swimming (`MATERIALS` F9) | loop | `swim` | — | — | P2 |
+
+#### Interactions
+
+| Situation | Need | Have (BY NAME) | Combine | Missing | Priority |
+|---|---|---|---|---|---|
+| Open a door / use a switch, a valve (`DESIGN` §5.4 scenery) | one-shot | — | — | a reach-and-turn | P1 |
+| Pick up an item / search a knocked-out guard | one-shot | `lift_heavy` (too heavy?), `dig` | cut a crouch-reach | a pick-up, a search-the-body | P1 |
+| Drag / carry a body | loop | `lift_heavy` (the lift only) | — | drag loop (question 5) | P2 |
+| Knock an object over (a distraction) | one-shot | `front_kick_01` | cut | — maybe | P2 |
+| Lockpick (`DESIGN` evidence room) | loop | — | — | a kneel-and-pick | P2 |
+| Phone (the phone cloner; a guard's radio) | loop | `make_a_call_02` | upper body only | — | P2 |
+| Sit (civilians, guards on a break) | enter / loop | `sit` | — | — | P2 |
+
+#### Idle
+
+| Situation | Need | Have (BY NAME) | Combine | Missing | Priority |
+|---|---|---|---|---|---|
+| Agent idle (brief §6.4) | loop | `idle`, `wait` | loop cut; breathing additive | — | P0 |
+| Guard idle on post / patrol pause (AI PATROL) | loop | `standing_relax`, `idle`, `fold_arms`, `scratch` | variety by picking a different one per guard | — | P0 |
+| Guard searching (SEARCH, SUSPICIOUS) | loop | `look_around` | over a slow walk (upper body) | — | P1 |
+| Guard alert, weapon raised (ALERT, CHASE) | loop | — | S3's upper body? (it is the agent's two-hand pistol) | an alert idle with a weapon | P1 |
+| Civilians idle (crowd sets, `COSMETICS` §8) | loops | `play_video_game`, `warm_up`, `press-up`, `standing_relax`, `make_a_call_02` | variety | — | P2 |
+
+#### Cast gestures (NPCs, the cutscene-free dialogue of `DESIGN` §2.3)
+
+| Situation | Need | Have (BY NAME) | Combine | Missing | Priority |
+|---|---|---|---|---|---|
+| Agree, greet, bow | one-shot | `agree`, `greet_01-04`, `bow` | upper body over idle | a "no" (disagree) | P2 |
+| Anger, complaint, frustration | one-shot | `angry_01-03`, `complain_01/02`, `frustrated_01/02` | — | — | P2 |
+| Joy, fear, sadness | one-shot | `laugh_01/02`, `cheer`, `scared_01/02`, `afraid`, `depressed`, `defeat_02/03` | — | — | P2 |
+| Civilian flees and trips the alarm (AI table) | loop | `flee_01/02` | — | — | P1 |
+| Unassigned (no situation yet) | — | `cast_a_spell`, `flip`, `freaky`, `dig` beyond its uses above | kept in the bank, unused | — | — |
+
+#### Credits: what to generate first (Claude's ranking, for the Director)
+
+1. **The cover take** (§2's ruling): wall press → lean out and fire → back → run → corner, one multi-segment take, cut and mirrored.
+   One generation serves four P0 rows (full cover, corner, peek, cover → run → cover).
+2. **The takedown from behind, paired** (agent + guard as one take): the non-lethal option every class must hold; nothing in the bank
+   comes close.
+3. **Draw / holster, pistol**, plus an aim hold if `shoot` has none: the whole §6.5 flow hangs on it.
+4. **The grenade throw** (overhand, with a lob variant that also serves the stone): replaces `pitch_baseball`.
+5. **Crouch (M4) with crouch walk, and prone / crawl (M5) with get up**: half and minimal cover.
+6. **Style swap (D70) and the knocked-out guard waking up.**
+7. **Interactions**: door / valve, pick up / search a body.
+8. **Rope and hook** (throw, cross), then the world rows.
+
+Before spending on 1-5: confirm S1-S3 on their sheets. If S1 is not hunched enough for M1, a sneak walk goes to the top of this list.
+
+#### Open questions for the Director (nothing here is decided)
+
+1. **This ranking**: is the stealth core (cover, takedown, weapon flow) the demo's first, as proposed, and P0 / P1 / P2 right per row?
+2. **One figure's clips for both sexes and the guards?** The rig allows it (§1.3); is a female walk / run a separate generation, or
+   does the female share the male's clips?
+3. **Half cover and M4:** is the crouched-behind-a-low-object pose the same as M4 (one knee, hand on the fingertips), or its own?
+4. **The cloak (D72) and the style swap (D70):** does switching on the cloak have a visible gesture, or only the shader? Is the
+   style swap a full-body take (the pack absorbs the coat) or an upper-body layer?
+5. **Bodies:** can the agent drag / carry a knocked-out guard? (It decides a loop and its AP cost; `DESIGN` does not say.)
+6. **Stairs:** do the maps keep walkable stairs on the one playable plane, or is `run_upstairs` a cast clip only?
+7. **Guards' weapon poses:** do guards draw / holster as the agent does (brief §6.5's two-way rule), or start ALERT with the weapon
+   already up?
+8. **The pit threshold (brief §7a.1):** from what depth is a step down a drop (`jump_down`) and a step up a climb (`climb`)?
+9. **Unassigned clips** (`cast_a_spell`, `flip`, `freaky`): keep for the cast, or drop from the bank?
+
 ---
 
 ## 5. MV-3 — making a clip GAME-READY (the processing, all in our code)
@@ -202,7 +354,7 @@ pose stills are agreed before a generation is spent.
 | Stage | Deliverable | Done when |
 |---|---|---|
 | **MV-1** | The bank: `tripo_anim_bank.py`, `ASSETS/ANIMATIONS/bank/`, `bank.json`, the sheets | §3's done line |
-| **MV-2** | The map (§4.1): need / have / combine / missing / priority; the credits list | the Director ranks it |
+| **MV-2** | The map (§4.1): need / have / combine / missing / priority; the credits list | 🟡 **v1.1 (2026-10-28): §4.1 written, BY NAME (clips not yet seen); waits on the Director's ranking and §4.1's open questions** — done when the Director ranks it |
 | **MV-3** | The processing (§5) on the first situations' clips | each processed clip judged on a sheet |
 | **MV-4** | The engine plays the bank (§6), the Moto measured first | an actor walks the grid on the Mixamo rig at D61's step, measured on the Moto |
 | **MV-5+** | The situations in the map's order (§7) | each ratified on the board and on a handset video |

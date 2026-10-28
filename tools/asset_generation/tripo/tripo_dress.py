@@ -454,6 +454,22 @@ if RV_OUT:
         files[(0, c_)] = f"{RV_OUT}/d_0_{c_}.png"; tc.shot(cam, co, files[(0, c_)], az, Vector((0, 0, 0.5 * H)), 1.15 * H)
         files[(1, c_)] = f"{RV_OUT}/d_1_{c_}.png"; tc.shot(cam, co, files[(1, c_)], az, Vector((0, 0, 0.9 * H)), 0.32 * H)
     tc.sheet(2, 4, files, f"{RV_OUT}/dressed.png"); print(f"[{TAG}] sheet {RV_OUT}/dressed.png")
+    # hero.png (Director, 2026-10-28: "um render grande frontal, e tres menores de lados e de costas"): the front at 3x, the left side, the
+    # right side and the back at 1x in a column beside it
+    sc_ = bpy.context.scene; w0, h0 = sc_.render.resolution_x, sc_.render.resolution_y
+    small = []
+    for az in (90, 270, 180):
+        small.append(f"{RV_OUT}/h_{az}.png"); tc.shot(cam, co, small[-1], az, Vector((0, 0, 0.5 * H)), 1.15 * H)
+    sc_.render.resolution_x, sc_.render.resolution_y = 3 * w0, 3 * h0
+    tc.shot(cam, co, f"{RV_OUT}/h_front.png", 0, Vector((0, 0, 0.5 * H)), 1.15 * H)
+    S_ = np.zeros((3 * h0, 4 * w0, 4), np.float32)
+    im = bpy.data.images.load(f"{RV_OUT}/h_front.png"); S_[:, :3 * w0] = np.array(im.pixels[:], np.float32).reshape(3 * h0, 3 * w0, 4)
+    for k, f_ in enumerate(small):                                 # top to bottom: left side, right side, back (pixel rows run bottom-up)
+        im = bpy.data.images.load(f_); y = (2 - k) * h0
+        S_[y:y + h0, 3 * w0:] = np.array(im.pixels[:], np.float32).reshape(h0, w0, 4)
+    hi_ = bpy.data.images.new("hero", 4 * w0, 3 * h0, alpha=True); hi_.pixels = S_.ravel()
+    hi_.filepath_raw = f"{RV_OUT}/hero.png"; hi_.file_format = 'PNG'; hi_.save()
+    sc_.render.resolution_x, sc_.render.resolution_y = w0, h0; print(f"[{TAG}] sheet {RV_OUT}/hero.png")
     clip = os.environ.get("RV_CLIP", "")
     if clip:
         if clip not in bpy.data.actions:

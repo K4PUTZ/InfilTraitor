@@ -20,6 +20,7 @@ import math, os, sys
 import numpy as np
 import bpy, bmesh
 from mathutils import Matrix, Vector
+from mathutils.geometry import barycentric_transform
 from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -121,6 +122,43 @@ for i, v in enumerate(coat.data.vertices):
             acc += (M @ Vector(CV[i])) * g.weight; ws += g.weight
     if ws > 0:
         CV[i] = acc[:] if ws == 1.0 else (acc / ws)[:]
+# C1 (D86): a STANDALONE coat (DRESS_COAT, a Tripo garment with no rig) takes the generation's coat's place: scaled uniformly to its length
+# (hem to collar top) and set on its hem height and its centre (the standalone's torso proportions match the generations' within a few % of
+# its length: measured 2026-10-27, width 0.39-0.44, the waist belted to 0.34); its weights are, until C4, those of the nearest point of the
+# generation's coat (barycentric), so it can be exported and animated
+DRESS_COAT = os.environ.get("DRESS_COAT", "")
+if DRESS_COAT:
+    set_world(coat, CV); Tg = shell(coat); GW = tc.read_weights(coat); coat.data.calc_loop_triangles(); GT = [tuple(t.vertices) for t in coat.data.loop_triangles]
+    before = set(bpy.data.objects); bpy.ops.import_scene.gltf(filepath=DRESS_COAT)
+    loose = [o for o in bpy.data.objects if o not in before and o.type == 'MESH']
+    if not loose:
+        tc.fail(TAG, f"{DRESS_COAT}: no mesh")
+    LV = np.concatenate([wverts(o) for o in loose]); LF = []; off = 0
+    for o in loose:
+        LF += [[off + v for v in p_.vertices] for p_ in o.data.polygons]; off += len(o.data.vertices)
+    glo, ghi = CV.min(0), CV.max(0); llo, lhi = LV.min(0), LV.max(0); k = (ghi[2] - glo[2]) / (lhi[2] - llo[2])
+    gc = (glo + ghi) / 2; lc = (llo + lhi) / 2
+    LV = (LV - [lc[0], lc[1], llo[2]]) * k + [gc[0], gc[1], glo[2]]
+    for o in loose:
+        bpy.data.objects.remove(o)
+    u3 = (Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1))); NW = []
+    for q in LV:
+        loc, _n, fi, _d = Tg.find_nearest(Vector(q)); tri = GT[fi]
+        bc = np.clip(np.array(barycentric_transform(loc, Vector(CV[tri[0]]), Vector(CV[tri[1]]), Vector(CV[tri[2]]), *u3)[:]), 0.0, None); bc /= bc.sum() or 1.0
+        mix = {}
+        for vi, wk in zip(tri, bc):
+            for g, x in GW[vi].items():
+                mix[g] = mix.get(g, 0.0) + x * wk
+        NW.append(tc.top4(mix, "mixamorig:Hips"))
+    me = bpy.data.meshes.new("Outfit_Coat_src"); me.from_pydata([tuple(q) for q in LV], [], LF); me.update()
+    nc = bpy.data.objects.new("Outfit_Coat_src", me); bpy.context.scene.collection.objects.link(nc)
+    nc.parent = coat.parent; nc.matrix_world = Matrix.Identity(4); set_world(nc, LV)
+    md = nc.modifiers.new("Armature", 'ARMATURE'); md.object = armA; tc.write_weights(nc, NW)
+    for p_ in nc.data.polygons:
+        p_.use_smooth = False
+    bpy.data.objects.remove(coat); coat = nc; mA["Outfit_Coat"] = nc; CV = LV.copy()
+    print(f"[{TAG}] standalone coat {os.path.basename(DRESS_COAT)}: {len(LV)} vertices, scaled x{k:.3f} to the generation's coat "
+          f"(length {ghi[2] - glo[2]:.3f}, hem z {glo[2]:.3f}); weights from it until C4")
 # by REGION: a coat vertex on the arm (arm-family weights >= 0.5) is fitted to the shirt's sleeves, every other one to the shirt's torso and the
 # rest of UNDER_COAT. The base's arms hang nearer the body than the dresser's, so a sleeve of the shirt lies inside the coat's side under the
 # arm; that contact inflated the whole coat (12 % of H and growing) when the coat's torso was fitted to the whole shirt.

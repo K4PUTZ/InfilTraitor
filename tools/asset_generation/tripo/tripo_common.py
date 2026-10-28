@@ -120,6 +120,18 @@ def segd(V, a, b):
     return np.linalg.norm(V - (a + t[:, None] * ab), axis=1)
 
 
+def hem_band(V, band, bins=72):
+    """the HEM BAND of a coat (ACTOR D86, Director 2026-10-28): every vertex within `band` (a length) of the hem AT ITS OWN AZIMUTH about the
+    skirt's vertical axis, so it follows the hem all round, front tips and back alike, outer wall and lining together (a single height slab
+    from the lowest point took only the front tips: they hang below the back) -> a weight per vertex, 1 at the hem fading to 0 at `band`"""
+    lo, hi = V.min(0), V.max(0); skirt = V[:, 2] < lo[2] + 0.5 * (hi[2] - lo[2])
+    c = V[skirt, :2].mean(0); az = ((np.arctan2(V[:, 1] - c[1], V[:, 0] - c[0]) + math.pi) / (2 * math.pi) * bins).astype(int) % bins
+    hem = np.full(bins, np.inf)
+    np.minimum.at(hem, az[skirt], V[skirt, 2])
+    d = V[:, 2] - hem[az]
+    return np.where(skirt & np.isfinite(d), np.clip(1.0 - d / band, 0.0, 1.0), 0.0)
+
+
 def sstep(a, b, x):
     t = np.clip((x - a) / (b - a), 0, 1)
     return t * t * (3 - 2 * t)

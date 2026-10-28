@@ -132,6 +132,22 @@ def hem_band(V, band, bins=72):
     return np.where(skirt & np.isfinite(d), np.clip(1.0 - d / band, 0.0, 1.0), 0.0)
 
 
+def hem_plane(V, band, front, bins=72):
+    """the HEM CUT of a coat (ACTOR D86, Director 2026-10-28) -> (p0, n), a point and the unit normal of a plane; the hem piece is every point
+    with (q - p0) . n < 0. The plane is fitted (least squares z = a x + b y + c) to the hem's lowest point per azimuth about the skirt's axis,
+    its FRONT (the coat faces -y) lowered `front` about the skirt's back edge ("diminui um pouco a parte da frente pra compensar a altura
+    diferente"), then lifted `band` along its normal; a per-azimuth line cut face by face stepped wherever a face held two crossings"""
+    L = np.ptp(V[:, 2]); lo = V.min(0); skirt = V[:, 2] < lo[2] + 0.5 * L; c = V[skirt, :2].mean(0)
+    azf = lambda P: ((np.arctan2(P[:, 1] - c[1], P[:, 0] - c[0]) + math.pi) / (2 * math.pi) * bins)
+    hem = np.full(bins, np.inf); np.minimum.at(hem, azf(V[skirt]).astype(int) % bins, V[skirt, 2])
+    hem[~np.isfinite(hem)] = hem[np.isfinite(hem)].max()
+    ang = (np.arange(bins) + 0.5) / bins * 2 * math.pi - math.pi; R = np.median(np.linalg.norm(V[skirt, :2] - c, axis=1))
+    ab = np.linalg.lstsq(np.c_[c[0] + R * np.cos(ang), c[1] + R * np.sin(ang), np.ones(bins)], hem, rcond=None)[0]
+    yf, yb = V[skirt, 1].min(), V[skirt, 1].max(); ab[1] += front / (yb - yf); ab[2] -= front * yb / (yb - yf)
+    n = np.array([-ab[0], -ab[1], 1.0]); n /= np.linalg.norm(n)
+    return np.array([c[0], c[1], ab[0] * c[0] + ab[1] * c[1] + ab[2]]) + n * band, n
+
+
 def sstep(a, b, x):
     t = np.clip((x - a) / (b - a), 0, 1)
     return t * t * (3 - 2 * t)

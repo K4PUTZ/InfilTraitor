@@ -188,6 +188,55 @@ if DRESS_COAT:
             qi = Quaternion().slerp(q, float(aw[i]))
             CV[i] = sh + np.array((qi @ Vector(CV[i] - sh))[:])
         print(f"[{TAG}] {side} sleeve turned {ang:.1f} deg onto the arm ({len(sl)} sleeve vertices)")
+    # STRAIGHT SKIRT (Director, 2026-10-28, toward the concept art: the coat falls straight from the hips, no belly): below the base's hip line
+    # (the Hips joint) every skirt vertex is moved RADIALLY about the hips' vertical axis by the amount that puts the OUTER wall of its cell
+    # (azimuth x height) on a straight cone: the outer radius at the hip line at that azimuth, opening SKIRT_FLARE per unit of drop. The same
+    # displacement goes to every vertex of the cell, so the double wall (outer wall and lining) moves together and keeps its thickness and
+    # its folds; it fades in over SKIRT_FADE of H under the hip line so the waist does not kink; sleeves (arm weight >= 0.5) are left
+    SKIRT_FLARE = float(os.environ.get("SKIRT_FLARE", "0.15")); SKIRT_FADE = float(os.environ.get("SKIRT_FADE", "0.05"))
+    if os.environ.get("SKIRT_STRAIGHT", "1") != "0":
+        hp = np.array((armB.matrix_world @ armB.data.bones["mixamorig:Hips"].head_local)[:])
+        # SKIRT_FROM: the joint the straight line starts at (Hips by default; higher, e.g. Spine1, takes the waist into it: the female's front
+        # edges bowed out at the waist, Director 2026-10-28)
+        zh = (armB.matrix_world @ armB.data.bones["mixamorig:" + os.environ.get("SKIRT_FROM", "Hips")].head_local).z
+        aw_ = np.array([sum(x for g, x in w.items() if any(k_ in g for k_ in ("Arm", "Hand", "Shoulder"))) for w in NW])
+        sk = (CV[:, 2] < zh) & (aw_ < 0.5)
+        d_ = CV[:, :2] - hp[:2]; r_ = np.linalg.norm(d_, axis=1); th = np.arctan2(d_[:, 1], d_[:, 0])
+        NB, ZB = 48, 0.02 * H
+        ab_ = ((th + math.pi) / (2 * math.pi) * NB).astype(int) % NB; zb_ = np.floor((zh - CV[:, 2]) / ZB).astype(int)
+        hipr = np.zeros(NB)                                  # the outer radius at the hip line, per azimuth
+        band_ = sk & (zb_ <= 1)
+        np.maximum.at(hipr, ab_[band_], r_[band_])
+        for _ in range(2):                                   # an empty azimuth (the front opening) takes its neighbours'
+            hipr = np.where(hipr > 0, hipr, np.maximum(np.roll(hipr, 1), np.roll(hipr, -1)))
+        outer = {}
+        for i in np.nonzero(sk)[0]:
+            key = (ab_[i], zb_[i]); outer[key] = max(outer.get(key, 0.0), r_[i])
+        moved = 0.0
+        for i in np.nonzero(sk)[0]:
+            drop = zh - CV[i, 2]; tgt = hipr[ab_[i]] + SKIRT_FLARE * drop
+            dr = (tgt - outer[(ab_[i], zb_[i])]) * min(1.0, drop / (SKIRT_FADE * H))
+            CV[i, :2] += d_[i] / max(r_[i], 1e-9) * dr; moved = max(moved, abs(dr))
+        # STRAIGHT SIDES (Director, 2026-10-28: "corrigir essas pregas nas laterais pra ficar mais retinho"): between the hip line and the
+        # chest (Spine2) the coat's SIDES (weighted by cos^2 of the azimuth: full at the flanks, none at the front and back) take the same
+        # cell displacement onto the straight line from the outer radius at the chest to the one at the hip line, fading at the chest
+        zc = (armB.matrix_world @ armB.data.bones["mixamorig:Spine2"].head_local).z
+        sd = (CV[:, 2] >= zh) & (CV[:, 2] < zc) & (aw_ < 0.5)
+        if os.environ.get("SIDE_STRAIGHT", "1") != "0" and sd.any():
+            d2 = CV[:, :2] - hp[:2]; r2 = np.linalg.norm(d2, axis=1); t2 = np.arctan2(d2[:, 1], d2[:, 0])
+            a2 = ((t2 + math.pi) / (2 * math.pi) * NB).astype(int) % NB; z2 = np.floor((CV[:, 2] - zh) / ZB).astype(int)
+            chr_ = np.zeros(NB); top_ = sd & (CV[:, 2] > zc - 2 * ZB); np.maximum.at(chr_, a2[top_], r2[top_])
+            chr_ = np.where(chr_ > 0, chr_, hipr)
+            out2 = {}
+            for i in np.nonzero(sd)[0]:
+                key = (a2[i], z2[i]); out2[key] = max(out2.get(key, 0.0), r2[i])
+            sm = 0.0
+            for i in np.nonzero(sd)[0]:
+                t_ = (CV[i, 2] - zh) / (zc - zh); tgt = (1 - t_) * hipr[a2[i]] + t_ * chr_[a2[i]]
+                dr = (tgt - out2[(a2[i], z2[i])]) * math.cos(t2[i]) ** 2 * min(1.0, (zc - CV[i, 2]) / (SKIRT_FADE * H))
+                CV[i, :2] += d2[i] / max(r2[i], 1e-9) * dr; sm = max(sm, abs(dr))
+            print(f"[{TAG}] straight sides: {int(sd.sum())} vertices between the hips and the chest, largest move {sm / H * 100:.2f} % of H")
+        print(f"[{TAG}] straight skirt: {int(sk.sum())} vertices under the hip line (z {zh:.3f}), flare {SKIRT_FLARE}, largest move {moved / H * 100:.2f} % of H")
     set_world(nc, CV)
     print(f"[{TAG}] standalone coat {os.path.basename(DRESS_COAT)}: {len(LV)} vertices, scaled x{k:.3f} to the generation's coat "
           f"(length {ghi[2] - glo[2]:.3f}, hem z {glo[2]:.3f}); weights from it until C4")
@@ -246,9 +295,29 @@ if LAPEL_SIDE:
     cap[lap] = LAPEL_MAX * H
     print(f"[{TAG}] lapel {LAPEL_SIDE}: {int(lap.sum())} coat vertices may move up to {LAPEL_MAX * 100:.1f} % of H")
 total = np.zeros_like(CV); left_ = None
+# FIT_BACK (Director, 2026-10-28, on the female's back: "empurrar (a parede dupla do casaco) um pouquinho pra longe do corpo [...] escondendo
+# a camisa e a calca"): only coat points behind the spine or on the flanks (y > the Spine joint's - 3 % of H) are constraints, so the push
+# stays on the back. A body piece can also come out BETWEEN the coat's vertices (its big faces), which no coat point sees: there the BODY's
+# vertices are the test, each cast from its bone outward through the coat; one lying past the coat's OUTERMOST wall on that ray (or nearer
+# it than COAT_GAP) makes a constraint at that outer hit, pushing it out by the excess
+FIT_BACK = os.environ.get("FIT_BACK", "0") != "0"
+BODY_Q = np.concatenate([wverts(mB[n])[::2] for n in UNDER_COAT if n in mB]) if FIT_BACK else np.zeros((0, 3))
+hips_z = (armB.matrix_world @ armB.data.bones["mixamorig:Hips"].head_local).z
+BODY_Q = BODY_Q[(BODY_Q[:, 1] > waist_y - 0.03 * H) & (BODY_Q[:, 2] > hips_z - 0.05 * H)]   # the legs leave through the skirt's open bottom
+
+
+def bone_pt(q):
+    best_ = None
+    for a, b in SEGS:
+        ab = b - a; t = np.clip((q - a) @ ab / (ab @ ab), 0, 1); c = a + t * ab; d = np.linalg.norm(q - c)
+        if best_ is None or d < best_[0]:
+            best_ = (d, c)
+    return best_[1]
 for it in range(12 if COAT_FIT else 0):
     cons = []                                            # (position, push vector)
     for i in range(len(CV)):
+        if FIT_BACK and CV[i, 1] <= waist_y - 0.03 * H:          # the back and the flanks (the hip spots sat at the side)
+            continue
         p = Vector(CV[i])
         for T in (body_a if coat_arm[i] else body_t).values():
             loc, nrm, _f, dist = T.find_nearest(p, 0.05 * H)
@@ -260,6 +329,21 @@ for it in range(12 if COAT_FIT else 0):
                 if need > 1e-6 * H:
                     cons.append((CV[i].copy(), u * need))
                 break
+    if FIT_BACK:
+        set_world(coat, CV); TC = shell(coat); nb = 0
+        for q in BODY_Q:
+            c = bone_pt(q); dv = q - c; dq = np.linalg.norm(dv)
+            if dq < 1e-6:
+                continue
+            u = dv / dq; o = Vector(c.tolist()); last = None; far = 0.0
+            while True:
+                hit = TC.ray_cast(o, Vector(u.tolist()), dq + 0.05 * H - far)
+                if hit[0] is None:
+                    break
+                far += (hit[0] - o).length + 1e-5; last = hit[0]; o = hit[0] + Vector(u.tolist()) * 1e-5
+            if last is not None and far < dq + COAT_GAP * H:
+                cons.append((np.array(last[:]), u * (dq + COAT_GAP * H - far))); nb += 1
+        print(f"[{TAG}] coat fit pass {it + 1}: {nb} body points through the coat's outer wall")
     left_ = len(cons)
     print(f"[{TAG}] coat fit pass {it + 1}: {len(cons)} coat points inside the body")
     if not cons:
@@ -312,20 +396,21 @@ if COAT_SETTLE > 0:
             vg.add([i], float(w), 'REPLACE')
     # a weighted HEM BAND (Director, 2026-10-28: "colar uma tira de couro na parte de baixo toda, com peso puxando o casaco"): Blender cloth
     # has one mass for every vertex and its force fields did not move the hem (a plane FORCE field at 5 and 20: hem within 0.3 % of H), so the
-    # band is a GOAL: the bottom HEM_BAND of the coat's length is pinned at HEM_PIN to a target that a Displace modifier (keyed 0 -> HEM_DROP
+    # band is a GOAL: the HEM PIECE (tripo_common.hem_plane: HEM_BAND of the coat's length above the hem, the front lowered HEM_FRONT) is pinned at HEM_PIN to a target that a Displace modifier (keyed 0 -> HEM_DROP
     # of H over the first half of the run) lowers under the cloth; the band is drawn down and the cloth above stretches by its stiffness
     HEM_BAND = float(os.environ.get("HEM_BAND", "0.06")); HEM_DROP = float(os.environ.get("HEM_DROP", "0"))
     HEM_PIN = float(os.environ.get("HEM_PIN", "0.5"))
     if HEM_DROP > 0:
-        lo_z = CV[:, 2].min(); band = HEM_BAND * (CV[:, 2].max() - lo_z)
-        bw = np.clip(1.0 - (CV[:, 2] - lo_z) / band, 0.0, 1.0); bw[pin >= 1] = 0.0; HEM_MASK = bw > 0
+        cl_ = np.ptp(CV[:, 2]); band = HEM_BAND * cl_
+        hp0, hn = tc.hem_plane(CV, band, float(os.environ.get("HEM_FRONT", "0.02")) * cl_)
+        bw = ((CV - hp0) @ hn < 0).astype(float); bw[pin >= 1] = 0.0; HEM_MASK = bw > 0
         vb = so.vertex_groups.new(name="band")
         for i in np.nonzero(bw > 0)[0]:
             vb.add([int(i)], float(bw[i]), 'REPLACE'); vg.add([int(i)], max(float(pin[i]), HEM_PIN * float(bw[i])), 'REPLACE')
         dm = so.modifiers.new("hem", 'DISPLACE'); dm.direction = 'Z'; dm.vertex_group = "band"; dm.mid_level = 0.0
         dm.strength = 0.0; dm.keyframe_insert("strength", frame=1)
         dm.strength = -HEM_DROP * H; dm.keyframe_insert("strength", frame=max(2, COAT_SETTLE // 2))
-        print(f"[{TAG}] hem band: {int((bw > 0).sum())} coat vertices in the bottom {band / H * 100:.1f} % of H, drawn {HEM_DROP * 100:.1f} % of H down at pin {HEM_PIN}")
+        print(f"[{TAG}] hem band: {int((bw > 0).sum())} coat vertices in the hem piece ({band / H * 100:.1f} % of H), drawn {HEM_DROP * 100:.1f} % of H down at pin {HEM_PIN}")
     cm = so.modifiers.new("Cloth", 'CLOTH'); cs = cm.settings
     # SETTLE_MASS, kg per vertex: Blender cloth has no per-vertex mass, so "a base mais pesada, pra esticar mais o tecido todo" (Director,
     # 2026-10-28) is a heavier coat against the same stiffness
@@ -476,7 +561,12 @@ if RV_OUT:
         S_[y:y + h0, 3 * w0:] = np.array(im.pixels[:], np.float32).reshape(h0, w0, 4)
     hi_ = bpy.data.images.new("hero", 4 * w0, 3 * h0, alpha=True); hi_.pixels = S_.ravel()
     hi_.filepath_raw = f"{RV_OUT}/hero.png"; hi_.file_format = 'PNG'; hi_.save()
-    sc_.render.resolution_x, sc_.render.resolution_y = w0, h0; print(f"[{TAG}] sheet {RV_OUT}/hero.png")
+    # big4.png (Director, 2026-10-28: "o render grande com os 4 lados"): front, left, back, right, each at 3x, side by side
+    big = {}
+    for c_, az in enumerate((0, 90, 180, 270)):
+        big[(0, c_)] = f"{RV_OUT}/b_{c_}.png"; tc.shot(cam, co, big[(0, c_)], az, Vector((0, 0, 0.5 * H)), 1.15 * H)
+    tc.sheet(1, 4, big, f"{RV_OUT}/big4.png")
+    sc_.render.resolution_x, sc_.render.resolution_y = w0, h0; print(f"[{TAG}] sheet {RV_OUT}/hero.png, big4.png")
     clip = os.environ.get("RV_CLIP", "")
     if clip:
         if clip not in bpy.data.actions:

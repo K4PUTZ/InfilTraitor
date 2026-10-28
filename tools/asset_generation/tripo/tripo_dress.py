@@ -280,7 +280,56 @@ for it in range(12 if COAT_FIT else 0):
         break
     total += move; CV = orig + total
 print(f"[{TAG}] coat fit: {left_} points left, largest move {np.linalg.norm(total, axis=1).max() / H * 100:.2f} % of H")
-set_world(coat, CV); rebind(coat)
+set_world(coat, CV)
+# C3b SETTLE (Director, 2026-10-28: "a questao do peso, e bloquear a roupa de baixo pra nao atravessarem"): a Blender cloth run with gravity,
+# the coat's rest lengths as fitted (so it keeps its cut), the shoulders, collar and sleeves PINNED (above the Spine2 joint, or arm weight
+# >= 0.5, fading over SETTLE_FADE of H below it, and every loose island), the shirt, tie and trousers colliders at COAT_GAP, single sided
+# (SETTLE_COLLIDE; NOT the belt: measured 2026-10-28, the belt alone threw the female's hem up 24 % of H, it rings the coat's belted waist);
+# the cloth stiff (SETTLE_STIFF 600: at 40 it stretched 40 % of H under gravity alone); COAT_SETTLE frames (0 = off, the default
+# until the male's skirt stops tearing open: 40 frames cleared the female's hips, 2026-10-28)
+COAT_SETTLE = int(os.environ.get("COAT_SETTLE", "0")); SETTLE_FADE = float(os.environ.get("SETTLE_FADE", "0.08"))
+if COAT_SETTLE > 0:
+    sc = bpy.context.scene; me = bpy.data.meshes.new("settle")
+    me.from_pydata([tuple(q) for q in CV], [], [list(p_.vertices) for p_ in coat.data.polygons]); me.update()
+    so = bpy.data.objects.new("settle", me); sc.collection.objects.link(so)
+    top = (armB.matrix_world @ armB.data.bones["mixamorig:Spine2"].head_local).z
+    pin = np.clip(1.0 - (top - CV[:, 2]) / (SETTLE_FADE * H), 0.0, 1.0); pin[coat_arm] = 1.0
+    # a loose ISLAND (the back belt, a strap, a pocket flap: the coat is 10 islands) hangs from nothing and falls away: it stays put
+    par = list(range(len(CV)))
+
+    def root(a):
+        while par[a] != a:
+            par[a] = par[par[a]]; a = par[a]
+        return a
+    for e_ in coat.data.edges:
+        par[root(e_.vertices[0])] = root(e_.vertices[1])
+    isl = np.array([root(i) for i in range(len(CV))]); main_ = np.bincount(isl).argmax()
+    pin[isl != main_] = 1.0
+    vg = so.vertex_groups.new(name="pin")
+    for i, w in enumerate(pin):
+        if w > 0:
+            vg.add([i], float(w), 'REPLACE')
+    cm = so.modifiers.new("Cloth", 'CLOTH'); cs = cm.settings
+    cs.quality = 15; cs.mass = 0.15; cs.tension_stiffness = cs.compression_stiffness = float(os.environ.get("SETTLE_STIFF", "600")); cs.shear_stiffness = 200.0
+    cs.bending_stiffness = 20.0; cs.vertex_group_mass = "pin"; cs.pin_stiffness = 5.0
+    cm.collision_settings.distance_min = COAT_GAP * H; cm.collision_settings.use_self_collision = False
+    cm.point_cache.frame_start = 1; cm.point_cache.frame_end = COAT_SETTLE
+    cols = []
+    for n in (os.environ.get("SETTLE_COLLIDE", "Outfit_Shirt,Outfit_Tie,Outfit_Trousers").split(",")):
+        if n in mB:
+            c_ = mB[n].modifiers.new("Collision", 'COLLISION'); cl = mB[n].collision; cl.thickness_outer = COAT_GAP * H; cl.thickness_inner = 0.001 * H
+            cl.use_culling = cl.use_normal = True                        # single sided: a point is only ever pushed OUT
+            cols.append((mB[n], c_))
+    for f_ in range(1, COAT_SETTLE + 1):
+        sc.frame_set(f_)
+    ev = so.evaluated_get(bpy.context.evaluated_depsgraph_get()).to_mesh()
+    NV = np.array([(so.matrix_world @ v.co)[:] for v in ev.vertices]); so.to_mesh_clear()
+    print(f"[{TAG}] settle: {COAT_SETTLE} frames, {int((pin >= 1).sum())} pinned; moved up to {np.linalg.norm(NV - CV, axis=1).max() / H * 100:.2f} % of H, "
+          f"hem {CV[:, 2].min():.3f} -> {NV[:, 2].min():.3f}")
+    for o_, c_ in cols:
+        o_.modifiers.remove(c_)
+    bpy.data.objects.remove(so); sc.frame_set(1); CV = NV; set_world(coat, CV)
+rebind(coat)
 left = 0
 for i in range(0, len(CV), 3):
     for T in (body_a if coat_arm[i] else body_t).values():

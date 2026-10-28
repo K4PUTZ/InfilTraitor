@@ -19,7 +19,7 @@
 import math, os, sys
 import numpy as np
 import bpy, bmesh
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 from mathutils.geometry import barycentric_transform
 from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
@@ -157,6 +157,26 @@ if DRESS_COAT:
     for p_ in nc.data.polygons:
         p_.use_smooth = False
     bpy.data.objects.remove(coat); coat = nc; mA["Outfit_Coat"] = nc; CV = LV.copy()
+    # C2 (D86): each SLEEVE turned about its shoulder onto the base's arm (the standalone's sleeves splay wider than either figure's arms): the
+    # sleeve's axis is the principal direction of its vertices (arm weight >= 0.9 on that side), the arm's the base's shoulder -> wrist line;
+    # each vertex turns by that rotation scaled by its own arm weight on that side, so the torso stays and the shoulder bends smoothly
+    for side in ("Left", "Right"):
+        aw = np.array([sum(x for g, x in w.items() if side in g and any(k in g for k in ("Arm", "Hand", "Shoulder"))) for w in NW])
+        sl = CV[aw >= 0.9]
+        if len(sl) < 20:
+            continue
+        sh = np.array((armB.matrix_world @ armB.data.bones["mixamorig:" + side + "Arm"].head_local)[:])
+        wr = np.array((armB.matrix_world @ armB.data.bones["mixamorig:" + side + "Hand"].head_local)[:])
+        c_ = sl.mean(0); ev = np.linalg.eigh(np.cov((sl - c_).T))[1][:, -1]
+        if ev @ (c_ - sh) < 0:
+            ev = -ev
+        tgt = (wr - sh) / np.linalg.norm(wr - sh); q = Vector(ev).rotation_difference(Vector(tgt))
+        ang = math.degrees(q.angle)
+        for i in np.nonzero(aw > 0)[0]:
+            qi = Quaternion().slerp(q, float(aw[i]))
+            CV[i] = sh + np.array((qi @ Vector(CV[i] - sh))[:])
+        print(f"[{TAG}] {side} sleeve turned {ang:.1f} deg onto the arm ({len(sl)} sleeve vertices)")
+    set_world(nc, CV)
     print(f"[{TAG}] standalone coat {os.path.basename(DRESS_COAT)}: {len(LV)} vertices, scaled x{k:.3f} to the generation's coat "
           f"(length {ghi[2] - glo[2]:.3f}, hem z {glo[2]:.3f}); weights from it until C4")
 # by REGION: a coat vertex on the arm (arm-family weights >= 0.5) is fitted to the shirt's sleeves, every other one to the shirt's torso and the

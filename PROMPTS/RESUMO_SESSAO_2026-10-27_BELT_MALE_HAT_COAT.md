@@ -18,8 +18,14 @@
 - Base body INTACT (adapting it to the coat was tried and reverted). Garments keep their generated geometry; move all walls together. Both figures in step. D86 holds the method.
 - The coat generations' coats deform too much; use the STANDALONE coat `leather trench coat 3d model.glb` (licence valid).
 
+## 3. The standalone coat, built
+
+- **C1** `DRESS_COAT="ASSETS/MODELS/leather trench coat 3d model.glb"`: scaled to the generation's coat (female x0.579, male x0.594), on its hem and centre.
+- **C2** the sleeves turned onto each base's arm (10-14 deg). Both rendered: the female nearly clean; the male's arms and shoulders show the shirt.
+
 ## 3. Next (start here)
 
-- D86 route C1-C6 for the standalone coat, on both figures, one step at a time with a render each.
+- D86 route **C3** next (the cohesive volume fit, `COAT_FIT=1`, the male's sleeves and shoulders), then C4 (weights from the base body), C5 (the shirt mask), C6 (material).
+- Run with `COAT_FIT=0` to see C1+C2 alone; a run is `DRESS_COAT=... DRESS_BASE=<assembled no-coat> DRESS_FROM=<assembled coat+hat> DRESS_OUT=... blender -b -P tripo_dress.py`.
 - The cohesive coat fit in `tripo_dress.py` is in the code but NOT validated.
 - Per-figure run: female `LAPEL_SIDE=R`; male `HAT_DY=0.005 HAT_DROP=0.01`.

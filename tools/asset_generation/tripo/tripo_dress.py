@@ -287,6 +287,7 @@ set_world(coat, CV)
 # (SETTLE_COLLIDE; NOT the belt: measured 2026-10-28, the belt alone threw the female's hem up 24 % of H, it rings the coat's belted waist);
 # the cloth stiff (SETTLE_STIFF 600: at 40 it stretched 40 % of H under gravity alone); COAT_SETTLE frames (0 = off, the default
 # until the male's skirt stops tearing open: 40 frames cleared the female's hips, 2026-10-28)
+HEM_MASK = None                                           # the hem band's coat vertices, painted in the review renders
 COAT_SETTLE = int(os.environ.get("COAT_SETTLE", "0")); SETTLE_FADE = float(os.environ.get("SETTLE_FADE", "0.08"))
 if COAT_SETTLE > 0:
     sc = bpy.context.scene; me = bpy.data.meshes.new("settle")
@@ -317,7 +318,7 @@ if COAT_SETTLE > 0:
     HEM_PIN = float(os.environ.get("HEM_PIN", "0.5"))
     if HEM_DROP > 0:
         lo_z = CV[:, 2].min(); band = HEM_BAND * (CV[:, 2].max() - lo_z)
-        bw = np.clip(1.0 - (CV[:, 2] - lo_z) / band, 0.0, 1.0); bw[pin >= 1] = 0.0
+        bw = np.clip(1.0 - (CV[:, 2] - lo_z) / band, 0.0, 1.0); bw[pin >= 1] = 0.0; HEM_MASK = bw > 0
         vb = so.vertex_groups.new(name="band")
         for i in np.nonzero(bw > 0)[0]:
             vb.add([int(i)], float(bw[i]), 'REPLACE'); vg.add([int(i)], max(float(pin[i]), HEM_PIN * float(bw[i])), 'REPLACE')
@@ -450,6 +451,12 @@ if RV_OUT:
     base_of = {"Body_Hair_Hat": "Body_Hair", "Outfit_Shirt_Coated": "Outfit_Shirt"}
     show = {o.name: pal.get(base_of.get(o.name.split(".")[0], o.name.split(".")[0]), (0.5, 0.5, 0.5)) for o in dressed}
     cam, co = tc.setup_renders(dressed, show); files = {}
+    if HEM_MASK is not None:                                 # the hem band in MAGENTA (Director, 2026-10-28: "pinta elas com alguma cor")
+        bm_ = bpy.data.materials.new("rv_band"); bm_.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1.0, 0.0, 1.0, 1)
+        coat.data.materials.append(bm_); bi = len(coat.data.materials) - 1
+        for p_ in coat.data.polygons:
+            if all(HEM_MASK[v] for v in p_.vertices):
+                p_.material_index = bi
     for c_, az in enumerate((0, 35, 90, 180)):
         files[(0, c_)] = f"{RV_OUT}/d_0_{c_}.png"; tc.shot(cam, co, files[(0, c_)], az, Vector((0, 0, 0.5 * H)), 1.15 * H)
         files[(1, c_)] = f"{RV_OUT}/d_1_{c_}.png"; tc.shot(cam, co, files[(1, c_)], az, Vector((0, 0, 0.9 * H)), 0.32 * H)

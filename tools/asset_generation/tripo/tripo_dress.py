@@ -309,6 +309,22 @@ if COAT_SETTLE > 0:
     for i, w in enumerate(pin):
         if w > 0:
             vg.add([i], float(w), 'REPLACE')
+    # a weighted HEM BAND (Director, 2026-10-28: "colar uma tira de couro na parte de baixo toda, com peso puxando o casaco"): Blender cloth
+    # has one mass for every vertex and its force fields did not move the hem (a plane FORCE field at 5 and 20: hem within 0.3 % of H), so the
+    # band is a GOAL: the bottom HEM_BAND of the coat's length is pinned at HEM_PIN to a target that a Displace modifier (keyed 0 -> HEM_DROP
+    # of H over the first half of the run) lowers under the cloth; the band is drawn down and the cloth above stretches by its stiffness
+    HEM_BAND = float(os.environ.get("HEM_BAND", "0.06")); HEM_DROP = float(os.environ.get("HEM_DROP", "0"))
+    HEM_PIN = float(os.environ.get("HEM_PIN", "0.5"))
+    if HEM_DROP > 0:
+        lo_z = CV[:, 2].min(); band = HEM_BAND * (CV[:, 2].max() - lo_z)
+        bw = np.clip(1.0 - (CV[:, 2] - lo_z) / band, 0.0, 1.0); bw[pin >= 1] = 0.0
+        vb = so.vertex_groups.new(name="band")
+        for i in np.nonzero(bw > 0)[0]:
+            vb.add([int(i)], float(bw[i]), 'REPLACE'); vg.add([int(i)], max(float(pin[i]), HEM_PIN * float(bw[i])), 'REPLACE')
+        dm = so.modifiers.new("hem", 'DISPLACE'); dm.direction = 'Z'; dm.vertex_group = "band"; dm.mid_level = 0.0
+        dm.strength = 0.0; dm.keyframe_insert("strength", frame=1)
+        dm.strength = -HEM_DROP * H; dm.keyframe_insert("strength", frame=max(2, COAT_SETTLE // 2))
+        print(f"[{TAG}] hem band: {int((bw > 0).sum())} coat vertices in the bottom {band / H * 100:.1f} % of H, drawn {HEM_DROP * 100:.1f} % of H down at pin {HEM_PIN}")
     cm = so.modifiers.new("Cloth", 'CLOTH'); cs = cm.settings
     # SETTLE_MASS, kg per vertex: Blender cloth has no per-vertex mass, so "a base mais pesada, pra esticar mais o tecido todo" (Director,
     # 2026-10-28) is a heavier coat against the same stiffness

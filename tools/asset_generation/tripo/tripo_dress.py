@@ -310,7 +310,10 @@ if COAT_SETTLE > 0:
         if w > 0:
             vg.add([i], float(w), 'REPLACE')
     cm = so.modifiers.new("Cloth", 'CLOTH'); cs = cm.settings
-    cs.quality = 15; cs.mass = 0.15; cs.tension_stiffness = cs.compression_stiffness = float(os.environ.get("SETTLE_STIFF", "600")); cs.shear_stiffness = 200.0
+    # SETTLE_MASS, kg per vertex: Blender cloth has no per-vertex mass, so "a base mais pesada, pra esticar mais o tecido todo" (Director,
+    # 2026-10-28) is a heavier coat against the same stiffness
+    cs.quality = 15; cs.mass = float(os.environ.get("SETTLE_MASS", "0.15"))
+    cs.tension_stiffness = cs.compression_stiffness = float(os.environ.get("SETTLE_STIFF", "600")); cs.shear_stiffness = 200.0
     cs.bending_stiffness = 20.0; cs.vertex_group_mass = "pin"; cs.pin_stiffness = 5.0
     cs.effector_weights.gravity = float(os.environ.get("SETTLE_GRAVITY", "1"))   # 0: collision alone, no weight (Director, 2026-10-28)
     cm.collision_settings.distance_min = COAT_GAP * H; cm.collision_settings.use_self_collision = False

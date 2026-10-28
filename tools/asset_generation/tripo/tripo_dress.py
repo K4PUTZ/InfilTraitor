@@ -42,7 +42,7 @@ HAT_DY = float(os.environ.get("HAT_DY", "0.015"))         # back (+) / forward (
 HAT_DROP = float(os.environ.get("HAT_DROP", "0"))         # down after the fit, a fraction of H (the male: 0.01, Director 2026-10-27)
 HAT_TILT, HAT_MAX_LIFT = 8.0, 0.012                     # degrees; a fraction of H
 COAT_FIT = os.environ.get("COAT_FIT", "1") != "0"
-COAT_LONGER = float(os.environ.get("COAT_LONGER", "0.08"))   # how far the standalone coat's hem drops (C1b), a fraction of H
+COAT_LONGER = float(os.environ.get("COAT_LONGER", "0.12"))   # how far the standalone coat's hem drops (C1b), a fraction of H
 UNDER_COAT = ("Outfit_Shirt", "Outfit_Tie", "Outfit_Belt", "Outfit_Buckle", "Outfit_Trousers")
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -159,15 +159,16 @@ if DRESS_COAT:
         p_.use_smooth = False
     bpy.data.objects.remove(coat); coat = nc; mA["Outfit_Coat"] = nc; CV = LV.copy()
     # C1b (Director, 2026-10-28: "extender toda a parte de baixo do casaco, pra nao ficar engruvinhado na altura do peito e da cintura"): the
-    # coat below the base's chest (the Spine2 joint) is stretched DOWN so its hem drops COAT_LONGER (a fraction of H); vertical only, linear
-    # from the chest, so the folds keep their shape and spread; a sleeve vertex takes it by (1 - its arm weight), so the sleeves stay
+    # coat below the base's neck (the Neck joint; Director, 2026-10-28, second pass: "esticar todo o comprimento", the chest and the waist
+    # were still bunched with the pivot at Spine2) is stretched DOWN so its hem drops COAT_LONGER (a fraction of H); vertical only, linear
+    # from the neck, so the folds keep their shape and spread; a sleeve vertex takes it by (1 - its arm weight), so the sleeves stay
     if COAT_LONGER > 0:
-        piv = (armB.matrix_world @ armB.data.bones["mixamorig:Spine2"].head_local).z; hem = CV[:, 2].min()
+        piv = (armB.matrix_world @ armB.data.bones["mixamorig:Neck"].head_local).z; hem = CV[:, 2].min()
         s = COAT_LONGER * H / max(piv - hem, 1e-6)
         free = 1.0 - np.clip(np.array([sum(x for g, x in w.items() if any(k in g for k in ("Arm", "Hand", "Shoulder"))) for w in NW]), 0, 1)
         below = CV[:, 2] < piv
         CV[below, 2] -= (piv - CV[below, 2]) * s * free[below]
-        print(f"[{TAG}] coat below the chest (z {piv:.3f}) stretched x{1 + s:.3f}: hem {hem:.3f} -> {CV[:, 2].min():.3f}")
+        print(f"[{TAG}] coat below the neck (z {piv:.3f}) stretched x{1 + s:.3f}: hem {hem:.3f} -> {CV[:, 2].min():.3f}")
     # C2 (D86): each SLEEVE turned about its shoulder onto the base's arm (the standalone's sleeves splay wider than either figure's arms): the
     # sleeve's axis is the principal direction of its vertices (arm weight >= 0.9 on that side), the arm's the base's shoulder -> wrist line;
     # each vertex turns by that rotation scaled by its own arm weight on that side, so the torso stays and the shoulder bends smoothly

@@ -126,6 +126,29 @@ umbrellas, chairs, cones, Pryce's **campaign posters** (in-world text via `tr()`
 5. **Two women per faction among its four named people** (three specialists + the store keeper; the question said "five", a miscount);
    chosen 2026-10-24 (`DESIGN` §11.7).
 
+### 7.1 Rulings (Director, 2026-10-29): bare bodies, a shared roster, machines
+
+6. **Every model is generated BARE (no accessories); the swappable pieces are generated afterwards** and fitted to it (`ACTOR` D86's
+   method). Guards sell no cosmetics, but they must VARY.
+7. **Bosses and sub-leaders are unique models** (§5's named characters).
+8. **The rank-and-file is a shared roster of ~10 varied humans** (both figures, ages, builds), interchangeable across factions: a
+   faction's soldier is a roster body + that faction's pieces (§4's sets, the counter units' gear). Supersedes "one set per faction,
+   per base" as the way a guard is BUILT; §4's piece lists stand as the pieces.
+9. **Machines complement the human threats: robots, drones, turrets, cameras, alarms, spread across the factions so none is
+   unbalanced. The police's K9 dogs count as one of the police's "robot" types** (still the quadruped skeleton, ruling 2).
+10. **TRAPS on the path are deferred to the scenarios milestone.**
+
+**The machine roster (PROPOSED, Claude, 2026-10-29; awaits the Director): four per faction, one per role, so the factions match:**
+
+| Role | FID (police) | Calm Waters (militia) | Bunsen Burners (bikers) | Corporation |
+|---|---|---|---|---|
+| Fixed EYE (sees, does not move) | street CCTV dome | watchtower camera on a mast | phone on a pole (scavenged lookout) | face-recognition camera |
+| MOBILE (patrols) | **K9 dog** (follows trails) | quad scout drone | RC scout car | wheeled security robot |
+| ARMED fixed | taser sentry on a tripod | auto-turret (machine gun) | jury-rigged shotgun turret | ceiling laser turret |
+| ALARM (raises the others) | siren box | motion sensor + flare | air horn on a battery | laser grid + alarm panel |
+
+Each is one mesh (PP7 when it moves); a machine's gameplay (sight cone, noise, hacking) is `AI_MASTER_PLAN`'s, not this list's.
+
 ## 8. Counts (proposal)
 
 | Kind | Count |

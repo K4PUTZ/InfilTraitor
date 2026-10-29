@@ -1,11 +1,11 @@
 # tripo_compose.py — model 3: a body that fits INSIDE the coat of a coat generation (ACTOR D86, Director 2026-10-28: "montar uma versao do corpo
 # que cabe dentro do casaco, misturando partes dos dois modelos"). 1 = the figure generated without the coat, 2 = the one generated with it
 # (both tripo_assemble outputs, the same 65 joints). The coat and the skeleton are 2's, so the coat keeps the round fit it was generated with;
-# from 1 come what 2 lacks or the Director prefers: the head and hair, the hands, the belt and buckle, and the shirt's ARMS, SHOULDERS and BUST
-# (1's shirt faces with arm weight >= ARM_MIN, or in front of the spine above the Spine1 joint). Each piece of 1 is carried onto 2's rest
+# from 1 come what 2 lacks or the Director prefers: the head and hair, the hands, the belt and buckle, the TIE, and the shirt's arms, chest,
+# shoulders, COLLAR and back (the whole collar region is one model's, 1's: a seam at the neck with 2's collar stepped, Director 2026-10-28). Each piece of 1 is carried onto 2's rest
 # skeleton by its own skin weights (a linear blend of rest2 @ rest1^-1 per bone, as tripo_dress does) and bound to 2's armature.
-# From 2: the coat, the hat (placed on 1's head by the face, HAT_DY back and HAT_TILT, as tripo_dress), the shirt (its torso, open at the
-# arms), the tie, the trousers and the shoes. 2's head, hair, hands, belt and buckle are dropped.
+# From 2: the coat, the hat (placed on 1's head by the face, HAT_DY back and HAT_TILT, as tripo_dress), the shirt's belly front, the
+# trousers and the shoes. 2's head, hair, hands, belt, buckle and tie are dropped.
 # Out: one GLB (2's armature and clips); RV_OUT: hero.png and big4.png as tripo_dress.
 # Env: COMP_1, COMP_2, COMP_OUT; RV_OUT; HAT_DY (default 0.015), ARM_MIN (default 0.3).
 # Usage: blender -b -P tripo_compose.py
@@ -20,8 +20,8 @@ TAG = "tripo_compose"
 P1, P2, OUT = os.environ["COMP_1"], os.environ["COMP_2"], os.environ["COMP_OUT"]
 RV_OUT = os.environ.get("RV_OUT", "").rstrip("/")
 HAT_DY = float(os.environ.get("HAT_DY", "0.015")); HAT_TILT = 8.0; ARM_MIN = float(os.environ.get("ARM_MIN", "0.3"))
-FROM_1 = ("Body_Head", "Body_Hair", "Body_Hands", "Outfit_Belt", "Outfit_Buckle", "Outfit_Shirt")
-FROM_2 = ("Outfit_Coat", "Outfit_Hat", "Outfit_Shirt", "Outfit_Tie", "Outfit_Trousers", "Outfit_Shoes")
+FROM_1 = ("Body_Head", "Body_Hair", "Body_Hands", "Outfit_Belt", "Outfit_Buckle", "Outfit_Shirt", "Outfit_Tie")
+FROM_2 = ("Outfit_Coat", "Outfit_Hat", "Outfit_Shirt", "Outfit_Trousers", "Outfit_Shoes")
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
@@ -91,7 +91,7 @@ spine0 = arm1.matrix_world @ arm1.data.bones["mixamorig:Spine"].head_local
 sh1 = m1["Outfit_Shirt"]; V1 = tc.world_verts(sh1)
 arm_w = np.array([sum(x for g, x in w.items() if any(k in g for k in ("Shoulder", "Arm", "Hand"))) / (sum(w.values()) or 1.0)
                   for w in tc.read_weights(sh1)])
-keep_v = (arm_w >= ARM_MIN) | (V1[:, 2] > spine1.z) | (V1[:, 1] > spine0.y)
+keep_v = ((arm_w >= ARM_MIN) | (V1[:, 2] > spine1.z) | (V1[:, 1] > spine0.y))
 dead = [p.index for p in sh1.data.polygons if not all(keep_v[v] for v in p.vertices)]
 import bmesh
 bm = bmesh.new(); bm.from_mesh(sh1.data); bm.faces.ensure_lookup_table()
@@ -100,11 +100,12 @@ sh1.name = "Outfit_Shirt_Arms"
 print(f"[{TAG}] 1's shirt: kept the arms, the chest and shoulders, the back ({len(sh1.data.polygons)} faces, {len(dead)} dropped)")
 for n in FROM_1:
     carry(sh1 if n == "Outfit_Shirt" else m1[n])
-for n in ("Body_Head", "Body_Hair", "Body_Hands", "Outfit_Belt", "Outfit_Buckle"):
+fa = tc.world_verts(m1["Body_Head"])                     # 1's whole head on 2's skeleton (the hat is placed by it, before the neck seam)
+for n in ("Body_Head", "Body_Hair", "Body_Hands", "Outfit_Belt", "Outfit_Buckle", "Outfit_Tie"):
     bpy.data.objects.remove(m2[n])
 s1b = arm2.matrix_world @ arm2.data.bones["mixamorig:Spine1"].head_local; s0b = arm2.matrix_world @ arm2.data.bones["mixamorig:Spine"].head_local
 sh2 = m2["Outfit_Shirt"]; V2 = tc.world_verts(sh2)
-gone = (V2[:, 2] > s1b.z) | (V2[:, 1] > s0b.y)
+gone = ((V2[:, 2] > s1b.z) | (V2[:, 1] > s0b.y))
 bm = bmesh.new(); bm.from_mesh(sh2.data); bm.faces.ensure_lookup_table()
 d2 = [bm.faces[p.index] for p in sh2.data.polygons if all(gone[v] for v in p.vertices)]
 bmesh.ops.delete(bm, geom=d2, context='FACES'); bm.to_mesh(sh2.data); bm.free(); sh2.data.update()
@@ -127,7 +128,6 @@ for n in set(m1) - set(FROM_1):
 
 # 2's hat on 1's head (tripo_dress's placement: by the face, HAT_DY back, the back tilted HAT_TILT down about the brow)
 hat = m2["Outfit_Hat"]; HV = tc.world_verts(hat)
-fa = tc.world_verts(m1["Body_Head"])                     # 1's head, already on 2's skeleton
 ar, mr, ac = imp(P2)                                     # a second, untouched copy of 2 for its head box (2's head was dropped above)
 fb = tc.world_verts(mr["Body_Head"])
 for o in list(mr.values()) + [ar]:

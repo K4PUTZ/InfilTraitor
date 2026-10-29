@@ -138,7 +138,7 @@ umbrellas, chairs, cones, Pryce's **campaign posters** (in-world text via `tr()`
    unbalanced. The police's K9 dogs count as one of the police's "robot" types** (still the quadruped skeleton, ruling 2).
 10. **TRAPS on the path are deferred to the scenarios milestone.**
 
-**The machine roster (PROPOSED, Claude, 2026-10-29; awaits the Director): four per faction, one per role, so the factions match:**
+**The machine roster (proposed by Claude, RATIFIED by the Director 2026-10-29: "Aprovo"): four per faction, one per role, so the factions match:**
 
 | Role | FID (police) | Calm Waters (militia) | Bunsen Burners (bikers) | Corporation |
 |---|---|---|---|---|

@@ -1,5 +1,5 @@
 # MOVEMENT_MASTER_PLAN
-## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.1
+## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.2
 
 > **Status: 🟢 MILESTONE OPENED 2026-10-27 (Director: "vamos abrir a milestone de movimento e escrever o MASTER PLAN"; "vamos fazer
 > um banco de animações, e depois mapear o que precisa, o que tem e o que falta").** Nothing in §3-§9 is built yet. The brief this
@@ -10,6 +10,12 @@
 >
 > **v1.1 (2026-10-28):** MV-2's map is §4.1, by clip NAME only (to confirm on MV-1's sheets), with the credits ranking and the
 > Director's open questions. Docs only; nothing built.
+>
+> **v1.2 (2026-10-29): the bank keeps clips in PAIRS, one per figure (Director: "vamos ter que guardar elas em pares").** Test
+> (Blender, clay renders, the male's `walk` on the three female models, plongée / front / side videos; the males on their own `walk`):
+> a male clip PLAYS on the female with no error (same 65 joints), but even the plain female base (model 1) walks oddly with it. So
+> "store rotations, any figure plays it" (§1.3, §3) is not enough for the look: the Director will re-export the animations onto the
+> female from Tripo, and each clip is kept per figure. Retargeting a clip across figures stays a FALLBACK for a clip one figure lacks.
 
 ---
 
@@ -86,11 +92,17 @@ come from several files; the bank makes a clip independent of the figure it was 
 - **A catalogue row:** `id`, the source file and its original name, frames, fps, duration, the root's travel (metres per second
   horizontally, and its height range: a jump, a crouch), whether it loops (first and last pose within a measured tolerance), the
   side that leads (for a mirror), tags (locomotion / combat / reaction / gesture / interaction / idle), and a contact sheet path.
+- **Pairs (v1.2, Director 2026-10-29):** a clip is stored PER FIGURE: `bank/<figure>/<id>.glb` (`figure` = `female` / `male`), and
+  the catalogue row is the clip `id` with one entry per figure (`source`, frames, travel, loop, sheet). A clip the game needs exists
+  for both figures; a figure missing one is flagged in the catalogue (`missing: [female]`) and may play the other figure's clip
+  retargeted (rotations + Hips normalised by hip height) only as a marked fallback, never silently. The review sheet shows the pair
+  side by side.
 - **Duplicates:** the same name from two files is kept once if the curves match within a tolerance, both kept (`_b`) otherwise,
   reported either way.
 - **Review:** a contact sheet per clip (4 frames, 3/4 and side, on ONE reference figure) and an index sheet of the whole bank, so the
   Director judges by looking (`render-dont-describe`).
-- **Done:** every clip of every Tripo GLB in `ASSETS/MODELS/` is in the bank, each plays on both bases with no joint flipped
+- **Done:** every clip of every Tripo GLB in `ASSETS/MODELS/` is in the bank under its figure, every pair is complete or its gap
+  flagged, each plays on its own base with no joint flipped
   (checked on the sheets), the catalogue is complete, a re-run is byte-identical.
 
 ---

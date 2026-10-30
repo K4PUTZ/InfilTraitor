@@ -90,6 +90,15 @@ if coat:
     take([coat], "Outfit_Coat", "anchor: largest, arms + legs")
 
 
+# a BELT GIVEN in the file (an edited base, ACTOR D86: our strap and buckle fitted by hand in Blender, MALE_BASE_edit 2026-10-29) is taken as it
+# is: no band measured, nothing flattened or generated, and Tripo's belt pieces stay in the trousers as with BELT_KEEP
+GIVEN = [n for n in sorted(free) if n.split(".")[0] in ("Outfit_Belt", "Outfit_Buckle")]
+for n in GIVEN:
+    take([n], n.split(".")[0], "given in the file (fitted by hand)")
+if GIVEN:
+    BELT_KEEP = True
+
+
 def past_wrist(n):
     """how far along its side's forearm -> hand line a part's centre lies (1 = the wrist): a hand is past it, a cuff short of it"""
     side = "Left" if np.sign(D[n]["ctr"][0]) == np.sign(B["LeftHand"][0]) else "Right"
@@ -410,7 +419,7 @@ if bp:
         take(belt_parts + bits, "_drop", "a piece of the Tripo belt, rebuilt")
     print(f"[{TAG}] belt in {len(belt_parts)} parts of its own (+ {len(bits)} on it), {'kept in the trousers' if BELT_KEEP else 'dropped'}: {belt_parts + bits}")
 waist = [n for n in slot if slot[n] == "Outfit_Trousers" and D[n]["lo"][2] < hz - 0.04 * H and D[n]["hi"][2] > hz]
-if waist:
+if waist and not GIVEN:
     tn = max(waist, key=lambda n: D[n]["n"]); to = D[tn]["o"]; mw = to.matrix_world; m3 = mw.to_3x3()
     bins = {}
     for p in to.data.polygons:

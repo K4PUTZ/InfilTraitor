@@ -420,6 +420,46 @@ def sew_follow(P_old, P_new):
         P_new[i] = loc + t1 * o3[0] + t2 * o3[1] + n_ * o3[2]
     return P_new
 print(f"[{TAG}] coat walls: {int(LINING.sum())} lining vertices sewn to the outer wall ({len(_ot)} outer triangles)")
+# SHOULDER_FIT (Director, 2026-10-30: the coat SUSPENDED on the shoulders, without the cloth settle that tore it): above the chest every
+# outer-wall point inside the torso or nearer it than COAT_GAP gets a push out to COAT_GAP (along away()); the pushes are spread as one
+# smooth field (gaussian, SFIT_R of H) over the whole outer wall above the chest, fading to nothing over SETTLE_FADE below Spine2, so the
+# shoulders lift as a piece; the lining rides it through the seam
+if os.environ.get("SHOULDER_FIT", "1") != "0" and SEW is not None:
+    SFIT_R = float(os.environ.get("SFIT_R", "0.03")); SETTLE_FADE = float(os.environ.get("SETTLE_FADE", "0.08"))
+    top_ = (armB.matrix_world @ armB.data.bones["mixamorig:Spine2"].head_local).z
+    neck_ = (armB.matrix_world @ armB.data.bones["mixamorig:Neck"].head_local).z
+    zone = (CV[:, 2] > top_ - SETTLE_FADE * H) & (CV[:, 2] < neck_) & ~LINING     # the collar is not pushed (the head lifted it 5 % of H)
+    for _pass in range(int(os.environ.get("SFIT_IT", "3"))):           # each pass finds again what still comes through
+        src_i, src_d = [], []
+        for i in np.nonzero(zone)[0]:
+            q = CV[i]; dv = away(q); best = None
+            for kT, T in body.items():
+                if "Head" in kT or "Hair" in kT:
+                    continue
+                loc, nrm, _f, d_ = T.find_nearest(Vector(q), 0.05 * H)
+                if loc is None:
+                    continue
+                sd = (Vector(q) - loc).dot(Vector(nrm))      # signed: < 0 inside the body (the shoulder tops are the sleeves' shells)
+                best = sd if best is None else min(best, sd)
+            if best is not None and best < COAT_GAP * H:
+                src_i.append(i); src_d.append(dv * (COAT_GAP * H - best))
+        if src_i:
+            P0 = CV.copy(); S_ = CV[src_i]; D_ = np.array(src_d); moved = 0
+            for i in np.nonzero(zone)[0]:
+                w_ = np.exp(-np.sum((S_ - CV[i]) ** 2, axis=1) / (2 * (SFIT_R * H) ** 2))
+                if w_.sum() < 1e-6:
+                    continue
+                fade = np.clip((CV[i, 2] - (top_ - SETTLE_FADE * H)) / (SETTLE_FADE * H), 0.0, 1.0)
+                d_ = (w_[:, None] * D_).sum(0) / max(w_.sum(), 1.0) * fade
+                # never less than the vertex's own push (a source keeps its full lift)
+                CV[i] = CV[i] + d_; moved += 1
+            for k, i in enumerate(src_i):
+                need = P0[i] + D_[k]
+                if np.linalg.norm(need - P0[i]) > np.linalg.norm(CV[i] - P0[i]):
+                    CV[i] = need
+            CV = sew_follow(P0, CV); set_world(coat, CV)
+            print(f"[{TAG}] shoulder fit: {len(src_i)} outer points through or against the torso, {moved} moved, largest push "
+                  f"{np.linalg.norm(D_, axis=1).max() / H * 100:.2f} % of H")
 HEM_MASK = None                                           # the hem band's coat vertices, painted in the review renders
 COAT_SETTLE = int(os.environ.get("COAT_SETTLE", "0")); SETTLE_FADE = float(os.environ.get("SETTLE_FADE", "0.08"))
 if COAT_SETTLE > 0:

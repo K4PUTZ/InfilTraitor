@@ -654,9 +654,19 @@ if "Outfit_Shirt" in mB:
         h = Tc.ray_cast(Vector(q), Vector(n_), min(0.03 * H, d))
         return h[0] is not None
     out_ = [not inside(Tc, q) and through_coat(q) for q in SV]
+    # and what the coat COVERS seen from outside (a ray away from the spine meets it within 8 % of H; between the lapels it does not): on the
+    # male's shoulders the shirt showed between the coat's large triangles, neither deep in it nor out through it (2026-10-30)
+    def covered(q):
+        dv = Vector(away(q)); return Tc.ray_cast(Vector(q) + dv * 1e-4, dv, 0.08 * H)[0] is not None
+    deep = [d_ or covered(q) for d_, q in zip(deep, SV)]
+    # and what pokes OUT on the shoulder blades: the coat right behind it toward the spine (the toward-the-bone ray runs sideways there)
+    def behind(q):
+        dv = -Vector(away(q)); return Tc.ray_cast(Vector(q) + dv * 1e-4, dv, 0.05 * H)[0] is not None
+    out_ = [o_ or (not covered(q) and behind(q)) for o_, q in zip(out_, SV)]
     # the COLLAR is never masked: from 4 % of H under the neck bone up (the female's shirt collar lies over her coat's collar stand, which
     # reads locally exactly like a spot coming through the coat, and both rules took it)
-    keep = SV[:, 2] > bh("Neck")[2] - 0.04 * H
+    keep = (SV[:, 2] > bh("Neck")[2] - 0.04 * H) & (np.linalg.norm(SV[:, :2] - bh("Neck")[:2], axis=1) < 0.06 * H)   # the collar ring only:
+    # the band alone also kept the male's shoulder blades, which sit in it, and they showed through the coat (2026-10-30)
     deep = [d_ and not k_ for d_, k_ in zip(deep, keep)]; out_ = [o_ and not k_ for o_, k_ in zip(out_, keep)]
     sc_, nd = masked_copy(mB["Outfit_Shirt"], "Outfit_Shirt_Coated", lambda f: all(deep[v.index] for v in f.verts) or any(out_[v.index] for v in f.verts))
     print(f"[{TAG}] shirt mask: {nd} of {len(mB['Outfit_Shirt'].data.polygons)} shirt faces deep inside the coat or out through it ({sum(out_)} vertices out)"); extra.append(sc_)

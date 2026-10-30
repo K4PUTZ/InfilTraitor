@@ -18,7 +18,7 @@
 # (3) WEIGHTS: the coat gets tripo_common.coat_fix; a detail of a GARMENT (coat, shirt, tie, trousers, shoes, hat) lying ON it (within 1 % of H) takes the weights of the
 #     nearest point of its garment's anchors (a detail farther off, like a forearm sleeve, keeps Tripo's) (barycentric, after the coat fix); head, hands and hair details keep Tripo's (the fingers, the head).
 # (4) Each slot is joined into one mesh named after it (vertex groups merge by name).
-# Env: TRIPO_GLB, TRIPO_OUT, SLOT_OVERRIDE, RV_OUT (optional folder: slots.png, the slots coloured in rest pose, then without the coat, then the
+# Env: TRIPO_GLB, TRIPO_OUT, SLOT_OVERRIDE, BELT_KEEP (1 = keep a belt pushed in by hand, below), RV_OUT (optional folder: slots.png, the slots coloured in rest pose, then without the coat, then the
 # head without the hat; clip_<i>.png, 4 frames of each of RV_CLIPS at 3/4 and from the side), RV_CLIPS (default every action).
 # Usage: blender -b -P tripo_assemble.py
 import math, os, sys
@@ -187,6 +187,11 @@ def new_skinned(name, verts, faces, W, like):
 BUCKLE_H, BUCKLE_ASPECT, BUCKLE_BAR, BUCKLE_D = 1.25, 1.5, 0.17, 0.0035   # see (1); BUCKLE_D a fraction of H
 STRAP_T, STRAP_GAP = 0.004, 0.0015                     # fractions of H
 STRAP_STEPS = 96
+# BELT_KEEP=1 (a base edited by hand, ACTOR D86 amended 2026-10-29): Tripo's belt was pushed into the trousers in Blender, so it is KEPT as
+# part of the trousers (no part dropped, no band flattened: "Não é pra tirar as peças. Só colocar nosso cinto por cima"); the band is still
+# measured to place our strap and buckle over it, and the band under them is still made as stiff as the belt.
+BELT_KEEP = os.environ.get("BELT_KEEP", "0") == "1"
+KEPT_BELT = []                                         # the kept parts (BELT_KEEP), filled where the belt parts are found
 BUCKLE_SLOT = {"max_w": 0.060, "max_h": 0.045, "max_d": 0.015, "max_tris": 500}   # fractions of H (a 1.80 m figure: 10.8 x 8.1 x 2.7 cm)
 
 
@@ -238,8 +243,8 @@ def belt_from_band(tn, to, band, LO, HI, ax, ang, NS, zlo, zhi):
     lean = np.degrees(np.arctan(-hip[:, 0]))
     print(f"[{TAG}] hip line: the strap leans in {lean.min():.1f} to {lean.max():.1f} deg (front {lean[STRAP_STEPS * 3 // 4]:.1f}, "
           f"sides {lean[0]:.1f} / {lean[STRAP_STEPS // 2]:.1f}, back {lean[STRAP_STEPS // 4]:.1f})")
-    # (2) flatten the band into the trousers, down to the hip line
-    for v in bandv:
+    # (2) flatten the band into the trousers, down to the hip line (not when the base keeps its belt)
+    for v in ([] if BELT_KEEP else bandv):
         q = V[v]; r = rad[v]; r0 = hipr(q)
         if r > r0:
             d = (q[:2] - ax) / max(r, 1e-9); V[v, :2] = ax + d * r0
@@ -260,7 +265,7 @@ def belt_from_band(tn, to, band, LO, HI, ax, ang, NS, zlo, zhi):
             TW[v] = tc.top4({g: x for g, x in m.items() if x > 1e-6}, P + "Hips")
     tc.write_weights(to, TW)
     to.data.update(); D[tn] = part_entry(to)
-    print(f"[{TAG}] belt band: {len(band)} faces of {tn} flattened into the trousers (sector radii {ref.min():.3f}-{ref.max():.3f})")
+    print(f"[{TAG}] belt band: {len(band)} faces of {tn} {'kept as edited' if BELT_KEEP else 'flattened into the trousers'} (sector radii {ref.min():.3f}-{ref.max():.3f})")
     strap_out = make_strap(tn, LO, HI, ax, edge, hip)
     make_buckle(LO, HI, ax, edge, strap_out)
 
@@ -297,15 +302,18 @@ def make_buckle(LO, HI, ax, edge, strap_out):
 
 def make_strap(tn, LO, HI, ax, edge, hip):
     """(3) the strap, leaning on the hip line; returns, for an angle around the waist, its outer face as (c, b): radius = c + b z"""
-    N = STRAP_STEPS; T = D[tn]["bvh"]; rings = []; outer = []; off = np.zeros(N)
+    N = STRAP_STEPS; rings = []; outer = []; off = np.zeros(N)
+    TS = [D[tn]["bvh"]] + [D[n]["bvh"] for n in KEPT_BELT]  # BELT_KEEP: our strap goes over the kept belt too (MALE_BASE_edit: its buckle and tail
+                                                         # came through ours)
     # pushed out only where the trousers would come THROUGH it, over its own height: what stays inside it is hidden, and a belt loop's end
     # under it (0.4-0.5 % of H proud on the first female; it pushed the whole front out) is the loop
     for k in range(N):
         a = 2 * math.pi * k / N; d2 = np.array([math.cos(a), math.sin(a)]); b, c = hip[k]
         for z in np.linspace(edge(LO, a), edge(HI, a), 7):
-            h = T.ray_cast(Vector((ax[0] + d2[0] * 0.5 * H, ax[1] + d2[1] * 0.5 * H, z)), Vector((-d2[0], -d2[1], 0)), 0.5 * H)
-            if h[0] is not None:
-                off[k] = max(off[k], 0.5 * H - h[3] - (c + b * z) - (STRAP_GAP + STRAP_T - 0.0005) * H)
+            for T in TS:
+                h = T.ray_cast(Vector((ax[0] + d2[0] * 0.5 * H, ax[1] + d2[1] * 0.5 * H, z)), Vector((-d2[0], -d2[1], 0)), 0.5 * H)
+                if h[0] is not None:
+                    off[k] = max(off[k], 0.5 * H - h[3] - (c + b * z) - (STRAP_GAP + STRAP_T - 0.0005) * H)
     off = np.maximum.reduce([np.roll(off, s) for s in range(-2, 3)])     # a stiff strap: the running max, then its average (never below
     off = sum(np.roll(off, s) for s in range(-2, 3)) / 5.0               # any step's own need)
     for k in range(N):
@@ -396,8 +404,11 @@ if bp:
     bhi = U.max(0) + np.array([0.015, 0.015, 0.005]) * H     # and what lies inside them (the buckle's bits): >= 80 % of it in their box
     bits = sorted(n for n in free if n not in belt_parts and D[n]["n"] < min(D[m]["n"] for m in belt_parts)
                   and np.mean(np.all((D[n]["V"] >= blo) & (D[n]["V"] <= bhi), axis=1)) >= 0.8)
-    take(belt_parts + bits, "_drop", "a piece of the Tripo belt, rebuilt")
-    print(f"[{TAG}] belt in {len(belt_parts)} parts of its own (+ {len(bits)} on it), dropped: {belt_parts + bits}")
+    if BELT_KEEP:
+        take(belt_parts + bits, "Outfit_Trousers", "a piece of the Tripo belt, kept (BELT_KEEP: pushed in by hand)"); KEPT_BELT[:] = belt_parts + bits
+    else:
+        take(belt_parts + bits, "_drop", "a piece of the Tripo belt, rebuilt")
+    print(f"[{TAG}] belt in {len(belt_parts)} parts of its own (+ {len(bits)} on it), {'kept in the trousers' if BELT_KEEP else 'dropped'}: {belt_parts + bits}")
 waist = [n for n in slot if slot[n] == "Outfit_Trousers" and D[n]["lo"][2] < hz - 0.04 * H and D[n]["hi"][2] > hz]
 if waist:
     tn = max(waist, key=lambda n: D[n]["n"]); to = D[tn]["o"]; mw = to.matrix_world; m3 = mw.to_3x3()

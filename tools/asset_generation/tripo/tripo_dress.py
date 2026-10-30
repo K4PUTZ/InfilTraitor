@@ -407,8 +407,16 @@ if LINING.any() and _ot:
     def _frame(P, t):
         a, b, c = (Vector(P[k]) for k in t); n_ = (b - a).cross(c - a).normalized(); t1 = (b - a).normalized()
         return a, b, c, t1, n_.cross(t1), n_
+    _otb = {t: k for k, t in enumerate(_ot)}
     for i in np.nonzero(LINING)[0]:
-        loc, _n, fi, _d = _ob.find_nearest(Vector(CV[i])); t = _ot[fi]; a, b, c, t1, t2, n_ = _frame(CV, t)
+        # the outer wall right OUTSIDE it (the ray that made it lining), not merely the nearest: at a cuff resting on the skirt the nearest
+        # outer face was the skirt's, and the cuff's lining shot down to the hip in motion (2026-10-30)
+        dv = Vector(away(CV[i])); h_ = _ob.ray_cast(Vector(CV[i]) + dv * 1e-4, dv, LINING_GAP * H)
+        if h_[0] is not None:
+            loc, fi = h_[0], h_[2]
+        else:
+            loc, _n, fi, _d = _ob.find_nearest(Vector(CV[i]))
+        t = _ot[fi]; a, b, c, t1, t2, n_ = _frame(CV, t)
         bc = barycentric_transform(loc, a, b, c, Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1)))
         off = Vector(CV[i]) - loc; SEW[int(i)] = (t, tuple(bc), (off.dot(t1), off.dot(t2), off.dot(n_)))
 
@@ -466,6 +474,69 @@ if os.environ.get("SHOULDER_FIT", "1") != "0" and SEW is not None:
             CV = sew_follow(P0, CV); set_world(coat, CV)
             print(f"[{TAG}] shoulder fit: {len(src_i)} outer points through or against the torso, {moved} moved, largest push "
                   f"{np.linalg.norm(D_, axis=1).max() / H * 100:.2f} % of H")
+# SLEEVE_FIT (2026-10-30): the male's hands came through his cuffs at REST (the coat's cuff, turned onto the arm, is narrower than his
+# wrist): every sleeve point (coat_arm, not the lining) inside or against the shirt's sleeves or the HANDS (never tested before: not
+# under the coat) is pushed out from the arm bone to COAT_GAP, the pushes spread over the sleeve only (SFIT_R), in passes; the lining rides
+if os.environ.get("SLEEVE_FIT", "1") != "0" and SEW is not None:
+    arm_sh = dict(body_a)
+    if "Body_Hands" in mB:
+        arm_sh["Body_Hands"] = sub_shell(mB["Body_Hands"], np.ones(len(mB["Body_Hands"].data.vertices), bool))
+    arm_sh = {k: v for k, v in arm_sh.items() if v}
+    slz = coat_arm & ~LINING; SR = float(os.environ.get("SFIT_R", "0.03")) * 0.7
+    for _pass in range(int(os.environ.get("SLEEVE_IT", "3"))):
+        si_, sd2 = [], []
+        for i in np.nonzero(slz)[0]:
+            q = Vector(CV[i]); best = None
+            for T in arm_sh.values():
+                loc, nrm, _f, d_ = T.find_nearest(q, 0.04 * H)
+                if loc is not None:
+                    sgn = (q - loc).dot(Vector(nrm)); best = sgn if best is None else min(best, sgn)
+            if best is not None and best < COAT_GAP * H:
+                si_.append(i); sd2.append(away(CV[i]) * (COAT_GAP * H - best))
+        if not si_:
+            break
+        P0 = CV.copy(); S_ = CV[si_]; D_ = np.array(sd2)
+        for i in np.nonzero(slz)[0]:
+            w_ = np.exp(-np.sum((S_ - CV[i]) ** 2, axis=1) / (2 * (SR * H) ** 2))
+            if w_.sum() > 1e-6:
+                CV[i] = CV[i] + (w_[:, None] * D_).sum(0) / max(w_.sum(), 1.0)
+        for k, i in enumerate(si_):
+            if np.linalg.norm(D_[k]) > np.linalg.norm(CV[i] - P0[i]):
+                CV[i] = P0[i] + D_[k]
+        CV = sew_follow(P0, CV); set_world(coat, CV)
+        print(f"[{TAG}] sleeve fit pass {_pass + 1}: {len(si_)} sleeve points through or against the arms / hands, largest push "
+              f"{np.linalg.norm(D_, axis=1).max() / H * 100:.2f} % of H")
+# SKIRT_GAP (2026-10-30, "bloquear o contato"): the skirt kept SKIRT_GAP of H off the trousers at rest. The female's front panels lay ON her
+# thighs, and any step put the thigh through them. One pass (several piled up into a balloon at the waist), skirt only (below the hips,
+# not a sleeve), the pushes spread as a smooth field over the skirt and capped at SKIRT_CAP; the lining rides it
+SKIRT_GAP = float(os.environ.get("SKIRT_GAP", "0.012"))
+if SKIRT_GAP > 0 and SEW is not None and "Outfit_Trousers" in mB:
+    SKIRT_CAP = float(os.environ.get("SKIRT_CAP", "0.03")); hz2 = (armB.matrix_world @ armB.data.bones["mixamorig:Hips"].head_local).z
+    Ttr = shell(mB["Outfit_Trousers"])
+    skz = (CV[:, 2] < hz2) & ~LINING & ~coat_arm
+    si, sd_ = [], []
+    for i in np.nonzero(skz)[0]:
+        q = Vector(CV[i]); loc, nrm, _f, d_ = Ttr.find_nearest(q, 0.06 * H)
+        if loc is None:
+            continue
+        sgn = (q - loc).dot(Vector(nrm))                 # < 0: inside the trousers
+        if sgn < SKIRT_GAP * H:
+            n_ = Vector(nrm).normalized(); si.append(i); sd_.append(np.array(n_[:]) * (SKIRT_GAP * H - sgn))
+    if si:
+        P0 = CV.copy(); S_ = CV[si]; D_ = np.array(sd_)
+        for i in np.nonzero(skz)[0]:
+            w_ = np.exp(-np.sum((S_ - CV[i]) ** 2, axis=1) / (2 * (0.025 * H) ** 2))
+            if w_.sum() > 1e-6:
+                d_ = (w_[:, None] * D_).sum(0) / max(w_.sum(), 1.0)
+                n_ = np.linalg.norm(d_)
+                CV[i] = CV[i] + (d_ if n_ <= SKIRT_CAP * H else d_ / n_ * SKIRT_CAP * H)
+        for k, i in enumerate(si):                       # a source gets at least its own push (capped)
+            need = D_[k] if np.linalg.norm(D_[k]) <= SKIRT_CAP * H else D_[k] / np.linalg.norm(D_[k]) * SKIRT_CAP * H
+            if np.linalg.norm(need) > np.linalg.norm(CV[i] - P0[i]):
+                CV[i] = P0[i] + need
+        CV = sew_follow(P0, CV); set_world(coat, CV)
+        print(f"[{TAG}] skirt gap: {len(si)} skirt points nearer the trousers than {SKIRT_GAP * 100:.1f} % of H, pushed (largest "
+              f"{np.linalg.norm(D_, axis=1).max() / H * 100:.2f} % of H, capped {SKIRT_CAP * 100:.1f})")
 HEM_MASK = None                                           # the hem band's coat vertices, painted in the review renders
 COAT_SETTLE = int(os.environ.get("COAT_SETTLE", "0")); SETTLE_FADE = float(os.environ.get("SETTLE_FADE", "0.08"))
 if COAT_SETTLE > 0:
@@ -567,6 +638,251 @@ if COAT_SETTLE > 0:
     for o_, c_ in cols:
         o_.modifiers.remove(c_)
     bpy.data.objects.remove(so); sc.frame_set(1); CV = NV; set_world(coat, CV)
+# C4 (D86, Director 2026-10-30: "minimamente se comportar como casacos quando o agente corre"): the coat's weights read off the BASE, not
+# off the generation's coat (the female's is 25 Tripo parts, each skinned on its own: the standalone coat took a patchwork of weights and
+# shattered in the climb). A SLEEVE (coat_arm, or near an arm bone above the hips) takes the weights of the shirt's sleeve under it; the
+# BODY above the hips the shirt's torso under it; the SKIRT, below the hips, hangs from them (Hips 0.85 / Spine 0.15) and follows each
+# thigh by side, more toward the knee (SKIRT_FOLLOW at the knee), the front panels more (+ SKIRT_FRONT: they lie on the legs), the side
+# split smooth over SKIRT_SPLIT of H; then the weights are SMOOTHED over the coat's own surface (C4_SMOOTH passes, sleeves and body apart),
+# and every loose island (a flap, a button, the back belt) takes the weights of the coat point it sits on
+if os.environ.get("COAT_C4", "1") != "0":
+    def _bh(n):
+        return np.array((armB.matrix_world @ armB.data.bones["mixamorig:" + n].head_local)[:])
+    _Ws = tc.read_weights(mB["Outfit_Shirt"]) if "Outfit_Shirt" in mB else []
+    _arm_v = armness(_Ws) >= 0.5 if _Ws else None
+
+    def _src(o, W_, keep_v):
+        V_ = wverts(o); o.data.calc_loop_triangles()
+        T_ = [tuple(t.vertices) for t in o.data.loop_triangles if all(keep_v[k] for k in t.vertices)]
+        return (BVHTree.FromPolygons([tuple(q) for q in V_], T_), V_, T_, W_) if T_ else None
+    SRC_ARM, SRC_BODY = [], []
+    if _Ws:
+        SRC_ARM.append(_src(mB["Outfit_Shirt"], _Ws, _arm_v)); SRC_BODY.append(_src(mB["Outfit_Shirt"], _Ws, ~_arm_v))
+    if "Outfit_Trousers" in mB:
+        _Wt = tc.read_weights(mB["Outfit_Trousers"]); SRC_BODY.append(_src(mB["Outfit_Trousers"], _Wt, np.ones(len(_Wt), bool)))
+    SRC_ALL = [x for x in [_src(mB["Outfit_Shirt"], _Ws, np.ones(len(_Ws), bool))] if x] if _Ws else []
+    SRC_ARM = [x for x in SRC_ARM if x]; SRC_BODY = [x for x in SRC_BODY if x]
+    SRC_LEGS = [_src(mB["Outfit_Trousers"], _Wt, np.ones(len(_Wt), bool))] if "Outfit_Trousers" in mB else []
+
+    def _wat(srcs, q, with_d=False):
+        best = None
+        for bvh_, V_, T_, W_ in srcs:
+            loc, _n, fi, d = bvh_.find_nearest(Vector(q))
+            if loc is not None and (best is None or d < best[0]):
+                best = (d, loc, T_[fi], V_, W_)
+        if best is None:
+            return ({"mixamorig:Hips": 1.0}, 1e9) if with_d else {"mixamorig:Hips": 1.0}
+        d, loc, t, V_, W_ = best; mix_ = {}
+        bc = barycentric_transform(loc, *(Vector(V_[k]) for k in t), Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1)))
+        for k, x in zip(t, bc):
+            for g, w in W_[k].items():
+                mix_[g] = mix_.get(g, 0.0) + w * max(0.0, x)
+        return (mix_, d) if with_d else mix_
+    hz_ = _bh("Hips")[2]; kz_ = (_bh("LeftLeg")[2] + _bh("RightLeg")[2]) / 2; hy_ = _bh("Hips")[1]; lx_ = np.sign(_bh("LeftUpLeg")[0])
+    d_arm = np.minimum.reduce([tc.segd(CV, _bh(sd + a), _bh(sd + b)) for sd in ("Left", "Right")
+                               for a, b in (("Arm", "ForeArm"), ("ForeArm", "Hand"))])
+    d_sp = np.minimum.reduce([tc.segd(CV, _bh(a), _bh(b)) for a, b in (("Hips", "Spine"), ("Spine", "Spine1"), ("Spine1", "Spine2"),
+                                                                        ("Spine2", "Neck"))])
+    # how much a coat point is SLEEVE, soft: by how much nearer an arm bone it is than the spine (a hard line, coat_arm or a radius, cut
+    # into the back panel by the shoulder blade and the coat cracked along it in the run, 2026-10-30); under the hips only what hugs the
+    # forearm (a skirt reading the hands is Tripo's original fault)
+    # the sleeve TUBE: grown along the coat's edges from points well inside the upper sleeve, through points within 6 % of H of an arm bone;
+    # the skirt beside a hand is near the arm too but not on that tube (by distance alone the female's low cuffs half-left the sleeve and
+    # the skirt by her hands joined it)
+    GROW_RATIO = float(os.environ.get("GROW_RATIO", "0.45"))
+    grown = (d_arm < 0.035 * H) & (d_arm < GROW_RATIO * d_sp) & (CV[:, 2] > hz_) & ~LINING; nbr_ = [[] for _ in CV]
+    for e_ in coat.data.edges:
+        a_, b_ = e_.vertices; nbr_[a_].append(b_); nbr_[b_].append(a_)
+    stack_ = list(np.nonzero(grown)[0])
+    while stack_:
+        i_ = stack_.pop()
+        for j_ in nbr_[i_]:
+            # and clearly nearer the arm than the spine (GROW_RATIO): the female's arms hang close to her body, and by distance alone the
+            # tube grew down her coat's side from the armpit to the waist, which then swung with the arm as a loose strip (2026-10-30)
+            if not grown[j_] and not LINING[j_] and d_arm[j_] < 0.06 * H and d_arm[j_] < GROW_RATIO * d_sp[j_]:
+                grown[j_] = True; stack_.append(j_)
+    # what hangs OFF the tube only (a strap's tab beyond the cuff: off the tube it is a small piece touching nothing but the tube) is
+    # sleeve too: it stood out of the male's cuff as a blade, following the hip (2026-10-30); the skirt and the body are one big piece
+    TAB_MAX = int(os.environ.get("TAB_MAX", "60")); parT = list(range(len(CV)))
+
+    def rT(a):
+        while parT[a] != a:
+            parT[a] = parT[parT[a]]; a = parT[a]
+        return a
+    for e_ in coat.data.edges:
+        a_, b_ = e_.vertices
+        if not grown[a_] and not grown[b_] and not LINING[a_] and not LINING[b_]:
+            parT[rT(a_)] = rT(b_)
+    compT = np.array([rT(i) for i in range(len(CV))]); free_ = ~grown & ~LINING
+    sizeT = np.bincount(compT[free_], minlength=len(CV)); touch = np.zeros(len(CV), bool)
+    for e_ in coat.data.edges:
+        a_, b_ = e_.vertices
+        if grown[a_] and free_[b_]:
+            touch[compT[b_]] = True
+        if grown[b_] and free_[a_]:
+            touch[compT[a_]] = True
+    tab = free_ & (sizeT[compT] <= TAB_MAX) & touch[compT]
+    grown |= tab
+    # above the armpits the body side of the armhole is soft too (by the same ratio): the back panel 100 % body beside a sleeve 100 % arm
+    # opened at the seam when the arm swung back (2026-10-30); lower only the tube is sleeve (the skirt by the hands is not)
+    pit_m = min(_bh("LeftArm")[2], _bh("RightArm")[2]) - 0.05 * H
+    MEM = np.where(grown | (CV[:, 2] > pit_m), 1.0 - tc.sstep(0.5, 0.85, d_arm / np.maximum(d_sp, 1e-6)), 0.0)
+    MEM[tab] = 1.0
+    MEM[LINING] = 0.0
+    SLEEVE = (MEM >= 0.5) & ~LINING
+    # above the armpits the sleeve and the body read the WHOLE shirt and are smoothed together: read off its sleeve and its torso apart,
+    # the coat's weights stepped at the armhole and it cracked across the upper back in the run (2026-10-30)
+    pit_z = min(_bh("LeftArm")[2], _bh("RightArm")[2]) - 0.05 * H
+    FMAX = float(os.environ.get("SKIRT_FOLLOW", "0.45")); FFRONT = float(os.environ.get("SKIRT_FRONT", "0.25"))
+    SPLIT = float(os.environ.get("SKIRT_SPLIT", "0.10"))
+    LEG_NEAR = float(os.environ.get("LEG_NEAR", "0.015")); LEG_FAR = float(os.environ.get("LEG_FAR", "0.05"))
+    LEG_MAX = float(os.environ.get("LEG_MAX", "0"))
+    FRONT_FOLLOW = float(os.environ.get("FRONT_FOLLOW", "0.85"))
+    W4 = []
+    # C4_UPPER=gen: above the hips keep the weights the coat got from the generation's coat (Tripo's own rig of a coat on that body); only
+    # the skirt takes the rules below
+    W_gen = tc.read_weights(coat) if os.environ.get("C4_UPPER", "body") == "gen" else None
+    for i, q in enumerate(CV):
+        if W_gen is not None and q[2] > hz_ + 0.03 * H:
+            W4.append(tc.top4(W_gen[i], "mixamorig:Hips")); continue
+        if q[2] > pit_z and SRC_ALL and os.environ.get("C4_ALL_ABOVE", "0") != "0":
+            # (off: read off the whole shirt the female's back took the shirt's patches of shoulder weights, and in the run the back
+            # opened between them; the soft sleeve share below does the armhole instead)
+            W4.append(tc.top4(_wat(SRC_ALL, q), "mixamorig:Hips")); continue
+        m_ = float(MEM[i])
+        if m_ >= 0.999:
+            W4.append(tc.top4(_wat(SRC_ARM or SRC_BODY, q), "mixamorig:Hips")); continue
+        wb = _wat(SRC_BODY, q); k = float(tc.sstep(hz_ + 0.02 * H, hz_ - 0.03 * H, q[2]))
+        if k > 0:
+            t = float(np.clip((hz_ - q[2]) / max(hz_ - kz_, 1e-6), 0, 1))
+            front = float(tc.sstep(hy_ - 0.02 * H, hy_ - 0.08 * H, q[1]))       # -y is the front
+            # the BACK hangs from the hips and follows the legs toward the knee; the FRONT panels turn with their thigh about the hip, as a
+            # panel pushed by the knee does (FRONT_FOLLOW, reached a third of the way down to the knee): following them only toward the
+            # knee, the female's thigh came through them mid-way in every step of the climb
+            f = 0.10 + (FMAX - 0.10) * t
+            s_l = float(tc.sstep(-SPLIT * H, SPLIT * H, q[0] * lx_))
+            sk = {"mixamorig:Hips": (1 - f) * 0.85, "mixamorig:Spine": (1 - f) * 0.15, "mixamorig:LeftUpLeg": f * s_l,
+                  "mixamorig:RightUpLeg": f * (1 - s_l)}
+            # a FRONT panel lies on the trousers and deforms like them: their hip / thigh weights under it (the knee's and the shin's left
+            # out: they tore it), blended in by how far in front it is; following the thigh only toward the knee, or by a rule, the thigh
+            # still came through it just under the hip crease (the female's run and climb, 2026-10-30)
+            if SRC_LEGS and front > 0:
+                wl = {g: x for g, x in _wat(SRC_LEGS, q).items() if g.endswith(("UpLeg", "Hips", "Spine"))} or {"mixamorig:Hips": 1.0}
+                tl = sum(wl.values()) or 1.0; Fk = FRONT_FOLLOW * front
+                sk = {g: x * (1 - Fk) for g, x in sk.items()}
+                for g, x in wl.items():
+                    sk[g] = sk.get(g, 0.0) + x / tl * Fk
+            # where the skirt lies ON a leg it goes with it (the female's thigh came through the front panels in the climb): the trousers'
+            # weights under it, by how near it is (LEG_FAR -> LEG_NEAR of H), more toward the knee
+            if SRC_LEGS and LEG_MAX > 0:
+                wl, dl = _wat(SRC_LEGS, q, with_d=True)
+                wl = {g: x for g, x in wl.items() if g.endswith(("UpLeg", "Hips"))} or {"mixamorig:Hips": 1.0}   # the thigh, not the
+                L = LEG_MAX * float(tc.sstep(LEG_FAR * H, LEG_NEAR * H, dl)) * (0.4 + 0.6 * t)                   # knee: it tore the panel
+                if L > 0:
+                    tl = sum(wl.values()) or 1.0; sk = {g: x * (1 - L) for g, x in sk.items()}
+                    for g, x in wl.items():
+                        sk[g] = sk.get(g, 0.0) + x / tl * L
+            tot = sum(wb.values()) or 1.0; mix_ = {g: x / tot * (1 - k) for g, x in wb.items()}
+            for g, x in sk.items():
+                mix_[g] = mix_.get(g, 0.0) + x * k
+            wb = mix_
+        if m_ > 0:                                      # part sleeve: the arm's weights by its share
+            wa = _wat(SRC_ARM or SRC_BODY, q); ta = sum(wa.values()) or 1.0; tb = sum(wb.values()) or 1.0
+            mix_ = {g: x / tb * (1 - m_) for g, x in wb.items()}
+            for g, x in wa.items():
+                mix_[g] = mix_.get(g, 0.0) + x / ta * m_
+            wb = mix_
+        W4.append(tc.top4(wb, "mixamorig:Hips"))
+    # smoothing over the coat's own edges, a sleeve with sleeves and the body with the body (a sleeve's weights bled into the skirt are
+    # what Tripo's rig did: the skirt followed the hands)
+    nb_ = [[] for _ in CV]
+    for e_ in coat.data.edges:
+        a_, b_ = e_.vertices
+        if min(CV[a_, 2], CV[b_, 2]) > pit_z or SLEEVE[a_] == SLEEVE[b_]:  # across sleeve and body only at the armhole: lower, a cuff
+            # by the hip took 30 % of the Hips from the coat's side and tore in the run (2026-10-30)
+            nb_[a_].append(b_); nb_[b_].append(a_)
+    for _ in range(int(os.environ.get("C4_SMOOTH", "6"))):
+        nxt = []
+        for i, w in enumerate(W4):
+            if not nb_[i] or LINING[i]:
+                nxt.append(w); continue
+            acc = {g: x * 0.5 for g, x in w.items()}
+            for j in nb_[i]:
+                for g, x in W4[j].items():
+                    acc[g] = acc.get(g, 0.0) + x * 0.5 / len(nb_[i])
+            nxt.append(tc.top4(acc, "mixamorig:Hips"))
+        W4 = nxt
+    # FLAPS: a part of the coat lying ON another part of it (the back cape, the lapels, the storm flap) takes the weights of the layer under
+    # it, as the lining takes the outer wall's: the cape's corner read the arm and lifted off the back in the run, opening a dark gap
+    # (2026-10-30). Under = the first coat face a ray toward the spine meets within FLAP_GAP of H that is not the lining's nor the vertex's own
+    # (the first try, on every vertex, glued the sleeves' undersides to the body: only the body's own layers now, above the hips: the
+    # back cape's corner read the arm and lifted off the back by the armhole when the arm swung back)
+    FLAP_GAP = float(os.environ.get("FLAP_GAP", "0.02"))
+    _tri4 = [tuple(t.vertices) for t in (coat.data.calc_loop_triangles() or coat.data.loop_triangles)]
+    _bv4 = BVHTree.FromPolygons([tuple(q) for q in CV], _tri4); n_flap = 0
+    for _ in range(2 if FLAP_GAP > 0 else 0):            # twice: a flap on a flap
+        W5 = list(W4)
+        for i in np.nonzero(~LINING & (MEM < 0.5) & (CV[:, 2] > hz_))[0]:
+            q = Vector(CV[i]); dv = -Vector(away(CV[i])); o_ = q + dv * 1e-4; travelled = 0.0
+            for _h in range(4):
+                h_ = _bv4.ray_cast(o_, dv, FLAP_GAP * H - travelled)
+                if h_[0] is None:
+                    break
+                t_ = _tri4[h_[2]]; travelled += h_[3]
+                if i in t_ or LINING[list(t_)].all():
+                    o_ = h_[0] + dv * 1e-5; continue
+                if (MEM[list(t_)] >= 0.5).any():                # a sleeve under it: not a flap of the body
+                    break
+                bc = barycentric_transform(h_[0], *(Vector(CV[k]) for k in t_), Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1)))
+                mix_ = {}
+                for k, x in zip(t_, bc):
+                    for g, w in W4[k].items():
+                        mix_[g] = mix_.get(g, 0.0) + w * max(0.0, x)
+                W5[i] = tc.top4(mix_, "mixamorig:Hips"); n_flap += 1
+                break
+        W4 = W5
+    # loose islands ride the coat point under them
+    par4 = list(range(len(CV)))
+
+    def r4(a):
+        while par4[a] != a:
+            par4[a] = par4[par4[a]]; a = par4[a]
+        return a
+    for e_ in coat.data.edges:
+        par4[r4(e_.vertices[0])] = r4(e_.vertices[1])
+    is4 = np.array([r4(i) for i in range(len(CV))]); main4 = np.bincount(is4).argmax()
+    mi4 = np.nonzero((is4 == main4) & ~LINING)[0]; kd4 = KDTree(len(mi4))
+    for j, i in enumerate(mi4):
+        kd4.insert(Vector(CV[i]), j)
+    kd4.balance(); n_isl = 0
+    # an island is ONE piece: it votes sleeve or body by its vertices' nearest coat points, then each vertex takes the nearest coat point
+    # of that kind (the cuff strap, at the hip, went half with the skirt and stood out as a blade in the run, 2026-10-30)
+    armd4 = np.array([sum(x for g, x in w.items() if any(k in g for k in ("Arm", "Hand", "Shoulder"))) >= 0.5 for w in W4])
+    kdf = {}
+    for fam in (True, False):
+        ids_ = mi4[armd4[mi4] == fam]
+        if len(ids_):
+            kd_ = KDTree(len(ids_))
+            for j, i in enumerate(ids_):
+                kd_.insert(Vector(CV[i]), j)
+            kd_.balance(); kdf[fam] = (kd_, ids_)
+    for r_ in np.unique(is4[is4 != main4]):
+        mem_ = np.nonzero(is4 == r_)[0]
+        votes = [armd4[mi4[kd4.find(Vector(CV[i]))[1]]] for i in mem_]
+        fam = sum(votes) * 2 > len(votes)
+        kd_, ids_ = kdf.get(fam, (kd4, mi4))
+        # and it moves as ONE rigid piece: the mean of what it rests on (a strap's tip read the hand while its band read the forearm, and
+        # stood out of the cuff as a blade when the wrist bent, 2026-10-30)
+        acc = {}
+        for i in mem_:
+            for g, x in W4[ids_[kd_.find(Vector(CV[i]))[1]]].items():
+                acc[g] = acc.get(g, 0.0) + x / len(mem_)
+        w_ = tc.top4(acc, "mixamorig:Hips")
+        for i in mem_:
+            W4[i] = dict(w_); n_isl += 1
+    tc.write_weights(coat, W4)
+    print(f"[{TAG}] C4: {int(tab.sum())} tab vertices hang off the sleeves; weights off the base: {int(SLEEVE.sum())} sleeve, {int((~SLEEVE & (CV[:, 2] < hz_)).sum())} skirt vertices; "
+          f"{n_isl} island vertices ride the coat; {n_flap // 2} flap vertices take the layer under them")
 if SEW:
     _W = tc.read_weights(coat)
     for i, (t, bc, o3) in SEW.items():
@@ -576,6 +892,109 @@ if SEW:
                 mix_[g] = mix_.get(g, 0.0) + w * max(0.0, x)
         _W[i] = tc.top4(mix_, "mixamorig:Hips")
     tc.write_weights(coat, _W)
+# no coat point ties an ARM to a LEG (a cuff resting on the thigh took both, and shot to the hip in the run, 2026-10-30): the side with
+# the larger share keeps the vertex. And a coat's cuff never bends with the WRIST: a hand's (or finger's) share goes to its forearm (the
+# tip of the male's cuff strap read the hand and stood out of the cuff as a blade when he clenched his fist)
+_W = tc.read_weights(coat); n_cut = 0
+for i, w in enumerate(_W):
+    if any("Hand" in g for g in w):
+        acc = {}
+        for g, x in w.items():
+            if "Hand" in g:
+                g = "mixamorig:" + ("Left" if "Left" in g else "Right") + "ForeArm"
+            acc[g] = acc.get(g, 0.0) + x
+        _W[i] = tc.top4(acc, "mixamorig:Hips")
+for i, w in enumerate(_W):
+    a_ = sum(x for g, x in w.items() if any(k in g for k in ("Arm", "Hand", "Shoulder")))
+    l_ = sum(x for g, x in w.items() if any(k in g for k in ("UpLeg", "Leg", "Foot")))
+    if a_ > 0.02 and l_ > 0.02:
+        drop = ("UpLeg", "Leg", "Foot") if a_ >= l_ else ("Arm", "Hand", "Shoulder")
+        _W[i] = tc.top4({g: x for g, x in w.items() if not any(k in g for k in drop)} or {"mixamorig:Hips": 1.0}, "mixamorig:Hips"); n_cut += 1
+# ONE PLACE, ONE WEIGHT: coat vertices within WELD_W of H of each other at rest (a fold, a hem's turn, the decimation's slivers) take the
+# same weights, or they part in motion as needles (the front hem's corner, 30x stretched in the run); never across an arm and a body
+WELD_W = float(os.environ.get("WELD_W", "0.004"))
+_arm_dom = np.array([sum(x for g, x in w.items() if any(k in g for k in ("Arm", "Hand", "Shoulder"))) >= 0.5 for w in _W])
+if WELD_W > 0:
+    kdw = KDTree(len(CV))
+    for i, q in enumerate(CV):
+        kdw.insert(Vector(q), i)
+    kdw.balance(); parw = list(range(len(CV)))
+
+    def rw(a):
+        while parw[a] != a:
+            parw[a] = parw[parw[a]]; a = parw[a]
+        return a
+    for i, q in enumerate(CV):
+        for (_co, j, _d) in kdw.find_range(Vector(q), WELD_W * H):
+            if j != i and _arm_dom[i] == _arm_dom[j]:
+                parw[rw(i)] = rw(j)
+    groups = {}
+    for i in range(len(CV)):
+        groups.setdefault(rw(i), []).append(i)
+    n_w = 0
+    for g_ in groups.values():
+        if len(g_) > 1:
+            acc = {}
+            for i in g_:
+                for g, x in _W[i].items():
+                    acc[g] = acc.get(g, 0.0) + x / len(g_)
+            w_ = tc.top4(acc, "mixamorig:Hips")
+            for i in g_:
+                _W[i] = w_
+            n_w += len(g_)
+tc.write_weights(coat, _W)
+# the CUFF FUSED to the coat's side (Tripo made the coat with the hands at the hips): a face joining a sleeve (arm-led) to the body below
+# the hips tore whatever weights it took (196x in the male's run), and cut out it left a hole in the coat's side. Each such face now
+# belongs to the BODY: its sleeve corners are duplicated in place with the body corners' weights, so the coat's side stays whole and
+# follows the hips while the cuff keeps its own vertices and follows the arm; at rest nothing moves
+hz3 = (armB.matrix_world @ armB.data.bones["mixamorig:Hips"].head_local).z
+bm_ = bmesh.new(); bm_.from_mesh(coat.data); bm_.verts.ensure_lookup_table(); bm_.faces.ensure_lookup_table()
+dl_ = bm_.verts.layers.deform.verify(); uvl_ = bm_.loops.layers.uv.active; gidx = {g.name: g.index for g in coat.vertex_groups}
+# up to the elbows: the male's sleeve was fused at the ELBOW to the coat's back too (16x in the run); higher, under the armholes, the
+# sleeve's join to the back is the coat's own, and cutting it there opened the back by the armpit (2026-10-30)
+pit3 = max((armB.matrix_world @ armB.data.bones["mixamorig:" + sd + "ForeArm"].head_local).z for sd in ("Left", "Right")) + 0.02 * H
+bridge = [f for f in bm_.faces if len({bool(_arm_dom[v.index]) for v in f.verts}) == 2 and max(CV[v.index][2] for v in f.verts) < pit3]
+# a fused face that SPANS the gap from the coat's side to the cuff (its sleeve corners more than SPAN_GAP of H off the coat's body) is
+# neither the body's nor the sleeve's: it is cut (given to the body it stood out of the male's cuff as a blade when the arm swung, 2026-10-30);
+# one lying on the coat's side stays the body's
+SPAN_GAP = float(os.environ.get("SPAN_GAP", "0.01"))
+bridge_set = set(bridge)
+body_faces = [tuple(v.index for v in f.verts) for f in bm_.faces if f not in bridge_set and not any(_arm_dom[v.index] for v in f.verts)]
+bvb_ = BVHTree.FromPolygons([tuple(q) for q in CV[:len(_arm_dom)]], body_faces) if body_faces else None
+span = [f for f in bridge if bvb_ is not None and max(bvb_.find_nearest(Vector(CV[v.index]))[3] for v in f.verts if _arm_dom[v.index]) > SPAN_GAP * H]
+bmesh.ops.delete(bm_, geom=span, context='FACES_ONLY'); bm_.faces.ensure_lookup_table()
+bridge = [f for f in bridge if f.is_valid]
+dup = {}; body_w = {}; vlist_ = list(bm_.verts)                 # new vertices outdate the index table
+for f in bridge:                                         # the body corners' weights, pooled per sleeve corner they replace
+    bw_ = [ _W[v.index] for v in f.verts if not _arm_dom[v.index] ]
+    for v in f.verts:
+        if _arm_dom[v.index]:
+            body_w.setdefault(v.index, []).extend(bw_)
+for vi, ws in body_w.items():
+    acc = {}
+    for w in ws:
+        for g, x in w.items():
+            acc[g] = acc.get(g, 0.0) + x / len(ws)
+    nv = bm_.verts.new(vlist_[vi].co); nv[dl_].clear()
+    for g, x in tc.top4(acc, "mixamorig:Hips").items():
+        if g not in gidx:
+            gidx[g] = coat.vertex_groups.new(name=g).index
+        nv[dl_][gidx[g]] = x
+    dup[vi] = nv
+for f in bridge:
+    vs = [dup.get(v.index, v) for v in f.verts]; uvs = [tuple(l[uvl_].uv) for l in f.loops] if uvl_ else None; sm = f.smooth
+    try:
+        nf = bm_.faces.new(vs)
+    except ValueError:
+        continue
+    nf.smooth = sm
+    if uvl_:
+        for l, uv in zip(nf.loops, uvs):
+            l[uvl_].uv = uv
+    bm_.faces.remove(f)
+bm_.to_mesh(coat.data); bm_.free(); coat.data.update()
+print(f"[{TAG}] coat: {n_cut} vertices weighted to an arm AND a leg, cut to one; {n_w} vertices share weights with a neighbour within "
+      f"{WELD_W * 100:.1f} % of H; fused sleeve / body faces: {len(span)} spanning the gap cut, {len(bridge)} on the body given to it ({len(dup)} corners duplicated)")
 rebind(coat)
 left = 0
 for i in range(0, len(CV), 3):

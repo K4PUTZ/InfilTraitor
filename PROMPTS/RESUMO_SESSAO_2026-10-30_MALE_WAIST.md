@@ -47,8 +47,14 @@ Closes the OPEN item of `RESUMO_SESSAO_2026-10-29_BASES_BELT_PAIRS.md` (the male
 - `MALE_BASE_edit.blend` / `.glb`: the Director's hand edit, untouched.
 - `MALE_BASE_edit_waist.blend` / `.glb`: the rebuild. The experiments of the day (`_fill`, `_shell`, `_cut`, `_manq`, `_remesh`) deleted.
 
+## Later the same day (Director)
+- **`MALE_AGENT_BASE`** is the official male base: `ASSETS/MODELS/MALE_AGENT_BASE.blend` / `.glb` = `MALE_BASE_edit_waist` (copied; the
+  `_edit` and `_edit_waist` files stay as its history).
+- **The hat on it** with the placement closed on 2026-10-27 (`tripo_dress.py`, male `HAT_DY=0.005 HAT_DROP=0.01`, `COAT_FIT=0`, the hat
+  and hair of `MaleCharacterHatAndCoat` assembled): 0 head vertices through the hat, no lift or scale needed; 3 661 of 9 064 hair faces
+  masked under it (`Body_Hair_Hat`). The coat and `Outfit_Shirt_Coated` removed: `ASSETS/MODELS/MALE_AGENT_BASE_hat.glb`.
+
 ## OPEN — where to resume
-- The Director's call: replace `MALE_BASE_edit` with `MALE_BASE_edit_waist` (the old one kept as a backup), or have the pipeline read
-  `_edit_waist` beside it.
+- Settled: the base is `MALE_AGENT_BASE`; the tools still name `MALE_BASE_edit` in their usage lines.
 - Still open from 2026-10-29: the T1 slot table checked on the `_edit` bases by the Director; T2-T4 of D87; the male's 9 k-tri hair vs the
   Moto budget.

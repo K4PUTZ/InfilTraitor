@@ -54,6 +54,16 @@ Closes the OPEN item of `RESUMO_SESSAO_2026-10-29_BASES_BELT_PAIRS.md` (the male
   and hair of `MaleCharacterHatAndCoat` assembled): 0 head vertices through the hat, no lift or scale needed; 3 661 of 9 064 hair faces
   masked under it (`Body_Hair_Hat`). The coat and `Outfit_Shirt_Coated` removed: `ASSETS/MODELS/MALE_AGENT_BASE_hat.glb`.
 
+## The coat (same day, Director: "tem que ser o casaco universal")
+- `ASSETS/MODELS/COAT_BASE.blend` / `.glb` (git-ignored): the leather trench coat cleaned once at its source: 10 106 -> 5 000 tris, Tripo's
+  bent normals cleared (smooth), a light Taubin pass, its own UVs (smart project), the lining kept (two walls under 1.5 cm apart).
+- `tripo_dress.py`: the standalone coat is WELDED on import (a GLB splits vertices at UV seams: 360 islands -> 10, the cause of the blotches
+  and of the settle pinning nearly everything), its UVs carried; smooth shading; loose islands ride on the settled coat; `SETTLE_BEND`.
+- The drape, step by step on both figures: placement + C1b stretch + C2 sleeves + straight skirt/sides is SMOOTH; the fit and the cloth
+  settle crumple it (its two walls pushed apart). `COAT_FIT` is now off by default; `COAT_SETTLE` stays off.
+- Left for later (Director): the shirt through the male's shoulders, the trousers through the female's hips, the shoulder suspension
+  (needs the settle, likely after the hidden lining is removed from COAT_BASE).
+
 ## OPEN — where to resume
 - Settled: the base is `MALE_AGENT_BASE`; the tools still name `MALE_BASE_edit` in their usage lines.
 - Still open from 2026-10-29: the T1 slot table checked on the `_edit` bases by the Director; T2-T4 of D87; the male's 9 k-tri hair vs the

@@ -41,7 +41,9 @@ LAPEL_SIDE = os.environ.get("LAPEL_SIDE", ""); LAPEL_MAX = float(os.environ.get(
 HAT_DY = float(os.environ.get("HAT_DY", "0.015"))         # back (+) / forward (-), a fraction of H; per figure (the male: 0.005)
 HAT_DROP = float(os.environ.get("HAT_DROP", "0"))         # down after the fit, a fraction of H (the male: 0.01, Director 2026-10-27)
 HAT_TILT, HAT_MAX_LIFT = 8.0, 0.012                     # degrees; a fraction of H
-COAT_FIT = os.environ.get("COAT_FIT", "1") != "0"
+# off by default (Director, 2026-10-30, on COAT_BASE: placed, stretched, sleeves turned and skirt straightened, the coat hangs smooth on both
+# figures; the fit and the cloth settle crumpled it, pushing its two walls apart)
+COAT_FIT = os.environ.get("COAT_FIT", "0") != "0"
 COAT_LONGER = float(os.environ.get("COAT_LONGER", "0.12"))   # how far the standalone coat's hem drops (C1b), a fraction of H
 UNDER_COAT = ("Outfit_Shirt", "Outfit_Tie", "Outfit_Belt", "Outfit_Buckle", "Outfit_Trousers")
 
@@ -134,9 +136,15 @@ if DRESS_COAT:
     loose = [o for o in bpy.data.objects if o not in before and o.type == 'MESH']
     if not loose:
         tc.fail(TAG, f"{DRESS_COAT}: no mesh")
-    LV = np.concatenate([wverts(o) for o in loose]); LF = []; off = 0
+    # a GLB splits its vertices at every UV seam: welded back, or the coat comes in as hundreds of islands that the fit moves apart (cracks,
+    # blotched shading) and the settle pins as loose pieces (COAT_BASE, 2026-10-30: 360 islands, 10 once welded); its UVs ride along per corner
+    for o in loose:
+        bm_ = bmesh.new(); bm_.from_mesh(o.data); bmesh.ops.remove_doubles(bm_, verts=bm_.verts[:], dist=1e-6); bm_.to_mesh(o.data); bm_.free()
+    LV = np.concatenate([wverts(o) for o in loose]); LF = []; LUV = []; off = 0
     for o in loose:
         LF += [[off + v for v in p_.vertices] for p_ in o.data.polygons]; off += len(o.data.vertices)
+        uvd = o.data.uv_layers.active.data if o.data.uv_layers.active else None
+        LUV += [tuple(uvd[li].uv) if uvd else (0.0, 0.0) for p_ in o.data.polygons for li in p_.loop_indices]
     glo, ghi = CV.min(0), CV.max(0); llo, lhi = LV.min(0), LV.max(0); k = (ghi[2] - glo[2]) / (lhi[2] - llo[2])
     gc = (glo + ghi) / 2; lc = (llo + lhi) / 2
     LV = (LV - [lc[0], lc[1], llo[2]]) * k + [gc[0], gc[1], glo[2]]
@@ -152,11 +160,15 @@ if DRESS_COAT:
                 mix[g] = mix.get(g, 0.0) + x * wk
         NW.append(tc.top4(mix, "mixamorig:Hips"))
     me = bpy.data.meshes.new("Outfit_Coat_src"); me.from_pydata([tuple(q) for q in LV], [], LF); me.update()
+    if any(u != (0.0, 0.0) for u in LUV):
+        ul = me.uv_layers.new(name="UVMap")
+        for li, u in enumerate(LUV):
+            ul.data[li].uv = u
     nc = bpy.data.objects.new("Outfit_Coat_src", me); bpy.context.scene.collection.objects.link(nc)
     nc.parent = coat.parent; nc.matrix_world = Matrix.Identity(4); set_world(nc, LV)
     md = nc.modifiers.new("Armature", 'ARMATURE'); md.object = armA; tc.write_weights(nc, NW)
-    for p_ in nc.data.polygons:
-        p_.use_smooth = False
+    for p_ in nc.data.polygons:                          # smooth (Director, 2026-10-30: the coat read faceted; COAT_BASE is clean)
+        p_.use_smooth = True
     bpy.data.objects.remove(coat); coat = nc; mA["Outfit_Coat"] = nc; CV = LV.copy()
     # C1b (Director, 2026-10-28: "extender toda a parte de baixo do casaco, pra nao ficar engruvinhado na altura do peito e da cintura"): the
     # coat below the base's neck (the Neck joint; Director, 2026-10-28, second pass: "esticar todo o comprimento", the chest and the waist
@@ -416,7 +428,7 @@ if COAT_SETTLE > 0:
     # 2026-10-28) is a heavier coat against the same stiffness
     cs.quality = 15; cs.mass = float(os.environ.get("SETTLE_MASS", "0.15"))
     cs.tension_stiffness = cs.compression_stiffness = float(os.environ.get("SETTLE_STIFF", "600")); cs.shear_stiffness = 200.0
-    cs.bending_stiffness = 20.0; cs.vertex_group_mass = "pin"; cs.pin_stiffness = 5.0
+    cs.bending_stiffness = float(os.environ.get("SETTLE_BEND", "20")); cs.vertex_group_mass = "pin"; cs.pin_stiffness = 5.0
     cs.effector_weights.gravity = float(os.environ.get("SETTLE_GRAVITY", "1"))   # 0: collision alone, no weight (Director, 2026-10-28)
     cm.collision_settings.distance_min = COAT_GAP * H; cm.collision_settings.use_self_collision = False
     cm.point_cache.frame_start = 1; cm.point_cache.frame_end = COAT_SETTLE
@@ -430,6 +442,14 @@ if COAT_SETTLE > 0:
         sc.frame_set(f_)
     ev = so.evaluated_get(bpy.context.evaluated_depsgraph_get()).to_mesh()
     NV = np.array([(so.matrix_world @ v.co)[:] for v in ev.vertices]); so.to_mesh_clear()
+    # the loose islands were pinned through the settle (they hang from nothing) but must ride on the coat: each takes the move of the
+    # main body's vertex nearest it (2026-10-30: pinned in place, the back belt and the pocket flaps stood off the settled coat)
+    mi = np.nonzero(isl == main_)[0]; kdm = KDTree(len(mi))
+    for j, i in enumerate(mi):
+        kdm.insert(Vector(CV[i]), j)
+    kdm.balance()
+    for i in np.nonzero(isl != main_)[0]:
+        j = mi[kdm.find(Vector(CV[i]))[1]]; NV[i] = CV[i] + (NV[j] - CV[j])
     print(f"[{TAG}] settle: {COAT_SETTLE} frames, {int((pin >= 1).sum())} pinned; moved up to {np.linalg.norm(NV - CV, axis=1).max() / H * 100:.2f} % of H, "
           f"hem {CV[:, 2].min():.3f} -> {NV[:, 2].min():.3f}")
     for o_, c_ in cols:

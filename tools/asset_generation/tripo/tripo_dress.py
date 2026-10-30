@@ -383,14 +383,79 @@ set_world(coat, CV)
 # (SETTLE_COLLIDE; NOT the belt: measured 2026-10-28, the belt alone threw the female's hem up 24 % of H, it rings the coat's belted waist);
 # the cloth stiff (SETTLE_STIFF 600: at 40 it stretched 40 % of H under gravity alone); COAT_SETTLE frames (0 = off, the default
 # until the male's skirt stops tearing open: 40 frames cleared the female's hips, 2026-10-28)
+# the coat's two walls SEWN into one cloth (Director, 2026-10-30: "costurar as duas camadas, pra virar realmente um tecido e andar junto"):
+# a LINING vertex has another wall of the coat just outside it (a ray away from the body meets the coat within LINING_GAP of H); each is
+# bound to the nearest point of the OUTER wall (its triangle, barycentric, the offset in that triangle's own frame), follows it through the
+# settle and takes its weights, so the walls move together and keep the coat's thickness. COAT_BASE itself keeps both walls (the source
+# is copied and modified for sale; masks and bindings live in the dressed piece only).
+LINING_GAP = float(os.environ.get("LINING_GAP", "0.015"))
+_ct = [tuple(t.vertices) for t in (coat.data.calc_loop_triangles() or coat.data.loop_triangles)]
+_cb = BVHTree.FromPolygons([tuple(q) for q in CV], _ct)
+LINING = np.zeros(len(CV), bool)
+_R3 = coat.matrix_world.to_3x3()
+for i, q in enumerate(CV):                               # facing the body (a cloth wall under a belt, a flap or a lapel faces out: kept)
+    dv = Vector(away(q)); nv = (_R3 @ coat.data.vertices[i].normal).normalized()
+    if nv.dot(dv) < -0.2:
+        h_ = _cb.ray_cast(Vector(q) + dv * 1e-4, dv, LINING_GAP * H)
+        LINING[i] = h_[0] is not None
+_ot = [t for t in _ct if not LINING[list(t)].any()]
+SEW = {}
+if LINING.any() and _ot:
+    _ob = BVHTree.FromPolygons([tuple(q) for q in CV], _ot)
+
+
+    def _frame(P, t):
+        a, b, c = (Vector(P[k]) for k in t); n_ = (b - a).cross(c - a).normalized(); t1 = (b - a).normalized()
+        return a, b, c, t1, n_.cross(t1), n_
+    for i in np.nonzero(LINING)[0]:
+        loc, _n, fi, _d = _ob.find_nearest(Vector(CV[i])); t = _ot[fi]; a, b, c, t1, t2, n_ = _frame(CV, t)
+        bc = barycentric_transform(loc, a, b, c, Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1)))
+        off = Vector(CV[i]) - loc; SEW[int(i)] = (t, tuple(bc), (off.dot(t1), off.dot(t2), off.dot(n_)))
+
+
+def sew_follow(P_old, P_new):
+    """each lining vertex back on its outer-wall point, the offset carried in the triangle's moved frame"""
+    for i, (t, bc, o3) in SEW.items():
+        a, b, c, t1, t2, n_ = _frame(P_new, t); loc = a * bc[0] + b * bc[1] + c * bc[2]
+        P_new[i] = loc + t1 * o3[0] + t2 * o3[1] + n_ * o3[2]
+    return P_new
+print(f"[{TAG}] coat walls: {int(LINING.sum())} lining vertices sewn to the outer wall ({len(_ot)} outer triangles)")
 HEM_MASK = None                                           # the hem band's coat vertices, painted in the review renders
 COAT_SETTLE = int(os.environ.get("COAT_SETTLE", "0")); SETTLE_FADE = float(os.environ.get("SETTLE_FADE", "0.08"))
 if COAT_SETTLE > 0:
     sc = bpy.context.scene; me = bpy.data.meshes.new("settle")
-    me.from_pydata([tuple(q) for q in CV], [], [list(p_.vertices) for p_ in coat.data.polygons]); me.update()
+    me.from_pydata([tuple(q) for q in CV], [], [list(p_.vertices) for p_ in coat.data.polygons if not LINING[list(p_.vertices)].any()])
+    me.update()
     so = bpy.data.objects.new("settle", me); sc.collection.objects.link(so)
     top = (armB.matrix_world @ armB.data.bones["mixamorig:Spine2"].head_local).z
     pin = np.clip(1.0 - (top - CV[:, 2]) / (SETTLE_FADE * H), 0.0, 1.0); pin[coat_arm] = 1.0
+    # SHOULDER_PIN (Director, 2026-10-30: "suspendendo o casaco nos ombros de maneira mais detalhada"): above the chest only what RESTS on
+    # the body is held (within PIN_GAP of H of a body shell, fading over PIN_FADE); the rest of the top drapes from it
+    if os.environ.get("SHOULDER_PIN", "0") != "0":
+        PIN_GAP = float(os.environ.get("PIN_GAP", "0.012")); PIN_FADE = float(os.environ.get("PIN_FADE", "0.02"))
+        db = np.array([min(T.find_nearest(Vector(q))[3] for T in body_t.values()) if q[2] > top - SETTLE_FADE * H else 1.0 for q in CV])
+        pin = np.where(CV[:, 2] > top - SETTLE_FADE * H, np.clip(1.0 - (db - PIN_GAP * H) / (PIN_FADE * H), 0.0, 1.0), 0.0)
+        pin[coat_arm] = 1.0
+    pin[LINING] = 1.0                                     # not simulated: it rides the outer wall
+    # without the lining's faces some outer panels hang from nothing (the hem fell 6 m): a piece of the simulated wall with no held vertex
+    # is held whole and rides the coat afterwards, as a loose island does
+    spar = list(range(len(CV)))
+
+    def sroot(a):
+        while spar[a] != a:
+            spar[a] = spar[spar[a]]; a = spar[a]
+        return a
+    for p_ in coat.data.polygons:
+        vs = list(p_.vertices)
+        if not LINING[vs].any():
+            for a_ in vs[1:]:
+                spar[sroot(a_)] = sroot(vs[0])
+    sid = np.array([sroot(i) for i in range(len(CV))]); free_piece = np.zeros(len(CV), bool)
+    for r_ in np.unique(sid[~LINING]):
+        m_ = (sid == r_) & ~LINING
+        if pin[m_].max() < 0.5:
+            pin[m_] = 1.0; free_piece |= m_
+    print(f"[{TAG}] settle: {int(free_piece.sum())} vertices of outer pieces with nothing held, held whole")
     # a loose ISLAND (the back belt, a strap, a pocket flap: the coat is 10 islands) hangs from nothing and falls away: it stays put
     par = list(range(len(CV)))
 
@@ -444,17 +509,27 @@ if COAT_SETTLE > 0:
     NV = np.array([(so.matrix_world @ v.co)[:] for v in ev.vertices]); so.to_mesh_clear()
     # the loose islands were pinned through the settle (they hang from nothing) but must ride on the coat: each takes the move of the
     # main body's vertex nearest it (2026-10-30: pinned in place, the back belt and the pocket flaps stood off the settled coat)
-    mi = np.nonzero(isl == main_)[0]; kdm = KDTree(len(mi))
+    mi = np.nonzero((isl == main_) & ~LINING & ~free_piece)[0]; kdm = KDTree(len(mi))
     for j, i in enumerate(mi):
         kdm.insert(Vector(CV[i]), j)
     kdm.balance()
-    for i in np.nonzero(isl != main_)[0]:
+    for i in np.nonzero(((isl != main_) | free_piece) & ~LINING)[0]:
         j = mi[kdm.find(Vector(CV[i]))[1]]; NV[i] = CV[i] + (NV[j] - CV[j])
+    NV = sew_follow(CV, NV)
     print(f"[{TAG}] settle: {COAT_SETTLE} frames, {int((pin >= 1).sum())} pinned; moved up to {np.linalg.norm(NV - CV, axis=1).max() / H * 100:.2f} % of H, "
           f"hem {CV[:, 2].min():.3f} -> {NV[:, 2].min():.3f}")
     for o_, c_ in cols:
         o_.modifiers.remove(c_)
     bpy.data.objects.remove(so); sc.frame_set(1); CV = NV; set_world(coat, CV)
+if SEW:
+    _W = tc.read_weights(coat)
+    for i, (t, bc, o3) in SEW.items():
+        mix_ = {}
+        for k, x in zip(t, bc):
+            for g, w in _W[k].items():
+                mix_[g] = mix_.get(g, 0.0) + w * max(0.0, x)
+        _W[i] = tc.top4(mix_, "mixamorig:Hips")
+    tc.write_weights(coat, _W)
 rebind(coat)
 left = 0
 for i in range(0, len(CV), 3):

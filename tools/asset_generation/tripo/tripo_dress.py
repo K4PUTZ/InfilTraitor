@@ -428,12 +428,18 @@ if os.environ.get("SHOULDER_FIT", "1") != "0" and SEW is not None:
     SFIT_R = float(os.environ.get("SFIT_R", "0.03")); SETTLE_FADE = float(os.environ.get("SETTLE_FADE", "0.08"))
     top_ = (armB.matrix_world @ armB.data.bones["mixamorig:Spine2"].head_local).z
     neck_ = (armB.matrix_world @ armB.data.bones["mixamorig:Neck"].head_local).z
-    zone = (CV[:, 2] > top_ - SETTLE_FADE * H) & (CV[:, 2] < neck_) & ~LINING     # the collar is not pushed (the head lifted it 5 % of H)
-    for _pass in range(int(os.environ.get("SFIT_IT", "3"))):           # each pass finds again what still comes through
+    # SFIT_LOW (fraction of H under the Hips joint; empty = the chest only): how far down the fit reaches, fading over SETTLE_FADE above it
+    # (the female's hips are wider than the coat at the belt: the trousers showed at her back and sides)
+    _lw = os.environ.get("SFIT_LOW", "")       # 2026-10-30: reaching the hips ballooned the coat at the waist (the field piles up over the passes)
+    z_low = ((armB.matrix_world @ armB.data.bones["mixamorig:Hips"].head_local).z - float(_lw) * H) if _lw else top_ - SETTLE_FADE * H
+    zone = (CV[:, 2] > z_low) & (CV[:, 2] < neck_) & ~LINING     # the collar is not pushed (the head lifted it 5 % of H)
+    for _pass in range(int(os.environ.get("SFIT_IT", "5"))):           # each pass finds again what still comes through
         src_i, src_d = [], []
         for i in np.nonzero(zone)[0]:
             q = CV[i]; dv = away(q); best = None
-            for kT, T in body.items():
+            # a sleeve tests the arms; the coat's body the torso, and the arms too only above the chest (the shoulder tops are the
+            # sleeves' shells; lower, the arms hang beside the waist and, tested there, ballooned the coat)
+            for kT, T in (body_a if coat_arm[i] else (body if q[2] > top_ - SETTLE_FADE * H else body_t)).items():
                 if "Head" in kT or "Hair" in kT:
                     continue
                 loc, nrm, _f, d_ = T.find_nearest(Vector(q), 0.05 * H)
@@ -444,12 +450,12 @@ if os.environ.get("SHOULDER_FIT", "1") != "0" and SEW is not None:
             if best is not None and best < COAT_GAP * H:
                 src_i.append(i); src_d.append(dv * (COAT_GAP * H - best))
         if src_i:
-            P0 = CV.copy(); S_ = CV[src_i]; D_ = np.array(src_d); moved = 0
-            for i in np.nonzero(zone)[0]:
-                w_ = np.exp(-np.sum((S_ - CV[i]) ** 2, axis=1) / (2 * (SFIT_R * H) ** 2))
+            P0 = CV.copy(); S_ = CV[src_i]; D_ = np.array(src_d); SA_ = coat_arm[src_i]; moved = 0
+            for i in np.nonzero(zone)[0]:                # spread within its kind (sleeve / body)
+                w_ = np.exp(-np.sum((S_ - CV[i]) ** 2, axis=1) / (2 * (SFIT_R * H) ** 2)) * (SA_ == coat_arm[i])
                 if w_.sum() < 1e-6:
                     continue
-                fade = np.clip((CV[i, 2] - (top_ - SETTLE_FADE * H)) / (SETTLE_FADE * H), 0.0, 1.0)
+                fade = np.clip((CV[i, 2] - z_low) / (SETTLE_FADE * H), 0.0, 1.0)
                 d_ = (w_[:, None] * D_).sum(0) / max(w_.sum(), 1.0) * fade
                 # never less than the vertex's own push (a source keeps its full lift)
                 CV[i] = CV[i] + d_; moved += 1
@@ -654,6 +660,18 @@ if "Outfit_Shirt" in mB:
     deep = [d_ and not k_ for d_, k_ in zip(deep, keep)]; out_ = [o_ and not k_ for o_, k_ in zip(out_, keep)]
     sc_, nd = masked_copy(mB["Outfit_Shirt"], "Outfit_Shirt_Coated", lambda f: all(deep[v.index] for v in f.verts) or any(out_[v.index] for v in f.verts))
     print(f"[{TAG}] shirt mask: {nd} of {len(mB['Outfit_Shirt'].data.polygons)} shirt faces deep inside the coat or out through it ({sum(out_)} vertices out)"); extra.append(sc_)
+    # the TROUSERS the same way, at the hips only (2026-10-30: the female's hips are wider than the coat at the belt, her trousers showed at
+    # its back and sides; reaching the coat down there instead ballooned it): Outfit_Trousers_Coated
+    if "Outfit_Trousers" in mB:
+        TV_ = wverts(mB["Outfit_Trousers"]); hipz = bh("Hips")[2] - 0.08 * H
+        def covered(q):                                  # the coat really over it, seen from outside (a ray away from the spine meets it):
+            dv = Vector(away(q)); return Tc.ray_cast(Vector(q) + dv * 1e-4, dv, 0.08 * H)[0] is not None   # the open front is not
+        tdeep = [q[2] > hipz and inside(Tc, q) and Tc.find_nearest(Vector(q))[3] > COAT_GAP * H and covered(q) for q in TV_]
+        tout = [q[2] > hipz and not inside(Tc, q) and through_coat(q) for q in TV_]
+        tc_, nd = masked_copy(mB["Outfit_Trousers"], "Outfit_Trousers_Coated",
+                              lambda f: all(tdeep[v.index] for v in f.verts) or any(tout[v.index] for v in f.verts))
+        print(f"[{TAG}] trousers mask: {nd} of {len(mB['Outfit_Trousers'].data.polygons)} trouser faces at the hips deep inside the coat or out through it ({sum(tout)} vertices out)")
+        extra.append(tc_)
 for o in mA.values():
     if o not in (coat, hat):
         bpy.data.objects.remove(o)
@@ -666,9 +684,9 @@ if RV_OUT:
     pal = {"Outfit_Coat": (0.80, 0.35, 0.30), "Outfit_Hat": (0.30, 0.75, 0.70), "Outfit_Shirt": (0.85, 0.55, 0.85), "Outfit_Tie": (0.95, 0.85, 0.30),
            "Outfit_Belt": (0.95, 0.45, 0.10), "Outfit_Buckle": (0.95, 0.95, 0.95), "Outfit_Trousers": (0.35, 0.50, 0.85), "Outfit_Shoes": (0.45, 0.30, 0.20),
            "Body_Head": (0.90, 0.70, 0.55), "Body_Hands": (0.95, 0.60, 0.45), "Body_Hair": (0.45, 0.80, 0.35)}
-    dressed = [o for o in out_objs if o.name not in ("Body_Hair", "Outfit_Shirt")]
+    dressed = [o for o in out_objs if o.name not in ("Body_Hair", "Outfit_Shirt", "Outfit_Trousers")]
     orig = {o.name: (list(o.data.materials), [p.use_smooth for p in o.data.polygons], [p.material_index for p in o.data.polygons]) for o in out_objs}
-    base_of = {"Body_Hair_Hat": "Body_Hair", "Outfit_Shirt_Coated": "Outfit_Shirt"}
+    base_of = {"Body_Hair_Hat": "Body_Hair", "Outfit_Shirt_Coated": "Outfit_Shirt", "Outfit_Trousers_Coated": "Outfit_Trousers"}
     show = {o.name: pal.get(base_of.get(o.name.split(".")[0], o.name.split(".")[0]), (0.5, 0.5, 0.5)) for o in dressed}
     cam, co = tc.setup_renders(dressed, show); files = {}
     if HEM_MASK is not None:                                 # the hem band in MAGENTA (Director, 2026-10-28: "pinta elas com alguma cor")

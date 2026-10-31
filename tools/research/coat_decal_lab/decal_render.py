@@ -12,7 +12,7 @@
 # is muted, the figure runs in place). STILLS_ONLY=1: per emblem, <tag>_back_, <tag>_close_<emblem>.png and <tag>_game_<emblem>.png, then
 # stop. ONLY_MOTION=1: the clip's frames alone.
 # The dressed figure: tools/asset_generation/tripo/ tripo_assemble.py on the base and on the coat generation, then tripo_dress.py with
-# DRESS_COAT=ASSETS/MODELS/COAT_BASE.glb (dress_both.sh). Clip: a bank GLB (ASSETS/ANIMATIONS/bank/<figure>/<id>.glb).
+# DRESS_COAT=ASSETS/MODELS/official/COAT_BASE.glb (dress_both.sh). Clip: a bank GLB (ASSETS/ANIMATIONS/bank/<figure>/<id>.glb).
 # Usage: blender -b -P decal_render.py -- <dressed.glb> <emblem_dir> <out_dir> <tag> <bank_clip.glb>
 import math
 import os

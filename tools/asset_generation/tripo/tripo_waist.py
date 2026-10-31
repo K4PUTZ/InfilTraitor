@@ -18,7 +18,7 @@
 #     normals kept where the new skin lies on the old one, except near the old seam and the waist.
 # Env: WAIST_OUT (output .blend; default <input>_waist.blend; the GLB is written beside it with every clip, in POSE), WAIST_SHIRT
 # (default tripo_part_3), WAIST_TROUSERS (comma list, default tripo_part_5,tripo_part_6), WAIST="KEY=value,..." overrides P below.
-# Usage: blender -b ASSETS/MODELS/MALE_BASE_edit.blend -P tripo_waist.py     (never writes the input)
+# Usage: blender -b ASSETS/MODELS/history/MALE_BASE_edit.blend -P tripo_waist.py     (never writes the input)
 import heapq, math, os, sys
 import numpy as np
 import bpy, bmesh

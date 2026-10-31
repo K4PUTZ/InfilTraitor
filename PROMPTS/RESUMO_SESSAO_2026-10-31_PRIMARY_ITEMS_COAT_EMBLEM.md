@@ -77,3 +77,14 @@ did not start: the Director first settled what the bases are and how an item may
    - MV-1's per-clip review sheets and the ~100 new clips per figure;
    - the T1 slot table;
    - the male's 9 k-tri hair against the Moto budget.
+
+## Later: `ASSETS/MODELS/` organised (Director: "Sim, aplica")
+- `official/`: `FEMALE_AGENT_BASE` (from `FEMALE_BASE_edit`, the Icosphere dropped), `MALE_AGENT_BASE` (the belt and the Icosphere dropped),
+  `COAT_BASE`. Both bases exported in POSE with their clips (female `climb`, `dive`; male `dive`, `heart_pose`).
+- `sources/`: the Tripo downloads renamed (`tripo_female_base` <- `FEMALE_BASE`, `tripo_male_base` <- `MALE_BASE`, `tripo_female_nocoat` <-
+  `female+no+coat`, `tripo_female_nocoat_02` <- `female detective no coat 3d model`, `tripo_female_coat_hat` <- `female+detective+figure+3d+model`,
+  `tripo_male_nocoat` <- `MaleCharacterNoCoat`, `tripo_male_coat_hat` <- `MaleCharacterHatAndCoat`, `tripo_male_detective` <-
+  `Male+detective+figure+3d+model`, `tripo_trench_coat` <- `leather trench coat 3d model`, `formal_male_character.zip`).
+- `history/`: `FEMALE_BASE_edit`, `MALE_BASE_edit` (+ `.blend1`), `MALE_BASE_edit_waist`, `MALE_AGENT_BASE_belted`, `MALE_AGENT_BASE_hat`.
+- The tools follow (`bank_sources.json`, `dress_both.sh`, `tripo_waist.py`'s usage line); `dress_both.sh` dressed both new bases cleanly.
+  Item 1 of OPEN above is done except the backup.

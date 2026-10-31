@@ -192,3 +192,12 @@ maps/SEG_*.map.json
 
 # capture.py writes it for one Godot run (Movie Maker size) and deletes it
 /override.cfg
+
+# ASSETS/MODELS/: the 3-D models are versioned (Director, 2026-10-31: "a maior parte dos modelos 3D deveriam estar no git. Vamos evitar só
+# texturas grandes, arquivos pesados"). Kept out: the raw Tripo bases / no-coat generations (5-10 MB each, mostly Tripo's test textures,
+# which are never shipped: ACTOR D87), Blender's .blend1 backups and archives. Organisation and name map: ASSETS/MODELS/README.md.
+!ASSETS/MODELS/
+ASSETS/MODELS/**/*.blend1
+ASSETS/MODELS/**/*.zip
+ASSETS/MODELS/sources/tripo_*_base.glb
+ASSETS/MODELS/sources/tripo_*_nocoat*.glb

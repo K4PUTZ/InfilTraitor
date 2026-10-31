@@ -996,6 +996,51 @@ bm_.to_mesh(coat.data); bm_.free(); coat.data.update()
 print(f"[{TAG}] coat: {n_cut} vertices weighted to an arm AND a leg, cut to one; {n_w} vertices share weights with a neighbour within "
       f"{WELD_W * 100:.1f} % of H; fused sleeve / body faces: {len(span)} spanning the gap cut, {len(bridge)} on the body given to it ({len(dup)} corners duplicated)")
 rebind(coat)
+# SKIRT BONES (ACTOR D88, Director 2026-10-30: "Aceito ossos no casaco, acho que é uma ótima forma de adaptar ao corpo"): SKB_N chains of
+# SKB_SEG bones hang from Hips round the skirt, each joint ON the cloth at its azimuth and height (the mean radius of the skirt's points
+# there), the azimuths offset half a step so no chain sits in the open front. The game runs them as springs colliding with capsules on the
+# legs (SpringBoneSimulator3D); the clips never key them, so in Blender they stay at rest on the hips. A skirt point (below the hips, not a
+# sleeve) takes the two chains beside it (by angle) and the bones along them (a tent per bone), blended over its C4 weights from 0 at the
+# hips to 1 at SKB_RAMP of the skirt's length. SKB_N=0 turns it off.
+SKB_N = int(os.environ.get("SKB_N", "8")); SKB_SEG = int(os.environ.get("SKB_SEG", "3")); SKB_RAMP = float(os.environ.get("SKB_RAMP", "0.3"))
+if SKB_N > 0:
+    KV = wverts(coat); KW = tc.read_weights(coat)
+    hipj = np.array((armB.matrix_world @ armB.data.bones["mixamorig:Hips"].head_local)[:]); hz4 = hipj[2]
+    k_arm = np.array([sum(x for g, x in w.items() if any(k in g for k in ("Arm", "Hand", "Shoulder"))) >= 0.5 for w in KW])
+    sk = (KV[:, 2] < hz4) & ~k_arm; hem4 = KV[sk, 2].min(); L4 = hz4 - hem4
+    rel = KV[:, :2] - hipj[:2]; ang = np.arctan2(rel[:, 1], rel[:, 0]); rad = np.linalg.norm(rel, axis=1)
+    tt = np.clip((hz4 - KV[:, 2]) / L4, 0.0, 1.0); step = 2 * math.pi / SKB_N
+    azs = [(k + 0.5) * step - math.pi for k in range(SKB_N)]
+    def joint(k, j):                                     # the mean radius of the skirt's points within half a step / segment of the joint
+        da = np.abs((ang - azs[k] + math.pi) % (2 * math.pi) - math.pi)
+        m_ = sk & (da < step / 2) & (np.abs(tt - j / SKB_SEG) < 0.5 / SKB_SEG)
+        r_ = float(rad[m_].mean()) if m_.any() else float(rad[sk].mean())
+        return Vector((hipj[0] + r_ * math.cos(azs[k]), hipj[1] + r_ * math.sin(azs[k]), hz4 - L4 * j / SKB_SEG))
+    bpy.context.view_layer.objects.active = armB; bpy.ops.object.mode_set(mode='EDIT')
+    inv = armB.matrix_world.inverted(); eb_ = armB.data.edit_bones; names = {}
+    for k in range(SKB_N):
+        par = eb_["mixamorig:Hips"]
+        for j in range(SKB_SEG):
+            b_ = eb_.new(f"coat_skirt_{k}_{j}"); b_.head = inv @ joint(k, j); b_.tail = inv @ joint(k, j + 1)
+            b_.parent = par; b_.use_connect = j > 0; b_.use_deform = True; par = b_; names[(k, j)] = b_.name
+    bpy.ops.object.mode_set(mode='OBJECT')
+    for i in np.nonzero(sk)[0]:
+        a_ = (ang[i] + math.pi) / step - 0.5; k0 = int(math.floor(a_)) % SKB_N; fa_ = a_ - math.floor(a_)
+        w_ = {}
+        for k_, wk in ((k0, 1 - fa_), ((k0 + 1) % SKB_N, fa_)):
+            for j in range(SKB_SEG):
+                x = max(0.0, 1 - abs(tt[i] * SKB_SEG - (j + 0.5)))
+                if j == 0 and tt[i] * SKB_SEG < 0.5 or j == SKB_SEG - 1 and tt[i] * SKB_SEG > SKB_SEG - 0.5:
+                    x = 1.0
+                if x * wk > 0:
+                    w_[names[(k_, j)]] = w_.get(names[(k_, j)], 0.0) + x * wk
+        s_ = min(1.0, tt[i] / SKB_RAMP); mix_ = {g: x * (1 - s_) for g, x in KW[i].items()}
+        for g, x in w_.items():
+            mix_[g] = mix_.get(g, 0.0) + x * s_
+        KW[i] = tc.top4(mix_, "mixamorig:Hips")
+    tc.write_weights(coat, KW)
+    print(f"[{TAG}] skirt bones: {SKB_N} chains x {SKB_SEG} bones from Hips (z {hz4:.3f}) to the hem (z {hem4:.3f}); {int(sk.sum())} skirt "
+          f"vertices weighted to them, full from {SKB_RAMP * 100:.0f} % of the skirt down")
 left = 0
 for i in range(0, len(CV), 3):
     for T in (body_a if coat_arm[i] else body_t).values():

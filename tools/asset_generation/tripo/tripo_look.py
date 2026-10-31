@@ -63,7 +63,7 @@ def hair_material(o, s):
         for li, q in zip(poly.loop_indices, uv_):
             hu.data[li].uv = q
     m = bpy.data.materials.new("hair"); n, L = m.node_tree.nodes, m.node_tree.links; b = n["Principled BSDF"]
-    b.inputs["Roughness"].default_value = 0.72; b.inputs["Specular IOR Level"].default_value = 0.25
+    b.inputs["Roughness"].default_value = s.get("rough", 0.72); b.inputs["Specular IOR Level"].default_value = s.get("spec", 0.25)
     uvn = n.new("ShaderNodeUVMap"); uvn.uv_map = "HairUV"; sep = n.new("ShaderNodeSeparateXYZ"); L.new(uvn.outputs["UV"], sep.inputs[0])
     mp = n.new("ShaderNodeMapping"); mp.inputs["Scale"].default_value = (9, 2, 1); L.new(uvn.outputs["UV"], mp.inputs["Vector"])
     st = n.new("ShaderNodeTexImage"); st.image = bpy.data.images.load(f"{DET}/hair_strands.png", check_existing=True); st.image.colorspace_settings.name = 'Non-Color'
@@ -80,7 +80,7 @@ def hair_material(o, s):
     col = n.new("ShaderNodeRGB"); col.outputs[0].default_value = lin(s["colour"])
     m1 = n.new("ShaderNodeVectorMath"); m1.operation = 'MULTIPLY'; L.new(col.outputs[0], m1.inputs[0]); L.new(st.outputs["Color"], m1.inputs[1])
     m2 = n.new("ShaderNodeVectorMath"); m2.operation = 'SCALE'; L.new(m1.outputs[0], m2.inputs[0]); L.new(root.outputs[0], m2.inputs["Scale"])
-    hl = n.new("ShaderNodeVectorMath"); hl.operation = 'SCALE'; L.new(bs.outputs[0], hl.inputs["Scale"]); hc = lin(s["colour"]); hl.inputs[0].default_value = tuple(0.04 + 1.6 * c for c in hc[:3])
+    hl = n.new("ShaderNodeVectorMath"); hl.operation = 'SCALE'; L.new(bs.outputs[0], hl.inputs["Scale"]); hc = lin(s["colour"]); hl.inputs[0].default_value = tuple(s.get("sheen", 1.0) * (0.04 + 1.6 * c) for c in hc[:3])   # sheen 0: no band
     add = n.new("ShaderNodeVectorMath"); add.operation = 'ADD'; L.new(m2.outputs[0], add.inputs[0]); L.new(hl.outputs[0], add.inputs[1])
     L.new(add.outputs[0], b.inputs["Base Color"])
     bu = n.new("ShaderNodeBump"); bu.inputs["Strength"].default_value = 0.35; bu.inputs["Distance"].default_value = 0.002
@@ -113,6 +113,26 @@ for o in bpy.data.objects:
     if nm not in SURF:
         o.hide_render = True; continue
     o.data.materials.clear(); o.data.materials.append(material(nm, SURF[nm]))
+# LOOK_HAIR_PITCH (degrees, a TEST, 2026-10-31: "rotacionar só o cabelo dela 6 graus forward [...] uma franja sobre os olhos"): the hair
+# turned about the Head bone's head, front down
+_pitch = float(os.environ.get("LOOK_HAIR_PITCH", "0"))
+_off = [float(x) for x in os.environ.get("LOOK_HAIR_OFFSET", "0,0").split(",")]   # mm up, mm back, at a 1.70 m figure (the file is 1 m tall)
+if _pitch or any(_off):
+    from mathutils import Matrix
+    piv = arm.matrix_world @ arm.data.bones[P + "Head"].head_local
+    R = Matrix.Translation(piv) @ Matrix.Rotation(math.radians(_pitch), 4, 'X') @ Matrix.Translation(-piv)
+    R = Matrix.Translation(Vector((0, _off[1], _off[0])) * (H / 1700.0)) @ R
+    for o in bpy.data.objects:
+        if o.type == 'MESH' and o.name.split(".")[0] in ("Body_Hair", "Body_Hair_Hat"):
+            mw_ = o.matrix_world; inv_ = mw_.inverted()
+            for v in o.data.vertices:
+                v.co = inv_ @ (R @ (mw_ @ v.co))
+            o.data.update()
+_hdrop = float(os.environ.get("LOOK_HAT_DROP", "0"))      # mm down at a 1.70 m figure (a TEST, 2026-10-31)
+if _hdrop:
+    for o in bpy.data.objects:
+        if o.type == 'MESH' and o.name.split(".")[0] == "Outfit_Hat":
+            o.location.z -= _hdrop * H / 1700.0
 sc = bpy.context.scene; sc.render.engine = 'BLENDER_EEVEE'; sc.view_settings.view_transform = 'AgX'
 wd = bpy.data.worlds.new("w"); sc.world = wd; wd.node_tree.nodes["Background"].inputs[0].default_value = (0.75, 0.76, 0.78, 1)
 wd.node_tree.nodes["Background"].inputs[1].default_value = 0.6
@@ -138,6 +158,9 @@ hd = [o for o in bpy.data.objects if o.type == 'MESH' and o.name.startswith("Bod
 if hd:
     zs = [(hd[0].matrix_world @ v.co).z for v in hd[0].data.vertices]
     shot(f"{OUT}/{FIG}_face.png", 15, 4, (0, 0, (max(zs) + min(zs)) / 2), 1.5 * (max(zs) - min(zs)), 600, 600)
+    if os.environ.get("LOOK_HEAD4", "0") == "1":          # the head from its four sides
+        for az in (0, 90, 180, 270):
+            shot(f"{OUT}/{FIG}_head_{az}.png", az, 4, (0, 0, (max(zs) + min(zs)) / 2 + 0.1 * (max(zs) - min(zs))), 1.9 * (max(zs) - min(zs)), 500, 500)
 g = H * math.cos(math.radians(30)) * 240 / 190.0
 shot(f"{OUT}/{FIG}_game.png", 45, 30, body, g, 160, 240)
 print(f"[{TAG}] {FIG}: renders in {OUT}")

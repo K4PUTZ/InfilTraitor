@@ -13,7 +13,7 @@ TRIPO_GLB=ASSETS/MODELS/official/FEMALE_AGENT_BASE.glb TRIPO_OUT="$OUT/f_base.gl
 TRIPO_GLB=ASSETS/MODELS/official/MALE_AGENT_BASE.glb TRIPO_OUT="$OUT/m_base.glb" BELT_KEEP=1 "$B" -b -P "$T/tripo_assemble.py" > "$OUT/log_m_base.txt" 2>&1
 TRIPO_GLB=ASSETS/MODELS/sources/tripo_female_coat_hat.glb TRIPO_OUT="$OUT/f_from.glb" "$B" -b -P "$T/tripo_assemble.py" > "$OUT/log_f_from.txt" 2>&1
 TRIPO_GLB=ASSETS/MODELS/sources/tripo_male_coat_hat.glb TRIPO_OUT="$OUT/m_from.glb" "$B" -b -P "$T/tripo_assemble.py" > "$OUT/log_m_from.txt" 2>&1
-DRESS_COAT=ASSETS/MODELS/official/COAT_BASE.glb DRESS_BASE="$OUT/f_base.glb" DRESS_FROM="$OUT/f_from.glb" DRESS_OUT="$OUT/f_dressed.glb" LAPEL_SIDE=R SLEEVE_FIT=0 \
+DRESS_COAT=ASSETS/MODELS/official/COAT_BASE.glb DRESS_BASE="$OUT/f_base.glb" DRESS_FROM="$OUT/f_from.glb" DRESS_OUT="$OUT/f_dressed.glb" LAPEL_SIDE=R SLEEVE_FIT=0 HAIR_PITCH=12 HAIR_UP=0.0035 HAIR_BACK=0.0035 HAT_DROP=0.0035 \
     "$B" -b -P "$T/tripo_dress.py" > "$OUT/log_f_dress.txt" 2>&1
 DRESS_COAT=ASSETS/MODELS/official/COAT_BASE.glb DRESS_BASE="$OUT/m_base.glb" DRESS_FROM="$OUT/m_from.glb" DRESS_OUT="$OUT/m_dressed.glb" HAT_DY=0.005 HAT_DROP=0.01 \
     "$B" -b -P "$T/tripo_dress.py" > "$OUT/log_m_dress.txt" 2>&1

@@ -14,7 +14,7 @@
 # (3) MASKS for the dressed state: Body_Hair_Hat, the hair without what the hat covers (a vertex at or above the hat's underside at its x, y);
 #     Outfit_Shirt_Coated, the shirt without the faces lying inside the coat by more than COAT_GAP (hidden in every pose but costing draws).
 # Out: the base's slots, Outfit_Coat, Outfit_Hat, Body_Hair_Hat, Outfit_Shirt_Coated, the base's armature and clips, as one GLB.
-# Env: DRESS_BASE, DRESS_FROM, DRESS_OUT; RV_OUT (optional folder: dressed.png, 4 views and the head; motion.png, a clip), RV_CLIP.
+# Env: DRESS_BASE, DRESS_FROM, DRESS_OUT; HAIR_PITCH / HAIR_UP / HAIR_BACK (the hair re-seated, see the code); RV_OUT (optional folder: dressed.png, 4 views and the head; motion.png, a clip), RV_CLIP.
 # Usage: blender -b -P tripo_dress.py
 import math, os, sys
 import numpy as np
@@ -1139,6 +1139,15 @@ for i in range(0, len(CV), 3):
 print(f"[{TAG}] coat on the base: {left} sampled vertices still inside the body (every third vertex checked)")
 
 # (2) the hat
+# HAIR_PITCH (degrees), HAIR_UP / HAIR_BACK (fractions of H): the base's hair re-seated BEFORE the hat is fitted and the hair masked (Director,
+# 2026-10-31, the female: 12 deg forward about the Head bone, then 6 mm up and 6 mm back at a 1.70 m figure = 0.0035 H each, a fringe toward the
+# eyes); done in the look renderer alone it left the hat's hair mask computed on the old hair (locks over her eye)
+_hp = float(os.environ.get("HAIR_PITCH", "0")); _hu = float(os.environ.get("HAIR_UP", "0")); _hb = float(os.environ.get("HAIR_BACK", "0"))
+if _hp or _hu or _hb:
+    piv = armB.matrix_world @ armB.data.bones["mixamorig:Head"].head_local
+    R_ = Matrix.Translation(Vector((0, _hb * H, _hu * H))) @ Matrix.Translation(piv) @ Matrix.Rotation(math.radians(_hp), 4, 'X') @ Matrix.Translation(-piv)
+    hO = mB["Body_Hair"]; set_world(hO, np.array([(R_ @ Vector(q))[:] for q in wverts(hO)]))
+    print(f"[{TAG}] hair re-seated: {_hp:.1f} deg forward, {_hu * 100:.2f} % of H up, {_hb * 100:.2f} % back")
 hat = mA["Outfit_Hat"]; HV = wverts(hat)
 fa, fb = wverts(mA["Body_Head"]), wverts(mB["Body_Head"])
 HV += ((fb.min(0) + fb.max(0)) - (fa.min(0) + fa.max(0))) / 2.0

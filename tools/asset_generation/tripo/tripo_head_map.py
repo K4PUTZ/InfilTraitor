@@ -6,8 +6,8 @@
 # Also prints the median skin colour of the map (the face's central pixels), for the hands' palette entry.
 # In: HEAD_IN (a tripo_uv output: the head still on Tripo's UVs), HEAD_SRC (the raw Tripo GLB of the same figure, which carries the atlas).
 # Out: HEAD_MAP (the PNG), HEAD_OUT (the GLB, the head on its new UVMap). Env: HEAD_RES (default 1024), HEAD_SMOOTH (1: weld + smooth shading only: not
-# enough, the female's lines are folds of the mesh), HEAD_SUBDIV (1 for the female, chosen 2026-10-31: the folds go, the drawing softens a little), HEAD_KEEP_ABOVE ("lo,hi": the original
-# shape back above hi, see the code; the female: 0.40,0.50). Usage: blender -b -P tripo_head_map.py
+# enough, the female's lines are folds of the mesh), HEAD_SUBDIV (tried on the female 2026-10-31: the folds go, the drawing softens; the Director kept the original), HEAD_KEEP_ABOVE ("lo,hi": the original
+# shape back above hi, see the code; tried, not used). Usage: blender -b -P tripo_head_map.py
 import os, sys
 import numpy as np
 import bpy

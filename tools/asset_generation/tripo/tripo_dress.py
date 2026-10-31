@@ -482,10 +482,6 @@ if os.environ.get("SLEEVE_FIT", "1") != "0" and SEW is not None:
     if "Body_Hands" in mB:
         arm_sh["Body_Hands"] = sub_shell(mB["Body_Hands"], np.ones(len(mB["Body_Hands"].data.vertices), bool))
     arm_sh = {k: v for k, v in arm_sh.items() if v}
-    # SLEEVE_HANDS=1 (2026-10-31, the Director: the male's sleeves came out baggy, "várias áreas folgadas, sobrando"): only the HANDS push the
-    # sleeve (the wrist through the cuff); the shirt's sleeves, broader than the coat's on the male, pushed the upper sleeve into puffs
-    if os.environ.get("SLEEVE_HANDS", "0") == "1":
-        arm_sh = {k: v for k, v in arm_sh.items() if k == "Body_Hands"}
     slz = coat_arm & ~LINING; SR = float(os.environ.get("SFIT_R", "0.03")) * 0.7
     for _pass in range(int(os.environ.get("SLEEVE_IT", "3"))):
         si_, sd2 = [], []

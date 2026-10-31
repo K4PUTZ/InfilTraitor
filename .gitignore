@@ -201,3 +201,6 @@ ASSETS/MODELS/**/*.blend1
 ASSETS/MODELS/**/*.zip
 ASSETS/MODELS/sources/tripo_*_base.glb
 ASSETS/MODELS/sources/tripo_*_nocoat*.glb
+# the characters' own maps (ACTOR D87): the grayscale details (512, ~100 KB each) and the heads' painted maps (1024, < 1 MB) are sources
+!ASSETS/MODELS/official/detail/*.png
+!ASSETS/MODELS/official/painted/*.png

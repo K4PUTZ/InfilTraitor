@@ -41,6 +41,16 @@ for o in bpy.data.objects:
     if o.type == 'MESH':
         o.data.materials.clear(); o.data.materials.append(mat)
 sc.display.shading.color_type = 'MATERIAL'
+# PROBE_COLORS=1: a colour per piece (the bench's `_tint`): the white shirt under the black coat shows where it pokes through; the holes are then NOT counted
+COLORS = {"Outfit_Coat": (0.02, 0.02, 0.02), "Outfit_Hat": (0.02, 0.02, 0.02), "Outfit_Shirt": (1, 1, 1), "Outfit_Shirt_Coated": (1, 1, 1),
+          "Outfit_Trousers": (0.1, 0.2, 0.6), "Outfit_Trousers_Coated": (0.1, 0.2, 0.6), "Outfit_Tie": (0.8, 0.1, 0.1), "Outfit_Belt": (0.9, 0.5, 0.1),
+          "Outfit_Belt_Coated": (0.9, 0.5, 0.1), "Outfit_Buckle": (0.9, 0.9, 0.1), "Outfit_Shoes": (0.1, 0.1, 0.1), "Body_Hair": (0.35, 0.2, 0.1),
+          "Body_Hair_Hat": (0.35, 0.2, 0.1), "Body_Head": (0.85, 0.6, 0.5), "Body_Hands": (0.85, 0.6, 0.5)}
+if os.environ.get("PROBE_COLORS") == "1":
+    sc.display.shading.color_type = 'OBJECT'
+    for o in bpy.data.objects:
+        if o.type == 'MESH':
+            o.color = COLORS.get(o.name.split(".")[0], (0.5, 0.5, 0.5)) + (1,)
 sc.display.shading.show_backface_culling = True    # the Workbench's own switch (the material flag is Eevee's)
 
 

@@ -32,9 +32,10 @@ RV_OUT = os.environ.get("RV_OUT", "").rstrip("/")
 # LIGHT (Director, 2026-10-27: "vamos usar como veio mesmo [...] deslocar essas zonas do casaco ligeiramente pra fora do corpo [...] coisa de
 # milimetros"; the full fit, 0.4 % gap, 10 relax steps, no cap, swelled the coat out of character): a small gap, a short relax, a cap
 COAT_GAP = float(os.environ.get("COAT_GAP", "0.004"))
-# the FRONT STRIP the masks never take (fractions of H, half-width): the coat's opening shows what is under it, and a masked shirt / trousers left a rim there
+# the FRONT STRIP the masks never take (fractions of H, half-width; 0.05 chosen 2026-10-31 on a white shirt under a black coat, culling on, 0 / 0.05 / 0.10:
+# 0 leaves slits and the trousers show under the tie, 0.10 lets white flecks of the shirt out at both armpits, 0.05 closes the chest with almost none): the coat's opening shows what is under it, and a masked shirt / trousers left a rim there
 # whose back the game culls, so the floor showed down the front (measured 2026-10-31 with tripo_crack_probe: ~2 400 px of slits on the female, ~1 600 on the male)
-FRONT_KEEP = float(os.environ.get("FRONT_KEEP", "0.10"))
+FRONT_KEEP = float(os.environ.get("FRONT_KEEP", "0.05"))
 COAT_MAX = float(os.environ.get("COAT_MAX", "0.012"))    # fractions of H; a coat point never moves farther than COAT_MAX
 COAT_RADIUS = float(os.environ.get("COAT_RADIUS", "0.03"))   # a fraction of H: how far a push carries (see the coat fit)
 # ONE LAPEL may go farther, to make room for a bust (Director, 2026-10-27, on the female: "deslocar a lapela da esquerda mais pra frente"):

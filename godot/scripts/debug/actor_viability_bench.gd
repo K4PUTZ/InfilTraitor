@@ -125,6 +125,9 @@ static func spawn(room: Node, model: String, count: int) -> String:
 	var nocoat: bool = official and model.ends_with("_nocoat")
 	if nocoat:
 		model = model.trim_suffix("_nocoat")
+	var tint: bool = official and model.ends_with("_tint")   ## a colour per piece (black coat, white shirt...) so a garment poking through another is SEEN; combines as agent_..._unmasked_tint
+	if tint:
+		model = model.trim_suffix("_tint")
 	var unmasked: bool = official and model.ends_with("_unmasked")   ## the coat and hat over the WHOLE shirt / trousers / belt, not the coat-cut variants (a diagnostic of the mask under the coat)
 	if unmasked:
 		model = model.trim_suffix("_unmasked")
@@ -167,6 +170,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 			body.scale = Vector3.ONE * METRES_TO_UNITS
 		var converted: Dictionary = {}
 		_apply_board_light(board, body, converted, cloak)
+		if tint:
+			_tint_pieces(board, body)
 		for piece_name: String in hidden:
 			for node in body.find_children(piece_name, "MeshInstance3D", true, false):
 				(node as Node3D).visible = false
@@ -239,6 +244,26 @@ static func report_render(tag: String) -> void:
 		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
 		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME),
 		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)])
+
+
+## A colour per piece of the official Agents (the glb carries one flat material); keeps the board's light and registers each copy with it.
+const PIECE_TINT := {"Outfit_Coat": Color(0.05, 0.05, 0.06), "Outfit_Hat": Color(0.05, 0.05, 0.06), "Outfit_Shirt": Color(1, 1, 1), "Outfit_Shirt_Coated": Color(1, 1, 1),
+	"Outfit_Trousers": Color(0.12, 0.2, 0.55), "Outfit_Trousers_Coated": Color(0.12, 0.2, 0.55), "Outfit_Tie": Color(0.8, 0.1, 0.1),
+	"Outfit_Belt": Color(0.9, 0.55, 0.1), "Outfit_Belt_Coated": Color(0.9, 0.55, 0.1), "Outfit_Buckle": Color(0.9, 0.9, 0.2), "Outfit_Shoes": Color(0.1, 0.1, 0.1),
+	"Body_Hair": Color(0.35, 0.2, 0.1), "Body_Hair_Hat": Color(0.35, 0.2, 0.1), "Body_Head": Color(0.85, 0.6, 0.5), "Body_Hands": Color(0.85, 0.6, 0.5)}
+
+
+static func _tint_pieces(board: Node3D, body: Node) -> void:
+	for mi in body.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		var key: String = str(m.name).split(".")[0]
+		var src := m.get_active_material(0) as ShaderMaterial
+		if src == null or not PIECE_TINT.has(key):
+			continue
+		var sm := src.duplicate() as ShaderMaterial
+		sm.set_shader_parameter("albedo", PIECE_TINT[key])
+		board.call("register_prop_light_material", sm)
+		m.material_override = sm
 
 
 static func _mesh_height(body: Node3D) -> float:

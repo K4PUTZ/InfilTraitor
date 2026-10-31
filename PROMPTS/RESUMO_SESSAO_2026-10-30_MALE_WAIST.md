@@ -64,7 +64,31 @@ Closes the OPEN item of `RESUMO_SESSAO_2026-10-29_BASES_BELT_PAIRS.md` (the male
 - Left for later (Director): the shirt through the male's shoulders, the trousers through the female's hips, the shoulder suspension
   (needs the settle, likely after the hidden lining is removed from COAT_BASE).
 
+## The coat in motion (same day, later)
+- Director: the coat is UNIVERSAL (male and female), `COAT_BASE` stays untouched (it is copied and sold); whatever a figure needs lives
+  in the dressed piece (masks, bindings). "Teste as mais absurdas, porque as normais vão funcionar."
+- `tripo_dress.py` on `COAT_BASE` (commits `630d3895` … `f73418b0`):
+  - the two walls SEWN: the lining bound to the outer wall straight outside it, with its weights;
+  - SHOULDER_FIT (chest up, one smooth field, sleeves vs arms and body vs torso apart; reaching the hips ballooned the coat), SLEEVE_FIT
+    (against the arms and the HANDS: the male's wrists came through his cuffs at rest), SKIRT_GAP;
+  - masks in the dressed piece: `Outfit_Shirt_Coated` (the collar kept as a ring only: the band under the neck kept the male's shoulder
+    blades), `Outfit_Trousers_Coated` (the hips the coat really covers, seen from outside);
+  - C4, the coat's weights off the BASE (the female's generation coat is 25 Tripo parts and shattered the standalone coat): a soft sleeve
+    share grown along the sleeve tube (gated by arm/spine distance), the skirt hanging from the hips with the front panels on the
+    trousers' hip/thigh weights, smoothing, flaps of the body taking the layer under them, islands rigid by majority, no arm+leg mix, a
+    hand's weight moved to the forearm, coincident points sharing weights, the faces Tripo fused between cuff/elbow and the coat's side
+    cut where they span the gap or given to the body where they lie on it;
+  - the cloth settle and the fit stay OFF (they crumpled the coat).
+- Measured (torn triangle = an edge > 1.6x and > 2 cm, per frame): sleeves 124-178 -> 36-51, torso 124-193 -> 25-47; the skirt stays the
+  worst region (54-156 by clip). Review renders now colour the coat olive, the trousers tan.
+- MOVEMENT §3.1: the inventory in pairs (five pairs). MV-1 BUILT: `tripo_anim_bank.py` + `bank_sources.json` (83 clips, 5 pairs).
+- Stress test on the bank's extreme clips, both figures: `jump` 22-24, `fall` 31-35, `box_01` 39-46, `flip` 53-54, `front_kick_01` 59-61,
+  `dive` 118, `climb` 111, `sit` 150-156.
+
 ## OPEN — where to resume
 - Settled: the base is `MALE_AGENT_BASE`; the tools still name `MALE_BASE_edit` in their usage lines.
+- The coat: `sit` (the thighs through the skirt when seated) and a loose piece floating beside the female in `sit`; the fold at the
+  armpit when an arm swings far back; the female's collar sits a little high. The Director is generating ~100 clips per figure (add
+  them to `bank_sources.json`). MV-1 still owes the per-clip review sheets.
 - Still open from 2026-10-29: the T1 slot table checked on the `_edit` bases by the Director; T2-T4 of D87; the male's 9 k-tri hair vs the
   Moto budget.

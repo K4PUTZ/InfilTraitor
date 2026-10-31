@@ -1,5 +1,5 @@
 {
-  "_doc": "The Agent's surface per slot (ACTOR D87, D89): colour = palette (linear-free sRGB hex), material = a grayscale detail in detail/, tile = repeats per UV unit, rough = roughness, bump = the detail's relief. Black to hide in shadow (Director, 2026-10-31, concept art REFERENCES/Personagem/concept_2026-10-31/). Head and hands get a painted map later (D87 (3)); until then a skin colour.",
+  "_doc": "The Agent's surface per slot (ACTOR D87, D89): colour = palette (linear-free sRGB hex), material = a grayscale detail in detail/, tile = repeats per UV unit, rough = roughness, bump = the detail's relief. Black to hide in shadow (Director, 2026-10-31, concept art REFERENCES/Personagem/concept_2026-10-31/). The head carries a painted map (painted/, baked from Tripo's colour by tripo_head_map.py, retouch by hand); the hands take its median skin.",
   "female": {
     "Outfit_Shirt":    {"colour": "#232325", "material": "cotton_poplin", "tile": 34, "rough": 0.75, "bump": 0.25},
     "Outfit_Trousers": {"colour": "#1E1E21", "material": "wool_twill",    "tile": 30, "rough": 0.8,  "bump": 0.3},
@@ -7,8 +7,8 @@
     "Outfit_Belt":     {"colour": "#3A2414", "material": "leather",       "tile": 16, "rough": 0.5,  "bump": 0.3},
     "Outfit_Buckle":   {"colour": "#A8ABB0", "material": "metal",         "tile": 4,  "rough": 0.3,  "bump": 0.05, "metal": 1.0},
     "Outfit_Shoes":    {"colour": "#111112", "material": "leather",       "tile": 18, "rough": 0.35, "bump": 0.2},
-    "Body_Head":       {"colour": "#C99A7E", "material": "skin",          "tile": 8,  "rough": 0.6,  "bump": 0.05},
-    "Body_Hands":      {"colour": "#C99A7E", "material": "skin",          "tile": 8,  "rough": 0.6,  "bump": 0.05},
+    "Body_Head":       {"colour": "#FFFFFF", "map": "painted/female_head.png", "material": "skin", "tile": 8, "rough": 0.6, "bump": 0.03},
+    "Body_Hands":      {"colour": "#A17B70", "material": "skin",          "tile": 8,  "rough": 0.6,  "bump": 0.05},
     "Body_Hair":       {"colour": "#1A1716", "material": "hair",          "tile": 6,  "rough": 0.55, "bump": 0.2}
   },
   "male": {
@@ -18,8 +18,8 @@
     "Outfit_Belt":     {"colour": "#3A2414", "material": "leather",       "tile": 16, "rough": 0.5,  "bump": 0.3},
     "Outfit_Buckle":   {"colour": "#A8ABB0", "material": "metal",         "tile": 4,  "rough": 0.3,  "bump": 0.05, "metal": 1.0},
     "Outfit_Shoes":    {"colour": "#111112", "material": "leather",       "tile": 18, "rough": 0.35, "bump": 0.2},
-    "Body_Head":       {"colour": "#C08F72", "material": "skin",          "tile": 8,  "rough": 0.6,  "bump": 0.05},
-    "Body_Hands":      {"colour": "#C08F72", "material": "skin",          "tile": 8,  "rough": 0.6,  "bump": 0.05},
+    "Body_Head":       {"colour": "#FFFFFF", "map": "painted/male_head.png", "material": "skin", "tile": 8, "rough": 0.6, "bump": 0.03},
+    "Body_Hands":      {"colour": "#B08A74", "material": "skin",          "tile": 8,  "rough": 0.6,  "bump": 0.05},
     "Body_Hair":       {"colour": "#3B2A1F", "material": "hair",          "tile": 6,  "rough": 0.55, "bump": 0.2}
   }
 }

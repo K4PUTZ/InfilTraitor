@@ -1,6 +1,6 @@
-# tripo_look.py — a figure in its SURFACE (ACTOR D87 T6): palette colour x grayscale detail per slot, read from AGENT_SURFACE.json, on the
+# tripo_look.py — a figure in its SURFACE (ACTOR D87 T6): palette colour (or a painted map, "map", path beside the JSON) x grayscale detail per slot, read from AGENT_SURFACE.json, on the
 # clean UVs of tripo_uv.py; Tripo's corner normals kept. Blender EEVEE renders (a substitution: the look, not Godot's light): front, side
-# and back, a close-up of the chest, and the game camera (30 deg elevation, 45 deg azimuth, the figure ~190 px tall).
+# and back, a close-up of the chest and of the face, and the game camera (30 deg elevation, 45 deg azimuth, the figure ~190 px tall).
 # Env: LOOK_IN (a tripo_uv output), LOOK_FIGURE (female | male), LOOK_SURFACE (default ASSETS/MODELS/official/AGENT_SURFACE.json),
 #      LOOK_DETAIL (default ASSETS/MODELS/official/detail), RV_OUT. Usage: blender -b -P tripo_look.py
 import json, math, os, sys
@@ -11,7 +11,8 @@ import tripo_common as tc
 
 TAG = "tripo_look"
 IN, FIG, OUT = os.environ["LOOK_IN"], os.environ["LOOK_FIGURE"], os.environ["RV_OUT"].rstrip("/")
-SURF = json.load(open(os.environ.get("LOOK_SURFACE", "ASSETS/MODELS/official/AGENT_SURFACE.json")))[FIG]
+SURF_PATH = os.environ.get("LOOK_SURFACE", "ASSETS/MODELS/official/AGENT_SURFACE.json")
+SURF = json.load(open(SURF_PATH))[FIG]
 DET = os.environ.get("LOOK_DETAIL", "ASSETS/MODELS/official/detail")
 os.makedirs(OUT, exist_ok=True)
 arm, P, B, meshes = tc.load(TAG, IN)
@@ -33,6 +34,9 @@ def material(name, s):
     mul = n.new("ShaderNodeMix"); mul.data_type = 'RGBA'; mul.blend_type = 'MULTIPLY'; mul.inputs[0].default_value = 1.0
     sA = [x for x in mul.inputs if x.name == "A" and x.type == 'RGBA'][0]; sB = [x for x in mul.inputs if x.name == "B" and x.type == 'RGBA'][0]
     sA.default_value = lin(s["colour"]); L.new(tx.outputs["Color"], sB)
+    if s.get("map"):                                     # a painted map (the head, D87 (3)) replaces the flat colour, on the piece's own UVs
+        pm = n.new("ShaderNodeTexImage"); pm.image = bpy.data.images.load(os.path.join(os.path.dirname(SURF_PATH), s["map"]), check_existing=True)
+        L.new(pm.outputs["Color"], sA)
     L.new([x for x in mul.outputs if x.type == 'RGBA'][0], b.inputs["Base Color"])
     bu = n.new("ShaderNodeBump"); bu.inputs["Strength"].default_value = s["bump"]; bu.inputs["Distance"].default_value = 0.002
     L.new(tx.outputs["Color"], bu.inputs["Height"]); L.new(bu.outputs["Normal"], b.inputs["Normal"])
@@ -67,6 +71,10 @@ body = (0, 0, 0.5 * H)
 for az, nm in ((0, "front"), (90, "side"), (180, "back")):
     shot(f"{OUT}/{FIG}_{nm}.png", az, 4, body, 1.08 * H, 420, 640)
 shot(f"{OUT}/{FIG}_close.png", 20, 6, (0, 0, 0.72 * H), 0.34 * H, 600, 600)
+hd = [o for o in bpy.data.objects if o.type == 'MESH' and o.name.startswith("Body_Head")]
+if hd:
+    zs = [(hd[0].matrix_world @ v.co).z for v in hd[0].data.vertices]
+    shot(f"{OUT}/{FIG}_face.png", 15, 4, (0, 0, (max(zs) + min(zs)) / 2), 1.5 * (max(zs) - min(zs)), 600, 600)
 g = H * math.cos(math.radians(30)) * 240 / 190.0
 shot(f"{OUT}/{FIG}_game.png", 45, 30, body, g, 160, 240)
 print(f"[{TAG}] {FIG}: renders in {OUT}")

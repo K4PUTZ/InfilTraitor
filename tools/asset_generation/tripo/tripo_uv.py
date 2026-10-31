@@ -12,6 +12,7 @@
 # (4) Blender's conformal unwrap on those seams, every island turned so world Z is UV up (align_rotation GEOMETRY), one scale for every island
 #     (average_islands_scale), packed without rotation. The UVs replace `UVMap` (Tripo's maps are not shipped, D87 (4)).
 # Head, hands and hair keep Tripo's UVs: the head gets a painted map of its own (D87 (3)), hands and hair a plain detail.
+# (5) Limbs (sleeves, trouser legs) take a cylindrical map about their bone instead of the conformal one (see the code).
 # Out: the same GLB with new UVs. RV_OUT: uv_front.png / uv_back.png, a numbered grid on every piece. Prints per piece: islands, the texel
 # density's p90 / p10 spread.
 # Env: UV_IN, UV_OUT, RV_OUT (optional). Usage: blender -b -P tripo_uv.py
@@ -122,7 +123,7 @@ for name in GARMENTS:
     for f in bm.faces:
         cen.setdefault(part[f.index], []).append(f.calc_center_median())
     axis_c = {p: sum(v, Vector()) / len(v) for p, v in cen.items()}
-    ang = {}
+    ang, limb = {}, {}
     for f in bm.faces:
         p = part[f.index]; c = f.calc_center_median(); kind = p.rstrip("LR")
         if kind in LIMB_AXIS:
@@ -130,7 +131,7 @@ for name in GARMENTS:
             h0 = bone_head(("Left" if side == "L" else "Right") + a0); h1 = bone_head(("Left" if side == "L" else "Right") + a1)
             ax = (h1 - h0).normalized(); d = c - h0; d -= ax * d.dot(ax)
             out = Vector((1 if side == "L" else -1, 0, 0)); out -= ax * out.dot(ax); out.normalize(); up = ax.cross(out)
-            ang[f.index] = ("limb", math.atan2(d.dot(up), d.dot(out)))
+            ang[f.index] = ("limb", math.atan2(d.dot(up), d.dot(out))); limb[f.index] = (p, h0, ax, out, up)
         else:
             d = c - axis_c[p]
             ang[f.index] = ("torso", math.atan2(d.x, -d.y))     # 0 = the front
@@ -173,6 +174,37 @@ for name in GARMENTS:
     bpy.ops.uv.average_islands_scale()
     bpy.ops.uv.pack_islands(rotate=False, margin=0.004)
     bpy.ops.object.mode_set(mode='OBJECT')
+    # (5) a limb is a TUBE: the conformal unwrap wrinkles it (the female's sleeves: density 0.12x to 1.9x of the median, 2026-10-31), so its
+    # faces take a CYLINDRICAL map instead: u = the angle about the bone x the part's mean radius, v = the distance along the bone (world
+    # units, so every tube keeps the scale of its surface); each corner's angle unwrapped about its face's own, so the inner-line cut stays a
+    # clean edge. Then one scale for every island again and a new pack.
+    if limb:
+        mw = o.matrix_world; bm = bmesh.new(); bm.from_mesh(me); uv = bm.loops.layers.uv.active; bm.faces.ensure_lookup_table()
+        rad = {}
+        for fi, (p, h0, ax, out, up) in limb.items():
+            for v in bm.faces[fi].verts:
+                d = mw @ v.co - h0; rad.setdefault(p, []).append((d - ax * d.dot(ax)).length)
+        rad = {p: sum(r) / len(r) for p, r in rad.items()}
+        for fi, (p, h0, ax, out, up) in limb.items():
+            f = bm.faces[fi]; ac = ang[fi][1]
+            for l in f.loops:
+                d = mw @ l.vert.co - h0; t = d.dot(ax); r = d - ax * t
+                a = ac + wrap(math.atan2(r.dot(up), r.dot(out)) - ac)
+                l[uv].uv = (a * rad[p], -t)
+        # a print must not read mirrored: where a part's UV winding runs against its faces' (signed UV area < 0), its u is flipped
+        area = {}
+        for fi, (p, *_r) in limb.items():
+            q = [l[uv].uv for l in bm.faces[fi].loops]
+            area[p] = area.get(p, 0.0) + sum((q[i] - q[0]).cross(q[i + 1] - q[0]) for i in range(1, len(q) - 1))
+        for fi, (p, *_r) in limb.items():
+            if area[p] < 0:
+                for l in bm.faces[fi].loops:
+                    l[uv].uv = (-l[uv].uv.x, l[uv].uv.y)
+        bm.to_mesh(me); bm.free()
+        bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT'); bpy.ops.uv.select_all(action='SELECT')
+        bpy.ops.uv.average_islands_scale()
+        bpy.ops.uv.pack_islands(rotate=False, margin=0.004)
+        bpy.ops.object.mode_set(mode='OBJECT')
     after = uv_stats(me)
     print(f"[{TAG}] {name}: {n_seam} seam edges; islands {before[0]} -> {after[0]}, density spread {before[1]:.2f}x -> {after[1]:.2f}x")
 

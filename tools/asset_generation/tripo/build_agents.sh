@@ -6,9 +6,12 @@
 # different files, so a map baked in one run garbles on another's head (seen 2026-10-31). Per-figure knobs (both figures always built):
 #   female: LAPEL_SIDE=R SLEEVE_FIT=0 (the sleeve fit tore her cuffs) HAIR_PITCH=12 HAIR_UP/BACK=0.0035 (the fringe) HAT_DROP=0.0035
 #   male:   HAT_DY=0.005 HAT_DROP=0.01
-# Out: ASSETS/MODELS/official/AGENT_FEMALE.glb, AGENT_MALE.glb, painted/<fig>_head.png; work files in <work_dir>.
+# GAME version (D91): for each figure in LIGHT_FIGS (default both, checked in Blender 2026-10-31: front / back / game camera, the climb and dive clips) tripo_lod reduces every piece to its budget
+# right after the dress, then the same uv / head-map steps give AGENT_<FIG>_LIGHT.glb with its own painted/<fig>_head_light.png.
+# Out: ASSETS/MODELS/official/AGENT_FEMALE.glb, AGENT_MALE.glb, painted/<fig>_head.png (+ AGENT_<FIG>_LIGHT.glb); work files in <work_dir>.
 # Usage, from the repo root: tools/asset_generation/tripo/build_agents.sh <work_dir>
 set -e
+LIGHT_FIGS="${LIGHT_FIGS:-female male}"
 W="${1:?usage: build_agents.sh <work_dir>}"; mkdir -p "$W"
 B=/Applications/Blender.app/Contents/MacOS/Blender
 T=tools/asset_generation/tripo; M=ASSETS/MODELS
@@ -24,5 +27,12 @@ for f in female male; do
   SCRIPT=tripo_uv.py run "log_${c}_uv.txt" UV_IN=$W/${c}_dressed.glb UV_OUT=$W/${c}_uv.glb
   SCRIPT=tripo_head_map.py run "log_${c}_head.txt" HEAD_IN=$W/${c}_uv.glb HEAD_SRC=$M/sources/tripo_${f}_base.glb \
       HEAD_MAP=$M/official/painted/${f}_head.png HEAD_OUT=$M/official/AGENT_${F}.glb
+  if [[ " $LIGHT_FIGS " == *" $f "* ]]; then
+    SCRIPT=tripo_lod.py run "log_${c}_lod.txt" LOD_IN=$W/${c}_dressed.glb LOD_OUT=$W/${c}_light.glb
+    SCRIPT=tripo_uv.py run "log_${c}_luv.txt" UV_IN=$W/${c}_light.glb UV_OUT=$W/${c}_light_uv.glb
+    SCRIPT=tripo_head_map.py run "log_${c}_lhead.txt" HEAD_IN=$W/${c}_light_uv.glb HEAD_SRC=$M/sources/tripo_${f}_base.glb \
+        HEAD_MAP=$M/official/painted/${f}_head_light.png HEAD_OUT=$M/official/AGENT_${F}_LIGHT.glb
+    echo "[build_agents] $f light: $M/official/AGENT_${F}_LIGHT.glb"
+  fi
   echo "[build_agents] $f: $M/official/AGENT_${F}.glb + painted/${f}_head.png"
 done

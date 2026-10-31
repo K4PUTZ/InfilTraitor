@@ -106,3 +106,11 @@ did not start: the Director first settled what the bases are and how an item may
   body get ONE light mesh made offline in `build_agents.sh` (before the UV and head-map steps), the game only switches pieces on the shared
   rig; a per-piece budget inside ~5 k; one LOD (fixed camera); merging the chosen pieces at load only if the Moto shows draw calls cost.
 - **NEXT SESSION:** the light female, compared with the full one at the game camera; then the male; then T4 (Godot shader, Moto cost).
+
+## Later: the light female built (ACTOR D91) — WHERE TO RESUME
+- `tripo_lod.py` (new): WELD (Tripo splits vertices at hard edges; a collapse on the shards opened cracks = bright flecks), then collapse-decimate per piece to its
+  budget, weights back to 4 influences. `build_agents.sh` runs it for `LIGHT_FIGS` (default `female`) -> `official/AGENT_FEMALE_LIGHT.glb` + `painted/female_head_light.png`.
+- Result: the dressed set 20 k -> 4 648 tris (all pieces with variants 35.8 k -> 6.8 k); front / back / game camera clean next to the full one; the `climb` clip deforms alike on both.
+- Trap: `tripo_look` reads `painted/<fig>_head.png` beside the surface JSON — a light render needs a copy of the JSON with the LIGHT map under that name (else the face garbles).
+- NEXT: the male (`LIGHT_FIGS="female male"`, check his 9 k-tri hair), a `sit` pose check, then T4 (Godot, `ActorMesh3D`, Moto measured). Budgets are a first guess; nothing committed.
+- **The light male built too (same day):** the dressed set 4 646 tris (head 4 729 -> 749, hair 9 062 -> 600; all pieces 43 k -> 6.8 k); front / back / game camera and the `dive` clip read like the full one, beard and face kept. `LIGHT_FIGS` now defaults to both. Note: `tripo_look` hides the hat unless `LOOK_HAT=1`; renders of a dressed figure need it. NEXT: T4 (Godot test scene, then the Moto with light vs full).

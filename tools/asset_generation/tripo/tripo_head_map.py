@@ -3,6 +3,7 @@
 # with the head's islands scattered in it, so the head gets a UV of its own (smart project, the head only) and Tripo's colour is BAKED into a
 # HEAD_RES map on it (Cycles, emission through Tripo's UVMap). Only the base colour is taken: the female's normal map draws facets and a stain
 # her mesh does not have (D87). The map is the start of a painted map: retouch it by hand in its PNG, the pipeline reads the file.
+# HEAD_PIECE=Body_Hair does the same for the hair (its own map, painted/<figure>_hair.png).
 # Also prints the median skin colour of the map (the face's central pixels), for the hands' palette entry.
 # In: HEAD_IN (a tripo_uv output: the head still on Tripo's UVs), HEAD_SRC (the raw Tripo GLB of the same figure, which carries the atlas).
 # Out: HEAD_MAP (the PNG), HEAD_OUT (the GLB, the head on its new UVMap). Env: HEAD_RES (default 1024), HEAD_SMOOTH (1: weld + smooth shading only: not
@@ -27,13 +28,14 @@ atlas_path = os.path.join(os.path.dirname(MAP) or ".", "_atlas_tmp.png")
 atlas[0].filepath_raw = atlas_path; atlas[0].file_format = 'PNG'; atlas[0].save()
 
 arm, P, B, meshes = tc.load(TAG, IN)
-head = [o for o in meshes if o.name.split(".")[0] == "Body_Head"]
+PIECE = os.environ.get("HEAD_PIECE", "Body_Head")       # Body_Hair takes the same route (2026-10-31: Tripo's strands, roots, highlights)
+head = [o for o in meshes if o.name.split(".")[0] == PIECE]
 if not head:
-    tc.fail(TAG, f"{IN}: no Body_Head")
+    tc.fail(TAG, f"{IN}: no {PIECE}")
 head = head[0]; me = head.data
 src = bpy.data.images.load(atlas_path)
 if "UVMap" not in me.uv_layers:
-    tc.fail(TAG, f"{IN}: Body_Head has no UVMap")
+    tc.fail(TAG, f"{IN}: {PIECE} has no UVMap")
 SUBDIV = int(os.environ.get("HEAD_SUBDIV", "0")); SMOOTH = os.environ.get("HEAD_SMOOTH", "0") == "1"
 if SUBDIV or SMOOTH:
     # a low-poly head (the female's: 750 tris) shades its facets as lines on the nose, the eyes and the chin (Director, 2026-10-31, the

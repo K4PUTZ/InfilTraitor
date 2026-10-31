@@ -1236,6 +1236,13 @@ if "Outfit_Shirt" in mB:
                               lambda f: all(tdeep[v.index] for v in f.verts) or any(tout[v.index] for v in f.verts))
         print(f"[{TAG}] trousers mask: {nd} of {len(mB['Outfit_Trousers'].data.polygons)} trouser faces at the hips deep inside the coat or out through it ({sum(tout)} vertices out)")
         extra.append(tc_)
+    # the BELT behind the side line (2026-10-31: the female's belt came through the coat's back at the waist): its back half lies under the
+    # coat in every view, so Outfit_Belt_Coated keeps only the faces in front of the hips (the buckle's side); Outfit_Buckle is in front anyway
+    if "Outfit_Belt" in mB:
+        BV_ = wverts(mB["Outfit_Belt"]); hy = bh("Hips")[1]
+        bc_, nd = masked_copy(mB["Outfit_Belt"], "Outfit_Belt_Coated", lambda f: all(BV_[v.index][1] > hy for v in f.verts))
+        print(f"[{TAG}] belt mask: {nd} of {len(mB['Outfit_Belt'].data.polygons)} belt faces behind the hips")
+        extra.append(bc_)
 for o in mA.values():
     if o not in (coat, hat):
         bpy.data.objects.remove(o)

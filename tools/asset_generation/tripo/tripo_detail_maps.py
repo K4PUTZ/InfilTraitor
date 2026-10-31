@@ -3,7 +3,7 @@ the palette colour in the shader (a mid grey ~0.8 keeps the colour; the map only
   cotton_poplin  the shirt: a fine plain weave            wool_twill  the trousers: a 2/2 twill, diagonal ribs
   silk_tie       the tie: a fine diagonal rep              leather     shoes, belt: a pebbled grain
   felt           the hat: soft fibrous noise               skin        head, hands: a faint pore noise
-  hair           strands along V                           metal       buckle: brushed lines
+  hair           strands along V        hair_strands  streaks for the crown UVs (tripo_look)                           metal       buckle: brushed lines
 Tileable by construction (every pattern is periodic over the tile; the noise is made periodic with a wrapped FFT filter).
 Usage: python3 -I tripo_detail_maps.py <out_dir>
 """
@@ -38,5 +38,8 @@ save("leather", -np.abs(cells) + 0.3 * pnoise(2, 6))
 save("felt", pnoise(3, 7) + 0.6 * pnoise(1.5, 8), lo=0.7)
 save("skin", pnoise(2, 9) * 0.5 + pnoise(12, 10), lo=0.82)
 save("hair", np.sin(k * 120 * x + 2 * pnoise(25, 12)) + 0.5 * pnoise(5, 13), lo=0.6)
+# strands: thin streaks along V, broken up by noise along U only (a strand keeps one shade along its length); used on the hair's crown UVs
+su = pnoise(0.3, 16)[0:1, :].repeat(N, 0)               # one noise row, the same down every column
+save("hair_strands", np.sin(k * 90 * x + 3 * su) * 0.5 + su + 0.25 * pnoise(1.0, 17), lo=0.35, hi=1.0)
 save("metal", np.sin(k * 300 * y + 0.5 * pnoise(3, 14)) * 0.3 + pnoise(20, 15) * 0.2, lo=0.8)
 print(f"[tripo_detail_maps] wrote 8 maps to {OUT}")

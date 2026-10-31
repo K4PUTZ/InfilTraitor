@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**339 scripts · 100287 lines total** (under `godot/scripts/`)
+**339 scripts · 100312 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -320,11 +320,11 @@ extends `Node2D` · 325 lines
 
 ### `actor_viability_bench.gd`
 
-extends `RefCounted` · 255 lines
+extends `RefCounted` · 280 lines
 
 `godot/scripts/debug/actor_viability_bench.gd`
 
-> ActorViabilityBench — can the engine carry a richer character model? (dev-only, CHARACTER_MASTER_PLAN viability test, 2026-10-20) Spawns `count` copies of a candidate rig on the live 3D board, lit the board's way (`actor_mesh3d.gdshader`, exactly the conversion `ActorMesh3D._apply_board_light()` does), so a handset run measures the real material, the real skinning and the real draw-call count of the candidate against the shipped agent: `agent` — `agent_live.glb`, its own `walk_shotgun` action looping (the baseline: 11 080 tris, 20 joints). `quat`  — the lean Quaternius Superhero (CC0): ~14 k tris, 65 joints, no animation in the free pack, so its limbs are swung by a SYNTHETIC sine on the leg / arm / spine bones. Skinning cost does not depend on the pose, which is what this measures; the motion is NOT a walk cycle and says nothing about animation quality. `hero_naked` / `hero_split` / `hero_joined` — the same body re-exported WITH the Universal Animation Library's 43 actions (same 65 bone names, so they drop in) and, in `split` / `joined`, a placeholder outfit skinned to the same skeleton: jacket, trousers, shoes, hat, tie, backpack + 2 gadget pouches, as separate pieces (`split`, 12 surfaces) or merged by material (`joined`, 6). They play `Walk_Formal_Loop` and march along a lane (a video needs them to move; the walk's speed is NOT matched to the stride, so foot sliding is unjudged). Scenario op (`scenario_runner.gd`): `actor_bench <agent|quat|hero_naked|hero_split|hero_joined> <count>`. Not a gameplay path, not part of any save.
+> ActorViabilityBench — can the engine carry a richer character model? (dev-only, CHARACTER_MASTER_PLAN viability test, 2026-10-20) Spawns `count` copies of a candidate rig on the live 3D board, lit the board's way (`actor_mesh3d.gdshader`, exactly the conversion `ActorMesh3D._apply_board_light()` does), so a handset run measures the real material, the real skinning and the real draw-call count of the candidate against the shipped agent: `agent` — `agent_live.glb`, its own `walk_shotgun` action looping (the baseline: 11 080 tris, 20 joints). `quat`  — the lean Quaternius Superhero (CC0): ~14 k tris, 65 joints, no animation in the free pack, so its limbs are swung by a SYNTHETIC sine on the leg / arm / spine bones. Skinning cost does not depend on the pose, which is what this measures; the motion is NOT a walk cycle and says nothing about animation quality. `hero_naked` / `hero_split` / `hero_joined` — the same body re-exported WITH the Universal Animation Library's 43 actions (same 65 bone names, so they drop in) and, in `split` / `joined`, a placeholder outfit skinned to the same skeleton: jacket, trousers, shoes, hat, tie, backpack + 2 gadget pouches, as separate pieces (`split`, 12 surfaces) or merged by material (`joined`, 6). They play `Walk_Formal_Loop` and march along a lane (a video needs them to move; the walk's speed is NOT matched to the stride, so foot sliding is unjudged). `agent_<light|full>_<female|male>[_nocoat]` — the Tripo Agents of ACTOR D87 / D91 (`ASSETS/MODELS/official/AGENT_<FIG>[_LIGHT].glb`): 65 Mixamo joints, the DRESSED set only (coat, hat, the coated shirt / trousers / belt, the hat's hair), each piece its own surface. They stand in their rest pose with the material's flat albedo (the palette and the painted head live in Blender's look, not in the glb): this measures triangles, joints, surfaces and draw calls, the T4 question (light vs full on the Moto), not how they look. Scenario op (`scenario_runner.gd`): `actor_bench <agent|quat|hero_*|agent_*> <count>`. Not a gameplay path, not part of any save.
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/actor_mesh3d.gdshader"`
@@ -342,6 +342,9 @@ extends `RefCounted` · 255 lines
 - `QUAT_RIG` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/superhero_male_lean.glb"`
 - `HERO_RIG` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/%s.glb"`
 - `HERO_HEIGHT_M` = `1.83`
+- `OFFICIAL_RIG` = `"res://ASSETS/MODELS/official/AGENT_%s.glb"`
+- `UNDRESSED_PIECES` = `["Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere"]`
+- `DRESSED_ONLY_PIECES` = `["Outfit_Coat", "Outfit_Hat", "Body_Hair_Hat", "Outfit_Shirt_Coated", "Outfit_Trousers_Coated", "Outfit_Belt_Coated"]`
 - `HERO_WALK` = `"Walk_Formal"`
 - `LANE_GU` = `9.0`
 - `LANE_SPEED_GU_S` = `1.2`

@@ -32,6 +32,9 @@ RV_OUT = os.environ.get("RV_OUT", "").rstrip("/")
 # LIGHT (Director, 2026-10-27: "vamos usar como veio mesmo [...] deslocar essas zonas do casaco ligeiramente pra fora do corpo [...] coisa de
 # milimetros"; the full fit, 0.4 % gap, 10 relax steps, no cap, swelled the coat out of character): a small gap, a short relax, a cap
 COAT_GAP = float(os.environ.get("COAT_GAP", "0.004"))
+# the FRONT STRIP the masks never take (fractions of H, half-width): the coat's opening shows what is under it, and a masked shirt / trousers left a rim there
+# whose back the game culls, so the floor showed down the front (measured 2026-10-31 with tripo_crack_probe: ~2 400 px of slits on the female, ~1 600 on the male)
+FRONT_KEEP = float(os.environ.get("FRONT_KEEP", "0.10"))
 COAT_MAX = float(os.environ.get("COAT_MAX", "0.012"))    # fractions of H; a coat point never moves farther than COAT_MAX
 COAT_RADIUS = float(os.environ.get("COAT_RADIUS", "0.03"))   # a fraction of H: how far a push carries (see the coat fit)
 # ONE LAPEL may go farther, to make room for a bust (Director, 2026-10-27, on the female: "deslocar a lapela da esquerda mais pra frente"):
@@ -1231,6 +1234,10 @@ if "Outfit_Shirt" in mB:
     keep = (SV[:, 2] > bh("Neck")[2] - 0.04 * H) & (np.linalg.norm(SV[:, :2] - bh("Neck")[:2], axis=1) < 0.06 * H)   # the collar ring only:
     # the band alone also kept the male's shoulder blades, which sit in it, and they showed through the coat (2026-10-30)
     deep = [d_ and not k_ for d_, k_ in zip(deep, keep)]; out_ = [o_ and not k_ for o_, k_ in zip(out_, keep)]
+    hips_ = bh("Hips")
+    front = lambda Q: (np.abs(Q[:, 0] - hips_[0]) < FRONT_KEEP * H) & (Q[:, 1] < hips_[1] + 0.03 * H)     # the figure faces -Y
+    pro_s = front(SV)
+    deep = [d_ and not p_ for d_, p_ in zip(deep, pro_s)]; out_ = [o_ and not p_ for o_, p_ in zip(out_, pro_s)]
     sc_, nd = masked_copy(mB["Outfit_Shirt"], "Outfit_Shirt_Coated", lambda f: all(deep[v.index] for v in f.verts) or any(out_[v.index] for v in f.verts))
     print(f"[{TAG}] shirt mask: {nd} of {len(mB['Outfit_Shirt'].data.polygons)} shirt faces deep inside the coat or out through it ({sum(out_)} vertices out)"); extra.append(sc_)
     # the TROUSERS the same way, at the hips only (2026-10-30: the female's hips are wider than the coat at the belt, her trousers showed at
@@ -1241,6 +1248,8 @@ if "Outfit_Shirt" in mB:
             dv = Vector(away(q)); return Tc.ray_cast(Vector(q) + dv * 1e-4, dv, 0.08 * H)[0] is not None   # the open front is not
         tdeep = [q[2] > hipz and inside(Tc, q) and Tc.find_nearest(Vector(q))[3] > COAT_GAP * H and covered(q) for q in TV_]
         tout = [q[2] > hipz and not inside(Tc, q) and through_coat(q) for q in TV_]
+        pro_t = front(TV_)
+        tdeep = [d_ and not p_ for d_, p_ in zip(tdeep, pro_t)]; tout = [o_ and not p_ for o_, p_ in zip(tout, pro_t)]
         tc_, nd = masked_copy(mB["Outfit_Trousers"], "Outfit_Trousers_Coated",
                               lambda f: all(tdeep[v.index] for v in f.verts) or any(tout[v.index] for v in f.verts))
         print(f"[{TAG}] trousers mask: {nd} of {len(mB['Outfit_Trousers'].data.polygons)} trouser faces at the hips deep inside the coat or out through it ({sum(tout)} vertices out)")

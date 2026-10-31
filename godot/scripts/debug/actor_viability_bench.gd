@@ -125,6 +125,9 @@ static func spawn(room: Node, model: String, count: int) -> String:
 	var nocoat: bool = official and model.ends_with("_nocoat")
 	if nocoat:
 		model = model.trim_suffix("_nocoat")
+	var unmasked: bool = official and model.ends_with("_unmasked")   ## the coat and hat over the WHOLE shirt / trousers / belt, not the coat-cut variants (a diagnostic of the mask under the coat)
+	if unmasked:
+		model = model.trim_suffix("_unmasked")
 	var path: String = HERO_RIG % model if hero else (QUAT_RIG if model == "quat" else AGENT_RIG)
 	if official:
 		var parts: PackedStringArray = model.split("_")
@@ -133,6 +136,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 			return ""
 		path = OFFICIAL_RIG % (parts[2].to_upper() + ("_LIGHT" if parts[1] == "light" else ""))
 		hidden.append_array(DRESSED_ONLY_PIECES if nocoat else UNDRESSED_PIECES)
+		if unmasked:
+			hidden = ["Outfit_Shirt_Coated", "Outfit_Trousers_Coated", "Outfit_Belt_Coated", "Body_Hair", "Icosphere"]
 	var scene := load(path) as PackedScene
 	if scene == null:
 		push_error("[ActorViabilityBench] cannot load %s (run `Godot --headless --import` once)" % path)

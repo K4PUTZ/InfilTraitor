@@ -107,6 +107,13 @@ come from several files; the bank makes a clip independent of the figure it was 
 
 ---
 
+**Built (2026-10-30):** `tripo_anim_bank.py` + `bank_sources.json` (the source GLBs and their figure). First run: 83 clips (male 83,
+female 5), 5 complete pairs (`box_01`, `climb`, `dive`, `fall`, the stealth pistol run), 2 duplicates found by their rotations (not by
+name), the 13 `Male+detective…` clips kept as `_b` variants. Contact sheets and the reference-figure review are not built yet.
+First use, the coat stress test (`tripo_dress.py` on `COAT_BASE`, both figures; torn triangles = an edge > 1.6x and > 2 cm, per frame,
+the skirt the worst region): `jump` 22-24, `fall` 31-35, `box_01` 39-46, `flip` 53-54, `front_kick_01` 59-61, `dive` 118, `climb` 111,
+`sit` 150-156 (the legs through the skirt when seated).
+
 ### 3.1 What we hold, in pairs (survey of every GLB in `ASSETS/MODELS/`, 2026-10-30; the bank itself is not built yet)
 
 Clip names as Tripo wrote them; a `.001` suffix is Blender's import of a second copy. The bases carry the clips Tripo generated with them.

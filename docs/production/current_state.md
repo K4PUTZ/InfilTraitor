@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-10-26 · **Branch:** claude/r3d-actors-y5r8hs
+**Version:** 0.9.107 · **Updated:** 2026-10-30 · **Branch:** claude/r3d-actors-y5r8hs
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -554,6 +554,12 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-25_FACES_FORM_MPFB.md
 - RESUMO_SESSAO_2026-10-25_HERO_FACE_COAT_HAT.md
 - RESUMO_SESSAO_2026-10-26_COLLAGE_TARGET_FACE_HOODED_EYE.md
+- RESUMO_SESSAO_2026-10-26_TRIPO_PIVOT.md
+- RESUMO_SESSAO_2026-10-26_V6_SHEETS_GENERATED_COAT.md
+- RESUMO_SESSAO_2026-10-27_BELT_MALE_HAT_COAT.md
+- RESUMO_SESSAO_2026-10-27_TRIPO_SLOTS_BELT.md
+- RESUMO_SESSAO_2026-10-29_BASES_BELT_PAIRS.md
+- RESUMO_SESSAO_2026-10-30_MALE_WAIST.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

@@ -1,6 +1,12 @@
 # CHARACTER_MASTER_PLAN
 ## The Agent — Model, Rig, Poses, Animation, Layering — v2.0
 
+> 🧭 **2026-10-31 — the Agent's PRIMARY slots and the coat's emblem (`ACTOR` D89, D90).** Seven primary slots (shirt, trousers, shoes, belt,
+> tie, overcoat, hat), one 3-D style each; a variant changes colour, print and material only. The clean base is the basic dress (shirt,
+> trousers, shoes); its two files await the Director (D89's proposal). A faction's emblem is a decal projected in a UV channel of its own, the
+> logo alone: sharp at every size, it shows in motion what the plain coat hid, the coat's back weights pulled by the arms (owed, D90). Before
+> a primary carries a print it needs clean UVs and clean weights. Lab: `tools/research/coat_decal_lab/`. Record: `PROMPTS/RESUMO_SESSAO_2026-10-31_PRIMARY_ITEMS_COAT_EMBLEM.md`.
+
 > 🧭 **2026-10-26 — the build moves to TRIPO (`ACTOR` D85).** Every character is a whole model generated and auto-rigged by Tripo (paid plan, Mixamo
 > skeleton, 65 joints, 4 influences, Tripo's own clips); our code adapts to that rig. The hero track below (`tools/asset_generation/hero/`, the
 > Quaternius body and the 65-bone UE skeleton) is no longer extended. The Tripo tools live in `tools/asset_generation/tripo/` (first:

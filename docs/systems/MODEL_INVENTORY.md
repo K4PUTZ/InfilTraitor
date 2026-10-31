@@ -129,7 +129,8 @@ umbrellas, chairs, cones, Pryce's **campaign posters** (in-world text via `tr()`
 ### 7.1 Rulings (Director, 2026-10-29): bare bodies, a shared roster, machines
 
 6. **Every model is generated BARE (no accessories); the swappable pieces are generated afterwards** and fitted to it (`ACTOR` D86's
-   method). Guards sell no cosmetics, but they must VARY.
+   method). Guards sell no cosmetics, but they must VARY. **Refined 2026-10-31 (Director, `ACTOR` D89):** for the Agent, bare is the
+   BASIC DRESS (shirt, trousers, shoes; no belt, hat or coat), not a nude body; the shoes become a slot of their own later, to be sold.
 7. **Bosses and sub-leaders are unique models** (§5's named characters).
 8. **The rank-and-file is a shared roster of ~10 varied humans** (both figures, ages, builds), interchangeable across factions: a
    faction's soldier is a roster body + that faction's pieces (§4's sets, the counter units' gear). Supersedes "one set per faction,

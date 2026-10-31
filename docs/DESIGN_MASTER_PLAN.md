@@ -1281,6 +1281,13 @@ master. Gadgets are found on the map, bought from NPCs, or awarded.
 one faction's officer coat among those he holds (his armband follows it),
 which decides where he can walk unbothered (§2.2, ACCESS); the LED coat
 replaces the choice (§10.5).
+**What he WEARS falls in three tiers (Director, 2026-10-30, `ACTOR` D89):**
+PRIMARY, the dress: shirt, trousers, shoes, belt, tie, overcoat (the
+uniform above), hat; SECONDARY, weapons and protection (this section's
+weapon and armour classes); TERTIARY, glasses, pins and powers (the visor,
+§10.3 and `ACTOR` D83; the pins of `COSMETICS_MASTER_PLAN` §9.3; the LED
+coat, §10.5). The tiers say how a piece is worn and sold (the mapping onto
+this section's classes is Claude's); the gameplay stays here.
 
 ### 10.0 The starting kit (Director, 2026-10-23)
 

@@ -107,6 +107,28 @@ come from several files; the bank makes a clip independent of the figure it was 
 
 ---
 
+### 3.1 What we hold, in pairs (survey of every GLB in `ASSETS/MODELS/`, 2026-10-30; the bank itself is not built yet)
+
+Clip names as Tripo wrote them; a `.001` suffix is Blender's import of a second copy. The bases carry the clips Tripo generated with them.
+
+| Clip | Female (file) | Male (file) | Pair? |
+|---|---|---|---|
+| `dive` (run, dive, roll, run) | `FEMALE_BASE`, `female+no+coat` | `MALE_BASE` / `MALE_AGENT_BASE`, `MaleCharacterNoCoat` | **yes** |
+| `climb` | `FEMALE_BASE` | `MaleCharacterNoCoat` | **yes** |
+| `fall` | `female+no+coat` | `MaleCharacterNoCoat`, `Male+detective…` | **yes** |
+| `box_01` | `female+detective+figure…` | `MaleCharacterNoCoat`, `Male+detective…` | **yes** |
+| stealth run, pistol pointed down (`Correr furtivamente segurando uma pistola…`) | `female+detective+figure…` | `MaleCharacterHatAndCoat` | **yes** |
+| `heart_pose` | — | `MALE_BASE` / `MALE_AGENT_BASE` | male only |
+| stealth hurried walk (`Caminhar apressado furtivamente`), brisk stealth walk with pistol | — | `MaleCharacterHatAndCoat`, `Male+detective…` | male only |
+| the other 60 of `MaleCharacterNoCoat` (`walk`, `run`, `idle`, `jump`, `jump_down`, `flip`, `swim`, `press-up`, `sit`, `dig`, `lift_heavy`, `front_kick_01/02`, `pitch_baseball`, `run_upstairs`, hits, greetings, emotions…) and `Male+detective…`'s (`agree`, `angry_03`, `box_02/03`, `cast_a_spell`, `chop`, `defeat_03`, `fire`, `front_kick_02`, `run`) | — | as named | male only |
+
+**Five pairs exist** (`dive`, `climb`, `fall`, `box_01`, the stealth pistol run). The female has no `walk`, `run` or `idle` of her own yet.
+
+**Coat stress test (Director, 2026-10-30: "testar as mais absurdas, porque as normais vão funcionar sem problemas"):** before ~100 new
+clips per figure are generated, the dressed coat (`tripo_dress.py` on `COAT_BASE`) is judged on the most extreme clips that exist as
+pairs, `dive`, `climb`, `fall`, `box_01`, and the male-only extremes retargeted to the female only as a marked fallback (§3): `flip`,
+`front_kick_01`, `jump`, `press-up`, `sit`, `swim`. A clip of another generation plays on a base by rotations (same 65 joints, §1.3).
+
 ## 4. MV-2 — THE MAP: what the game needs, what the bank has, what is missing
 
 **What:** one table, the situation catalogue the brief asked for (brief §3) crossed with the bank. Lives in this plan as §4.1 once

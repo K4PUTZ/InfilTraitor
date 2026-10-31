@@ -5,7 +5,8 @@
 # her mesh does not have (D87). The map is the start of a painted map: retouch it by hand in its PNG, the pipeline reads the file.
 # Also prints the median skin colour of the map (the face's central pixels), for the hands' palette entry.
 # In: HEAD_IN (a tripo_uv output: the head still on Tripo's UVs), HEAD_SRC (the raw Tripo GLB of the same figure, which carries the atlas).
-# Out: HEAD_MAP (the PNG), HEAD_OUT (the GLB, the head on its new UVMap). Env: HEAD_RES (default 1024). Usage: blender -b -P tripo_head_map.py
+# Out: HEAD_MAP (the PNG), HEAD_OUT (the GLB, the head on its new UVMap). Env: HEAD_RES (default 1024), HEAD_SMOOTH (1: weld + smooth shading only: not
+# enough, the female's lines are folds of the mesh), HEAD_SUBDIV (1 for the female, chosen 2026-10-31: the folds go, the drawing softens a little). Usage: blender -b -P tripo_head_map.py
 import os, sys
 import numpy as np
 import bpy
@@ -32,6 +33,26 @@ head = head[0]; me = head.data
 src = bpy.data.images.load(atlas_path)
 if "UVMap" not in me.uv_layers:
     tc.fail(TAG, f"{IN}: Body_Head has no UVMap")
+SUBDIV = int(os.environ.get("HEAD_SUBDIV", "0")); SMOOTH = os.environ.get("HEAD_SMOOTH", "0") == "1"
+if SUBDIV or SMOOTH:
+    # a low-poly head (the female's: 750 tris) shades its facets as lines on the nose, the eyes and the chin (Director, 2026-10-31, the
+    # marked render): one Catmull-Clark level (UVs interpolated linearly, so Tripo's colour still samples right; weights interpolated) and
+    # smooth shading without Tripo's corner normals
+    for x in bpy.data.objects:
+        x.select_set(x is head)
+    bpy.context.view_layer.objects.active = head
+    import bmesh                                          # weld first: the GLB splits the head at every seam, and Catmull-Clark shrinks each
+    bm = bmesh.new(); bm.from_mesh(me)                    # loose piece on its own (holes all over the face, tried 2026-10-31)
+    H_ = max((head.matrix_world @ v.co).z for v in me.vertices)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5 * H_); bm.to_mesh(me); bm.free()
+    if SUBDIV:
+        md = head.modifiers.new("subd", 'SUBSURF'); md.levels = md.render_levels = SUBDIV; md.uv_smooth = 'NONE'
+        bpy.ops.object.modifier_move_to_index(modifier="subd", index=0); bpy.ops.object.modifier_apply(modifier="subd")
+    if hasattr(me, "has_custom_normals") and me.has_custom_normals:
+        bpy.ops.mesh.customdata_custom_splitnormals_clear()
+    for poly in me.polygons:
+        poly.use_smooth = True
+    print(f"[{TAG}] head welded and smooth-shaded, subdivided x{SUBDIV}: {len(me.polygons)} faces")
 new = me.uv_layers.new(name="HeadUV"); me.uv_layers.active = new
 for x in bpy.data.objects:
     x.select_set(x is head)

@@ -100,3 +100,9 @@ did not start: the Director first settled what the bases are and how an item may
   sleeves as they were (a hands-only fit was tried and reverted: "Piorou"); matte strand hair, the same brown; her fringe; her hat lower.
 - Out: `ASSETS/MODELS/official/AGENT_FEMALE.glb`, `AGENT_MALE.glb`, `painted/*_head.png`. Triangles: female ~20 k, male ~25-28 k.
 - OPEN: the game LOD (CHARACTER's ~5 k target); T4, the Godot shader and its Moto cost; the clips checked on the final files.
+
+## Later: the game LOD planned (ACTOR D91) — WHERE TO RESUME
+- The Director asked whether the light version is converted in-game to swap clothes. Answer recorded as D91: no; each primary slot and the
+  body get ONE light mesh made offline in `build_agents.sh` (before the UV and head-map steps), the game only switches pieces on the shared
+  rig; a per-piece budget inside ~5 k; one LOD (fixed camera); merging the chosen pieces at load only if the Moto shows draw calls cost.
+- **NEXT SESSION:** the light female, compared with the full one at the game camera; then the male; then T4 (Godot shader, Moto cost).

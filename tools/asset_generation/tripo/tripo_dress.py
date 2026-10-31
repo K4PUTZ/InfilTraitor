@@ -1324,5 +1324,61 @@ if RV_OUT:
             o.data.materials.append(m)
         for p, sm, mi in zip(o.data.polygons, orig[o.name][1], orig[o.name][2]):
             p.use_smooth = sm; p.material_index = mi
+# finishing: the coat's small HOLES (measured 2026-10-31, tripo_mesh_audit / the open loops of the female's coat: four tiny ones at each armpit where the sleeve
+# meets the body, three at the front-left, one at the shoulder; 2-6 cm round on the female, up to 17 cm at the male's armpits) are closed: the game's shader draws one side of a face, so each showed the floor as a
+# speck at every armpit. A loop longer than HOLE_MAX (the pocket slits, the hem, the collar, the front opening) is design and stays.
+HOLE_MAX = float(os.environ.get("HOLE_MAX", "0.20")) * H    # metres on the 1 m figure: a loop's perimeter
+
+
+def close_small_holes(o, max_perimeter):
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)           # glTF splits at seams: the open edges are read on the welded surface
+    mw = o.matrix_world
+    open_edges = [e for e in bm.edges if len(e.link_faces) == 1]
+    adj = {}
+    for e in open_edges:
+        for v in e.verts:
+            adj.setdefault(v, []).append(e)
+    seen, loops = set(), []                                           # every loop is gathered BEFORE any fill (a fill renumbers the edges)
+    for e in open_edges:
+        if e in seen:
+            continue
+        stack, loop = [e], []; seen.add(e)
+        while stack:
+            c = stack.pop(); loop.append(c)
+            for v in c.verts:
+                for n in adj[v]:
+                    if n not in seen:
+                        seen.add(n); stack.append(n)
+        loops.append(loop)
+    filled = 0; new_faces = []
+    for loop in loops:
+        if sum((mw @ e.verts[0].co - mw @ e.verts[1].co).length for e in loop) > max_perimeter:
+            continue
+        res = bmesh.ops.holes_fill(bm, edges=loop, sides=len(loop) + 1)
+        faces = res["faces"]
+        if not faces:                                                 # a ragged loop the first fill refuses: a triangle fill over it
+            res = bmesh.ops.triangle_fill(bm, edges=loop, use_beauty=True)
+            faces = [g for g in res["geom"] if isinstance(g, bmesh.types.BMFace)]
+        filled += len(faces) > 0
+        new_faces.extend(faces)
+    # a patch face may wind the wrong way (the game draws one side: it would still be a hole): each new face takes its neighbours' winding
+    def run(face, edge):
+        for l in face.loops:
+            if l.edge is edge:
+                return (l.vert.index, l.link_loop_next.vert.index)
+    bm.verts.index_update(); newset = set(new_faces)
+    for _ in range(4):
+        for f in [f for f in new_faces if f.is_valid]:
+            votes = [run(f, e) == run(g, e) for e in f.edges for g in e.link_faces if g is not f and (g not in newset or _ > 0)]
+            if votes and sum(votes) > len(votes) / 2.0:
+                bmesh.utils.face_flip(f)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=5e-4)         # the 2-edge slivers a fill leaves (4-5 mm) close by welding their ends
+    bm.to_mesh(o.data); bm.free(); o.data.update()
+    return filled
+
+
+closed_ = [close_small_holes(coat, HOLE_MAX) for _ in range(3)]       # a fill + weld can leave a new loop (the male's armpits needed a second pass)
+print(f"[{TAG}] coat: small holes closed per pass {closed_} (perimeter <= {HOLE_MAX:.3f} m)")
 tc.export(OUT, out_objs, armB)
 print(f"[{TAG}] wrote {OUT}: {[o.name for o in out_objs]}")

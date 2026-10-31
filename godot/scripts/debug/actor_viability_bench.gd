@@ -12,7 +12,11 @@
 ##             trousers, shoes, hat, tie, backpack + 2 gadget pouches, as separate pieces (`split`, 12 surfaces) or merged by material
 ##             (`joined`, 6). They play `Walk_Formal_Loop` and march along a lane (a video needs them to move; the walk's speed is NOT
 ##             matched to the stride, so foot sliding is unjudged).
-## Scenario op (`scenario_runner.gd`): `actor_bench <agent|quat|hero_naked|hero_split|hero_joined> <count>`. Not a gameplay path, not part of any save.
+##   `agent_<light|full>_<female|male>[_nocoat]` — the Tripo Agents of ACTOR D87 / D91 (`ASSETS/MODELS/official/AGENT_<FIG>[_LIGHT].glb`): 65 Mixamo joints, the
+##             DRESSED set only (coat, hat, the coated shirt / trousers / belt, the hat's hair), each piece its own surface. They stand in their
+##             rest pose with the material's flat albedo (the palette and the painted head live in Blender's look, not in the glb): this measures
+##             triangles, joints, surfaces and draw calls, the T4 question (light vs full on the Moto), not how they look.
+## Scenario op (`scenario_runner.gd`): `actor_bench <agent|quat|hero_*|agent_*> <count>`. Not a gameplay path, not part of any save.
 extends RefCounted
 
 const SHADER_PATH := "res://godot/shaders/actor_mesh3d.gdshader"
@@ -32,6 +36,11 @@ const QUAT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaterni
 ## The agent stands 9.8 voxels of 0.20 m (CHARACTER_MASTER_PLAN §4.7); the candidate is scaled to the same height.
 const HERO_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/%s.glb"
 const HERO_HEIGHT_M: float = 1.83            ## the body's top of head, measured from its bones / mesh (feet at 0)
+const OFFICIAL_RIG := "res://ASSETS/MODELS/official/AGENT_%s.glb"
+## the pieces tripo_dress leaves BESIDE their masked variants (the undressed ones): the dressed set hides them
+const UNDRESSED_PIECES: Array[String] = ["Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere"]
+## the other state: no coat, no hat, the plain shirt / trousers / belt and the open hair (the clean base, D89)
+const DRESSED_ONLY_PIECES: Array[String] = ["Outfit_Coat", "Outfit_Hat", "Body_Hair_Hat", "Outfit_Shirt_Coated", "Outfit_Trousers_Coated", "Outfit_Belt_Coated"]
 const HERO_WALK := "Walk_Formal"   ## the import strips the `_Loop` suffix and loops it
 const LANE_GU: float = 9.0
 const LANE_SPEED_GU_S: float = 1.2
@@ -112,7 +121,18 @@ static func spawn(room: Node, model: String, count: int) -> String:
 	var march: bool = model.ends_with("_march")  ## a video wants them walking along a lane; a measurement wants them still on the grid
 	model = model.trim_suffix("_march")
 	var hero: bool = model.begins_with("hero_")
+	var official: bool = model.begins_with("agent_")   ## agent_<light|full>_<female|male>[_nocoat]
+	var nocoat: bool = official and model.ends_with("_nocoat")
+	if nocoat:
+		model = model.trim_suffix("_nocoat")
 	var path: String = HERO_RIG % model if hero else (QUAT_RIG if model == "quat" else AGENT_RIG)
+	if official:
+		var parts: PackedStringArray = model.split("_")
+		if parts.size() != 3 or not ["light", "full"].has(parts[1]) or not ["female", "male"].has(parts[2]):
+			push_error("[ActorViabilityBench] %s: expected agent_<light|full>_<female|male>" % model)
+			return ""
+		path = OFFICIAL_RIG % (parts[2].to_upper() + ("_LIGHT" if parts[1] == "light" else ""))
+		hidden.append_array(DRESSED_ONLY_PIECES if nocoat else UNDRESSED_PIECES)
 	var scene := load(path) as PackedScene
 	if scene == null:
 		push_error("[ActorViabilityBench] cannot load %s (run `Godot --headless --import` once)" % path)
@@ -132,6 +152,9 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		if hero:
 			body.scale = Vector3.ONE * (STAND_HEIGHT_M / HERO_HEIGHT_M) * METRES_TO_UNITS
 			body.rotation.y = PI * 0.25 if face_camera else PI * 0.5   ## the rig's front is +Z; march toward +X (grid east), or face the camera on the diagonal
+		elif official:
+			body.scale = Vector3.ONE * STAND_HEIGHT_M * METRES_TO_UNITS   ## Tripo exports a 1 m figure standing on z = 0 (hat included)
+			body.rotation.y = PI * 0.25
 		elif model == "quat":
 			body.scale = Vector3.ONE * (STAND_HEIGHT_M / _mesh_height(body)) * METRES_TO_UNITS
 			body.rotation.y = PI
@@ -177,6 +200,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 			materials = converted.size()
 			for mi in body.find_children("*", "MeshInstance3D", true, false):
 				var mesh: Mesh = (mi as MeshInstance3D).mesh
+				if not (mi as MeshInstance3D).visible:
+					continue   ## a hidden variant is not drawn
 				for s in range(mesh.get_surface_count()):
 					var arrays := mesh.surface_get_arrays(s)
 					var idx_arr: Variant = arrays[Mesh.ARRAY_INDEX]

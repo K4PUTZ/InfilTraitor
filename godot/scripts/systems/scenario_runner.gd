@@ -289,8 +289,8 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			step["index"] = int(arg)
 			step["cell"] = Vector2i(int(gxy[0]), int(gxy[1]))
 		"actor_bench":
-			if not (["agent", "quat"].has(arg) or arg.begins_with("hero_")) or not tokens[2].is_valid_int() or int(tokens[2]) < 1 or int(tokens[2]) > 64:
-				return "actor_bench takes agent|quat|hero_naked|hero_split|hero_joined and a count 1..64"
+			if not (["agent", "quat"].has(arg) or arg.begins_with("hero_") or arg.begins_with("agent_")) or not tokens[2].is_valid_int() or int(tokens[2]) < 1 or int(tokens[2]) > 64:
+				return "actor_bench takes agent|quat|hero_*|agent_<light|full>_<female|male>[_nocoat] and a count 1..64"
 			step["model"] = arg
 			step["count"] = int(tokens[2])
 		"occ_bench":

@@ -6,7 +6,8 @@
 # Also prints the median skin colour of the map (the face's central pixels), for the hands' palette entry.
 # In: HEAD_IN (a tripo_uv output: the head still on Tripo's UVs), HEAD_SRC (the raw Tripo GLB of the same figure, which carries the atlas).
 # Out: HEAD_MAP (the PNG), HEAD_OUT (the GLB, the head on its new UVMap). Env: HEAD_RES (default 1024), HEAD_SMOOTH (1: weld + smooth shading only: not
-# enough, the female's lines are folds of the mesh), HEAD_SUBDIV (1 for the female, chosen 2026-10-31: the folds go, the drawing softens a little). Usage: blender -b -P tripo_head_map.py
+# enough, the female's lines are folds of the mesh), HEAD_SUBDIV (1 for the female, chosen 2026-10-31: the folds go, the drawing softens a little), HEAD_KEEP_ABOVE ("lo,hi": the original
+# shape back above hi, see the code; the female: 0.40,0.50). Usage: blender -b -P tripo_head_map.py
 import os, sys
 import numpy as np
 import bpy
@@ -47,7 +48,23 @@ if SUBDIV or SMOOTH:
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5 * H_); bm.to_mesh(me); bm.free()
     if SUBDIV:
         md = head.modifiers.new("subd", 'SUBSURF'); md.levels = md.render_levels = SUBDIV; md.uv_smooth = 'NONE'
+        from mathutils.bvhtree import BVHTree             # the original surface, to give the upper face its own drawing back
+        orig = BVHTree.FromPolygons([v.co.copy() for v in me.vertices], [tuple(p_.vertices) for p_ in me.polygons])
         bpy.ops.object.modifier_move_to_index(modifier="subd", index=0); bpy.ops.object.modifier_apply(modifier="subd")
+        # KEEP_ABOVE (Director, 2026-10-31: "o olho de uma e a boca da outra"): the subdivided face below z_lo (the mouth, the chin) and the
+        # original face above z_hi (the eyes, the brows), as fractions of the head's height; between them a smooth blend toward each
+        # vertex's nearest point on the original surface
+        ka = os.environ.get("HEAD_KEEP_ABOVE", "")
+        if ka:
+            lo_, hi_ = (float(x) for x in ka.split(","))
+            zs_ = [v.co.z for v in me.vertices]; z0, z1 = min(zs_), max(zs_)
+            for v in me.vertices:
+                t = min(1.0, max(0.0, ((v.co.z - z0) / (z1 - z0) - lo_) / (hi_ - lo_))); t = t * t * (3 - 2 * t)
+                if t > 0:
+                    q = orig.find_nearest(v.co)[0]
+                    if q is not None:
+                        v.co = v.co.lerp(q, t)
+            me.update()
     if hasattr(me, "has_custom_normals") and me.has_custom_normals:
         bpy.ops.mesh.customdata_custom_splitnormals_clear()
     for poly in me.polygons:

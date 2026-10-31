@@ -85,6 +85,18 @@ Closes the OPEN item of `RESUMO_SESSAO_2026-10-29_BASES_BELT_PAIRS.md` (the male
 - Stress test on the bank's extreme clips, both figures: `jump` 22-24, `fall` 31-35, `box_01` 39-46, `flip` 53-54, `front_kick_01` 59-61,
   `dive` 118, `climb` 111, `sit` 150-156.
 
+## The skirt bones (ACTOR D88, same day, latest)
+- `tripo_dress.py`: 8 chains x 3 bones (`coat_skirt_<k>_<j>`, children of Hips) on the dressed piece's skeleton, the skirt weighted to
+  them below 30 % of its length. `coat_spring_preview.gd` runs them in Godot as `SpringBoneSimulator3D` springs with thigh / shin
+  capsules; its defaults are the values judged. Traps: the importer renames `mixamorig:X` to `mixamorig_X`; a simulator configured before
+  the skeleton is in the tree resolves no bone and does nothing, silently (joint count 0).
+- The female's floating piece was her right CUFF STRAP: Tripo fused it to the coat's side, so it is no island; it took the skirt's thigh
+  weights and stayed at her hip while the arm moved. Fixed in the dressed piece: a body point nearer a forearm than the body under the
+  coat (shirt torso, trousers) is sleeve, and the fused faces joining it to the body are cut (84 vertices, 6 faces on the female; 3 / 2 on
+  the male). Also: no thigh weight at or above the hips (`LEG_TOP`), below the elbows a point is sleeve or body, never both, and a loose
+  island votes and reads its weights by the coat face it LIES ON.
+- Left: the top of the skirt opens over a thigh raised horizontally (kick, flip); the Moto cost of the springs is unmeasured.
+
 ## OPEN — where to resume
 - Settled: the base is `MALE_AGENT_BASE`; the tools still name `MALE_BASE_edit` in their usage lines.
 - The coat: `sit` (the thighs through the skirt when seated) and a loose piece floating beside the female in `sit`; the fold at the

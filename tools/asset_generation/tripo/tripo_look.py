@@ -92,12 +92,14 @@ def hair_material(o, s):
 BASE_OF = {"Body_Hair_Hat": "Body_Hair", "Outfit_Shirt_Coated": "Outfit_Shirt", "Outfit_Trousers_Coated": "Outfit_Trousers", "Outfit_Belt_Coated": "Outfit_Belt"}
 _names = {o.name.split(".")[0] for o in bpy.data.objects if o.type == 'MESH'}
 HAT = os.environ.get("LOOK_HAT", "0") == "1"
+COAT = os.environ.get("LOOK_COAT", "1") == "1"           # 0: the basic dress (the coat and its masked variants hidden)
 FLAT = os.environ.get("LOOK_FLAT", "1") == "1"          # faceted shading (the default since 2026-10-31; 0 = smooth), the concept art's low-poly look (not the head nor the hands)
 for o in bpy.data.objects:
     if o.type != 'MESH':
         continue
     nm = o.name.split(".")[0]
-    hide = nm in ("Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt") and nm + "_Coated" in _names      # the coat's masked variants show instead
+    hide = COAT and nm in ("Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt") and nm + "_Coated" in _names
+    hide |= not COAT and (nm == "Outfit_Coat" or nm.endswith("_Coated"))      # the coat's masked variants show instead
     hide |= (nm in ("Outfit_Hat", "Body_Hair_Hat")) != HAT and nm in ("Outfit_Hat", "Body_Hair_Hat")
     hide |= nm == "Body_Hair" and HAT and "Body_Hair_Hat" in _names
     if hide:

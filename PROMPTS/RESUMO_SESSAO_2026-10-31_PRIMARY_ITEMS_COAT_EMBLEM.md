@@ -88,3 +88,15 @@ did not start: the Director first settled what the bases are and how an item may
 - `history/`: `FEMALE_BASE_edit`, `MALE_BASE_edit` (+ `.blend1`), `MALE_BASE_edit_waist`, `MALE_AGENT_BASE_belted`, `MALE_AGENT_BASE_hat`.
 - The tools follow (`bank_sources.json`, `dress_both.sh`, `tripo_waist.py`'s usage line); `dress_both.sh` dressed both new bases cleanly.
   Item 1 of OPEN above is done except the backup.
+
+## Later: texturing, and the two base Agents closed in Blender (ACTOR D87)
+- Decisions taken as recommended (Director: "pode seguir tomando as decisões recomendadas"): a painted head map of ours, 512 px per material,
+  1024 for the head. Concept art: `REFERENCES/Personagem/concept_2026-10-31/` (local).
+- Built: `tripo_uv.py` (clean garment UVs; limbs cylindrical, never mirrored), `tripo_detail_maps.py` (our grey details), `tripo_head_map.py`
+  (painted head maps), `tripo_look.py` (faceted, matte, dressed states, test knobs), `build_agents.sh` (both Agents end to end);
+  `AGENT_SURFACE.json` (the palette); `tripo_dress.py` gained the belt mask under the coat and the hair re-seat before the hat.
+- Ruled on renders: white ties, dark-brown belts with light-grey buckles; the female's tie shortened; the female's original head kept (a
+  subdivided one was tried); faceted + matte after the concept art; a charcoal coat; the female's cuffs without the sleeve fit; the male's
+  sleeves as they were (a hands-only fit was tried and reverted: "Piorou"); matte strand hair, the same brown; her fringe; her hat lower.
+- Out: `ASSETS/MODELS/official/AGENT_FEMALE.glb`, `AGENT_MALE.glb`, `painted/*_head.png`. Triangles: female ~20 k, male ~25-28 k.
+- OPEN: the game LOD (CHARACTER's ~5 k target); T4, the Godot shader and its Moto cost; the clips checked on the final files.

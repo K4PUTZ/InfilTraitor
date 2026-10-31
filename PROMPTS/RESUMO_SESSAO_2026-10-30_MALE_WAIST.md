@@ -98,6 +98,10 @@ Closes the OPEN item of `RESUMO_SESSAO_2026-10-29_BASES_BELT_PAIRS.md` (the male
 - Left: the top of the skirt opens over a thigh raised horizontally (kick, flip); the Moto cost of the springs is unmeasured.
 
 ## OPEN — where to resume
+- **Director, 2026-10-30 (closing): the extreme clips (kick, flip, dive) stop driving the coat work.** Of the four spots he circled,
+  two are the coat's open front (correct); the two thigh holes appear only with a leg near horizontal. Walking and running clips are
+  certain to ship: the coat is judged on those (both figures, at game scale) once MOVEMENT picks the game's clips.
+- **NEXT SESSION: texturing the models** (Director).
 - Settled: the base is `MALE_AGENT_BASE`; the tools still name `MALE_BASE_edit` in their usage lines.
 - The coat: `sit` (the thighs through the skirt when seated) and a loose piece floating beside the female in `sit`; the fold at the
   armpit when an arm swings far back; the female's collar sits a little high. The Director is generating ~100 clips per figure (add

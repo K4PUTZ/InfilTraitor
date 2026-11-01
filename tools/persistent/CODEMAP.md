@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**339 scripts · 100347 lines total** (under `godot/scripts/`)
+**339 scripts · 100370 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -320,7 +320,7 @@ extends `Node2D` · 325 lines
 
 ### `actor_viability_bench.gd`
 
-extends `RefCounted` · 315 lines
+extends `RefCounted` · 338 lines
 
 `godot/scripts/debug/actor_viability_bench.gd`
 
@@ -345,6 +345,7 @@ extends `RefCounted` · 315 lines
 - `OFFICIAL_RIG` = `"res://ASSETS/MODELS/official/AGENT_%s.glb"`
 - `UNDRESSED_PIECES` = `["Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere"]`
 - `DRESSED_ONLY_PIECES` = `["Outfit_Coat", "Outfit_Hat", "Body_Hair_Hat", "Outfit_Shirt_Coated", "Outfit_Trousers_Coated", "Outfit_Belt_Coated"]`
+- `OFFICIAL_SWING` = `{ "LeftUpLeg": [Vector3.RIGHT, 28.0, 0.0], "RightUpLeg": [Vector3.RIGHT, 28.0, PI], "LeftLeg": [Vector3.RIGHT, 18.0, 0.0], "RightLeg": [Vector3.RIGHT, 18.0, PI], "LeftArm": [Vector3.RIGHT, 22.0, PI], "RightArm": [Vector3.RIGHT, 22.0, 0.0], "Spine1": [Vector3.UP, 6.0, 0.0], }`
 - `HERO_WALK` = `"Walk_Formal"`
 - `LANE_GU` = `9.0`
 - `LANE_SPEED_GU_S` = `1.2`

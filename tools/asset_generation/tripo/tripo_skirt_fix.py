@@ -33,7 +33,8 @@ if st["hem"] is None:
 # the whole circumference (up to 0.6 at the hem), too little for the front panels, which the thighs push through (a strip of trousers in front of the pocket). The leg share
 # of a FRONT vertex is multiplied (FRONT_BOOST, capped at 0.95) and split left / right over a NARROWER centre (FRONT_SPLIT of H), so each half hangs from its own thigh and the
 # front parts like a coat's slit; the back keeps coat_fix's. The front is -y, as tripo_dress reads it.
-FRONT_BOOST = float(os.environ.get("FRONT_BOOST", "1.6")); FRONT_SPLIT = float(os.environ.get("FRONT_SPLIT", "0.02"))
+FRONT_BOOST = float(os.environ.get("FRONT_BOOST", "1.0")); FRONT_SPLIT = float(os.environ.get("FRONT_SPLIT", "0.02"))
+FRONT_FLOOR = float(os.environ.get("FRONT_FLOOR", "0.0"))   # the least leg share of a front vertex: a high knee (the run) came through the top of the panel, which hung from the hips
 if FRONT_BOOST > 1.0:
     hy = B["Hips"][1]; lx = np.sign(B["LeftUpLeg"][0]); n_front = 0
     for i, q in enumerate(V):
@@ -41,10 +42,11 @@ if FRONT_BOOST > 1.0:
             continue
         w = W1[i]; ll, lr = w.get(P + "LeftUpLeg", 0.0), w.get(P + "RightUpLeg", 0.0); tot = ll + lr
         fr = float(tc.sstep(hy - 0.02 * H, hy - 0.08 * H, q[1]))
-        if tot < 0.02 or fr <= 0:
+        if fr <= 0 or (tot < 0.02 and FRONT_FLOOR <= 0):
             continue
-        new_tot = min(0.95, tot * (1 + fr * (FRONT_BOOST - 1)))
-        s_l = float(tc.sstep(-FRONT_SPLIT * H, FRONT_SPLIT * H, q[0] * lx)); s_l = fr * s_l + (1 - fr) * (ll / tot)
+        new_tot = min(0.95, max(tot * (1 + fr * (FRONT_BOOST - 1)), FRONT_FLOOR * fr))
+        tot = max(tot, 1e-6)
+        s_l = float(tc.sstep(-FRONT_SPLIT * H, FRONT_SPLIT * H, q[0] * lx)); s_l = fr * s_l + (1 - fr) * (ll / tot if tot > 1e-5 else s_l)
         w2 = {n: x * (1 - new_tot) / max(1 - tot, 1e-6) for n, x in w.items() if n not in (P + "LeftUpLeg", P + "RightUpLeg")}
         w2[P + "LeftUpLeg"] = new_tot * s_l; w2[P + "RightUpLeg"] = new_tot * (1 - s_l)
         W1[i] = tc.top4(w2, P + "Hips"); n_front += 1
@@ -87,6 +89,33 @@ if SMOOTH_ITERS > 0:
         M = M2
         M[:] = M[rep]
     W1 = [tc.top4({bones[j]: float(M[i, j]) for j in np.nonzero(M[i] > 1e-3)[0]}, P + "Hips") for i in range(len(V))]
+# THE KNEE PARTS THE SKIRT (2026-11-01, Director: "o joelho deveria deslizar pra frente empurrando a saia pros lados", not push it forward): weights alone cannot do it, a panel
+# that follows the thigh goes forward with it and a panel that does not is crossed by it. Two HELPER bones, SkirtFrontL / R, sit at the hips' joints under the Hips, and the
+# front panels hang from them (HELPER_TAKE of a front vertex's weight, left / right over the narrow centre). The helper is turned about the vertical by the runtime
+# (`ActorMesh3D`, the bench's driver: yaw = HELPER_K x the thigh's forward flexion, outward), so each flap swings aside like a door as its knee comes forward.
+HELPER_TAKE = float(os.environ.get("HELPER_TAKE", "0"))   # OFF: measured 2026-11-01, the flaps parted a little and the thigh still came through at the hip; the shipped Agents have no helper bones
+if HELPER_TAKE > 0:
+    from mathutils import Vector
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode='EDIT')
+    inv = arm.matrix_world.inverted(); eb = arm.data.edit_bones
+    for side in ("Left", "Right"):
+        b_ = eb.new(P + "SkirtFront" + side[0]); b_.head = inv @ Vector(B[side + "UpLeg"]); b_.tail = inv @ (Vector(B[side + "UpLeg"]) + Vector((0, 0, 0.1 * H)))
+        b_.parent = eb[P + "Hips"]; b_.use_connect = False
+    bpy.ops.object.mode_set(mode='OBJECT')
+    hy = B["Hips"][1]; lx = np.sign(B["LeftUpLeg"][0]); n_help = 0
+    HELPER_UP = float(os.environ.get("HELPER_UP", "0.07"))     # a high knee rises past the skirt's top into the belly: the helper fades out over this much above the hips
+    for i, q in enumerate(V):
+        if q[2] >= st["hz"] + HELPER_UP * H:
+            continue
+        fr = float(tc.sstep(hy - 0.02 * H, hy - 0.08 * H, q[1])) * float(tc.sstep(st["hz"] + HELPER_UP * H, st["hz"] - 0.01 * H, q[2]))
+        if fr <= 0:
+            continue
+        take = HELPER_TAKE * fr; s_l = float(tc.sstep(-FRONT_SPLIT * H, FRONT_SPLIT * H, q[0] * lx))
+        w2 = {n: x * (1 - take) for n, x in W1[i].items()}
+        w2[P + "SkirtFrontL"] = take * s_l; w2[P + "SkirtFrontR"] = take * (1 - s_l)
+        W1[i] = tc.top4(w2, P + "Hips"); n_help += 1
+    print(f"[{TAG}] {n_help} front skirt vertices hang from the helper bones")
 tc.write_weights(coat, W1)
 print(f"[{TAG}] {len(V)} coat verts, H {H:.3f}; hips z {st['hz']:.3f} knee z {st['kz']:.3f} hem z {st['hem']:.3f}; on the arm {st['on_arm']}; "
       f"stripped of forearm/hand {st['stripped']}; skirt re-weighted {st['skirt']}")

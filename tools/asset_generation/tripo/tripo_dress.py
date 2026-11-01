@@ -1398,6 +1398,156 @@ def close_small_holes(o, max_perimeter, keep_below):
 
 closed_ = [close_small_holes(coat, HOLE_MAX, HOLE_KEEP_BELOW) for _ in range(3)]       # a fill + weld can leave a new loop (the male's armpits needed a second pass)
 print(f"[{TAG}] coat: small holes closed per pass {closed_} (perimeter <= {HOLE_MAX:.3f} m)")
+
+
+# THE ARMPIT V (Director, 2026-10-31, on the male: "um tecido normal iria naturalmente se acomodar e emendar mais pra baixo"). Where a sleeve leaves the side of the coat the two
+# surfaces part along an ACUTE V that runs up to the armpit (a round tube tangent to the side panel), and the game's camera sees the floor through it. Cloth would settle and join
+# lower, with a ROUNDED end. (Tried and dropped: pulling the sleeve's vertices to the panel, which deformed the sleeve and left the slot between two torso surfaces untouched; the
+# masks under the coat are NOT the cause: with the whole shirt back, white flecks of it come out through the armpit instead.) What is done: the figure is looked at the way the game's
+# camera looks at it (30 deg down, from the front); the see-through slit between each sleeve and the coat's side is found with rays; at every row, the slit's NARROWEST depth (its throat)
+# gets a thin two-sided PANEL anchored in both walls; the panel covers the slit completely for ARM_COVER below its apex, then thins out along a quarter circle (a blunt end, not a needle).
+ARM_COVER = float(os.environ.get("ARM_COVER", "0.045")) * H     # the slit is closed this far below its apex (vertical distance on the screen)
+ARM_TAPER = float(os.environ.get("ARM_TAPER", "0.03")) * H      # and the panel thins out over this much more, along a quarter circle
+ARM_THROAT = 0.045                                              # metres: a channel wider than this at its narrowest is not a slit
+
+
+def close_armpit_slits(co, dressed_objs):
+    from mathutils.bvhtree import BVHTree
+    E = math.radians(30.0)
+    Fv = Vector((0.0, math.cos(E), -math.sin(E))); Rv = Vector((1.0, 0.0, 0.0)); Uv = Vector((0.0, math.sin(E), math.cos(E)))   # forward, right, up of the game's camera
+    C0 = Vector((0.0, 0.0, 0.5 * H))
+
+    def world_tree(objs):
+        vs, ps = [], []
+        for o_ in objs:
+            base = len(vs); vs.extend(o_.matrix_world @ v_.co for v_ in o_.data.vertices)
+            ps.extend([base + i for i in p_.vertices] for p_ in o_.data.polygons)
+        return BVHTree.FromPolygons(vs, ps), vs
+
+    all_tree, _ = world_tree(dressed_objs)
+    coat_tree, coat_vs = world_tree([co])
+    W0 = tc.read_weights(co)
+    mw_inv = co.matrix_world.inverted()
+    step = 0.0015; dv = 0.004
+    panels = []                                                    # per side: the rows [(Pb, Pf, wB, wA, f)]
+    for s_ in (1, -1):
+        us = np.arange(0.060, 0.150, step); vs_ = np.arange(-0.02, 0.27, step)
+        see = np.zeros((len(us), len(vs_)), bool)
+        for i, u in enumerate(us):
+            for j, v in enumerate(vs_):
+                see[i, j] = all_tree.ray_cast(C0 + Rv * (s_ * u) + Uv * v - Fv * 1.0, Fv, 2.0)[0] is None
+        lab = np.zeros(see.shape, int); k = 0; sizes = {}
+        for i0 in range(len(us)):
+            for j0 in range(len(vs_)):
+                if see[i0, j0] and lab[i0, j0] == 0:
+                    k += 1; lab[i0, j0] = k; q = [(i0, j0)]; n = 0
+                    while q:
+                        i, j = q.pop(); n += 1
+                        for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                            a_, b_ = i + di, j + dj
+                            if 0 <= a_ < len(us) and 0 <= b_ < len(vs_) and see[a_, b_] and lab[a_, b_] == 0:
+                                lab[a_, b_] = k; q.append((a_, b_))
+                    sizes[k] = n
+        bottom = {lab[i, 0] for i in range(len(us)) if lab[i, 0] > 0}          # the slit runs down to the window under the sleeve: the component that reaches the zone's bottom
+        if not bottom:
+            continue
+        comp = max(bottom, key=lambda c_: sizes[c_])
+        rows_ij = {}
+        for i in range(len(us)):
+            for j in range(len(vs_)):
+                if lab[i, j] == comp:
+                    lo, hi = rows_ij.get(j, (i, i)); rows_ij[j] = (min(lo, i), max(hi, i))
+        j_top = max(rows_ij); v_a = vs_[j_top]
+        print(f"[{TAG}] armpit slit, side {'+x' if s_ > 0 else '-x'}: apex at screen height {v_a:.3f} (z about {0.5 * H + v_a / math.cos(E):.3f}), {sizes[comp]} see-through cells")
+        rows = []
+        n_rows = int((ARM_COVER + ARM_TAPER) / dv) + 3
+        for r_ in range(n_rows):
+            v = v_a + 0.006 - r_ * dv                                              # from a little ABOVE the apex (a thread of slit is left there otherwise)
+            j = min(int(round((v - vs_[0]) / step)), j_top)
+            if j not in rows_ij:
+                break
+            u_c = 0.5 * (us[rows_ij[j][0]] + us[rows_ij[j][1]])
+            best = None
+            for t in np.arange(-0.30, 0.30, 0.003):                              # the throat: the depth where the walls on both sides are closest
+                pt = C0 + Rv * (s_ * u_c) + Uv * v + Fv * t
+                hb = coat_tree.ray_cast(pt, -Rv * s_, 0.06); ha = coat_tree.ray_cast(pt, Rv * s_, 0.06)
+                if hb[0] is None or ha[0] is None:
+                    continue
+                w_ = (hb[0] - ha[0]).length
+                if best is None or w_ < best[0]:
+                    best = (w_, t, hb[0].copy(), ha[0].copy(), hb[2], ha[2])
+            if best is None or best[0] > ARM_THROAT:
+                break
+            rows.append([v, best])
+        if len(rows) < 2:
+            continue
+        ts = [r_[1][1] for r_ in rows]                                            # a median over three rows keeps the panel from stepping in depth
+        for i in range(1, len(rows) - 1):
+            ts[i] = sorted(ts[i - 1:i + 2])[1]
+        out = []
+        for (v, best), t in zip(rows, ts):
+            pt = (best[2] + best[3]) * 0.5
+            pt = pt - Fv * ((pt - C0).dot(Fv)) + Fv * t                           # the same screen position, at the filtered depth
+            hb = coat_tree.ray_cast(pt, -Rv * s_, 0.06); ha = coat_tree.ray_cast(pt, Rv * s_, 0.06)
+            if hb[0] is None or ha[0] is None:
+                hb, ha = (best[2], None, best[4], None), (best[3], None, best[5], None)
+            B, A = hb[0].copy(), ha[0].copy()
+            d_ = v_a - v
+            if d_ <= ARM_COVER:
+                f = 1.0
+            else:
+                tt = (d_ - ARM_COVER) / ARM_TAPER
+                if tt > 1.0:
+                    break
+                f = 1.0 - math.sqrt(max(0.0, 2.0 * tt - tt * tt))                   # blunt end: the opening grows like a square root from nothing
+            def w_of(face_i, pos):
+                vi = min(co.data.polygons[face_i].vertices, key=lambda x: (coat_vs[x] - pos).length)
+                return dict(W0[vi]), co.data.polygons[face_i].material_index
+            wA, mA = w_of(ha[2], A); wB, mB_ = w_of(hb[2], B)
+            dirS = Rv * s_
+            Pb = B - dirS * 0.003
+            Pf = B + (A - B) * f + (dirS * 0.003 if f >= 1.0 else Vector())
+            out.append((Pb, Pf, wB, wA, f, mB_))
+        if len(out) >= 2:
+            panels.append(out)
+            print(f"[{TAG}]   panel: {len(out)} rows from the apex down to screen height {v_a - len(out) * dv:.3f}, closed over the first {min(len(out), int(ARM_COVER / dv) + 1)}")
+    if not panels:
+        return 0
+    bm = bmesh.new(); bm.from_mesh(co.data); dl = bm.verts.layers.deform.verify()
+    names = {g.name: g.index for g in co.vertex_groups}
+    added = 0
+    def new_vert(pos, wd):
+        nv = bm.verts.new(mw_inv @ pos)
+        for g, w in tc.top4(wd, "mixamorig:Hips").items():
+            if g in names:
+                nv[dl][names[g]] = w
+        return nv
+    for out in panels:
+        for layer, off in ((0, -0.0005), (1, 0.0005)):                            # two layers a millimetre apart: the one the camera faces, and the one seen from behind
+            vb, vf = [], []
+            for Pb, Pf, wB, wA, f, mat_i in out:
+                wmix = {g: (1.0 - f) * wB.get(g, 0.0) + f * wA.get(g, 0.0) for g in set(wB) | set(wA)}
+                vb.append(new_vert(Pb + Fv * off, wB)); vf.append(new_vert(Pf + Fv * off, wmix))
+            for i in range(len(out) - 1):
+                for tri in (((vb[i], vf[i], vf[i + 1])), ((vb[i], vf[i + 1], vb[i + 1]))):
+                    pa, pb_, pc = (co.matrix_world @ v_.co for v_ in tri)
+                    nrm = (pb_ - pa).cross(pc - pa)
+                    if nrm.length < 1e-9:
+                        continue
+                    facing_camera = nrm.dot(-Fv) > 0.0
+                    ordered = tri if (facing_camera == (layer == 0)) else (tri[0], tri[2], tri[1])
+                    try:
+                        f_ = bm.faces.new(ordered); f_.material_index = out[i][5]; f_.smooth = False; added += 1
+                    except ValueError:
+                        pass
+    bm.to_mesh(co.data); bm.free(); co.data.update()
+    return added
+
+
+if os.environ.get("ARM_PANEL", "1") == "1":
+    _hide_undressed = ("Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair")
+    _shown = [o_ for o_ in out_objs if o_.name.split(".")[0] not in _hide_undressed]
+    print(f"[{TAG}] coat: {close_armpit_slits(coat, _shown)} armpit panel face(s) added")
 if os.environ.get("DEBUG_HOLES"):
     print(f"[{TAG}] DEBUG before export: coat {len(coat.data.vertices)} verts, {len(coat.data.polygons)} faces, {sum(1 for p_ in coat.data.polygons if len(p_.vertices) != 3)} non-triangles, modifiers {[m.type for m in coat.modifiers]}")
 tc.export(OUT, out_objs, armB)

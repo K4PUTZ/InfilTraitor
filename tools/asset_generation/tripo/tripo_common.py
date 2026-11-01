@@ -50,13 +50,19 @@ def load(tag, glb):
     return arm, P, B, meshes
 
 
+# Bones of OURS that live outside the Mixamo set: the coat's skirt chains (ACTOR D88). fix_unrigged must leave them alone: it read them as Tripo's neutral_bone and gave every
+# vertex bound to them its nearest neighbour's weights, so tripo_uv (the step after the dress) wiped the chains' weights and the springs had nothing to move in every Agent
+# built since (measured 2026-11-01: 1 338 male coat vertices on the chains after the dress, 0 after tripo_uv).
+KEEP_BONES = ("coat_skirt_",)
+
+
 def fix_unrigged(tag, meshes, P):
     """Tripo binds a few vertices to a 'neutral_bone' outside the Mixamo set, which no clip moves: in motion they stay at the rest pose and a
     face stretches from the figure back to where it started (measured on the first male with the coat, 2026-10-27: 1 coat vertex and 2 under
     the hat, edges 2.4 m long). Each such vertex takes the weights of the nearest vertex of its own mesh weighted to Mixamo bones only."""
     n_fix = 0
     for o in meshes:
-        W = read_weights(o); bad = [i for i, w in enumerate(W) if any(not g.startswith(P) for g in w)]
+        W = read_weights(o); bad = [i for i, w in enumerate(W) if any(not g.startswith(P) and not g.startswith(KEEP_BONES) for g in w)]
         if not bad:
             continue
         V = world_verts(o); good = np.array([i for i in range(len(W)) if i not in set(bad)])

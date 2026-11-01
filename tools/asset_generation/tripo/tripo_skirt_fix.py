@@ -26,8 +26,12 @@ V = tc.world_verts(coat); W0 = tc.read_weights(coat)
 head_top = max(tc.world_verts(o)[:, 2].max() for o in meshes if o.name in ("Outfit_Hat", "Body_Head"))
 H = float(head_top - min(tc.world_verts(o)[:, 2].min() for o in meshes if o.name == "Outfit_Shoes"))   # the figure's height, hat included
 tc.ARM_R = float(os.environ.get("SKIRT_ARM_R", "0.045"))   # the sleeve radius (fractions of H): 0.055 left the coat's flank on the arm, 0.045 measured best (walk 3, run 26 stretched edges)
-W1, st = tc.coat_fix(V, W0, B, P, H, np.ones(len(V), bool))
-if st["hem"] is None:
+# THE SKIRT CHAINS ARE NOT TOUCHED (ACTOR D88): a vertex weighted to the coat's own skirt bones (coat_skirt_<k>_<j>, run in the game as springs that collide with capsules on the
+# thighs and shins) keeps its weights exactly; the rules below are for everything else. Without this the chains, which tripo_uv used to wipe, would be wiped here too.
+owned = np.array([sum(x for n, x in w.items() if n.startswith("coat_skirt_")) > 0.01 for w in W0])
+print(f"[{TAG}] {int(owned.sum())} coat vertices hang from the skirt chains and keep their weights")
+W1, st = tc.coat_fix(V, W0, B, P, H, ~owned)
+if st["hem"] is None and not owned.any():
     tc.fail(TAG, f"{GLB}: no skirt found below the hips")
 # THE FRONT OF THE SKIRT opens (2026-11-01, Director: "a saia abrir na frente quando ele se move, e ficar pendendo pra cada lado"): coat_fix gives the skirt one follow for
 # the whole circumference (up to 0.6 at the hem), too little for the front panels, which the thighs push through (a strip of trousers in front of the pocket). The leg share
@@ -38,7 +42,7 @@ FRONT_FLOOR = float(os.environ.get("FRONT_FLOOR", "0.0"))   # the least leg shar
 if FRONT_BOOST > 1.0:
     hy = B["Hips"][1]; lx = np.sign(B["LeftUpLeg"][0]); n_front = 0
     for i, q in enumerate(V):
-        if q[2] >= st["hz"]:
+        if q[2] >= st["hz"] or owned[i]:
             continue
         w = W1[i]; ll, lr = w.get(P + "LeftUpLeg", 0.0), w.get(P + "RightUpLeg", 0.0); tot = ll + lr
         fr = float(tc.sstep(hy - 0.02 * H, hy - 0.08 * H, q[1]))
@@ -78,7 +82,7 @@ if SMOOTH_ITERS > 0:
     for i, w in enumerate(W1):
         for n, x in w.items():
             M[i, col[n]] = x
-    hold = (V[:, 2] < st["hz"] - 0.04 * H) | cuff           # the skirt keeps its own rule, the cuffs their Tripo weights
+    hold = (V[:, 2] < st["hz"] - 0.04 * H) | cuff | owned    # the skirt keeps its own rule, the cuffs their Tripo weights, the chains theirs
     CROSS = float(os.environ.get("SMOOTH_CROSS", "1.0"))        # a neighbour of the other class (sleeve / torso) counts this much
     todo = [r for r in np.unique(rep) if not hold[r] and nb[r]]
     nbl = {r: (np.array(sorted(nb[r])), np.array([1.0 if sleeve[q] == sleeve[r] else CROSS for q in sorted(nb[r])])) for r in todo}
@@ -106,7 +110,7 @@ if HELPER_TAKE > 0:
     hy = B["Hips"][1]; lx = np.sign(B["LeftUpLeg"][0]); n_help = 0
     HELPER_UP = float(os.environ.get("HELPER_UP", "0.07"))     # a high knee rises past the skirt's top into the belly: the helper fades out over this much above the hips
     for i, q in enumerate(V):
-        if q[2] >= st["hz"] + HELPER_UP * H:
+        if q[2] >= st["hz"] + HELPER_UP * H or owned[i]:
             continue
         fr = float(tc.sstep(hy - 0.02 * H, hy - 0.08 * H, q[1])) * float(tc.sstep(st["hz"] + HELPER_UP * H, st["hz"] - 0.01 * H, q[2]))
         if fr <= 0:
@@ -134,5 +138,28 @@ if SIDE_X > 0:
         kill = [f for f in bm.faces if SIDE_X <= np.mean([abs(pts[v.index][0]) for v in f.verts]) <= SIDE_MAX and all(z_lo <= pts[v.index][2] <= z_hi for v in f.verts)]
         bmesh.ops.delete(bm, geom=kill, context='FACES'); bm.to_mesh(o.data); bm.free()
         print(f"[{TAG}] {nm}: {len(kill)} lateral faces removed")
+# UNUSED BONES GO (Director, 2026-11-01: "pode descartar esqueletos que nao estao em uso do modelo"): a bone outside the Mixamo set that no vertex of any piece is weighted to
+# (nor a parent of one that is) is dead weight in every actor's skeleton, a transform updated per frame for nothing. The 65 Mixamo joints stay whatever they carry: the clips
+# are keyed to them. The chains, when they have weights, stay by themselves.
+used = set()
+for o in meshes:
+    for w in tc.read_weights(o):
+        used.update(w)
+bpy.context.view_layer.objects.active = arm
+bpy.ops.object.mode_set(mode='EDIT')
+ebs = arm.data.edit_bones; keep = set(used)
+for n in list(used):
+    b_ = ebs.get(n)
+    while b_ is not None and b_.parent is not None:
+        b_ = b_.parent; keep.add(b_.name)
+dead = [b_.name for b_ in ebs if not b_.name.startswith(P) and b_.name not in keep]
+for n in dead:
+    ebs.remove(ebs[n])
+bpy.ops.object.mode_set(mode='OBJECT')
+for o in meshes:
+    for g in list(o.vertex_groups):
+        if g.name in dead:
+            o.vertex_groups.remove(g)
+print(f"[{TAG}] {len(dead)} unused bones dropped ({len(arm.data.bones)} left)")
 tc.export(OUT, meshes, arm)
 print(f"[{TAG}] wrote {OUT}")

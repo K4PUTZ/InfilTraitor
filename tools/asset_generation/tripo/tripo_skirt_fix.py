@@ -29,6 +29,35 @@ tc.ARM_R = float(os.environ.get("SKIRT_ARM_R", "0.045"))   # the sleeve radius (
 W1, st = tc.coat_fix(V, W0, B, P, H, np.ones(len(V), bool))
 if st["hem"] is None:
     tc.fail(TAG, f"{GLB}: no skirt found below the hips")
+# THE FRONT OF THE SKIRT opens (2026-11-01, Director: "a saia abrir na frente quando ele se move, e ficar pendendo pra cada lado"): coat_fix gives the skirt one follow for
+# the whole circumference (up to 0.6 at the hem), too little for the front panels, which the thighs push through (a strip of trousers in front of the pocket). The leg share
+# of a FRONT vertex is multiplied (FRONT_BOOST, capped at 0.95) and split left / right over a NARROWER centre (FRONT_SPLIT of H), so each half hangs from its own thigh and the
+# front parts like a coat's slit; the back keeps coat_fix's. The front is -y, as tripo_dress reads it.
+FRONT_BOOST = float(os.environ.get("FRONT_BOOST", "1.6")); FRONT_SPLIT = float(os.environ.get("FRONT_SPLIT", "0.02"))
+if FRONT_BOOST > 1.0:
+    hy = B["Hips"][1]; lx = np.sign(B["LeftUpLeg"][0]); n_front = 0
+    for i, q in enumerate(V):
+        if q[2] >= st["hz"]:
+            continue
+        w = W1[i]; ll, lr = w.get(P + "LeftUpLeg", 0.0), w.get(P + "RightUpLeg", 0.0); tot = ll + lr
+        fr = float(tc.sstep(hy - 0.02 * H, hy - 0.08 * H, q[1]))
+        if tot < 0.02 or fr <= 0:
+            continue
+        new_tot = min(0.95, tot * (1 + fr * (FRONT_BOOST - 1)))
+        s_l = float(tc.sstep(-FRONT_SPLIT * H, FRONT_SPLIT * H, q[0] * lx)); s_l = fr * s_l + (1 - fr) * (ll / tot)
+        w2 = {n: x * (1 - new_tot) / max(1 - tot, 1e-6) for n, x in w.items() if n not in (P + "LeftUpLeg", P + "RightUpLeg")}
+        w2[P + "LeftUpLeg"] = new_tot * s_l; w2[P + "RightUpLeg"] = new_tot * (1 - s_l)
+        W1[i] = tc.top4(w2, P + "Hips"); n_front += 1
+    print(f"[{TAG}] {n_front} skirt vertices re-split at the front")
+# THE CUFFS keep the weights Tripo gave them (2026-11-01, Director: the wrist came out cut): coat_fix strips the hand's weights off everything not beside the arm, and a cuff
+# ring lies PAST the wrist joint, so it lost its hand and the cuff stayed behind a bending wrist (a 13 cm gap to the hand piece on the run, against 1 cm as built).
+CUFF_R = float(os.environ.get("CUFF_R", "0.07")) * H
+cuff = np.zeros(len(V), bool)
+for side in ("Left", "Right"):
+    cuff |= (np.linalg.norm(V - B[side + "Hand"], axis=1) < CUFF_R) & (np.sign(V[:, 0]) == np.sign(B[side + "Hand"][0]))
+for i in np.nonzero(cuff)[0]:
+    W1[i] = W0[i]
+print(f"[{TAG}] {int(cuff.sum())} cuff vertices keep their Tripo weights")
 SMOOTH_ITERS = int(os.environ.get("SMOOTH_ITERS", "6")); SMOOTH_LAM = float(os.environ.get("SMOOTH_LAM", "0.5"))
 if SMOOTH_ITERS > 0:
     key = {}; rep = np.zeros(len(V), int)                 # a GLB splits vertices at every UV seam: weld by position, or the seam would keep two different skins
@@ -47,7 +76,7 @@ if SMOOTH_ITERS > 0:
     for i, w in enumerate(W1):
         for n, x in w.items():
             M[i, col[n]] = x
-    hold = V[:, 2] < st["hz"] - 0.04 * H                   # the skirt keeps its own rule
+    hold = (V[:, 2] < st["hz"] - 0.04 * H) | cuff           # the skirt keeps its own rule, the cuffs their Tripo weights
     CROSS = float(os.environ.get("SMOOTH_CROSS", "1.0"))        # a neighbour of the other class (sleeve / torso) counts this much
     todo = [r for r in np.unique(rep) if not hold[r] and nb[r]]
     nbl = {r: (np.array(sorted(nb[r])), np.array([1.0 if sleeve[q] == sleeve[r] else CROSS for q in sorted(nb[r])])) for r in todo}

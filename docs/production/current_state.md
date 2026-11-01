@@ -569,6 +569,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-29_BASES_BELT_PAIRS.md
 - RESUMO_SESSAO_2026-10-30_MALE_WAIST.md
 - RESUMO_SESSAO_2026-10-31_PRIMARY_ITEMS_COAT_EMBLEM.md
+- RESUMO_SESSAO_2026-11-01_COAT_LEGS_PUSH.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -576,8 +577,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 243
-- Test scripts: 92
+- GDScript modules: 244
+- Test scripts: 93
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 32

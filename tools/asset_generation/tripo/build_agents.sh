@@ -41,6 +41,13 @@ for f in female male; do
     SCRIPT=tripo_skirt_fix.py run "log_${c}_lskirt.txt" SKIRT_IN=$M/official/AGENT_${F}_LIGHT.glb SKIRT_OUT=$W/${c}_lfinal.glb SMOOTH_ITERS=6
     mv "$W/${c}_lfinal.glb" "$M/official/AGENT_${F}_LIGHT.glb"
   fi
+  # the skirt chains go (D88 -> D94, Director 2026-11-01 "tira as molas"): their weights to Hips, the 24 bones removed
+  SCRIPT=tripo_chains_to_hips.py run "log_${c}_chains.txt" CH_IN=$M/official/AGENT_${F}.glb CH_OUT=$W/${c}_nochains.glb
+  mv "$W/${c}_nochains.glb" "$M/official/AGENT_${F}.glb"
+  if [[ " $LIGHT_FIGS " == *" $f "* ]]; then
+    SCRIPT=tripo_chains_to_hips.py run "log_${c}_lchains.txt" CH_IN=$M/official/AGENT_${F}_LIGHT.glb CH_OUT=$W/${c}_lnochains.glb
+    mv "$W/${c}_lnochains.glb" "$M/official/AGENT_${F}_LIGHT.glb"
+  fi
   # what the legs' push needs (D94, 2026-11-01): the coat's per-vertex direction / mask / rest push and the capsule radii, baked onto the finished coat (no weight, no position changes)
   SCRIPT=tripo_coat_push.py run "log_${c}_push.txt" COAT_IN=$M/official/AGENT_${F}.glb COAT_OUT=$W/${c}_pushed.glb
   mv "$W/${c}_pushed.glb" "$M/official/AGENT_${F}.glb"

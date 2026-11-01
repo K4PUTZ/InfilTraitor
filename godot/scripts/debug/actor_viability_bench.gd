@@ -76,7 +76,6 @@ class Ticker extends Node:
 	func _process(_delta: float) -> void:
 		step.call(float(Time.get_ticks_msec()) / 1000.0)
 
-const COAT_CHAIN_BONES: int = 3   ## bones per skirt chain (`tripo_dress.py` SKB_SEG)
 const CoatPushRef = preload("res://godot/scripts/geometry/coat_push3d.gd")   ## ACTOR D94: the legs push the coat (the shader half is in `actor_mesh3d.gdshader`)
 const BANK_CLIP: String = "res://ASSETS/ANIMATIONS/bank/%s/%s.glb"
 static var _rigs: Array = []
@@ -105,9 +104,7 @@ static func spawn(room: Node, model: String, count: int) -> String:
 	if clip_at >= 0:
 		bank_clip = model.substr(clip_at + 6)
 		model = model.substr(0, clip_at)
-	var springs: bool = not model.ends_with("_nosprings")   ## `_nosprings`: the coat's skirt chains stay still (the A / B of ACTOR D88)
-	model = model.trim_suffix("_nosprings")
-	var pushed: bool = not model.ends_with("_nopush")   ## `_nopush` (before `_nosprings`): the legs do not push the coat (ACTOR D94's A / B)
+	var pushed: bool = not model.ends_with("_nopush")   ## `_nopush` : the legs do not push the coat (ACTOR D94's A / B)
 	model = model.trim_suffix("_nopush")
 	var cloak: bool = model.ends_with("_cloak")
 	model = model.trim_suffix("_cloak")
@@ -206,10 +203,6 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		var skeletons := body.find_children("*", "Skeleton3D", true, false)
 		if not skeletons.is_empty():
 			rig.skeleton = skeletons[0] as Skeleton3D
-			if official and springs and not nocoat:
-				var chains: int = _attach_coat_springs(rig.skeleton)
-				if i == 0:
-					print("[ACTOR-BENCH] coat springs: %d chain(s) of %d bones per rig" % [chains, COAT_CHAIN_BONES])
 			if official and pushed and not nocoat:
 				var coats: Array[Node] = body.find_children("Outfit_Coat*", "MeshInstance3D", true, false)
 				var on: bool = not coats.is_empty() and CoatPushRef.attach(rig.skeleton, coats[0] as MeshInstance3D)
@@ -307,47 +300,6 @@ static func _play_bank_clip(rig: Rig, figure: String, id: String, offset_s: floa
 	rig.player.play("bank_clip")
 	rig.player.seek(offset_s, true)
 	return true
-
-
-## The coat's skirt chains run as springs (ACTOR D88): SpringBoneSimulator3D on `coat_skirt_<k>_0 .. <k>_2`, colliding with capsules on the thighs and shins. The values are the ones
-## judged in `tools/asset_generation/tripo/coat_spring_preview.gd` (stiffness 3, drag 0.7, gravity 0.3, joint radius 2.5 % of the figure's height, thigh / shin capsules 5.5 / 4 %).
-## The simulator is configured once its skeleton is in the tree (before, no bone resolves and it does nothing, silently). Returns the number of chains it drives.
-static func _attach_coat_springs(skeleton: Skeleton3D) -> int:
-	var chains: int = 0
-	while skeleton.find_bone("coat_skirt_%d_0" % chains) >= 0:
-		chains += 1
-	if chains == 0:
-		return 0
-	var height: float = skeleton.get_bone_global_rest(_mixamo_bone(skeleton, "Hips")).origin.y / 0.55
-	var sim := SpringBoneSimulator3D.new()
-	skeleton.add_child(sim)
-	sim.setting_count = chains
-	for i in range(chains):
-		sim.set_root_bone_name(i, "coat_skirt_%d_0" % i)
-		sim.set_end_bone_name(i, "coat_skirt_%d_%d" % [i, COAT_CHAIN_BONES - 1])
-		sim.set_extend_end_bone(i, true)
-		sim.set_end_bone_length(i, 0.12 * height)
-		sim.set_radius(i, 0.025 * height)
-		sim.set_stiffness(i, 3.0)
-		sim.set_drag(i, 0.7)
-		sim.set_gravity(i, 0.3)
-		sim.set_enable_all_child_collisions(i, true)
-	for side: String in ["Left", "Right"]:
-		for pair: Array in [["UpLeg", "Leg", 0.055], ["Leg", "Foot", 0.04]]:
-			var from_bone: int = _mixamo_bone(skeleton, side + String(pair[0]))
-			var to_bone: int = _mixamo_bone(skeleton, side + String(pair[1]))
-			if from_bone < 0 or to_bone < 0:
-				push_warning("[ActorViabilityBench] no %s %s for the coat's capsules" % [side, pair[0]])
-				continue
-			var radius: float = float(pair[2]) * height
-			var length: float = skeleton.get_bone_rest(to_bone).origin.length()
-			var capsule := SpringBoneCollisionCapsule3D.new()
-			sim.add_child(capsule)
-			capsule.bone_name = skeleton.get_bone_name(from_bone)
-			capsule.radius = radius
-			capsule.height = length + 2.0 * radius
-			capsule.position_offset = Vector3(0.0, length / 2.0, 0.0)
-	return chains
 
 
 ## Advance the synthetic motion (the quat rigs only; the agent's AnimationPlayer drives itself).

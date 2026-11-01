@@ -8,6 +8,14 @@
 
 ---
 
+## Where the project stands — 2026-11-01 (the two Agents are finished in Blender, light and full, and measured on the Moto)
+
+- **Built:** `ASSETS/MODELS/official/AGENT_<FEMALE|MALE>.glb` (full, 19.8 k / 25 k tris) and `AGENT_<..>_LIGHT.glb` (the dressed set 4.6 k tris, each piece reduced offline by `tripo_lod.py`, with its own painted head map), both made by `tools/asset_generation/tripo/build_agents.sh`. The light pieces keep the 65-joint Mixamo rig and the slot / variant structure (`ACTOR` D89, D91).
+- **Finished by measurement (`ACTOR` D92):** the floor no longer leaks through the figures (the coat's masks spared a front strip; floor pixels inside the silhouette in game: female 16 / 17, male 9 / 8); every open armhole of the coat is closed (the male's 21.7 cm figure-8 included); the lapel / sleeve-root shirt shards are masked; the armpit V has a two-sided panel and its end is blunt. The masks stay (without them the whole shirt pokes through the coat). Tools: `tripo_mesh_audit.py`, `tripo_crack_probe.py`; bench `actor_bench agent_<light|full>_<female|male>[_nocoat|_unmasked][_tint][_f0.._f3]`.
+- **Moto (`ACTOR` D93, `actor_scenario.py`):** 9 figures on PLAYGROUND, portrait, uncapped: shipped agent +5.8 ms, **light +3.0 ms**, full +9 to +10 ms; render CPU 1.2 ms; PSS +5 to +10 MB. The first run was discarded (a contaminated idle and the figures out of view).
+- **Important, found on the way:** the game never shows a figure front-on (the yaw is the grid step's: 3/4 views); the bench's front view is only a diagnostic.
+- **Open:** T4, the Godot adapter (`ActorMesh3D` on the 65-joint rig, the palette and painted-map shader) and its cost with textures; the clips (`MOVEMENT` MV-1 review sheets, the coat and the armpit panel in motion); the male's head is 6 pieces (eyes, mouth). Record: `PROMPTS/RESUMO_SESSAO_2026-10-31_PRIMARY_ITEMS_COAT_EMBLEM.md`.
+
 ## Where the project stands — 2026-10-17 (the soft materials are done: cloth and cardboard roofs and walls are sheets, sewn; the quitanda)
 
 - **A cloth or cardboard roof or wall is a `SoftSheet3D` from the first frame**: a sim settled at load on a worker thread, drawn at rest over voxels that stay the index of light, support, damage and shots. A blast that takes a support wakes that very sim; a blast or a shot that only cuts a hole redraws the skin with the opening (cloth: tongues; cardboard: a torn ragged edge and the debris it already shed; a little soot on a shot's hole).

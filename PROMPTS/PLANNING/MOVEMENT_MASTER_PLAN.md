@@ -5,6 +5,7 @@
 > um banco de animações, e depois mapear o que precisa, o que tem e o que falta").** Nothing in §3-§9 is built yet. The brief this
 > ⏸ **PARKED until the models are done (Director, 2026-10-27: "vamos deixar planejado, pra fazer depois que os modelos estiverem
 > prontos").** MV-1 starts once the male (with coat and hat, and without) and the female are assembled (`CHARACTER`, §9 items 1-2).
+> 🟢 **2026-11-01: the two Agents are assembled, finished and measured (`ACTOR` D91-D93; light and full `.glb` in `ASSETS/MODELS/official/`): the precondition for MV-1 is met; starting it is the Director's call.** First job when it starts: the bank's per-clip review sheets on the OFFICIAL files (no sheets exist yet), looking at the coat in motion and at the armpit panel under a raised arm (only the rest pose was checked).
 > replaces (v0.1, 2026-08-16, written for the retired sprite bake) is `docs/history/MOVEMENT_BRIEF_v0.1_2026-08-16.md`; what in it is
 > still design is carried into §2 below and cited there, never restated twice.
 >

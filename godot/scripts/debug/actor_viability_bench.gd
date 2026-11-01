@@ -76,6 +76,7 @@ class Ticker extends Node:
 	func _process(_delta: float) -> void:
 		step.call(float(Time.get_ticks_msec()) / 1000.0)
 
+const BANK_CLIP: String = "res://ASSETS/ANIMATIONS/bank/%s/%s.glb"
 static var _rigs: Array = []
 static var _glow_mats: Array = []
 static var _glow_t0: float = 0.0
@@ -97,6 +98,11 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		_ticker = Ticker.new()
 		_ticker.step = tick
 		board.add_child(_ticker)
+	var bank_clip: String = ""       ## `..._clip_<id>`: play a bank clip (`ASSETS/ANIMATIONS/bank/<figure>/<id>.glb`) on an official Agent, in place (MV-4's first slice)
+	var clip_at: int = model.find("_clip_")
+	if clip_at >= 0:
+		bank_clip = model.substr(clip_at + 6)
+		model = model.substr(0, clip_at)
 	var cloak: bool = model.ends_with("_cloak")
 	model = model.trim_suffix("_cloak")
 	## a costume file holds BOTH styles; the engine will show one (D70): `_black` hides the coat, `_normal` hides the gloves
@@ -205,6 +211,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 				rig.player.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
 				rig.player.play(clip)
 				rig.player.seek(float(i) * 0.11, true)
+		elif official and rig.skeleton != null and bank_clip != "" and _play_bank_clip(rig, model.split("_")[2], bank_clip, float(i) * 0.13):
+			pass
 		elif official and rig.skeleton != null:   ## a LIVE skeleton in place (the actions travel: `dive` runs out of the view): a synthetic sine on the Mixamo bones, as for `quat`
 			rig.phase = float(i) * 0.9
 			for bone_name: String in OFFICIAL_SWING:
@@ -239,6 +247,51 @@ static func spawn(room: Node, model: String, count: int) -> String:
 	var line := "[ACTOR-BENCH] %s x%d: %d tris and %d joints and %d material(s) per rig" % [model, count, tris, joints, materials]
 	print(line)
 	return line
+
+
+## Put the bank clip `id` of `figure` on the rig's own player, looping and in place (the Hips keep their height, lose their travel and sit over the holder). False when it cannot (loud).
+static func _play_bank_clip(rig: Rig, figure: String, id: String, offset_s: float) -> bool:
+	var path: String = BANK_CLIP % [figure, id]
+	if not ResourceLoader.exists(path):   ## MV-1 §3: the other figure's clip, retargeted by rotations, only as a MARKED fallback
+		var other: String = "male" if figure == "female" else "female"
+		push_warning("[ActorViabilityBench] %s has no %s clip %s: FALLBACK to the %s one" % [figure, id, path, other])
+		path = BANK_CLIP % [other, id]
+	var scene := load(path) as PackedScene
+	if scene == null or rig.player == null:
+		push_error("[ActorViabilityBench] no bank clip %s (or the rig has no player)" % path)
+		return false
+	var holder := scene.instantiate()
+	var src: Array = holder.find_children("*", "AnimationPlayer", true, false)
+	if src.is_empty():
+		holder.free()
+		push_error("[ActorViabilityBench] %s holds no animation" % path)
+		return false
+	var anim: Animation = ((src[0] as AnimationPlayer).get_animation((src[0] as AnimationPlayer).get_animation_list()[0])).duplicate()
+	var src_rest: Vector3 = Vector3.ZERO
+	var src_skeletons: Array = holder.find_children("*", "Skeleton3D", true, false)
+	if not src_skeletons.is_empty():
+		src_rest = (src_skeletons[0] as Skeleton3D).get_bone_rest((src_skeletons[0] as Skeleton3D).find_bone("mixamorig_Hips")).origin
+	holder.free()
+	anim.loop_mode = Animation.LOOP_LINEAR
+	## The bank stores the Hips as rest + (offset from rest) / hip height (`tripo_anim_bank.py`): put it back in this figure's metres, and in place.
+	var hips_idx: int = _mixamo_bone(rig.skeleton, "Hips")
+	var rest: Vector3 = rig.skeleton.get_bone_rest(hips_idx).origin
+	for t in range(anim.get_track_count()):
+		if anim.track_get_type(t) == Animation.TYPE_POSITION_3D and str(anim.track_get_path(t)).ends_with("mixamorig_Hips"):
+			for k in range(anim.track_get_key_count(t)):
+				var v: Vector3 = anim.track_get_key_value(t, k)
+				var off: Vector3 = (v - src_rest) * rest.y
+				anim.track_set_key_value(t, k, Vector3(rest.x, rest.y + off.y, rest.z))
+	var lib: AnimationLibrary = rig.player.get_animation_library("") if rig.player.has_animation_library("") else null
+	if lib == null:
+		lib = AnimationLibrary.new()
+		rig.player.add_animation_library("", lib)
+	if lib.has_animation("bank_clip"):
+		lib.remove_animation("bank_clip")
+	lib.add_animation("bank_clip", anim)
+	rig.player.play("bank_clip")
+	rig.player.seek(offset_s, true)
+	return true
 
 
 ## Advance the synthetic motion (the quat rigs only; the agent's AnimationPlayer drives itself).

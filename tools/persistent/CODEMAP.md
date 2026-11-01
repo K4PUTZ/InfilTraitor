@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**339 scripts · 100370 lines total** (under `godot/scripts/`)
+**339 scripts · 100423 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -320,7 +320,7 @@ extends `Node2D` · 325 lines
 
 ### `actor_viability_bench.gd`
 
-extends `RefCounted` · 338 lines
+extends `RefCounted` · 391 lines
 
 `godot/scripts/debug/actor_viability_bench.gd`
 
@@ -354,6 +354,7 @@ extends `RefCounted` · 338 lines
 - `SPACING_GU` = `1.25`
 - `PER_ROW` = `6`
 - `SWING` = `{ "thigh_l": [Vector3.RIGHT, 28.0, 0.0], "thigh_r": [Vector3.RIGHT, 28.0, PI], "calf_l": [Vector3.RIGHT, 18.0, 0.0], "calf_r": [Vector3.RIGHT, 18.0, PI], "upperarm_l": [Vector3.RIGHT, 22.0, PI], "upperarm_r": [Vector3.RIGHT, 22.0, 0.0], "spine_02": [Vector3.UP, 6.0, 0.0], }`
+- `BANK_CLIP` = `"res://ASSETS/ANIMATIONS/bank/%s/%s.glb"`
 
 ---
 

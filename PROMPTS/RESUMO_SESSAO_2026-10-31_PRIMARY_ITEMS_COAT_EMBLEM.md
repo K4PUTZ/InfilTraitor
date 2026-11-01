@@ -147,3 +147,19 @@ did not start: the Director first settled what the bases are and how an item may
 - Tried and dropped: pulling the sleeve's inner vertices to the torso panel (deformed the sleeve; one side's channel is between two TORSO surfaces, one of them my fan patch; glTF seam copies need one decision per position).
 - Built: `close_armpit_slits` (`tripo_dress.py`): rays from the game's camera (30 deg down) find each see-through slit; per row the slit's THROAT (narrowest depth) gets a thin TWO-SIDED panel anchored in both walls; closed for `ARM_COVER` 0.045 H below the apex, then a quarter-circle taper (`ARM_TAPER` 0.03 H, a blunt end). The panel starts 6 mm ABOVE the apex (a thread of slit was left otherwise). 144-160 faces, no new holes, the four gameplay views unchanged; the female gets it too (her enclosed floor pixels drop in two views). In game the slits start about 5 cm lower, full and light.
 - Trap: the glTF round trip is fine; the audit's open loops of 17 / 47 cm were the SHIRT's cuffs and hem.
+
+## Later: the Agents on the Moto (2026-11-01, T4's measurement; Moto g04s ZF524T5TG5, APK `export_android.py`, PLAYGROUND portrait, MAX_FPS=0)
+- Method: `tools/persistent/actor_scenario.py` (one boot per model, an `idle` segment with nothing spawned, then 9 rigs in a 3 x 3 block inside the view, a synthetic sine on the Mixamo bones so the skeleton is LIVE
+  and in place); `actor_bench agent_<light|full>_<female|male>` flat albedo, the dressed set only. Logs: `docs/measurements/actor_<model>_x9.log`. The Android preset now excludes `ASSETS/MODELS/sources/*` and `history/*`
+  (they would have been packed, +85 MB). The first run was DISCARDED: its `idle` already held the rigs (no wait after the mark) and the `dive` action walked the figures out of the view (3-4 of 9 visible).
+- Idle (same in all five boots: 20.5 ms/frame, GPU 19.0, 65 draws, 41 216 primitives). With 9 rigs, frame time / GPU time / draws / primitives:
+  | | ms/frame (delta) | GPU ms (delta) | draws | primitives |
+  |---|---|---|---|---|
+  | shipped agent (`agent_live`, 11 k tris, 20 joints) | 26.3 (+5.8) | 24.7 (+5.5) | 98 | 133 972 |
+  | female LIGHT (4.6 k tris, 89 joints) | 23.5 (+3.0) | 21.9 (+2.9) | 153 | 79 471 |
+  | male LIGHT | 23.5 (+3.0) | 21.9 (+2.9) | 151 | 78 875 |
+  | female FULL (19.8 k) | 29.4 (+8.9) | 28.1 (+9.1) | 153 | 218 125 |
+  | male FULL (25 k) | 30.3 (+9.8) | 28.9 (+9.9) | 152 | 246 729 |
+- Reading: the cost is the GPU and follows the triangles (about 0.05-0.075 ms per 1 000 primitives); the render CPU stays at 1.2 ms with +88 draw calls. **The light Agents cost about HALF of the shipped agent per figure
+  (0.33 vs 0.64 ms), 89 joints and 11 pieces notwithstanding**; the full ones are for the showcase only. PSS: about +5 to +10 MB for 9 rigs (about 670 MB total, ceiling 1.0 GiB).
+- NOT measured: the painted maps / detail textures and the real shader (flat albedo here), a skeleton driven by real clips, the masked-variant swaps, one run per model (the idle baseline did not move between boots).

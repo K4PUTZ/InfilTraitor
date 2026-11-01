@@ -41,6 +41,11 @@ const OFFICIAL_RIG := "res://ASSETS/MODELS/official/AGENT_%s.glb"
 const UNDRESSED_PIECES: Array[String] = ["Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere"]
 ## the other state: no coat, no hat, the plain shirt / trousers / belt and the open hair (the clean base, D89)
 const DRESSED_ONLY_PIECES: Array[String] = ["Outfit_Coat", "Outfit_Hat", "Body_Hair_Hat", "Outfit_Shirt_Coated", "Outfit_Trousers_Coated", "Outfit_Belt_Coated"]
+## Mixamo bone -> (swing axis, degrees, phase) for the official Agents' synthetic motion (skinning cost does not depend on the pose)
+const OFFICIAL_SWING := {
+	"LeftUpLeg": [Vector3.RIGHT, 28.0, 0.0], "RightUpLeg": [Vector3.RIGHT, 28.0, PI], "LeftLeg": [Vector3.RIGHT, 18.0, 0.0], "RightLeg": [Vector3.RIGHT, 18.0, PI],
+	"LeftArm": [Vector3.RIGHT, 22.0, PI], "RightArm": [Vector3.RIGHT, 22.0, 0.0], "Spine1": [Vector3.UP, 6.0, 0.0],
+}
 const HERO_WALK := "Walk_Formal"   ## the import strips the `_Loop` suffix and loops it
 const LANE_GU: float = 9.0
 const LANE_SPEED_GU_S: float = 1.2
@@ -158,6 +163,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		var holder := Node3D.new()
 		holder.name = "BenchRig_%s_%d" % [model, i]
 		holder.position = origin + Vector3(2.0 + float(i % PER_ROW) * SPACING_GU, 0.0, 2.0 + float(i / PER_ROW) * SPACING_GU)
+		if official or model == "agent":   ## a 3 x 3 block, all inside a portrait view
+			holder.position = origin + Vector3(1.4 + float(i % 3) * 1.0, 0.0, 1.4 + float(i / 3) * 1.0)
 		if march:  ## one lane of figures, each staggered along it
 			holder.position = origin + Vector3(-3.0, 0.0, 2.0 + float(i % 8) * 1.1)
 		board.add_child(holder)
@@ -198,6 +205,13 @@ static func spawn(room: Node, model: String, count: int) -> String:
 				rig.player.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
 				rig.player.play(clip)
 				rig.player.seek(float(i) * 0.11, true)
+		elif official and rig.skeleton != null:   ## a LIVE skeleton in place (the actions travel: `dive` runs out of the view): a synthetic sine on the Mixamo bones, as for `quat`
+			rig.phase = float(i) * 0.9
+			for bone_name: String in OFFICIAL_SWING:
+				var idx := _mixamo_bone(rig.skeleton, bone_name)
+				if idx >= 0:
+					var sw: Array = OFFICIAL_SWING[bone_name]
+					rig.swing_bones.append([idx, sw[0], deg_to_rad(float(sw[1])), float(sw[2]), rig.skeleton.get_bone_rest(idx).basis.get_rotation_quaternion()])
 		elif model == "agent" and rig.player != null and rig.player.has_animation("walk_shotgun"):
 			rig.player.play("walk_shotgun")
 			rig.player.seek(float(i) * 0.07, true)
@@ -269,6 +283,15 @@ static func _tint_pieces(board: Node3D, body: Node) -> void:
 		sm.set_shader_parameter("albedo", PIECE_TINT[key])
 		board.call("register_prop_light_material", sm)
 		m.material_override = sm
+
+
+## The importer may keep the colon of `mixamorig:Hips` or turn it into an underscore: try both, then the bare name.
+static func _mixamo_bone(skeleton: Skeleton3D, bone_name: String) -> int:
+	for prefix in ["mixamorig:", "mixamorig_", ""]:
+		var idx := skeleton.find_bone(prefix + bone_name)
+		if idx >= 0:
+			return idx
+	return -1
 
 
 static func _mesh_height(body: Node3D) -> float:

@@ -34,6 +34,9 @@ if SMOOTH_ITERS > 0:
     key = {}; rep = np.zeros(len(V), int)                 # a GLB splits vertices at every UV seam: weld by position, or the seam would keep two different skins
     for i, q in enumerate(np.round(V / 1e-5).astype(np.int64)):
         rep[i] = key.setdefault(tuple(q), i)
+    # a neighbour of the other class (sleeve / torso) counts SMOOTH_CROSS. 1.0 (unrestricted) tears least (walk 0, run 26); a hard split kept the shirt in (14 px at the game
+    # camera on the walk) but left the armhole torn (run 139), and the middle values trade one for the other, so the shirt's lateral faces are removed instead (3 below)
+    sleeve = np.array([sum(x for n, x in w.items() if "Arm" in n or "Hand" in n or "Shoulder" in n) > 0.5 for w in W1])
     nb = [set() for _ in V]
     for e in coat.data.edges:
         a, b = rep[e.vertices[0]], rep[e.vertices[1]]
@@ -45,16 +48,33 @@ if SMOOTH_ITERS > 0:
         for n, x in w.items():
             M[i, col[n]] = x
     hold = V[:, 2] < st["hz"] - 0.04 * H                   # the skirt keeps its own rule
+    CROSS = float(os.environ.get("SMOOTH_CROSS", "1.0"))        # a neighbour of the other class (sleeve / torso) counts this much
     todo = [r for r in np.unique(rep) if not hold[r] and nb[r]]
+    nbl = {r: (np.array(sorted(nb[r])), np.array([1.0 if sleeve[q] == sleeve[r] else CROSS for q in sorted(nb[r])])) for r in todo}
     for _ in range(SMOOTH_ITERS):
         M2 = M.copy()
         for r in todo:
-            M2[r] = (1 - SMOOTH_LAM) * M[r] + SMOOTH_LAM * M[list(nb[r])].mean(0)
+            q, wq = nbl[r]; M2[r] = (1 - SMOOTH_LAM) * M[r] + SMOOTH_LAM * (M[q] * wq[:, None]).sum(0) / wq.sum()
         M = M2
         M[:] = M[rep]
     W1 = [tc.top4({bones[j]: float(M[i, j]) for j in np.nonzero(M[i] > 1e-3)[0]}, P + "Hips") for i in range(len(V))]
 tc.write_weights(coat, W1)
 print(f"[{TAG}] {len(V)} coat verts, H {H:.3f}; hips z {st['hz']:.3f} knee z {st['kz']:.3f} hem z {st['hem']:.3f}; on the arm {st['on_arm']}; "
       f"stripped of forearm/hand {st['stripped']}; skirt re-weighted {st['skirt']}")
+# (3) LATERAL FACES (2026-11-01): the coat covers the flanks in every pose, so the shirt and the belt keep only what the front opening shows; the faces of the dressed
+# shirt / belt on the sides of the torso (mean |x| between SIDE_X and SIDE_MAX, from the hips to a hand above the armpit) are never seen and were the ones that showed through
+# the coat's armhole when the arm swung (measured: a white patch, 112 px at the game camera on the walk). The sleeves' own faces (|x| past SIDE_MAX) stay.
+import bmesh
+SIDE_X = float(os.environ.get("SIDE_X", "0.055")); SIDE_MAX = float(os.environ.get("SIDE_MAX", "0.125")); SIDE_UP = float(os.environ.get("SIDE_UP", "0.05"))
+z_lo, z_hi = B["Hips"][2] - 0.03 * H, min(B["LeftArm"][2], B["RightArm"][2]) + SIDE_UP * H
+if SIDE_X > 0:
+    for nm in ("Outfit_Shirt_Coated", "Outfit_Belt_Coated"):
+        o = bpy.data.objects.get(nm)
+        if o is None:
+            continue
+        pts = tc.world_verts(o); bm = bmesh.new(); bm.from_mesh(o.data); bm.faces.ensure_lookup_table()
+        kill = [f for f in bm.faces if SIDE_X <= np.mean([abs(pts[v.index][0]) for v in f.verts]) <= SIDE_MAX and all(z_lo <= pts[v.index][2] <= z_hi for v in f.verts)]
+        bmesh.ops.delete(bm, geom=kill, context='FACES'); bm.to_mesh(o.data); bm.free()
+        print(f"[{TAG}] {nm}: {len(kill)} lateral faces removed")
 tc.export(OUT, meshes, arm)
 print(f"[{TAG}] wrote {OUT}")

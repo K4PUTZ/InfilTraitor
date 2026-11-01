@@ -24,6 +24,9 @@ for f in female male; do
   SCRIPT=tripo_assemble.py run "log_${c}_from.txt" TRIPO_GLB=$from TRIPO_OUT=$W/${c}_from.glb
   SCRIPT=tripo_dress.py run "log_${c}_dress.txt" DRESS_COAT=$M/official/COAT_BASE.glb DRESS_BASE=$W/${c}_slots.glb DRESS_FROM=$W/${c}_from.glb \
       DRESS_OUT=$W/${c}_dressed.glb "${knobs[@]}"
+  # the coat's weights, last: the dress leaves its hem bound to the hands (D91, 2026-11-01)
+  SCRIPT=tripo_skirt_fix.py run "log_${c}_skirt.txt" SKIRT_IN=$W/${c}_dressed.glb SKIRT_OUT=$W/${c}_dressed_fix.glb
+  mv "$W/${c}_dressed_fix.glb" "$W/${c}_dressed.glb"
   SCRIPT=tripo_uv.py run "log_${c}_uv.txt" UV_IN=$W/${c}_dressed.glb UV_OUT=$W/${c}_uv.glb
   SCRIPT=tripo_head_map.py run "log_${c}_head.txt" HEAD_IN=$W/${c}_uv.glb HEAD_SRC=$M/sources/tripo_${f}_base.glb \
       HEAD_MAP=$M/official/painted/${f}_head.png HEAD_OUT=$M/official/AGENT_${F}.glb

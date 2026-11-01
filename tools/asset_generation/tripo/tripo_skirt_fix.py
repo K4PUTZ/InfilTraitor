@@ -6,7 +6,9 @@
 # (2) SMOOTH (2026-11-01, Director: the sleeves and the upper body still tore in a run): the weights above the skirt are diffused over the welded mesh (SMOOTH_ITERS
 # passes of SMOOTH_LAM toward the neighbours' mean; the skirt under the hips keeps its deliberate rule). Measured on the male's walk / run: 53 -> 6 and 128 -> 91 stretched
 # edges per frame at 3 passes, 45 at 8; at 6 the sleeves read clean from the front and the side with the arm still inside them, at 20 they start to blur.
-# Env: SKIRT_IN (a dressed GLB: the Mixamo rig, the slots, Outfit_Coat), SKIRT_OUT.  Usage: blender -b -P tripo_skirt_fix.py
+# Runs LAST, on the finished GLB (after tripo_lod, uv, head map): on the full-resolution coat before the reduction the same rules measured 63 on the run, on the light
+# coat itself 26 (the reduction does not keep a skin cut for the dense mesh). SMOOTH_ITERS scales with the mesh: 6 for the light, ~10 for the full.
+# Env: SKIRT_IN (a finished Agent GLB: the Mixamo rig, the slots, Outfit_Coat), SKIRT_OUT, SKIRT_ARM_R, SMOOTH_ITERS, SMOOTH_LAM.  Usage: blender -b -P tripo_skirt_fix.py
 import os, sys
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -23,6 +25,7 @@ if coat is None or not coat.vertex_groups:
 V = tc.world_verts(coat); W0 = tc.read_weights(coat)
 head_top = max(tc.world_verts(o)[:, 2].max() for o in meshes if o.name in ("Outfit_Hat", "Body_Head"))
 H = float(head_top - min(tc.world_verts(o)[:, 2].min() for o in meshes if o.name == "Outfit_Shoes"))   # the figure's height, hat included
+tc.ARM_R = float(os.environ.get("SKIRT_ARM_R", "0.045"))   # the sleeve radius (fractions of H): 0.055 left the coat's flank on the arm, 0.045 measured best (walk 3, run 26 stretched edges)
 W1, st = tc.coat_fix(V, W0, B, P, H, np.ones(len(V), bool))
 if st["hem"] is None:
     tc.fail(TAG, f"{GLB}: no skirt found below the hips")

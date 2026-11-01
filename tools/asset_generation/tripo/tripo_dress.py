@@ -36,6 +36,9 @@ COAT_GAP = float(os.environ.get("COAT_GAP", "0.004"))
 # 0 leaves slits and the trousers show under the tie, 0.10 lets white flecks of the shirt out at both armpits, 0.05 closes the chest with almost none): the coat's opening shows what is under it, and a masked shirt / trousers left a rim there
 # whose back the game culls, so the floor showed down the front (measured 2026-10-31 with tripo_crack_probe: ~2 400 px of slits on the female, ~1 600 on the male)
 FRONT_KEEP = float(os.environ.get("FRONT_KEEP", "0.05"))
+SHARD_X = float(os.environ.get("SHARD_X", "0.072"))     # fractions of H from the centre line: a vertex nearer than this is the lapel's edge, not a shard (0.062 and 0.068 took a strip of the lapel-edge shirt
+# and showed the trousers through it at the 45 degree view; 0.072 removes the male's two white flecks and leaves that view identical; the female is untouched)
+SHARD_Z0, SHARD_Z1 = (float(x) for x in os.environ.get("SHARD_Z", "0.60,0.80").split(","))   # fractions of H: the band where an exposed shirt vertex off the front strip is a shard (0,0 = off)
 COAT_MAX = float(os.environ.get("COAT_MAX", "0.012"))    # fractions of H; a coat point never moves farther than COAT_MAX
 COAT_RADIUS = float(os.environ.get("COAT_RADIUS", "0.03"))   # a fraction of H: how far a push carries (see the coat fit)
 # ONE LAPEL may go farther, to make room for a bust (Director, 2026-10-27, on the female: "deslocar a lapela da esquerda mais pra frente"):
@@ -1239,6 +1242,12 @@ if "Outfit_Shirt" in mB:
     front = lambda Q: (np.abs(Q[:, 0] - hips_[0]) < FRONT_KEEP * H) & (Q[:, 1] < hips_[1] + 0.03 * H)     # the figure faces -Y
     pro_s = front(SV)
     deep = [d_ and not p_ for d_, p_ in zip(deep, pro_s)]; out_ = [o_ and not p_ for o_, p_ in zip(out_, pro_s)]
+    # SHARDS: a shirt vertex NOT inside the coat, off the front strip and not in the collar ring, between the armpits and the shoulders, is a piece of the shirt coming out
+    # through a fold of the coat (2026-10-31: where the male's lapel meets his sleeve root, five 2 cm2 faces with one vertex outside stood IN FRONT of the coat as a
+    # white fleck; the section at that height showed the shirt crossing the coat's outline): the whole face goes
+    if SHARD_Z1 > SHARD_Z0:
+        shard_ = [(not inside(Tc, q)) and SHARD_Z0 * H < q[2] < SHARD_Z1 * H and abs(q[0] - hips_[0]) >= SHARD_X * H for q in SV]
+        out_ = [o_ or (s_ and not k_ and not p_) for o_, s_, k_, p_ in zip(out_, shard_, keep, pro_s)]
     sc_, nd = masked_copy(mB["Outfit_Shirt"], "Outfit_Shirt_Coated", lambda f: all(deep[v.index] for v in f.verts) or any(out_[v.index] for v in f.verts))
     print(f"[{TAG}] shirt mask: {nd} of {len(mB['Outfit_Shirt'].data.polygons)} shirt faces deep inside the coat or out through it ({sum(out_)} vertices out)"); extra.append(sc_)
     # the TROUSERS the same way, at the hips only (2026-10-30: the female's hips are wider than the coat at the belt, her trousers showed at
@@ -1326,59 +1335,70 @@ if RV_OUT:
             p.use_smooth = sm; p.material_index = mi
 # finishing: the coat's small HOLES (measured 2026-10-31, tripo_mesh_audit / the open loops of the female's coat: four tiny ones at each armpit where the sleeve
 # meets the body, three at the front-left, one at the shoulder; 2-6 cm round on the female, up to 17 cm at the male's armpits) are closed: the game's shader draws one side of a face, so each showed the floor as a
-# speck at every armpit. A loop longer than HOLE_MAX (the pocket slits, the hem, the collar, the front opening) is design and stays.
-HOLE_MAX = float(os.environ.get("HOLE_MAX", "0.20")) * H    # metres on the 1 m figure: a loop's perimeter
+# speck at every armpit. A loop longer than HOLE_MAX (the hem, the collar, the front opening) or centred below HOLE_KEEP_BELOW (the pocket slits) stays.
+HOLE_MAX = float(os.environ.get("HOLE_MAX", "0.50")) * H    # metres on the 1 m figure: a loop's perimeter
+# the POCKET slits (about 22 cm round, at hip height) are design; the male's ARMPIT holes (21.7 and 46 cm round, found 2026-10-31 by tracing the camera ray
+# through the hole the Director marked: it passes 9 mm from the coat's faces and meets only the back of the far wall) are not: they differ by HEIGHT, not by size
+HOLE_KEEP_BELOW = float(os.environ.get("HOLE_KEEP_BELOW", "0.52")) * H     # a loop longer than 0.12 H whose centre is lower than this stays open (the pockets sit at 0.49,
+# the male's lowest armpit hole at 0.535; the buttonholes are under 6 cm round and close wherever they are)
 
 
-def close_small_holes(o, max_perimeter):
+def close_small_holes(o, max_perimeter, keep_below):
+    """Close the coat's open loops with a FAN of triangles from each loop's centre. (holes_fill makes n-gons, and the exporter's triangulation of a non-planar
+    n-gon, an armhole, fails and leaves the hole open again: 2026-10-31, a 17 cm loop and a 47 cm one came back after the glTF round trip.) Each triangle
+    runs its shared edge the OPPOSITE way to the face already on it, so no winding is ever wrong; the centre vertex takes the mean of the loop's skin weights."""
     bm = bmesh.new(); bm.from_mesh(o.data)
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)           # glTF splits at seams: the open edges are read on the welded surface
     mw = o.matrix_world
+    dl = bm.verts.layers.deform.verify()
     open_edges = [e for e in bm.edges if len(e.link_faces) == 1]
     adj = {}
     for e in open_edges:
         for v in e.verts:
             adj.setdefault(v, []).append(e)
-    seen, loops = set(), []                                           # every loop is gathered BEFORE any fill (a fill renumbers the edges)
-    for e in open_edges:
-        if e in seen:
-            continue
-        stack, loop = [e], []; seen.add(e)
-        while stack:
-            c = stack.pop(); loop.append(c)
-            for v in c.verts:
-                for n in adj[v]:
-                    if n not in seen:
-                        seen.add(n); stack.append(n)
-        loops.append(loop)
-    filled = 0; new_faces = []
+    unused = set(open_edges); loops = []                              # every loop is gathered BEFORE any fill; two loops touching at a vertex (a figure 8) are split into simple cycles
+    while unused:
+        e0 = next(iter(unused)); unused.discard(e0)
+        path_v, path_e = [e0.verts[0], e0.verts[1]], [e0]
+        while path_e:
+            cur = path_v[-1]
+            nxt = next((e for e in adj[cur] if e in unused), None)
+            if nxt is None:                                           # the walk is back at its start with nothing left there, or an open chain
+                break
+            unused.discard(nxt); other = nxt.other_vert(cur); path_e.append(nxt)
+            if other in path_v:                                       # the walk closed a cycle: cut it out and carry on from where it started
+                i = path_v.index(other)
+                loops.append(path_e[i:]); path_e = path_e[:i]; path_v = path_v[:i + 1]
+            else:
+                path_v.append(other)
+    filled = 0
     for loop in loops:
-        if sum((mw @ e.verts[0].co - mw @ e.verts[1].co).length for e in loop) > max_perimeter:
+        per = sum((mw @ e.verts[0].co - mw @ e.verts[1].co).length for e in loop)
+        if per > max_perimeter or len(loop) < 3:                      # a 2-edge loop is a sliver with nothing to fill (a fan over it would be two zero-area faces)
             continue
-        res = bmesh.ops.holes_fill(bm, edges=loop, sides=len(loop) + 1)
-        faces = res["faces"]
-        if not faces:                                                 # a ragged loop the first fill refuses: a triangle fill over it
-            res = bmesh.ops.triangle_fill(bm, edges=loop, use_beauty=True)
-            faces = [g for g in res["geom"] if isinstance(g, bmesh.types.BMFace)]
-        filled += len(faces) > 0
-        new_faces.extend(faces)
-    # a patch face may wind the wrong way (the game draws one side: it would still be a hole): each new face takes its neighbours' winding
-    def run(face, edge):
-        for l in face.loops:
-            if l.edge is edge:
-                return (l.vert.index, l.link_loop_next.vert.index)
-    bm.verts.index_update(); newset = set(new_faces)
-    for _ in range(4):
-        for f in [f for f in new_faces if f.is_valid]:
-            votes = [run(f, e) == run(g, e) for e in f.edges for g in e.link_faces if g is not f and (g not in newset or _ > 0)]
-            if votes and sum(votes) > len(votes) / 2.0:
-                bmesh.utils.face_flip(f)
-    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=5e-4)         # the 2-edge slivers a fill leaves (4-5 mm) close by welding their ends
+        verts = list({v for e in loop for v in e.verts})
+        ctr = sum((v.co for v in verts), Vector()) / len(verts)
+        if per >= 0.12 * H and (mw @ ctr).z < keep_below:
+            continue
+        centre = bm.verts.new(ctr)
+        for v in verts:                                               # the mean skin weights of the rim
+            for g, w in v[dl].items():
+                centre[dl][g] = centre[dl].get(g, 0.0) + w / len(verts)
+        for e in loop:
+            face = e.link_faces[0]
+            for l in face.loops:
+                if l.edge is e:                                       # the face runs a -> b along this edge: the new one runs b -> a
+                    a_, b_ = l.vert, l.link_loop_next.vert
+                    nf = bm.faces.new((b_, a_, centre)); nf.material_index = face.material_index; nf.smooth = False
+                    break
+        filled += 1
     bm.to_mesh(o.data); bm.free(); o.data.update()
     return filled
 
 
-closed_ = [close_small_holes(coat, HOLE_MAX) for _ in range(3)]       # a fill + weld can leave a new loop (the male's armpits needed a second pass)
+closed_ = [close_small_holes(coat, HOLE_MAX, HOLE_KEEP_BELOW) for _ in range(3)]       # a fill + weld can leave a new loop (the male's armpits needed a second pass)
 print(f"[{TAG}] coat: small holes closed per pass {closed_} (perimeter <= {HOLE_MAX:.3f} m)")
+if os.environ.get("DEBUG_HOLES"):
+    print(f"[{TAG}] DEBUG before export: coat {len(coat.data.vertices)} verts, {len(coat.data.polygons)} faces, {sum(1 for p_ in coat.data.polygons if len(p_.vertices) != 3)} non-triangles, modifiers {[m.type for m in coat.modifiers]}")
 tc.export(OUT, out_objs, armB)
 print(f"[{TAG}] wrote {OUT}: {[o.name for o in out_objs]}")

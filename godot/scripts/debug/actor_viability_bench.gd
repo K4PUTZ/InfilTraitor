@@ -121,6 +121,11 @@ static func spawn(room: Node, model: String, count: int) -> String:
 	var march: bool = model.ends_with("_march")  ## a video wants them walking along a lane; a measurement wants them still on the grid
 	model = model.trim_suffix("_march")
 	var hero: bool = model.begins_with("hero_")
+	var facing_k: int = -1            ## `_f0` .. `_f3`: the four BASE grid facings the game uses (ActorMesh3D.yaw_for_direction: multiples of 90 degrees), seen from the camera on the diagonal = 3/4 views; none = facing the camera
+	for k in range(4):
+		if model.ends_with("_f%d" % k):
+			facing_k = k
+			model = model.trim_suffix("_f%d" % k)
 	var official: bool = model.begins_with("agent_")   ## agent_<light|full>_<female|male>[_nocoat]
 	var nocoat: bool = official and model.ends_with("_nocoat")
 	if nocoat:
@@ -162,7 +167,7 @@ static func spawn(room: Node, model: String, count: int) -> String:
 			body.rotation.y = PI * 0.25 if face_camera else PI * 0.5   ## the rig's front is +Z; march toward +X (grid east), or face the camera on the diagonal
 		elif official:
 			body.scale = Vector3.ONE * STAND_HEIGHT_M * METRES_TO_UNITS   ## Tripo exports a 1 m figure standing on z = 0 (hat included)
-			body.rotation.y = PI * 0.25
+			body.rotation.y = PI * 0.25 if facing_k < 0 else float(facing_k) * PI * 0.5
 		elif model == "quat":
 			body.scale = Vector3.ONE * (STAND_HEIGHT_M / _mesh_height(body)) * METRES_TO_UNITS
 			body.rotation.y = PI

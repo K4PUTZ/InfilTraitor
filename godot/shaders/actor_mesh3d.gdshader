@@ -14,8 +14,10 @@ uniform float has_tex = 0.0;
 uniform vec4 status_tint = vec4(0.0);
 uniform float status_pulse = 0.0;
 #include "res://godot/shaders/mesh_planes.gdshaderinc"
+#include "res://godot/shaders/coat_push.gdshaderinc"
 
 void vertex() {
+	VERTEX = coat_push(VERTEX, COLOR, UV2);   // ACTOR D94: the legs push the coat's skirt (CoatPush3D drives it); every other piece returns at once
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }

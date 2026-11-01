@@ -41,5 +41,12 @@ for f in female male; do
     SCRIPT=tripo_skirt_fix.py run "log_${c}_lskirt.txt" SKIRT_IN=$M/official/AGENT_${F}_LIGHT.glb SKIRT_OUT=$W/${c}_lfinal.glb SMOOTH_ITERS=6
     mv "$W/${c}_lfinal.glb" "$M/official/AGENT_${F}_LIGHT.glb"
   fi
+  # what the legs' push needs (D94, 2026-11-01): the coat's per-vertex direction / mask / rest push and the capsule radii, baked onto the finished coat (no weight, no position changes)
+  SCRIPT=tripo_coat_push.py run "log_${c}_push.txt" COAT_IN=$M/official/AGENT_${F}.glb COAT_OUT=$W/${c}_pushed.glb
+  mv "$W/${c}_pushed.glb" "$M/official/AGENT_${F}.glb"
+  if [[ " $LIGHT_FIGS " == *" $f "* ]]; then
+    SCRIPT=tripo_coat_push.py run "log_${c}_lpush.txt" COAT_IN=$M/official/AGENT_${F}_LIGHT.glb COAT_OUT=$W/${c}_lpushed.glb
+    mv "$W/${c}_lpushed.glb" "$M/official/AGENT_${F}_LIGHT.glb"
+  fi
   echo "[build_agents] $f: $M/official/AGENT_${F}.glb + painted/${f}_head.png"
 done

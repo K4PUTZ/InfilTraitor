@@ -77,6 +77,7 @@ class Ticker extends Node:
 		step.call(float(Time.get_ticks_msec()) / 1000.0)
 
 const COAT_CHAIN_BONES: int = 3   ## bones per skirt chain (`tripo_dress.py` SKB_SEG)
+const CoatPushRef = preload("res://godot/scripts/geometry/coat_push3d.gd")   ## ACTOR D94: the legs push the coat (the shader half is in `actor_mesh3d.gdshader`)
 const BANK_CLIP: String = "res://ASSETS/ANIMATIONS/bank/%s/%s.glb"
 static var _rigs: Array = []
 static var _glow_mats: Array = []
@@ -106,6 +107,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		model = model.substr(0, clip_at)
 	var springs: bool = not model.ends_with("_nosprings")   ## `_nosprings`: the coat's skirt chains stay still (the A / B of ACTOR D88)
 	model = model.trim_suffix("_nosprings")
+	var pushed: bool = not model.ends_with("_nopush")   ## `_nopush` (before `_nosprings`): the legs do not push the coat (ACTOR D94's A / B)
+	model = model.trim_suffix("_nopush")
 	var cloak: bool = model.ends_with("_cloak")
 	model = model.trim_suffix("_cloak")
 	## a costume file holds BOTH styles; the engine will show one (D70): `_black` hides the coat, `_normal` hides the gloves
@@ -207,6 +210,11 @@ static func spawn(room: Node, model: String, count: int) -> String:
 				var chains: int = _attach_coat_springs(rig.skeleton)
 				if i == 0:
 					print("[ACTOR-BENCH] coat springs: %d chain(s) of %d bones per rig" % [chains, COAT_CHAIN_BONES])
+			if official and pushed and not nocoat:
+				var coats: Array[Node] = body.find_children("Outfit_Coat*", "MeshInstance3D", true, false)
+				var on: bool = not coats.is_empty() and CoatPushRef.attach(rig.skeleton, coats[0] as MeshInstance3D)
+				if i == 0:
+					print("[ACTOR-BENCH] coat push: %s" % ("the legs push the coat" if on else "OFF (no data / no shader)"))
 		var players := body.find_children("*", "AnimationPlayer", true, false)
 		if not players.is_empty():
 			rig.player = players[0] as AnimationPlayer

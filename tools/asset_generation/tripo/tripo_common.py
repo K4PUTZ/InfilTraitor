@@ -275,4 +275,4 @@ def export(path, objs, arm):
     for o in bpy.data.objects:
         o.select_set(o in objs or o is arm)
     bpy.context.view_layer.objects.active = arm
-    bpy.ops.export_scene.gltf(filepath=path, use_selection=True, export_animations=True, export_animation_mode='ACTIONS')
+    bpy.ops.export_scene.gltf(filepath=path, use_selection=True, export_animations=True, export_animation_mode='ACTIONS', export_extras=True)   # extras: a piece's custom properties travel (`coat_push`)

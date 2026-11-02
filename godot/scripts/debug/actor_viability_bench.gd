@@ -106,6 +106,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		model = model.substr(0, clip_at)
 	var pushed: bool = not model.ends_with("_nopush")   ## `_nopush` : the legs do not push the coat (ACTOR D94's A / B)
 	model = model.trim_suffix("_nopush")
+	var nohair: bool = model.ends_with("_nohair")   ## `_nohair` (before `_alone`): hide the hat's hair, to tell what shows through a gap at the collar
+	model = model.trim_suffix("_nohair")
 	var alone: bool = model.ends_with("_alone")   ## `_alone`: hide the room's own agent figure (it stands beside the bench in captures and gets in the way of a diagnosis)
 	model = model.trim_suffix("_alone")
 	if alone:
@@ -201,6 +203,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		_apply_board_light(board, body, converted, cloak)
 		if tint:
 			_tint_pieces(board, body)
+		if nohair:
+			hidden.append("Body_Hair_Hat")
 		for piece_name: String in hidden:
 			for node in body.find_children(piece_name, "MeshInstance3D", true, false):
 				(node as Node3D).visible = false

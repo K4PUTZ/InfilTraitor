@@ -13,7 +13,10 @@ from mathutils.bvhtree import BVHTree
 TAG = "tripo_coat_fit_relief"
 IN = os.environ["RELIEF_IN"]; OUT = os.environ.get("RELIEF_OUT", IN)
 GAP, CAP = float(os.environ.get("RELIEF_GAP", "0.003")), float(os.environ.get("RELIEF_CAP", "0.02"))
-T0, T1 = float(os.environ.get("RELIEF_T0", "0.25")), float(os.environ.get("RELIEF_T1", "0.95"))
+CAP_FORE = float(os.environ.get("RELIEF_CAP_FORE", "0.03"))   # the forearm's sleeve of the shirt is a low-poly lump: it comes deeper
+# the segments of each arm: (from joint, to joint, from, to of the span, cap). Upper arm = the triceps (the Director's first area), then the forearm (his second pass, 2026-11-02)
+SEGS = [("Arm", "ForeArm", float(os.environ.get("RELIEF_T0", "0.25")), float(os.environ.get("RELIEF_T1", "0.95")), CAP),
+        ("ForeArm", "Hand", float(os.environ.get("RELIEF_F0", "0.0")), float(os.environ.get("RELIEF_F1", "0.9")), CAP_FORE)]
 bpy.ops.wm.open_mainfile(filepath=os.path.abspath(IN))
 coat = [o for o in bpy.data.objects if o.name.startswith("Outfit_Coat")][0]
 arm = [o for o in bpy.data.objects if o.type == 'ARMATURE'][0]
@@ -51,32 +54,35 @@ T = BVHTree.FromPolygons([tuple(p) for p in SV], [tuple(t.vertices) for t in shi
 gn = {g.index: g.name for g in coat.vertex_groups}
 NA, NT = 32, 20
 total = 0.0
+W0 = W.copy(); D = np.zeros_like(W)                       # every segment reads the Director's positions; the larger push of a vertex wins
 for side in ("Left", "Right"):
-    a0 = np.array((arm.matrix_world @ arm.data.bones[f"mixamorig:{side}Arm"].head_local)[:]); a1 = np.array((arm.matrix_world @ arm.data.bones[f"mixamorig:{side}ForeArm"].head_local)[:])
+  for j0, j1, T0, T1, CAPS in SEGS:
+    a0 = np.array((arm.matrix_world @ arm.data.bones[f"mixamorig:{side}{j0}"].head_local)[:]); a1 = np.array((arm.matrix_world @ arm.data.bones[f"mixamorig:{side}{j1}"].head_local)[:])
     ax = a1 - a0; L = np.linalg.norm(ax); u = ax / L
-    aw = np.array([sum(g.weight for g in v.groups if side in gn[g.group] and "Arm" in gn[g.group]) for v in coat.data.vertices])
-    p = (W - a0) @ u / L                                    # position along the span
+    aw = np.array([sum(g.weight for g in v.groups if side in gn[g.group] and any(k in gn[g.group] for k in ("Arm", "Hand"))) for v in coat.data.vertices])
+    p = (W0 - a0) @ u / L                                   # position along the span
     sel = np.nonzero((aw >= 0.5) & (p > T0 - 0.15) & (p < T1 + 0.15))[0]
     if not len(sel):
         continue
     ref = np.cross(u, [0, 0, 1.0]); ref /= np.linalg.norm(ref); ref2 = np.cross(u, ref)
-    radial = (W[sel] - a0) - np.outer((W[sel] - a0) @ u, u); r = np.linalg.norm(radial, axis=1); rh_ = radial / np.maximum(r, 1e-9)[:, None]
+    radial = (W0[sel] - a0) - np.outer((W0[sel] - a0) @ u, u); r = np.linalg.norm(radial, axis=1); rh_ = radial / np.maximum(r, 1e-9)[:, None]
     ang = np.arctan2(rh_ @ ref2, rh_ @ ref); ia = ((ang + math.pi) / (2 * math.pi) * NA).astype(int) % NA
     it = np.clip(((p[sel] - (T0 - 0.15)) / (T1 - T0 + 0.30) * NT).astype(int), 0, NT - 1)
-    need = np.zeros((NT, NA)); seen = np.zeros((NT, NA), bool)
+    need = np.zeros((NT, NA))
     for j, i in enumerate(sel):
         o = Vector(a0 + u * p[i] * L); d = Vector(rh_[j]); hit_r = 0.0; org = o
         for _ in range(8):
             h = T.ray_cast(org, d, 0.4)
             if h[0] is None:
                 break
+            if (h[0] - o).length > r[j] + 0.03:               # a surface well beyond the coat (the other side of the arm, the torso) is not what comes through it
+                break
             hit_r = max(hit_r, (h[0] - o).length); org = h[0] + d * 1e-5
-        n_ = hit_r + GAP - r[j]
-        need[it[j], ia[j]] = max(need[it[j], ia[j]], n_); seen[it[j], ia[j]] = True
-    need = np.clip(need, 0.0, CAP)
+        need[it[j], ia[j]] = max(need[it[j], ia[j]], hit_r + GAP - r[j])
+    need = np.clip(need, 0.0, CAPS)
     for _ in range(2):                                      # dilate (the neighbours' 70 %), then blur: a push reaches round its bin, no ridge
         pad = np.pad(need, ((1, 1), (0, 0)), mode='edge')
-        nb = np.maximum.reduce([np.roll(pad, s, axis=1)[dt:dt + NT] for s in (-1, 0, 1) for dt in (0, 1, 2)])
+        nb = np.maximum.reduce([np.roll(pad, s_, axis=1)[dt:dt + NT] for s_ in (-1, 0, 1) for dt in (0, 1, 2)])
         need = np.maximum(need, nb * 0.7)
     for _ in range(2):
         pad = np.pad(need, ((1, 1), (0, 0)), mode='edge')
@@ -86,8 +92,12 @@ for side in ("Left", "Right"):
         t = p[i]; fade = float(np.clip(min((t - (T0 - 0.15)) / 0.15, (T1 + 0.15 - t) / 0.15), 0.0, 1.0)); fade = fade * fade * (3 - 2 * fade)
         s_ = need[it[j], ia[j]] * fade
         if s_ > 1e-5:
-            W[i] += rh_[j] * s_; moved += 1; total = max(total, s_)
-    print(f"[{TAG}] {side} arm: {moved} of {len(sel)} sleeve vertices pulled out, largest {total * 1000:.1f} mm")
+            cand = rh_[j] * s_
+            if np.linalg.norm(cand) > np.linalg.norm(D[i]):
+                D[i] = cand
+            moved += 1; total = max(total, s_)
+    print(f"[{TAG}] {side} {j0}->{j1}: {moved} of {len(sel)} vertices pulled out, largest {need.max() * 1000:.1f} mm")
+W = W0 + D
 Wi = np.linalg.inv(MW)
 newco = (Wi[:3, :3] @ W.T).T + Wi[:3, 3]
 # written through the edit mesh: a foreach_set on a shape key's data holds in the session but is NOT saved (measured 2026-11-02, Blender 5.2: the file came back unchanged); the edit mesh writes the keys and the mesh together

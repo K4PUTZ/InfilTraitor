@@ -9,8 +9,18 @@ const DEFAULT_DIR: String = "res://ASSETS/"
 const ZONE_ASPECT: float = 1.5405
 
 
+## ONE texture per emblem id for every coat that wears it (measured on the Moto g04s 2026-11-02: nine coats each making their own took ~250 MB of PSS, a new GPU allocator block). `clear_cache()` after the user's file changes.
+static var _cache: Dictionary = {}
+
+
+static func clear_cache() -> void:
+	_cache.clear()
+
+
 ## The texture for `emblem_id` (e.g. "emblem_ref_skull") fitted to the zone, or null when no tier has a valid file. `resolver` is optional (tests pass one with their own folders).
 static func texture_for(emblem_id: String, resolver: TextureResolver = null) -> ImageTexture:
+	if resolver == null and _cache.has(emblem_id):
+		return _cache[emblem_id] as ImageTexture
 	var r: TextureResolver = resolver if resolver != null else TextureResolver.new("", DEFAULT_DIR)
 	var resolved: TextureResolver.ResolvedTexture = r.resolve(emblem_id, FOLDER)
 	if resolved.image == null:
@@ -19,7 +29,10 @@ static func texture_for(emblem_id: String, resolver: TextureResolver = null) -> 
 	print_debug("[CoatEmblem] %s from %s" % [emblem_id, "USER" if resolved.tier == TextureResolver.Tier.USER else "DEFAULT"])
 	var img: Image = fitted(resolved.image)
 	img.generate_mipmaps()
-	return ImageTexture.create_from_image(img)
+	var tex := ImageTexture.create_from_image(img)
+	if resolver == null:
+		_cache[emblem_id] = tex
+	return tex
 
 
 ## `img` placed (contain, centred, transparent around) on a canvas of the zone's aspect.

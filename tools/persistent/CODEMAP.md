@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**342 scripts · 100851 lines total** (under `godot/scripts/`)
+**342 scripts · 100864 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -587,7 +587,7 @@ extends `Node3D` · 3573 lines
 
 ### `coat_emblem.gd`
 
-`class_name CoatEmblem` · 52 lines
+`class_name CoatEmblem` · 65 lines
 
 `godot/scripts/geometry/coat_emblem.gd`
 

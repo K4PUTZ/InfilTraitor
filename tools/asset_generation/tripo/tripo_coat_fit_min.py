@@ -4,10 +4,10 @@
 # "Fit" (value 1): the Director sculpts the Fit key in Blender (Edit Mode on the coat, the figure in REST pose); the build reads the key back (a later step) and applies it to the finished coat as data, so it survives a rebuild.
 # Env: FIT_BASE (a tripo_assemble output: the base figure's slots, the build's `<c>_slots.glb`), FIT_FROM (the generation with the coat, `<c>_from.glb`), FIT_COAT (COAT_BASE.glb), FIT_BLEND (the .blend written), FIT_GLB (optional, a GLB of it).
 # Usage: blender -b -P tripo_coat_fit_min.py
-import os, sys
+import math, os, sys
 import numpy as np
 import bpy, bmesh
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 from mathutils.geometry import barycentric_transform
 from mathutils.bvhtree import BVHTree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -91,6 +91,21 @@ for q in LV:
         for g, x in GW[vi].items():
             mix[g] = mix.get(g, 0.0) + x * wk
     NW.append(tc.top4(mix, "mixamorig:Hips"))
+# each SLEEVE turned about its shoulder onto the base's arm (the standalone's sleeves splay wider than the figure's arms: the cuffs stood far from the wrists)
+for side in ("Left", "Right"):
+    aw = np.array([sum(x for g, x in w.items() if side in g and any(k_ in g for k_ in ("Arm", "Hand", "Shoulder"))) for w in NW])
+    sl = LV[aw >= 0.9]
+    if len(sl) < 20:
+        continue
+    sh = np.array((armB.matrix_world @ armB.data.bones["mixamorig:" + side + "Arm"].head_local)[:])
+    wr = np.array((armB.matrix_world @ armB.data.bones["mixamorig:" + side + "Hand"].head_local)[:])
+    c_ = sl.mean(0); ev = np.linalg.eigh(np.cov((sl - c_).T))[1][:, -1]
+    if ev @ (c_ - sh) < 0:
+        ev = -ev
+    tgt = (wr - sh) / np.linalg.norm(wr - sh); q = Vector(ev).rotation_difference(Vector(tgt))
+    for i in np.nonzero(aw > 0)[0]:
+        LV[i] = sh + np.array((Quaternion().slerp(q, float(aw[i])) @ Vector(LV[i] - sh))[:])
+    print(f"[{TAG}] {side} sleeve turned {math.degrees(q.angle):.1f} deg onto the arm ({len(sl)} sleeve vertices)")
 me = bpy.data.meshes.new("Outfit_Coat"); me.from_pydata([tuple(q) for q in LV], [], LF); me.update()
 if any(u != (0.0, 0.0) for u in LUV):
     ul = me.uv_layers.new(name="UVMap")

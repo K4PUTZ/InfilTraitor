@@ -106,6 +106,14 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		model = model.substr(0, clip_at)
 	var pushed: bool = not model.ends_with("_nopush")   ## `_nopush` : the legs do not push the coat (ACTOR D94's A / B)
 	model = model.trim_suffix("_nopush")
+	var alone: bool = model.ends_with("_alone")   ## `_alone`: hide the room's own agent figure (it stands beside the bench in captures and gets in the way of a diagnosis)
+	model = model.trim_suffix("_alone")
+	if alone:
+		var others: Array = [agent]
+		others.append_array(room.get("_guards") as Array)
+		for other: Variant in others:
+			if other != null and is_instance_valid(other) and other.get("sprite") != null and (other.sprite as Node).has_meta("figure3d"):
+				(other.sprite.get_meta("figure3d") as Node3D).scale = Vector3.ZERO   # `visible` is rewritten every frame by the room; a zero scale is not
 	var cloak: bool = model.ends_with("_cloak")
 	model = model.trim_suffix("_cloak")
 	## a costume file holds BOTH styles; the engine will show one (D70): `_black` hides the coat, `_normal` hides the gloves

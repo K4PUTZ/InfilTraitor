@@ -201,8 +201,9 @@ maps/SEG_*.map.json
 !ASSETS/MODELS/
 ASSETS/MODELS/**/*.blend1
 ASSETS/MODELS/**/*.zip
-ASSETS/MODELS/sources/tripo_*_base.glb
-ASSETS/MODELS/sources/tripo_*_nocoat*.glb
+# 2026-11-02 (Director: "vamos guardar no git porque tem as principais animações. Os modelos eu acho que podemos guardar todos"): the Tripo bases, no-coat
+# generations and the two ANIMATIONS files are versioned too (the clips live in them). The textures Godot extracts beside a GLB are regenerated on import.
+ASSETS/MODELS/sources/*.jpg
 # the characters' own maps (ACTOR D87): the grayscale details (512, ~100 KB each) and the heads' painted maps (1024, < 1 MB) are sources
 !ASSETS/MODELS/official/detail/*.png
 !ASSETS/MODELS/official/painted/*.png

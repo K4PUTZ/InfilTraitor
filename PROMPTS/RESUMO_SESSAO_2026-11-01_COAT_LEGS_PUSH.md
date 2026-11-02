@@ -47,3 +47,11 @@ Picks up `RESUMO_SESSAO_2026-10-31_PRIMARY_ITEMS_COAT_EMBLEM.md` (open then: T4,
 - The coat's normals are not recomputed (invisible on a black coat; check once it is lit and textured). The dive keeps 0.6 vertices per frame inside a leg (13 mm at worst).
 - The male's belt drape; the backpack model and the civil / stealth rule in `DESIGN`; texturing.
 - The four rebuilt Agent GLBs are tracked and were NOT committed in the earlier rounds of this session (binary, ~7 MB the set); they are committed with D94.
+
+## Addendum (late 2026-11-01 / 11-02)
+- The springs went (Director: "tira as molas"): `tripo_chains_to_hips.py`, 65 joints per Agent. The coat is drawn two-sided (`actor_coat3d.gdshader`; T4 must use it on the coat).
+- Build steps added to `build_agents.sh` (after the skirt fix): chains_to_hips, pockets (openings capped, 12 mm dent), back_trim (shirt vertices tucked: back 12 mm, under the lapel 18 mm), coat_back_out (back 4 mm, skirt back 7 mm, lapel 2 mm), then coat_push. Bench suffixes `_nopush`, `_alone`, `_nohair`.
+- The female's own 99 clips (`tripo_female ANIMATIONS.glb`, same rig) are in the bank (102 clips); NOT yet tried in the engine: planned after the male is closed.
+- Moto g04s, 9 LIGHT Agents running, uncapped: male 25.3, female 25.1, male without coat 22.9, idle 20.5 ms.
+- Open for tomorrow: a few single white pixels along the lapel opening beside the tie (female), the male's belt drape, the shirt's collar-back at the nape, T4, the female clips in the engine.
+- Videos: `videos/run_male_4views.mp4`, `videos/run_female_4views.mp4`.

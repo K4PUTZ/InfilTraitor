@@ -1,6 +1,6 @@
 # tripo_back_trim.py — the shirt's back never shows under the coat, but its collar / yoke lies within millimetres of the coat's back and flecks through it when the torso leans in a run
 # (Director, 2026-11-01: small white holes on the coat's back). Every face of the coated shirt / tie / belt with a vertex behind the body's centre (y > BACK_Y) and within
-# BACK_MM of the coat (rest pose) is removed. Env: BT_IN, BT_OUT, BACK_MM (12), BACK_Y (0).  Usage: blender -b -P tripo_back_trim.py
+# BACK_MM of the coat (rest pose) is removed. Env: BT_IN, BT_OUT, BACK_MM (12), BACK_Y (0.03: the collar's sides, y 0.02, stay).  Usage: blender -b -P tripo_back_trim.py
 import os, sys
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -13,7 +13,7 @@ TAG = "tripo_back_trim"
 arm, P, B, meshes = tc.load(TAG, os.environ["BT_IN"])
 coat = bpy.data.objects["Outfit_Coat"]
 tree = BVHTree.FromPolygons([tuple(v) for v in tc.world_verts(coat)], [tuple(p.vertices) for p in coat.data.polygons])
-MM = float(os.environ.get("BACK_MM", "12")) / 1000.0; Y0 = float(os.environ.get("BACK_Y", "0"))
+MM = float(os.environ.get("BACK_MM", "12")) / 1000.0; Y0 = float(os.environ.get("BACK_Y", "0.03"))
 for nm in ("Outfit_Shirt_Coated", "Outfit_Tie", "Outfit_Belt_Coated"):
     o = bpy.data.objects.get(nm)
     if o is None:

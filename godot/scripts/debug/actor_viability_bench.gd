@@ -358,7 +358,9 @@ static func _tint_pieces(board: Node3D, body: Node) -> void:
 		if src == null or not PIECE_TINT.has(key):
 			continue
 		var sm := src.duplicate() as ShaderMaterial
-		sm.set_shader_parameter("albedo", PIECE_TINT[key])
+		var textured: Variant = src.get_shader_parameter("has_tex")
+		## a piece that carries its own texture (tripo_coat_regions, tripo_surface; embedded in the GLB) is drawn as it is: the tint would multiply it
+		sm.set_shader_parameter("albedo", Color.WHITE if (textured != null and float(textured) > 0.5) else PIECE_TINT[key])
 		board.call("register_prop_light_material", sm)
 		m.material_override = sm
 

@@ -1,6 +1,8 @@
 # CHARACTER_MASTER_PLAN
 ## The Agent — Model, Rig, Poses, Animation, Layering — v2.0
 
+> 🧭 **2026-11-02 — the coat: the sold mesh, the emblem zone and the redo of the dressing (`ACTOR` D95, D96).** Build steps, committed (the GLBs they make are not): `tripo_coat_regions.py` + `tripo_surface.py` (the textures, before `tripo_coat_push`), the tests `COAT_WELD` / `COAT_MERGE`, `tripo_coat_decal.py` (the emblem ZONE: `DecalUV` + `DecalMask`, written once per mesh; D95 wires it into `build_agents.sh` before the push bake and moves the push direction out of UV2). NEXT, in order: the decal pipeline test on the current dressing, then the dressing redone from `COAT_BASE` with the Director's hands, then the LIGHT version. The coat on the Agent is NOT yet what we sell (D96).
+
 > 🧭 **2026-11-01 — the Agents are built, FULL and LIGHT (`ACTOR` D91-D93).** `build_agents.sh` makes `official/AGENT_<FEMALE|MALE>.glb` (19.8 k / 25 k tris) and `AGENT_<..>_LIGHT.glb` (the dressed set 4.6 k tris, the ~5 k target of this plan; each piece reduced offline, welded first, with its own head map). Finished by measurement: the coat's masks spare a front strip and the lapel shards, every open armhole is closed, the armpit V has a panel. **Moto: the light Agents cost half of the shipped agent per figure (+3.0 ms for 9 against +5.8); the full ones are for the showcase.** Open: the Godot adapter (T4: `ActorMesh3D` on the 65-joint rig, palette and painted-map shader), their cost with textures and real clips, the clips themselves (`MOVEMENT` MV-1's review sheets).
 
 > 🧭 **2026-10-31 — the Agent's PRIMARY slots and the coat's emblem (`ACTOR` D89, D90).** Seven primary slots (shirt, trousers, shoes, belt,

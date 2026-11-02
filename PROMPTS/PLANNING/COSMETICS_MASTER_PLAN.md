@@ -30,6 +30,8 @@ not need an online service, no PvP planned) · `ACTOR_MASTER_PLAN` D36 (cosmetic
 
 ---
 
+> 🔗 **2026-11-02 — the emblem's file, its user-folder override and its zone are `ACTOR` D95:** `emblem_<id>.png` through the facade's tier ladder (`user://textures/emblems/` → `res://ASSETS/emblems/`), local to its owner; the store item carries no decal. What stays HERE: how an item names its emblem id and who may see a custom one (a moderation path, not planned).
+
 ## 0. The shape of the system (one picture)
 
 ```

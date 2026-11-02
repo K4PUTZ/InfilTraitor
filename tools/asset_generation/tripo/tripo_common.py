@@ -11,7 +11,7 @@
 #       Spine (15 %), following its own side's thigh more toward the knee (10 % at the hips, 60 % at the knee); the front opening splits the sides.
 # Islands are read on the WELDED surface: Tripo splits vertices along every hard edge (its faceted shading). Lengths are fractions of the FIGURE's
 # height H (Tripo exports a 1 m figure standing on z = 0). Weights keep 4 influences (the glTF export and the handsets' skinning).
-import bpy, math, sys
+import bpy, math, os, sys
 import numpy as np
 from mathutils import Vector
 
@@ -275,4 +275,33 @@ def export(path, objs, arm):
     for o in bpy.data.objects:
         o.select_set(o in objs or o is arm)
     bpy.context.view_layer.objects.active = arm
-    bpy.ops.export_scene.gltf(filepath=path, use_selection=True, export_animations=True, export_animation_mode='ACTIONS', export_extras=True)   # extras: a piece's custom properties travel (`coat_push`)
+    bpy.ops.export_scene.gltf(filepath=path, use_selection=True, export_animations=True, export_animation_mode='ACTIONS', export_extras=True, export_vertex_color='ACTIVE')   # extras: a piece's custom properties travel (`coat_push`)
+
+
+def write_png(path, arr8):
+    """an (H, W, 3) uint8 array as an RGB PNG (no PIL in Blender's Python)"""
+    import struct, zlib
+    h, w = arr8.shape[:2]
+    raw = b"".join(b"\x00" + arr8[r].tobytes() for r in range(h))
+    def chunk(t, d):
+        c = struct.pack(">I", len(d)) + t + d
+        return c + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    open(path, "wb").write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
+
+
+def detail_tiled(path, res, tile):
+    """a grayscale tileable detail map (ASSETS/MODELS/official/detail) repeated `tile` times over a res x res square, scaled so its median is 0.9 (the colour is kept, the grain modulates it)"""
+    img = bpy.data.images.load(os.path.abspath(path)); img.colorspace_settings.name = 'Non-Color'
+    dw, dh = img.size; d = np.array(img.pixels[:], dtype=np.float32).reshape(dh, dw, 4)[:, :, 0]
+    period = res / tile; ys, xs = np.mgrid[0:res, 0:res]
+    out = d[((ys % period) / period * dh).astype(int) % dh, ((xs % period) / period * dw).astype(int) % dw]
+    return out / max(float(np.median(out)), 1e-3) * 0.9
+
+
+def textured_material(name, png):
+    """a material with ONLY the image on its base colour (no vertex colour node: the glTF exporter writes the colour twice for one that uses it)"""
+    mat = bpy.data.materials.new(name); nt = mat.node_tree; bsdf = nt.nodes["Principled BSDF"]
+    tx = nt.nodes.new("ShaderNodeTexImage"); tx.image = bpy.data.images.load(os.path.abspath(png)); tx.image.colorspace_settings.name = 'sRGB'
+    nt.links.new(tx.outputs["Color"], bsdf.inputs["Base Color"]); bsdf.inputs["Roughness"].default_value = 1.0
+    return mat

@@ -155,6 +155,12 @@ def bake(coat, arm, P, H, hips_z):
     rest = np.maximum(push_distance(V0, d, capsules(head, s), s), 0.0) * mask
     me = coat.data
     me.materials.clear()                                      # the importer gives a mesh with COLOR_0 a material using it; with one, the exporter writes the colour twice (COLOR_0 and COLOR_1)
+    tex = __import__("os").environ.get("COAT_TEX", "")
+    if tex:                                                   # the coat's initial texture (tripo_coat_regions): one material with ONLY the image, no vertex colour node (tc.export writes the active colour itself)
+        mat = bpy.data.materials.new("coat_tex"); nt = mat.node_tree; bsdf = nt.nodes["Principled BSDF"]
+        tx = nt.nodes.new("ShaderNodeTexImage"); tx.image = bpy.data.images.load(__import__("os").path.abspath(tex)); tx.image.colorspace_settings.name = 'sRGB'
+        nt.links.new(tx.outputs["Color"], bsdf.inputs["Base Color"]); bsdf.inputs["Roughness"].default_value = 1.0
+        me.materials.append(mat)
     for ca in list(me.color_attributes):                      # a re-run (or an importer's "Col") must leave exactly one colour and one extra UV map
         me.color_attributes.remove(ca)
     for layer in list(me.uv_layers)[1:]:

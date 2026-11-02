@@ -20,6 +20,7 @@
 extends RefCounted
 
 const SHADER_PATH := "res://godot/shaders/actor_mesh3d.gdshader"
+const COAT_SHADER_PATH := "res://godot/shaders/actor_coat3d.gdshader"   ## ACTOR D94: the coat, two-sided
 const CLOTH_SHADER_PATH := "res://godot/shaders/actor_cloth3d.gdshader"   ## D70 prototype: the costume's cloth gets a soft sheen
 const CLOTH_MATERIALS: PackedStringArray = ["Suit_Black", "Coat_Fabric", "Shirt_Fabric", "Tie_Silk"]
 const EYE_SHADER_PATH := "res://godot/shaders/actor_mask_eye3d.gdshader"      ## D71 prototype: the mask's lit eyes
@@ -217,6 +218,10 @@ static func spawn(room: Node, model: String, count: int) -> String:
 			rig.skeleton = skeletons[0] as Skeleton3D
 			if official and pushed and not nocoat:
 				var coats: Array[Node] = body.find_children("Outfit_Coat*", "MeshInstance3D", true, false)
+				if not coats.is_empty():   ## the coat is drawn two-sided (`actor_coat3d.gdshader`): a pushed face turned away would show the trousers behind it
+					var coat_mat := (((coats[0] as MeshInstance3D).material_override if (coats[0] as MeshInstance3D).material_override != null else (coats[0] as MeshInstance3D).get_active_material(0)) as ShaderMaterial)
+					if coat_mat != null:
+						coat_mat.shader = BoardLook.graded_shader(COAT_SHADER_PATH)
 				var on: bool = not coats.is_empty() and CoatPushRef.attach(rig.skeleton, coats[0] as MeshInstance3D)
 				if i == 0:
 					print("[ACTOR-BENCH] coat push: %s" % ("the legs push the coat" if on else "OFF (no data / no shader)"))

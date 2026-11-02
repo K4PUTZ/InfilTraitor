@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**341 scripts · 100699 lines total** (under `godot/scripts/`)
+**341 scripts · 100704 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -320,7 +320,7 @@ extends `Node2D` · 325 lines
 
 ### `actor_viability_bench.gd`
 
-extends `RefCounted` · 411 lines
+extends `RefCounted` · 416 lines
 
 `godot/scripts/debug/actor_viability_bench.gd`
 
@@ -328,6 +328,7 @@ extends `RefCounted` · 411 lines
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/actor_mesh3d.gdshader"`
+- `COAT_SHADER_PATH` = `"res://godot/shaders/actor_coat3d.gdshader"`
 - `CLOTH_SHADER_PATH` = `"res://godot/shaders/actor_cloth3d.gdshader"`
 - `CLOTH_MATERIALS` = `["Suit_Black", "Coat_Fabric", "Shirt_Fabric", "Tie_Silk"]`
 - `EYE_SHADER_PATH` = `"res://godot/shaders/actor_mask_eye3d.gdshader"`

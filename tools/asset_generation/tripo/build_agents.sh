@@ -48,6 +48,13 @@ for f in female male; do
     SCRIPT=tripo_chains_to_hips.py run "log_${c}_lchains.txt" CH_IN=$M/official/AGENT_${F}_LIGHT.glb CH_OUT=$W/${c}_lnochains.glb
     mv "$W/${c}_lnochains.glb" "$M/official/AGENT_${F}_LIGHT.glb"
   fi
+  # the shirt's collar / yoke flecked through the coat's back in a run (Director 2026-11-01): back faces within 12 mm of the coat go
+  SCRIPT=tripo_back_trim.py run "log_${c}_trim.txt" BT_IN=$M/official/AGENT_${F}.glb BT_OUT=$W/${c}_trim.glb
+  mv "$W/${c}_trim.glb" "$M/official/AGENT_${F}.glb"
+  if [[ " $LIGHT_FIGS " == *" $f "* ]]; then
+    SCRIPT=tripo_back_trim.py run "log_${c}_ltrim.txt" BT_IN=$M/official/AGENT_${F}_LIGHT.glb BT_OUT=$W/${c}_ltrim.glb
+    mv "$W/${c}_ltrim.glb" "$M/official/AGENT_${F}_LIGHT.glb"
+  fi
   # what the legs' push needs (D94, 2026-11-01): the coat's per-vertex direction / mask / rest push and the capsule radii, baked onto the finished coat (no weight, no position changes)
   SCRIPT=tripo_coat_push.py run "log_${c}_push.txt" COAT_IN=$M/official/AGENT_${F}.glb COAT_OUT=$W/${c}_pushed.glb
   mv "$W/${c}_pushed.glb" "$M/official/AGENT_${F}.glb"

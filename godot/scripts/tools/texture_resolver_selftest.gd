@@ -77,6 +77,15 @@ func _initialize() -> void:
 	else:
 		print("  FAIL: validation_oversized_rejection")
 	
+	# Test 7: the emblem branch (ACTOR D95)
+	print("\n[TEST 7] Emblem: tiers, transparency, size, prefix")
+	total_count += 1
+	if _test_emblem():
+		pass_count += 1
+		print("  PASS: emblem")
+	else:
+		print("  FAIL: emblem")
+
 	# Cleanup
 	_cleanup_test_dirs()
 	
@@ -325,3 +334,57 @@ func _create_grayscale_image(width: int, height: int, gray_value: int) -> Image:
 			img.set_pixel(x, y, color)
 	
 	return img
+
+
+## Test 7 (ACTOR D95): `emblem_` is its own category — full colour, free size to 1024 px, MUST carry transparency; user tier over default, folder nested like the facades, a corrupt or
+## oversized or opaque file rejected loudly and the lower tier answering; a wrong prefix is rejected (the resolver's silent failure the branch exists to avoid).
+func _test_emblem() -> bool:
+	var ok: bool = true
+	var user_dir: String = TEST_USER_DIR.path_join("emblems")
+	var def_dir: String = TEST_DEFAULT_DIR.path_join("emblems")
+	DirAccess.make_dir_recursive_absolute(user_dir)
+	DirAccess.make_dir_recursive_absolute(def_dir)
+	var resolver = TextureResolverClass.new(TEST_USER_DIR, TEST_DEFAULT_DIR)
+	_emblem_image(100, 160, true).save_png(def_dir.path_join("emblem_t.png"))
+	var r = resolver.resolve("emblem_t", "emblems")
+	ok = _expect(r.tier == TextureResolverClass.Tier.DEFAULT and r.image != null and r.image.get_width() == 100, "an emblem in the default tier resolves (colour, free size)") and ok
+	_emblem_image(64, 64, true).save_png(user_dir.path_join("emblem_t.png"))
+	r = resolver.resolve("emblem_t", "emblems")
+	ok = _expect(r.tier == TextureResolverClass.Tier.USER and r.image.get_width() == 64, "the user tier wins over the default") and ok
+	_emblem_image(64, 64, false).save_png(user_dir.path_join("emblem_t.png"))
+	r = resolver.resolve("emblem_t", "emblems")
+	ok = _expect(r.tier == TextureResolverClass.Tier.DEFAULT and resolver.get_log_string().contains("no transparency"), "an opaque emblem is rejected loudly and the default answers") and ok
+	_emblem_image(1200, 800, true).save_png(user_dir.path_join("emblem_t.png"))
+	r = resolver.resolve("emblem_t", "emblems")
+	ok = _expect(r.tier == TextureResolverClass.Tier.DEFAULT and resolver.get_log_string().contains("outside"), "a 1200 px emblem is rejected (over 1024) and the default answers") and ok
+	var f := FileAccess.open(user_dir.path_join("emblem_t.png"), FileAccess.WRITE)
+	f.store_string("not a png")
+	f.close()
+	r = resolver.resolve("emblem_t", "emblems")
+	ok = _expect(r.tier == TextureResolverClass.Tier.DEFAULT and r.image != null, "a corrupt file is rejected and the default answers") and ok
+	DirAccess.remove_absolute(user_dir.path_join("emblem_t.png"))
+	r = resolver.resolve("emblem_t", "emblems")
+	ok = _expect(r.tier == TextureResolverClass.Tier.DEFAULT, "the user file deleted, the default answers") and ok
+	_emblem_image(64, 64, true).save_png(def_dir.path_join("logo_t.png"))
+	r = resolver.resolve("logo_t", "emblems")
+	ok = _expect(r.tier == TextureResolverClass.Tier.NONE, "a file with another prefix is rejected, not read as an emblem") and ok
+	DirAccess.remove_absolute(def_dir.path_join("emblem_t.png"))
+	DirAccess.remove_absolute(def_dir.path_join("logo_t.png"))
+	r = resolver.resolve("emblem_t", "emblems")
+	ok = _expect(r.tier == TextureResolverClass.Tier.NONE and r.image == null, "no file in either tier: NONE") and ok
+	return ok
+
+
+func _emblem_image(w: int, h: int, with_alpha: bool) -> Image:
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.8, 0.2, 0.1, 1.0))
+	if with_alpha:
+		for x in range(w / 4):
+			for y in range(h):
+				img.set_pixel(x, y, Color(0.8, 0.2, 0.1, 0.0))
+	return img
+
+
+func _expect(cond: bool, what: String) -> bool:
+	print("    %s %s" % ["✓" if cond else "✗", what])
+	return cond

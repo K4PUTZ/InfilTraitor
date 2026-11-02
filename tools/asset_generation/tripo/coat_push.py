@@ -17,8 +17,9 @@
 # subtracted, so an idle figure is untouched.
 #
 # DATA (per Outfit_Coat vertex; names are Blender's, the importer hands them to Godot as): colour "CoatPush" -> COLOR (r = 1 - mask, so a piece with no colour attribute, which
-# Godot gives (1,1,1,1), is never pushed; g = the rest push / REST_SCALE), UV map "CoatPushDir" -> UV2 (the rest direction in the glTF axes: x lateral, y = the glTF Z, the
-# front being +Z), and the object's custom property `coat_push` (JSON: the capsule radii and the tent's numbers, read by `CoatPush3D`).
+# Godot gives (1,1,1,1), is never pushed; g = the rest push / REST_SCALE; b = the emblem's DecalMask (D95); a = the rest direction as ONE angle, atan2(glTF Z, x) over 2 pi + 0.5:
+# lateral x, the front being +Z: 8 bits = 1.4 degrees, 3.6 mm at the longest push), UV map "DecalUV" -> UV2 (the emblem zone's coordinates, `coat_decal_zone.py`; D94 kept the direction
+# there until D95 needed the channel), and the object's custom property `coat_push` (JSON: the capsule radii and the tent's numbers, read by `CoatPush3D`).
 # All lengths are fractions of the figure's height H (Tripo exports a 1 m figure).
 import json, math
 import numpy as np
@@ -165,18 +166,19 @@ def bake(coat, arm, P, H, hips_z):
         me.color_attributes.remove(ca)
     for layer in list(me.uv_layers)[1:]:
         me.uv_layers.remove(layer)
+    import coat_decal_zone as cz
+    zuv, zmask, zinfo = cz.bake_zone(coat)
     ca = me.color_attributes.new("CoatPush", 'FLOAT_COLOR', 'POINT')
-    col = np.stack([1.0 - mask, np.clip(rest / REST_SCALE, 0.0, 1.0), np.zeros(len(V0)), np.ones(len(V0))], axis=1)
+    ang = (np.arctan2(-d[:, 1], d[:, 0]) / (2.0 * math.pi) + 0.5)    # the glTF Z is Blender -y (the front is +1); 0..1 over the circle
+    col = np.stack([1.0 - mask, np.clip(rest / REST_SCALE, 0.0, 1.0), zmask, ang], axis=1)
     ca.data.foreach_set("color", col.ravel().astype(np.float32))
     me.color_attributes.active_color = ca
-    uv = me.uv_layers.new(name="CoatPushDir")
-    # glTF flips V on export; the direction is stored in the glTF axes: x lateral, y = glTF Z = Blender -y (the front is +1)
-    vert = np.array([l.vertex_index for l in me.loops])
-    u_, v_ = d[vert, 0], 1.0 - (-d[vert, 1])
-    uv.data.foreach_set("uv", np.stack([u_, v_], axis=1).ravel().astype(np.float32))
+    uv = me.uv_layers.new(name="DecalUV")                     # glTF flips V on export: the Blender V-up coordinates arrive as the top-left origin Godot samples with
+    uv.data.foreach_set("uv", zuv.ravel().astype(np.float32))
     for u in me.uv_layers:
-        if u.name != "CoatPushDir":
+        if u.name != "DecalUV":
             me.uv_layers.active = u
             break
+    print(f"[coat_push] decal zone {zinfo['W']:.3f} x {zinfo['H']:.3f} m at z {zinfo['zc']:.3f} (u = {zinfo['u']:.3f} m); {int((zmask > 0.5).sum())} of {len(zmask)} vertices carry the mask")
     coat["coat_push"] = json.dumps(s)
     return s, rest, mask

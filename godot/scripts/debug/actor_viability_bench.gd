@@ -20,6 +20,7 @@
 extends RefCounted
 
 const SHADER_PATH := "res://godot/shaders/actor_mesh3d.gdshader"
+const EMBLEM_ID := "emblem_ref_skull"   ## ACTOR D95: the default art is `res://ASSETS/emblems/emblem_ref_skull.png`; a file of that name in `user://textures/emblems/` replaces it
 const COAT_SHADER_PATH := "res://godot/shaders/actor_coat3d.gdshader"   ## ACTOR D94: the coat, two-sided
 const CLOTH_SHADER_PATH := "res://godot/shaders/actor_cloth3d.gdshader"   ## D70 prototype: the costume's cloth gets a soft sheen
 const CLOTH_MATERIALS: PackedStringArray = ["Suit_Black", "Coat_Fabric", "Shirt_Fabric", "Tie_Silk"]
@@ -107,6 +108,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		model = model.substr(0, clip_at)
 	var pushed: bool = not model.ends_with("_nopush")   ## `_nopush` : the legs do not push the coat (ACTOR D94's A / B)
 	model = model.trim_suffix("_nopush")
+	var emblem: bool = not model.ends_with("_noemblem")   ## `_noemblem` (after `_nopush`'s place): the coat without its emblem (ACTOR D95's A / B)
+	model = model.trim_suffix("_noemblem")
 	var nohair: bool = model.ends_with("_nohair")   ## `_nohair` (before `_alone`): hide the hat's hair, to tell what shows through a gap at the collar
 	model = model.trim_suffix("_nohair")
 	var alone: bool = model.ends_with("_alone")   ## `_alone`: hide the room's own agent figure (it stands beside the bench in captures and gets in the way of a diagnosis)
@@ -222,6 +225,9 @@ static func spawn(room: Node, model: String, count: int) -> String:
 					var coat_mat := (((coats[0] as MeshInstance3D).material_override if (coats[0] as MeshInstance3D).material_override != null else (coats[0] as MeshInstance3D).get_active_material(0)) as ShaderMaterial)
 					if coat_mat != null:
 						coat_mat.shader = BoardLook.graded_shader(COAT_SHADER_PATH)
+						var on_emblem: bool = CoatEmblem.apply(coat_mat, EMBLEM_ID if emblem else "")   ## ACTOR D95: the logo through the tier ladder (user folder over default)
+						if i == 0:
+							print("[ACTOR-BENCH] coat emblem: %s" % (EMBLEM_ID if on_emblem else "none"))
 				var on: bool = not coats.is_empty() and CoatPushRef.attach(rig.skeleton, coats[0] as MeshInstance3D)
 				if i == 0:
 					print("[ACTOR-BENCH] coat push: %s" % ("the legs push the coat" if on else "OFF (no data / no shader)"))

@@ -72,23 +72,28 @@ func _test_agent(agent: String) -> void:
 			"%s: the capsules are leg-sized (thigh %.3f, shin %.3f, foot %.3f, offset %.3f m)" % [agent, spec["r_thigh"], spec["r_shin"], spec["r_foot"], spec["delta"]])
 	var arrays: Array = coat.mesh.surface_get_arrays(0)
 	var colors: Variant = arrays[Mesh.ARRAY_COLOR]
-	var dirs: Variant = arrays[Mesh.ARRAY_TEX_UV2]
+	var zone_uv: Variant = arrays[Mesh.ARRAY_TEX_UV2]
 	var count: int = (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
-	_check(colors is PackedColorArray and (colors as PackedColorArray).size() == count and dirs is PackedVector2Array and (dirs as PackedVector2Array).size() == count,
-		"%s: every one of the coat's %d vertices has a colour (mask, rest push) and a UV2 (direction)" % [agent, count])
-	if colors is PackedColorArray and dirs is PackedVector2Array:
+	_check(colors is PackedColorArray and (colors as PackedColorArray).size() == count and zone_uv is PackedVector2Array and (zone_uv as PackedVector2Array).size() == count,
+		"%s: every one of the coat's %d vertices has a colour (mask, rest push, emblem mask, direction) and a UV2 (the emblem zone)" % [agent, count])
+	if colors is PackedColorArray and zone_uv is PackedVector2Array:
 		var pushed: int = 0
-		var unit: bool = true
 		var rest_ok: bool = true
+		var in_zone: int = 0
+		var zone_ok: bool = true
 		for i in range(count):
 			var c: Color = (colors as PackedColorArray)[i]
 			if c.r < 0.5:
 				pushed += 1
-				unit = unit and absf((dirs as PackedVector2Array)[i].length() - 1.0) < 0.02
 			rest_ok = rest_ok and c.g >= 0.0 and c.g <= 1.0
+			if c.b > 0.5:   ## ACTOR D95: a vertex that carries the emblem lies inside the zone's rectangle
+				in_zone += 1
+				var z: Vector2 = (zone_uv as PackedVector2Array)[i]
+				zone_ok = zone_ok and z.x > -0.15 and z.x < 1.15 and z.y > -0.15 and z.y < 1.15
 		_check(pushed > count / 10 and pushed < count * 3 / 4, "%s: %d of %d coat vertices are pushed (the skirt, not the whole coat)" % [agent, pushed, count])
-		_check(unit, "%s: a pushed vertex's direction is a unit vector" % agent)
 		_check(rest_ok, "%s: the rest push is a fraction" % agent)
+		_check(in_zone >= 20 and in_zone < count / 4, "%s: %d coat vertices carry the emblem mask (a patch of the back, not the whole coat)" % [agent, in_zone])
+		_check(zone_ok, "%s: every masked vertex lies within the emblem zone plus the mask's 12 % margin" % agent)
 	var trousers: MeshInstance3D = _piece(body, "Outfit_Trousers_Coated")
 	if trousers != null:
 		_check(trousers.mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR] == null, "%s: the trousers carry no colour (so the shader never pushes them)" % agent)

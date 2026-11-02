@@ -1,0 +1,9 @@
+{
+  "_about": "The coat's emblem ZONE (ACTOR D95): a rectangle on the back, in units u of the coat's own height at rest (hem to collar top). The logo is data (emblem_<id>.png through TextureResolver); the mesh carries only this zone.",
+  "width_u": 0.220,
+  "centre_u": 0.74,
+  "centre_x": 0.0,
+  "aspect_h_over_w": 1.5405,
+  "mask_margin": 0.62,
+  "mask_ray_u": 0.5
+}

@@ -51,6 +51,8 @@ REFERENCES/
 # whose parent directory is excluded.
 ASSETS/*
 !ASSETS/ART_SPECIFICATIONS.md
+# ACTOR D95: the coat's default emblem art (small, ours; a player's own lives in user://textures/emblems/)
+!ASSETS/emblems/
 
 # MATERIAL DATA ROWS STAY VERSIONED (ASSET_TREE_REFORM, 2026-08-21).
 # The reform moved `materials/<id>.json` into `ASSETS/materials/<id>/` so a

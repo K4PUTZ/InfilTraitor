@@ -16,26 +16,17 @@ bpy.ops.import_scene.gltf(filepath=os.environ["DEC_IN"])
 coat = [o for o in bpy.data.objects if o.type == 'MESH'][0]; me = coat.data
 img = bpy.data.images.load(os.path.abspath(os.environ["DEC_PNG"])); img.colorspace_settings.name = 'sRGB'; img.alpha_mode = 'STRAIGHT'
 iw, ih = img.size
-W_, X0, ZC = float(os.environ.get("DEC_W", "0.22")), float(os.environ.get("DEC_X0", "0")), float(os.environ.get("DEC_ZC", "0.64"))
-H_ = W_ * ih / iw
-V = np.array([(coat.matrix_world @ v.co)[:] for v in me.vertices])
-# (1) DecalUV: an orthographic projection along y; seen from behind the screen's right is -x
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import coat_decal_zone as cz
+if "DEC_W" in os.environ or "DEC_ZC" in os.environ or "DEC_X0" in os.environ:   # the old experiment knobs (metres, COAT_BASE is 1 m high) map onto the zone's
+    os.environ.setdefault("ZONE_W", os.environ.get("DEC_W", "0.22")); os.environ.setdefault("ZONE_ZC", os.environ.get("DEC_ZC", "0.74")); os.environ.setdefault("ZONE_X0", os.environ.get("DEC_X0", "0"))
+# (1) DecalUV and (2) DecalMask: the zone (numbers in coat_decal_zone.json), the logo's aspect fitting the rectangle
 for u in list(me.uv_layers)[1:]:
     me.uv_layers.remove(u)
+zuv, mask, zi = cz.bake_zone(coat, aspect=ih / iw)
+W_, H_, X0, ZC = zi["W"], zi["H"], zi["x0"], zi["zc"]
 uv = me.uv_layers.new(name="DecalUV")
-for l in me.loops:
-    p = V[l.vertex_index]; uv.data[l.index].uv = (0.5 - (p[0] - X0) / W_, 0.5 + (p[2] - ZC) / H_)
-# (2) DecalMask per vertex: facing the back, nothing of the coat behind it (a ray along +y), inside the rectangle (with a margin)
-verts = [tuple(v) for v in V]; tris = [tuple(t.vertices) for t in me.loop_triangles]
-bvh = BVHTree.FromPolygons(verts, tris)
-nrm = np.array([(coat.matrix_world.to_3x3() @ v.normal)[:] for v in me.vertices])
-mask = np.zeros(len(V), np.float32)
-for i, p in enumerate(V):
-    if abs(p[0] - X0) > 0.62 * W_ or abs(p[2] - ZC) > 0.62 * H_ or nrm[i][1] < 0.1:
-        continue
-    if bvh.ray_cast(Vector(p + np.array([0, 2e-4, 0])), Vector((0, 1, 0)), 0.5)[0] is not None:
-        continue
-    t = float(np.clip((nrm[i][1] - 0.1) / 0.5, 0, 1)); mask[i] = t * t * (3 - 2 * t)
+uv.data.foreach_set("uv", zuv.ravel().astype(np.float32))
 for ca in list(me.color_attributes):
     me.color_attributes.remove(ca)
 ca = me.color_attributes.new("DecalMask", 'FLOAT_COLOR', 'POINT')

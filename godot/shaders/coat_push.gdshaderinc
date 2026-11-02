@@ -2,7 +2,8 @@
 // `CoatPush3D` sets the uniforms every frame from the skeleton, `tripo_coat_push.py` bakes the vertex data into the model.
 //
 // Per vertex (baked, in the glTF axes): COLOR.r = 1 - mask (a piece with no colour attribute reads (1,1,1,1) and is never pushed), COLOR.g * 0.1 = the push the REST pose already
-// gives it (taken off, so an idle figure is untouched), UV2 = its outward direction at rest (x lateral, y = Z: the front is +Z). A vertex moves along that direction, turned
+// gives it (taken off, so an idle figure is untouched), COLOR.a = its outward direction at rest as one angle (atan2(Z, x) / 2 pi + 0.5: x lateral, Z the front; D95 moved it off UV2, which the emblem's
+// zone now uses; COLOR.b is the emblem's mask and plays no part here). A vertex moves along that direction, turned
 // with the pelvis, to the far side of every leg capsule its ray crosses; outside the capsule's silhouette the push falls off in a tent; a second pass takes a vertex that landed in another capsule out of it. No state: one pose, one coat.
 uniform float push_on = 0.0;                    // 1 when `CoatPush3D` drives this material
 uniform vec4 push_cap_a[6];                     // capsule starts (xyz, the skeleton's space) and radius + the cloth's offset (w): thigh, shin, foot of the left leg, then the right
@@ -60,12 +61,13 @@ float coat_push_far(vec3 p, vec3 d, vec3 a, vec3 b, float r) {
 }
 
 // the skinned vertex p of a coat piece, pushed out of the legs
-vec3 coat_push(vec3 p, vec4 col, vec2 dir_rest) {
+vec3 coat_push(vec3 p, vec4 col) {
 	float mask = 1.0 - col.r;
 	if (push_on < 0.5 || mask <= 0.0) {
 		return p;
 	}
-	vec3 d = normalize(push_pelvis * vec3(dir_rest.x, 0.0, dir_rest.y));
+	float ang = (col.a - 0.5) * 6.28318530718;
+	vec3 d = normalize(push_pelvis * vec3(cos(ang), 0.0, sin(ang)));
 	float push = 0.0;
 	for (int i = 0; i < 6; i++) {
 		vec3 a = push_cap_a[i].xyz;

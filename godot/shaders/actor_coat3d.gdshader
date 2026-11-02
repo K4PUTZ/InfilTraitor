@@ -9,6 +9,9 @@ render_mode unshaded, cull_disabled;   // the coat is a one-sided shell with the
 uniform vec4 albedo : source_color = vec4(1.0);
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
 uniform float has_tex = 0.0;
+// ACTOR D95 — the coat's EMBLEM: the logo (RGBA, resolved by `CoatEmblem` through the TextureResolver's tiers) laid over the colour inside the coat's baked zone (UV2 = the zone, COLOR.b = its mask)
+uniform sampler2D emblem_tex : source_color, filter_linear_mipmap;
+uniform float has_emblem = 0.0;
 // M6 F5 — what a liquid left ON the agent (`ActorMesh3D.set_status_tint`): rgb the colour, a how much (0 = none); `status_pulse` 1 makes it breathe
 // (a fire on the agent), 0 holds it (a stain, a glow).
 uniform vec4 status_tint = vec4(0.0);
@@ -17,7 +20,7 @@ uniform float status_pulse = 0.0;
 #include "res://godot/shaders/coat_push.gdshaderinc"
 
 void vertex() {
-	VERTEX = coat_push(VERTEX, COLOR, UV2);   // ACTOR D94: the legs push the coat's skirt (CoatPush3D drives it); every other piece returns at once
+	VERTEX = coat_push(VERTEX, COLOR);   // ACTOR D94: the legs push the coat's skirt (CoatPush3D drives it); every other piece returns at once
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
@@ -32,6 +35,10 @@ void fragment() {
 	vec3 base = albedo.rgb;
 	if (has_tex > 0.5) {
 		base *= texture(albedo_tex, UV).rgb;
+	}
+	if (has_emblem > 0.5 && FRONT_FACING && UV2.x > 0.0 && UV2.x < 1.0 && UV2.y > 0.0 && UV2.y < 1.0) {   // the outer wall seen from outside only: the lining and the front panels carry no mask / are not front-facing
+		vec4 em = texture(emblem_tex, UV2);
+		base = mix(base, em.rgb, em.a * COLOR.b);
 	}
 	// the ladder is an sRGB multiplier (the board multiplies in sRGB); the albedo is already linear
 	ALBEDO = base * pow(vec3(lum * key * soot), vec3(2.2)) * (inside ? plane_warm(t, cell) : vec3(1.0));

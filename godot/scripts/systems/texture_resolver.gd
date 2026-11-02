@@ -134,7 +134,7 @@ func _try_load_and_validate(path: String, tier_name: String) -> Image:
 	# whole job is a hue/brightness drift, which a grayscale check would reject
 	# outright.
 	var filename := path.get_file()
-	var is_colour_source: bool = filename.begins_with("slab_") or filename.begins_with("macro_")
+	var is_colour_source: bool = filename.begins_with("slab_") or filename.begins_with("macro_") or filename.begins_with("emblem_")   # ACTOR D95: a coat's emblem is full colour
 	if not is_colour_source and not _is_grayscale(img):
 		_log("  [%s] Not grayscale (colored facades violate D9); rejected: %s" % [tier_name, path])
 		return null
@@ -210,6 +210,10 @@ func _validate_dimensions(path: String, img: Image) -> bool:
 		# it small and its own low-frequency content legible.
 		expected_w = 256
 		expected_h = 256
+	elif filename.begins_with("emblem_"):
+		# ACTOR D95 — a garment's emblem (the logo alone, resolved from `emblems/`): free size within bounds, but it MUST carry transparency: an opaque
+		# emblem is a new patch of cloth, not a mark, and the shader's alpha is the only thing that lets the coat show around it.
+		return _validate_emblem(img)
 	else:
 		_log("    WARN: unrecognized category prefix in filename: %s" % filename)
 		return false
@@ -221,6 +225,21 @@ func _validate_dimensions(path: String, img: Image) -> bool:
 		_log("    Expected %dx%d, got %dx%d" % [expected_w, expected_h, actual_w, actual_h])
 		return false
 	
+	return true
+
+
+## ACTOR D95: an emblem is RGBA with some transparent pixel, its long side between EMBLEM_MIN_SIDE and EMBLEM_MAX_SIDE (the 10 MB cap above also applies).
+const EMBLEM_MIN_SIDE: int = 16
+const EMBLEM_MAX_SIDE: int = 1024
+
+func _validate_emblem(img: Image) -> bool:
+	var long_side: int = maxi(img.get_width(), img.get_height())
+	if long_side > EMBLEM_MAX_SIDE or mini(img.get_width(), img.get_height()) < EMBLEM_MIN_SIDE:
+		_log("    Emblem %dx%d outside %d..%d px" % [img.get_width(), img.get_height(), EMBLEM_MIN_SIDE, EMBLEM_MAX_SIDE])
+		return false
+	if img.detect_alpha() == Image.ALPHA_NONE:
+		_log("    Emblem has no transparency (an opaque logo is a patch, not a mark)")
+		return false
 	return true
 
 

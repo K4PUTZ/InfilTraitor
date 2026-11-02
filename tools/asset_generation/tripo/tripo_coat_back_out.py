@@ -1,6 +1,6 @@
 # tripo_coat_back_out.py — the coat's back stands OUT_MM further from the body (Director, 2026-11-01: "puxar o casaco mais pra fora poucos mm"). The shirt's collar / yoke and the coat's back
 # move a little differently in a run and the shirt showed through; tucking the shirt (tripo_back_trim) was not enough. Every coat vertex behind the body's centre (y > BACK_Y) and within NEAR_MM of the
-# shirt / tie / belt moves along its (welded, averaged) normal by OUT_MM, fading to nothing over FADE_MM further from them.  The skirt's back below the hips moves SKIRT_MM (7) whatever lies behind it (the calf crossed it). Env: BO_IN, BO_OUT, OUT_MM (4), NEAR_MM (25), SKIRT_MM (7), BACK_Y (0).
+# shirt / tie / belt moves along its (welded, averaged) normal by OUT_MM, fading to nothing over FADE_MM further from them.  The skirt's back below the hips moves SKIRT_MM (7) whatever lies behind it (the calf crossed it). The lapel (front, above the hips, within LAPEL_NEAR_MM (8) of the shirt) moves LAPEL_MM (2) out. Env: BO_IN, BO_OUT, OUT_MM (4), NEAR_MM (25), SKIRT_MM (7), BACK_Y (0).
 # Runs before tripo_coat_push (the push data reads the coat's final positions).  Usage: blender -b -P tripo_coat_back_out.py
 import os, sys
 import numpy as np
@@ -13,7 +13,7 @@ from mathutils.kdtree import KDTree
 TAG = "tripo_coat_back_out"
 arm, P, B, meshes = tc.load(TAG, os.environ["BO_IN"])
 coat = bpy.data.objects["Outfit_Coat"]
-OUT = float(os.environ.get("OUT_MM", "4")) / 1000.0; NEAR = float(os.environ.get("NEAR_MM", "25")) / 1000.0; Y0 = float(os.environ.get("BACK_Y", "0")); SKIRT = float(os.environ.get("SKIRT_MM", "7")) / 1000.0; hz = float(B["Hips"][2])
+OUT = float(os.environ.get("OUT_MM", "4")) / 1000.0; NEAR = float(os.environ.get("NEAR_MM", "25")) / 1000.0; Y0 = float(os.environ.get("BACK_Y", "0")); SKIRT = float(os.environ.get("SKIRT_MM", "7")) / 1000.0; hz = float(B["Hips"][2]); LAPEL = float(os.environ.get("LAPEL_MM", "2")) / 1000.0; LAPEL_NEAR = float(os.environ.get("LAPEL_NEAR_MM", "8")) / 1000.0
 pts = np.concatenate([tc.world_verts(bpy.data.objects[n]) for n in ("Outfit_Shirt_Coated", "Outfit_Tie", "Outfit_Belt_Coated") if n in bpy.data.objects])
 kd = KDTree(len(pts))
 for i, q in enumerate(pts):
@@ -27,9 +27,13 @@ for i, q in enumerate(np.round(V / 1e-4).astype(np.int64)):
     k = tuple(q); key[i] = k; acc[k] = acc.get(k, 0) + N[i]
 inv = coat.matrix_world.inverted(); n = 0
 for i, v in enumerate(me.vertices):
-    if V[i][1] <= Y0:
-        continue
     d = kd.find(Vector(V[i]))[2]
+    if V[i][1] <= Y0:                                   # the front: the lapel where the shirt came through it (Director): LAPEL_MM further out within LAPEL_NEAR_MM of the shirt, above the hips
+        if V[i][2] > hz and d < LAPEL_NEAR:
+            nn = acc[key[i]]; ln = np.linalg.norm(nn)
+            if ln > 1e-6:
+                v.co = inv @ Vector(V[i] + nn / ln * LAPEL); n += 1
+        continue
     if V[i][2] < hz:                                    # the skirt's back (Director: the calf crossed it): SKIRT_MM further out, whatever lies behind it
         d, amount = 0.0, SKIRT
     elif d > NEAR:

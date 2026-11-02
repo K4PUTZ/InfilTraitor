@@ -55,7 +55,7 @@ for f in female male; do
     SCRIPT=tripo_pockets.py run "log_${c}_lpockets.txt" PK_IN=$M/official/AGENT_${F}_LIGHT.glb PK_OUT=$W/${c}_lpk.glb
     mv "$W/${c}_lpk.glb" "$M/official/AGENT_${F}_LIGHT.glb"
   fi
-  # the shirt's collar / yoke flecked through the coat's back in a run (Director 2026-11-01): back vertices inside the coat are tucked 12 mm deeper (deleting them cut the collar's wings)
+  # the shirt's collar / yoke flecked through the coat's back in a run, and under the lapel in a walk (Director 2026-11-01): back vertices inside the coat are tucked 12 mm deeper, front ones 18 mm (deleting them cut the collar's wings)
   SCRIPT=tripo_back_trim.py run "log_${c}_trim.txt" BT_IN=$M/official/AGENT_${F}.glb BT_OUT=$W/${c}_trim.glb
   mv "$W/${c}_trim.glb" "$M/official/AGENT_${F}.glb"
   if [[ " $LIGHT_FIGS " == *" $f "* ]]; then

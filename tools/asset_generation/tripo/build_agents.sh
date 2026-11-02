@@ -62,6 +62,13 @@ for f in female male; do
     SCRIPT=tripo_back_trim.py run "log_${c}_ltrim.txt" BT_IN=$M/official/AGENT_${F}_LIGHT.glb BT_OUT=$W/${c}_ltrim.glb
     mv "$W/${c}_ltrim.glb" "$M/official/AGENT_${F}_LIGHT.glb"
   fi
+  # the coat's back stands 4 mm further out where the shirt lies behind it (Director 2026-11-01)
+  SCRIPT=tripo_coat_back_out.py run "log_${c}_out.txt" BO_IN=$M/official/AGENT_${F}.glb BO_OUT=$W/${c}_out.glb
+  mv "$W/${c}_out.glb" "$M/official/AGENT_${F}.glb"
+  if [[ " $LIGHT_FIGS " == *" $f "* ]]; then
+    SCRIPT=tripo_coat_back_out.py run "log_${c}_lout.txt" BO_IN=$M/official/AGENT_${F}_LIGHT.glb BO_OUT=$W/${c}_lout.glb
+    mv "$W/${c}_lout.glb" "$M/official/AGENT_${F}_LIGHT.glb"
+  fi
   # what the legs' push needs (D94, 2026-11-01): the coat's per-vertex direction / mask / rest push and the capsule radii, baked onto the finished coat (no weight, no position changes)
   SCRIPT=tripo_coat_push.py run "log_${c}_push.txt" COAT_IN=$M/official/AGENT_${F}.glb COAT_OUT=$W/${c}_pushed.glb
   mv "$W/${c}_pushed.glb" "$M/official/AGENT_${F}.glb"

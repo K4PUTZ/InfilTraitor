@@ -23,7 +23,7 @@
 import json, math
 import numpy as np
 
-R_THIGH, R_SHIN, R_FOOT = 0.062, 0.052, 0.045     # capsule radii: the trousers' own (thigh 0.05-0.065, calf 0.06, ankle 0.04) plus what keeps the cloth off the leg's lumps
+R_THIGH, R_SHIN, R_FOOT = 0.062, 0.060, 0.045     # capsule radii: the trousers' own (thigh 0.05-0.065, calf 0.06, ankle 0.04) plus what keeps the cloth off the leg's lumps
 DELTA = 0.006                                    # the cloth's offset from the capsule
 ZON_UP, ZOFF_UP = 0.065, 0.125                   # the push applies below the hips + ZON_UP and fades out by ZOFF_UP: a thigh raised to the belt still reaches the coat, the chest never
 BACK0, BACK1 = 105.0, 150.0                      # degrees from the front: lateral below BACK0, backward past BACK1

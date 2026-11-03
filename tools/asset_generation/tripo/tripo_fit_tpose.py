@@ -69,8 +69,8 @@ for side in ("Left", "Right"):
             sp.add([v.index], cur + wa * k, 'REPLACE'); moved_w += wa * k
 print(f"[{TAG}] chest vertices' arm weight moved to Spine2: total {moved_w:.1f} (radii {ARM_R0}..{ARM_R1} m from the arm axis)")
 bpy.context.view_layer.update()
-# the SHIRT's weights smoothed around each shoulder joint for the bake (TP_SMOOTH iterations, within SM_R1 of the joint, full within SM_R0): the skin's hard edge between the arm's and the chest's bones is what leaves a step at the armpit in a turn this large. T file only.
-SMOOTH = int(os.environ.get("TP_SMOOTH", "8")); SM_R0, SM_R1 = 0.04, 0.11
+# (OFF by default, TP_SMOOTH=0: 3 and 8 iterations tore the shirt at the armpit, measured 2026-11-02) the SHIRT's weights smoothed around each shoulder joint for the bake (TP_SMOOTH iterations, within SM_R1 of the joint, full within SM_R0): the skin's hard edge between the arm's and the chest's bones is what leaves a step at the armpit in a turn this large. T file only.
+SMOOTH = int(os.environ.get("TP_SMOOTH", "0")); SM_R0, SM_R1 = 0.04, 0.11
 sh_o = bpy.data.objects.get("Outfit_Shirt")
 if sh_o is not None and SMOOTH > 0:
     me_ = sh_o.data; n_ = len(me_.vertices); gnames = [g.name for g in sh_o.vertex_groups]; gi = {g.index: k for k, g in enumerate(sh_o.vertex_groups)}

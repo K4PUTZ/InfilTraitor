@@ -29,3 +29,15 @@ Before any of it: the Director picks as-is / welded / merged for the loose piece
 
 ## Resume point
 Plans are written (D95, D96, pointers in CHARACTER and COSMETICS). Nothing of D95 beyond the zone script exists. Check `git status` first: the working tree holds the rebuilt GLBs (merged variant) and the painted PNGs, uncommitted.
+
+---
+
+## Addendum (same day, later): the decal pipeline test closed; the male animations planned; the coat's hand fit begun
+
+**Built and committed:** D95 end to end (`coat_decal_zone.json` + `coat_decal_zone.py`, push direction in COLOR.a / mask COLOR.b / DecalUV UV2, `CoatEmblem` with ONE shared texture per emblem, the `emblem_` resolver branch + selftest, `check_emblem.py`, `.gitignore` whitelist); Moto g04s, 9 light Agents: 25.7 ms with and without, PSS 681 vs 686 MB (a texture per coat cost ~250 MB). `MOVEMENT` §3.2 plans the male's 30 missing clips from `tripo_male_ANIMATIONS.glb`; the Tripo source GLBs (ANIMATIONS files included) are versioned, the zip stays out.
+
+**The coat's hand fit (D96 step 2), all under `tools/asset_generation/tripo/` and `ASSETS/MODELS/fit/`:** `tripo_coat_fit_min.py` (COAT_BASE on the base figure, sleeves turned onto the arms, a `Fit` shape key) -> `COAT_FIT_<FIG>.blend`; the Director's hand fit of the male is in its Basis / Fit keys; `tripo_coat_fit_relief.py` (triceps + forearm walls pulled out), `tripo_coat_fit_armpit.py` (back pleats smoothed), `tripo_coat_fit_rigid.py` (the `Rigid` lapel pin), `tripo_fit_tpose.py` (a T-pose working state, `COAT_FIT_<FIG>_T.blend`: collarbone takes 25 % (male) / 50 % (female) of the turn, the coat's chest weight to Spine2), `tripo_coat_fit_round.py` (armpits rounded in T), `tripo_shirt_sleeves.py` (sleeves 10 % toward the arms; a build step, NOT yet rebuilt into the Agents).
+
+**Traps:** a shape key written with `foreach_set` is NOT saved by Blender (write through the edit mesh / bmesh); the select-all pose clear skips hidden bones (the male's file held a leftover pose: zero every pose bone); a plain Laplacian on the shirt's armpit tears it (layers lie close).
+
+**NEXT (not done):** `tripo_fit_from_tpose.py` (the EXACT per-vertex inverse of the blended bone matrix, using the T file's coat weights, with an unedited-roundtrip check against the A file), then relief / armpit scripts on the female, the shirt's armpit in T (hand sculpt or a bridge), rebuild the Agents with the sleeve step and the fitted coat, then the LIGHT coat. Left open in Blender: `COAT_FIT_FEMALE_T.blend`.

@@ -33,6 +33,17 @@ for e in coat.data.edges:
     a, b = e.vertices; nb[a].append(b); nb[b].append(a)
 
 
+def rigid_weights(coat):
+    """the coat's `Rigid` pin (tripo_coat_fit_rigid.py), 0 where there is none"""
+    w = np.zeros(len(coat.data.vertices)); vg = coat.vertex_groups.get("Rigid")
+    if vg:
+        for v in coat.data.vertices:
+            for g in v.groups:
+                if g.group == vg.index:
+                    w[v.index] = g.weight
+    return w
+
+
 def step(P, f):
     Q = P.copy()
     for i in np.nonzero(m > 0)[0]:
@@ -63,6 +74,7 @@ P = W.copy()
 for _ in range(ITERS):
     P = step(step(P, LAM), MU)
 # the right armpit mirrors the left: the mask above used |x|, the filter has no side
+P = W + (P - W) * (1.0 - rigid_weights(coat))[:, None]      # the lapel's pin (tripo_coat_fit_rigid.py)
 print(f"[{TAG}] largest move {np.linalg.norm(P - W, axis=1).max() * 1000:.1f} mm over {ITERS} iterations")
 Wi = np.linalg.inv(MW); newco = (Wi[:3, :3] @ P.T).T + Wi[:3, 3]
 bpy.context.view_layer.objects.active = coat

@@ -26,6 +26,17 @@ fit = np.array([v.co[:] for v in sk.key_blocks["Fit"].data])
 W = (MW[:3, :3] @ fit.T).T + MW[:3, 3]
 
 
+def rigid_weights(coat):
+    """the coat's `Rigid` pin (tripo_coat_fit_rigid.py), 0 where there is none"""
+    w = np.zeros(len(coat.data.vertices)); vg = coat.vertex_groups.get("Rigid")
+    if vg:
+        for v in coat.data.vertices:
+            for g in v.groups:
+                if g.group == vg.index:
+                    w[v.index] = g.weight
+    return w
+
+
 def render(prefix):
     if not prefix:
         return
@@ -97,7 +108,8 @@ for side in ("Left", "Right"):
                 D[i] = cand
             moved += 1; total = max(total, s_)
     print(f"[{TAG}] {side} {j0}->{j1}: {moved} of {len(sel)} vertices pulled out, largest {need.max() * 1000:.1f} mm")
-W = W0 + D
+RIGID = rigid_weights(coat)
+W = W0 + D * (1.0 - RIGID)[:, None]                          # the lapel's pin: what is pinned does not move
 Wi = np.linalg.inv(MW)
 newco = (Wi[:3, :3] @ W.T).T + Wi[:3, 3]
 # written through the edit mesh: a foreach_set on a shape key's data holds in the session but is NOT saved (measured 2026-11-02, Blender 5.2: the file came back unchanged); the edit mesh writes the keys and the mesh together

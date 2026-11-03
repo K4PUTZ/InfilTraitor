@@ -37,6 +37,32 @@ for side, sx in (("Left", 1.0), ("Right", -1.0)):
     bpy.context.view_layer.update()
     print(f"[{TAG}] {side} arm turned {math.degrees(q.angle):.1f} deg about the shoulder onto {'+' if sx > 0 else '-'}x")
 bpy.ops.object.mode_set(mode='OBJECT')
+# the coat's chest must not follow the arm into the T (Director, 2026-11-02: "ainda está distorcendo em baixo", the front panels beside the tie): the auto-weights let the arms' bones reach well onto the torso, and a 69-degree turn
+# stretches whatever they hold. For the BAKE the coat's Arm-bone weight on a vertex far from its arm's axis (the shoulder -> elbow line) goes to Spine2: full weight kept within ARM_R0 of the axis, none beyond ARM_R1. The T file
+# keeps THESE weights (the way back, `tripo_fit_from_tpose.py`, inverts the same skinning); the A file's own are untouched.
+ARM_R0, ARM_R1 = float(os.environ.get("TP_ARM_R0", "0.085")), float(os.environ.get("TP_ARM_R1", "0.125"))
+coat_o = [o for o in bpy.data.objects if o.name.startswith("Outfit_Coat")][0]
+gnm = {g.index: g.name for g in coat_o.vertex_groups}
+sp = coat_o.vertex_groups.get("mixamorig:Spine2") or coat_o.vertex_groups.new(name="mixamorig:Spine2")
+CVw = np.array([(coat_o.matrix_world @ (v.co if not coat_o.data.shape_keys else coat_o.data.shape_keys.key_blocks["Fit"].data[v.index].co))[:] for v in coat_o.data.vertices])
+moved_w = 0.0
+for side in ("Left", "Right"):
+    a0 = np.array(arm.data.bones[f"mixamorig:{side}Arm"].head_local[:]); a1 = np.array(arm.data.bones[f"mixamorig:{side}ForeArm"].head_local[:]); ab = a1 - a0
+    vg = coat_o.vertex_groups.get(f"mixamorig:{side}Arm")
+    if vg is None:
+        continue
+    for v in coat_o.data.vertices:
+        wa = next((g.weight for g in v.groups if g.group == vg.index), 0.0)
+        if wa <= 0:
+            continue
+        q = CVw[v.index]; t = float(np.clip((q - a0) @ ab / (ab @ ab), 0.0, 1.0)); dist = float(np.linalg.norm(q - (a0 + t * ab)))
+        k = float(np.clip((dist - ARM_R0) / (ARM_R1 - ARM_R0), 0.0, 1.0)); k = k * k * (3 - 2 * k)
+        if k > 0:
+            vg.add([v.index], wa * (1 - k), 'REPLACE')
+            cur = next((g.weight for g in v.groups if g.group == sp.index), 0.0)
+            sp.add([v.index], cur + wa * k, 'REPLACE'); moved_w += wa * k
+print(f"[{TAG}] chest vertices' arm weight moved to Spine2: total {moved_w:.1f} (radii {ARM_R0}..{ARM_R1} m from the arm axis)")
+bpy.context.view_layer.update()
 dg = bpy.context.evaluated_depsgraph_get()
 posed = {b.name: Matrix(arm.pose.bones[b.name].matrix) for b in arm.data.bones}   # the T pose, per bone, in armature space
 a_to_t = {n: [list(r) for r in (posed[n] @ rest[n].inverted())] for n in rest}  # what takes a point of the A rest to the T pose, per bone

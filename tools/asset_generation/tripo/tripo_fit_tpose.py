@@ -7,12 +7,13 @@
 import json, math, os
 import numpy as np
 import bpy
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 TAG = "tripo_fit_tpose"
 IN, OUT = os.environ["TP_IN"], os.environ["TP_OUT"]
 bpy.ops.wm.open_mainfile(filepath=os.path.abspath(IN))
 arm = [o for o in bpy.data.objects if o.type == 'ARMATURE'][0]
+SHARE = float(os.environ.get("TP_SHOULDER_SHARE", "0.25"))
 arm.data.pose_position = 'POSE'
 bpy.context.view_layer.objects.active = arm
 for o in bpy.data.objects:
@@ -25,17 +26,22 @@ bpy.context.view_layer.update()
 mwa = arm.matrix_world
 rest = {b.name: Matrix(b.matrix_local) for b in arm.data.bones}          # the A rest, in armature space
 for side, sx in (("Left", 1.0), ("Right", -1.0)):
-    a = arm.data.bones[f"mixamorig:{side}Arm"]; f = arm.data.bones[f"mixamorig:{side}ForeArm"]
+    a = arm.data.bones[f"mixamorig:{side}Arm"]; f = arm.data.bones[f"mixamorig:{side}ForeArm"]; sb = arm.data.bones[f"mixamorig:{side}Shoulder"]
     d = (f.head_local - a.head_local).normalized()
-    # the arm's direction in the armature's space; only its HORIZONTAL-plane tilt is wanted, the world's +x is the target
     target = (mwa.to_3x3().inverted() @ Vector((sx * 1.0, 0.0, 0.0))).normalized()   # the figure faces -y: its left arm runs to +x in the WORLD; the bones are in the armature's own space (the male's armature is not the identity)
     q = d.rotation_difference(target)
-    h = a.head_local
-    M = Matrix.Translation(h) @ q.to_matrix().to_4x4() @ Matrix.Translation(-h)
-    pb = arm.pose.bones[f"mixamorig:{side}Arm"]
-    pb.matrix = M @ rest[a.name]
+    # the shoulder girdle lifts a share of the turn (SHOULDER_SHARE; the Director, 2026-11-02, on the first T: "a impressão é que os braços inteiros estão deslocados"): an arm turned 69 degrees about a joint INSIDE the chest alone
+    # sweeps its mass through the torso and leaves the deltoid standing proud; the collarbone takes part of it, as a body does, and the arm the rest
+    qs = Quaternion().slerp(q, SHARE)
+    hs = sb.head_local
+    pbs = arm.pose.bones[f"mixamorig:{side}Shoulder"]
+    pbs.matrix = (Matrix.Translation(hs) @ qs.to_matrix().to_4x4() @ Matrix.Translation(-hs)) @ rest[sb.name]
     bpy.context.view_layer.update()
-    print(f"[{TAG}] {side} arm turned {math.degrees(q.angle):.1f} deg about the shoulder onto {'+' if sx > 0 else '-'}x")
+    pb = arm.pose.bones[f"mixamorig:{side}Arm"]; pf = arm.pose.bones[f"mixamorig:{side}ForeArm"]
+    d2 = (pf.head - pb.head).normalized(); q2 = d2.rotation_difference(target); h2 = pb.head.copy()
+    pb.matrix = (Matrix.Translation(h2) @ q2.to_matrix().to_4x4() @ Matrix.Translation(-h2)) @ pb.matrix
+    bpy.context.view_layer.update()
+    print(f"[{TAG}] {side}: shoulder lifted {math.degrees(qs.angle):.1f} deg, arm turned {math.degrees(q2.angle):.1f} deg more, onto {'+' if sx > 0 else '-'}x")
 bpy.ops.object.mode_set(mode='OBJECT')
 # the coat's chest must not follow the arm into the T (Director, 2026-11-02: "ainda está distorcendo em baixo", the front panels beside the tie): the auto-weights let the arms' bones reach well onto the torso, and a 69-degree turn
 # stretches whatever they hold. For the BAKE the coat's Arm-bone weight on a vertex far from its arm's axis (the shoulder -> elbow line) goes to Spine2: full weight kept within ARM_R0 of the axis, none beyond ARM_R1. The T file
@@ -63,6 +69,34 @@ for side in ("Left", "Right"):
             sp.add([v.index], cur + wa * k, 'REPLACE'); moved_w += wa * k
 print(f"[{TAG}] chest vertices' arm weight moved to Spine2: total {moved_w:.1f} (radii {ARM_R0}..{ARM_R1} m from the arm axis)")
 bpy.context.view_layer.update()
+# the SHIRT's weights smoothed around each shoulder joint for the bake (TP_SMOOTH iterations, within SM_R1 of the joint, full within SM_R0): the skin's hard edge between the arm's and the chest's bones is what leaves a step at the armpit in a turn this large. T file only.
+SMOOTH = int(os.environ.get("TP_SMOOTH", "8")); SM_R0, SM_R1 = 0.04, 0.11
+sh_o = bpy.data.objects.get("Outfit_Shirt")
+if sh_o is not None and SMOOTH > 0:
+    me_ = sh_o.data; n_ = len(me_.vertices); gnames = [g.name for g in sh_o.vertex_groups]; gi = {g.index: k for k, g in enumerate(sh_o.vertex_groups)}
+    Wm = np.zeros((n_, len(gnames)))
+    for v in me_.vertices:
+        for g in v.groups:
+            Wm[v.index, gi[g.group]] = g.weight
+    Pv = np.array([(sh_o.matrix_world @ v.co)[:] for v in me_.vertices])
+    joints = [np.array(arm.data.bones[f"mixamorig:{sd}Arm"].head_local[:]) for sd in ("Left", "Right")]
+    dj = np.min([np.linalg.norm(Pv - j, axis=1) for j in joints], axis=0)
+    t_ = np.clip((SM_R1 - dj) / (SM_R1 - SM_R0), 0, 1); mk = t_ * t_ * (3 - 2 * t_)
+    nbs = [[] for _ in range(n_)]
+    for e in me_.edges:
+        x_, y_ = e.vertices; nbs[x_].append(y_); nbs[y_].append(x_)
+    for _ in range(SMOOTH):
+        avg = np.array([Wm[nb].mean(0) if nb else Wm[i] for i, nb in enumerate(nbs)])
+        Wm = (1 - mk)[:, None] * Wm + mk[:, None] * avg
+    Wm /= np.maximum(Wm.sum(1, keepdims=True), 1e-9)
+    touched = [int(i) for i in np.nonzero(mk > 0)[0]]                 # only the smoothed vertices are rewritten: the rest keep their own weights
+    for g in sh_o.vertex_groups:
+        g.remove(touched)
+    for i in touched:
+        for k, name in enumerate(gnames):
+            if Wm[i, k] > 1e-3:
+                sh_o.vertex_groups[name].add([int(i)], float(Wm[i, k]), 'REPLACE')
+    print(f"[{TAG}] shirt weights smoothed at the shoulders: {int((mk > 0).sum())} vertices, {SMOOTH} iterations")
 dg = bpy.context.evaluated_depsgraph_get()
 posed = {b.name: Matrix(arm.pose.bones[b.name].matrix) for b in arm.data.bones}   # the T pose, per bone, in armature space
 a_to_t = {n: [list(r) for r in (posed[n] @ rest[n].inverted())] for n in rest}  # what takes a point of the A rest to the T pose, per bone

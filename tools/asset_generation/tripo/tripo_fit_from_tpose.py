@@ -4,6 +4,8 @@
 # EXACT per vertex: p_A = M_v^-1 p_T. An unedited T file returns the A file's own positions (`FT_CHECK=1` proves it, to float noise); an edit made in T comes back as the same edit expressed in the A rest.
 # What is written: a COPY of the A file (`FT_OUT`) where every vertex that moved more than FT_EPS (1e-5 m) from the A file's evaluated rest takes its new position; the rest keep their exact A coordinates. A mesh with a shape key (the coat's `Fit`)
 # gets the result in the `Fit` key (the key is what the A file evaluates), any other mesh in its coordinates. The A file's weights, skeleton and topology are untouched: the game's rest pose stays the original.
+# FT_KEY=<name>: the edit is NOT written into the A rest but into a shape key of that name (value 0, relative to what the A file evaluates: the coat's `Fit`, or `Basis`). Shape keys are applied BEFORE the skin, so at value 1 the posed figure shows exactly the T edit
+# while at value 0 the A rest is the original, bit for bit. Use it for an edit that is a T-pose correction (a T-pose "drop" of 1.5 cm is a 1.5 cm shift INWARD in the A, measured 2026-11-03: the arms came back narrowed by 1.3-2.5 cm). Drive the key with the arm's abduction.
 # Env: FT_T (the edited T .blend), FT_A (the A .blend it came from), FT_OUT (the .blend to write; unset with FT_CHECK=1), FT_CHECK (1: print the per-mesh max difference only, write nothing), FT_EPS.
 # Usage: blender -b -P tripo_fit_from_tpose.py
 import json, os
@@ -13,6 +15,7 @@ import bpy
 TAG = "tripo_fit_from_tpose"
 T_PATH, A_PATH = os.path.abspath(os.environ["FT_T"]), os.path.abspath(os.environ["FT_A"])
 OUT = os.environ.get("FT_OUT", "")
+KEY = os.environ.get("FT_KEY", "")
 CHECK = os.environ.get("FT_CHECK", "0") == "1"
 EPS = float(os.environ.get("FT_EPS", "1e-5"))
 if not CHECK and not OUT:
@@ -88,6 +91,16 @@ for o in bpy.data.objects:
     out_w = np.where(moved[:, None], new, a_ref)
     out_o = (out_w - mw[:3, 3]) @ np.linalg.inv(mw[:3, :3]).T
     me = o.data
+    if KEY:
+        if me.shape_keys is None:
+            o.shape_key_add(name="Basis", from_mix=False)
+        rel = me.shape_keys.key_blocks["Fit"] if "Fit" in me.shape_keys.key_blocks else me.shape_keys.key_blocks["Basis"]
+        kb = me.shape_keys.key_blocks.get(KEY) or o.shape_key_add(name=KEY, from_mix=False)
+        kb.relative_key = rel
+        for i in range(len(out_o)):
+            kb.data[i].co = out_o[i]
+        kb.value = 0.0
+        continue
     if me.shape_keys and "Fit" in me.shape_keys.key_blocks:
         for i in np.nonzero(moved)[0]:
             me.shape_keys.key_blocks["Fit"].data[int(i)].co = out_o[i]

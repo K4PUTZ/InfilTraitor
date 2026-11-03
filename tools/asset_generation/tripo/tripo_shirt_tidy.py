@@ -13,6 +13,7 @@ ITERS = int(os.environ.get("TT_ITERS", "30")); S0, S1 = float(os.environ.get("TT
 GROW = int(os.environ.get("TT_GROW", "2")); THR = float(os.environ.get("TT_NORMAL", "0.2"))
 GEO = float(os.environ.get("TT_GEO", "0"))   # m: neighbours by DISTANCE instead of by edge: where the shirt FOLDS over itself (a rim whose two sheets lie a few mm apart) a vertex averages with both and the sheets merge into one cloth
 SEW = int(os.environ.get("TT_SEW", "0"))    # close every boundary loop of at most this many places and under 6 cm (the shirt's small SEAMS: nearly shut in the A, open 3-4 cm in the T) by moving its places to their centroid; 0 = off
+SPHERE = [float(v) for v in os.environ.get("TT_SPHERE", "").split(",") if v]   # x,y,z,r_in,r_out: a ball (any arm weight) smoothed at full strength inside r_in, none beyond r_out (the dome that closes a sleeve root leaves a fan of triangles)
 RING = [float(v) for v in os.environ.get("TT_RING", "").split(",") if v]   # r0,r1,r2,r3 (m): a band around each arm's axis (distance in y,z from the joint) where the torso's rim of the armhole lies: full strength r1..r2, none beyond r0 / r3
 LAM, MU = 0.5, -0.53
 
@@ -87,6 +88,11 @@ if RING:
         sidex = (np.sign(PT[:, 0]) == (1.0 if side == "Left" else -1.0)) & (np.abs(PT[:, 0]) > 0.03) & (np.abs(PT[:, 0]) < 0.24)
         mr = np.maximum(mr, band * sidex * (pa < 0.85))
     m = np.maximum(m, mr)
+if SPHERE:
+    cx_, cy_, cz_, ri_, ro_ = SPHERE
+    dsp = np.linalg.norm(PT - np.array([cx_, cy_, cz_]), axis=1)
+    t_s = np.clip((ro_ - dsp) / max(ro_ - ri_, 1e-6), 0, 1)
+    m = np.maximum(m, t_s * t_s * (3 - 2 * t_s))
 nb = [[] for _ in range(NP)]
 for a, b in E:
     nb[a].append(b); nb[b].append(a)

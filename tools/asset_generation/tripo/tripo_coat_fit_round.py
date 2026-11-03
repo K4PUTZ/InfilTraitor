@@ -1,7 +1,7 @@
 # tripo_coat_fit_round.py — ROUND the coat's armpits in the T-pose working file (ACTOR D96, 2026-11-02, Director: "tirar essas entradas tão agudas no casaco, e deixar mais redonda a curva nas axilas").
 # In the T the coat's side meets the sleeve's underside at an acute notch. A Taubin filter (no shrink) over the coat's edges, strength 1 at ROUND_C (just under each arm joint, ROUND_DX toward the arm) falling to 0 at ROUND_R1, fills a concave V and rounds
 # it: both walls of the double wall smooth on their own side. The lapel's `Rigid` pin is honoured. Works on a `COAT_FIT_<FIG>_T.blend` (the coat is a plain mesh there: its vertices ARE the pose); the way back to the A file is `tripo_fit_from_tpose.py`.
-# Env: ROUND_IN, ROUND_OUT (default in place), ROUND_ITERS (30), ROUND_R0 (0.06), ROUND_R1 (0.15), ROUND_DOWN (0.06 m under the joint), ROUND_DX (0.03), ROUND_RENDER (a prefix: a close front render).   Usage: blender -b -P tripo_coat_fit_round.py
+# Env: ROUND_OBJ (Outfit_Coat | Outfit_Shirt), ROUND_IN, ROUND_OUT (default in place), ROUND_ITERS (30), ROUND_R0 (0.06), ROUND_R1 (0.15), ROUND_DOWN (0.06 m under the joint), ROUND_DX (0.03), ROUND_RENDER (a prefix: a close front render).   Usage: blender -b -P tripo_coat_fit_round.py
 import math, os
 import numpy as np
 import bpy
@@ -30,7 +30,8 @@ def render(prefix):
 
 
 bpy.ops.wm.open_mainfile(filepath=os.path.abspath(IN))
-coat = [o for o in bpy.data.objects if o.name.startswith("Outfit_Coat")][0]
+OBJ = os.environ.get("ROUND_OBJ", "Outfit_Coat")          # the piece to round: the coat (default) or the shirt ("Outfit_Shirt", Director 2026-11-02: the shirt's armpit notch in the T)
+coat = [o for o in bpy.data.objects if o.name.startswith(OBJ)][0]
 arm = [o for o in bpy.data.objects if o.type == 'ARMATURE'][0]
 render(os.environ.get("ROUND_PRE", ""))
 MW = np.array(coat.matrix_world)
@@ -51,6 +52,11 @@ print(f"[{TAG}] {int((m > 0.5).sum())} vertices at full strength, {int((m > 0).s
 nb = [[] for _ in W]
 for e in coat.data.edges:
     a, b = e.vertices; nb[a].append(b); nb[b].append(a)
+# a vertex averages only with neighbours that face its way (ROUND_NORMAL: the least dot of the two normals): on a thin piece whose layers lie close (the shirt's sleeve against its torso) a plain average pulls one layer into the other and tears it
+THR = float(os.environ.get("ROUND_NORMAL", "-1"))
+if THR > -1:
+    N_ = np.array([(coat.matrix_world.to_3x3() @ v.normal)[:] for v in coat.data.vertices])
+    nb = [[j for j in l if N_[i] @ N_[j] >= THR] for i, l in enumerate(nb)]
 idx = np.nonzero(m > 0)[0]
 
 

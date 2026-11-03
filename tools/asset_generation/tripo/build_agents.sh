@@ -21,6 +21,9 @@ for f in female male; do
   if [ "$f" = female ]; then from=$M/sources/tripo_female_coat_hat.glb; knobs=(LAPEL_SIDE=R SLEEVE_FIT=0 HAIR_PITCH=12 HAIR_UP=0.0035 HAIR_BACK=0.0035 HAT_DROP=0.0035)
   else from=$M/sources/tripo_male_coat_hat.glb; knobs=(HAT_DY=0.005 HAT_DROP=0.01); fi
   SCRIPT=tripo_assemble.py run "log_${c}_base.txt" TRIPO_GLB=$M/official/${F}_AGENT_BASE.glb TRIPO_OUT=$W/${c}_slots.glb BELT_KEEP=1
+  # the shirt's sleeves drawn in 10 % toward the arms, the chest untouched (Director 2026-11-02): the coat's sleeves need not be widened so much; SLV_SHRINK=0 turns it off
+  SCRIPT=tripo_shirt_sleeves.py run "log_${c}_sleeves.txt" SLV_IN=$W/${c}_slots.glb SLV_OUT=$W/${c}_slots_s.glb SLV_SHRINK="${SLV_SHRINK:-0.10}"
+  mv "$W/${c}_slots_s.glb" "$W/${c}_slots.glb"
   SCRIPT=tripo_assemble.py run "log_${c}_from.txt" TRIPO_GLB=$from TRIPO_OUT=$W/${c}_from.glb
   SCRIPT=tripo_dress.py run "log_${c}_dress.txt" DRESS_COAT=$M/official/COAT_BASE.glb DRESS_BASE=$W/${c}_slots.glb DRESS_FROM=$W/${c}_from.glb \
       DRESS_OUT=$W/${c}_dressed.glb "${knobs[@]}"

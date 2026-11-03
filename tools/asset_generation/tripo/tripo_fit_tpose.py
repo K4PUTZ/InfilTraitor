@@ -13,7 +13,8 @@ TAG = "tripo_fit_tpose"
 IN, OUT = os.environ["TP_IN"], os.environ["TP_OUT"]
 bpy.ops.wm.open_mainfile(filepath=os.path.abspath(IN))
 arm = [o for o in bpy.data.objects if o.type == 'ARMATURE'][0]
-SHARE = float(os.environ.get("TP_SHOULDER_SHARE", "0.25"))
+# per figure (Director, 2026-11-02: the female's low-poly shoulder kept a block-shaped step at 0.25 and the coat lay on it as a lump; 0.4 smoothed it, 0.5 made the line continuous; the male is right at 0.25)
+SHARE = float(os.environ.get("TP_SHOULDER_SHARE", "0.5" if "FEMALE" in os.path.basename(IN).upper() else "0.25"))
 arm.data.pose_position = 'POSE'
 bpy.context.view_layer.objects.active = arm
 for o in bpy.data.objects:

@@ -51,6 +51,10 @@ files are picked up automatically without editing the script)
 
 ---
 
+### temp_dir.py
+
+`temp_path(*parts)`: the one folder for what can be thrown away (`temp/`, git-ignored, `.gdignore`d). Nothing reads it between runs; the Director may delete it at any moment and the next run makes it again. New tools take their disposable output from here.
+
 ### gen_codemap.py
 
 **Purpose:** Mechanically generate `CODEMAP.md` from the GDScript source so the

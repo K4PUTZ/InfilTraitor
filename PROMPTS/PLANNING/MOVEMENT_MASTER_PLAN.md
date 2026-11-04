@@ -1,6 +1,8 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.3
 
+> 🧭 **2026-11-03 — a note for MV-4 from the T-pose work (`ACTOR` D97).** Each figure carries a `TFix` shape key (the shirt's and hands' correction at the raised-arm T, value 0 = the A exactly): when the game plays a clip with the arms raised (climb, dive, the T itself), the key's value must follow the shoulder's abduction. The measured way: value = how far the Arm bone has turned from its A rest toward the T (0 at the A, 1 at the T). Nothing of this is built.
+
 > **Status: 🟢 MILESTONE OPENED 2026-10-27 (Director: "vamos abrir a milestone de movimento e escrever o MASTER PLAN"; "vamos fazer
 > um banco de animações, e depois mapear o que precisa, o que tem e o que falta").** Nothing in §3-§9 is built yet. The brief this
 > ⏸ **PARKED until the models are done (Director, 2026-10-27: "vamos deixar planejado, pra fazer depois que os modelos estiverem

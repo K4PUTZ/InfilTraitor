@@ -1,12 +1,20 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-11-01 · **Branch:** claude/r3d-actors-y5r8hs
+**Version:** 0.9.107 · **Updated:** 2026-11-04 · **Branch:** claude/r3d-actors-y5r8hs
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
 
 ---
+
+## Where the project stands — 2026-11-03 / 04 (both T poses finished with their coats; the way back to the A is exact; the hidden faces are measured)
+
+- **Built (tools only, `tools/asset_generation/tripo/`):** `tripo_fit_arm_t.py` (the armpit and the arms' drop, made in the T by rig weight), `tripo_fit_from_tpose.py` (the EXACT way back from a T file to the A: 2·10^-7 m on all ten meshes of both figures; `FT_KEY` keeps a T-only edit in a `TFix` shape key so the A rest stays the original), `tripo_shirt_tidy.py` (relaxes the shirt where the T stretched it, welding a vertex's copies by place), `tripo_hidden_study.py` / `tripo_hidden_delete_test.py` / `tripo_hidden_apply.py` (which faces are never seen, the pixel gate, the deletion), `tripo_hair_clip.py` and `tripo_sleeve_root_close.py` (both tried and rejected by the Director). Nothing here changes the game: the shipped Agents are the 2026-11-01 ones.
+- **Assets committed (`ASSETS/MODELS/fit/`):** `COAT_FIT_<FIG>_TFIX.blend` and `COAT_FIT_<FIG>_T.blend` (the approved arm fit, the A untouched), and the Director's hand-finished `COAT_FIT_MALE_T_HAND.blend` and `COAT_FIT_FEMALE_T_HAND.blend` (the T pose WITH the coat, the armpits fixed in Blender, 17 k vertices merged by distance). The male's hair still crosses the collar, on purpose.
+- **Measured:** a T edit is an A edit (the arms lowered 1.5 cm in the T came back 1.3-2.5 cm narrower in the A: the reason for the `TFix` key); faces of the KEPT pieces (shirt, trousers) that no pose x view ever sees: male shirt 30 %, trousers 11 %, female 8 % and 1 %, and deleting them with a one-ring margin changes 5 / 0 pixels in 64 images per figure (the gate was earned first: two untouched runs, 0 pixels); planar dissolve and merging shirt with trousers rejected. Not in any build.
+- **Director's scope for the models:** REPLACED = hair, hat, coat, belt, shoes, tie; KEPT = trousers, shirt (a new texture only); no sock mesh exists. What the replaced pieces hide today proves nothing about the new ones: re-run the study when they exist.
+- **Open:** match the T_HAND files' topology to the A (next session; then `FT_KEY=TFix`, the A rest checked, the gate, the videos); the shirt's texture; the Agents rebuilt with the sleeve step and the fitted coat; the `TFix` driven in the game (`MOVEMENT` MV-4). Decisions `ACTOR` D97 and D98; record `PROMPTS/RESUMO_SESSAO_2026-11-03_TPOSE_FIT_HIDDEN_FACES.md`.
 
 ## Where the project stands — 2026-11-01 (the two Agents are finished in Blender, light and full, and measured on the Moto)
 
@@ -570,6 +578,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-30_MALE_WAIST.md
 - RESUMO_SESSAO_2026-10-31_PRIMARY_ITEMS_COAT_EMBLEM.md
 - RESUMO_SESSAO_2026-11-01_COAT_LEGS_PUSH.md
+- RESUMO_SESSAO_2026-11-02_COAT_TEXTURE_DECAL.md
+- RESUMO_SESSAO_2026-11-03_TPOSE_FIT_HIDDEN_FACES.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -577,7 +587,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 244
+- GDScript modules: 245
 - Test scripts: 93
 - Known maps: 3
 - Shipped facade files: 0

@@ -41,6 +41,7 @@ EXCLUDE_DIRS = {
     "ARCHIVE",         # Backup antigo
     "REFERENCES",      # Imagens de referência (1.3 MB)
     "export",          # Exportações do projeto
+    "temp",            # Tudo que pode ser jogado fora (temp_dir.py)
     ".git",            # Repositório git
     ".godot",          # Cache do Godot
     ".vscode",         # Configurações locais do VS Code

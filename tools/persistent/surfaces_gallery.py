@@ -4,7 +4,7 @@
 ## `SURFACES_GALLERY` (the photographic grounds with their patch rows, a transition pad, the human floors with the agent as the scale
 ## reference, the industrial floors) and `SURFACES_LAB` (the carpet matrix, five patterns x ten colours). One overview and close-ups per
 ## band, and the overview again from the E side (rotation is camera-only: the decals must follow it). It stitches a contact sheet to
-## `Screenshots/surfaces/gallery_sheet.png`. No grenade, no shot: every mark is placed by the map (`gen_surfaces_gallery.py`, which this
+## `temp/surfaces/gallery_sheet.png`. No grenade, no shot: every mark is placed by the map (`gen_surfaces_gallery.py`, which this
 ## script re-runs first).
 ##
 ## It fails on what a gallery can prove at runtime: a SCRIPT ERROR, ANY `ERROR: [` line of the engine (a cell outside the light plane, a
@@ -22,10 +22,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "persistent"))
 import gen_surfaces_gallery as gen  # noqa: E402
+from temp_dir import temp_path  # noqa: E402
 
 GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
 CAPTURES = Path.home() / "Library/Application Support/Godot/app_userdata/INFILTRAITOR/captures"
-OUT = ROOT / "Screenshots" / "surfaces"
+OUT = temp_path("surfaces")
 BUFFER = 5
 TAG = "[GALLERY]"
 

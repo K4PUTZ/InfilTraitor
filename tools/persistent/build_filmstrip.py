@@ -40,9 +40,8 @@
 ##     python3 tools/persistent/build_filmstrip.py --no-crop     # full frames
 ##     python3 tools/persistent/build_filmstrip.py --shot shotgun --guard 0 --focus 5,4
 ##
-## Output: Screenshots/filmstrip/filmstrip.png (plus the raw frames beside it).
-## `Screenshots/` is gitignored apart from `history/`, so a strip worth keeping
-## as evidence has to be copied there by hand, under a non-`auto_` name.
+## Output: temp/filmstrip/filmstrip.png (plus the raw frames beside it). temp/ is the disposable
+## folder (temp_dir.py), so a strip worth keeping goes to REFERENCES/ by hand.
 
 import argparse
 import os
@@ -55,6 +54,8 @@ try:
 except ImportError:
     print("[P-FILM] Pillow is required: python3 -m pip install pillow")
     sys.exit(1)
+
+from temp_dir import temp_path
 
 GODOT_CANDIDATES = [
     "/Applications/Godot.app/Contents/MacOS/Godot",
@@ -353,7 +354,7 @@ def main():
             print("[P-FILM] unknown preset(s): %s — pick from %s"
                   % (", ".join(bad), ", ".join(GLASS_RAIN_PRESETS)))
             return 1
-        frame_dir = os.path.join(root, "Screenshots", "filmstrip_rain")
+        frame_dir = str(temp_path("filmstrip_rain"))
         fail = 0
         # G-D42 — one run per (preset, gain). `None` means "leave the shipped
         # SCATTER_IMPULSE_GAIN alone", so the no-flag behaviour is unchanged.
@@ -382,11 +383,11 @@ def main():
 
     root = repo_root()
     if args.shot:
-        frame_dir = os.path.join(root, "Screenshots", "filmstrip_shot")
+        frame_dir = str(temp_path("filmstrip_shot"))
         out_path = os.path.join(frame_dir, "filmstrip_%s.png" % args.shot)
         prefix = "shot_"
     else:
-        frame_dir = os.path.join(root, "Screenshots", "filmstrip")
+        frame_dir = str(temp_path("filmstrip"))
         out_path = os.path.join(frame_dir, "filmstrip.png")
         prefix = "frame_"
 

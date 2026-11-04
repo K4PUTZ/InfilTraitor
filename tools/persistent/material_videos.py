@@ -5,7 +5,7 @@
 ## Each material has a wall (a block trio, a quitanda for cardboard and fabric, a glass box) at map y=2, a rail framing it, and the takes `shot_<m>` /
 ## `blast_<m>` in the map's `capture` section. A shot needs the agent and the guard put in front of the wall (the scenario step `shoot 0` reads the dev flags
 ## SHOT_AGENT_CELL / SHOT_GUARD_CELL); this script sets them from the wall's centre x (buffered coordinates: map x + 5, agent y 11, guard y 9 = map y 6 / 4) and
-## runs `capture.py` once per take. The videos are `videos/PLAYGROUND_<take>.mp4` (git-ignored).
+## runs `capture.py` once per take. The videos are `temp/videos/PLAYGROUND_<take>.mp4`.
 ##
 ##     python3 tools/persistent/material_videos.py                     # every material, shot and blast
 ##     python3 tools/persistent/material_videos.py --only fabric,glass --events shot
@@ -14,6 +14,8 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+
+from temp_dir import temp_path
 
 ROOT = Path(__file__).resolve().parents[2]
 MATERIALS = {"concrete": 3, "metal": 8, "stone": 13, "wood": 18, "brick": 23, "cardboard": 27, "fabric": 31, "plywood": 35, "glass": 39}
@@ -34,7 +36,7 @@ def main() -> int:
             print("[MATERIAL-VIDEOS] %s ..." % take, flush=True)
             r = subprocess.run([sys.executable, str(ROOT / "tools/persistent/capture.py"), "--map", args.map, "--take", take],
                                env=env, capture_output=True, text=True)
-            video = ROOT / "videos" / ("%s_%s.mp4" % (args.map, take))
+            video = temp_path("videos") / ("%s_%s.mp4" % (args.map, take))
             ok = r.returncode == 0 and video.exists()
             print("[MATERIAL-VIDEOS] %s %s" % (take, "-> %s" % video if ok else "FAILED\n%s" % (r.stdout + r.stderr)[-600:]), flush=True)
             if not ok:

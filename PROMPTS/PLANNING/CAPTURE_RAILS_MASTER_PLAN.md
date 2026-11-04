@@ -408,8 +408,8 @@ each step parses with `ScenarioRunner`'s own parser (one parser, never a copy in
 `INFILTRAITOR_MAP`, `INFILTRAITOR_RNG_SEED` and `INFILTRAITOR_SCENARIO="take <id>"` (memory: a capture without the map opens the
 LAST map used). Movie Maker renders every frame with a fixed delta and writes it whatever the real frame time, so the particles,
 smoke and soot fades age exactly as in play. Output: MJPEG `.avi` or a PNG sequence (measured in CR-3: disk and time per second of
-video) → `ffmpeg` → **`videos/<map>_<take>.mp4`** (git-ignored); `--sheet <every N frames | 1s>` builds a contact sheet from the
-SAME frames into `Screenshots/takes/` (git-ignored). The filmstrip becomes a by-product of a take. The result is rendered in the
+video) → `ffmpeg` → **`temp/videos/<map>_<take>.mp4`** (the disposable folder since 2026-11-04); `--sheet <every N frames | 1s>` builds a contact sheet from the
+SAME frames into `temp/takes/`. The filmstrip becomes a by-product of a take. The result is rendered in the
 conversation (CLAUDE.md).
 
 ```

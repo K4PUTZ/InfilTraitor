@@ -124,7 +124,7 @@ of docs rotted.
 - **[INPUT_REFERENCE.md](technical/INPUT_REFERENCE.md)** · **[LOCALIZATION_REFERENCE.md](technical/LOCALIZATION_REFERENCE.md)**
 - **[lighting_authoring_pipeline.md](pipelines/lighting_authoring_pipeline.md)**
 - **[character_bake_pipeline.md](pipelines/character_bake_pipeline.md)** — Blender model → posed GLB → Godot frame bake. Every env var, the height gate, and the eight traps it has already cost.
-- **[device_video_recording.md](pipelines/device_video_recording.md)** — record the game on the Moto/Galaxy, trimmed to a scenario, in one command (`tools/persistent/device_record.py`); recordings go to the git-ignored `videos/`. Cost measured, preconditions and traps.
+- **[device_video_recording.md](pipelines/device_video_recording.md)** — record the game on the Moto/Galaxy, trimmed to a scenario, in one command (`tools/persistent/device_record.py`); recordings go to `temp/videos/`, the disposable folder. Cost measured, preconditions and traps.
 
 ## History
 

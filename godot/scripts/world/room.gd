@@ -10876,8 +10876,7 @@ func _capture_walk_filmstrip() -> void:
 	if out_name == "":
 		out_name = "walk_%04dms" % int(step_ms)
 
-	var out_dir := ProjectSettings.globalize_path("res://") + "Screenshots/walk/" + out_name
-	DirAccess.make_dir_recursive_absolute(out_dir)
+	var out_dir := _temp_dir("walk/" + out_name)
 	var existing := DirAccess.open(out_dir)
 	if existing != null:
 		for f in existing.get_files():
@@ -11231,6 +11230,20 @@ func _save_shot_frame(dir_path: String, file_name: String) -> void:
 	print("[AGENT-SHOT-CAPTURE] wrote %s" % full)
 
 
+## temp/ is the one folder for what can be thrown away (`tools/persistent/temp_dir.py` has the rule and the Python side). The Director may delete it at
+## any moment, so whoever writes first makes it again, with the `.gdignore` that keeps the editor from scanning it.
+func _temp_dir(sub: String) -> String:
+	var temp_root := ProjectSettings.globalize_path("res://") + "temp"
+	var temp_sub := temp_root + "/" + sub
+	DirAccess.make_dir_recursive_absolute(temp_sub)
+	var ignore_path := temp_root + "/.gdignore"
+	if not FileAccess.file_exists(ignore_path):
+		var ignore_file := FileAccess.open(ignore_path, FileAccess.WRITE)
+		if ignore_file == null:
+			push_warning("[Room] temp dir: cannot write %s (%s); the editor will scan temp/" % [ignore_path, error_string(FileAccess.get_open_error())])
+	return temp_sub
+
+
 ## THE SHOT, FRAME BY FRAME, WITH EACH FRAME'S OWN DURATION.
 ##
 ## Built 2026-08-19 on the Director's report that everything stutters. Per-phase
@@ -11244,8 +11257,7 @@ func _save_shot_frame(dir_path: String, file_name: String) -> void:
 ## function: a 60 Hz frame is 16.7 ms, and anything above that is a frame the
 ## player did not get.
 func _capture_shot_filmstrip() -> void:
-	var out_dir := ProjectSettings.globalize_path("res://") + "Screenshots/filmstrip_shot"
-	DirAccess.make_dir_recursive_absolute(out_dir)
+	var out_dir := _temp_dir("filmstrip_shot")
 	var existing := DirAccess.open(out_dir)
 	if existing != null:
 		for f in existing.get_files():
@@ -11400,8 +11412,7 @@ func _capture_detonation_filmstrip() -> void:
 	var second_index_env := OS.get_environment("INFILTRAITOR_FILMSTRIP_SECOND_INDEX")
 	var second_index: int = second_index_env.to_int() if second_index_env.is_valid_int() else 1
 
-	var out_dir := ProjectSettings.globalize_path("res://") + "Screenshots/filmstrip"
-	DirAccess.make_dir_recursive_absolute(out_dir)
+	var out_dir := _temp_dir("filmstrip")
 	## Stale frames from a shorter previous run would silently pad the strip.
 	var existing := DirAccess.open(out_dir)
 	if existing != null:
@@ -11578,8 +11589,7 @@ func _capture_glass_rain_timings() -> void:
 		push_error("[GLASS-RAIN-T] no panel pane to break")
 		return
 
-	var dir := ProjectSettings.globalize_path("res://") + "Screenshots/filmstrip_rain"
-	DirAccess.make_dir_recursive_absolute(dir)
+	var dir := _temp_dir("filmstrip_rain")
 	var existing := DirAccess.open(dir)
 	if existing != null:
 		for f in existing.get_files():

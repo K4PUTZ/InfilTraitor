@@ -7,9 +7,9 @@
 ## outside docs/ (scripts, scenes, json, tres, cfg). An entry nobody names is a CANDIDATE, not proof: a resource loaded by a built path
 ## (`"facade_%s" % id`) has no literal name, so every candidate is read before it is removed.
 ##
-##     python3 tools/persistent/apk_audit.py export/steam6.apk            # the table and the candidates
-##     python3 tools/persistent/apk_audit.py export/steam6.apk --max-mb 130   # exit 1 when the APK is larger (the size check)
-##     python3 tools/persistent/apk_audit.py export/steam6.apk --top 40
+##     python3 tools/persistent/apk_audit.py export/Infiltraitor.apk       # the table and the candidates
+##     python3 tools/persistent/apk_audit.py export/Infiltraitor.apk --max-mb 130   # exit 1 when the APK is larger (the size check)
+##     python3 tools/persistent/apk_audit.py export/Infiltraitor.apk --top 40
 
 import argparse
 import re

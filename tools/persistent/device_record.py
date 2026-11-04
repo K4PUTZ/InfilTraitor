@@ -27,10 +27,10 @@
 ## where the video should begin).
 ##
 ## USAGE
-##     python3 tools/persistent/device_record.py --device ZF524T5TG5 --preset blast --out videos/explosao.mp4
+##     python3 tools/persistent/device_record.py --device ZF524T5TG5 --preset blast --out temp/videos/explosao.mp4
 ##     python3 tools/persistent/device_record.py --device R5CY8122K7D --map SIGMA_01 \
-##         --scenario "framing portrait; frames 40; centre agent; zoom 1.0; mark rec; shoot 0; wait 3; quit" --out videos/tiro.mp4
-##   `videos/` at the repo root is git-ignored: recordings stay on the Mac.
+##         --scenario "framing portrait; frames 40; centre agent; zoom 1.0; mark rec; shoot 0; wait 3; quit" --out temp/videos/tiro.mp4
+##   `temp/` at the repo root is git-ignored and disposable (temp_dir.py): recordings stay on the Mac; one worth keeping goes to REFERENCES/.
 ##   Serials: Moto g04s ZF524T5TG5, Galaxy A16 R5CY8122K7D (`adb devices -l`).
 
 import argparse
@@ -60,7 +60,7 @@ def _clock_seconds(hms: str) -> float:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Record the game on a handset, trimmed to the scenario (see the header).")
     ap.add_argument("--device", required=True, help="adb serial")
-    ap.add_argument("--out", required=True, help="local .mp4 path (use videos/, which is git-ignored)")
+    ap.add_argument("--out", required=True, help="local .mp4 path (use temp/videos/, the disposable folder)")
     ap.add_argument("--preset", choices=sorted(PRESETS), help="a ready scenario")
     ap.add_argument("--scenario", help="SCENARIO steps, ';' separated (instead of a preset)")
     ap.add_argument("--take", help="CAPTURE_RAILS CR-5: a take of the map (authored, or overview / region:<id> / poi:<id>), played "

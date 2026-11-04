@@ -18,7 +18,8 @@
 | `tools/` | `persistent/` (verification, gates, device and export tooling, the codemap), `asset_generation/` (art generators) | yes |
 | `docs/` | documentation (below) | yes |
 | `PROMPTS/` | plans and session records (below) | yes |
-| `REFERENCES/`, `ARCHIVE/`, `Screenshots/` (except `history/`), `export/`, `videos/`, `.godot/` | local working material, outputs and caches | no |
+| `temp/` | **everything generated and disposable** (videos, stills, filmstrips, renders, test APKs, work files; `tools/persistent/temp_dir.py`): nothing reads it between runs, the Director deletes it at will | no |
+| `REFERENCES/`, `ARCHIVE/`, `Screenshots/` (Shift+P and the `verify.py` baseline; `history/` is versioned), `export/` (the current APK), `.godot/` | local working material, outputs and caches | no |
 
 ## godot/
 

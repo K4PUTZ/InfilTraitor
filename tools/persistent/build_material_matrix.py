@@ -40,10 +40,12 @@ import re
 import subprocess
 import sys
 
+from temp_dir import temp_path
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
 MAP = os.path.join(REPO_ROOT, "maps", "PLAYGROUND.map.json")
-OUT = os.path.join(REPO_ROOT, "Screenshots", "material_matrix.md")
+OUT = str(temp_path() / "material_matrix.md")
 
 ## Far enough that the blast has to travel — the distance the arsenal was
 ## calibrated at — and directly in front of the block so every material is hit

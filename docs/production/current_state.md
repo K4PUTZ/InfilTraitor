@@ -193,7 +193,7 @@ Record: `PROMPTS/RESUMO_SESSAO_2026-10-08_PERF_BUDGET_PB2.md`; [`PERFORMANCE_BUD
   the glass reap hardened, a second map, an unknown roof kind. Suite: 62 selftests clean; gates: `board_probe.py`, `shot_3d_gate.py`, `occ_canonical_gate.py`.
 - **New since 2026-09-21:** blast scorch now darkens AFTER the crater in 4 timed steps (`detonation_presenter.gd`, from a video on the Moto); the DEV VISION text panels, the playable-area
   line and the spawn diamond are hidden by default (`DEV_PANELS=1` shows them); video of the game on a handset in one command (`tools/persistent/device_record.py`,
-  [`docs/pipelines/device_video_recording.md`](../pipelines/device_video_recording.md)); `videos/` is git-ignored.
+  [`docs/pipelines/device_video_recording.md`](../pipelines/device_video_recording.md)); recordings go to `temp/videos/`.
 - **The plan from here (Director, 2026-09-23, `RENDER3D_MASTER_PLAN` v1.19):** the 2D board retires when nothing depends
   on it, not when the look matches; the look is not a gate. R3D-8 is renamed **R3D-END**; before it, in order: **R3D-8** the
   safety net on the 3D path (selftests on the 3D board, a 3D pixel gate, the persistence round trip, the web export, the 2D

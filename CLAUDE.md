@@ -44,8 +44,9 @@ Two standing duties, both obligations:
   reopen unnecessarily. If unavoidable:
   `/Applications/Godot.app/Contents/MacOS/Godot --path . 2>/dev/null &`
 - GDScript changes hot-reload automatically.
-- **A shot and an explosion on every material** (a review pass): `python3 tools/persistent/material_videos.py [--only fabric,glass] [--events shot]` records `shot_<m>` / `blast_<m>` for the nine PLAYGROUND materials into `videos/` (it sets the dev flags `SHOT_AGENT_CELL` / `SHOT_GUARD_CELL` a shot take needs). `MARKET_LAB` is the quitanda bench (takes `quitanda_*`).
-- **Video of the game on a handset** (to judge the flow of an effect): `python3 tools/persistent/device_record.py --device <serial> --preset blast --out videos/<name>.mp4`; `videos/` is git-ignored. Guide: [`docs/pipelines/device_video_recording.md`](docs/pipelines/device_video_recording.md). Costs +1 to +2 ms/frame on the Moto: never record during a measurement.
+- **`temp/` is the one folder for what can be thrown away (Director, 2026-11-04).** Every generated video, still, filmstrip, Blender render, test APK and work file goes there (`tools/persistent/temp_dir.py`): `temp/videos/`, `temp/takes/`, `temp/filmstrip*/`, a test build with `export_android.py --out temp/apk/<name>.apk`, a build's work dir as `temp/work/<name>`. It is git-ignored and `.gdignore`d, nothing reads from it between runs, and the Director may delete the whole folder at any moment; the next run makes it again. Claude moves things into it and never empties it. A capture worth keeping goes to `REFERENCES/` by hand. `Screenshots/` keeps only Shift+P, `history/` and `verify_baseline/`; `videos/` is retired.
+- **A shot and an explosion on every material** (a review pass): `python3 tools/persistent/material_videos.py [--only fabric,glass] [--events shot]` records `shot_<m>` / `blast_<m>` for the nine PLAYGROUND materials into `temp/videos/` (it sets the dev flags `SHOT_AGENT_CELL` / `SHOT_GUARD_CELL` a shot take needs). `MARKET_LAB` is the quitanda bench (takes `quitanda_*`).
+- **Video of the game on a handset** (to judge the flow of an effect): `python3 tools/persistent/device_record.py --device <serial> --preset blast --out temp/videos/<name>.mp4`. Guide: [`docs/pipelines/device_video_recording.md`](docs/pipelines/device_video_recording.md). Costs +1 to +2 ms/frame on the Moto: never record during a measurement.
 - Generated PNGs land in `ASSETS/ISOMETRIC/source_assets/generated/` (the floor / structure `TileSet` only) or in a material's
   own folder `ASSETS/materials/<id>/` (facades, decals — what the 3D board reads); switch focus to Godot and wait 3–5s for
   reimport. There is no bake step to run and no `BakeConfig` (deleted at END-6).
@@ -158,8 +159,8 @@ before being written down.
 `Screenshots/`, which is gitignored) — gated OFF by default, ~5–6s per
 capture (a real windowed Godot boot).
 
-⚠️ **The whole tree was wiped on 2026-09-09 (`cf48eb84`) and starts empty.**
-Director ruling: *"o material realmente importante está em REFERENCES. Os
+⚠️ **The whole tree was wiped on 2026-09-09 (`cf48eb84`) and again on 2026-11-04
+(the Director; only the four `d78_*` faction-dress renders stayed).** Ruling of 09-09: *"o material realmente importante está em REFERENCES. Os
 screenshots são só isso mesmo, screenshots."* **A receipt is not a reference** —
 a capture cited beside a ratified ruling proves a measurement happened, but the
 decision itself is in the prose next to it, so the picture answers nothing the
@@ -167,7 +168,7 @@ reader still needs. All 164 captures still cited by live docs were receipts by
 that test, including an ART ORDER for art not yet made, which listed them under
 the literal word "Evidence:" while the spec the artist needs was the text above.
 Keep a capture only when a future reader must LOOK AT it to decide something
-still undecided. Nothing below changed except that the folder is empty:
+still undecided. Nothing below changed except that the folder is nearly empty:
 - Session toggle: `python3 tools/persistent/screenshot_toggle.py --on` /
   `--off` / `--status`.
 - One-off for a single commit: `INFILTRAITOR_SCREENSHOT_ONCE=1`.
@@ -175,7 +176,7 @@ still undecided. Nothing below changed except that the folder is empty:
   no subfolder) — never trigger this programmatically.
 - **Frame-by-frame analysis of a detonation:**
   `python3 tools/persistent/build_filmstrip.py` (P-FILM) — one contact sheet of
-  every frame of ONE blast, to `Screenshots/filmstrip/` (gitignored). It boots
+  every frame of ONE blast, to `temp/filmstrip/`. It boots
   once and passes `--fixed-fps 60`; both matter and neither is optional. A
   strip stitched from separate boots shows the fire jumping, because
   `spawn_blast_burst()` uses `randf_range()`; and without the fixed FPS the

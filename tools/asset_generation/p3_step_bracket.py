@@ -61,7 +61,7 @@ from PIL import Image, ImageDraw
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
-FRAMES_ROOT = os.path.join(REPO_ROOT, "Screenshots", "walk")
+FRAMES_ROOT = os.path.join(REPO_ROOT, "temp", "walk")
 OUT_MP4 = os.path.join(REPO_ROOT, "Screenshots", "history", "p3_step_bracket_blind.mp4")
 OUT_KEY = os.path.join(REPO_ROOT, "Screenshots", "history", "p3_step_bracket_blind_KEY.json")
 OUT_SHEET = os.path.join(REPO_ROOT, "Screenshots", "history", "p3_step_bracket_sheet.png")
@@ -133,7 +133,7 @@ def build_panels(captures, order, labels, reveal):
     only thing that differs between them is how fast."""
     counts = [len(captures[ms][1]) for ms in order]
     total = max(counts) * 2
-    tmp = os.path.join(REPO_ROOT, "Screenshots", "walk", "_bracket")
+    tmp = os.path.join(REPO_ROOT, "temp", "walk", "_bracket")
     shutil.rmtree(tmp, ignore_errors=True)
     os.makedirs(tmp)
 

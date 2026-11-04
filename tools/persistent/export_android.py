@@ -385,7 +385,7 @@ def _install(apk: Path, wanted: str | None = None) -> bool:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Export (and optionally install) the Android APK.")
-    ap.add_argument("--out", default=str(DEFAULT_APK), help="APK path (default: export/Infiltraitor.apk)")
+    ap.add_argument("--out", default=str(DEFAULT_APK), help="APK path (default: export/Infiltraitor.apk; a throwaway test build goes to temp/apk/<name>.apk)")
     ap.add_argument("--install", action="store_true", help="adb install -r the result")
     ap.add_argument("--contents", action="store_true", help="print the 15 largest packed entries")
     ap.add_argument("--renderer", default=None,

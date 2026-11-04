@@ -16,14 +16,14 @@
 ## `override.cfg`; the run is told `CAPTURE_WINDOW_FIXED=1` so the profile does not resize it mid-file. Every output's size is
 ## checked against the profile and a mismatch is said loudly.
 ##
-##     python3 tools/persistent/capture.py --map GLASS --take glass_blast                 # videos/GLASS_glass_blast.mp4 (1280x720)
+##     python3 tools/persistent/capture.py --map GLASS --take glass_blast                 # temp/videos/GLASS_glass_blast.mp4 (1280x720)
 ##     python3 tools/persistent/capture.py --map GLASS --take glass_blast --profile showcase   # the same at 1920x1080
 ##     python3 tools/persistent/capture.py --map GLASS --take glass_blast --sheet 30      # + a contact sheet, one frame in 30
 ##     python3 tools/persistent/capture.py --map GLASS --take overview
 ##     python3 tools/persistent/capture.py --map GLASS --still big_pane --mode detail --view all
 ##     python3 tools/persistent/capture.py --map GLASS --still glass_wing --profile ui --hud-grid   # portrait AND landscape
 ##
-## Outputs (git-ignored): videos/<MAP>_<take>[_<shape>].mp4, Screenshots/takes/<MAP>_<name>[_<view>][_<shape>].png.
+## Outputs (temp/, the disposable folder: temp_dir.py): temp/videos/<MAP>_<take>[_<shape>].mp4, temp/takes/<MAP>_<name>[_<view>][_<shape>].png.
 import argparse
 import json
 import os
@@ -33,12 +33,14 @@ import sys
 import tempfile
 from pathlib import Path
 
+from temp_dir import temp_path
+
 ROOT = Path(__file__).resolve().parents[2]
 GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
 PROFILES = json.loads((ROOT / "capture" / "profiles.json").read_text())
 USER_CAPTURES = Path.home() / "Library/Application Support/Godot/app_userdata/INFILTRAITOR/captures"
-STILLS = ROOT / "Screenshots" / "takes"
-VIDEOS = ROOT / "videos"
+STILLS = temp_path("takes")
+VIDEOS = temp_path("videos")
 
 
 def shapes_for(profile, shape):

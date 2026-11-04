@@ -278,7 +278,7 @@ static func _walk(dir_path: String, out: PackedStringArray) -> void:
 	if dir == null:
 		return
 	for sub: String in dir.get_directories():
-		if sub.begins_with(".") or sub == "export" or sub == "Screenshots":
+		if sub.begins_with(".") or sub == "export" or sub == "Screenshots" or sub == "temp":
 			continue
 		_walk(dir_path.path_join(sub), out)
 	for f: String in dir.get_files():

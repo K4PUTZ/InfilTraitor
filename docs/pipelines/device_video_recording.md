@@ -1,6 +1,6 @@
 # Recording the game on a handset
 
-*Built 2026-09-21. One command, one file, trimmed to the scenario. Recordings live in `videos/` at the repo root, which is git-ignored.*
+*Built 2026-09-21. One command, one file, trimmed to the scenario. Recordings live in `temp/videos/`, the disposable folder at the repo root (`tools/persistent/temp_dir.py`); one worth keeping goes to `REFERENCES/` by hand.*
 
 > **2026-10-10 — this is the `perf` capture profile** (`CAPTURE_RAILS_MASTER_PLAN` §5): a handset video is for judging the game
 > as it runs on the phone (timing, stalls, the real frame rate). **To judge a LOOK, capture on the desktop** (1920×1080, HUD hidden,
@@ -14,7 +14,7 @@ recorded on the Moto g04s. The soot-after-crater timing of 2026-09-21 was decide
 
 ## The command
 ```bash
-python3 tools/persistent/device_record.py --device ZF524T5TG5 --preset blast --out videos/explosao.mp4
+python3 tools/persistent/device_record.py --device ZF524T5TG5 --preset blast --out temp/videos/explosao.mp4
 ```
 - `--preset blast`: dev grenade 0 on PLAYGROUND, camera zoomed OUT to 0.5 and centred on the grenade from the start (no pan, no zoom change), fuse,
   blast, smoke, scorch. `blast100` is the same at zoom 1.0.

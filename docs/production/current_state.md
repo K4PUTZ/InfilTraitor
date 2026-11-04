@@ -8,6 +8,14 @@
 
 ---
 
+## Where the project stands — 2026-11-04 (the cleanup: `temp/`; the animation bank saved and catalogued)
+
+- **`temp/` exists (`tools/persistent/temp_dir.py`):** every generated video, still, filmstrip, render, test APK and work file goes there, git-ignored and invisible to Godot. Nothing reads it between runs, so the Director may delete it at any moment and the next run makes it again. `videos/` is retired; `Screenshots/` keeps Shift+P, `history/` and `verify_baseline/`.
+- **Moved to `temp/cleanup_2026-11-04/` (with a `MANIFEST.txt`), for the Director to delete:** the Final Cut library (24 GB), 49 test APKs (6.5 GB), the old worktree (738 MB), `.venv-1`, loose captures, the web export, the retired rig's posed models, the `hero_*` iterations no code names, `.blend1` backups, 874 MB of orphan import cache. `ASSETS/` went from 23 GB to 0.6 GB, `.godot/imported` from 1.4 GB to 0.5 GB. `Screenshots/history/` lost 93 of 97 captures (the four `d78_*` stay; the rest remain in git history).
+- **The bank is versioned (`ASSETS/ANIMATIONS/bank/`, `MOVEMENT` §3.2):** 116 clip ids, 102 complete pairs, 218 GLBs (female 102, male 116), `bank.json`, a readable `CATALOG.md` by category, review sheets. A re-run is byte-identical. No engine change.
+- **Measured:** the T_HAND weld halves Blender's vertex count but the GLB falls only 8 % / 6 % (`ACTOR` D97). The APK after the cleanup has not been measured (it carried the `hero_*` iterations).
+- **Open:** the Director's look at the sheets and the canonical generation of the three stealth clips; the A from the T_HAND topology and the transition (next, `ACTOR` D97); the code review, later (the list is in the session record).
+
 ## Where the project stands — 2026-11-03 / 04 (both T poses finished with their coats; the way back to the A is exact; the hidden faces are measured)
 
 - **Built (tools only, `tools/asset_generation/tripo/`):** `tripo_fit_arm_t.py` (the armpit and the arms' drop, made in the T by rig weight), `tripo_fit_from_tpose.py` (the EXACT way back from a T file to the A: 2·10^-7 m on all ten meshes of both figures; `FT_KEY` keeps a T-only edit in a `TFix` shape key so the A rest stays the original), `tripo_shirt_tidy.py` (relaxes the shirt where the T stretched it, welding a vertex's copies by place), `tripo_hidden_study.py` / `tripo_hidden_delete_test.py` / `tripo_hidden_apply.py` (which faces are never seen, the pixel gate, the deletion), `tripo_hair_clip.py` and `tripo_sleeve_root_close.py` (both tried and rejected by the Director). Nothing here changes the game: the shipped Agents are the 2026-11-01 ones.
@@ -580,6 +588,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-11-01_COAT_LEGS_PUSH.md
 - RESUMO_SESSAO_2026-11-02_COAT_TEXTURE_DECAL.md
 - RESUMO_SESSAO_2026-11-03_TPOSE_FIT_HIDDEN_FACES.md
+- RESUMO_SESSAO_2026-11-04_CLEANUP_TEMP_BANK.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

@@ -46,6 +46,9 @@ Results: `ASSETS/` 23 GB -> 0.6 GB, `export/` 6.3 GB -> 141 MB, `.godot/imported
 - **The A from the T_HAND topology, then the transition** (`ACTOR` D97): next, by script, with the check on welded vertices that were apart in the A.
 - The 90.2 MB APK (`temp/apk/after_review.apk`) has not been on a handset; `export/Infiltraitor.apk` is still the build from before the cleanup.
 
+## The sweep of the whole code (last of the day; Director: "dar mais uma geral no código todo, e ver se não tem nenhuma ponta solta ou fio desencapado"; the A <-> T transition: "deixa pra amanhã")
+Read-only, nothing fixed: `PROMPTS/AUDITS/LOOSE_ENDS_2026-11-04.md`. The game is sound (27 of 27 maps boot with no error, `verify.py full` passed on a baseline taken today, which also replaced the one from 2026-10-19). The real exposure: git alone cannot run the game, the art exists only on this disk. Waiting on the Director's word.
+
 ## The code review of what the cleanup left retired (same day; the Director took it here, read the list, then: "Pode aplicar")
 Reported first with nothing changed, then applied as listed. Code and data removed from `HEAD` stay in git history (last at `9316d8c4`).
 - **Removed:** the bench's `quat` and `hero_*` modes with their costume suffixes (424 -> 301 lines; `agent` and `agent_<light|full>` stay; `scenario_runner.gd` now refuses the old names); `tools/asset_generation/hero/` but `faction_palette.json` and `faction_dress_art.py` (the D78 recipe in `COSMETICS` §9.9 says so); eight `p*` scripts nothing imported: `p1_agent_preview`, `p1_agent_sheet`, `p1_procedural_sculpt_spike`, `p2_grip_sheet`, `p3_head_sweep_sheet`, `p3_head_turn_spike`, `p3_posture_sheet`, `p8_sculpt_start_scene`. 4 434 lines in all, plus the bench's.

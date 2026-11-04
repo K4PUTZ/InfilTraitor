@@ -15,6 +15,7 @@
 - **The bank is versioned (`ASSETS/ANIMATIONS/bank/`, `MOVEMENT` §3.2):** 116 clip ids, 102 complete pairs, 218 GLBs (female 102, male 116), `bank.json`, a readable `CATALOG.md` by category, review sheets. A re-run is byte-identical. No engine change.
 - **The code review of what the cleanup left retired is applied (the session record has the list):** the bench's Quaternius modes, the hero tools and eight unused `p*` scripts left the tree (4 434 lines, in git history), the hero models went to `ARCHIVE/hero_sources/`, Godot no longer imports `.blend`, the Web preset is gone. The old rig's chain stays until `MOVEMENT` MV-4, and both rigs rebuild byte-identical.
 - **Measured:** the APK went from 147.1 MB to **90.2 MB** (not yet run on a handset). The T_HAND weld halves Blender's vertex count but the GLB falls only 8 % / 6 % (`ACTOR` D97).
+- **A sweep of the whole code (`PROMPTS/AUDITS/LOOSE_ENDS_2026-11-04.md`, read-only):** 27 of 27 maps boot with no error and `verify.py full` passes; a clean clone runs with no figures or facades because the art exists only on this disk; one certain crash in a tool (`tripo_coat_decal.py`), one dead menu button, and a modest list of dead code wait on the Director's word.
 - **Open:** the Director's look at the sheets and the canonical generation of the three stealth clips; the A from the T_HAND topology and the transition (next, `ACTOR` D97).
 
 ## Where the project stands — 2026-11-03 / 04 (both T poses finished with their coats; the way back to the A is exact; the hidden faces are measured)

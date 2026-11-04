@@ -722,7 +722,7 @@ def main():
     # already records), and it cannot express a layer or the verification pass at
     # all. A printed command that has to be kept in sync with the manifest beside
     # it is a second source of truth; there is now one.
-    log("next: python3 tools/asset_generation/p3_posture_sheet.py, then ONE "
+    log("next: ONE "
         "windowed Godot boot bakes the bodies, the layers and the registration "
         "check together:")
     log("  AGENT_BAKE_MANIFEST=%s \\"

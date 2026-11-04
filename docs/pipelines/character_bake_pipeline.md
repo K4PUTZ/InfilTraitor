@@ -1,5 +1,7 @@
 # Character Bake Pipeline
 
+> ⏭️ **2026-11-04 — what is left of it.** The posed exports (`agent_posed_*`, `agent/walk/*`) left `ASSETS/` with the cleanup; `p1_agent_preview`, `p3_head_turn_spike` and the sheet scripts left the repo (git history, last at `9316d8c4`); `agent_hifi`, `agent_sculpt_start`, `agent_base_enemy` and `s2_mockup` went too. What stands is the chain behind `ActorMesh3D`'s rig: `p1_agent_model.py` -> `r3d_live_rig_export.py` (with `p2_grip_spike`, `p3_posture_export`, `p3_walk_export`, `p3_throw_export`), rebuilt byte-identical on 2026-11-04. It retires at `MOVEMENT` MV-4. Below is the record of the bake.
+
 > ⏭️ **2026-09-23 — this pipeline retires for gameplay at `RENDER3D` R3D-ACTORS (`ACTOR` D64).** Actors become live skinned
 > meshes lit by the board's cell planes; the model and rig stages below stay the source, and
 > `tools/asset_generation/r3d_live_rig_export.py` replaces the posed-GLB → frame-bake stages with a keyed action export.

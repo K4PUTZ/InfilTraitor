@@ -4,40 +4,19 @@
 ## conversion `ActorMesh3D._apply_board_light()` does), so a handset run measures the real material, the real skinning and the
 ## real draw-call count of the candidate against the shipped agent:
 ##   `agent` — `agent_live.glb`, its own `walk_shotgun` action looping (the baseline: 11 080 tris, 20 joints).
-##   `quat`  — the lean Quaternius Superhero (CC0): ~14 k tris, 65 joints, no animation in the free pack, so its limbs are
-##             swung by a SYNTHETIC sine on the leg / arm / spine bones. Skinning cost does not depend on the pose, which is
-##             what this measures; the motion is NOT a walk cycle and says nothing about animation quality.
-##   `hero_naked` / `hero_split` / `hero_joined` — the same body re-exported WITH the Universal Animation Library's 43 actions (same 65
-##             bone names, so they drop in) and, in `split` / `joined`, a placeholder outfit skinned to the same skeleton: jacket,
-##             trousers, shoes, hat, tie, backpack + 2 gadget pouches, as separate pieces (`split`, 12 surfaces) or merged by material
-##             (`joined`, 6). They play `Walk_Formal_Loop` and march along a lane (a video needs them to move; the walk's speed is NOT
-##             matched to the stride, so foot sliding is unjudged).
 ##   `agent_<light|full>_<female|male>[_nocoat]` — the Tripo Agents of ACTOR D87 / D91 (`ASSETS/MODELS/official/AGENT_<FIG>[_LIGHT].glb`): 65 Mixamo joints, the
 ##             DRESSED set only (coat, hat, the coated shirt / trousers / belt, the hat's hair), each piece its own surface. They stand in their
 ##             rest pose with the material's flat albedo (the palette and the painted head live in Blender's look, not in the glb): this measures
 ##             triangles, joints, surfaces and draw calls, the T4 question (light vs full on the Moto), not how they look.
-## Scenario op (`scenario_runner.gd`): `actor_bench <agent|quat|hero_*|agent_*> <count>`. Not a gameplay path, not part of any save.
+## Scenario op (`scenario_runner.gd`): `actor_bench <agent|agent_*> <count>`. Not a gameplay path, not part of any save.
+## The Quaternius modes (`quat`, `hero_*`) and the costume suffixes that went with them left on 2026-11-04: ACTOR D85 retired that line. The code is in git history,
+## the models in `ARCHIVE/hero_sources/`; the D70-D72 prototype shaders they drove stay in `godot/shaders/`, unwired, for when those features reach the Tripo Agents.
 extends RefCounted
 
 const SHADER_PATH := "res://godot/shaders/actor_mesh3d.gdshader"
 const EMBLEM_ID := "emblem_ref_skull"   ## ACTOR D95: the default art is `res://ASSETS/emblems/emblem_ref_skull.png`; a file of that name in `user://textures/emblems/` replaces it
 const COAT_SHADER_PATH := "res://godot/shaders/actor_coat3d.gdshader"   ## ACTOR D94: the coat, two-sided
-const CLOTH_SHADER_PATH := "res://godot/shaders/actor_cloth3d.gdshader"   ## D70 prototype: the costume's cloth gets a soft sheen
-const CLOTH_MATERIALS: PackedStringArray = ["Suit_Black", "Coat_Fabric", "Shirt_Fabric", "Tie_Silk"]
-const EYE_SHADER_PATH := "res://godot/shaders/actor_mask_eye3d.gdshader"      ## D71 prototype: the mask's lit eyes
-const HALO_SHADER_PATH := "res://godot/shaders/actor_mask_halo3d.gdshader"
-## D77: the hat turns into the mask (its look is swapped as it comes down), so the masked agent wears no hat; hair and beard are under it
-const MASK_PIECES: Array[String] = ["Mask_Face", "Mask_Jaw", "Mask_Eyes", "Mask_Halo"]
-const HAT_UPRIGHT: Array[String] = ["Outfit_HatCrown", "Outfit_HatBrim", "Outfit_HatBand"]
-const FACE_HAIR: Array[String] = ["Face_Hair", "Face_Beard"]
-const COAT_PIECES := "Outfit_Coat*"   ## v5.2: the coat is a kit of modules (Outfit_Coat_Body / _Sleeves / _Collar / _Skirt); a find_children() pattern hides them all
-const EYES_ON_SECONDS: float = 0.7
-const CLOAK_SHADER_PATH := "res://godot/shaders/actor_cloak3d.gdshader"   ## D72 prototype: `hero_*_cloak` draws the figures as the faint ghost, crouched
 const AGENT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live.glb"
-const QUAT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/superhero_male_lean.glb"
-## The agent stands 9.8 voxels of 0.20 m (CHARACTER_MASTER_PLAN §4.7); the candidate is scaled to the same height.
-const HERO_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_universal_base/%s.glb"
-const HERO_HEIGHT_M: float = 1.83            ## the body's top of head, measured from its bones / mesh (feet at 0)
 const OFFICIAL_RIG := "res://ASSETS/MODELS/official/AGENT_%s.glb"
 ## the pieces tripo_dress leaves BESIDE their masked variants (the undressed ones): the dressed set hides them
 const UNDRESSED_PIECES: Array[String] = ["Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere"]
@@ -48,29 +27,15 @@ const OFFICIAL_SWING := {
 	"LeftUpLeg": [Vector3.RIGHT, 28.0, 0.0], "RightUpLeg": [Vector3.RIGHT, 28.0, PI], "LeftLeg": [Vector3.RIGHT, 18.0, 0.0], "RightLeg": [Vector3.RIGHT, 18.0, PI],
 	"LeftArm": [Vector3.RIGHT, 22.0, PI], "RightArm": [Vector3.RIGHT, 22.0, 0.0], "Spine1": [Vector3.UP, 6.0, 0.0],
 }
-const HERO_WALK := "Walk_Formal"   ## the import strips the `_Loop` suffix and loops it
-const LANE_GU: float = 9.0
-const LANE_SPEED_GU_S: float = 1.2
+## The agent stands 9.8 voxels of 0.20 m (CHARACTER_MASTER_PLAN §4.7); the candidate is scaled to the same height.
 const STAND_HEIGHT_M: float = 1.96
 const METRES_TO_UNITS: float = 1.0 / 1.6
-const SPACING_GU: float = 1.25
-const PER_ROW: int = 6
-## UE-mannequin bone -> (swing axis, degrees, phase) for the synthetic motion.
-const SWING := {
-	"thigh_l": [Vector3.RIGHT, 28.0, 0.0], "thigh_r": [Vector3.RIGHT, 28.0, PI],
-	"calf_l": [Vector3.RIGHT, 18.0, 0.0], "calf_r": [Vector3.RIGHT, 18.0, PI],
-	"upperarm_l": [Vector3.RIGHT, 22.0, PI], "upperarm_r": [Vector3.RIGHT, 22.0, 0.0],
-	"spine_02": [Vector3.UP, 6.0, 0.0],
-}
 
 class Rig:
 	var skeleton: Skeleton3D
 	var player: AnimationPlayer
 	var swing_bones: Array = []   ## [bone index, axis, radians, phase, rest rotation]
 	var phase: float = 0.0
-	var holder: Node3D
-	var lane_start: Vector3
-	var lane_offset: float = 0.0
 
 ## Drives `tick()` once per frame without anything outside this file knowing about it.
 class Ticker extends Node:
@@ -81,9 +46,6 @@ class Ticker extends Node:
 const CoatPushRef = preload("res://godot/scripts/geometry/coat_push3d.gd")   ## ACTOR D94: the legs push the coat (the shader half is in `actor_mesh3d.gdshader`)
 const BANK_CLIP: String = "res://ASSETS/ANIMATIONS/bank/%s/%s.glb"
 static var _rigs: Array = []
-static var _glow_mats: Array = []
-static var _glow_t0: float = 0.0
-static var _glow_hold: float = -1.0   ## >= 0 pins the eyes at that level (`_maskoff` pins them at 0, to photograph the lenses dark)
 static var _ticker: Ticker = null
 
 
@@ -120,35 +82,7 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		for other: Variant in others:
 			if other != null and is_instance_valid(other) and other.get("sprite") != null and (other.sprite as Node).has_meta("figure3d"):
 				(other.sprite.get_meta("figure3d") as Node3D).scale = Vector3.ZERO   # `visible` is rewritten every frame by the room; a zero scale is not
-	var cloak: bool = model.ends_with("_cloak")
-	model = model.trim_suffix("_cloak")
-	## a costume file holds BOTH styles; the engine will show one (D70): `_black` hides the coat, `_normal` hides the gloves
-	_glow_hold = -1.0
-	if model.ends_with("_maskoff"):
-		_glow_hold = 0.0
-		model = model.trim_suffix("off")
 	var hidden: Array[String] = []
-	if model.ends_with("_shaved"):     ## the beard is optional (v5): `hero_<file>_normal_shaved`
-		hidden.append("Face_Beard")
-		model = model.trim_suffix("_shaved")
-	var face_camera: bool = false      ## the mask view: stand still and look at the camera (the iso camera looks along the grid diagonal)
-	if model.ends_with("_black"):
-		hidden.append(COAT_PIECES)
-		hidden.append_array(MASK_PIECES)
-		model = model.trim_suffix("_black")
-	elif model.ends_with("_normal"):
-		hidden.append("Outfit_Gloves")
-		hidden.append_array(MASK_PIECES)
-		model = model.trim_suffix("_normal")
-	elif model.ends_with("_mask"):      ## the black style with the hat's crown come down over the face as the mask, the eyes lit
-		hidden.append(COAT_PIECES)
-		hidden.append_array(HAT_UPRIGHT)
-		hidden.append_array(FACE_HAIR)
-		model = model.trim_suffix("_mask")
-		face_camera = true
-	var march: bool = model.ends_with("_march")  ## a video wants them walking along a lane; a measurement wants them still on the grid
-	model = model.trim_suffix("_march")
-	var hero: bool = model.begins_with("hero_")
 	var facing_k: int = -1            ## `_f0` .. `_f3`: the four BASE grid facings the game uses (ActorMesh3D.yaw_for_direction: multiples of 90 degrees), seen from the camera on the diagonal = 3/4 views; none = facing the camera
 	for k in range(4):
 		if model.ends_with("_f%d" % k):
@@ -164,7 +98,7 @@ static func spawn(room: Node, model: String, count: int) -> String:
 	var unmasked: bool = official and model.ends_with("_unmasked")   ## the coat and hat over the WHOLE shirt / trousers / belt, not the coat-cut variants (a diagnostic of the mask under the coat)
 	if unmasked:
 		model = model.trim_suffix("_unmasked")
-	var path: String = HERO_RIG % model if hero else (QUAT_RIG if model == "quat" else AGENT_RIG)
+	var path: String = AGENT_RIG
 	if official:
 		var parts: PackedStringArray = model.split("_")
 		if parts.size() != 3 or not ["light", "full"].has(parts[1]) or not ["female", "male"].has(parts[2]):
@@ -185,26 +119,17 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		var body := scene.instantiate() as Node3D
 		var holder := Node3D.new()
 		holder.name = "BenchRig_%s_%d" % [model, i]
-		holder.position = origin + Vector3(2.0 + float(i % PER_ROW) * SPACING_GU, 0.0, 2.0 + float(i / PER_ROW) * SPACING_GU)
-		if official or model == "agent":   ## a 3 x 3 block, all inside a portrait view
-			holder.position = origin + Vector3(1.4 + float(i % 3) * 1.0, 0.0, 1.4 + float(i / 3) * 1.0)
-		if march:  ## one lane of figures, each staggered along it
-			holder.position = origin + Vector3(-3.0, 0.0, 2.0 + float(i % 8) * 1.1)
+		## a 3 x 3 block, all inside a portrait view
+		holder.position = origin + Vector3(1.4 + float(i % 3) * 1.0, 0.0, 1.4 + floorf(float(i) / 3.0) * 1.0)
 		board.add_child(holder)
 		holder.add_child(body)
-		if hero:
-			body.scale = Vector3.ONE * (STAND_HEIGHT_M / HERO_HEIGHT_M) * METRES_TO_UNITS
-			body.rotation.y = PI * 0.25 if face_camera else PI * 0.5   ## the rig's front is +Z; march toward +X (grid east), or face the camera on the diagonal
-		elif official:
+		if official:
 			body.scale = Vector3.ONE * STAND_HEIGHT_M * METRES_TO_UNITS   ## Tripo exports a 1 m figure standing on z = 0 (hat included)
 			body.rotation.y = PI * 0.25 if facing_k < 0 else float(facing_k) * PI * 0.5
-		elif model == "quat":
-			body.scale = Vector3.ONE * (STAND_HEIGHT_M / _mesh_height(body)) * METRES_TO_UNITS
-			body.rotation.y = PI
 		else:
 			body.scale = Vector3.ONE * METRES_TO_UNITS
 		var converted: Dictionary = {}
-		_apply_board_light(board, body, converted, cloak)
+		_apply_board_light(board, body, converted)
 		if tint:
 			_tint_pieces(board, body)
 		if nohair:
@@ -213,9 +138,6 @@ static func spawn(room: Node, model: String, count: int) -> String:
 			for node in body.find_children(piece_name, "MeshInstance3D", true, false):
 				(node as Node3D).visible = false
 		var rig := Rig.new()
-		rig.holder = holder
-		rig.lane_start = holder.position
-		rig.lane_offset = float(i / 8) * 3.1 + float(i % 8) * 0.9 if march else -1.0
 		var skeletons := body.find_children("*", "Skeleton3D", true, false)
 		if not skeletons.is_empty():
 			rig.skeleton = skeletons[0] as Skeleton3D
@@ -234,17 +156,9 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		var players := body.find_children("*", "AnimationPlayer", true, false)
 		if not players.is_empty():
 			rig.player = players[0] as AnimationPlayer
-		if hero:
-			var clip: String = "Crouch_Idle" if cloak else ("Idle" if face_camera else HERO_WALK)   ## the cloak works only crouched and still (D72)
-			if rig.player == null or not rig.player.has_animation(clip):
-				push_error("[ActorViabilityBench] %s has no %s" % [path, clip])
-			else:
-				rig.player.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
-				rig.player.play(clip)
-				rig.player.seek(float(i) * 0.11, true)
-		elif official and rig.skeleton != null and bank_clip != "" and _play_bank_clip(rig, model.split("_")[2], bank_clip, float(i) * 0.13):
+		if official and rig.skeleton != null and bank_clip != "" and _play_bank_clip(rig, model.split("_")[2], bank_clip, float(i) * 0.13):
 			pass
-		elif official and rig.skeleton != null:   ## a LIVE skeleton in place (the actions travel: `dive` runs out of the view): a synthetic sine on the Mixamo bones, as for `quat`
+		elif official and rig.skeleton != null:   ## a LIVE skeleton in place (the actions travel: `dive` runs out of the view): a synthetic sine on the Mixamo bones
 			rig.phase = float(i) * 0.9
 			for bone_name: String in OFFICIAL_SWING:
 				var idx := _mixamo_bone(rig.skeleton, bone_name)
@@ -255,13 +169,6 @@ static func spawn(room: Node, model: String, count: int) -> String:
 			rig.player.play("walk_shotgun")
 			rig.player.seek(float(i) * 0.07, true)
 			rig.player.get_animation("walk_shotgun").loop_mode = Animation.LOOP_LINEAR
-		elif model == "quat" and rig.skeleton != null:
-			rig.phase = float(i) * 0.9
-			for bone_name: String in SWING:
-				var idx := rig.skeleton.find_bone(bone_name)
-				if idx >= 0:
-					var s: Array = SWING[bone_name]
-					rig.swing_bones.append([idx, s[0], deg_to_rad(float(s[1])), float(s[2]), rig.skeleton.get_bone_rest(idx).basis.get_rotation_quaternion()])
 		_rigs.append(rig)
 		if i == 0:
 			joints = rig.skeleton.get_bone_count() if rig.skeleton != null else 0
@@ -273,8 +180,7 @@ static func spawn(room: Node, model: String, count: int) -> String:
 				for s in range(mesh.get_surface_count()):
 					var arrays := mesh.surface_get_arrays(s)
 					var idx_arr: Variant = arrays[Mesh.ARRAY_INDEX]
-					tris += (idx_arr as PackedInt32Array).size() / 3 if idx_arr != null else 0
-	_glow_t0 = float(Time.get_ticks_msec()) / 1000.0 + 0.4
+					tris += int(float((idx_arr as PackedInt32Array).size()) / 3.0) if idx_arr != null else 0
 	var line := "[ACTOR-BENCH] %s x%d: %d tris and %d joints and %d material(s) per rig" % [model, count, tris, joints, materials]
 	print(line)
 	return line
@@ -325,16 +231,9 @@ static func _play_bank_clip(rig: Rig, figure: String, id: String, offset_s: floa
 	return true
 
 
-## Advance the synthetic motion (the quat rigs only; the agent's AnimationPlayer drives itself).
+## Advance the synthetic motion (the official Agents with no clip; an AnimationPlayer drives itself).
 static func tick(time_s: float) -> void:
-	## The eyes ramp on over EYES_ON_SECONDS and then breathe a little (the mask's lenses and their halo).
-	var on: float = clampf((time_s - _glow_t0) / EYES_ON_SECONDS, 0.0, 1.0)
-	var level: float = _glow_hold if _glow_hold >= 0.0 else on * (0.94 + 0.06 * sin(time_s * 3.3))
-	for gm: ShaderMaterial in _glow_mats:
-		gm.set_shader_parameter("intensity", level)
 	for rig: Rig in _rigs:
-		if rig.holder != null and rig.lane_offset >= 0.0 and rig.holder.name.contains("hero_"):
-			rig.holder.position = rig.lane_start + Vector3(fposmod(time_s * LANE_SPEED_GU_S + rig.lane_offset, LANE_GU), 0.0, 0.0)
 		if rig.skeleton == null or rig.swing_bones.is_empty():
 			continue
 		for entry: Array in rig.swing_bones:
@@ -380,21 +279,7 @@ static func _mixamo_bone(skeleton: Skeleton3D, bone_name: String) -> int:
 	return -1
 
 
-static func _mesh_height(body: Node3D) -> float:
-	var top: float = -INF
-	var bottom: float = INF
-	for mi in body.find_children("*", "MeshInstance3D", true, false):
-		var m := mi as MeshInstance3D
-		var box: AABB = m.get_aabb()
-		var to_body: Transform3D = body.global_transform.affine_inverse() * m.global_transform
-		for corner in range(8):
-			var p: Vector3 = to_body * box.get_endpoint(corner)
-			top = maxf(top, p.y)
-			bottom = minf(bottom, p.y)
-	return maxf(top - bottom, 0.01)
-
-
-static func _apply_board_light(board: Node3D, body: Node, converted: Dictionary, cloak: bool = false) -> void:
+static func _apply_board_light(board: Node3D, body: Node, converted: Dictionary) -> void:
 	for mi in body.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
 		if m.mesh == null:
@@ -404,21 +289,13 @@ static func _apply_board_light(board: Node3D, body: Node, converted: Dictionary,
 			var src: Material = m.get_active_material(s)
 			if not converted.has(src):
 				var sm := ShaderMaterial.new()
-				var cloth: bool = src != null and CLOTH_MATERIALS.has(src.resource_name)
-				sm.shader = BoardLook.graded_shader(CLOAK_SHADER_PATH if cloak else (CLOTH_SHADER_PATH if cloth else SHADER_PATH))
+				sm.shader = BoardLook.graded_shader(SHADER_PATH)
 				var std := src as BaseMaterial3D
 				if std != null:
 					sm.set_shader_parameter("albedo", std.albedo_color)
 					if std.albedo_texture != null:
 						sm.set_shader_parameter("albedo_tex", std.albedo_texture)
 						sm.set_shader_parameter("has_tex", 1.0)
-				if src != null and src.resource_name == "Mask_EyeGlow":
-					sm.shader = load(EYE_SHADER_PATH)
-					_glow_mats.append(sm)
-				elif src != null and src.resource_name == "Mask_EyeHalo":
-					sm.shader = load(HALO_SHADER_PATH)
-					_glow_mats.append(sm)
 				converted[src] = sm
-				if not _glow_mats.has(sm):
-					board.call("register_prop_light_material", sm)
+				board.call("register_prop_light_material", sm)
 			m.set_surface_override_material(s, converted[src])

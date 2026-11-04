@@ -347,8 +347,7 @@ so a hex renders as itself). This is a MOCK of the look, not the engine's shader
 - `d78_faction_dress_agent_game.png`: 132×200 at the game camera on a dark board, ×3, and the ×3 under deuteranopia.
 - `d78_faction_dress_officer_coats.png`: the field officers' coats from behind, the LED coat's bluff view, with the same rows.
 
-To regenerate (the palette is data, `tools/asset_generation/hero/faction_palette.json`):
-`faction_dress_art.py textures <dir>`, then `HERO_REPO=<repo>/ FD_OUT=<dir> blender -b -P hero_faction_dress.py`, then `faction_dress_art.py sheets <dir>`.
+The recipe's Blender step, `hero_faction_dress.py`, left on 2026-11-04 with the hero tools (`ACTOR` D85; git history, last at `9316d8c4`; its model, `hero_tailor5.glb`, is in `ARCHIVE/hero_sources/`). The palette stays as data, `tools/asset_generation/hero/faction_palette.json`, and `faction_dress_art.py textures <dir>` still makes the faction textures, for when this dress reaches the Tripo Agents.
 
 What the renders show (Claude's reading, for the Director to judge):
 - **At play size the armband is the faction's main cue on the Agent.** The hatband and the lining's edge back it up; the tie, the pins and the

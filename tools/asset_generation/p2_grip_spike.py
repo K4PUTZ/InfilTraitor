@@ -62,7 +62,7 @@ Run:
   /Applications/Blender.app/Contents/MacOS/Blender --background \
     --python tools/asset_generation/p2_grip_spike.py
 Then:
-  python3 tools/asset_generation/p2_grip_sheet.py
+  (the sheet that gated it, p2_grip_sheet.py, left on 2026-11-04; git history)
 """
 
 import json

@@ -3,6 +3,7 @@
 # contact sheets that show its renders, with a deuteranopia row (most colour-blind players) under the game-size figures.
 # Placeholder emblems, as on the plot poster (DIAGRAMS/CIRCULO_ENREDO.png): a shield with a five-point star (FID), a quad drone (Calm Waters),
 # a flask with a flame (Bunsen Burners), the curled grub (GRUB DRILL). The palette is data: faction_palette.json.
+# The hero tools it served left on 2026-11-04 (ACTOR D85; git history, last at 9316d8c4): `textures` still stands for the Tripo Agents, `sheets` wants renders that step no longer makes.
 # Usage (system Python 3 with PIL + numpy):
 #   python3 faction_dress_art.py textures <out_dir>
 #   python3 faction_dress_art.py sheets <out_dir>        (after the Blender renders landed in <out_dir>)

@@ -1,0 +1,4869 @@
+{
+ "clips": {
+  "afraid": {
+   "category": "reaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/afraid.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     62
+    ],
+    "height_range_hips": [
+     0.9,
+     1.011
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "afraid",
+    "seconds": 2.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/afraid.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     62
+    ],
+    "height_range_hips": [
+     0.899,
+     1.011
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "afraid",
+    "seconds": 2.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P1",
+   "use": "startled guard"
+  },
+  "agree": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/agree.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     96
+    ],
+    "height_range_hips": [
+     1.002,
+     1.011
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "agree",
+    "seconds": 4.0,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/agree.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     96
+    ],
+    "height_range_hips": [
+     1.002,
+     1.011
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "agree",
+    "seconds": 4.0,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "cast: agree"
+  },
+  "agree_b": {
+   "category": "gesture",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/agree_b.glb",
+    "fps": 24,
+    "frames": [
+     1,
+     97
+    ],
+    "height_range_hips": [
+     1.002,
+     1.011
+    ],
+    "hip_height_m": 0.5447,
+    "loops": true,
+    "name": "agree.001",
+    "seconds": 4.0,
+    "source": "ASSETS/MODELS/sources/tripo_male_detective.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "P2",
+   "use": "cast: agree"
+  },
+  "angry_01": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/angry_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     84
+    ],
+    "height_range_hips": [
+     0.854,
+     1.025
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "angry_01",
+    "seconds": 3.5,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.001
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/angry_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     84
+    ],
+    "height_range_hips": [
+     0.854,
+     1.025
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "angry_01",
+    "seconds": 3.5,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.001
+   },
+   "priority": "P2",
+   "use": "cast: anger"
+  },
+  "angry_02": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/angry_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     52
+    ],
+    "height_range_hips": [
+     0.886,
+     1.016
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "angry_02",
+    "seconds": 2.167,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 1.199
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/angry_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     52
+    ],
+    "height_range_hips": [
+     0.885,
+     1.016
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "angry_02",
+    "seconds": 2.167,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 1.201
+   },
+   "priority": "P2",
+   "use": "cast: anger"
+  },
+  "angry_03": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/angry_03.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     86
+    ],
+    "height_range_hips": [
+     0.715,
+     1.065
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "angry_03",
+    "seconds": 3.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/angry_03.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     86
+    ],
+    "height_range_hips": [
+     0.714,
+     1.065
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "angry_03",
+    "seconds": 3.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "cast: anger"
+  },
+  "angry_03_b": {
+   "category": "gesture",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/angry_03_b.glb",
+    "fps": 24,
+    "frames": [
+     1,
+     87
+    ],
+    "height_range_hips": [
+     0.716,
+     1.065
+    ],
+    "hip_height_m": 0.5447,
+    "loops": true,
+    "name": "angry_03.001",
+    "seconds": 3.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_detective.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "P2",
+   "use": "cast: anger"
+  },
+  "basketball_shot": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/basketball_shot.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     158
+    ],
+    "height_range_hips": [
+     0.75,
+     1.206
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "basketball_shot",
+    "seconds": 6.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.407
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/basketball_shot.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     158
+    ],
+    "height_range_hips": [
+     0.75,
+     1.206
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "basketball_shot",
+    "seconds": 6.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.407
+   },
+   "priority": "",
+   "use": "sport"
+  },
+  "bow": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/bow.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     144
+    ],
+    "height_range_hips": [
+     0.982,
+     1.0
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "bow",
+    "seconds": 6.0,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/bow.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     144
+    ],
+    "height_range_hips": [
+     0.982,
+     1.0
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "bow",
+    "seconds": 6.0,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "cast: greet"
+  },
+  "box_01": {
+   "category": "combat",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/box_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     53
+    ],
+    "height_range_hips": [
+     0.797,
+     0.946
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "box_01",
+    "seconds": 2.208,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/box_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     53
+    ],
+    "height_range_hips": [
+     0.797,
+     0.946
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "box_01",
+    "seconds": 2.208,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "melee, not the takedown from behind"
+  },
+  "box_01_b": {
+   "category": "combat",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/box_01_b.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     53
+    ],
+    "height_range_hips": [
+     0.8,
+     0.947
+    ],
+    "hip_height_m": 0.572,
+    "loops": true,
+    "name": "box_01",
+    "seconds": 2.208,
+    "source": "ASSETS/MODELS/sources/tripo_female_coat_hat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/box_01_b.glb",
+    "fps": 24,
+    "frames": [
+     1,
+     54
+    ],
+    "height_range_hips": [
+     0.798,
+     0.946
+    ],
+    "hip_height_m": 0.5447,
+    "loops": true,
+    "name": "box_01.001",
+    "seconds": 2.208,
+    "source": "ASSETS/MODELS/sources/tripo_male_detective.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "melee, not the takedown from behind"
+  },
+  "box_02": {
+   "category": "combat",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/box_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     67
+    ],
+    "height_range_hips": [
+     0.772,
+     0.928
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "box_02",
+    "seconds": 2.792,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.05
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/box_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     67
+    ],
+    "height_range_hips": [
+     0.772,
+     0.928
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "box_02",
+    "seconds": 2.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.05
+   },
+   "priority": "P2",
+   "use": "melee, not the takedown from behind"
+  },
+  "box_02_b": {
+   "category": "combat",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/box_02_b.glb",
+    "fps": 24,
+    "frames": [
+     1,
+     68
+    ],
+    "height_range_hips": [
+     0.773,
+     0.928
+    ],
+    "hip_height_m": 0.5447,
+    "loops": false,
+    "name": "box_02.001",
+    "seconds": 2.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_detective.glb",
+    "travel_hips_per_s": 0.05
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "P2",
+   "use": "melee, not the takedown from behind"
+  },
+  "box_03": {
+   "category": "combat",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/box_03.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     61
+    ],
+    "height_range_hips": [
+     0.816,
+     0.935
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "box_03",
+    "seconds": 2.542,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/box_03.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     61
+    ],
+    "height_range_hips": [
+     0.816,
+     0.935
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "box_03",
+    "seconds": 2.542,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "melee, not the takedown from behind"
+  },
+  "box_03_b": {
+   "category": "combat",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/box_03_b.glb",
+    "fps": 24,
+    "frames": [
+     1,
+     62
+    ],
+    "height_range_hips": [
+     0.817,
+     0.935
+    ],
+    "hip_height_m": 0.5447,
+    "loops": true,
+    "name": "box_03.001",
+    "seconds": 2.542,
+    "source": "ASSETS/MODELS/sources/tripo_male_detective.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "P2",
+   "use": "melee, not the takedown from behind"
+  },
+  "caminhar_apressado_furtivamente": {
+   "category": "locomotion",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/caminhar_apressado_furtivamente.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     119
+    ],
+    "height_range_hips": [
+     0.865,
+     0.911
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "Caminhar apressado furtivamente",
+    "seconds": 4.958,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 1.105
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/caminhar_apressado_furtivamente.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     119
+    ],
+    "height_range_hips": [
+     0.865,
+     0.912
+    ],
+    "hip_height_m": 0.5681,
+    "loops": false,
+    "name": "Caminhar apressado furtivamente",
+    "seconds": 4.958,
+    "source": "ASSETS/MODELS/sources/tripo_male_coat_hat.glb",
+    "travel_hips_per_s": 1.103
+   },
+   "priority": "P0",
+   "use": "sneak walk, no weapon out (S1)"
+  },
+  "caminhar_apressado_furtivamente_b": {
+   "category": "locomotion",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/caminhar_apressado_furtivamente_b.glb",
+    "fps": 24,
+    "frames": [
+     1,
+     120
+    ],
+    "height_range_hips": [
+     0.866,
+     0.912
+    ],
+    "hip_height_m": 0.5447,
+    "loops": false,
+    "name": "Caminhar apressado furtivamente.001",
+    "seconds": 4.958,
+    "source": "ASSETS/MODELS/sources/tripo_male_detective.glb",
+    "travel_hips_per_s": 1.101
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "P0",
+   "use": "sneak walk, no weapon out (S1)"
+  },
+  "caminhar_apressado_furtivamente_c": {
+   "category": "locomotion",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/caminhar_apressado_furtivamente_c.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     119
+    ],
+    "height_range_hips": [
+     0.865,
+     0.911
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "Caminhar apressado furtivamente",
+    "seconds": 4.958,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 1.107
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "P0",
+   "use": "sneak walk, no weapon out (S1)"
+  },
+  "cast_a_spell": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/cast_a_spell.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     129
+    ],
+    "height_range_hips": [
+     0.826,
+     1.026
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "cast_a_spell",
+    "seconds": 5.375,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/cast_a_spell.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     129
+    ],
+    "height_range_hips": [
+     0.826,
+     1.026
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "cast_a_spell",
+    "seconds": 5.375,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "",
+   "use": "unassigned"
+  },
+  "cast_a_spell_b": {
+   "category": "showcase",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/cast_a_spell_b.glb",
+    "fps": 24,
+    "frames": [
+     1,
+     130
+    ],
+    "height_range_hips": [
+     0.826,
+     1.025
+    ],
+    "hip_height_m": 0.5447,
+    "loops": true,
+    "name": "cast_a_spell.001",
+    "seconds": 5.375,
+    "source": "ASSETS/MODELS/sources/tripo_male_detective.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "",
+   "use": "unassigned"
+  },
+  "cheer": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/cheer.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     290
+    ],
+    "height_range_hips": [
+     0.957,
+     0.994
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "cheer",
+    "seconds": 12.083,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.001
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/cheer.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     290
+    ],
+    "height_range_hips": [
+     0.957,
+     0.994
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "cheer",
+    "seconds": 12.083,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.001
+   },
+   "priority": "P2",
+   "use": "cast: joy"
+  },
+  "chop": {
+   "category": "combat",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/chop.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     158
+    ],
+    "height_range_hips": [
+     0.908,
+     1.003
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "chop",
+    "seconds": 6.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/chop.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     158
+    ],
+    "height_range_hips": [
+     0.908,
+     1.003
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "chop",
+    "seconds": 6.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "melee"
+  },
+  "chop_b": {
+   "category": "combat",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/chop_b.glb",
+    "fps": 24,
+    "frames": [
+     1,
+     159
+    ],
+    "height_range_hips": [
+     0.909,
+     1.003
+    ],
+    "hip_height_m": 0.5447,
+    "loops": true,
+    "name": "chop.001",
+    "seconds": 6.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_detective.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "P2",
+   "use": "melee"
+  },
+  "clap": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/clap.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     328
+    ],
+    "height_range_hips": [
+     0.995,
+     0.995
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "clap",
+    "seconds": 13.667,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/clap.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     328
+    ],
+    "height_range_hips": [
+     0.995,
+     0.995
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "clap",
+    "seconds": 13.667,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "",
+   "use": "social"
+  },
+  "climb": {
+   "category": "locomotion",
+   "female": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_female_base.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/female/climb.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     83
+    ],
+    "height_range_hips": [
+     0.775,
+     3.029
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "climb",
+    "seconds": 3.458,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.917
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/climb.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     83
+    ],
+    "height_range_hips": [
+     0.774,
+     3.033
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "climb",
+    "seconds": 3.458,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.918
+   },
+   "priority": "P1",
+   "use": "climb out of a pit; rope cross"
+  },
+  "complain_01": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/complain_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     151
+    ],
+    "height_range_hips": [
+     0.792,
+     0.999
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "complain_01",
+    "seconds": 6.292,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.013
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/complain_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     151
+    ],
+    "height_range_hips": [
+     0.791,
+     0.999
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "complain_01",
+    "seconds": 6.292,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.014
+   },
+   "priority": "P2",
+   "use": "cast: complaint"
+  },
+  "complain_02": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/complain_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     201
+    ],
+    "height_range_hips": [
+     0.928,
+     1.015
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "complain_02",
+    "seconds": 8.375,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.004
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/complain_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     201
+    ],
+    "height_range_hips": [
+     0.928,
+     1.015
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "complain_02",
+    "seconds": 8.375,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.004
+   },
+   "priority": "P2",
+   "use": "cast: complaint"
+  },
+  "correr_furtivamente_segurando_uma_pistola_aponta": {
+   "category": "locomotion",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/correr_furtivamente_segurando_uma_pistola_aponta.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     119
+    ],
+    "height_range_hips": [
+     0.883,
+     0.943
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "Correr furtivamente segurando uma pistola apontada para baixo e",
+    "seconds": 4.958,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.603
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/correr_furtivamente_segurando_uma_pistola_aponta.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     119
+    ],
+    "height_range_hips": [
+     0.883,
+     0.943
+    ],
+    "hip_height_m": 0.5681,
+    "loops": false,
+    "name": "Correr furtivamente segurando uma pistola apontada para baixo e",
+    "seconds": 4.958,
+    "source": "ASSETS/MODELS/sources/tripo_male_coat_hat.glb",
+    "travel_hips_per_s": 0.602
+   },
+   "priority": "P0",
+   "use": "sneak with the pistol, running (S2)"
+  },
+  "correr_furtivamente_segurando_uma_pistola_aponta_b": {
+   "category": "locomotion",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/correr_furtivamente_segurando_uma_pistola_aponta_b.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     119
+    ],
+    "height_range_hips": [
+     0.885,
+     0.944
+    ],
+    "hip_height_m": 0.572,
+    "loops": false,
+    "name": "Correr furtivamente segurando uma pistola apontada para baixo e",
+    "seconds": 4.958,
+    "source": "ASSETS/MODELS/sources/tripo_female_coat_hat.glb",
+    "travel_hips_per_s": 0.595
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/correr_furtivamente_segurando_uma_pistola_aponta_b.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     119
+    ],
+    "height_range_hips": [
+     0.883,
+     0.943
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "Correr furtivamente segurando uma pistola apontada para baixo e",
+    "seconds": 4.958,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.604
+   },
+   "priority": "P0",
+   "use": "sneak with the pistol, running (S2)"
+  },
+  "crossover_dribble": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/crossover_dribble.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     235
+    ],
+    "height_range_hips": [
+     0.796,
+     0.956
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "crossover_dribble",
+    "seconds": 9.792,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.029
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/crossover_dribble.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     235
+    ],
+    "height_range_hips": [
+     0.796,
+     0.956
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "crossover_dribble",
+    "seconds": 9.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.029
+   },
+   "priority": "",
+   "use": "sport"
+  },
+  "cry": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/cry.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     189
+    ],
+    "height_range_hips": [
+     1.017,
+     1.023
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "cry",
+    "seconds": 7.875,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/cry.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     189
+    ],
+    "height_range_hips": [
+     1.017,
+     1.023
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "cry",
+    "seconds": 7.875,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "",
+   "use": "social"
+  },
+  "dance_01": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/dance_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     556
+    ],
+    "height_range_hips": [
+     0.906,
+     1.029
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "dance_01",
+    "seconds": 23.167,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.005
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/dance_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     556
+    ],
+    "height_range_hips": [
+     0.906,
+     1.029
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "dance_01",
+    "seconds": 23.167,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.005
+   },
+   "priority": "",
+   "use": "dance"
+  },
+  "dance_02": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/dance_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     307
+    ],
+    "height_range_hips": [
+     0.826,
+     1.08
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "dance_02",
+    "seconds": 12.792,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.045
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/dance_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     307
+    ],
+    "height_range_hips": [
+     0.825,
+     1.08
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "dance_02",
+    "seconds": 12.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.045
+   },
+   "priority": "",
+   "use": "dance"
+  },
+  "dance_03": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/dance_03.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     307
+    ],
+    "height_range_hips": [
+     0.766,
+     1.053
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "dance_03",
+    "seconds": 12.792,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.006
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/dance_03.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     307
+    ],
+    "height_range_hips": [
+     0.766,
+     1.053
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "dance_03",
+    "seconds": 12.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.006
+   },
+   "priority": "",
+   "use": "dance"
+  },
+  "dance_04": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/dance_04.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     259
+    ],
+    "height_range_hips": [
+     0.912,
+     1.005
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "dance_04",
+    "seconds": 10.792,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/dance_04.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     259
+    ],
+    "height_range_hips": [
+     0.912,
+     1.005
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "dance_04",
+    "seconds": 10.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "",
+   "use": "dance"
+  },
+  "dance_05": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/dance_05.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     69
+    ],
+    "height_range_hips": [
+     0.806,
+     0.824
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "dance_05",
+    "seconds": 2.875,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.01
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/dance_05.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     69
+    ],
+    "height_range_hips": [
+     0.806,
+     0.824
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "dance_05",
+    "seconds": 2.875,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.01
+   },
+   "priority": "",
+   "use": "dance"
+  },
+  "dance_06": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/dance_06.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     261
+    ],
+    "height_range_hips": [
+     0.982,
+     1.014
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "dance_06",
+    "seconds": 10.875,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.002
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/dance_06.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     261
+    ],
+    "height_range_hips": [
+     0.982,
+     1.014
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "dance_06",
+    "seconds": 10.875,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.002
+   },
+   "priority": "",
+   "use": "dance"
+  },
+  "defeat_02": {
+   "category": "reaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/defeat_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     203
+    ],
+    "height_range_hips": [
+     0.949,
+     0.998
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "defeat_02",
+    "seconds": 8.458,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/defeat_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     203
+    ],
+    "height_range_hips": [
+     0.949,
+     0.998
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "defeat_02",
+    "seconds": 8.458,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P1",
+   "use": "death, knocked down"
+  },
+  "defeat_03": {
+   "category": "reaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/defeat_03.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     133
+    ],
+    "height_range_hips": [
+     0.13,
+     1.056
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "defeat_03",
+    "seconds": 5.542,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.064
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/defeat_03.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     133
+    ],
+    "height_range_hips": [
+     0.128,
+     1.056
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "defeat_03",
+    "seconds": 5.542,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.064
+   },
+   "priority": "P1",
+   "use": "death, knocked down"
+  },
+  "defeat_03_b": {
+   "category": "reaction",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/defeat_03_b.glb",
+    "fps": 24,
+    "frames": [
+     1,
+     134
+    ],
+    "height_range_hips": [
+     0.133,
+     1.056
+    ],
+    "hip_height_m": 0.5447,
+    "loops": false,
+    "name": "defeat_03.001",
+    "seconds": 5.542,
+    "source": "ASSETS/MODELS/sources/tripo_male_detective.glb",
+    "travel_hips_per_s": 0.063
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "P1",
+   "use": "death, knocked down"
+  },
+  "depressed": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/depressed.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     110
+    ],
+    "height_range_hips": [
+     0.789,
+     1.01
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "depressed",
+    "seconds": 4.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.419
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/depressed.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     110
+    ],
+    "height_range_hips": [
+     0.789,
+     1.01
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "depressed",
+    "seconds": 4.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.42
+   },
+   "priority": "P2",
+   "use": "cast: sadness"
+  },
+  "dig": {
+   "category": "interaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/dig.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     393
+    ],
+    "height_range_hips": [
+     0.425,
+     0.502
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "dig",
+    "seconds": 16.375,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/dig.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     393
+    ],
+    "height_range_hips": [
+     0.424,
+     0.501
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "dig",
+    "seconds": 16.375,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "place C4, kneel and work"
+  },
+  "dive": {
+   "category": "locomotion",
+   "female": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_female_nocoat.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/female/dive.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     65
+    ],
+    "height_range_hips": [
+     0.173,
+     1.19
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "dive",
+    "seconds": 2.708,
+    "source": "ASSETS/MODELS/sources/tripo_female_base.glb",
+    "travel_hips_per_s": 1.203
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/dive.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     65
+    ],
+    "height_range_hips": [
+     0.171,
+     1.19
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "dive",
+    "seconds": 2.708,
+    "source": "ASSETS/MODELS/sources/tripo_male_base.glb",
+    "travel_hips_per_s": 1.205
+   },
+   "priority": "P1",
+   "use": "a way down to prone (run, dive, roll, run)"
+  },
+  "dribble": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/dribble.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     223
+    ],
+    "height_range_hips": [
+     0.828,
+     0.999
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "dribble",
+    "seconds": 9.292,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.155
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/dribble.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     223
+    ],
+    "height_range_hips": [
+     0.827,
+     0.999
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "dribble",
+    "seconds": 9.292,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.156
+   },
+   "priority": "",
+   "use": "sport"
+  },
+  "fall": {
+   "category": "reaction",
+   "female": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_female_nocoat.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/female/fall.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     72
+    ],
+    "height_range_hips": [
+     0.233,
+     0.923
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "fall",
+    "seconds": 3.0,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.485
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/fall.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     72
+    ],
+    "height_range_hips": [
+     0.232,
+     0.923
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "fall",
+    "seconds": 3.0,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.486
+   },
+   "priority": "P1",
+   "use": "knocked out; gas; a slip"
+  },
+  "fall_b": {
+   "category": "reaction",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/fall_b.glb",
+    "fps": 24,
+    "frames": [
+     1,
+     73
+    ],
+    "height_range_hips": [
+     0.236,
+     0.923
+    ],
+    "hip_height_m": 0.5447,
+    "loops": false,
+    "name": "fall.001",
+    "seconds": 3.0,
+    "source": "ASSETS/MODELS/sources/tripo_male_detective.glb",
+    "travel_hips_per_s": 0.483
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "P1",
+   "use": "knocked out; gas; a slip"
+  },
+  "fire": {
+   "category": "combat",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/fire.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     36
+    ],
+    "height_range_hips": [
+     1.011,
+     1.012
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "fire",
+    "seconds": 1.5,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/fire.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     36
+    ],
+    "height_range_hips": [
+     1.011,
+     1.012
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "fire",
+    "seconds": 1.5,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P0",
+   "use": "fire with recoil"
+  },
+  "fire_b": {
+   "category": "combat",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/fire_b.glb",
+    "fps": 24,
+    "frames": [
+     1,
+     37
+    ],
+    "height_range_hips": [
+     1.011,
+     1.012
+    ],
+    "hip_height_m": 0.5447,
+    "loops": true,
+    "name": "fire.001",
+    "seconds": 1.5,
+    "source": "ASSETS/MODELS/sources/tripo_male_detective.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "P0",
+   "use": "fire with recoil"
+  },
+  "flee_01": {
+   "category": "locomotion",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/flee_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     64
+    ],
+    "height_range_hips": [
+     0.775,
+     0.977
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "flee_01",
+    "seconds": 2.667,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 2.544
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/flee_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     64
+    ],
+    "height_range_hips": [
+     0.774,
+     0.977
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "flee_01",
+    "seconds": 2.667,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 2.548
+   },
+   "priority": "P0",
+   "use": "panic run: guards, civilians"
+  },
+  "flee_02": {
+   "category": "locomotion",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/flee_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     88
+    ],
+    "height_range_hips": [
+     0.767,
+     1.845
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "flee_02",
+    "seconds": 3.667,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 3.801
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/flee_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     88
+    ],
+    "height_range_hips": [
+     0.767,
+     1.847
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "flee_02",
+    "seconds": 3.667,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 3.807
+   },
+   "priority": "P0",
+   "use": "panic run: guards, civilians"
+  },
+  "flip": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/flip.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     107
+    ],
+    "height_range_hips": [
+     0.968,
+     1.133
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "flip",
+    "seconds": 4.458,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.743
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/flip.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     107
+    ],
+    "height_range_hips": [
+     0.968,
+     1.133
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "flip",
+    "seconds": 4.458,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.745
+   },
+   "priority": "",
+   "use": "unassigned"
+  },
+  "fold_arms": {
+   "category": "idle",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/fold_arms.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     410
+    ],
+    "height_range_hips": [
+     0.995,
+     1.0
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "fold_arms",
+    "seconds": 17.083,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/fold_arms.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     410
+    ],
+    "height_range_hips": [
+     0.995,
+     1.0
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "fold_arms",
+    "seconds": 17.083,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P0",
+   "use": "guard on post"
+  },
+  "football_catch": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/football_catch.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     83
+    ],
+    "height_range_hips": [
+     0.726,
+     1.527
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "football_catch",
+    "seconds": 3.458,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.169
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/football_catch.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     83
+    ],
+    "height_range_hips": [
+     0.725,
+     1.528
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "football_catch",
+    "seconds": 3.458,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.17
+   },
+   "priority": "",
+   "use": "sport"
+  },
+  "football_pass": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/football_pass.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     264
+    ],
+    "height_range_hips": [
+     0.813,
+     0.989
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "football_pass",
+    "seconds": 11.0,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.108
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/football_pass.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     264
+    ],
+    "height_range_hips": [
+     0.812,
+     0.989
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "football_pass",
+    "seconds": 11.0,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.108
+   },
+   "priority": "",
+   "use": "sport"
+  },
+  "football_save": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/football_save.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     79
+    ],
+    "height_range_hips": [
+     0.775,
+     1.029
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "football_save",
+    "seconds": 3.292,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 1.275
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/football_save.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     79
+    ],
+    "height_range_hips": [
+     0.774,
+     1.029
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "football_save",
+    "seconds": 3.292,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 1.277
+   },
+   "priority": "",
+   "use": "sport"
+  },
+  "freaky": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/freaky.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     19
+    ],
+    "height_range_hips": [
+     0.871,
+     0.911
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "freaky",
+    "seconds": 0.792,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.024
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/freaky.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     19
+    ],
+    "height_range_hips": [
+     0.871,
+     0.911
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "freaky",
+    "seconds": 0.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.024
+   },
+   "priority": "",
+   "use": "unassigned"
+  },
+  "frightened": {
+   "category": "reaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/frightened.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     81
+    ],
+    "height_range_hips": [
+     0.776,
+     1.121
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "frightened",
+    "seconds": 3.375,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.006
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/frightened.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     81
+    ],
+    "height_range_hips": [
+     0.775,
+     1.121
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "frightened",
+    "seconds": 3.375,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.006
+   },
+   "priority": "P1",
+   "use": "startled guard"
+  },
+  "front_kick_01": {
+   "category": "combat",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/front_kick_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     60
+    ],
+    "height_range_hips": [
+     0.919,
+     1.077
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "front_kick_01",
+    "seconds": 2.5,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.124
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/front_kick_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     60
+    ],
+    "height_range_hips": [
+     0.919,
+     1.077
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "front_kick_01",
+    "seconds": 2.5,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.124
+   },
+   "priority": "P2",
+   "use": "melee; knock an object over"
+  },
+  "front_kick_02": {
+   "category": "combat",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/front_kick_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     33
+    ],
+    "height_range_hips": [
+     0.895,
+     1.039
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "front_kick_02",
+    "seconds": 1.375,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.007
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/front_kick_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     33
+    ],
+    "height_range_hips": [
+     0.895,
+     1.04
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "front_kick_02",
+    "seconds": 1.375,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.007
+   },
+   "priority": "P2",
+   "use": "melee"
+  },
+  "front_kick_02_b": {
+   "category": "combat",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/front_kick_02_b.glb",
+    "fps": 24,
+    "frames": [
+     1,
+     34
+    ],
+    "height_range_hips": [
+     0.895,
+     1.039
+    ],
+    "hip_height_m": 0.5447,
+    "loops": false,
+    "name": "front_kick_02.001",
+    "seconds": 1.375,
+    "source": "ASSETS/MODELS/sources/tripo_male_detective.glb",
+    "travel_hips_per_s": 0.007
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "P2",
+   "use": "melee"
+  },
+  "frustrated_01": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/frustrated_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     85
+    ],
+    "height_range_hips": [
+     1.006,
+     1.034
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "frustrated_01",
+    "seconds": 3.542,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/frustrated_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     85
+    ],
+    "height_range_hips": [
+     1.006,
+     1.034
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "frustrated_01",
+    "seconds": 3.542,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "cast: frustration"
+  },
+  "frustrated_02": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/frustrated_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     259
+    ],
+    "height_range_hips": [
+     0.907,
+     0.996
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "frustrated_02",
+    "seconds": 10.792,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/frustrated_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     259
+    ],
+    "height_range_hips": [
+     0.906,
+     0.996
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "frustrated_02",
+    "seconds": 10.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "cast: frustration"
+  },
+  "greet_01": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/greet_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     84
+    ],
+    "height_range_hips": [
+     0.955,
+     0.996
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "greet_01",
+    "seconds": 3.5,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 1.222
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/greet_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     84
+    ],
+    "height_range_hips": [
+     0.955,
+     0.996
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "greet_01",
+    "seconds": 3.5,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 1.224
+   },
+   "priority": "P2",
+   "use": "cast: greet"
+  },
+  "greet_02": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/greet_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     134
+    ],
+    "height_range_hips": [
+     0.972,
+     1.003
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "greet_02",
+    "seconds": 5.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.001
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/greet_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     134
+    ],
+    "height_range_hips": [
+     0.972,
+     1.003
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "greet_02",
+    "seconds": 5.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.001
+   },
+   "priority": "P2",
+   "use": "cast: greet"
+  },
+  "greet_03": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/greet_03.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     218
+    ],
+    "height_range_hips": [
+     0.987,
+     1.019
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "greet_03",
+    "seconds": 9.083,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.002
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/greet_03.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     218
+    ],
+    "height_range_hips": [
+     0.987,
+     1.019
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "greet_03",
+    "seconds": 9.083,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.002
+   },
+   "priority": "P2",
+   "use": "cast: greet"
+  },
+  "greet_04": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/greet_04.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     67
+    ],
+    "height_range_hips": [
+     0.954,
+     0.994
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "greet_04",
+    "seconds": 2.792,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.804
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/greet_04.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     67
+    ],
+    "height_range_hips": [
+     0.954,
+     0.994
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "greet_04",
+    "seconds": 2.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.805
+   },
+   "priority": "P2",
+   "use": "cast: greet"
+  },
+  "heart_pose": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/heart_pose.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     129
+    ],
+    "height_range_hips": [
+     0.768,
+     1.001
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "heart_pose",
+    "seconds": 5.375,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.011
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/heart_pose.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     129
+    ],
+    "height_range_hips": [
+     0.767,
+     1.001
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "heart_pose",
+    "seconds": 5.375,
+    "source": "ASSETS/MODELS/sources/tripo_male_base.glb",
+    "travel_hips_per_s": 0.011
+   },
+   "priority": "",
+   "use": ""
+  },
+  "hit_to_body_01": {
+   "category": "reaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/hit_to_body_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     31
+    ],
+    "height_range_hips": [
+     0.887,
+     0.946
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "hit_to_body_01",
+    "seconds": 1.292,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/hit_to_body_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     31
+    ],
+    "height_range_hips": [
+     0.887,
+     0.946
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "hit_to_body_01",
+    "seconds": 1.292,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P1",
+   "use": "hit"
+  },
+  "hit_to_body_02": {
+   "category": "reaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/hit_to_body_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     41
+    ],
+    "height_range_hips": [
+     0.848,
+     0.99
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "hit_to_body_02",
+    "seconds": 1.708,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/hit_to_body_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     41
+    ],
+    "height_range_hips": [
+     0.847,
+     0.99
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "hit_to_body_02",
+    "seconds": 1.708,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P1",
+   "use": "hit"
+  },
+  "hit_to_head": {
+   "category": "reaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/hit_to_head.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     44
+    ],
+    "height_range_hips": [
+     0.883,
+     1.002
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "hit_to_head",
+    "seconds": 1.833,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/hit_to_head.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     44
+    ],
+    "height_range_hips": [
+     0.883,
+     1.002
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "hit_to_head",
+    "seconds": 1.833,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P1",
+   "use": "hit"
+  },
+  "hit_to_side": {
+   "category": "reaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/hit_to_side.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     30
+    ],
+    "height_range_hips": [
+     0.887,
+     0.936
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "hit_to_side",
+    "seconds": 1.25,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/hit_to_side.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     30
+    ],
+    "height_range_hips": [
+     0.886,
+     0.936
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "hit_to_side",
+    "seconds": 1.25,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P1",
+   "use": "hit"
+  },
+  "hit_to_stomach": {
+   "category": "reaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/hit_to_stomach.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     37
+    ],
+    "height_range_hips": [
+     0.886,
+     0.929
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "hit_to_stomach",
+    "seconds": 1.542,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/hit_to_stomach.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     37
+    ],
+    "height_range_hips": [
+     0.886,
+     0.929
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "hit_to_stomach",
+    "seconds": 1.542,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P1",
+   "use": "hit"
+  },
+  "hug": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/hug.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     134
+    ],
+    "height_range_hips": [
+     0.97,
+     1.017
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "hug",
+    "seconds": 5.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.084
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/hug.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     134
+    ],
+    "height_range_hips": [
+     0.97,
+     1.017
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "hug",
+    "seconds": 5.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.084
+   },
+   "priority": "",
+   "use": "social"
+  },
+  "idle": {
+   "category": "idle",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/idle.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     368
+    ],
+    "height_range_hips": [
+     0.982,
+     1.0
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "idle",
+    "seconds": 15.333,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/idle.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     368
+    ],
+    "height_range_hips": [
+     0.982,
+     1.0
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "idle",
+    "seconds": 15.333,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P0",
+   "use": "agent and guard idle"
+  },
+  "jump": {
+   "category": "locomotion",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/jump.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     53
+    ],
+    "height_range_hips": [
+     0.856,
+     1.39
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "jump",
+    "seconds": 2.208,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.019
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/jump.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     53
+    ],
+    "height_range_hips": [
+     0.856,
+     1.391
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "jump",
+    "seconds": 2.208,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.019
+   },
+   "priority": "P2",
+   "use": "jump a gap"
+  },
+  "jump_down": {
+   "category": "locomotion",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/jump_down.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     89
+    ],
+    "height_range_hips": [
+     0.402,
+     2.105
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "jump_down",
+    "seconds": 3.708,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.578
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/jump_down.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     89
+    ],
+    "height_range_hips": [
+     0.401,
+     2.107
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "jump_down",
+    "seconds": 3.708,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.579
+   },
+   "priority": "P2",
+   "use": "step down into a pit"
+  },
+  "jump_rope_01": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/jump_rope_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     232
+    ],
+    "height_range_hips": [
+     0.818,
+     1.29
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "jump_rope_01",
+    "seconds": 9.667,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.032
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/jump_rope_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     232
+    ],
+    "height_range_hips": [
+     0.818,
+     1.291
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "jump_rope_01",
+    "seconds": 9.667,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.032
+   },
+   "priority": "",
+   "use": "sport"
+  },
+  "jump_rope_02": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/jump_rope_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     232
+    ],
+    "height_range_hips": [
+     0.976,
+     0.979
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "jump_rope_02",
+    "seconds": 9.667,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.004
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/jump_rope_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     232
+    ],
+    "height_range_hips": [
+     0.976,
+     0.979
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "jump_rope_02",
+    "seconds": 9.667,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.005
+   },
+   "priority": "",
+   "use": "sport"
+  },
+  "laugh_01": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/laugh_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     134
+    ],
+    "height_range_hips": [
+     0.828,
+     1.0
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "laugh_01",
+    "seconds": 5.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/laugh_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     134
+    ],
+    "height_range_hips": [
+     0.828,
+     1.0
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "laugh_01",
+    "seconds": 5.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "cast: joy"
+  },
+  "laugh_02": {
+   "category": "gesture",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/laugh_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     134
+    ],
+    "height_range_hips": [
+     0.972,
+     0.994
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "laugh_02",
+    "seconds": 5.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/laugh_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     134
+    ],
+    "height_range_hips": [
+     0.972,
+     0.994
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "laugh_02",
+    "seconds": 5.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "cast: joy"
+  },
+  "lift_heavy": {
+   "category": "interaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/lift_heavy.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     468
+    ],
+    "height_range_hips": [
+     0.37,
+     0.987
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "lift_heavy",
+    "seconds": 19.5,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.206
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/lift_heavy.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     468
+    ],
+    "height_range_hips": [
+     0.369,
+     0.987
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "lift_heavy",
+    "seconds": 19.5,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.206
+   },
+   "priority": "P1",
+   "use": "pick up, search a body (may be too heavy)"
+  },
+  "look_around": {
+   "category": "idle",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/look_around.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     374
+    ],
+    "height_range_hips": [
+     0.987,
+     1.005
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "look_around",
+    "seconds": 15.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/look_around.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     374
+    ],
+    "height_range_hips": [
+     0.987,
+     1.005
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "look_around",
+    "seconds": 15.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P1",
+   "use": "scanning, as an additive; guard searching"
+  },
+  "make_a_call_01": {
+   "category": "interaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/make_a_call_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     422
+    ],
+    "height_range_hips": [
+     0.687,
+     0.698
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "make_a_call_01",
+    "seconds": 17.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/make_a_call_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     422
+    ],
+    "height_range_hips": [
+     0.686,
+     0.698
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "make_a_call_01",
+    "seconds": 17.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "phone, radio"
+  },
+  "make_a_call_02": {
+   "category": "interaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/make_a_call_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     415
+    ],
+    "height_range_hips": [
+     0.99,
+     1.016
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "make_a_call_02",
+    "seconds": 17.292,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/make_a_call_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     415
+    ],
+    "height_range_hips": [
+     0.989,
+     1.016
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "make_a_call_02",
+    "seconds": 17.292,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "phone, radio"
+  },
+  "pitch_baseball": {
+   "category": "combat",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/pitch_baseball.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     91
+    ],
+    "height_range_hips": [
+     0.815,
+     1.114
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "pitch_baseball",
+    "seconds": 3.792,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.116
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/pitch_baseball.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     91
+    ],
+    "height_range_hips": [
+     0.815,
+     1.115
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "pitch_baseball",
+    "seconds": 3.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.116
+   },
+   "priority": "P0",
+   "use": "stand-in for the grenade throw; stone throw"
+  },
+  "play_mobile_game": {
+   "category": "interaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/play_mobile_game.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     427
+    ],
+    "height_range_hips": [
+     0.788,
+     0.797
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "play_mobile_game",
+    "seconds": 17.792,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/play_mobile_game.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     427
+    ],
+    "height_range_hips": [
+     0.787,
+     0.797
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "play_mobile_game",
+    "seconds": 17.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "",
+   "use": "everyday"
+  },
+  "play_video_game": {
+   "category": "interaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/play_video_game.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     379
+    ],
+    "height_range_hips": [
+     0.606,
+     0.615
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "play_video_game",
+    "seconds": 15.792,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.001
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/play_video_game.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     379
+    ],
+    "height_range_hips": [
+     0.605,
+     0.614
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "play_video_game",
+    "seconds": 15.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.001
+   },
+   "priority": "P2",
+   "use": "civilians"
+  },
+  "press_up": {
+   "category": "idle",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/press_up.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     47
+    ],
+    "height_range_hips": [
+     0.164,
+     0.504
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "press-up",
+    "seconds": 1.958,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/press_up.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     47
+    ],
+    "height_range_hips": [
+     0.162,
+     0.503
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "press-up",
+    "seconds": 1.958,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "civilians"
+  },
+  "run": {
+   "category": "locomotion",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/run.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     30
+    ],
+    "height_range_hips": [
+     0.842,
+     0.91
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "run",
+    "seconds": 1.25,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 4.532
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/run.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     30
+    ],
+    "height_range_hips": [
+     0.841,
+     0.91
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "run",
+    "seconds": 1.25,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 4.54
+   },
+   "priority": "P0",
+   "use": "run, hurried"
+  },
+  "run_b": {
+   "category": "locomotion",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/run_b.glb",
+    "fps": 24,
+    "frames": [
+     1,
+     31
+    ],
+    "height_range_hips": [
+     0.842,
+     0.91
+    ],
+    "hip_height_m": 0.5447,
+    "loops": false,
+    "name": "run.001",
+    "seconds": 1.25,
+    "source": "ASSETS/MODELS/sources/tripo_male_detective.glb",
+    "travel_hips_per_s": 4.516
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "P0",
+   "use": "run, hurried"
+  },
+  "run_upstairs": {
+   "category": "locomotion",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/run_upstairs.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     19
+    ],
+    "height_range_hips": [
+     0.964,
+     1.454
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "run_upstairs",
+    "seconds": 0.792,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.68
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/run_upstairs.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     19
+    ],
+    "height_range_hips": [
+     0.964,
+     1.455
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "run_upstairs",
+    "seconds": 0.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.681
+   },
+   "priority": "P2",
+   "use": "stairs"
+  },
+  "scared_01": {
+   "category": "reaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/scared_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     79
+    ],
+    "height_range_hips": [
+     0.86,
+     0.933
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "scared_01",
+    "seconds": 3.292,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.001
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/scared_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     79
+    ],
+    "height_range_hips": [
+     0.859,
+     0.933
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "scared_01",
+    "seconds": 3.292,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.001
+   },
+   "priority": "P1",
+   "use": "startled guard"
+  },
+  "scared_02": {
+   "category": "reaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/scared_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     79
+    ],
+    "height_range_hips": [
+     0.794,
+     0.887
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "scared_02",
+    "seconds": 3.292,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.002
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/scared_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     79
+    ],
+    "height_range_hips": [
+     0.794,
+     0.887
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "scared_02",
+    "seconds": 3.292,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.002
+   },
+   "priority": "P1",
+   "use": "startled guard"
+  },
+  "scratch": {
+   "category": "idle",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/scratch.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     331
+    ],
+    "height_range_hips": [
+     0.961,
+     1.003
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "scratch",
+    "seconds": 13.792,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/scratch.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     331
+    ],
+    "height_range_hips": [
+     0.961,
+     1.003
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "scratch",
+    "seconds": 13.792,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P0",
+   "use": "guard on post"
+  },
+  "shoot": {
+   "category": "combat",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/shoot.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     217
+    ],
+    "height_range_hips": [
+     0.304,
+     0.835
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "shoot",
+    "seconds": 9.042,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.553
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/shoot.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     217
+    ],
+    "height_range_hips": [
+     0.302,
+     0.835
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "shoot",
+    "seconds": 9.042,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.554
+   },
+   "priority": "P0",
+   "use": "aim and fire, upper body"
+  },
+  "shovel": {
+   "category": "interaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/shovel.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     372
+    ],
+    "height_range_hips": [
+     0.813,
+     0.982
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "shovel",
+    "seconds": 15.5,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.011
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/shovel.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     372
+    ],
+    "height_range_hips": [
+     0.812,
+     0.982
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "shovel",
+    "seconds": 15.5,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.011
+   },
+   "priority": "",
+   "use": "everyday"
+  },
+  "sing_01": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/sing_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     372
+    ],
+    "height_range_hips": [
+     0.938,
+     1.014
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "sing_01",
+    "seconds": 15.5,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.006
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/sing_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     372
+    ],
+    "height_range_hips": [
+     0.938,
+     1.014
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "sing_01",
+    "seconds": 15.5,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.006
+   },
+   "priority": "",
+   "use": "sing"
+  },
+  "sing_02": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/sing_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     362
+    ],
+    "height_range_hips": [
+     0.96,
+     1.013
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "sing_02",
+    "seconds": 15.083,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.028
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/sing_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     362
+    ],
+    "height_range_hips": [
+     0.96,
+     1.013
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "sing_02",
+    "seconds": 15.083,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.028
+   },
+   "priority": "",
+   "use": "sing"
+  },
+  "sing_03": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/sing_03.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     324
+    ],
+    "height_range_hips": [
+     0.96,
+     1.007
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "sing_03",
+    "seconds": 13.5,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.022
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/sing_03.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     324
+    ],
+    "height_range_hips": [
+     0.96,
+     1.007
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "sing_03",
+    "seconds": 13.5,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.022
+   },
+   "priority": "",
+   "use": "sing"
+  },
+  "sing_04": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/sing_04.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     420
+    ],
+    "height_range_hips": [
+     0.94,
+     0.996
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "sing_04",
+    "seconds": 17.5,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.006
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/sing_04.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     420
+    ],
+    "height_range_hips": [
+     0.94,
+     0.996
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "sing_04",
+    "seconds": 17.5,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.006
+   },
+   "priority": "",
+   "use": "sing"
+  },
+  "sit": {
+   "category": "interaction",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/sit.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     172
+    ],
+    "height_range_hips": [
+     0.634,
+     0.636
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "sit",
+    "seconds": 7.167,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/sit.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     172
+    ],
+    "height_range_hips": [
+     0.633,
+     0.635
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "sit",
+    "seconds": 7.167,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "civilians, guards on a break"
+  },
+  "slash": {
+   "category": "combat",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/slash.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     158
+    ],
+    "height_range_hips": [
+     0.908,
+     1.003
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "slash",
+    "seconds": 6.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/slash.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     158
+    ],
+    "height_range_hips": [
+     0.908,
+     1.003
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "slash",
+    "seconds": 6.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P2",
+   "use": "melee"
+  },
+  "sob": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/sob.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     134
+    ],
+    "height_range_hips": [
+     0.949,
+     0.997
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "sob",
+    "seconds": 5.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/sob.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     134
+    ],
+    "height_range_hips": [
+     0.949,
+     0.997
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "sob",
+    "seconds": 5.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "",
+   "use": "social"
+  },
+  "standing_relax": {
+   "category": "idle",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/standing_relax.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     422
+    ],
+    "height_range_hips": [
+     0.987,
+     1.003
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "standing_relax",
+    "seconds": 17.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/standing_relax.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     422
+    ],
+    "height_range_hips": [
+     0.986,
+     1.003
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "standing_relax",
+    "seconds": 17.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P0",
+   "use": "guard on post"
+  },
+  "surf": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/surf.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     88
+    ],
+    "height_range_hips": [
+     0.742,
+     0.835
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "surf",
+    "seconds": 3.667,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.014
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/surf.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     88
+    ],
+    "height_range_hips": [
+     0.742,
+     0.834
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "surf",
+    "seconds": 3.667,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.014
+   },
+   "priority": "",
+   "use": "sport"
+  },
+  "swagger": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/swagger.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     88
+    ],
+    "height_range_hips": [
+     0.901,
+     0.994
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "swagger",
+    "seconds": 3.667,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 1.235
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/swagger.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     88
+    ],
+    "height_range_hips": [
+     0.901,
+     0.994
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "swagger",
+    "seconds": 3.667,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 1.237
+   },
+   "priority": "",
+   "use": "social"
+  },
+  "swim": {
+   "category": "locomotion",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/swim.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     137
+    ],
+    "height_range_hips": [
+     0.293,
+     0.314
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "swim",
+    "seconds": 5.708,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.392
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/swim.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     137
+    ],
+    "height_range_hips": [
+     0.291,
+     0.313
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "swim",
+    "seconds": 5.708,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.393
+   },
+   "priority": "P2",
+   "use": "swimming"
+  },
+  "turn": {
+   "category": "locomotion",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/turn.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     92
+    ],
+    "height_range_hips": [
+     0.829,
+     0.927
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "turn",
+    "seconds": 3.833,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.152
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/turn.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     92
+    ],
+    "height_range_hips": [
+     0.829,
+     0.927
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "turn",
+    "seconds": 3.833,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.152
+   },
+   "priority": "P2",
+   "use": "an idle actor turning in place"
+  },
+  "volleyball": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/volleyball.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     206
+    ],
+    "height_range_hips": [
+     0.787,
+     1.324
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "volleyball",
+    "seconds": 8.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.128
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/volleyball.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     206
+    ],
+    "height_range_hips": [
+     0.787,
+     1.324
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "volleyball",
+    "seconds": 8.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.128
+   },
+   "priority": "",
+   "use": "sport"
+  },
+  "wait": {
+   "category": "idle",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/wait.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     144
+    ],
+    "height_range_hips": [
+     0.981,
+     0.982
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "wait",
+    "seconds": 6.0,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/wait.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     144
+    ],
+    "height_range_hips": [
+     0.981,
+     0.982
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "wait",
+    "seconds": 6.0,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.0
+   },
+   "priority": "P0",
+   "use": "agent idle"
+  },
+  "walk": {
+   "category": "locomotion",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/walk.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     56
+    ],
+    "height_range_hips": [
+     0.955,
+     0.995
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "walk",
+    "seconds": 2.333,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 1.244
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/walk.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     56
+    ],
+    "height_range_hips": [
+     0.955,
+     0.995
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "walk",
+    "seconds": 2.333,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 1.246
+   },
+   "priority": "P0",
+   "use": "walk, open ground; wading"
+  },
+  "walking_briskly_and_stealthily_holding_a_pistol": {
+   "category": "locomotion",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/walking_briskly_and_stealthily_holding_a_pistol.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     119
+    ],
+    "height_range_hips": [
+     0.934,
+     0.997
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "Walking briskly and stealthily, holding a pistol with both hand",
+    "seconds": 4.958,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 1.451
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/walking_briskly_and_stealthily_holding_a_pistol.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     119
+    ],
+    "height_range_hips": [
+     0.934,
+     0.997
+    ],
+    "hip_height_m": 0.5681,
+    "loops": false,
+    "name": "Walking briskly and stealthily, holding a pistol with both hand",
+    "seconds": 4.958,
+    "source": "ASSETS/MODELS/sources/tripo_male_coat_hat.glb",
+    "travel_hips_per_s": 1.449
+   },
+   "priority": "P0",
+   "use": "sneak with the pistol, walking (S3)"
+  },
+  "walking_briskly_and_stealthily_holding_a_pistol_b": {
+   "category": "locomotion",
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/walking_briskly_and_stealthily_holding_a_pistol_b.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     119
+    ],
+    "height_range_hips": [
+     0.934,
+     0.997
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "Walking briskly and stealthily, holding a pistol with both hand",
+    "seconds": 4.958,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 1.454
+   },
+   "missing": [
+    "female"
+   ],
+   "priority": "P0",
+   "use": "sneak with the pistol, walking (S3)"
+  },
+  "warm_up": {
+   "category": "idle",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/warm_up.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     439
+    ],
+    "height_range_hips": [
+     0.722,
+     1.021
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "warm_up",
+    "seconds": 18.292,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.006
+   },
+   "male": {
+    "also_in": [
+     "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb"
+    ],
+    "file": "ASSETS/ANIMATIONS/bank/male/warm_up.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     439
+    ],
+    "height_range_hips": [
+     0.722,
+     1.021
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "warm_up",
+    "seconds": 18.292,
+    "source": "ASSETS/MODELS/sources/tripo_male_nocoat.glb",
+    "travel_hips_per_s": 0.006
+   },
+   "priority": "P2",
+   "use": "civilians"
+  },
+  "wave_goodbye_01": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/wave_goodbye_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     158
+    ],
+    "height_range_hips": [
+     0.578,
+     0.58
+    ],
+    "hip_height_m": 0.5575,
+    "loops": true,
+    "name": "wave_goodbye_01",
+    "seconds": 6.583,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.003
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/wave_goodbye_01.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     158
+    ],
+    "height_range_hips": [
+     0.577,
+     0.579
+    ],
+    "hip_height_m": 0.5525,
+    "loops": true,
+    "name": "wave_goodbye_01",
+    "seconds": 6.583,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.003
+   },
+   "priority": "",
+   "use": "social"
+  },
+  "wave_goodbye_02": {
+   "category": "showcase",
+   "female": {
+    "file": "ASSETS/ANIMATIONS/bank/female/wave_goodbye_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     141
+    ],
+    "height_range_hips": [
+     0.924,
+     1.0
+    ],
+    "hip_height_m": 0.5575,
+    "loops": false,
+    "name": "wave_goodbye_02",
+    "seconds": 5.875,
+    "source": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.389
+   },
+   "male": {
+    "file": "ASSETS/ANIMATIONS/bank/male/wave_goodbye_02.glb",
+    "fps": 24,
+    "frames": [
+     0,
+     141
+    ],
+    "height_range_hips": [
+     0.924,
+     1.0
+    ],
+    "hip_height_m": 0.5525,
+    "loops": false,
+    "name": "wave_goodbye_02",
+    "seconds": 5.875,
+    "source": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb",
+    "travel_hips_per_s": 0.389
+   },
+   "priority": "",
+   "use": "social"
+  }
+ },
+ "figures": [
+  "female",
+  "male"
+ ],
+ "pairs": [
+  "afraid",
+  "agree",
+  "angry_01",
+  "angry_02",
+  "angry_03",
+  "basketball_shot",
+  "bow",
+  "box_01",
+  "box_01_b",
+  "box_02",
+  "box_03",
+  "caminhar_apressado_furtivamente",
+  "cast_a_spell",
+  "cheer",
+  "chop",
+  "clap",
+  "climb",
+  "complain_01",
+  "complain_02",
+  "correr_furtivamente_segurando_uma_pistola_aponta",
+  "correr_furtivamente_segurando_uma_pistola_aponta_b",
+  "crossover_dribble",
+  "cry",
+  "dance_01",
+  "dance_02",
+  "dance_03",
+  "dance_04",
+  "dance_05",
+  "dance_06",
+  "defeat_02",
+  "defeat_03",
+  "depressed",
+  "dig",
+  "dive",
+  "dribble",
+  "fall",
+  "fire",
+  "flee_01",
+  "flee_02",
+  "flip",
+  "fold_arms",
+  "football_catch",
+  "football_pass",
+  "football_save",
+  "freaky",
+  "frightened",
+  "front_kick_01",
+  "front_kick_02",
+  "frustrated_01",
+  "frustrated_02",
+  "greet_01",
+  "greet_02",
+  "greet_03",
+  "greet_04",
+  "heart_pose",
+  "hit_to_body_01",
+  "hit_to_body_02",
+  "hit_to_head",
+  "hit_to_side",
+  "hit_to_stomach",
+  "hug",
+  "idle",
+  "jump",
+  "jump_down",
+  "jump_rope_01",
+  "jump_rope_02",
+  "laugh_01",
+  "laugh_02",
+  "lift_heavy",
+  "look_around",
+  "make_a_call_01",
+  "make_a_call_02",
+  "pitch_baseball",
+  "play_mobile_game",
+  "play_video_game",
+  "press_up",
+  "run",
+  "run_upstairs",
+  "scared_01",
+  "scared_02",
+  "scratch",
+  "shoot",
+  "shovel",
+  "sing_01",
+  "sing_02",
+  "sing_03",
+  "sing_04",
+  "sit",
+  "slash",
+  "sob",
+  "standing_relax",
+  "surf",
+  "swagger",
+  "swim",
+  "turn",
+  "volleyball",
+  "wait",
+  "walk",
+  "walking_briskly_and_stealthily_holding_a_pistol",
+  "warm_up",
+  "wave_goodbye_01",
+  "wave_goodbye_02"
+ ]
+}

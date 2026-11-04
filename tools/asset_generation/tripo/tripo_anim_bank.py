@@ -6,9 +6,10 @@
 # HEIGHT (a player multiplies it back by its own); Tripo's location keys on the other 64 joints and every scale key are dropped (they
 # carry the source figure's bone lengths). A row: source file and original name, frames, fps, seconds, the Hips' horizontal travel per
 # second and height range (in hip heights), whether it loops (first and last pose within LOOP_DEG on every joint).
-# The same clip from two files of one figure is kept once when every rotation matches within DUP_DEG at every frame, else as <id>_b.
+# The same clip from two files of one figure is kept once when every rotation matches within DUP_DEG at every frame, else as <id>_b, _c...
 # Env: BANK_SOURCES (default: bank_sources.json beside this file), BANK_OUT (default ASSETS/ANIMATIONS/bank).
 # Usage (from the repo root): blender -b -P tools/asset_generation/tripo/tripo_anim_bank.py
+# Then tripo_bank_catalog.py: it adds the categories (bank_tags.json) to bank.json, which this run rewrites without them, and writes CATALOG.md.
 import json, math, os, re, sys, unicodedata
 import bpy
 from mathutils import Quaternion
@@ -18,6 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.environ.get("BANK_SOURCES", os.path.join(HERE, "bank_sources.json"))
 OUT = os.environ.get("BANK_OUT", "ASSETS/ANIMATIONS/bank")
 LOOP_DEG, DUP_DEG = 12.0, 2.0
+VARIANTS = ("", "_b", "_c", "_d", "_e")
 P = "mixamorig:"
 
 
@@ -94,12 +96,20 @@ def main():
         for act in acts:
             f0, f1 = (int(round(x)) for x in act.frame_range)
             rots, hips = sample(arm, act, f0, f1)
-            cid = slug(act.name); key = (fig, cid)
-            if key in kept:
+            # the first free variant of this name, or the one this take repeats (a third generation must not overwrite <id>_b, 2026-11-04)
+            base, dup = slug(act.name), False
+            for suffix in VARIANTS:
+                cid = base + suffix; key = (fig, cid)
+                if key not in kept:
+                    break
                 prev = kept[key]
                 if len(prev) == len(rots) and max(max_deg(a, b) for a, b in zip(prev, rots)) < DUP_DEG:
-                    n_dup += 1; cat[cid][fig].setdefault("also_in", []).append(path); continue
-                cid += "_b"; key = (fig, cid)
+                    dup = True
+                    break
+            else:
+                fail(f"{path}: {act.name} differs from all {len(VARIANTS)} variants of {base}")
+            if dup:
+                n_dup += 1; cat[cid][fig].setdefault("also_in", []).append(path); continue
             kept[key] = rots
             # keep rotations and the Hips' translation (divided by the hip height); drop the rest
             for cont, fc in channels(act):

@@ -1,5 +1,7 @@
 # MOVEMENT_MASTER_PLAN
-## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.3
+## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.4
+
+> 🟢 **v1.4 (2026-11-04): MV-1's bank is SAVED and CATALOGUED (Director: "temos um montão de animações que precisam ser catalogadas e salvas"; "salvas" = versioned).** `ASSETS/ANIMATIONS/bank/` is in git: 218 GLBs (female 102, male 116; 39.6 MB), `bank.json`, `CATALOG.md` and the review sheets (`sheets/`: 13 index pages by category, one sheet per clip; 11 MB). 116 clip ids, 102 complete pairs, 14 male-only variants. §3.2 has the results. Nothing in the engine changed. **Next here: the Director looks at the sheets and picks the canonical generation of the three stealth clips.**
 
 > 🧭 **2026-11-03 — a note for MV-4 from the T-pose work (`ACTOR` D97).** Each figure carries a `TFix` shape key (the shirt's and hands' correction at the raised-arm T, value 0 = the A exactly): when the game plays a clip with the arms raised (climb, dive, the T itself), the key's value must follow the shoulder's abduction. The measured way: value = how far the Arm bone has turned from its A rest toward the T (0 at the A, 1 at the T). Nothing of this is built.
 
@@ -7,7 +9,7 @@
 > um banco de animações, e depois mapear o que precisa, o que tem e o que falta").** Nothing in §3-§9 is built yet. The brief this
 > ⏸ **PARKED until the models are done (Director, 2026-10-27: "vamos deixar planejado, pra fazer depois que os modelos estiverem
 > prontos").** MV-1 starts once the male (with coat and hat, and without) and the female are assembled (`CHARACTER`, §9 items 1-2).
-> 🟢 **2026-11-01: the two Agents are assembled, finished and measured (`ACTOR` D91-D93; light and full `.glb` in `ASSETS/MODELS/official/`): the precondition for MV-1 is met; starting it is the Director's call.** First job when it starts: the bank's per-clip review sheets on the OFFICIAL files (no sheets exist yet), looking at the coat in motion and at the armpit panel under a raised arm (only the rest pose was checked).
+> 🟢 **2026-11-01: the two Agents are assembled, finished and measured (`ACTOR` D91-D93; light and full `.glb` in `ASSETS/MODELS/official/`): the precondition for MV-1 is met; starting it is the Director's call.** First job when it starts: the bank's per-clip review sheets on the OFFICIAL files (built 2026-11-04 without coat or hat, because the coat is being replaced: the coat in motion and the armpit panel under a raised arm are still to be looked at).
 > replaces (v0.1, 2026-08-16, written for the retired sprite bake) is `docs/history/MOVEMENT_BRIEF_v0.1_2026-08-16.md`; what in it is
 > still design is carried into §2 below and cited there, never restated twice.
 >
@@ -89,7 +91,7 @@ come from several files; the bank makes a clip independent of the figure it was 
 
 **Design (proposed, Claude):**
 - **Tool:** `tools/asset_generation/tripo/tripo_anim_bank.py` (Blender, `blender -b -P`), sharing `tripo_common.py`. Input: any number
-  of Tripo GLBs. Output: `ASSETS/ANIMATIONS/bank/` (git-ignored like the rest of `ASSETS/`): one GLB per clip (the canonical
+  of Tripo GLBs. Output: `ASSETS/ANIMATIONS/bank/` (versioned since 2026-11-04): one GLB per clip (the canonical
   skeleton + that action, rotations + normalised Hips translation, §1.3) and `bank.json`, the catalogue.
 - **The canonical skeleton:** the Mixamo joint NAMES and hierarchy, with the hips' height as the one length the bank records.
   Not a figure: a clip is stored as rotations, so any figure on these names plays it.
@@ -113,12 +115,12 @@ come from several files; the bank makes a clip independent of the figure it was 
 
 **Built (2026-10-30):** `tripo_anim_bank.py` + `bank_sources.json` (the source GLBs and their figure). First run: 83 clips (male 83,
 female 5), 5 complete pairs (`box_01`, `climb`, `dive`, `fall`, the stealth pistol run), 2 duplicates found by their rotations (not by
-name), the 13 `Male+detective…` clips kept as `_b` variants. Contact sheets and the reference-figure review are not built yet.
+name), the 13 `Male+detective…` clips kept as `_b` variants. The sheets came on 2026-11-04 (§3.2).
 First use, the coat stress test (`tripo_dress.py` on `COAT_BASE`, both figures; torn triangles = an edge > 1.6x and > 2 cm, per frame,
 the skirt the worst region): `jump` 22-24, `fall` 31-35, `box_01` 39-46, `flip` 53-54, `front_kick_01` 59-61, `dive` 118, `climb` 111,
 `sit` 150-156 (the legs through the skirt when seated).
 
-### 3.1 What we hold, in pairs (survey of every GLB in `ASSETS/MODELS/`, 2026-10-30; the bank itself is not built yet)
+### 3.1 What we held, in pairs (survey of 2026-10-30, before the two `ANIMATIONS` files; today's counts are in `ASSETS/ANIMATIONS/bank/CATALOG.md`)
 
 Clip names as Tripo wrote them; a `.001` suffix is Blender's import of a second copy. The bases carry the clips Tripo generated with them.
 
@@ -133,7 +135,7 @@ Clip names as Tripo wrote them; a `.001` suffix is Blender's import of a second 
 | stealth hurried walk (`Caminhar apressado furtivamente`), brisk stealth walk with pistol | — | `MaleCharacterHatAndCoat`, `Male+detective…` | male only |
 | the other 60 of `MaleCharacterNoCoat` (`walk`, `run`, `idle`, `jump`, `jump_down`, `flip`, `swim`, `press-up`, `sit`, `dig`, `lift_heavy`, `front_kick_01/02`, `pitch_baseball`, `run_upstairs`, hits, greetings, emotions…) and `Male+detective…`'s (`agree`, `angry_03`, `box_02/03`, `cast_a_spell`, `chop`, `defeat_03`, `fire`, `front_kick_02`, `run`) | — | as named | male only |
 
-**Five pairs exist** (`dive`, `climb`, `fall`, `box_01`, the stealth pistol run). The female has no `walk`, `run` or `idle` of her own yet.
+**Five pairs existed then** (`dive`, `climb`, `fall`, `box_01`, the stealth pistol run); since the `ANIMATIONS` files there are 102, and the female has her own `walk`, `run` and `idle`.
 
 **Coat stress test (Director, 2026-10-30: "testar as mais absurdas, porque as normais vão funcionar sem problemas"):** before ~100 new
 clips per figure are generated, the dressed coat (`tripo_dress.py` on `COAT_BASE`) is judged on the most extreme clips that exist as
@@ -141,6 +143,15 @@ pairs, `dive`, `climb`, `fall`, `box_01`, and the male-only extremes retargeted 
 `front_kick_01`, `jump`, `press-up`, `sit`, `swim`. A clip of another generation plays on a base by rotations (same 65 joints, §1.3).
 
 ### 3.2 The male's `ANIMATIONS` file: extract and organise (planned 2026-11-02, Director: "extrair e organizar as outras animações do male que faltavam")
+
+**DONE 2026-11-04: steps 1-5 below, and the bank versioned; the sheets wait on the Director's eye.**
+- **The dry run (`BANK_OUT=temp/work/bank_dry`, 105 s):** the new file gives exactly the 30 predicted ids, repeats 67 clips within `DUP_DEG`, and brings 3 other generations, all of the stealth clips, which land as variants and replace nothing. **A re-run is byte-identical: 218 of 218 GLBs** (§3's done line).
+- **A bug the dry run would have hidden:** a third generation overwrote `<id>_b` in silence. The male's `caminhar_apressado_furtivamente` has three; the tool now finds the first free variant (`_c`) or the one a take repeats.
+- **The same id is not always the same generation across figures:** the female's `correr...`, `walking...` and `caminhar...` come from her `ANIMATIONS` file, the male's from `coat_hat`; his `ANIMATIONS` takes are `correr..._b`, `walking..._b` and `caminhar..._c`, and her `correr..._b` is the `coat_hat` one. **For the Director, on the sheets: which generation is canonical for each.** `CATALOG.md` lists them all; `source` in `bank.json` says which is which.
+- **The female's file has 99 clips:** the male's 100 without `dive`, which she has in `tripo_female_base.glb` and `tripo_female_nocoat.glb`. Nothing is missing.
+- **Built:** `tripo_bank_catalog.py` + `bank_tags.json` (step 4: `[category, priority, use]` per id, BY NAME; a clip with no row or a row with no clip fails loudly; `priority` is §4.1's, Claude's proposal until ranked; a table edit needs only this script, nothing is extracted again), `tripo_bank_sheets.py` (step 5, 30 s for all: the LIGHT Agent without coat or hat, 4 frames, three-quarter and side, the camera following the hips, a disc on the floor so a jump reads), `--sheets` in the catalogue. Order after a new source: `tripo_anim_bank.py`, `tripo_bank_sheets.py`, `tripo_bank_catalog.py --sheets`, `godot --headless --path . --import`.
+- **Seen on the sheets, for the review:** `flee_02` ends in the air (its source's Hips reach 1.85 hip heights, in both figures: the data, not the render). `loops` is only "first and last pose within 12 degrees": `run` reads "ends elsewhere" though it is a run cycle, and `climb` reads "loops" though it is not.
+- **Not done:** the side that leads (for a mirror, MV-3); §4.1's rows from BY NAME to HAVE (the sheets now allow it); one sheet of a clip in motion (`actor_video.py` records one clip on the real game camera; there is no all-clips video).
 
 **What arrived (measured 2026-11-02 by reading the file's JSON, nothing extracted yet):** `ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb`, 100 clips, one skinned mesh set on the 65 Mixamo joints (the same file shape as the female's, which gave the bank its 102 female clips). The bank's male side holds 83 (from `tripo_male_nocoat` and the coat / detective files), the female's 102. Every clip of the new file already exists on the FEMALE side: with it the male side reaches the female's roster.
 
@@ -156,7 +167,7 @@ pairs, `dive`, `climb`, `fall`, `box_01`, and the male-only extremes retargeted 
 5. **Review sheets** for the 30 (4 frames, three-quarter and side, the pair male | female), on the official figures' own bases, rendered, not described (`actor_video.py` records a bank clip in the four real facings; a Blender contact sheet is the cheaper first look). The Director marks what is wrong (a joint flipped, a foot sliding, a pose that is wrong for the character); a rejected clip is flagged in the catalogue, never deleted.
 6. **Update §3.1 and §4.1** with the real counts (male 113 or fewer, female 102) and the new `showcase` rows; §4.1's questions about the Tripo-credits ranking are unchanged (these 30 cost no credits).
 
-**Traps recorded:** a clip id is a slug cut at 48 characters, so the two long stealth names collapse to the same id as before (already handled: `correr_furtivamente_...`, `caminhar_...`); Blender's `.001` suffix marks a copy and is removed from the id; the bank is git-ignored (`ASSETS/*`), so the catalogue and the source list are the versioned record, and the source GLBs are versioned (Director, 2026-11-02: "vamos guardar no git porque tem as principais animações. Os modelos eu acho que podemos guardar todos"): `tripo_male_ANIMATIONS.glb` (21.5 MB), `tripo_female_ANIMATIONS.glb` (21.8 MB) and the Tripo bases / no-coat generations (`.gitignore` no longer excludes them; the JPEGs Godot extracts beside a GLB stay out, they are regenerated on import); Godot's import cache must be refreshed after the bank changes (`godot --headless --path . --import`) before any capture; the hip height differs per figure (male 0.5525 m, female 0.5575 m): a clip's Hips translation is stored divided by it, so the pair plays at each figure's own scale.
+**Traps recorded:** a clip id is a slug cut at 48 characters, so the two long stealth names collapse to the same id as before (already handled: `correr_furtivamente_...`, `caminhar_...`); Blender's `.001` suffix marks a copy and is removed from the id; the bank, its catalogue and its sheets are versioned since 2026-11-04 (Godot's sidecars stay out), and so are the source GLBs (Director, 2026-11-02: "vamos guardar no git porque tem as principais animações. Os modelos eu acho que podemos guardar todos"): `tripo_male_ANIMATIONS.glb` (21.5 MB), `tripo_female_ANIMATIONS.glb` (21.8 MB) and the Tripo bases / no-coat generations (`.gitignore` no longer excludes them; the JPEGs Godot extracts beside a GLB stay out, they are regenerated on import); Godot's import cache must be refreshed after the bank changes (`godot --headless --path . --import`) before any capture; the hip height differs per figure (male 0.5525 m, female 0.5575 m): a clip's Hips translation is stored divided by it, so the pair plays at each figure's own scale.
 
 ## 4. MV-2 — THE MAP: what the game needs, what the bank has, what is missing
 
@@ -187,7 +198,7 @@ built. Each row:
 ### 4.1 The map (v1.1, 2026-10-28) — BY NAME, to confirm on the bank's sheets (MV-1)
 
 **Every "Have" below was matched on the clip's NAME only; no motion was looked at.** A row moves from BY NAME to HAVE when its
-sheet (§3) shows the motion fits. Sources: `MaleCharacterNoCoat.glb` (66 clips, plain names), `MaleCharacterHatAndCoat.glb` (three
+sheet (§3; `ASSETS/ANIMATIONS/bank/sheets/`, since 2026-11-04) shows the motion fits. Sources: `MaleCharacterNoCoat.glb` (66 clips, plain names), `MaleCharacterHatAndCoat.glb` (three
 custom stealth takes, names truncated by the exporter; written here as **S1** "Caminhar apressado furtivamente", **S2** "Correr
 furtivamente segurando uma pistola apontada para baixo e…", **S3** "Walking briskly and stealthily, holding a pistol with both
 hand…"), `female+no+coat.glb` (`dive`, `fall`, duplicates of the male's: §3's duplicate rule). Correction to §4's first pass: the
@@ -416,7 +427,7 @@ pose stills are agreed before a generation is spent.
 
 | Stage | Deliverable | Done when |
 |---|---|---|
-| **MV-1** | The bank: `tripo_anim_bank.py`, `ASSETS/ANIMATIONS/bank/`, `bank.json`, the sheets | §3's done line; the male's 30 missing clips and the tags are §3.2 (planned 2026-11-02) |
+| **MV-1** | The bank: `tripo_anim_bank.py`, `ASSETS/ANIMATIONS/bank/`, `bank.json`, the sheets | 🟡 **2026-11-04: built, versioned and catalogued (§3.2).** Done when the Director has looked at the sheets (no joint flipped) and picked the canonical generations |
 | **MV-2** | The map (§4.1): need / have / combine / missing / priority; the credits list | 🟡 **v1.1 (2026-10-28): §4.1 written, BY NAME (clips not yet seen); waits on the Director's ranking and §4.1's open questions** — done when the Director ranks it |
 | **MV-3** | The processing (§5) on the first situations' clips | each processed clip judged on a sheet |
 | **MV-4** | The engine plays the bank (§6), the Moto measured first | an actor walks the grid on the Mixamo rig at D61's step, measured on the Moto |

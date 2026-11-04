@@ -8,6 +8,7 @@
     {"path": "ASSETS/MODELS/sources/tripo_male_base.glb", "figure": "male"},
     {"path": "ASSETS/MODELS/sources/tripo_male_nocoat.glb", "figure": "male"},
     {"path": "ASSETS/MODELS/sources/tripo_male_coat_hat.glb", "figure": "male"},
-    {"path": "ASSETS/MODELS/sources/tripo_male_detective.glb", "figure": "male"}
+    {"path": "ASSETS/MODELS/sources/tripo_male_detective.glb", "figure": "male"},
+    {"path": "ASSETS/MODELS/sources/tripo_male_ANIMATIONS.glb", "figure": "male"}
   ]
 }

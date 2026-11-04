@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**342 scripts · 100751 lines total** (under `godot/scripts/`)
+**342 scripts · 100763 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -320,7 +320,7 @@ extends `Node2D` · 325 lines
 
 ### `actor_viability_bench.gd`
 
-extends `RefCounted` · 301 lines
+extends `RefCounted` · 307 lines
 
 `godot/scripts/debug/actor_viability_bench.gd`
 
@@ -6443,7 +6443,7 @@ extends `SceneTree` · 428 lines
 
 ### `main_menu_panel.gd`
 
-`class_name MainMenuPanel` · extends `WindowBase` · 154 lines
+`class_name MainMenuPanel` · extends `WindowBase` · 156 lines
 
 `godot/scripts/ui/main_menu_panel.gd`
 
@@ -7085,7 +7085,7 @@ extends `RefCounted` · 404 lines
 
 ### `room.gd`
 
-extends `Node2D` · 13135 lines
+extends `Node2D` · 13139 lines
 
 `godot/scripts/world/room.gd`
 

@@ -44,7 +44,7 @@ def record(args):
             for i, p in enumerate(pngs[-n_keep:]):
                 im = Image.open(p).convert("RGB")
                 w, h = im.size
-                cx, cy, half = int(w * 0.501), int(h * 0.666), int(h * 0.112)
+                cx, cy, half = int(w * 0.501), int(h * args.crop_y), int(h * args.crop)
                 tile = im.crop((cx - half, cy - half, cx + half, cy + half)).resize((args.size, args.size), Image.LANCZOS)
                 if args.label:
                     ImageDraw.Draw(tile).text((10, 8), args.label, fill=(255, 255, 255), font=font, stroke_width=2, stroke_fill=(0, 0, 0))
@@ -81,6 +81,8 @@ def main():
     r.add_argument("--model", default="agent_light_male"); r.add_argument("--clip", default="run")
     r.add_argument("--facings", default="0,1,2,3"); r.add_argument("--seconds", type=float, default=2.0)
     r.add_argument("--fps", type=int, default=30); r.add_argument("--size", type=int, default=420)
+    r.add_argument("--crop", type=float, default=0.30, help="half the tile's side, as a fraction of the frame's height (default: the whole figure; 0.112 with --crop-y 0.666 is the torso close-up of the coat studies)")
+    r.add_argument("--crop-y", type=float, default=0.62, help="the tile's centre, as a fraction of the frame's height")
     r.add_argument("--no-import", action="store_true")
     c = sub.add_parser("combine")
     c.add_argument("--sets", required=True); c.add_argument("--out", required=True)

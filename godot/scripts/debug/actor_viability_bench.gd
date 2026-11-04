@@ -89,15 +89,21 @@ static func spawn(room: Node, model: String, count: int) -> String:
 			facing_k = k
 			model = model.trim_suffix("_f%d" % k)
 	var official: bool = model.begins_with("agent_")   ## agent_<light|full>_<female|male>[_nocoat]
-	var nocoat: bool = official and model.ends_with("_nocoat")
-	if nocoat:
-		model = model.trim_suffix("_nocoat")
-	var tint: bool = official and model.ends_with("_tint")   ## a colour per piece (black coat, white shirt...) so a garment poking through another is SEEN; combines as agent_..._unmasked_tint
-	if tint:
-		model = model.trim_suffix("_tint")
-	var unmasked: bool = official and model.ends_with("_unmasked")   ## the coat and hat over the WHOLE shirt / trousers / belt, not the coat-cut variants (a diagnostic of the mask under the coat)
-	if unmasked:
-		model = model.trim_suffix("_unmasked")
+	var nocoat: bool = false     ## no coat, no hat: the clean base
+	var tint: bool = false       ## a colour per piece (black coat, white shirt...) so a garment poking through another is SEEN
+	var unmasked: bool = false   ## the coat and hat over the WHOLE shirt / trousers / belt, not the coat-cut variants (a diagnostic of the mask under the coat)
+	while official:              ## these three combine, in any order: `actor_video.py` appends `_tint` to a model that may already end in `_nocoat`
+		if model.ends_with("_nocoat"):
+			nocoat = true
+			model = model.trim_suffix("_nocoat")
+		elif model.ends_with("_tint"):
+			tint = true
+			model = model.trim_suffix("_tint")
+		elif model.ends_with("_unmasked"):
+			unmasked = true
+			model = model.trim_suffix("_unmasked")
+		else:
+			break
 	var path: String = AGENT_RIG
 	if official:
 		var parts: PackedStringArray = model.split("_")

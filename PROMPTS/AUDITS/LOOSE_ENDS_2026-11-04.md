@@ -2,7 +2,7 @@
 
 **Asked by the Director:** "dar mais uma geral no código todo, e ver se não tem nenhuma ponta solta ou fio desencapado." **Read-only: nothing here was fixed.** Commit audited: `bd6f3f11`. Each finding names its proposal; nothing is removed or rewired until the Director rules.
 
-**In one line:** the game is sound (every map boots with no error and every gate passes). The real exposure is outside the code: git alone cannot run the game, and most of its art exists only on this disk. Inside the code there is one certain crash in a tool, one dead button a player can press, and a modest amount of dead code.
+**In one line:** the game is sound (every map boots with no error and every gate passes). The real exposure is outside the code: git alone cannot run the game, and most of its art exists only on this disk. Inside the code there were one certain crash in a tool and a few small tool bugs, fixed the same day (findings 3, 4, 5); a modest amount of dead code remains.
 
 ## Method
 - **Static, over everything tracked:** 343 GDScript files (100 819 lines), 148 Python, 5 shell, the scenes, the data rows, the live docs. What was looked for: paths that resolve to nothing, scripts and resources nothing reaches, names called by string, signals, input actions, stubs, markers, flags, translations, broken imports, names bound nowhere, dead links, secrets (reported by location, never by value).
@@ -38,14 +38,14 @@ A clean clone boots PLAYGROUND and GLASS with exit 0 and 40 and 27 error lines: 
 ### 2. A breached opaque wall opens no passage and no sight (OPEN DECISION, known)
 `build_movement_edge_set()` asks `PassageQuery` about glass only, and `_current_blocked_edges`, which feeds vision, detection, noise and light, is never updated by destruction. A hole a grenade opened is a hole only for the next grenade's flood. Recorded as question 3 in `docs/production/current_state.md`: "a real behaviour change, not a correction". **Proposal:** decide it with the stealth loop (roadmap A2).
 
-### 3. `tripo_coat_decal.py` dies at line 35 (BUG, certain)
-`len(V)` in a progress line, and `V` is bound nowhere in the file: a `NameError` on every run, so the coat's store render (ACTOR D95) cannot finish. **Proposal:** `len(mask)`.
+### 3. `tripo_coat_decal.py` died at line 35 (FIXED, same day)
+`len(V)` in a progress line, and `V` was bound nowhere in the file. Before: exit 1, `NameError`, nothing written, on its real input. After `len(mask)`: exit 0, the GLB and four store renders, the emblem on the coat's back.
 
-### 4. The menu's Load button does nothing (VISIBLE)
-`main_menu_panel.gd:141` is `pass`, and `SaveState.save_to_file()` / `load_from_file()` have no caller (their comment says so: owed with roadmap A2). A player can press it. **Proposal:** hide it until A2.
+### 4. The menu showed a Load button with nothing behind it (FIXED, same day)
+`main_menu_panel.gd`'s handler is `pass`, and `SaveState.save_to_file()` / `load_from_file()` have no caller (owed with roadmap A2). **Correction:** this report first said a player could press it; the button was already disabled, greyed out. It is now hidden until A2, seen in a 1280x720 and a 390x844 capture.
 
-### 5. Three small tool bugs found today (BUG, recorded in `technical_debt.md`)
-The bench refuses `_nocoat_tint`, so `actor_video.py --model ..._nocoat` cannot run; a rejected scenario leaves the game running until a harness times out; `actor_video.py`'s crop cuts head and feet. **Proposal:** fix the three, each a few lines.
+### 5. Three small tool bugs (FIXED, same day)
+The bench refused `_nocoat_tint`: its three state suffixes now combine in any order, with the same counts both ways (3 997 and 5 262 tris), and `actor_video.py --model ..._nocoat` records. A rejected scenario left the game running until a 120 s timeout: it now ends with code 1, in 4 s. `actor_video.py`'s crop cut head and feet: the default shows the whole figure, and `--crop 0.112 --crop-y 0.666` is the old torso close-up.
 
 ### 6. Posture promises what movement ignores (UNBUILT)
 `agent.gd`: `POSTURE_MOVE_AP_COST` says crouching costs +1 AP per tile and prone cannot move; nothing reads it, so a crouched or prone agent walks at full speed. `POSTURE_HIT_MULT` and `POSTURE_AIM_MULT` say "not used yet"; `POSTURE_DETECTION_MULT` is live. **Proposal:** delete the unread tables or wire them with `DESIGN` §8.2; the decision belongs to the stealth loop.

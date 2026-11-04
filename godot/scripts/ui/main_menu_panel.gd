@@ -89,7 +89,9 @@ func _ready() -> void:
 	_setup_button(_btn_options, "ui.main_menu.options", _on_options_pressed)
 	_setup_button(_btn_quit, "ui.main_menu.quit", _on_quit_pressed)
 	
+	## Load has no save behind it yet: `SaveState.save_to_file()` has no caller until the stealth loop (roadmap A2). Hidden, and back with it.
 	_btn_load.disabled = true
+	_btn_load.visible = false
 	get_viewport().size_changed.connect(_fit_to_screen)
 	_fit_to_screen()
 	## OPTIONS-01: the language can change from Options while this menu is open beneath it.

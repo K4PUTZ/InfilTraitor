@@ -12677,16 +12677,20 @@ var _scenario_started: bool = false
 
 ## TEL-06a — run the `SCENARIO` flag's steps once the map is loaded. A scenario
 ## that does not parse is reported and never started: a ladder that stops halfway
-## is a table that looks complete.
+## is a table that looks complete. It also ends the process with code 1, as the
+## runner's own ABORT does: a harness waits on the exit, and nothing else would
+## ever come (2026-11-04: a rejected scenario ran until its 120 s timeout).
 func _start_scenario_deferred() -> void:
 	## CAPTURE_RAILS: `@id` cell arguments become the map's anchors' cells first (the map is loaded by now).
 	var sub: Dictionary = ScenarioRunnerClass.substitute_anchors(_dev_flag("SCENARIO", ""), map_layout, self)
 	if not str(sub["error"]).is_empty():
 		push_error("[Room] SCENARIO rejected — %s" % sub["error"])
+		get_tree().quit(1)
 		return
 	var parsed: Dictionary = ScenarioRunnerClass.parse(sub["text"])
 	if not str(parsed["error"]).is_empty():
 		push_error("[Room] SCENARIO rejected — %s" % parsed["error"])
+		get_tree().quit(1)
 		return
 	await get_tree().process_frame
 	var runner := ScenarioRunnerClass.new()

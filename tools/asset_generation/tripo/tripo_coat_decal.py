@@ -32,7 +32,7 @@ for ca in list(me.color_attributes):
 ca = me.color_attributes.new("DecalMask", 'FLOAT_COLOR', 'POINT')
 ca.data.foreach_set("color", np.stack([mask, mask, mask, np.ones(len(mask), np.float32)], 1).ravel())
 me.color_attributes.active_color = ca
-print(f"[{TAG}] decal {W_:.3f} x {H_:.3f} m at x {X0:+.3f} z {ZC:.3f}; {int((mask > 0.5).sum())} of {len(V)} vertices carry the mask")
+print(f"[{TAG}] decal {W_:.3f} x {H_:.3f} m at x {X0:+.3f} z {ZC:.3f}; {int((mask > 0.5).sum())} of {len(mask)} vertices carry the mask")
 # (3) the store material: matte leather (a procedural grain for the render only) with the emblem laid over it by alpha x mask
 ROUGH = float(os.environ.get("ROUGH", "0.55"))
 mat = bpy.data.materials.new("leather_decal"); nt = mat.node_tree; bs = nt.nodes["Principled BSDF"]

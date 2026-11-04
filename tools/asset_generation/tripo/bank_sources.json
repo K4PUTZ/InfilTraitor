@@ -1,7 +1,7 @@
 {
   "_doc": "MOVEMENT MV-1: the Tripo GLBs the animation bank reads, and the figure each one's clips belong to (paths from the repo root). A base edited by hand is not listed: its clips are the Tripo source's.",
   "sources": [
-    {"path": "ASSETS/MODELS/sources/tripo_female ANIMATIONS.glb", "figure": "female"},
+    {"path": "ASSETS/MODELS/sources/tripo_female_ANIMATIONS.glb", "figure": "female"},
     {"path": "ASSETS/MODELS/sources/tripo_female_base.glb", "figure": "female"},
     {"path": "ASSETS/MODELS/sources/tripo_female_nocoat.glb", "figure": "female"},
     {"path": "ASSETS/MODELS/sources/tripo_female_coat_hat.glb", "figure": "female"},

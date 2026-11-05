@@ -55,6 +55,8 @@ def play(arm, hip):
 
 # the A file
 bpy.ops.wm.open_mainfile(filepath=os.path.abspath(os.environ["PF_A"]))
+if bpy.context.mode != 'OBJECT':          # the male's A is saved in Edit Mode on the buckle: left so, the buckle is evaluated undeformed and reads as an edit (1.42 cm on 2026-11-05)
+    bpy.ops.object.mode_set(mode='OBJECT')
 sc = bpy.context.scene
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
 arm.data.pose_position = 'REST'

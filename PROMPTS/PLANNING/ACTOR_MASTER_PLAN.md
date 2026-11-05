@@ -1,6 +1,8 @@
 # ACTOR_MASTER_PLAN
 ## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v2.8
 
+> ⏭️ **2026-11-05 — next, by the Director's order: the female's `walk` corrective, the male's three clips and the transitions between idle / walk / run (MOVEMENT), then texturing (ACTOR), then the models in the game and on the Moto. Record: `PROMPTS/RESUMO_SESSAO_2026-11-04_BASE_TRANSITION_CORRECTIVES.md`; decisions `ACTOR` D99-D103.**
+
 > ⏭️ **2026-11-04 (later) — D99 added: the four hand-finished poses are FROZEN in `ASSETS/MODELS/base/`, read-only, with a SHA-256 manifest; this bends D97's "the A stays the original". The A/T transition must map their different topologies first.**
 
 > ⏭️ **2026-11-04 — the hero line leaves the tree (D85's consequence; Director, on the code review's list: "Pode aplicar").** `tools/asset_generation/hero/` but the faction palette and textures, the bench's `quat` and `hero_*` modes with their costume suffixes, and eight retired `p*` scripts are gone (git history, last at `9316d8c4`); the models are in `ARCHIVE/hero_sources/`, so citations of them in older rows are history. D70-D72's prototype shaders (`actor_cloth3d`, `actor_mask_eye3d`, `actor_mask_halo3d`, `actor_cloak3d`) stay in `godot/shaders/`, unwired, until those features reach the Tripo Agents. The game's own rig keeps its chain until `MOVEMENT` MV-4 (`docs/pipelines/character_bake_pipeline.md`).

@@ -1,6 +1,8 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.4
 
+> ⏭️ **2026-11-05 — next, by the Director's order: the female's `walk` corrective, the male's three clips and the transitions between idle / walk / run (MOVEMENT), then texturing (ACTOR), then the models in the game and on the Moto. Record: `PROMPTS/RESUMO_SESSAO_2026-11-04_BASE_TRANSITION_CORRECTIVES.md`; decisions `ACTOR` D99-D103.**
+
 > 🟢 **v1.4 (2026-11-04): MV-1's bank is SAVED and CATALOGUED (Director: "temos um montão de animações que precisam ser catalogadas e salvas"; "salvas" = versioned).** `ASSETS/ANIMATIONS/bank/` is in git: 218 GLBs (female 102, male 116; 39.6 MB), `bank.json`, `CATALOG.md` and the review sheets (`sheets/`: 13 index pages by category, one sheet per clip; 11 MB). 116 clip ids, 102 complete pairs, 14 male-only variants. §3.2 has the results. Nothing in the engine changed. **Next here: the Director looks at the sheets and picks the canonical generation of the three stealth clips.**
 
 > 🧭 **2026-11-03 — a note for MV-4 from the T-pose work (`ACTOR` D97).** Each figure carries a `TFix` shape key (the shirt's and hands' correction at the raised-arm T, value 0 = the A exactly): when the game plays a clip with the arms raised (climb, dive, the T itself), the key's value must follow the shoulder's abduction. The measured way: value = how far the Arm bone has turned from its A rest toward the T (0 at the A, 1 at the T). Nothing of this is built.

@@ -13,6 +13,7 @@ base/      the two characters' base, OPEN while they are animated (ACTOR D102; f
   AGENT_<FIG>_T.blend          the T pose with the coat, hand-finished (the former COAT_FIT_<FIG>_T_HAND.blend)
   A and T are welded separately, so their vertex counts differ per piece: tripo_transition.py maps them by UV
 fit/       the coat's fit, Blender working files (ACTOR D97)
+  RUN_FIX*_FEMALE.blend, IDLE_FIX_FEMALE.blend  baked frames the Director edited; tripo_pose_fix_back.py takes them to the corrective keys (ACTOR D103)
   COAT_FIT_<FIG>.blend         the A pose with the fitted coat
   COAT_FIT_<FIG>_T.blend       the T built from the A (tripo_fit_tpose.py)
   COAT_FIT_<FIG>_TFIX.blend    the A rest untouched, the T's correction in a TFix shape key

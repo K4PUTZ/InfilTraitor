@@ -16,6 +16,14 @@
 ##
 ## PLACED in BASE world coordinates: the feet are the sprite's 2D position through `Board3DLive.ground_point()` (the N
 ## lattice in every view), the yaw is the base grid step's, so a camera yaw turns the figure with the board for free.
+##
+## A TRIPO AGENT (MOVEMENT MV-4, first slice, 2026-11-05): with the dev flag `TRIPO_FIGURE=<female|male>` every actor wears that
+## LIGHT Agent instead (`TripoFigure`: 65 Mixamo joints, the dressed set, the coat two-sided, its emblem, the legs pushing it) and
+## plays the game set's clips: `idle` on its own clock while the actor stands, the move clip (`TRIPO_MOVE`, `walk` by default)
+## while it walks, phased by the GROUND it covers (one pass of the clip per its `travel_m`), so the feet do not slide at any step
+## length. Facing (D44, D47's snap), position and gravity are this node's, unchanged. Not yet on that figure: the weapons in the
+## hand, the aimed grip, crouched and prone, the throw (a Tripo actor stands through them; the throw still releases on the
+## sprite's clock), the clip transitions (a snap, D47's default) and the corrective coat keys (`ACTOR` D103, only on the base).
 class_name ActorMesh3D
 extends Node3D
 
@@ -41,6 +49,12 @@ const WEAPON_BY_SUFFIX := {"": "shotgun", "_pistol": "pistol", "_rifle": "shotgu
 const METRES_TO_UNITS: float = 1.0 / 1.6
 ## The 2D contact shadow's colour when the actor's script declares none.
 const DEFAULT_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
+const TripoFigureRef = preload("res://godot/scripts/geometry/tripo_figure.gd")
+## Dev flags of the Tripo slice: which Agent every actor wears ("" = the r3d_live rig), and the clip it moves with.
+const TRIPO_FIGURE_FLAG := "TRIPO_FIGURE"
+const TRIPO_MOVE_FLAG := "TRIPO_MOVE"
+const TRIPO_MOVE_DEFAULT := "walk"
+const TRIPO_IDLE := "idle"
 
 var _board: Node3D = null
 var _source: ActorPose = null
@@ -54,6 +68,15 @@ var _action: String = ""
 var _skeleton: Skeleton3D = null
 var _head_bone: int = -1
 var _stand_y: float = NAN            ## the height the feet rest at now (eased toward `Board3DLive.stand_height`)
+var _yaw: float = 0.0                ## the body's yaw toward its grid facing (the head's clamp is relative to it)
+var _front_yaw: float = 0.0          ## added to `_yaw` on the model: 0 for the r3d_live rig (front -Z), PI for a Tripo Agent (front +Z)
+var _tripo: String = ""              ## the Tripo Agent this actor wears ("" = the r3d_live rig)
+var _tripo_move: String = ""         ## the clip it moves with
+var _tripo_units: float = 1.0        ## world units per metre of the 1 m Tripo export (its scale on the board)
+var _walked: float = 0.0             ## ground covered while walking, world units: the move clip's phase
+var _move_pass: float = 0.0          ## world units of ground one pass of the move clip covers
+var _last_ground := Vector2(NAN, NAN)
+var _idle_t: float = 0.0             ## the idle clip's own clock
 const FALL_GU_S: float = 3.0          ## how fast an actor drops onto lower ground (GU of height a second)
 const CLIMB_GU_S: float = 1.5         ## and climbs back up
 ## Gameplay decides WHO is revealed (vision, skills and progress are gameplay, not physics); this only draws it: every
@@ -89,15 +112,23 @@ static var _warned_action: Dictionary = {}
 
 ## Drive this mesh from `source`. Returns false (and logs) when the rig cannot be loaded, leaving nothing half-built.
 func setup_actor(board: Node3D, source: ActorPose) -> bool:
-	var family: String = source.frame_family
-	var file: String = String(RIG_BY_FAMILY.get(family, ""))
-	if file.is_empty():
-		file = String(RIG_BY_FAMILY[""])
-		if not _warned_family.has(family):
-			_warned_family[family] = true
-			push_warning("[ActorMesh3D] no live rig for family '%s' — it wears the agent's (export one with P2_MODEL)" % family)
-	if not _load_rig(board, RIG_DIR + file):
-		return false
+	var tripo: String = _dev_value(TRIPO_FIGURE_FLAG, "")
+	if not tripo.is_empty():
+		if not TripoFigureRef.FIGURES.has(tripo):
+			push_error("[ActorMesh3D] %s=%s: expected one of %s" % [TRIPO_FIGURE_FLAG, tripo, TripoFigureRef.FIGURES])
+			return false
+		if not _load_tripo(board, tripo, _dev_value(TRIPO_MOVE_FLAG, TRIPO_MOVE_DEFAULT)):
+			return false
+	else:
+		var family: String = source.frame_family
+		var file: String = String(RIG_BY_FAMILY.get(family, ""))
+		if file.is_empty():
+			file = String(RIG_BY_FAMILY[""])
+			if not _warned_family.has(family):
+				_warned_family[family] = true
+				push_warning("[ActorMesh3D] no live rig for family '%s' — it wears the agent's (export one with P2_MODEL)" % family)
+		if not _load_rig(board, RIG_DIR + file):
+			return false
 	_source = source
 	_build_contact_shadow(source.get_parent())
 	name = "Mesh_%s" % (source.get_parent().name if source.get_parent() != null else source.name)
@@ -140,6 +171,63 @@ func _load_rig(board: Node3D, path: String) -> bool:
 	return true
 
 
+## The Tripo Agent `figure` (LIGHT), dressed and board-lit, with the game set of its clips on its player (`TripoFigure`). False
+## (loud) when the figure or its clips are missing, leaving nothing half-built.
+func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
+	var path: String = TripoFigureRef.rig_path(figure, true)
+	var scene := load(path) as PackedScene
+	if scene == null:
+		push_error("[ActorMesh3D] cannot load the Tripo Agent %s (run build_agents.sh)" % path)
+		return false
+	var lib: AnimationLibrary = TripoFigureRef.library(figure)
+	if lib == null:
+		return false
+	for clip: String in [TRIPO_IDLE, move_clip]:
+		if not lib.has_animation(clip):
+			push_error("[ActorMesh3D] the %s game clips have no '%s' (have %s)" % [figure, clip, lib.get_animation_list()])
+			return false
+	var body := scene.instantiate() as Node3D
+	var players := body.find_children("*", "AnimationPlayer", true, false)
+	var skeletons := body.find_children("*", "Skeleton3D", true, false)
+	if players.is_empty() or skeletons.is_empty():
+		push_error("[ActorMesh3D] %s has no AnimationPlayer or no skeleton" % path)
+		body.free()
+		return false
+	_board = board
+	_body = body
+	_tripo = figure
+	_tripo_move = move_clip
+	_front_yaw = TripoFigureRef.FRONT_YAW
+	_tripo_units = TripoFigureRef.STAND_HEIGHT_M * METRES_TO_UNITS
+	_move_pass = TripoFigureRef.travel_m(lib.get_animation(move_clip)) * _tripo_units
+	if _move_pass <= 0.0:
+		push_warning("[ActorMesh3D] the %s clip '%s' covers no ground: it will play frozen while the actor walks" % [figure, move_clip])
+	_body.scale = Vector3.ONE * _tripo_units
+	add_child(_body)
+	_apply_board_light(_body)
+	TripoFigureRef.hide_pieces(_body, false)
+	_skeleton = skeletons[0] as Skeleton3D
+	_head_bone = TripoFigureRef.find_bone(_skeleton, "Head")
+	if _head_bone >= 0:
+		_head = HeadTurnRef.new()
+		_head.set("bone_name", _skeleton.get_bone_name(_head_bone))
+		_skeleton.add_child(_head)
+	TripoFigureRef.dress_coat(_body, _skeleton, true, true)
+	_player = players[0] as AnimationPlayer
+	_player.add_animation_library(TripoFigureRef.LIBRARY_NAME, lib)
+	_player.speed_scale = 0.0  ## seeked, never played
+	return true
+
+
+## A dev flag through `DevFlags` (the APK's overrides file), or the environment when the autoload is absent (a bare script run).
+func _dev_value(flag_name: String, fallback: String) -> String:
+	var flags: Node = get_node_or_null("/root/DevFlags")
+	if flags == null:
+		var from_env: String = OS.get_environment("INFILTRAITOR_" + flag_name)
+		return from_env if not from_env.is_empty() else fallback
+	return String(flags.call("value", flag_name, fallback))
+
+
 ## Where the grenade in the raised hand is, in the world: the `hand_L` attachment's own origin, which the pose seeks every frame. Vector3(INF, INF, INF)
 ## ("none", the emitters' `NO_ANCHOR`) while that grenade is hidden (not in a throw's raise, or past the release).
 func hand_grenade_world() -> Vector3:
@@ -162,6 +250,7 @@ func _sync() -> void:
 		return
 	## The pose node sits at its actor's origin, so the actor's 2D position IS where the feet are.
 	position = _board.call("ground_point", (parent as Node2D).global_position)
+	var ground := Vector2(position.x, position.z)
 	## GRAVITY (Director, 2026-10-18): the feet rest on what is under them (`Board3DLive.stand_height`: a pit's bed, a crater, a crust's plate, ice, a
 	## quicksand), reached at a walking pace up and a falling one down, never snapped mid-step.
 	var target: float = float(_board.call("stand_height", position, parent))
@@ -173,28 +262,31 @@ func _sync() -> void:
 	position.y += _stand_y
 	var state: Dictionary = _source.mesh_state()
 	var step: Vector2i = state["step"]
-	var body_yaw: float = _body.rotation.y
 	if step != Vector2i.ZERO:
-		body_yaw = yaw_for_direction(Vector2(step))
-		_body.rotation.y = body_yaw
-	var weapon: String = String(WEAPON_BY_SUFFIX.get(String(state["weapon"]), "shotgun"))
-	for held: String in _weapons:
-		(_weapons[held] as Node3D).visible = held == weapon
-	var throw_seq: String = state["throw"]
-	var u: float = 0.0
-	var action: String
-	if throw_seq != "":
-		action = "throw_%s_%s" % [throw_seq, weapon]
-		u = float(state["throw_u"])
-	elif float(state["walk"]) >= 0.0:
-		action = "walk_%s" % weapon
-		u = float(state["walk"])
+		_yaw = yaw_for_direction(Vector2(step))
+	_body.rotation.y = _yaw + _front_yaw
+	var body_yaw: float = _yaw
+	if not _tripo.is_empty():
+		_show_tripo(float(state["walk"]) >= 0.0, ground)
 	else:
-		action = "%s_%s_%s" % [state["posture"], weapon, "aimed" if String(state["grip"]) == "_aimed" else "lowered"]
-	if _grenade != null:
-		_grenade.visible = throw_seq == ActorPose.THROW_RAISE \
-			or (throw_seq == ActorPose.THROW_RELEASE and u < ActorPose.THROW_RELEASE_FRACTION)
-	_show_or_fallback(action, u, weapon)
+		var weapon: String = String(WEAPON_BY_SUFFIX.get(String(state["weapon"]), "shotgun"))
+		for held: String in _weapons:
+			(_weapons[held] as Node3D).visible = held == weapon
+		var throw_seq: String = state["throw"]
+		var u: float = 0.0
+		var action: String
+		if throw_seq != "":
+			action = "throw_%s_%s" % [throw_seq, weapon]
+			u = float(state["throw_u"])
+		elif float(state["walk"]) >= 0.0:
+			action = "walk_%s" % weapon
+			u = float(state["walk"])
+		else:
+			action = "%s_%s_%s" % [state["posture"], weapon, "aimed" if String(state["grip"]) == "_aimed" else "lowered"]
+		if _grenade != null:
+			_grenade.visible = throw_seq == ActorPose.THROW_RAISE \
+				or (throw_seq == ActorPose.THROW_RELEASE and u < ActorPose.THROW_RELEASE_FRACTION)
+		_show_or_fallback(action, u, weapon)
 	if _head != null:
 		var head: float = float(state["head"])
 		var posture: String = state["posture"]
@@ -250,6 +342,28 @@ func _show_or_fallback(action: String, u: float, weapon: String) -> void:
 		_warned_action[action] = true
 		push_warning("[ActorMesh3D] the rig has no '%s' action — showing standing; re-export it with r3d_live_rig_export.py" % action)
 	_show("standing_%s_lowered" % weapon, 0.0)
+
+
+## The Tripo Agent's clip this frame: the move clip while the actor walks, phased by the ground it has covered (`ground`: the feet
+## on the board, world units), so one pass of the clip takes exactly its `travel_m` of ground; the idle on its own clock otherwise.
+## The change between the two is a snap (D47's default; the transitions are MOVEMENT's next step).
+func _show_tripo(walking: bool, ground: Vector2) -> void:
+	if walking and not is_nan(_last_ground.x):
+		_walked += ground.distance_to(_last_ground)
+	_last_ground = ground
+	var clip: String = "%s/%s" % [TripoFigureRef.LIBRARY_NAME, _tripo_move if walking else TRIPO_IDLE]
+	if clip != _action:
+		_action = clip
+		_player.play(clip)
+	var length: float = _player.current_animation_length
+	var t: float = 0.0
+	if walking:
+		if _move_pass > 0.0:
+			t = fposmod(_walked / _move_pass, 1.0) * length
+	else:
+		_idle_t = fposmod(_idle_t + get_process_delta_time(), length)
+		t = _idle_t
+	_player.seek(t, true)
 
 
 ## Every surface becomes one board-lit material carrying the model's own albedo colour and texture (one per source

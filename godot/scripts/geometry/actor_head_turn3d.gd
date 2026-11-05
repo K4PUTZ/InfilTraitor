@@ -11,6 +11,8 @@ extends SkeletonModifier3D
 const HEAD_BONE := "head"
 
 var yaw: float = 0.0
+## The bone turned: the r3d_live rig's `head`, or a Tripo Agent's Mixamo head (set before the first frame).
+var bone_name: String = HEAD_BONE
 var _bone: int = -2
 
 
@@ -21,9 +23,9 @@ func _process_modification_with_delta(_delta: float) -> void:
 	if skeleton == null:
 		return
 	if _bone == -2:
-		_bone = skeleton.find_bone(HEAD_BONE)
+		_bone = skeleton.find_bone(bone_name)
 		if _bone < 0:
-			push_error("[ActorHeadTurn3D] the rig has no '%s' bone" % HEAD_BONE)
+			push_error("[ActorHeadTurn3D] the rig has no '%s' bone" % bone_name)
 	if _bone < 0:
 		return
 	var parent: int = skeleton.get_bone_parent(_bone)

@@ -124,6 +124,10 @@ REQUIRED_PATTERNS = [
 # the DORM map showed: 49 120 claims and 0 irregular containers instead of 41 464 and 39). Required only when the models exist locally.
 if (REPO / "ASSETS/props/vox").is_dir() and any(f.endswith(".vox") for f in os.listdir(REPO / "ASSETS/props/vox")):
     REQUIRED_PATTERNS.append((".vox voxel models", re.compile(r"ASSETS/props/vox/[^/]+\.vox$")))
+# MOVEMENT MV-4 (2026-11-05): the animation bank is held out (`ASSETS/ANIMATIONS/bank/*`); the clips a Tripo actor plays are the game
+# set `tripo_game_clips.gd` writes beside it. Without it a `TRIPO_FIGURE` actor is not drawn. Required only when it exists locally.
+if (REPO / "ASSETS/ANIMATIONS/game").is_dir() and any(f.endswith(".res") for f in os.listdir(REPO / "ASSETS/ANIMATIONS/game")):
+    REQUIRED_PATTERNS.append(("Tripo game clips", re.compile(r"ASSETS/ANIMATIONS/game/agent_[a-z]+\.res$")))
 
 # Anything at or above this is almost certainly the source-texture trap back
 # again, even if the filename pattern changed. A tripwire, not a spec.

@@ -874,6 +874,17 @@
       "v": 1,
       "rails": [
         {
+          "id": "agent_walk_rail",
+          "keys": [
+            {
+              "frame": "detail",
+              "target": "@agent_walk_area",
+              "view": "N",
+              "hold": 600
+            }
+          ]
+        },
+        {
           "id": "wood_rail",
           "keys": [
             {
@@ -974,6 +985,21 @@
         }
       ],
       "takes": [
+        {
+          "id": "agent_walk",
+          "profile": "engine",
+          "rail": "agent_walk_rail",
+          "steps": [
+            "walk @agent_walk_south",
+            "wait 2.5",
+            "walk @agent_walk_east"
+          ],
+          "at_key": 0,
+          "after_hold": 30,
+          "length": 540,
+          "seed": 1,
+          "note": "MOVEMENT MV-4: the agent walks three cells south, stands, then three east (the real tap path); run it with INFILTRAITOR_TRIPO_FIGURE=<female|male> to see a Tripo Agent"
+        },
         {
           "id": "blast_wood",
           "profile": "engine",
@@ -1249,6 +1275,42 @@
    "layout": {
       "v": 1,
       "poi": [
+        {
+          "id": "agent_walk_area",
+          "at": [
+            29.0,
+            11.0,
+            0.625
+          ],
+          "extent": [
+            5.0,
+            5.0,
+            1.5
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "agent_walk_south",
+          "at": [
+            27.5,
+            12.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
+          "id": "agent_walk_east",
+          "at": [
+            30.5,
+            12.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
         {
           "id": "plywood_wall",
           "at": [

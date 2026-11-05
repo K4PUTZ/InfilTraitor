@@ -90,6 +90,8 @@
 ##                                        times through the real occlusion path (`_recompute_occlusion`),
 ##                                        one frame apart, and print the set / 3D cutaway / total cost
 ##   place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed
+##   walk <x,y>                           MOVEMENT MV-4: the agent walks to a cell the way a tap orders it (`Room.scenario_walk_agent`:
+##                                        the real path, the AP spent); fails when the cell is unreachable or the AP is short
 ##   actor_bench <agent|agent_*> <n>     dev viability test: n live rigs of the shipped agent or a Tripo Agent on
 ##                                        the board, lit its way (`ActorViabilityBench`), draw calls printed after 30 frames
 ##   quit                                end the process (the harness waits on it)
@@ -111,12 +113,12 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
-	"container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "actor_bench": 2, "decal_wall": 2,
+	"container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "walk": 1, "actor_bench": 2, "decal_wall": 2,
 	"skylight_hit": 0, "roof_gravity": 0, "flood": 1, "struct_audit": 0, "struct_cut": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1,
 }
 ## CAPTURE_RAILS §7.5 — the cell arguments an `@id` may name, by op and token index (0 = the op). `substitute_anchors()` turns each
 ## into the anchor's raw ground cell BEFORE parsing, so the event and the camera read the same anchor.
-const CELL_TOKENS: Dictionary = {"throw": [2], "aim": [1], "centre": [1], "place_guard": [2], "decal_wall": [2], "occ_bench": [1, 2]}
+const CELL_TOKENS: Dictionary = {"throw": [2], "aim": [1], "centre": [1], "place_guard": [2], "walk": [1], "decal_wall": [2], "occ_bench": [1, 2]}
 ## CAPTURE_RAILS (§8.1): framing modes and views of `frame` / `still`.
 const FRAME_MODES: PackedStringArray = ["wide", "detail", "fit"]
 const VIEWS: PackedStringArray = ["N", "E", "S", "W"]
@@ -288,9 +290,14 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 				return "place_guard takes a guard index >= 0 and a cell x,y"
 			step["index"] = int(arg)
 			step["cell"] = Vector2i(int(gxy[0]), int(gxy[1]))
+		"walk":
+			var wxy: PackedStringArray = arg.split(",")
+			if wxy.size() != 2 or not wxy[0].is_valid_int() or not wxy[1].is_valid_int():
+				return "walk takes a cell as x,y"
+			step["cell"] = Vector2i(int(wxy[0]), int(wxy[1]))
 		"actor_bench":
 			if not (arg == "agent" or arg.begins_with("agent_")) or not tokens[2].is_valid_int() or int(tokens[2]) < 1 or int(tokens[2]) > 64:
-				return "actor_bench takes agent|agent_<light|full>_<female|male>[_nocoat|_unmasked][_tint][_f0.._f3] and a count 1..64"
+				return "actor_bench takes agent|agent_<light|full|base>_<female|male>[_nocoat|_unmasked][_tint][_f0.._f3][_nokeys][_clip_<id>] and a count 1..64"
 			step["model"] = arg
 			step["count"] = int(tokens[2])
 		"occ_bench":
@@ -545,6 +552,11 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "Room has no scenario_place_guard()")
 			if not bool(room.call("scenario_place_guard", int(step["index"]), step["cell"])):
 				return _fail(step, "the guard was not placed (see the error above)")
+		"walk":
+			if not room.has_method("scenario_walk_agent"):
+				return _fail(step, "Room has no scenario_walk_agent()")
+			if not bool(room.call("scenario_walk_agent", step["cell"])):
+				return _fail(step, "the agent did not start walking (see the error above)")
 		"actor_bench":
 			var bench_line: String = ActorViabilityBenchRef.spawn(room, str(step["model"]), int(step["count"]))
 			if bench_line.is_empty():

@@ -9123,6 +9123,21 @@ func scenario_place_guard(index: int, cell: Vector2i) -> bool:
 	return true
 
 
+## MOVEMENT MV-4 — the scenario's `walk <x,y>`: the agent walks to `cell` the way a tap orders it (`SelectionController.try_move_to`: the
+## movement overlay's path, the AP spent, the step's own tween), so a capture or a handset run sees the real walk. False (loud) when it
+## does not start, with the reason the overlay gives.
+func scenario_walk_agent(cell: Vector2i) -> bool:
+	if agent == null or _selection_controller == null:
+		push_error("[Room] scenario_walk_agent: no agent or no selection controller")
+		return false
+	if _selection_controller.try_move_to(cell):
+		return true
+	var reachable: bool = movement_overlay != null and movement_overlay.is_reachable(cell)
+	push_error("[Room] scenario_walk_agent: the agent at %s did not start toward %s (reachable %s, AP %d, moving %s, enemy phase %s)"
+		% [agent.cell, cell, reachable, int(turn_manager.current_ap), agent.is_moving, turn_manager.is_enemy_phase])
+	return false
+
+
 ## R3D-9 — the Room's DEV_VISION aids (exit diamonds, spawn diamond, the playable-area line, the shadow debug tint and
 ## the guards' last-known markers) draw on the 3D board's ground, depth-tested, so a wall hides them. Before, they
 ## painted over the 3D walls.

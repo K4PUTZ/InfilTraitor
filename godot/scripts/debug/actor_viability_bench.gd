@@ -8,27 +8,28 @@
 ##             DRESSED set only (coat, hat, the coated shirt / trousers / belt, the hat's hair), each piece its own surface. They stand in their
 ##             rest pose with the material's flat albedo (the palette and the painted head live in Blender's look, not in the glb): this measures
 ##             triangles, joints, surfaces and draw calls, the T4 question (light vs full on the Moto), not how they look.
+##   `agent_base_<female|male>` — the D99 base FULL, as `tripo_export_base.py` exports it (`AGENT_<FIG>_BASE_A.glb`: no hat, the coat with its corrective keys,
+##             `ACTOR` D103); with `_clip_<idle|walk|run>` the clip's key is held at 1 (the per-clip way). `_nokeys` (before `_clip_`) loads its twin with every
+##             key baked at its value and removed (`..._NOKEYS.glb`: the same coat, no keys), so the two runs differ by the keys' cost alone.
+##   `..._clip_<id>`: a clip on the Tripo Agent, in place. The game set's clips (`TripoFigure.GAME_CLIPS`: what the game plays, and what an APK carries)
+##             come from its library; any other id is decoded from the bank, on the desktop only (the bank is held out of the APK).
 ## Scenario op (`scenario_runner.gd`): `actor_bench <agent|agent_*> <count>`. Not a gameplay path, not part of any save.
 ## The Quaternius modes (`quat`, `hero_*`) and the costume suffixes that went with them left on 2026-11-04: ACTOR D85 retired that line. The code is in git history,
 ## the models in `ARCHIVE/hero_sources/`; the D70-D72 prototype shaders they drove stay in `godot/shaders/`, unwired, for when those features reach the Tripo Agents.
 extends RefCounted
 
 const SHADER_PATH := "res://godot/shaders/actor_mesh3d.gdshader"
-const EMBLEM_ID := "emblem_ref_skull"   ## ACTOR D95: the default art is `res://ASSETS/emblems/emblem_ref_skull.png`; a file of that name in `user://textures/emblems/` replaces it
-const COAT_SHADER_PATH := "res://godot/shaders/actor_coat3d.gdshader"   ## ACTOR D94: the coat, two-sided
+const TripoFigureRef = preload("res://godot/scripts/geometry/tripo_figure.gd")   ## how a Tripo Agent is dressed and which clips it plays: the game's own (`ActorMesh3D`)
 const AGENT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live.glb"
-const OFFICIAL_RIG := "res://ASSETS/MODELS/official/AGENT_%s.glb"
-## the pieces tripo_dress leaves BESIDE their masked variants (the undressed ones): the dressed set hides them
-const UNDRESSED_PIECES: Array[String] = ["Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere"]
-## the other state: no coat, no hat, the plain shirt / trousers / belt and the open hair (the clean base, D89)
-const DRESSED_ONLY_PIECES: Array[String] = ["Outfit_Coat", "Outfit_Hat", "Body_Hair_Hat", "Outfit_Shirt_Coated", "Outfit_Trousers_Coated", "Outfit_Belt_Coated"]
+## the D99 base FULL, exported for measurement by `tools/asset_generation/tripo/tripo_export_base.py` (`%s` = FEMALE | MALE, then "" or "_NOKEYS")
+const BASE_RIG := "res://ASSETS/MODELS/official/AGENT_%s_BASE_A%s.glb"
+## the corrective coat key held at 1 while each game clip plays (`ACTOR` D103, the per-clip way)
+const KEY_OF_CLIP := {"idle": "IdleFix", "walk": "WalkFix", "run": "RunFix"}
 ## Mixamo bone -> (swing axis, degrees, phase) for the official Agents' synthetic motion (skinning cost does not depend on the pose)
 const OFFICIAL_SWING := {
 	"LeftUpLeg": [Vector3.RIGHT, 28.0, 0.0], "RightUpLeg": [Vector3.RIGHT, 28.0, PI], "LeftLeg": [Vector3.RIGHT, 18.0, 0.0], "RightLeg": [Vector3.RIGHT, 18.0, PI],
 	"LeftArm": [Vector3.RIGHT, 22.0, PI], "RightArm": [Vector3.RIGHT, 22.0, 0.0], "Spine1": [Vector3.UP, 6.0, 0.0],
 }
-## The agent stands 9.8 voxels of 0.20 m (CHARACTER_MASTER_PLAN §4.7); the candidate is scaled to the same height.
-const STAND_HEIGHT_M: float = 1.96
 const METRES_TO_UNITS: float = 1.0 / 1.6
 
 class Rig:
@@ -43,8 +44,6 @@ class Ticker extends Node:
 	func _process(_delta: float) -> void:
 		step.call(float(Time.get_ticks_msec()) / 1000.0)
 
-const CoatPushRef = preload("res://godot/scripts/geometry/coat_push3d.gd")   ## ACTOR D94: the legs push the coat (the shader half is in `actor_mesh3d.gdshader`)
-const BANK_CLIP: String = "res://ASSETS/ANIMATIONS/bank/%s/%s.glb"
 static var _rigs: Array = []
 static var _ticker: Ticker = null
 
@@ -63,11 +62,13 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		_ticker = Ticker.new()
 		_ticker.step = tick
 		board.add_child(_ticker)
-	var bank_clip: String = ""       ## `..._clip_<id>`: play a bank clip (`ASSETS/ANIMATIONS/bank/<figure>/<id>.glb`) on an official Agent, in place (MV-4's first slice)
+	var bank_clip: String = ""       ## `..._clip_<id>`: play a clip on an official Agent, in place (`TripoFigure`: the game set, or the bank on the desktop)
 	var clip_at: int = model.find("_clip_")
 	if clip_at >= 0:
 		bank_clip = model.substr(clip_at + 6)
 		model = model.substr(0, clip_at)
+	var keys: bool = not model.ends_with("_nokeys")   ## `_nokeys` (the base only): the twin with the keys baked and removed, the A / B of their cost
+	model = model.trim_suffix("_nokeys")
 	var pushed: bool = not model.ends_with("_nopush")   ## `_nopush` : the legs do not push the coat (ACTOR D94's A / B)
 	model = model.trim_suffix("_nopush")
 	var emblem: bool = not model.ends_with("_noemblem")   ## `_noemblem` (after `_nopush`'s place): the coat without its emblem (ACTOR D95's A / B)
@@ -88,7 +89,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		if model.ends_with("_f%d" % k):
 			facing_k = k
 			model = model.trim_suffix("_f%d" % k)
-	var official: bool = model.begins_with("agent_")   ## agent_<light|full>_<female|male>[_nocoat]
+	var official: bool = model.begins_with("agent_")   ## agent_<light|full|base>_<female|male>[_nocoat]
+	var base: bool = model.begins_with("agent_base_")   ## the D99 base FULL: no hat, no coat-cut variants, the coat carries its corrective keys and no push / emblem data
 	var nocoat: bool = false     ## no coat, no hat: the clean base
 	var tint: bool = false       ## a colour per piece (black coat, white shirt...) so a garment poking through another is SEEN
 	var unmasked: bool = false   ## the coat and hat over the WHOLE shirt / trousers / belt, not the coat-cut variants (a diagnostic of the mask under the coat)
@@ -107,11 +109,14 @@ static func spawn(room: Node, model: String, count: int) -> String:
 	var path: String = AGENT_RIG
 	if official:
 		var parts: PackedStringArray = model.split("_")
-		if parts.size() != 3 or not ["light", "full"].has(parts[1]) or not ["female", "male"].has(parts[2]):
-			push_error("[ActorViabilityBench] %s: expected agent_<light|full>_<female|male>" % model)
+		if parts.size() != 3 or not ["light", "full", "base"].has(parts[1]) or not TripoFigureRef.FIGURES.has(parts[2]):
+			push_error("[ActorViabilityBench] %s: expected agent_<light|full|base>_<female|male>" % model)
 			return ""
-		path = OFFICIAL_RIG % (parts[2].to_upper() + ("_LIGHT" if parts[1] == "light" else ""))
-		hidden.append_array(DRESSED_ONLY_PIECES if nocoat else UNDRESSED_PIECES)
+		path = BASE_RIG % [parts[2].to_upper(), "" if keys else "_NOKEYS"] if base else TripoFigureRef.rig_path(parts[2], parts[1] == "light")
+		if base:
+			hidden.append("Icosphere")
+		else:
+			hidden.append_array(TripoFigureRef.DRESSED_ONLY_PIECES if nocoat else TripoFigureRef.UNDRESSED_PIECES)
 		if unmasked:
 			hidden = ["Outfit_Shirt_Coated", "Outfit_Trousers_Coated", "Outfit_Belt_Coated", "Body_Hair", "Icosphere"]
 	var scene := load(path) as PackedScene
@@ -130,7 +135,7 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		board.add_child(holder)
 		holder.add_child(body)
 		if official:
-			body.scale = Vector3.ONE * STAND_HEIGHT_M * METRES_TO_UNITS   ## Tripo exports a 1 m figure standing on z = 0 (hat included)
+			body.scale = Vector3.ONE * TripoFigureRef.STAND_HEIGHT_M * METRES_TO_UNITS   ## Tripo exports a 1 m figure standing on z = 0 (hat included)
 			body.rotation.y = PI * 0.25 if facing_k < 0 else float(facing_k) * PI * 0.5
 		else:
 			body.scale = Vector3.ONE * METRES_TO_UNITS
@@ -147,27 +152,26 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		var skeletons := body.find_children("*", "Skeleton3D", true, false)
 		if not skeletons.is_empty():
 			rig.skeleton = skeletons[0] as Skeleton3D
-			if official and pushed and not nocoat:
-				var coats: Array[Node] = body.find_children("Outfit_Coat*", "MeshInstance3D", true, false)
-				if not coats.is_empty():   ## the coat is drawn two-sided (`actor_coat3d.gdshader`): a pushed face turned away would show the trousers behind it
-					var coat_mat := (((coats[0] as MeshInstance3D).material_override if (coats[0] as MeshInstance3D).material_override != null else (coats[0] as MeshInstance3D).get_active_material(0)) as ShaderMaterial)
-					if coat_mat != null:
-						coat_mat.shader = BoardLook.graded_shader(COAT_SHADER_PATH)
-						var on_emblem: bool = CoatEmblem.apply(coat_mat, EMBLEM_ID if emblem else "")   ## ACTOR D95: the logo through the tier ladder (user folder over default)
-						if i == 0:
-							print("[ACTOR-BENCH] coat emblem: %s" % (EMBLEM_ID if on_emblem else "none"))
-				var on: bool = not coats.is_empty() and CoatPushRef.attach(rig.skeleton, coats[0] as MeshInstance3D)
+			if official and not nocoat:   ## the coat two-sided, its emblem (D95) and the push (D94), as the game dresses it; the base has neither data
+				var took: Dictionary = TripoFigureRef.dress_coat(body, rig.skeleton, emblem and not base, pushed and not base)
 				if i == 0:
-					print("[ACTOR-BENCH] coat push: %s" % ("the legs push the coat" if on else "OFF (no data / no shader)"))
+					print("[ACTOR-BENCH] coat emblem: %s" % (TripoFigureRef.EMBLEM_ID if took["emblem"] else "none"))
+					print("[ACTOR-BENCH] coat push: %s" % ("the legs push the coat" if took["push"] else "OFF (no data / no shader)"))
 		var players := body.find_children("*", "AnimationPlayer", true, false)
 		if not players.is_empty():
 			rig.player = players[0] as AnimationPlayer
+		elif base:   ## the base is exported with no animation, so with no player: one at the root, as the LIGHT's (its tracks read `Armature/Skeleton3D:<bone>`)
+			rig.player = AnimationPlayer.new()
+			body.add_child(rig.player)
 		if official and rig.skeleton != null and bank_clip != "" and _play_bank_clip(rig, model.split("_")[2], bank_clip, float(i) * 0.13):
-			pass
+			if base and keys:
+				var held: String = _hold_clip_key(body, bank_clip)
+				if i == 0:
+					print("[ACTOR-BENCH] corrective key: %s" % (held if held != "" else "none for this clip"))
 		elif official and rig.skeleton != null:   ## a LIVE skeleton in place (the actions travel: `dive` runs out of the view): a synthetic sine on the Mixamo bones
 			rig.phase = float(i) * 0.9
 			for bone_name: String in OFFICIAL_SWING:
-				var idx := _mixamo_bone(rig.skeleton, bone_name)
+				var idx := TripoFigureRef.find_bone(rig.skeleton, bone_name)
 				if idx >= 0:
 					var sw: Array = OFFICIAL_SWING[bone_name]
 					rig.swing_bones.append([idx, sw[0], deg_to_rad(float(sw[1])), float(sw[2]), rig.skeleton.get_bone_rest(idx).basis.get_rotation_quaternion()])
@@ -192,39 +196,21 @@ static func spawn(room: Node, model: String, count: int) -> String:
 	return line
 
 
-## Put the bank clip `id` of `figure` on the rig's own player, looping and in place (the Hips keep their height, lose their travel and sit over the holder). False when it cannot (loud).
+## Put the clip `id` of `figure` on the rig's own player, looping and in place (`TripoFigure`: a game clip from the game set, the way the game plays it and the
+## only one an APK carries; any other from the bank, decoded for this rig's Hips). False when it cannot (loud).
 static func _play_bank_clip(rig: Rig, figure: String, id: String, offset_s: float) -> bool:
-	var path: String = BANK_CLIP % [figure, id]
-	if not ResourceLoader.exists(path):   ## MV-1 §3: the other figure's clip, retargeted by rotations, only as a MARKED fallback
-		var other: String = "male" if figure == "female" else "female"
-		push_warning("[ActorViabilityBench] %s has no %s clip %s: FALLBACK to the %s one" % [figure, id, path, other])
-		path = BANK_CLIP % [other, id]
-	var scene := load(path) as PackedScene
-	if scene == null or rig.player == null:
-		push_error("[ActorViabilityBench] no bank clip %s (or the rig has no player)" % path)
+	if rig.player == null or rig.skeleton == null:
+		push_error("[ActorViabilityBench] the rig has no player or no skeleton for the clip %s" % id)
 		return false
-	var holder := scene.instantiate()
-	var src: Array = holder.find_children("*", "AnimationPlayer", true, false)
-	if src.is_empty():
-		holder.free()
-		push_error("[ActorViabilityBench] %s holds no animation" % path)
+	var anim: Animation = null
+	if TripoFigureRef.GAME_CLIPS.has(id):
+		var game: AnimationLibrary = TripoFigureRef.library(figure)
+		anim = game.get_animation(id) if game != null else null
+	else:
+		var hips: int = TripoFigureRef.find_bone(rig.skeleton, TripoFigureRef.HIPS)
+		anim = TripoFigureRef.bank_clip(figure, id, rig.skeleton.get_bone_rest(hips).origin) if hips >= 0 else null
+	if anim == null:
 		return false
-	var anim: Animation = ((src[0] as AnimationPlayer).get_animation((src[0] as AnimationPlayer).get_animation_list()[0])).duplicate()
-	var src_rest: Vector3 = Vector3.ZERO
-	var src_skeletons: Array = holder.find_children("*", "Skeleton3D", true, false)
-	if not src_skeletons.is_empty():
-		src_rest = (src_skeletons[0] as Skeleton3D).get_bone_rest((src_skeletons[0] as Skeleton3D).find_bone("mixamorig_Hips")).origin
-	holder.free()
-	anim.loop_mode = Animation.LOOP_LINEAR
-	## The bank stores the Hips as rest + (offset from rest) / hip height (`tripo_anim_bank.py`): put it back in this figure's metres, and in place.
-	var hips_idx: int = _mixamo_bone(rig.skeleton, "Hips")
-	var rest: Vector3 = rig.skeleton.get_bone_rest(hips_idx).origin
-	for t in range(anim.get_track_count()):
-		if anim.track_get_type(t) == Animation.TYPE_POSITION_3D and str(anim.track_get_path(t)).ends_with("mixamorig_Hips"):
-			for k in range(anim.track_get_key_count(t)):
-				var v: Vector3 = anim.track_get_key_value(t, k)
-				var off: Vector3 = (v - src_rest) * rest.y
-				anim.track_set_key_value(t, k, Vector3(rest.x, rest.y + off.y, rest.z))
 	var lib: AnimationLibrary = rig.player.get_animation_library("") if rig.player.has_animation_library("") else null
 	if lib == null:
 		lib = AnimationLibrary.new()
@@ -235,6 +221,22 @@ static func _play_bank_clip(rig: Rig, figure: String, id: String, offset_s: floa
 	rig.player.play("bank_clip")
 	rig.player.seek(offset_s, true)
 	return true
+
+
+## Hold the coat's corrective key of `clip` at 1 and the others at 0 (`ACTOR` D103, the per-clip way); the key held, or "" when the clip has none.
+static func _hold_clip_key(body: Node, clip: String) -> String:
+	var coat: MeshInstance3D = TripoFigureRef.coat_of(body)
+	var want: String = String(KEY_OF_CLIP.get(clip, ""))
+	if coat == null or coat.mesh == null:
+		return ""
+	var held: String = ""
+	for key: String in KEY_OF_CLIP.values():
+		var idx: int = coat.find_blend_shape_by_name(key)
+		if idx >= 0:
+			coat.set_blend_shape_value(idx, 1.0 if key == want else 0.0)
+			if key == want:
+				held = key
+	return held
 
 
 ## Advance the synthetic motion (the official Agents with no clip; an AnimationPlayer drives itself).
@@ -274,15 +276,6 @@ static func _tint_pieces(board: Node3D, body: Node) -> void:
 		sm.set_shader_parameter("albedo", Color.WHITE if (textured != null and float(textured) > 0.5) else PIECE_TINT[key])
 		board.call("register_prop_light_material", sm)
 		m.material_override = sm
-
-
-## The importer may keep the colon of `mixamorig:Hips` or turn it into an underscore: try both, then the bare name.
-static func _mixamo_bone(skeleton: Skeleton3D, bone_name: String) -> int:
-	for prefix in ["mixamorig:", "mixamorig_", ""]:
-		var idx := skeleton.find_bone(prefix + bone_name)
-		if idx >= 0:
-			return idx
-	return -1
 
 
 static func _apply_board_light(board: Node3D, body: Node, converted: Dictionary) -> void:

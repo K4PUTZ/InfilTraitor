@@ -8,11 +8,10 @@ official/  the source of truth
   COAT_BASE                           the coat
   AGENT_<FIG>.glb, AGENT_<FIG>_LIGHT.glb  the built Agents (tools/asset_generation/tripo/build_agents.sh)
   detail/, painted/                   their maps (ACTOR D87). The AGENT_*_<part>.png beside the GLBs are Godot's extractions, not versioned
-base/      FROZEN 2026-11-04: the permanent base of the two characters, read-only (ACTOR D99)
-  AGENT_<FIG>_A.blend          the A pose with the coat, as the Director finished it by hand
-  AGENT_<FIG>_T.blend          the T pose with the coat, as the Director finished it by hand (the former COAT_FIT_<FIG>_T_HAND.blend)
-  MANIFEST.sha256              `shasum -c MANIFEST.sha256` from this folder proves the four are untouched
-  A and T are welded separately, so their vertex counts differ per piece: a transition must map them first. A change means a new file and a new D-row, never a save over these
+base/      the two characters' base, OPEN while they are animated (ACTOR D102; frozen 2026-11-04 at D99/D101, last frozen at 2ee3cf25)
+  AGENT_<FIG>_A.blend          the A pose with the coat, hand-finished
+  AGENT_<FIG>_T.blend          the T pose with the coat, hand-finished (the former COAT_FIT_<FIG>_T_HAND.blend)
+  A and T are welded separately, so their vertex counts differ per piece: tripo_transition.py maps them by UV
 fit/       the coat's fit, Blender working files (ACTOR D97)
   COAT_FIT_<FIG>.blend         the A pose with the fitted coat
   COAT_FIT_<FIG>_T.blend       the T built from the A (tripo_fit_tpose.py)

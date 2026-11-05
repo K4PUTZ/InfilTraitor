@@ -1,7 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.4
 
-> ⏭️ **2026-11-05 — next, by the Director's order: the female's `walk` corrective, the male's three clips and the transitions between idle / walk / run (MOVEMENT), then texturing (ACTOR), then the models in the game and on the Moto. Record: `PROMPTS/RESUMO_SESSAO_2026-11-04_BASE_TRANSITION_CORRECTIVES.md`; decisions `ACTOR` D99-D103.**
+> ⏭️ **2026-11-05 (end) — the six corrective keys are done (female `IdleFix`/`RunFix`/`WalkFix`, male `IdleFix`/`WalkFix`/`RunFix`, `ACTOR` D103) and the male's front flaps skin uniformly (D104). Next, by the Director's order: the transitions between idle / walk / run (MOVEMENT), then texturing (ACTOR), then the models in the game and on the Moto. Record: `PROMPTS/RESUMO_SESSAO_2026-11-05_CORRECTIVES_FLAP.md`.**
 
 > 🟢 **v1.4 (2026-11-04): MV-1's bank is SAVED and CATALOGUED (Director: "temos um montão de animações que precisam ser catalogadas e salvas"; "salvas" = versioned).** `ASSETS/ANIMATIONS/bank/` is in git: 218 GLBs (female 102, male 116; 39.6 MB), `bank.json`, `CATALOG.md` and the review sheets (`sheets/`: 13 index pages by category, one sheet per clip; 11 MB). 116 clip ids, 102 complete pairs, 14 male-only variants. §3.2 has the results. Nothing in the engine changed. **Next here: the Director looks at the sheets and picks the canonical generation of the three stealth clips.**
 

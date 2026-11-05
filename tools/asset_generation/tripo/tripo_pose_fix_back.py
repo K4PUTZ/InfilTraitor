@@ -33,6 +33,7 @@ def posed(o):
 
 def play(arm, hip):
     before_o, before_a = set(bpy.data.objects), set(bpy.data.actions)
+    bpy.context.view_layer.objects.active = None       # the male's file was saved with the buckle in Edit Mode: with it active, the importer's 42-vertex bone sphere lands inside that mesh, and this tool SAVES (measured, 88 -> 130 vertices)
     bpy.ops.import_scene.gltf(filepath=os.path.abspath(f"ASSETS/ANIMATIONS/bank/{os.environ['PF_FIG']}/{clip}.glb"))
     act = [a for a in bpy.data.actions if a not in before_a][0]
     for o in [o for o in bpy.data.objects if o not in before_o]:

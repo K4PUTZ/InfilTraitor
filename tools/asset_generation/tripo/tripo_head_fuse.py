@@ -23,8 +23,8 @@ RATIO = float(os.environ.get("HF_RATIO", "0.05"))
 NEAR = float(os.environ.get("HF_NEAR", "0.008"))
 GAP = float(os.environ.get("HF_GAP", "0.0015"))
 CUT_Z = float(os.environ.get("HF_CUT_Z", "0.902"))   # world height: her original face is kept only BELOW it (the fused skull is her own surface there too)
-EAR_BACK = float(os.environ.get("HF_EAR_BACK", "0.004"))   # the ear's back rim pulled this much toward the head (Director: "um pouquinho mais fechada")
-EAR_TIP = float(os.environ.get("HF_EAR_TIP", "0.003"))     # its pointed top lowered and rounded by this much ("suavizar a ponta")
+EAR_BACK = float(os.environ.get("HF_EAR_BACK", "0.002"))   # the ear's back rim pulled this much toward the head (Director: "um pouquinho mais fechada")
+EAR_TIP = float(os.environ.get("HF_EAR_TIP", "0.0015"))     # its pointed top lowered and rounded by this much ("suavizar a ponta")
 HOLE = int(os.environ.get("HF_HOLE", "64"))     # holes up to this many edges are filled
 
 bpy.ops.wm.open_mainfile(filepath=SRC)

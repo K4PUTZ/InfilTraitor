@@ -15,6 +15,7 @@ TAG = "tripo_head_join"
 SRC = os.path.abspath("ASSETS/MODELS/fit/HEAD_EDIT_FEMALE.blend")
 OUT = os.path.abspath(os.environ.get("HJ_OUT", "ASSETS/MODELS/fit/HEAD_JOINED_FEMALE.blend"))
 EPS = 0.0005
+NEAR = float(os.environ.get("HJ_NEAR", "0.008"))   # closer than this to the other surface = the original head is already there
 
 bpy.ops.wm.open_mainfile(filepath=SRC)
 if bpy.context.object is not None and bpy.context.object.mode != 'OBJECT':
@@ -36,8 +37,15 @@ def under(v):
     return hit[0] is not None and (hit[0] - C).length > d.length + EPS
 
 
-flag = {v: under(v) for v in bm.verts}
+# the original head wins wherever it exists: only her faces lying deep under the cap (the flat lid, the slanted back) go,
+# and only the cap faces standing off her ORIGINAL surface are kept (the cap over her forehead, temples and cheeks goes)
+htree = BVHTree.FromBMesh(bm)
+flag = {v: under(v) and ctree.find_nearest(v.co)[3] > NEAR for v in bm.verts}
 gone = [f for f in bm.faces if all(flag[v] for v in f.verts)]
+far = {v: htree.find_nearest(v.co)[3] > NEAR for v in cb.verts}
+cap_drop = [f for f in cb.faces if not any(far[v] for v in f.verts)]
+bmesh.ops.delete(cb, geom=cap_drop, context='FACES_ONLY')
+bmesh.ops.delete(cb, geom=[v for v in cb.verts if not v.link_faces], context='VERTS')
 bmesh.ops.delete(bm, geom=gone, context='FACES_ONLY')
 bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context='VERTS')
 smooth = all(f.smooth for f in bm.faces)
@@ -75,7 +83,7 @@ bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 open_left = sum(1 for e in bm.edges if e.is_boundary)
 bm.to_mesh(head.data); bm.free(); head.data.update()
 bpy.data.objects.remove(cap)
-print(f"[{TAG}] her faces under the cap removed: {len(gone)}; cap faces added: {len(new_faces)}; bridge faces: {len(res['faces'])}; "
+print(f"[{TAG}] her faces under the cap removed: {len(gone)}; cap faces over her own head dropped: {len(cap_drop)}; cap faces added: {len(new_faces)}; bridge faces: {len(res['faces'])}; "
       f"open edges left: {open_left}; head now {len(head.data.vertices)} verts, {len(head.data.polygons)} faces -> {OUT}")
 if open_left:
     sys.exit(f"[{TAG}] the head is not closed")

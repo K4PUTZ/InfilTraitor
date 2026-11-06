@@ -8,6 +8,7 @@
 import os, sys
 import bpy
 import numpy as np
+from mathutils import Vector
 
 TAG = "tripo_light_bake_frame"
 FIG, CLIP, KEY = os.environ.get("BK_FIG", ""), os.environ.get("BK_CLIP", ""), os.environ.get("BK_KEY", "")
@@ -58,7 +59,7 @@ for o in list(bpy.data.objects):
         continue
     me = bpy.data.meshes.new_from_object(o.evaluated_get(dg))
     new = bpy.data.objects.new(o.name + "_fix", me); bpy.context.scene.collection.objects.link(new)
-    new.matrix_world = o.matrix_world; new.location = off
+    new.matrix_world = o.matrix_world; new.location = o.matrix_world.translation + Vector(off)     # keep the piece's own location: the male's coat sits ~1.4 cm off the origin, and dropping it moved the whole coat in the key (2026-11-06)
     m = bpy.data.materials.new(o.name); m.diffuse_color = (*SHOW[o.name], 1.0); me.materials.append(m)
     made.append((o.name, new))
 missing = [n for n in SHOW if n not in {n for n, _ in made}]

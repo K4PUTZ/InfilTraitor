@@ -9,6 +9,9 @@ render_mode unshaded, cull_disabled;   // the coat is a one-sided shell with the
 uniform vec4 albedo : source_color = vec4(1.0);
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
 uniform float has_tex = 0.0;
+// the leather's matte sheen (CHARACTER §7a; TripoFigure.SHEEN sets it per piece): 0 = none
+uniform float sheen = 0.0;
+uniform float sheen_power = 6.0;
 // ACTOR D95 — the coat's EMBLEM: the logo (RGBA, resolved by `CoatEmblem` through the TextureResolver's tiers) laid over the colour inside the coat's baked zone (UV2 = the zone, COLOR.b = its mask)
 uniform sampler2D emblem_tex : source_color, filter_linear_mipmap;
 uniform float has_emblem = 0.0;
@@ -42,6 +45,9 @@ void fragment() {
 	}
 	// the ladder is an sRGB multiplier (the board multiplies in sRGB); the albedo is already linear
 	ALBEDO = base * pow(vec3(lum * key * soot), vec3(2.2)) * (inside ? plane_warm(t, cell) : vec3(1.0));
+	if (sheen > 0.0) {
+		ALBEDO += vec3(sheen * plane_sheen((FRONT_FACING ? v_normal : -v_normal), normalize(INV_VIEW_MATRIX[2].xyz), sheen_power) * pow(lum * soot, 2.2));
+	}
 	float breathe = mix(1.0, 0.55 + 0.45 * sin(TIME * 7.0 + v_world.y * 9.0), status_pulse);
 	// the tint keeps the figure's own shading: the status colour at the pixel's brightness, never a flat fill
 	vec3 tinted = status_tint.rgb * clamp(dot(ALBEDO, vec3(0.3333)) * 2.6, 0.18, 1.0);

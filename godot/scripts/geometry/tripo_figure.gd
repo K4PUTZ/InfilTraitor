@@ -29,6 +29,8 @@ const STAND_HEIGHT_M: float = 1.96
 const FRONT_YAW: float = PI
 const COAT_SHADER_PATH := "res://godot/shaders/actor_coat3d.gdshader"   ## ACTOR D94: the coat, two-sided
 const EMBLEM_ID := "emblem_ref_skull"   ## ACTOR D95: the default art is `res://ASSETS/emblems/emblem_ref_skull.png`; a file of that name in `user://textures/emblems/` replaces it
+## The leather pieces' matte sheen (CHARACTER §7a, 2026-11-06): the strength the board-lit shader adds on the key light's highlight.
+const SHEEN: Dictionary = {"Outfit_Coat": 0.15, "Outfit_Hat": 0.09, "Outfit_Shoes": 0.22}
 const MIXAMO_PREFIXES: PackedStringArray = ["mixamorig:", "mixamorig_", ""]
 
 const BANK_CLIP := "res://ASSETS/ANIMATIONS/bank/%s/%s.glb"
@@ -83,7 +85,21 @@ static func dress_coat(body: Node, skeleton: Skeleton3D, emblem: bool, push: boo
 		took["emblem"] = CoatEmblem.apply(coat_mat, EMBLEM_ID if emblem else "")
 	if push and skeleton != null:
 		took["push"] = CoatPush3D.attach(skeleton, coat)
+	apply_sheen(body)
 	return took
+
+
+## The leather's sheen on every piece SHEEN names (its board-lit ShaderMaterial, a coat-cut variant included).
+static func apply_sheen(body: Node) -> void:
+	for node in body.find_children("Outfit_*", "MeshInstance3D", true, false):
+		var mi := node as MeshInstance3D
+		var key: String = String(mi.name).get_slice(".", 0)
+		if not SHEEN.has(key) or mi.mesh == null:
+			continue
+		for s in range(mi.mesh.get_surface_count()):
+			var mat := mi.get_active_material(s) as ShaderMaterial
+			if mat != null:
+				mat.set_shader_parameter("sheen", float(SHEEN[key]))
 
 
 ## The game set of `figure`, loaded once and shared; null (loud) when it was never written.

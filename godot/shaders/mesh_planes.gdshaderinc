@@ -75,3 +75,10 @@ float plane_soot(vec4 t, ivec3 cell) {
 float plane_key(vec3 normal) {
 	return 0.72 + 0.28 * max(dot(normal, normalize(key_dir)), 0.0);
 }
+
+// CHARACTER §7a (2026-11-06, Director: leather "has a sheen, but matte overall, no latex"): a soft highlight of the same fixed key, seen
+// from the camera (`to_eye`, world), Blinn on the normal; the caller scales it by the cell's light so a dark room does not shine.
+float plane_sheen(vec3 normal, vec3 to_eye, float power) {
+	vec3 h = normalize(normalize(key_dir) + to_eye);
+	return pow(max(dot(normal, h), 0.0), power);
+}

@@ -1591,6 +1591,10 @@ fixes defects. "Pode seguir na ordem que preferir com todas as etapas."
   highlight of the board's fixed key seen from the camera, scaled by the cell's light, on the pieces `TripoFigure.SHEEN` names (coat 0.15,
   hat 0.09, shoes 0.22; power 6; Director: "Suave está bom"). Moto, 9 walking (`docs/measurements/sheen_2026-11-06/`): female +5.2 ms
   (25.7 vs 20.5), male +4.8 (25.5 vs 20.7), against +4.8 / +5.0 without the sheen: within the run-to-run noise.
+- Shirt blue `#2E8FD8`, tie white (Director, 2026-11-06: a homage to Moonwalker's colours, read as a police blue; IP advice given: the colours
+  alone are free, avoid stacking his marks: no white suit / hat, no hat band, no moonwalk / Smooth Criminal pose, never his names in the store).
+  **Planned, not built (Director):** the tie TURNS at the knot, white face / BLACK back, a player-controlled mechanic for hiding or disguise
+  (one more layer of play and detection). It revives ACTOR D82's parked "disguising tie"; the rule belongs in `DESIGN_MASTER_PLAN` (owed).
 - Trousers in the coat's leather (`AGENT_SURFACE.json`, sheen as the coat), shoes glossier (`SHEEN` [0.45, power 18]; Director, 2026-11-06).
   A texture change on a finished Agent goes through `glb_swap_image.py` (the JSON and every other buffer byte-identical): the Blender round
   trip turned the coat's COLOR_0 into VEC3 float and a byte copy over it overwrote the coat's JOINTS (seen in Godot, reverted). ⚠️ Running `tripo_surface.py` on a finished Agent wiped the coat's COLOR_0 alpha (D94's push): restored (`165d892f`).

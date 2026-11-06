@@ -22,8 +22,8 @@ VOXEL = float(os.environ.get("HF_VOXEL", "0.0015"))
 RATIO = float(os.environ.get("HF_RATIO", "0.05"))
 NEAR = float(os.environ.get("HF_NEAR", "0.008"))
 GAP = float(os.environ.get("HF_GAP", "0.0015"))
-CUT_Z = float(os.environ.get("HF_CUT_Z", "0.90"))   # world height: her original face is kept only BELOW it (the fused skull is her own surface there too)
-HOLE = int(os.environ.get("HF_HOLE", "12"))     # holes up to this many edges are filled
+CUT_Z = float(os.environ.get("HF_CUT_Z", "0.902"))   # world height: her original face is kept only BELOW it (the fused skull is her own surface there too)
+HOLE = int(os.environ.get("HF_HOLE", "64"))     # holes up to this many edges are filled
 
 bpy.ops.wm.open_mainfile(filepath=SRC)
 if bpy.context.object is not None and bpy.context.object.mode != 'OBJECT':
@@ -111,6 +111,16 @@ bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
 bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=1e-6)
 bmesh.ops.delete(bm, geom=[e for e in bm.edges if not e.link_faces], context='EDGES')
 bmesh.ops.holes_fill(bm, edges=[e for e in bm.edges if e.is_boundary], sides=HOLE)
+# an edge shared by three faces (two snapped borders crossing) is cleared and its hole refilled, until the head is closed and manifold
+for _ in range(6):
+    bad = {f for e in bm.edges if len(e.link_faces) > 2 for f in e.link_faces if f.calc_area() < 1e-4}
+    bad |= {f for v in bm.verts if v.is_boundary and not v.is_manifold for f in v.link_faces}
+    if not bad and not any(e.is_boundary for e in bm.edges):
+        break
+    bmesh.ops.delete(bm, geom=list(bad), context='FACES_ONLY')
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context='VERTS')
+    bmesh.ops.delete(bm, geom=[e for e in bm.edges if not e.link_faces], context='EDGES')
+    bmesh.ops.holes_fill(bm, edges=[e for e in bm.edges if e.is_boundary], sides=HOLE)
 bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 open_left = sum(1 for e in bm.edges if e.is_boundary)
 nonman = sum(1 for e in bm.edges if len(e.link_faces) > 2)

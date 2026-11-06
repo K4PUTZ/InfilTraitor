@@ -15,6 +15,8 @@ TAG = "tripo_head_join"
 SRC = os.path.abspath("ASSETS/MODELS/fit/HEAD_EDIT_FEMALE.blend")
 OUT = os.path.abspath(os.environ.get("HJ_OUT", "ASSETS/MODELS/fit/HEAD_JOINED_FEMALE.blend"))
 EPS = 0.0005
+SEAM_PASSES = int(os.environ.get("HJ_SEAM_SMOOTH", "0"))   # smoothing passes over the seam (bridge faces + HJ_SEAM_RING rings)
+SEAM_RING = int(os.environ.get("HJ_SEAM_RING", "2"))
 NEAR = float(os.environ.get("HJ_NEAR", "0.008"))   # closer than this to the other surface = the original head is already there
 
 bpy.ops.wm.open_mainfile(filepath=SRC)
@@ -79,12 +81,32 @@ border = [e for e in bm.edges if e.is_boundary]
 res = bmesh.ops.bridge_loops(bm, edges=border)
 for f in res["faces"]:
     f.smooth = smooth
+# the seam smoothed: the bridge's vertices and SEAM_RING rings around them, each pass halfway to its neighbours' mean
+seam = {v for f in res["faces"] for v in f.verts}
+for _ in range(SEAM_RING):
+    seam |= {e.other_vert(v) for v in list(seam) for e in v.link_edges}
+for _ in range(SEAM_PASSES):
+    new = {v: v.co.lerp(sum((e.other_vert(v).co for e in v.link_edges), Vector()) / len(v.link_edges), 0.5) for v in seam if v.link_edges}
+    for v, c in new.items():
+        v.co = c
+    # never inward: each seam vertex back out to the OUTER of the two surfaces (her original head, the cap) along its ray from C,
+    # so the smoothing fills the groove instead of shrinking the skull
+    for v in seam:
+        d = v.co - C
+        if d.length < 1e-6:
+            continue
+        d.normalize(); r = (v.co - C).length
+        for tree in (htree, ctree):
+            hit = tree.ray_cast(C + d * 0.3, -d, 0.3)
+            if hit[0] is not None:
+                r = max(r, (hit[0] - C).length)
+        v.co = C + d * r
 bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 open_left = sum(1 for e in bm.edges if e.is_boundary)
 bm.to_mesh(head.data); bm.free(); head.data.update()
 bpy.data.objects.remove(cap)
 print(f"[{TAG}] her faces under the cap removed: {len(gone)}; cap faces over her own head dropped: {len(cap_drop)}; cap faces added: {len(new_faces)}; bridge faces: {len(res['faces'])}; "
-      f"open edges left: {open_left}; head now {len(head.data.vertices)} verts, {len(head.data.polygons)} faces -> {OUT}")
+      f"open edges left: {open_left}; seam smoothed: {len(seam)} verts x {SEAM_PASSES}; head now {len(head.data.vertices)} verts, {len(head.data.polygons)} faces -> {OUT}")
 if open_left:
     sys.exit(f"[{TAG}] the head is not closed")
 bpy.ops.wm.save_as_mainfile(filepath=OUT)

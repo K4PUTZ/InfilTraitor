@@ -1,6 +1,8 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.4
 
+> ⏭️ **2026-11-05 (later) — MV-4's first slice is BUILT and measured on the Moto (Director: board + Moto before transitions and texturing).** `TripoFigure` (one authority for dressing a Tripo Agent and decoding the bank), the game set `ASSETS/ANIMATIONS/game/agent_<fig>.res` (idle / walk / run, in place, `travel_m`; written by `tripo_game_clips.gd`, carried by the APK), `ActorMesh3D` wears the LIGHT Agent under `TRIPO_FIGURE=<female|male>` (old rig stays default: no weapons, crouch, prone, throw on the Tripo figure yet), the walk phased by the ground covered (no slide), the scenario's `walk <x,y>`, PLAYGROUND take `agent_walk`. Moto (`ACTOR` D105): 9 LIGHT Agents on a real clip +5.0 ms vs the shipped agent +6.2; the room's 10 actors as Tripo +0.2-0.3; the corrective keys ~+0.5 for 9. **Open for the Director: the TEMPO** — D61's step is 2.86 m/s (a jog): the bank's `walk` plays at 2.1x, `run` at 0.58x, `flee_01` is the only near match (1.03x, does not loop). Record: `PROMPTS/RESUMO_SESSAO_2026-11-05_MV4_BOARD_MOTO.md`.
+
 > ⏭️ **2026-11-05 (end) — the six corrective keys are done (female `IdleFix`/`RunFix`/`WalkFix`, male `IdleFix`/`WalkFix`/`RunFix`, `ACTOR` D103) and the male's front flaps skin uniformly (D104). Next, by the Director's order: the transitions between idle / walk / run (MOVEMENT), then texturing (ACTOR), then the models in the game and on the Moto. Record: `PROMPTS/RESUMO_SESSAO_2026-11-05_CORRECTIVES_FLAP.md`.**
 
 > 🟢 **v1.4 (2026-11-04): MV-1's bank is SAVED and CATALOGUED (Director: "temos um montão de animações que precisam ser catalogadas e salvas"; "salvas" = versioned).** `ASSETS/ANIMATIONS/bank/` is in git: 218 GLBs (female 102, male 116; 39.6 MB), `bank.json`, `CATALOG.md` and the review sheets (`sheets/`: 13 index pages by category, one sheet per clip; 11 MB). 116 clip ids, 102 complete pairs, 14 male-only variants. §3.2 has the results. Nothing in the engine changed. **Next here: the Director looks at the sheets and picks the canonical generation of the three stealth clips.**
@@ -377,7 +379,7 @@ Each item is a transform on a bank clip; the bank keeps the raw clip, the game u
   masks of §5.6.
 - **Scale and import:** the 1 m Tripo figure to the game's height (D85's import steps); the four facings and the snap (D44, D47) are
   the actor's yaw, untouched by the clip.
-- **⚠️ Cost, unmeasured: 65 joints against today's 20**, on every actor, with an `AnimationTree` each. RAM is the constraint (D42),
+- **✅ Measured 2026-11-05 (`ACTOR` D105): it fits** (9 LIGHT Agents on a real clip +5.0 ms, under the shipped agent's +6.2). The original note: **65 joints against today's 20**, on every actor, with an `AnimationTree` each. RAM is the constraint (D42),
   and the Moto g04s is the floor device (`PERFORMANCE_BUDGET` PB-0). Measure before building the state machine: N actors on the
   Mixamo rig playing a clip, on the Moto, against today's rig (`device_run.py`), uncapped (`MAX_FPS=0`). If it does not fit, the
   options are a reduced skeleton for guards (the fingers are 30 of the 65 joints) or fewer distinct clips loaded at once, and the
@@ -421,7 +423,7 @@ pose stills are agreed before a generation is spent.
 4. **How much of the catalogue is a layer, not a clip** (§5.6). M1's scanning head, the weapon held down while running, breathing:
    each one that works as an overlay saves a clip on every tempo.
 5. **Can the numbers be computed without disturbing the animation** (brief §7 item 6: the prediction on a worker): stands.
-6. **The cost of 65 joints on the Moto** (§6): the first measurement of MV-4.
+6. **The cost of 65 joints on the Moto** (§6): ✅ measured 2026-11-05, `ACTOR` D105.
 
 ---
 
@@ -432,5 +434,5 @@ pose stills are agreed before a generation is spent.
 | **MV-1** | The bank: `tripo_anim_bank.py`, `ASSETS/ANIMATIONS/bank/`, `bank.json`, the sheets | 🟡 **2026-11-04: built, versioned and catalogued (§3.2).** Done when the Director has looked at the sheets (no joint flipped) and picked the canonical generations |
 | **MV-2** | The map (§4.1): need / have / combine / missing / priority; the credits list | 🟡 **v1.1 (2026-10-28): §4.1 written, BY NAME (clips not yet seen); waits on the Director's ranking and §4.1's open questions** — done when the Director ranks it |
 | **MV-3** | The processing (§5) on the first situations' clips | each processed clip judged on a sheet |
-| **MV-4** | The engine plays the bank (§6), the Moto measured first | an actor walks the grid on the Mixamo rig at D61's step, measured on the Moto |
+| **MV-4** | The engine plays the bank (§6), the Moto measured first | 🟡 **2026-11-05: first slice built and measured** (D105: an actor walks the grid on the Mixamo rig, `TRIPO_FIGURE`); open: the tempo, weapons / postures / throw, the AnimationTree, the LIGHT with the corrective keys |
 | **MV-5+** | The situations in the map's order (§7) | each ratified on the board and on a handset video |

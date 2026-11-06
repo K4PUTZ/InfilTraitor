@@ -595,6 +595,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-11-05_CORRECTIVES_FLAP.md
 - RESUMO_SESSAO_2026-11-05_MV4_BOARD_MOTO.md
 - RESUMO_SESSAO_2026-11-06_FEMALE_SKULL.md
+- RESUMO_SESSAO_2026-11-06_LIGHT_FROM_BASE.md
+- RESUMO_SESSAO_2026-11-06_LIGHT_WALK.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

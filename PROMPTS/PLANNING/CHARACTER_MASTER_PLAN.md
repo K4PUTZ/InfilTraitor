@@ -1,6 +1,8 @@
 # CHARACTER_MASTER_PLAN
 ## The Agent — Model, Rig, Poses, Animation, Layering — v2.0
 
+> 🧭 **2026-11-06 — the TEXTURING plan (TX-0 to TX-6, §7a; proposed decisions in `ACTOR` D108, awaiting the Director).** Measured: the male's FULL face has 4x the female's triangles (2 044 vs 518 in the face region, median edge 3.5 vs 5.9 mm) and 2.7x her drawn detail at the SAME texel count in Tripo's 4096 atlas; both LIGHT heads are 750 tris. In the game the face is ~10x9 px. Next: TX-1 (the pieces the game draws white get their maps), no face regenerated before TX-5.
+
 > ⏭️ **2026-11-05 — next, by the Director's order: the female's `walk` corrective, the male's three clips and the transitions between idle / walk / run (MOVEMENT), then texturing (ACTOR), then the models in the game and on the Moto. Record: `PROMPTS/RESUMO_SESSAO_2026-11-04_BASE_TRANSITION_CORRECTIVES.md`; decisions `ACTOR` D99-D103.**
 
 > 🧭 **2026-11-04 — before the T_HAND topology match (`ACTOR` D97, D98).** The A takes the T_HAND's topology by script, never by hand: the transition needs the same vertex in both poses, and the check is whether any welded vertex was far from its partner in the A. The weld halves Blender's count but the GLB falls only 8 % (male) and 6 % (female), triangles 4 % and 2 %: the exporter splits a vertex again at every UV seam and hard normal. By its face counts the male's T_HAND carries the hidden-face deletion, so the A loses those faces too. LIGHT does not come from these files, so nothing of this reaches the game unless LIGHT is rebuilt from them, and then the Moto decides. `ASSETS/MODELS/` was cleaned the same day (`sources/`, `history/`, `fit/` carry a `.gdignore`; layout in its README). The backpack under the coat goes to a later milestone (Director). The hero tools and the bench's Quaternius modes left the tree the same day (`ACTOR`'s top note); what this plan says about them is history. Record: `PROMPTS/RESUMO_SESSAO_2026-11-04_CLEANUP_TEMP_BANK.md`.
@@ -1566,6 +1568,54 @@ recurring classes:
    was rendered rather than described.
 
 ---
+
+## 7a. Texturing the Agents (TX) — PLANNED 2026-11-06, decisions proposed in `ACTOR` D108
+
+Director, 2026-11-06: texture the characters; the clothes are simple, the faces need work; the male looks far higher-resolution than
+the female (perhaps regenerate her face); some high instances for posters and cutscenes, but the priority is the game camera.
+
+**Measured (Blender, read-only, 2026-11-06; face region = chin to just above the brow, |x| < 3.6 cm, front-facing, 1 m figure).**
+
+| | female FULL | male FULL | female LIGHT | male LIGHT |
+|---|---|---|---|---|
+| head tris | 1 536 | 4 748 | 750 | 749 |
+| face tris | 518 | 2 044 | 240 | 231 |
+| median face edge | 5.9 mm | 3.5 mm | 9.3 mm | 11.2 mm |
+| face texels (map) | 139 k (4096 atlas) | 153 k (4096 atlas) | 89 k (1024) | 71 k (1024) |
+| hair tris | 1 878 | 9 064 | 600 | 599 |
+
+- The difference the Director saw is GEOMETRY (Tripo gave her head 750 tris at generation, his six parts 4 748) and PAINT: at the same
+  texel count her face carries 2.7x less detail (Laplacian mean 5.6e-3 vs 15.1e-3; her eyes are as sharp as his, her mouth and cheeks
+  are soft; part of his figure is the beard). Not texture resolution.
+- Her forehead carries Tripo's painted BLACK hair under our hair: a black band, readable even at 16 px (hatless).
+- The painted head maps (`painted/<fig>_head[_light].png`) are Tripo's atlas re-packed by a smart projection on a mesh split at Tripo's
+  seams: hundreds of islands, unpaintable.
+- In the game the face is ~10x9 px (take `agent_walk`, detail framing, 1280x720; the zoom allows ~2x more). At that size only the
+  value structure survives (skin tone, hair mass, a dark brow / eye band, the beard); mesh density and fine paint do not show.
+- The game draws Body_Head, Body_Hands, Body_Hair, the belt and the buckle WHITE: `tripo_surface.py`'s default pieces skip them and no
+  step puts the head map into the GLB. The shader already takes `albedo x albedo_tex`.
+
+**The steps** (each closes with a render on both figures; the in-game ones with a Godot capture):
+- **TX-1 — the game draws every piece** (build only): head (its current map), hands and hair (palette x detail), belt and buckle get a
+  material in the LIGHT GLB; capture in Godot. Lets the Director judge the open D107 defects on a textured figure.
+- **TX-2 — a clean head UV on the FULL** (`tripo_head_map.py` rewritten): weld first, one face island (seam behind the hairline, down
+  the back to the nape), ears apart, the face given ~40 % of the map; the female's fused skull included. The canvas every later step
+  paints on.
+- **TX-3 — the head MASTER**: Tripo's colour baked into it at 2048 as the guide, then ours: the black band painted out, her lips,
+  brows and lash line from the concept art (`REFERENCES/Personagem/concept_2026-10-31/`); a high-res front + profile face sheet per
+  figure (Director's generator) is projected if the 70-px faces of the sheets are not enough. Hand retouch in its PNG (the pipeline
+  reads the file). Layer kept apart: an optional "game read" overlay on the same UV, composited only into the LIGHT's bake.
+- **TX-4 — the LIGHT is DERIVED**: the build bakes the master onto the LIGHT's head UV (selected-to-active from the FULL, not through
+  interpolated UVs) at 512; garments as palette colour in the material x a grayscale detail (the colour leaves the PNG, D87 (1)), so a
+  faction swap is a uniform. Moto: PSS and frame with the textures (D93 never measured them).
+- **TX-5 — posters / cutscenes**: the FULL + the 2048-4096 master, judged in Blender at poster distance. Only here is the female's face
+  regeneration decided: if her 518-tri face fails the close-up, a Tripo BUST (the face's whole budget) fused below the hairline the way
+  D106 fused her skull, the master re-projected onto it. Tripo Studio's Magic Brush / Texture Upscale may also repair her paint; untested
+  on an uploaded model.
+- **TX-6 — the coat's final texture** (regions, trims, the store's leather, D96) on the same master -> bake route.
+
+**Open (Director):** cutscenes in the engine (the FULL in Godot, its cost) or pre-rendered (Blender only)? her hair black as the concept
+art, or the brown both share (D87)? who paints TX-3 (Director by hand, or Claude projecting and the Director retouching)?
 
 ## 8. The budget contract
 

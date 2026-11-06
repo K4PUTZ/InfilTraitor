@@ -6,6 +6,7 @@
 import os, sys
 import bpy, bmesh
 import numpy as np
+from mathutils import Vector
 FIG = os.environ["HB_FIG"]
 OUT = os.path.abspath(os.environ.get("HB_OUT", f"ASSETS/MODELS/fit/HAT_CUT_{FIG.upper()}.blend"))
 RIM = float(os.environ.get("HB_RIM", "0.12"))
@@ -33,14 +34,16 @@ INNER = float(os.environ.get("HB_INNER", "0.55"))
 DROP = float(os.environ.get("HB_DROP", "0.0"))
 ang = np.arctan2(H[:, 1] - ctr[1], H[:, 0] - ctr[0])
 near = r <= np.quantile(r, INNER)
-zc = np.full(BINS, np.nan)
+zc = np.full(BINS, np.nan); rb = np.full(BINS, np.nan)
 for k in range(BINS):
     m = near & (((ang + np.pi) / (2 * np.pi) * BINS).astype(int) % BINS == k)
     if m.any():
-        zc[k] = H[m, 2].min()
+        j = np.argmin(H[m, 2]); zc[k] = H[m, 2][j]; rb[k] = r[m][j]
 ok = ~np.isnan(zc); idx = np.arange(BINS)
-zc = np.interp(idx, idx[ok], zc[ok], period=BINS)
-zc = (np.roll(zc, 1) + zc + np.roll(zc, -1)) / 3.0 - DROP
+zc = np.interp(idx, idx[ok], zc[ok], period=BINS); rb = np.interp(idx, idx[ok], rb[ok], period=BINS)
+zc = (np.roll(zc, 1) + zc + np.roll(zc, -1)) / 3.0 - DROP; rb = (np.roll(rb, 1) + rb + np.roll(rb, -1)) / 3.0
+# (2026-11-06, Director: "tem que subir a máscara do cabelo até encostar na aba") only the hair INSIDE the crown's opening is removed: what stands
+# out past the band (radius over rb) is under the brim and stays, up to the brim, so the hair meets it from outside
 print(f"[tripo_hair_brim_cut] the hat's opening: {BINS} sectors, cut height {zc.min():.4f} to {zc.max():.4f} m (drop {DROP*1000:.0f} mm)")
 
 
@@ -48,11 +51,30 @@ def f(co):
     p = mw @ co
     t = (np.arctan2(p.y - ctr[1], p.x - ctr[0]) + np.pi) / (2 * np.pi) * BINS - 0.5
     k0 = int(np.floor(t)) % BINS; w = t - np.floor(t)
-    return p.z - (zc[k0] * (1 - w) + zc[(k0 + 1) % BINS] * w)
+    z_cut = zc[k0] * (1 - w) + zc[(k0 + 1) % BINS] * w
+    r_cut = rb[k0] * (1 - w) + rb[(k0 + 1) % BINS] * w
+    # the hair stays wherever it is UNDER the hat: the hat's lowest surface over the point (the brim's underside outside the crown, the crown's
+    # inside ceiling within it), found by a ray from below; hair inside the crown is hidden and never pokes out, hair over the brim goes
+    hit = htree.ray_cast(Vector((p.x, p.y, 0.5)), Vector((0, 0, 1)), 1.0)
+    return 1.0 if hit[0] is None else p.z - hit[0].z
 
 
+from mathutils.bvhtree import BVHTree
+hb = bmesh.new(); hb.from_mesh(hat.data); hb.transform(hat.matrix_world); htree = BVHTree.FromBMesh(hb)
 bm = bmesh.new(); bm.from_mesh(cut.data)
 n0 = len(bm.faces)
+# triangles first: a triangle the surface crosses has exactly two split points, so every crossing face is split and none loses its lower part;
+# the crossing triangles subdivided HB_SUB times so the section follows the hat's curve, not the hair's long faces
+SUB = int(os.environ.get("HB_SUB", "2"))
+bmesh.ops.triangulate(bm, faces=bm.faces[:])
+for _ in range(SUB):
+    fv = {v: f(v.co) for v in bm.verts}
+    cross = [e for e in bm.edges if (fv[e.verts[0]] > 0) != (fv[e.verts[1]] > 0)]
+    if not cross:
+        break
+    faces = {fc for e in cross for fc in e.link_faces}
+    bmesh.ops.subdivide_edges(bm, edges=list({e for fc in faces for e in fc.edges}), cuts=1, use_grid_fill=True)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
 fv = {v: f(v.co) for v in bm.verts}
 new_verts = []
 for e in list(bm.edges):

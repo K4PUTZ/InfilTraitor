@@ -1589,7 +1589,8 @@ fixes defects. "Pode seguir na ordem que preferir com todas as etapas."
   `tripo_coat_transfer.py` reads each LIGHT texel from the nearest FULL point (2 mm along the normal, so the lining finds the lining),
   the LIGHT chain's coat step now. Blender look: roughness 0.55 (D96). In the game: `plane_sheen()` (`mesh_planes.gdshaderinc`), a Blinn
   highlight of the board's fixed key seen from the camera, scaled by the cell's light, on the pieces `TripoFigure.SHEEN` names (coat 0.15,
-  hat 0.09, shoes 0.22; power 6). ⚠️ Running `tripo_surface.py` on a finished Agent wiped the coat's COLOR_0 alpha (D94's push): restored (`165d892f`).
+  hat 0.09, shoes 0.22; power 6; Director: "Suave está bom"). Moto, 9 walking (`docs/measurements/sheen_2026-11-06/`): female +5.2 ms
+  (25.7 vs 20.5), male +4.8 (25.5 vs 20.7), against +4.8 / +5.0 without the sheen: within the run-to-run noise. ⚠️ Running `tripo_surface.py` on a finished Agent wiped the coat's COLOR_0 alpha (D94's push): restored (`165d892f`).
 - TX-2: `tripo_face_uv.py` + `face_uv_map.py`: FaceUV is a cylindrical projection, a function of the position (params per figure in
   `painted/<fig>_faceuv.json`), so the FULL and the LIGHT share ONE master and nothing is baked twice (this replaces TX-4's bake).
 - TX-3: `tripo_face_paint.py` + `face_paint.json` -> `painted/<fig>_face_master.png` (2048): Tripo's colour, the female's painted black

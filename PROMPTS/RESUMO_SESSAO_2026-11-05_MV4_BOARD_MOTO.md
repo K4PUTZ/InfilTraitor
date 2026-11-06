@@ -19,7 +19,7 @@
 
 ## Open (for the Director)
 
-1. **Tempo**: D61's 0.56 s per GU is 2.86 m/s; `walk` plays at 2.1x, `run` at 0.58x; `flee_01` matches (1.03x) but does not loop.
+1. ~~Tempo~~ **RATIFIED** (Director: "O video está perfeito, vamos manter assim"): `walk` phased by the ground at D61's step (~2.1x its own pace).
 2. The Tripo figure lacks weapons in hand, aim, crouch, prone, throw; the head is white (no painted map in the LIGHT GLB).
 3. A LIGHT built from the base (with D101/D104 skins and the corrective keys) — the keys are cheap, so worth it.
 4. Next by the earlier order: transitions, texturing.

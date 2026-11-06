@@ -1,0 +1,1256 @@
+/tmp/actor_dev_flags.cfg: 1 file pushed, 0 skipped. 2.7 MB/s (206 bytes in 0.000s)
+=== agent x9 ===
+[DIAG-02] device ZF524T5TG5 — motorola moto g04s (Spreadtrum T606), Android 14 / SDK 34, 3834312 kB, 720x1612 @ 280 dpi
+[DIAG-02] ok   — screen on, device unlocked
+[DIAG-02] launched com.example.infiltraitor/com.godot.game.GodotAppLauncher
+[MEM-POLL] 20:55:19  Native Heap   157737   157640       64       64   158644   180164   160497    14477 | GL mtrack    67572    67572        0        0    67572 | Native Heap:   157640                         158644 | Graphics:    67572                          67572 | TOTAL PSS:   306302            TOTAL RSS:   374988       TOTAL SWAP PSS:      881
+[MEM-POLL] 20:55:24  Native Heap   259640   259548       56       49   260560   298684   146663   147397 | GL mtrack    67572    67572        0        0    67572 | Native Heap:   259548                         260560 | Graphics:    67572                          67572 | TOTAL PSS:   411277            TOTAL RSS:   484208       TOTAL SWAP PSS:      324
+[MEM-POLL] 20:55:28  Native Heap   256624   256532       56       49   257544   416208   259578   150710 | GL mtrack   199036   199036        0        0   199036 | Native Heap:   256532                         257544 | Graphics:   199036                         199036 | TOTAL PSS:   539199            TOTAL RSS:   611028       TOTAL SWAP PSS:      323
+[MEM-POLL] 20:55:33  Native Heap   381860   381768       56       49   382780   544304   391289   145551 | GL mtrack   216200   216200        0        0   216200 | Native Heap:   381768                         382780 | Graphics:   216200                         216200 | TOTAL PSS:   683865            TOTAL RSS:   755408       TOTAL SWAP PSS:      323
+[MEM-POLL] 20:55:37  Native Heap   380044   379952       56       49   380964   545128   391479   146185 | GL mtrack   228516   228516        0        0   228516 | Native Heap:   379952                         380964 | Graphics:   228516                         228516 | TOTAL PSS:   694342            TOTAL RSS:   765888       TOTAL SWAP PSS:      323
+[MEM-POLL] 20:55:41  Native Heap   380043   379952       56       49   380964   545128   391477   146186 | GL mtrack   218272   218272        0        0   218272 | Native Heap:   379952                         380964 | Graphics:   218272                         218272 | TOTAL PSS:   684094            TOTAL RSS:   755644       TOTAL SWAP PSS:      323
+[MEM-POLL] 20:55:46  Native Heap   380051   379960       56       49   380972   545128   391485   146178 | GL mtrack   216224   216224        0        0   216224 | Native Heap:   379960                         380972 | Graphics:   216224                         216224 | TOTAL PSS:   682062            TOTAL RSS:   753612       TOTAL SWAP PSS:      323
+[MEM-POLL] 20:55:50  Native Heap   379959   379868       56       50   380880   546488   394356   144732 | GL mtrack   218332   218332        0        0   218332 | Native Heap:   379868                         380880 | Graphics:   218332                         218332 | TOTAL PSS:   684102            TOTAL RSS:   755652       TOTAL SWAP PSS:      324
+[MEM-POLL] 20:55:55  Native Heap   379959   379868       56       50   380880   546488   394358   144730 | GL mtrack   224476   224476        0        0   224476 | Native Heap:   379868                         380880 | Graphics:   224476                         224476 | TOTAL PSS:   690237            TOTAL RSS:   761792       TOTAL SWAP PSS:      324
+[MEM-POLL] 20:55:59  Native Heap   379959   379868       56       50   380880   546488   394356   144732 | GL mtrack   222428   222428        0        0   222428 | Native Heap:   379868                         380880 | Graphics:   222428                         222428 | TOTAL PSS:   688181            TOTAL RSS:   759684       TOTAL SWAP PSS:      324
+[MEM-POLL] 20:56:03  Native Heap   379959   379868       56       50   380880   546488   394356   144732 | GL mtrack   220376   220376        0        0   220376 | Native Heap:   379868                         380880 | Graphics:   220376                         220376 | TOTAL PSS:   686127            TOTAL RSS:   757632       TOTAL SWAP PSS:      324
+[MEM-POLL] 20:56:08  (not running)
+[DIAG-02] com.example.infiltraitor exited on its own at 20:56:08 — capture ends
+[dev] --------- beginning of main
+[dev] 11-05 20:55:15.517 V/Godot   ( 7451): Initializing Godot plugin registry
+[dev] 11-05 20:55:15.533 V/Godot   ( 7451): InitEngine with params: [--xr_mode_regular, --xr-mode, off, --fullscreen, --background_color, #000000]
+[dev] 11-05 20:55:15.573 V/Godot   ( 7451): Godot native layer initialization completed: true
+[dev] 11-05 20:55:15.573 V/Godot   ( 7451): Setting up native layer with params: [--xr-mode, off, --fullscreen]
+[dev] 11-05 20:55:15.648 V/Godot   ( 7451): Godot native layer setup completed
+[dev] 11-05 20:55:15.649 V/Godot   ( 7451): OnInitRenderView: GodotFragment{fc29790} (9e1bf0ec-63e1-4ee7-8418-18fc7df2836a id=0x7f07002c)
+[dev] 11-05 20:55:15.662 D/Godot   ( 7451): Render view should be transparent: false
+[dev] 11-05 20:55:15.669 D/Godot   ( 7451): renderingDevice: vulkan (ProjectSettings)
+[dev] 11-05 20:55:15.669 D/Godot   ( 7451): 			renderer: mobile (ProjectSettings)
+[dev] 11-05 20:55:15.689 V/Godot   ( 7451): OnStart: GodotFragment{fc29790} (9e1bf0ec-63e1-4ee7-8418-18fc7df2836a id=0x7f07002c)
+[dev] 11-05 20:55:15.696 V/Godot   ( 7451): OnResume: GodotFragment{fc29790} (9e1bf0ec-63e1-4ee7-8418-18fc7df2836a id=0x7f07002c)
+[dev] 11-05 20:55:15.749 I/godot   ( 7451): Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+[dev] 11-05 20:55:15.826 I/godot   ( 7451): Vulkan 1.3.225 - Forward Mobile - Using Device #0: ARM - Mali-G57
+[dev] 11-05 20:55:16.628 I/godot   ( 7451): 
+[dev] 11-05 20:55:22.817 V/Godot   ( 7451): OnGodotSetupCompleted
+[dev] 11-05 20:55:22.846 I/godot   ( 7451): [DevFlags] 6 override(s) from /sdcard/Android/data/com.example.infiltraitor/files/dev_flags.cfg — FRAME_PROBE=1, MAP=PLAYGROUND, MAX_FPS=0, RNG_SEED=1, SCENARIO=framing portrait; centre agent; zoom 0.9; frames 60; wait 8; mark idle; wait 7; actor_bench agent 9; wait 3; mark agent; wait 14; quit, TELEMETRY=1
+[dev] 11-05 20:55:22.846 I/godot   ( 7451): [INFILTRAITOR] Version 0.9.107
+[dev] 11-05 20:55:22.853 I/godot   ( 7451): [Telemetry] file sink: /sdcard/Android/data/com.example.infiltraitor/files/telemetry/tel_2026-11-05_20-55-22.jsonl
+[dev] 11-05 20:55:22.854 I/godot   ( 7451): [TEL] 1 0 7280495 session version=0.9.107 os=Android os_version=34.2a14d76c model=moto_g04s cpu= cores=8 gpu=Mali-G57 gpu_vendor=ARM gpu_api=1.3.225 renderer=mobile screen=720,1612 refresh_hz=90.000 dpi=280 window=720,1612 flags_file=/sdcard/Android/data/com.example.infiltraitor/files/dev_flags.cfg file_sink=/sdcard/Android/data/com.example.infiltraitor/files/telemetry/tel_2026-11-05_20-55-22.jsonl overrides=FRAME_PROBE:1|MAP:PLAYGROUND|MAX_FPS:0|RNG_SEED:1|SCENARIO:framing_portrait;_centre_agent;_zoom_0.9;_frames_60;_wait_8;_mark_idle;_wait_7;_actor_bench_agent_9;_wait_3;_mark_agent;_wait_14;_quit|TELEMETRY:1
+[dev] 11-05 20:55:22.862 I/godot   ( 7451): [Registries] Autoload initialized
+[dev] 11-05 20:55:22.892 I/godot   ( 7451): [RNG] seeded 1 — particle rolls are reproducible this boot
+[dev] 11-05 20:55:22.910 I/godot   ( 7451): [MaterialRegistry] Registered: brick (color: 0.55,0.29,0.22)
+[dev] 11-05 20:55:22.911 I/godot   ( 7451): [MaterialRegistry] Registered: cardboard (color: 0.70,0.55,0.36)
+[dev] 11-05 20:55:22.911 I/godot   ( 7451): [MaterialRegistry] Registered: carpet (color: 0.46,0.52,0.62)
+[dev] 11-05 20:55:22.911 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_basket (color: 0.31,0.38,0.61)
+[dev] 11-05 20:55:22.911 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_basket_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:55:22.911 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_basket_blue (color: 0.51,0.61,0.79)
+[dev] 11-05 20:55:22.911 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_basket_green (color: 0.26,0.51,0.38)
+[dev] 11-05 20:55:22.911 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_basket_grey (color: 0.68,0.68,0.72)
+[dev] 11-05 20:55:22.911 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_basket_orange (color: 1.00,0.50,0.17)
+[dev] 11-05 20:55:22.911 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_basket_purple (color: 0.51,0.27,0.65)
+[dev] 11-05 20:55:22.911 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_basket_red (color: 0.72,0.19,0.22)
+[dev] 11-05 20:55:22.911 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_basket_tan (color: 0.89,0.75,0.53)
+[dev] 11-05 20:55:22.911 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_basket_yellow (color: 0.99,0.80,0.20)
+[dev] 11-05 20:55:22.911 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_check (color: 0.89,0.75,0.53)
+[dev] 11-05 20:55:22.912 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_check_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:55:22.912 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_check_blue (color: 0.51,0.61,0.78)
+[dev] 11-05 20:55:22.912 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_check_green (color: 0.26,0.51,0.38)
+[dev] 11-05 20:55:22.912 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_check_grey (color: 0.68,0.68,0.72)
+[dev] 11-05 20:55:22.912 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_check_navy (color: 0.31,0.38,0.61)
+[dev] 11-05 20:55:22.912 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_check_orange (color: 1.00,0.49,0.17)
+[dev] 11-05 20:55:22.912 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_check_purple (color: 0.51,0.27,0.65)
+[dev] 11-05 20:55:22.912 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_check_red (color: 0.72,0.19,0.22)
+[dev] 11-05 20:55:22.912 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_check_yellow (color: 0.99,0.80,0.20)
+[dev] 11-05 20:55:22.912 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_diamond (color: 0.26,0.53,0.39)
+[dev] 11-05 20:55:22.912 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_diamond_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:55:22.912 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_diamond_blue (color: 0.53,0.63,0.81)
+[dev] 11-05 20:55:22.913 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_diamond_grey (color: 0.70,0.70,0.74)
+[dev] 11-05 20:55:22.913 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_diamond_navy (color: 0.32,0.39,0.63)
+[dev] 11-05 20:55:22.913 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_diamond_orange (color: 1.00,0.51,0.18)
+[dev] 11-05 20:55:22.913 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_diamond_purple (color: 0.53,0.28,0.67)
+[dev] 11-05 20:55:22.913 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_diamond_red (color: 0.74,0.19,0.23)
+[dev] 11-05 20:55:22.913 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_diamond_tan (color: 0.91,0.77,0.54)
+[dev] 11-05 20:55:22.913 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_diamond_yellow (color: 1.00,0.83,0.21)
+[dev] 11-05 20:55:22.913 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_plain (color: 0.51,0.62,0.79)
+[dev] 11-05 20:55:22.913 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_plain_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:55:22.913 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_plain_green (color: 0.26,0.51,0.38)
+[dev] 11-05 20:55:22.913 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_plain_grey (color: 0.69,0.69,0.72)
+[dev] 11-05 20:55:22.913 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_plain_navy (color: 0.31,0.38,0.62)
+[dev] 11-05 20:55:22.913 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_plain_orange (color: 1.00,0.50,0.17)
+[dev] 11-05 20:55:22.914 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_plain_purple (color: 0.51,0.27,0.65)
+[dev] 11-05 20:55:22.914 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_plain_red (color: 0.72,0.19,0.22)
+[dev] 11-05 20:55:22.914 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_plain_tan (color: 0.89,0.75,0.53)
+[dev] 11-05 20:55:22.914 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_plain_yellow (color: 0.99,0.81,0.21)
+[dev] 11-05 20:55:22.914 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_stripe (color: 0.72,0.19,0.22)
+[dev] 11-05 20:55:22.914 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_stripe_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:55:22.914 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_stripe_blue (color: 0.51,0.62,0.79)
+[dev] 11-05 20:55:22.914 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_stripe_green (color: 0.26,0.51,0.38)
+[dev] 11-05 20:55:22.914 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_stripe_grey (color: 0.69,0.69,0.72)
+[dev] 11-05 20:55:22.914 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_stripe_navy (color: 0.31,0.38,0.62)
+[dev] 11-05 20:55:22.914 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_stripe_orange (color: 1.00,0.50,0.17)
+[dev] 11-05 20:55:22.914 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_stripe_purple (color: 0.51,0.27,0.65)
+[dev] 11-05 20:55:22.915 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_stripe_tan (color: 0.89,0.75,0.53)
+[dev] 11-05 20:55:22.915 I/godot   ( 7451): [MaterialRegistry] Registered: carpet_stripe_yellow (color: 0.99,0.81,0.21)
+[dev] 11-05 20:55:22.915 I/godot   ( 7451): [MaterialRegistry] Registered: ceramic (color: 0.90,0.89,0.85)
+[dev] 11-05 20:55:22.915 I/godot   ( 7451): [MaterialRegistry] Registered: concrete (color: 0.62,0.62,0.62)
+[dev] 11-05 20:55:22.915 I/godot   ( 7451): [MaterialRegistry] Registered: dirt (color: 0.50,0.38,0.27)
+[dev] 11-05 20:55:22.915 I/godot   ( 7451): [MaterialRegistry] Registered: earth (color: 0.52,0.39,0.26)
+[dev] 11-05 20:55:22.915 I/godot   ( 7451): [MaterialRegistry] Registered: fabric (color: 0.78,0.74,0.66)
+[dev] 11-05 20:55:22.915 I/godot   ( 7451): [MaterialRegistry] Registered: generic (color: 0.55,0.55,0.55)
+[dev] 11-05 20:55:22.915 I/godot   ( 7451): [MaterialRegistry] Registered: glass (color: 0.62,0.74,0.78)
+[dev] 11-05 20:55:22.915 I/godot   ( 7451): [MaterialRegistry] Registered: glass_armored (color: 0.74,0.62,0.78)
+[dev] 11-05 20:55:22.915 I/godot   ( 7451): [MaterialRegistry] Registered: glass_screen_amber (color: 0.70,0.60,0.38)
+[dev] 11-05 20:55:22.915 I/godot   ( 7451): [MaterialRegistry] Registered: glass_screen_green (color: 0.38,0.55,0.42)
+[dev] 11-05 20:55:22.915 I/godot   ( 7451): [MaterialRegistry] Registered: glass_screen_red (color: 0.62,0.40,0.41)
+[dev] 11-05 20:55:22.916 I/godot   ( 7451): [MaterialRegistry] Registered: grass (color: 0.42,0.55,0.29)
+[dev] 11-05 20:55:22.916 I/godot   ( 7451): [MaterialRegistry] Registered: grating (color: 1.00,1.00,1.00)
+[dev] 11-05 20:55:22.916 I/godot   ( 7451): [MaterialRegistry] Registered: grating_dark (color: 0.39,0.42,0.48)
+[dev] 11-05 20:55:22.916 I/godot   ( 7451): [MaterialRegistry] Registered: grating_rust (color: 1.00,0.59,0.31)
+[dev] 11-05 20:55:22.916 I/godot   ( 7451): [MaterialRegistry] Registered: grating_yellow (color: 1.00,1.00,0.23)
+[dev] 11-05 20:55:22.916 I/godot   ( 7451): [MaterialRegistry] Registered: gravel (color: 0.55,0.52,0.49)
+[dev] 11-05 20:55:22.916 I/godot   ( 7451): [MaterialRegistry] Registered: iron_bar (color: 0.63,0.61,0.63)
+[dev] 11-05 20:55:22.916 I/godot   ( 7451): [MaterialRegistry] Registered: leather (color: 0.42,0.27,0.17)
+[dev] 11-05 20:55:22.916 I/godot   ( 7451): [MaterialRegistry] Registered: metal (color: 0.49,0.53,0.56)
+[dev] 11-05 20:55:22.916 I/godot   ( 7451): [MaterialRegistry] Registered: painted_metal (color: 0.45,0.52,0.60)
+[dev] 11-05 20:55:22.916 I/godot   ( 7451): [MaterialRegistry] Registered: paper (color: 0.88,0.85,0.75)
+[dev] 11-05 20:55:22.916 I/godot   ( 7451): [MaterialRegistry] Registered: parquet (color: 0.80,0.58,0.38)
+[dev] 11-05 20:55:22.917 I/godot   ( 7451): [MaterialRegistry] Registered: plastic (color: 0.72,0.72,0.74)
+[dev] 11-05 20:55:22.917 I/godot   ( 7451): [MaterialRegistry] Registered: plywood (color: 0.78,0.63,0.42)
+[dev] 11-05 20:55:22.917 I/godot   ( 7451): [MaterialRegistry] Registered: rubber (color: 0.13,0.13,0.14)
+[dev] 11-05 20:55:22.917 I/godot   ( 7451): [MaterialRegistry] Registered: sand (color: 0.76,0.67,0.51)
+[dev] 11-05 20:55:22.917 I/godot   ( 7451): [MaterialRegistry] Registered: steel_dark (color: 0.22,0.23,0.25)
+[dev] 11-05 20:55:22.917 I/godot   ( 7451): [MaterialRegistry] Registered: steel_plate (color: 0.63,0.66,0.70)
+[dev] 11-05 20:55:22.917 I/godot   ( 7451): [MaterialRegistry] Registered: steel_plate_dark (color: 0.24,0.26,0.30)
+[dev] 11-05 20:55:22.917 I/godot   ( 7451): [MaterialRegistry] Registered: steel_plate_green (color: 0.26,0.52,0.35)
+[dev] 11-05 20:55:22.917 I/godot   ( 7451): [MaterialRegistry] Registered: steel_plate_rust (color: 0.70,0.37,0.19)
+[dev] 11-05 20:55:22.917 I/godot   ( 7451): [MaterialRegistry] Registered: stone (color: 0.55,0.55,0.58)
+[dev] 11-05 20:55:22.917 I/godot   ( 7451): [MaterialRegistry] Registered: tile (color: 0.93,0.92,0.88)
+[dev] 11-05 20:55:22.917 I/godot   ( 7451): [MaterialRegistry] Registered: tile_beige (color: 0.96,0.86,0.67)
+[dev] 11-05 20:55:22.918 I/godot   ( 7451): [MaterialRegistry] Registered: tile_grey (color: 0.67,0.68,0.71)
+[dev] 11-05 20:55:22.918 I/godot   ( 7451): [MaterialRegistry] Registered: upholstery (color: 0.35,0.40,0.47)
+[dev] 11-05 20:55:22.918 I/godot   ( 7451): [MaterialRegistry] Registered: wood (color: 0.66,0.47,0.31)
+[dev] 11-05 20:55:22.919 I/godot   ( 7451): [Registries] Material registry initialized with defaults
+[dev] 11-05 20:55:23.399 I/godot   ( 7451): [Room] Light registry initialized with 0 map lights:
+[dev] 11-05 20:55:23.399 I/godot   ( 7451): [Room] Tile semantics initialized with 0 tiles, 0 light anchors
+[dev] 11-05 20:55:23.399 I/godot   ( 7451): [Room] Shadow projector initialized
+[dev] 11-05 20:55:23.399 I/godot   ( 7451): [Room] Exposure system initialized with 0 light projections
+[dev] 11-05 20:55:23.400 I/godot   ( 7451): [VisionController] Shadow overlay initialized
+[dev] 11-05 20:55:23.400 I/godot   ( 7451): [VisionController] Exposure overlay initialized
+[dev] 11-05 20:55:23.400 I/godot   ( 7451): [VisionController] Tile risk heatmap overlay initialized
+[dev] 11-05 20:55:23.400 I/godot   ( 7451): [VisionController] Elite exposure overlay initialized: [EliteExposureOverlay safe=0 total=0 confidence=0.00 depth_layers=6 stability_types=4]
+[dev] 11-05 20:55:23.438 I/godot   ( 7451): [Registries] File map source initialized
+[dev] 11-05 20:55:23.482 I/godot   ( 7451): [MapFileService] PLAYGROUND (not a segment, info only): the map (44x22 GU) is larger than the envelope reserve (24x48): outside what PB-3 measured; re-run pb3_study.py --only HEAVY
+[dev] 11-05 20:55:23.501 I/godot   ( 7451): [MAP-LAYOUT] PLAYGROUND: 26 poi, 3 region(s), 0 objective(s), 0 exit(s), map (44, 22) x 2.00 storeys (instance -9223371865240631346)
+[dev] 11-05 20:55:23.996 I/godot   ( 7451): [PropRegistry] Registered: locker (footprint: [(0, 0)], storeys: 1, cover: full)
+[dev] 11-05 20:55:23.996 I/godot   ( 7451): [PropRegistry] Registered: pipe_n_00 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:55:23.996 I/godot   ( 7451): [PropRegistry] Registered: pipe_n_11 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:55:23.997 I/godot   ( 7451): [PropRegistry] Registered: nightstand (footprint: [(0, 0)], storeys: 1, cover: quarter)
+[dev] 11-05 20:55:23.997 I/godot   ( 7451): [PropRegistry] Registered: pipe_n_01 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:55:23.997 I/godot   ( 7451): [PropRegistry] Registered: pipe_n_10 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:55:23.998 I/godot   ( 7451): [PropRegistry] Registered: pipe_n_hi_00 (footprint: [(0, 0)], storeys: 2, cover: half)
+[dev] 11-05 20:55:23.998 I/godot   ( 7451): [PropRegistry] Registered: pit_divider (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:55:23.998 I/godot   ( 7451): [PropRegistry] Registered: plywood_table (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:55:23.998 I/godot   ( 7451): [PropRegistry] Registered: pipe_n_hi_10 (footprint: [(0, 0)], storeys: 2, cover: half)
+[dev] 11-05 20:55:23.999 I/godot   ( 7451): [PropRegistry] Registered: wood_table (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:55:23.999 I/godot   ( 7451): [PropRegistry] Registered: pipe_s_01 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:55:24.000 I/godot   ( 7451): [PropRegistry] Registered: pipe_n_hi_01 (footprint: [(0, 0)], storeys: 2, cover: half)
+[dev] 11-05 20:55:24.000 I/godot   ( 7451): [PropRegistry] Registered: pistol_prop (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:55:24.000 I/godot   ( 7451): [PropRegistry] Registered: pipe_n_hi_11 (footprint: [(0, 0)], storeys: 2, cover: half)
+[dev] 11-05 20:55:24.001 I/godot   ( 7451): [PropRegistry] Registered: pipe_s_11 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:55:24.001 I/godot   ( 7451): [PropRegistry] Registered: pipe_s_00 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:55:24.001 I/godot   ( 7451): [PropRegistry] Registered: post_wood (footprint: [(0, 0)], storeys: 2, cover: none)
+[dev] 11-05 20:55:24.002 I/godot   ( 7451): [PropRegistry] Registered: pipe_s_10 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:55:24.002 I/godot   ( 7451): [PropRegistry] Registered: bed_single (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:55:24.002 I/godot   ( 7451): [PropRegistry] Registered: desk (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:55:24.003 I/godot   ( 7451): [PropRegistry] Registered: crate_plywood (footprint: [(0, 0)], storeys: 1, cover: full)
+[dev] 11-05 20:55:24.003 I/godot   ( 7451): [PropRegistry] Registered: grate_n_1 (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:55:24.003 I/godot   ( 7451): [PropRegistry] Registered: crate_full (footprint: [(0, 0)], storeys: 1, cover: full)
+[dev] 11-05 20:55:24.003 I/godot   ( 7451): [PropRegistry] Registered: grate_s_0 (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:55:24.004 I/godot   ( 7451): [PropRegistry] Registered: box_cardboard_pit (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:55:24.004 I/godot   ( 7451): [PropRegistry] Registered: grate_s_1 (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:55:24.004 I/godot   ( 7451): [PropRegistry] Registered: bin (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:55:24.005 I/godot   ( 7451): [PropRegistry] Registered: curb_hi (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:55:24.005 I/godot   ( 7451): [PropRegistry] Registered: grate_n_0 (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:55:24.005 I/godot   ( 7451): [PropRegistry] Registered: curb_lo (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:55:24.006 I/godot   ( 7451): [PropRegistry] Registered: bookshelf (footprint: [(0, 0)], storeys: 1, cover: full)
+[dev] 11-05 20:55:24.006 I/godot   ( 7451): [PropRegistry] Registered: chair (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:55:24.006 I/godot   ( 7451): [Registries] Prop registry initialized from disk
+[dev] 11-05 20:55:24.775 I/godot   ( 7451): [VOXEL-CONTAINERS] map load: PLAYGROUND — 0 container(s) (0 voxels) were turned into objects before the store was built
+[dev] 11-05 20:55:24.780 I/godot   ( 7451): [VOXEL-STORE] built (map load: PLAYGROUND) — 242528 claim(s) in 3154 container(s), 1 irregular, 544 multi-claim cell(s), 20.00 MB, 750 ms
+[dev] 11-05 20:55:25.150 I/godot   ( 7451): [OCC-03] Agent z_index set to 34 (max voxel layer z_index: 33, room size: (54, 32))
+[dev] 11-05 20:55:25.173 I/godot   ( 7451): [Room] Light registry initialized with 12 map lights:
+[dev] 11-05 20:55:25.173 I/godot   ( 7451):   - map_light_1 @ cell(10,8) radius=7 type=omni
+[dev] 11-05 20:55:25.173 I/godot   ( 7451):   - map_light_2 @ cell(21,8) radius=6 type=omni
+[dev] 11-05 20:55:25.173 I/godot   ( 7451):   - map_light_3 @ cell(16,15) radius=7 type=omni
+[dev] 11-05 20:55:25.174 I/godot   ( 7451):   - map_light_4 @ cell(15,14) radius=10 type=omni
+[dev] 11-05 20:55:25.174 I/godot   ( 7451):   - map_light_5 @ cell(20,15) radius=8 type=omni
+[dev] 11-05 20:55:25.174 I/godot   ( 7451):   - map_light_6 @ cell(28,8) radius=7 type=omni
+[dev] 11-05 20:55:25.174 I/godot   ( 7451):   - map_light_7 @ cell(32,8) radius=7 type=omni
+[dev] 11-05 20:55:25.174 I/godot   ( 7451):   - map_light_8 @ cell(36,8) radius=7 type=omni
+[dev] 11-05 20:55:25.174 I/godot   ( 7451):   - map_light_9 @ cell(40,8) radius=7 type=omni
+[dev] 11-05 20:55:25.174 I/godot   ( 7451):   - map_light_10 @ cell(44,8) radius=7 type=omni
+[dev] 11-05 20:55:25.174 I/godot   ( 7451):   - map_light_11 @ cell(30,13) radius=8 type=omni
+[dev] 11-05 20:55:25.174 I/godot   ( 7451):   - map_light_12 @ cell(38,13) radius=8 type=omni
+[dev] 11-05 20:55:25.179 I/godot   ( 7451): [Room] Tile semantics initialized with 783 tiles, 12 light anchors
+[dev] 11-05 20:55:26.675 I/godot   ( 7451): [LOAD-SPLIT] lighting.rebuild_all: lights 1 ms, semantics 5, projector 3, shadows+exposure 86, listeners 1408
+[dev] 11-05 20:55:26.675 I/godot   ( 7451): [LOAD-SPLIT] stage 20->25: turn state + fog 0 ms, hud 17, lighting 1502
+[dev] 11-05 20:55:26.894 I/godot   ( 7451): 
+[dev] 11-05 20:55:26.894 I/godot   ( 7451): Attempting to resolve: facade_concrete (folder concrete)
+[dev] 11-05 20:55:26.894 I/godot   ( 7451):   [USER] File not found: user://textures/concrete/facade_concrete.png
+[dev] 11-05 20:55:26.894 I/godot   ( 7451):   [USER] File not found: user://textures/concrete/facade_concrete.webp
+[dev] 11-05 20:55:26.931 I/godot   ( 7451):   [DEFAULT] Validation PASS: res://ASSETS/materials/concrete/facade_concrete.png
+[dev] 11-05 20:55:26.931 I/godot   ( 7451): [RESOLVER] facade_concrete resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:55:26.977 I/godot   ( 7451): 
+[dev] 11-05 20:55:26.977 I/godot   ( 7451): Attempting to resolve: facade_metal (folder metal)
+[dev] 11-05 20:55:26.977 I/godot   ( 7451):   [USER] File not found: user://textures/metal/facade_metal.png
+[dev] 11-05 20:55:26.977 I/godot   ( 7451):   [USER] File not found: user://textures/metal/facade_metal.webp
+[dev] 11-05 20:55:27.016 I/godot   ( 7451):   [DEFAULT] Validation PASS: res://ASSETS/materials/metal/facade_metal.png
+[dev] 11-05 20:55:27.016 I/godot   ( 7451): [RESOLVER] facade_metal resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:55:27.019 I/godot   ( 7451): 
+[dev] 11-05 20:55:27.019 I/godot   ( 7451): Attempting to resolve: facade_stone (folder stone)
+[dev] 11-05 20:55:27.019 I/godot   ( 7451):   [USER] File not found: user://textures/stone/facade_stone.png
+[dev] 11-05 20:55:27.019 I/godot   ( 7451):   [USER] File not found: user://textures/stone/facade_stone.webp
+[dev] 11-05 20:55:27.050 I/godot   ( 7451):   [DEFAULT] Validation PASS: res://ASSETS/materials/stone/facade_stone.png
+[dev] 11-05 20:55:27.050 I/godot   ( 7451): [RESOLVER] facade_stone resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:55:27.053 I/godot   ( 7451): 
+[dev] 11-05 20:55:27.054 I/godot   ( 7451): Attempting to resolve: facade_wood (folder wood)
+[dev] 11-05 20:55:27.054 I/godot   ( 7451):   [USER] File not found: user://textures/wood/facade_wood.png
+[dev] 11-05 20:55:27.054 I/godot   ( 7451):   [USER] File not found: user://textures/wood/facade_wood.webp
+[dev] 11-05 20:55:27.085 I/godot   ( 7451):   [DEFAULT] Validation PASS: res://ASSETS/materials/wood/facade_wood.png
+[dev] 11-05 20:55:27.085 I/godot   ( 7451): [RESOLVER] facade_wood resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:55:27.088 I/godot   ( 7451): 
+[dev] 11-05 20:55:27.088 I/godot   ( 7451): Attempting to resolve: facade_brick (folder brick)
+[dev] 11-05 20:55:27.089 I/godot   ( 7451):   [USER] File not found: user://textures/brick/facade_brick.png
+[dev] 11-05 20:55:27.089 I/godot   ( 7451):   [USER] File not found: user://textures/brick/facade_brick.webp
+[dev] 11-05 20:55:27.126 I/godot   ( 7451):   [DEFAULT] Validation PASS: res://ASSETS/materials/brick/facade_brick.png
+[dev] 11-05 20:55:27.126 I/godot   ( 7451): [RESOLVER] facade_brick resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:55:27.130 I/godot   ( 7451): 
+[dev] 11-05 20:55:27.130 I/godot   ( 7451): Attempting to resolve: facade_plywood (folder plywood)
+[dev] 11-05 20:55:27.130 I/godot   ( 7451):   [USER] File not found: user://textures/plywood/facade_plywood.png
+[dev] 11-05 20:55:27.130 I/godot   ( 7451):   [USER] File not found: user://textures/plywood/facade_plywood.webp
+[dev] 11-05 20:55:27.165 I/godot   ( 7451):   [DEFAULT] Validation PASS: res://ASSETS/materials/plywood/facade_plywood.png
+[dev] 11-05 20:55:27.165 I/godot   ( 7451): [RESOLVER] facade_plywood resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:55:27.262 I/godot   ( 7451): 
+[dev] 11-05 20:55:27.262 I/godot   ( 7451): Attempting to resolve: facade_fabric (folder fabric)
+[dev] 11-05 20:55:27.262 I/godot   ( 7451):   [USER] File not found: user://textures/fabric/facade_fabric.png
+[dev] 11-05 20:55:27.262 I/godot   ( 7451):   [USER] File not found: user://textures/fabric/facade_fabric.webp
+[dev] 11-05 20:55:27.286 I/godot   ( 7451):   [DEFAULT] Validation PASS: res://ASSETS/materials/fabric/facade_fabric.png
+[dev] 11-05 20:55:27.286 I/godot   ( 7451): [RESOLVER] facade_fabric resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:55:27.289 I/godot   ( 7451): 
+[dev] 11-05 20:55:27.289 I/godot   ( 7451): Attempting to resolve: facade_cardboard (folder cardboard)
+[dev] 11-05 20:55:27.289 I/godot   ( 7451):   [USER] File not found: user://textures/cardboard/facade_cardboard.png
+[dev] 11-05 20:55:27.290 I/godot   ( 7451):   [USER] File not found: user://textures/cardboard/facade_cardboard.webp
+[dev] 11-05 20:55:27.318 I/godot   ( 7451):   [DEFAULT] Validation PASS: res://ASSETS/materials/cardboard/facade_cardboard.png
+[dev] 11-05 20:55:27.318 I/godot   ( 7451): [RESOLVER] facade_cardboard resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:55:27.405 I/godot   ( 7451): [SOFT-SHEET] 2792 voxel(s) of soft materials: 2792 drawn by a cloth at rest (SoftSheet3D), 0 as one flat plane
+[dev] 11-05 20:55:27.797 I/godot   ( 7451): [LOAD-SPLIT] board3d.materials: 9 material(s) 550 ms, decal catalogue 392
+[dev] 11-05 20:55:28.080 I/godot   ( 7451): [LOAD-SPLIT] board3d.collect: materials + decals 981 ms (texture resolve 265, build 23), claim walk 245
+[dev] 11-05 20:55:28.935 I/godot   ( 7451): [LOAD-SPLIT] prop shadows: mesh props 0 ms (voxelize 0), voxel props 48
+[dev] 11-05 20:55:28.935 I/godot   ( 7451): [BOARD3D] 241984 voxel(s) (slices 65088, columns 480, slabs 176600) → 181500 face(s) → 1417 quad(s) in 432 chunk(s), 35 material(s), plane levels 78..103; collect 1228 ms, mesh 853 ms; source store
+[dev] 11-05 20:55:28.935 I/godot   ( 7451): [TEL] 2 0 13361626 board3d.built voxels=241984 slice_voxels=65088 column_voxels=480 slab_voxels=176600 faces=181500 quads=1417 chunks=432 materials=35 collect_ms=1227.536 mesh_ms=852.936 plane_levels=26
+[dev] 11-05 20:55:28.936 I/godot   ( 7451): [LOAD-SPLIT] board3d.build: plane 27 ms, camera+mirror 43, chunks parallel 659 (worker collect 4341 + merge 801 summed), commit 75, mesh props 0, prop shadows 48, occlusion 1
+[dev] 11-05 20:55:29.816 I/godot   ( 7451): [SOFT-SHEET] cardboard roof at (31, 7) shown AT REST from the load (from the cache): 11 x 8 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:55:29.822 I/godot   ( 7451): [SOFT-SHEET] fabric roof at (35, 7) shown AT REST from the load (from the cache): 11 x 8 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:55:29.824 I/godot   ( 7451): [SOFT-SHEET] fabric wall at wall|0|311|104|80|87|fabric shown AT REST from the load (from the cache): 4 x 4 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:55:29.832 I/godot   ( 7451): [SOFT-SHEET] cardboard wall at wall|1|56|248|80|95|cardboard shown AT REST from the load (from the cache): 10 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:55:29.838 I/godot   ( 7451): [SOFT-SHEET] cardboard wall at wall|0|248|56|80|95|cardboard shown AT REST from the load (from the cache): 7 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:55:29.844 I/godot   ( 7451): [SOFT-SHEET] cardboard wall at wall|0|271|56|80|95|cardboard shown AT REST from the load (from the cache): 7 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:55:29.852 I/godot   ( 7451): [SOFT-SHEET] fabric wall at wall|1|56|280|80|95|fabric shown AT REST from the load (from the cache): 10 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:55:29.858 I/godot   ( 7451): [SOFT-SHEET] fabric wall at wall|0|280|56|80|95|fabric shown AT REST from the load (from the cache): 7 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:55:29.864 I/godot   ( 7451): [SOFT-SHEET] fabric wall at wall|0|303|56|80|95|fabric shown AT REST from the load (from the cache): 7 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:55:29.864 I/godot   ( 7451): [SOFT-SHEET] on the main thread: skin dictionaries 3 ms, SoftSheet3D.setup (mesh, texture, material) 110 ms, show_at_rest 2 ms, for 9 cloth(s)
+[dev] 11-05 20:55:29.864 I/godot   ( 7451): [SOFT-SHEET] voxel handles after the sheets: 5 container(s) turned back into objects (360 voxels), 0 single handle(s) made
+[dev] 11-05 20:55:29.864 I/godot   ( 7451): [SOFT-SHEET] 9 cloth(s) at rest (9 from the cache, 0 settled now): the load waited 0 ms for the workers, 124 ms in all
+[dev] 11-05 20:55:29.865 I/godot   ( 7451): [LOAD-SPLIT] board attach: actors 397 ms, vfx 122, ground overlays 405
+[dev] 11-05 20:55:30.117 I/godot   ( 7451): [PERF-DEV] MAX_FPS — Engine.max_fps = 0
+[dev] 11-05 20:55:30.232 I/godot   ( 7451): [TestZone] 0 pickups
+[dev] 11-05 20:55:30.352 I/godot   ( 7451): [OCC] every view's edge geometry built in 115.9 ms
+[dev] 11-05 20:55:30.389 I/godot   ( 7451): [DEV-HUD-01] DEV VISION Status Panel initialized
+[dev] 11-05 20:55:30.392 I/godot   ( 7451): [TEL] 3 0 14818209 view.framing framing=portrait via=boot render_scale=1.000
+[dev] 11-05 20:55:30.392 V/Godot   ( 7451): OnGodotMainLoopStarted
+[dev] 11-05 20:55:30.525 I/godot   ( 7451): [GLASS-FALL] 1 voxel(s): impact after 240..240 frame(s) (median 240), 1 never meet a floor; 1 crack layer(s)
+[dev] 11-05 20:55:30.644 I/godot   ( 7451): [FLASH] snapshot copied on the GPU in 0.6 ms
+[dev] 11-05 20:55:30.644 I/godot   ( 7451): [TEL] 4 0 15070355 scenario.start steps=12
+[dev] 11-05 20:55:30.644 I/godot   ( 7451): [SCENARIO] 12 step(s)
+[dev] 11-05 20:55:30.644 I/godot   ( 7451): [TEL] 5 0 15070624 scenario.step i=1 step=framing_portrait
+[dev] 11-05 20:55:30.644 I/godot   ( 7451): [SCENARIO] 1/12 framing portrait
+[dev] 11-05 20:55:30.645 I/godot   ( 7451): [TEL] 6 0 15071445 view.framing framing=portrait via=scenario render_scale=1.000
+[dev] 11-05 20:55:30.645 I/godot   ( 7451): [TEL] 7 0 15071700 scenario.step i=2 step=centre_agent
+[dev] 11-05 20:55:30.645 I/godot   ( 7451): [SCENARIO] 2/12 centre agent
+[dev] 11-05 20:55:30.645 I/godot   ( 7451): [TEL] 8 0 15071929 camera.pan_end centre=2432.0,3584.0 via=scenario
+[dev] 11-05 20:55:30.646 I/godot   ( 7451): [TEL] 9 0 15072186 scenario.step i=3 step=zoom_0.9
+[dev] 11-05 20:55:30.646 I/godot   ( 7451): [SCENARIO] 3/12 zoom 0.9
+[dev] 11-05 20:55:30.646 I/godot   ( 7451): [TEL] 10 0 15072410 camera.zoom_end zoom=0.900 via=scenario
+[dev] 11-05 20:55:30.646 I/godot   ( 7451): [TEL] 11 0 15072581 scenario.step i=4 step=frames_60
+[dev] 11-05 20:55:30.646 I/godot   ( 7451): [SCENARIO] 4/12 frames 60
+[dev] 11-05 20:55:31.175 I/godot   ( 7451): [TEL] 12 10 15601748 view.settled framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:33.228 I/godot   ( 7451): [WALK-WARM] 242528 claim(s) indexed in idle frames
+[dev] 11-05 20:55:33.230 I/godot   ( 7451): [TEL] 13 60 17656987 scenario.step i=5 step=wait_8
+[dev] 11-05 20:55:33.231 I/godot   ( 7451): [SCENARIO] 5/12 wait 8
+[dev] 11-05 20:55:33.246 I/godot   ( 7451): [FRAME-PROBE] 43.3 ms/frame · render cpu 0.8 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 58.4 ms · physics 3.9 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:33.246 I/godot   ( 7451): [TEL] 14 60 17672819 frame.window frames=60 ms=43.310 render_cpu=0.799 render_gpu=19.018 draws=65 primitives=41216 objects=82 process_held=58.356 physics_held=3.873 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:33.247 I/godot   ( 7451): [FRAME-SPLIT] per frame: guard cone smooth 31.79 ms (9/f) · room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.04 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:34.541 I/godot   ( 7451): [FRAME-PROBE] 21.6 ms/frame · render cpu 0.7 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 59.9 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:34.541 I/godot   ( 7451): [TEL] 15 120 18967811 frame.window frames=60 ms=21.583 render_cpu=0.667 render_gpu=19.021 draws=65 primitives=41216 objects=82 process_held=59.853 physics_held=0.064 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:34.542 I/godot   ( 7451): [FRAME-SPLIT] per frame: guard cone smooth 1.94 ms (1/f) · room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:35.770 I/godot   ( 7451): [FRAME-PROBE] 20.5 ms/frame · render cpu 0.7 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 31.1 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:35.770 I/godot   ( 7451): [TEL] 16 180 20196663 frame.window frames=60 ms=20.480 render_cpu=0.670 render_gpu=18.904 draws=65 primitives=41216 objects=82 process_held=31.127 physics_held=0.063 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:35.771 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:36.999 I/godot   ( 7451): [FRAME-PROBE] 20.5 ms/frame · render cpu 1.2 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 23.4 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:37.000 I/godot   ( 7451): [TEL] 17 240 21425856 frame.window frames=60 ms=20.485 render_cpu=1.240 render_gpu=19.039 draws=65 primitives=41216 objects=82 process_held=23.432 physics_held=0.087 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:37.000 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:38.239 I/godot   ( 7451): [FRAME-PROBE] 20.7 ms/frame · render cpu 0.7 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 28.0 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:38.240 I/godot   ( 7451): [TEL] 18 300 22666016 frame.window frames=60 ms=20.669 render_cpu=0.685 render_gpu=18.963 draws=65 primitives=41216 objects=82 process_held=28.019 physics_held=0.097 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:38.241 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:39.468 I/godot   ( 7451): [FRAME-PROBE] 20.5 ms/frame · render cpu 0.7 ms · render gpu 19.1 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 25.2 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:39.469 I/godot   ( 7451): [TEL] 19 360 23894825 frame.window frames=60 ms=20.479 render_cpu=0.726 render_gpu=19.111 draws=65 primitives=41216 objects=82 process_held=25.210 physics_held=0.074 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:39.469 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:40.708 I/godot   ( 7451): [FRAME-PROBE] 20.7 ms/frame · render cpu 1.4 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 31.2 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:40.709 I/godot   ( 7451): [TEL] 20 420 25135048 frame.window frames=60 ms=20.668 render_cpu=1.368 render_gpu=19.025 draws=65 primitives=41216 objects=82 process_held=31.174 physics_held=0.064 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:40.710 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:41.214 I/godot   ( 7451): [TEL] 21 444 25640826 scenario.step i=6 step=mark_idle
+[dev] 11-05 20:55:41.215 I/godot   ( 7451): [SCENARIO] 6/12 mark idle
+[dev] 11-05 20:55:41.215 I/godot   ( 7451): [TEL] 22 444 25641725 scenario.mark label=idle
+[dev] 11-05 20:55:41.215 I/godot   ( 7451): [TEL] 23 444 25642063 scenario.step i=7 step=wait_7
+[dev] 11-05 20:55:41.216 I/godot   ( 7451): [SCENARIO] 7/12 wait 7
+[dev] 11-05 20:55:41.959 I/godot   ( 7451): [FRAME-PROBE] 20.9 ms/frame · render cpu 1.2 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 22.8 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:41.960 I/godot   ( 7451): [TEL] 24 480 26386258 frame.window frames=60 ms=20.854 render_cpu=1.202 render_gpu=18.903 draws=65 primitives=41216 objects=82 process_held=22.850 physics_held=0.074 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:41.961 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:43.177 I/godot   ( 7451): [FRAME-PROBE] 20.3 ms/frame · render cpu 1.3 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 23.0 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:43.177 I/godot   ( 7451): [TEL] 25 540 27603732 frame.window frames=60 ms=20.294 render_cpu=1.293 render_gpu=19.025 draws=65 primitives=41216 objects=82 process_held=23.032 physics_held=0.069 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:43.178 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:44.406 I/godot   ( 7451): [FRAME-PROBE] 20.5 ms/frame · render cpu 1.2 ms · render gpu 19.1 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 23.5 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:44.406 I/godot   ( 7451): [TEL] 26 600 28832549 frame.window frames=60 ms=20.479 render_cpu=1.246 render_gpu=19.077 draws=65 primitives=41216 objects=82 process_held=23.451 physics_held=0.067 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:44.407 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:45.634 I/godot   ( 7451): [FRAME-PROBE] 20.5 ms/frame · render cpu 0.7 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 25.0 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:45.635 I/godot   ( 7451): [TEL] 27 660 30061248 frame.window frames=60 ms=20.482 render_cpu=0.679 render_gpu=18.893 draws=65 primitives=41216 objects=82 process_held=25.016 physics_held=0.100 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:45.635 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:46.863 I/godot   ( 7451): [FRAME-PROBE] 20.5 ms/frame · render cpu 1.5 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 23.1 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:46.864 I/godot   ( 7451): [TEL] 28 720 31290151 frame.window frames=60 ms=20.482 render_cpu=1.532 render_gpu=18.860 draws=65 primitives=41216 objects=82 process_held=23.054 physics_held=0.067 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:46.864 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:48.092 I/godot   ( 7451): [FRAME-PROBE] 20.5 ms/frame · render cpu 1.3 ms · render gpu 19.3 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 24.7 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:48.093 I/godot   ( 7451): [TEL] 29 780 32519241 frame.window frames=60 ms=20.482 render_cpu=1.292 render_gpu=19.349 draws=65 primitives=41216 objects=82 process_held=24.695 physics_held=0.068 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:48.094 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.07 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:48.228 I/godot   ( 7451): [TEL] 30 786 32654644 scenario.step i=8 step=actor_bench_agent_9
+[dev] 11-05 20:55:48.228 I/godot   ( 7451): [SCENARIO] 8/12 actor_bench agent 9
+[dev] 11-05 20:55:48.297 I/godot   ( 7451): [ACTOR-BENCH] agent x9: 11080 tris and 20 joints and 23 material(s) per rig
+[dev] 11-05 20:55:49.120 I/godot   ( 7451): [ACTOR-BENCH] agent x9: draw calls 98, primitives 133972, objects 115
+[dev] 11-05 20:55:49.120 I/godot   ( 7451): [TEL] 31 816 33546302 scenario.step i=9 step=wait_3
+[dev] 11-05 20:55:49.120 I/godot   ( 7451): [SCENARIO] 9/12 wait 3
+[dev] 11-05 20:55:49.768 I/godot   ( 7451): [FRAME-PROBE] 27.9 ms/frame · render cpu 1.3 ms · render gpu 25.1 ms · 98 draw call(s) · 133972 primitive(s) · 115 object(s) · process 63.0 ms · physics 0.2 ms · 1451 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:49.768 I/godot   ( 7451): [TEL] 32 840 34194404 frame.window frames=60 ms=27.923 render_cpu=1.273 render_gpu=25.146 draws=98 primitives=133972 objects=115 process_held=63.013 physics_held=0.228 nodes=1451 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:49.768 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:51.365 I/godot   ( 7451): [FRAME-PROBE] 26.6 ms/frame · render cpu 1.3 ms · render gpu 25.3 ms · 98 draw call(s) · 133972 primitive(s) · 115 object(s) · process 34.1 ms · physics 0.1 ms · 1451 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:51.366 I/godot   ( 7451): [TEL] 33 900 35792145 frame.window frames=60 ms=26.629 render_cpu=1.314 render_gpu=25.310 draws=98 primitives=133972 objects=115 process_held=34.074 physics_held=0.092 nodes=1451 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:51.366 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:52.116 I/godot   ( 7451): [TEL] 34 928 36542604 scenario.step i=10 step=mark_agent
+[dev] 11-05 20:55:52.116 I/godot   ( 7451): [SCENARIO] 10/12 mark agent
+[dev] 11-05 20:55:52.116 I/godot   ( 7451): [TEL] 35 928 36542973 scenario.mark label=agent
+[dev] 11-05 20:55:52.116 I/godot   ( 7451): [TEL] 36 928 36543096 scenario.step i=11 step=wait_14
+[dev] 11-05 20:55:52.117 I/godot   ( 7451): [SCENARIO] 11/12 wait 14
+[dev] 11-05 20:55:52.963 I/godot   ( 7451): [FRAME-PROBE] 26.6 ms/frame · render cpu 1.3 ms · render gpu 25.3 ms · 98 draw call(s) · 133972 primitive(s) · 115 object(s) · process 33.7 ms · physics 0.1 ms · 1451 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:52.963 I/godot   ( 7451): [TEL] 37 960 37389572 frame.window frames=60 ms=26.623 render_cpu=1.301 render_gpu=25.328 draws=98 primitives=133972 objects=115 process_held=33.730 physics_held=0.058 nodes=1451 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:52.964 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:54.571 I/godot   ( 7451): [FRAME-PROBE] 26.8 ms/frame · render cpu 1.3 ms · render gpu 25.2 ms · 98 draw call(s) · 133972 primitive(s) · 115 object(s) · process 33.7 ms · physics 0.1 ms · 1451 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:54.572 I/godot   ( 7451): [TEL] 38 1020 38998185 frame.window frames=60 ms=26.811 render_cpu=1.290 render_gpu=25.247 draws=98 primitives=133972 objects=115 process_held=33.708 physics_held=0.056 nodes=1451 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:54.572 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:56.180 I/godot   ( 7451): [FRAME-PROBE] 26.8 ms/frame · render cpu 1.3 ms · render gpu 25.2 ms · 98 draw call(s) · 133972 primitive(s) · 115 object(s) · process 35.2 ms · physics 0.1 ms · 1451 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:56.180 I/godot   ( 7451): [TEL] 39 1080 40606909 frame.window frames=60 ms=26.811 render_cpu=1.298 render_gpu=25.182 draws=98 primitives=133972 objects=115 process_held=35.184 physics_held=0.074 nodes=1451 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:56.181 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:57.789 I/godot   ( 7451): [FRAME-PROBE] 26.8 ms/frame · render cpu 1.4 ms · render gpu 25.3 ms · 98 draw call(s) · 133972 primitive(s) · 115 object(s) · process 34.7 ms · physics 0.1 ms · 1451 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:57.789 I/godot   ( 7451): [TEL] 40 1140 42215550 frame.window frames=60 ms=26.810 render_cpu=1.353 render_gpu=25.324 draws=98 primitives=133972 objects=115 process_held=34.661 physics_held=0.069 nodes=1451 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:57.790 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:55:59.387 I/godot   ( 7451): [FRAME-PROBE] 26.6 ms/frame · render cpu 1.3 ms · render gpu 25.3 ms · 98 draw call(s) · 133972 primitive(s) · 115 object(s) · process 33.6 ms · physics 0.1 ms · 1451 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:55:59.387 I/godot   ( 7451): [TEL] 41 1200 43813260 frame.window frames=60 ms=26.629 render_cpu=1.295 render_gpu=25.273 draws=98 primitives=133972 objects=115 process_held=33.615 physics_held=0.060 nodes=1451 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:55:59.387 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:00.984 I/godot   ( 7451): [FRAME-PROBE] 26.6 ms/frame · render cpu 1.3 ms · render gpu 25.2 ms · 98 draw call(s) · 133972 primitive(s) · 115 object(s) · process 33.9 ms · physics 0.1 ms · 1451 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:00.984 I/godot   ( 7451): [TEL] 42 1260 45410659 frame.window frames=60 ms=26.623 render_cpu=1.278 render_gpu=25.172 draws=98 primitives=133972 objects=115 process_held=33.950 physics_held=0.073 nodes=1451 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:00.985 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:02.593 I/godot   ( 7451): [FRAME-PROBE] 26.8 ms/frame · render cpu 1.3 ms · render gpu 25.3 ms · 98 draw call(s) · 133972 primitive(s) · 115 object(s) · process 33.7 ms · physics 0.1 ms · 1451 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:02.593 I/godot   ( 7451): [TEL] 43 1320 47019260 frame.window frames=60 ms=26.810 render_cpu=1.312 render_gpu=25.254 draws=98 primitives=133972 objects=115 process_held=33.700 physics_held=0.060 nodes=1451 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:02.593 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:04.190 I/godot   ( 7451): [FRAME-PROBE] 26.6 ms/frame · render cpu 1.3 ms · render gpu 25.3 ms · 98 draw call(s) · 133972 primitive(s) · 115 object(s) · process 33.9 ms · physics 0.1 ms · 1451 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:04.191 I/godot   ( 7451): [TEL] 44 1380 48616979 frame.window frames=60 ms=26.628 render_cpu=1.302 render_gpu=25.299 draws=98 primitives=133972 objects=115 process_held=33.860 physics_held=0.074 nodes=1451 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:04.191 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:05.788 I/godot   ( 7451): [FRAME-PROBE] 26.6 ms/frame · render cpu 1.3 ms · render gpu 25.2 ms · 98 draw call(s) · 133972 primitive(s) · 115 object(s) · process 33.8 ms · physics 0.1 ms · 1451 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:05.788 I/godot   ( 7451): [TEL] 45 1440 50214568 frame.window frames=60 ms=26.627 render_cpu=1.299 render_gpu=25.182 draws=98 primitives=133972 objects=115 process_held=33.777 physics_held=0.054 nodes=1451 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:05.789 I/godot   ( 7451): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:06.147 I/godot   ( 7451): [TEL] 46 1453 50573851 scenario.step i=12 step=quit
+[dev] 11-05 20:56:06.147 I/godot   ( 7451): [SCENARIO] 12/12 quit
+[dev] 11-05 20:56:06.148 I/godot   ( 7451): [TEL] 47 1453 50574220 scenario.end
+[dev] 11-05 20:56:06.578 V/Godot   ( 7451): OnGodotTerminating
+[DIAG-02] force-stopped com.example.infiltraitor
+[DIAG-02] log -> /Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR/docs/measurements/mv4_2026-11-05/actor_agent_x9.log
+[DIAG-02] captured 376 line(s), no fatal error.
+## docs/measurements/mv4_2026-11-05/actor_agent_x9.log
+- version: 0.9.107
+- model: moto_g04s
+- os: Android
+- os_version: 34.2a14d76c
+- cpu: 
+- gpu: Mali-G57
+- gpu_api: 1.3.225
+- renderer: mobile
+- screen: [720.0, 1612.0]
+- refresh_hz: 90.0
+- window: [720.0, 1612.0]
+- flags_file: /sdcard/Android/data/com.example.infiltraitor/files/dev_flags.cfg
+- file_sink: /sdcard/Android/data/com.example.infiltraitor/files/telemetry/tel_2026-11-05_20-55-22.jsonl
+- overrides: FRAME_PROBE:1|MAP:PLAYGROUND|MAX_FPS:0|RNG_SEED:1|SCENARIO:framing_portrait;_centre_agent;_zoom_0.9;_frames_60;_wait_8;_mark_idle;_wait_7;_actor_bench_agent_9;_wait_3;_mark_agent;_wait_14;_quit|TELEMETRY:1
+- records: 47 · dropped lines: 0 · frame windows: 24
+
+| segment | framing | visible | zoom | windows | ms/frame | render cpu | render gpu | draws | objects | primitives | cells on screen |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| idle | portrait | 390x873 | 0.90 | 7 (+1 straddling) | 20.5 | 1.3 | 19.1 | 65 | 82 | 41216 | 23 |
+| agent | portrait | 390x873 | 0.90 | 8 (+1 straddling) | 26.7 | 1.3 | 25.3 | 98 | 115 | 133972 | 23 |
+
+### memory — docs/measurements/mv4_2026-11-05/actor_agent_x9.log
+| segment | polls | from · to | TOTAL PSS MB first · median · last | GL mtrack MB first · median · last | swap PSS MB first · median · last | RSS MB first · median · last | native heap alloc MB first · median · last | native heap free MB first · median · last |
+|---|---|---|---|---|---|---|---|---|
+| (before the first mark) | 6 | 20:55:19 · 20:55:41 | 299 · 597 · 668 | 66 · 203 · 213 | 1 · 0 · 0 | 366 · 667 · 738 | 157 · 318 · 382 | 14 · 143 · 143 |
+| idle | 2 | 20:55:46 · 20:55:50 | 666 · 667 · 668 | 211 · 212 · 213 | 0 · 0 · 0 | 736 · 737 · 738 | 382 · 384 · 385 | 143 · 142 · 141 |
+| agent | 3 | 20:55:55 · 20:56:03 | 674 · 672 · 670 | 219 · 217 · 215 | 0 · 0 · 0 | 744 · 742 · 740 | 385 · 385 · 385 | 141 · 141 · 141 |
+
+/tmp/actor_dev_flags.cfg: 1 file pushed, 0 skipped. 3.8 MB/s (248 bytes in 0.000s)
+=== agent_light_male_clip_walk x9 ===
+[DIAG-02] device ZF524T5TG5 — motorola moto g04s (Spreadtrum T606), Android 14 / SDK 34, 3834312 kB, 720x1612 @ 280 dpi
+[DIAG-02] ok   — screen on, device unlocked
+[DIAG-02] launched com.example.infiltraitor/com.godot.game.GodotAppLauncher
+[MEM-POLL] 20:56:17  Native Heap   237427   237328       68       77   238336   252008   243351     3835 | GL mtrack    67572    67572        0        0    67572 | Native Heap:   237328                         238336 | Graphics:    67572                          67572 | TOTAL PSS:   392191            TOTAL RSS:   460724       TOTAL SWAP PSS:     1182
+[MEM-POLL] 20:56:21  Native Heap   204897   204812       56       49   205828   340664   189319   145907 | GL mtrack    67572    67572        0        0    67572 | Native Heap:   204812                         205828 | Graphics:    67572                          67572 | TOTAL PSS:   361213            TOTAL RSS:   434464       TOTAL SWAP PSS:      324
+[MEM-POLL] 20:56:25  Native Heap   296921   296836       56       49   297852   456616   302893   147286 | GL mtrack   200456   200456        0        0   200456 | Native Heap:   296836                         297852 | Graphics:   200456                         200456 | TOTAL PSS:   586428            TOTAL RSS:   659684       TOTAL SWAP PSS:      323
+[MEM-POLL] 20:56:30  Native Heap   379053   378968       56       49   379984   544936   391543   145823 | GL mtrack   216228   216228        0        0   216228 | Native Heap:   378968                         379984 | Graphics:   216228                         216228 | TOTAL PSS:   683426            TOTAL RSS:   755688       TOTAL SWAP PSS:      322
+[MEM-POLL] 20:56:34  Native Heap   379045   378960       56       50   379976   544936   391549   145818 | GL mtrack   222376   222376        0        0   222376 | Native Heap:   378960                         379976 | Graphics:   222376                         222376 | TOTAL PSS:   689544            TOTAL RSS:   761812       TOTAL SWAP PSS:      323
+[MEM-POLL] 20:56:39  Native Heap   379029   378944       56       50   379960   544936   391558   145808 | GL mtrack   216228   216228        0        0   216228 | Native Heap:   378944                         379960 | Graphics:   216228                         216228 | TOTAL PSS:   683392            TOTAL RSS:   755660       TOTAL SWAP PSS:      323
+[MEM-POLL] 20:56:43  Native Heap   379029   378944       56       50   379960   544936   391556   145811 | GL mtrack   216228   216228        0        0   216228 | Native Heap:   378944                         379960 | Graphics:   216228                         216228 | TOTAL PSS:   683392            TOTAL RSS:   755660       TOTAL SWAP PSS:      323
+[MEM-POLL] 20:56:47  Native Heap   395017   394932       56       50   395948   552912   404100   141572 | GL mtrack   222608   222608        0        0   222608 | Native Heap:   394932                         395948 | Graphics:   222608                         222608 | TOTAL PSS:   705506            TOTAL RSS:   777224       TOTAL SWAP PSS:      323
+[MEM-POLL] 20:56:52  Native Heap   395033   394948       56       50   395964   552912   404101   141617 | GL mtrack   226704   226704        0        0   226704 | Native Heap:   394948                         395964 | Graphics:   226704                         226704 | TOTAL PSS:   709618            TOTAL RSS:   781336       TOTAL SWAP PSS:      323
+[MEM-POLL] 20:56:56  Native Heap   395037   394952       56       50   395968   552912   404100   141618 | GL mtrack   220556   220556        0        0   220556 | Native Heap:   394952                         395968 | Graphics:   220556                         220556 | TOTAL PSS:   703219            TOTAL RSS:   775192       TOTAL SWAP PSS:      324
+[MEM-POLL] 20:57:01  Native Heap   395037   394952       56       50   395968   552912   404101   141617 | GL mtrack   218508   218508        0        0   218508 | Native Heap:   394952                         395968 | Graphics:   218508                         218508 | TOTAL PSS:   701156            TOTAL RSS:   773144       TOTAL SWAP PSS:      324
+[DIAG-02] com.example.infiltraitor exited on its own at 20:57:03 — capture ends
+[dev] --------- beginning of main
+[dev] 11-05 20:56:12.837 V/Godot   ( 7825): Initializing Godot plugin registry
+[dev] 11-05 20:56:12.851 V/Godot   ( 7825): InitEngine with params: [--xr_mode_regular, --xr-mode, off, --fullscreen, --background_color, #000000]
+[dev] 11-05 20:56:12.868 V/Godot   ( 7825): Godot native layer initialization completed: true
+[dev] 11-05 20:56:12.868 V/Godot   ( 7825): Setting up native layer with params: [--xr-mode, off, --fullscreen]
+[dev] 11-05 20:56:12.922 V/Godot   ( 7825): Godot native layer setup completed
+[dev] 11-05 20:56:12.923 V/Godot   ( 7825): OnInitRenderView: GodotFragment{fc29790} (76935ff9-a888-4874-bb58-f3b97c3c2854 id=0x7f07002c)
+[dev] 11-05 20:56:12.935 D/Godot   ( 7825): Render view should be transparent: false
+[dev] 11-05 20:56:12.941 D/Godot   ( 7825): renderingDevice: vulkan (ProjectSettings)
+[dev] 11-05 20:56:12.941 D/Godot   ( 7825): 			renderer: mobile (ProjectSettings)
+[dev] 11-05 20:56:12.959 V/Godot   ( 7825): OnStart: GodotFragment{fc29790} (76935ff9-a888-4874-bb58-f3b97c3c2854 id=0x7f07002c)
+[dev] 11-05 20:56:12.966 V/Godot   ( 7825): OnResume: GodotFragment{fc29790} (76935ff9-a888-4874-bb58-f3b97c3c2854 id=0x7f07002c)
+[dev] 11-05 20:56:13.005 I/godot   ( 7825): Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+[dev] 11-05 20:56:13.062 I/godot   ( 7825): Vulkan 1.3.225 - Forward Mobile - Using Device #0: ARM - Mali-G57
+[dev] 11-05 20:56:13.482 I/godot   ( 7825): 
+[dev] 11-05 20:56:19.387 V/Godot   ( 7825): OnGodotSetupCompleted
+[dev] 11-05 20:56:19.400 I/godot   ( 7825): [DevFlags] 6 override(s) from /sdcard/Android/data/com.example.infiltraitor/files/dev_flags.cfg — FRAME_PROBE=1, MAP=PLAYGROUND, MAX_FPS=0, RNG_SEED=1, SCENARIO=framing portrait; centre agent; zoom 0.9; frames 60; wait 8; mark idle; wait 7; actor_bench agent_light_male_clip_walk 9; wait 3; mark agent_light_male_clip_walk; wait 14; quit, TELEMETRY=1
+[dev] 11-05 20:56:19.400 I/godot   ( 7825): [INFILTRAITOR] Version 0.9.107
+[dev] 11-05 20:56:19.419 I/godot   ( 7825): [Telemetry] file sink: /sdcard/Android/data/com.example.infiltraitor/files/telemetry/tel_2026-11-05_20-56-19.jsonl
+[dev] 11-05 20:56:19.419 I/godot   ( 7825): [TEL] 1 0 6550566 session version=0.9.107 os=Android os_version=34.2a14d76c model=moto_g04s cpu= cores=8 gpu=Mali-G57 gpu_vendor=ARM gpu_api=1.3.225 renderer=mobile screen=720,1612 refresh_hz=90.000 dpi=280 window=720,1612 flags_file=/sdcard/Android/data/com.example.infiltraitor/files/dev_flags.cfg file_sink=/sdcard/Android/data/com.example.infiltraitor/files/telemetry/tel_2026-11-05_20-56-19.jsonl overrides=FRAME_PROBE:1|MAP:PLAYGROUND|MAX_FPS:0|RNG_SEED:1|SCENARIO:framing_portrait;_centre_agent;_zoom_0.9;_frames_60;_wait_8;_mark_idle;_wait_7;_actor_bench_agent_light_male_clip_walk_9;_wait_3;_mark_agent_light_male_clip_walk;_wait_14;_quit|TELEMETRY:1
+[dev] 11-05 20:56:19.425 I/godot   ( 7825): [Registries] Autoload initialized
+[dev] 11-05 20:56:19.447 I/godot   ( 7825): [RNG] seeded 1 — particle rolls are reproducible this boot
+[dev] 11-05 20:56:19.465 I/godot   ( 7825): [MaterialRegistry] Registered: brick (color: 0.55,0.29,0.22)
+[dev] 11-05 20:56:19.465 I/godot   ( 7825): [MaterialRegistry] Registered: cardboard (color: 0.70,0.55,0.36)
+[dev] 11-05 20:56:19.465 I/godot   ( 7825): [MaterialRegistry] Registered: carpet (color: 0.46,0.52,0.62)
+[dev] 11-05 20:56:19.465 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_basket (color: 0.31,0.38,0.61)
+[dev] 11-05 20:56:19.465 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_basket_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:56:19.465 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_basket_blue (color: 0.51,0.61,0.79)
+[dev] 11-05 20:56:19.465 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_basket_green (color: 0.26,0.51,0.38)
+[dev] 11-05 20:56:19.465 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_basket_grey (color: 0.68,0.68,0.72)
+[dev] 11-05 20:56:19.465 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_basket_orange (color: 1.00,0.50,0.17)
+[dev] 11-05 20:56:19.465 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_basket_purple (color: 0.51,0.27,0.65)
+[dev] 11-05 20:56:19.465 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_basket_red (color: 0.72,0.19,0.22)
+[dev] 11-05 20:56:19.466 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_basket_tan (color: 0.89,0.75,0.53)
+[dev] 11-05 20:56:19.466 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_basket_yellow (color: 0.99,0.80,0.20)
+[dev] 11-05 20:56:19.466 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_check (color: 0.89,0.75,0.53)
+[dev] 11-05 20:56:19.466 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_check_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:56:19.466 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_check_blue (color: 0.51,0.61,0.78)
+[dev] 11-05 20:56:19.466 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_check_green (color: 0.26,0.51,0.38)
+[dev] 11-05 20:56:19.466 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_check_grey (color: 0.68,0.68,0.72)
+[dev] 11-05 20:56:19.466 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_check_navy (color: 0.31,0.38,0.61)
+[dev] 11-05 20:56:19.466 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_check_orange (color: 1.00,0.49,0.17)
+[dev] 11-05 20:56:19.466 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_check_purple (color: 0.51,0.27,0.65)
+[dev] 11-05 20:56:19.466 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_check_red (color: 0.72,0.19,0.22)
+[dev] 11-05 20:56:19.466 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_check_yellow (color: 0.99,0.80,0.20)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_diamond (color: 0.26,0.53,0.39)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_diamond_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_diamond_blue (color: 0.53,0.63,0.81)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_diamond_grey (color: 0.70,0.70,0.74)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_diamond_navy (color: 0.32,0.39,0.63)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_diamond_orange (color: 1.00,0.51,0.18)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_diamond_purple (color: 0.53,0.28,0.67)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_diamond_red (color: 0.74,0.19,0.23)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_diamond_tan (color: 0.91,0.77,0.54)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_diamond_yellow (color: 1.00,0.83,0.21)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_plain (color: 0.51,0.62,0.79)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_plain_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_plain_green (color: 0.26,0.51,0.38)
+[dev] 11-05 20:56:19.467 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_plain_grey (color: 0.69,0.69,0.72)
+[dev] 11-05 20:56:19.468 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_plain_navy (color: 0.31,0.38,0.62)
+[dev] 11-05 20:56:19.468 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_plain_orange (color: 1.00,0.50,0.17)
+[dev] 11-05 20:56:19.468 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_plain_purple (color: 0.51,0.27,0.65)
+[dev] 11-05 20:56:19.468 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_plain_red (color: 0.72,0.19,0.22)
+[dev] 11-05 20:56:19.468 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_plain_tan (color: 0.89,0.75,0.53)
+[dev] 11-05 20:56:19.468 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_plain_yellow (color: 0.99,0.81,0.21)
+[dev] 11-05 20:56:19.468 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_stripe (color: 0.72,0.19,0.22)
+[dev] 11-05 20:56:19.468 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_stripe_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:56:19.468 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_stripe_blue (color: 0.51,0.62,0.79)
+[dev] 11-05 20:56:19.468 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_stripe_green (color: 0.26,0.51,0.38)
+[dev] 11-05 20:56:19.468 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_stripe_grey (color: 0.69,0.69,0.72)
+[dev] 11-05 20:56:19.468 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_stripe_navy (color: 0.31,0.38,0.62)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_stripe_orange (color: 1.00,0.50,0.17)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_stripe_purple (color: 0.51,0.27,0.65)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_stripe_tan (color: 0.89,0.75,0.53)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: carpet_stripe_yellow (color: 0.99,0.81,0.21)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: ceramic (color: 0.90,0.89,0.85)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: concrete (color: 0.62,0.62,0.62)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: dirt (color: 0.50,0.38,0.27)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: earth (color: 0.52,0.39,0.26)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: fabric (color: 0.78,0.74,0.66)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: generic (color: 0.55,0.55,0.55)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: glass (color: 0.62,0.74,0.78)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: glass_armored (color: 0.74,0.62,0.78)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: glass_screen_amber (color: 0.70,0.60,0.38)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: glass_screen_green (color: 0.38,0.55,0.42)
+[dev] 11-05 20:56:19.469 I/godot   ( 7825): [MaterialRegistry] Registered: glass_screen_red (color: 0.62,0.40,0.41)
+[dev] 11-05 20:56:19.470 I/godot   ( 7825): [MaterialRegistry] Registered: grass (color: 0.42,0.55,0.29)
+[dev] 11-05 20:56:19.470 I/godot   ( 7825): [MaterialRegistry] Registered: grating (color: 1.00,1.00,1.00)
+[dev] 11-05 20:56:19.470 I/godot   ( 7825): [MaterialRegistry] Registered: grating_dark (color: 0.39,0.42,0.48)
+[dev] 11-05 20:56:19.470 I/godot   ( 7825): [MaterialRegistry] Registered: grating_rust (color: 1.00,0.59,0.31)
+[dev] 11-05 20:56:19.470 I/godot   ( 7825): [MaterialRegistry] Registered: grating_yellow (color: 1.00,1.00,0.23)
+[dev] 11-05 20:56:19.470 I/godot   ( 7825): [MaterialRegistry] Registered: gravel (color: 0.55,0.52,0.49)
+[dev] 11-05 20:56:19.470 I/godot   ( 7825): [MaterialRegistry] Registered: iron_bar (color: 0.63,0.61,0.63)
+[dev] 11-05 20:56:19.470 I/godot   ( 7825): [MaterialRegistry] Registered: leather (color: 0.42,0.27,0.17)
+[dev] 11-05 20:56:19.470 I/godot   ( 7825): [MaterialRegistry] Registered: metal (color: 0.49,0.53,0.56)
+[dev] 11-05 20:56:19.470 I/godot   ( 7825): [MaterialRegistry] Registered: painted_metal (color: 0.45,0.52,0.60)
+[dev] 11-05 20:56:19.470 I/godot   ( 7825): [MaterialRegistry] Registered: paper (color: 0.88,0.85,0.75)
+[dev] 11-05 20:56:19.470 I/godot   ( 7825): [MaterialRegistry] Registered: parquet (color: 0.80,0.58,0.38)
+[dev] 11-05 20:56:19.470 I/godot   ( 7825): [MaterialRegistry] Registered: plastic (color: 0.72,0.72,0.74)
+[dev] 11-05 20:56:19.471 I/godot   ( 7825): [MaterialRegistry] Registered: plywood (color: 0.78,0.63,0.42)
+[dev] 11-05 20:56:19.471 I/godot   ( 7825): [MaterialRegistry] Registered: rubber (color: 0.13,0.13,0.14)
+[dev] 11-05 20:56:19.471 I/godot   ( 7825): [MaterialRegistry] Registered: sand (color: 0.76,0.67,0.51)
+[dev] 11-05 20:56:19.471 I/godot   ( 7825): [MaterialRegistry] Registered: steel_dark (color: 0.22,0.23,0.25)
+[dev] 11-05 20:56:19.471 I/godot   ( 7825): [MaterialRegistry] Registered: steel_plate (color: 0.63,0.66,0.70)
+[dev] 11-05 20:56:19.471 I/godot   ( 7825): [MaterialRegistry] Registered: steel_plate_dark (color: 0.24,0.26,0.30)
+[dev] 11-05 20:56:19.471 I/godot   ( 7825): [MaterialRegistry] Registered: steel_plate_green (color: 0.26,0.52,0.35)
+[dev] 11-05 20:56:19.471 I/godot   ( 7825): [MaterialRegistry] Registered: steel_plate_rust (color: 0.70,0.37,0.19)
+[dev] 11-05 20:56:19.471 I/godot   ( 7825): [MaterialRegistry] Registered: stone (color: 0.55,0.55,0.58)
+[dev] 11-05 20:56:19.471 I/godot   ( 7825): [MaterialRegistry] Registered: tile (color: 0.93,0.92,0.88)
+[dev] 11-05 20:56:19.471 I/godot   ( 7825): [MaterialRegistry] Registered: tile_beige (color: 0.96,0.86,0.67)
+[dev] 11-05 20:56:19.471 I/godot   ( 7825): [MaterialRegistry] Registered: tile_grey (color: 0.67,0.68,0.71)
+[dev] 11-05 20:56:19.471 I/godot   ( 7825): [MaterialRegistry] Registered: upholstery (color: 0.35,0.40,0.47)
+[dev] 11-05 20:56:19.472 I/godot   ( 7825): [MaterialRegistry] Registered: wood (color: 0.66,0.47,0.31)
+[dev] 11-05 20:56:19.472 I/godot   ( 7825): [Registries] Material registry initialized with defaults
+[dev] 11-05 20:56:19.953 I/godot   ( 7825): [Room] Light registry initialized with 0 map lights:
+[dev] 11-05 20:56:19.953 I/godot   ( 7825): [Room] Tile semantics initialized with 0 tiles, 0 light anchors
+[dev] 11-05 20:56:19.953 I/godot   ( 7825): [Room] Shadow projector initialized
+[dev] 11-05 20:56:19.953 I/godot   ( 7825): [Room] Exposure system initialized with 0 light projections
+[dev] 11-05 20:56:19.953 I/godot   ( 7825): [VisionController] Shadow overlay initialized
+[dev] 11-05 20:56:19.954 I/godot   ( 7825): [VisionController] Exposure overlay initialized
+[dev] 11-05 20:56:19.954 I/godot   ( 7825): [VisionController] Tile risk heatmap overlay initialized
+[dev] 11-05 20:56:19.954 I/godot   ( 7825): [VisionController] Elite exposure overlay initialized: [EliteExposureOverlay safe=0 total=0 confidence=0.00 depth_layers=6 stability_types=4]
+[dev] 11-05 20:56:19.974 I/godot   ( 7825): [Registries] File map source initialized
+[dev] 11-05 20:56:20.012 I/godot   ( 7825): [MapFileService] PLAYGROUND (not a segment, info only): the map (44x22 GU) is larger than the envelope reserve (24x48): outside what PB-3 measured; re-run pb3_study.py --only HEAVY
+[dev] 11-05 20:56:20.030 I/godot   ( 7825): [MAP-LAYOUT] PLAYGROUND: 26 poi, 3 region(s), 0 objective(s), 0 exit(s), map (44, 22) x 2.00 storeys (instance -9223371865240631346)
+[dev] 11-05 20:56:20.516 I/godot   ( 7825): [PropRegistry] Registered: locker (footprint: [(0, 0)], storeys: 1, cover: full)
+[dev] 11-05 20:56:20.517 I/godot   ( 7825): [PropRegistry] Registered: pipe_n_00 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:56:20.517 I/godot   ( 7825): [PropRegistry] Registered: pipe_n_11 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:56:20.517 I/godot   ( 7825): [PropRegistry] Registered: nightstand (footprint: [(0, 0)], storeys: 1, cover: quarter)
+[dev] 11-05 20:56:20.518 I/godot   ( 7825): [PropRegistry] Registered: pipe_n_01 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:56:20.518 I/godot   ( 7825): [PropRegistry] Registered: pipe_n_10 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:56:20.518 I/godot   ( 7825): [PropRegistry] Registered: pipe_n_hi_00 (footprint: [(0, 0)], storeys: 2, cover: half)
+[dev] 11-05 20:56:20.518 I/godot   ( 7825): [PropRegistry] Registered: pit_divider (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:56:20.519 I/godot   ( 7825): [PropRegistry] Registered: plywood_table (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:56:20.519 I/godot   ( 7825): [PropRegistry] Registered: pipe_n_hi_10 (footprint: [(0, 0)], storeys: 2, cover: half)
+[dev] 11-05 20:56:20.519 I/godot   ( 7825): [PropRegistry] Registered: wood_table (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:56:20.520 I/godot   ( 7825): [PropRegistry] Registered: pipe_s_01 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:56:20.520 I/godot   ( 7825): [PropRegistry] Registered: pipe_n_hi_01 (footprint: [(0, 0)], storeys: 2, cover: half)
+[dev] 11-05 20:56:20.521 I/godot   ( 7825): [PropRegistry] Registered: pistol_prop (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:56:20.521 I/godot   ( 7825): [PropRegistry] Registered: pipe_n_hi_11 (footprint: [(0, 0)], storeys: 2, cover: half)
+[dev] 11-05 20:56:20.522 I/godot   ( 7825): [PropRegistry] Registered: pipe_s_11 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:56:20.522 I/godot   ( 7825): [PropRegistry] Registered: pipe_s_00 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:56:20.522 I/godot   ( 7825): [PropRegistry] Registered: post_wood (footprint: [(0, 0)], storeys: 2, cover: none)
+[dev] 11-05 20:56:20.523 I/godot   ( 7825): [PropRegistry] Registered: pipe_s_10 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:56:20.523 I/godot   ( 7825): [PropRegistry] Registered: bed_single (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:56:20.523 I/godot   ( 7825): [PropRegistry] Registered: desk (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:56:20.523 I/godot   ( 7825): [PropRegistry] Registered: crate_plywood (footprint: [(0, 0)], storeys: 1, cover: full)
+[dev] 11-05 20:56:20.524 I/godot   ( 7825): [PropRegistry] Registered: grate_n_1 (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:56:20.524 I/godot   ( 7825): [PropRegistry] Registered: crate_full (footprint: [(0, 0)], storeys: 1, cover: full)
+[dev] 11-05 20:56:20.524 I/godot   ( 7825): [PropRegistry] Registered: grate_s_0 (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:56:20.525 I/godot   ( 7825): [PropRegistry] Registered: box_cardboard_pit (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:56:20.525 I/godot   ( 7825): [PropRegistry] Registered: grate_s_1 (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:56:20.525 I/godot   ( 7825): [PropRegistry] Registered: bin (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:56:20.526 I/godot   ( 7825): [PropRegistry] Registered: curb_hi (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:56:20.526 I/godot   ( 7825): [PropRegistry] Registered: grate_n_0 (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:56:20.526 I/godot   ( 7825): [PropRegistry] Registered: curb_lo (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:56:20.526 I/godot   ( 7825): [PropRegistry] Registered: bookshelf (footprint: [(0, 0)], storeys: 1, cover: full)
+[dev] 11-05 20:56:20.527 I/godot   ( 7825): [PropRegistry] Registered: chair (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:56:20.527 I/godot   ( 7825): [Registries] Prop registry initialized from disk
+[dev] 11-05 20:56:21.297 I/godot   ( 7825): [VOXEL-CONTAINERS] map load: PLAYGROUND — 0 container(s) (0 voxels) were turned into objects before the store was built
+[dev] 11-05 20:56:21.303 I/godot   ( 7825): [VOXEL-STORE] built (map load: PLAYGROUND) — 242528 claim(s) in 3154 container(s), 1 irregular, 544 multi-claim cell(s), 20.00 MB, 752 ms
+[dev] 11-05 20:56:21.666 I/godot   ( 7825): [OCC-03] Agent z_index set to 34 (max voxel layer z_index: 33, room size: (54, 32))
+[dev] 11-05 20:56:21.688 I/godot   ( 7825): [Room] Light registry initialized with 12 map lights:
+[dev] 11-05 20:56:21.688 I/godot   ( 7825):   - map_light_1 @ cell(10,8) radius=7 type=omni
+[dev] 11-05 20:56:21.688 I/godot   ( 7825):   - map_light_2 @ cell(21,8) radius=6 type=omni
+[dev] 11-05 20:56:21.688 I/godot   ( 7825):   - map_light_3 @ cell(16,15) radius=7 type=omni
+[dev] 11-05 20:56:21.688 I/godot   ( 7825):   - map_light_4 @ cell(15,14) radius=10 type=omni
+[dev] 11-05 20:56:21.688 I/godot   ( 7825):   - map_light_5 @ cell(20,15) radius=8 type=omni
+[dev] 11-05 20:56:21.688 I/godot   ( 7825):   - map_light_6 @ cell(28,8) radius=7 type=omni
+[dev] 11-05 20:56:21.688 I/godot   ( 7825):   - map_light_7 @ cell(32,8) radius=7 type=omni
+[dev] 11-05 20:56:21.688 I/godot   ( 7825):   - map_light_8 @ cell(36,8) radius=7 type=omni
+[dev] 11-05 20:56:21.688 I/godot   ( 7825):   - map_light_9 @ cell(40,8) radius=7 type=omni
+[dev] 11-05 20:56:21.688 I/godot   ( 7825):   - map_light_10 @ cell(44,8) radius=7 type=omni
+[dev] 11-05 20:56:21.688 I/godot   ( 7825):   - map_light_11 @ cell(30,13) radius=8 type=omni
+[dev] 11-05 20:56:21.688 I/godot   ( 7825):   - map_light_12 @ cell(38,13) radius=8 type=omni
+[dev] 11-05 20:56:21.693 I/godot   ( 7825): [Room] Tile semantics initialized with 783 tiles, 12 light anchors
+[dev] 11-05 20:56:23.196 I/godot   ( 7825): [LOAD-SPLIT] lighting.rebuild_all: lights 1 ms, semantics 5, projector 3, shadows+exposure 87, listeners 1413
+[dev] 11-05 20:56:23.196 I/godot   ( 7825): [LOAD-SPLIT] stage 20->25: turn state + fog 0 ms, hud 16, lighting 1508
+[dev] 11-05 20:56:23.395 I/godot   ( 7825): 
+[dev] 11-05 20:56:23.395 I/godot   ( 7825): Attempting to resolve: facade_concrete (folder concrete)
+[dev] 11-05 20:56:23.395 I/godot   ( 7825):   [USER] File not found: user://textures/concrete/facade_concrete.png
+[dev] 11-05 20:56:23.395 I/godot   ( 7825):   [USER] File not found: user://textures/concrete/facade_concrete.webp
+[dev] 11-05 20:56:23.422 I/godot   ( 7825):   [DEFAULT] Validation PASS: res://ASSETS/materials/concrete/facade_concrete.png
+[dev] 11-05 20:56:23.422 I/godot   ( 7825): [RESOLVER] facade_concrete resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:56:23.464 I/godot   ( 7825): 
+[dev] 11-05 20:56:23.464 I/godot   ( 7825): Attempting to resolve: facade_metal (folder metal)
+[dev] 11-05 20:56:23.464 I/godot   ( 7825):   [USER] File not found: user://textures/metal/facade_metal.png
+[dev] 11-05 20:56:23.464 I/godot   ( 7825):   [USER] File not found: user://textures/metal/facade_metal.webp
+[dev] 11-05 20:56:23.500 I/godot   ( 7825):   [DEFAULT] Validation PASS: res://ASSETS/materials/metal/facade_metal.png
+[dev] 11-05 20:56:23.500 I/godot   ( 7825): [RESOLVER] facade_metal resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:56:23.504 I/godot   ( 7825): 
+[dev] 11-05 20:56:23.504 I/godot   ( 7825): Attempting to resolve: facade_stone (folder stone)
+[dev] 11-05 20:56:23.504 I/godot   ( 7825):   [USER] File not found: user://textures/stone/facade_stone.png
+[dev] 11-05 20:56:23.504 I/godot   ( 7825):   [USER] File not found: user://textures/stone/facade_stone.webp
+[dev] 11-05 20:56:23.534 I/godot   ( 7825):   [DEFAULT] Validation PASS: res://ASSETS/materials/stone/facade_stone.png
+[dev] 11-05 20:56:23.534 I/godot   ( 7825): [RESOLVER] facade_stone resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:56:23.537 I/godot   ( 7825): 
+[dev] 11-05 20:56:23.538 I/godot   ( 7825): Attempting to resolve: facade_wood (folder wood)
+[dev] 11-05 20:56:23.538 I/godot   ( 7825):   [USER] File not found: user://textures/wood/facade_wood.png
+[dev] 11-05 20:56:23.538 I/godot   ( 7825):   [USER] File not found: user://textures/wood/facade_wood.webp
+[dev] 11-05 20:56:23.567 I/godot   ( 7825):   [DEFAULT] Validation PASS: res://ASSETS/materials/wood/facade_wood.png
+[dev] 11-05 20:56:23.567 I/godot   ( 7825): [RESOLVER] facade_wood resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:56:23.571 I/godot   ( 7825): 
+[dev] 11-05 20:56:23.571 I/godot   ( 7825): Attempting to resolve: facade_brick (folder brick)
+[dev] 11-05 20:56:23.571 I/godot   ( 7825):   [USER] File not found: user://textures/brick/facade_brick.png
+[dev] 11-05 20:56:23.571 I/godot   ( 7825):   [USER] File not found: user://textures/brick/facade_brick.webp
+[dev] 11-05 20:56:23.603 I/godot   ( 7825):   [DEFAULT] Validation PASS: res://ASSETS/materials/brick/facade_brick.png
+[dev] 11-05 20:56:23.603 I/godot   ( 7825): [RESOLVER] facade_brick resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:56:23.607 I/godot   ( 7825): 
+[dev] 11-05 20:56:23.607 I/godot   ( 7825): Attempting to resolve: facade_plywood (folder plywood)
+[dev] 11-05 20:56:23.607 I/godot   ( 7825):   [USER] File not found: user://textures/plywood/facade_plywood.png
+[dev] 11-05 20:56:23.607 I/godot   ( 7825):   [USER] File not found: user://textures/plywood/facade_plywood.webp
+[dev] 11-05 20:56:23.638 I/godot   ( 7825):   [DEFAULT] Validation PASS: res://ASSETS/materials/plywood/facade_plywood.png
+[dev] 11-05 20:56:23.638 I/godot   ( 7825): [RESOLVER] facade_plywood resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:56:23.730 I/godot   ( 7825): 
+[dev] 11-05 20:56:23.730 I/godot   ( 7825): Attempting to resolve: facade_fabric (folder fabric)
+[dev] 11-05 20:56:23.730 I/godot   ( 7825):   [USER] File not found: user://textures/fabric/facade_fabric.png
+[dev] 11-05 20:56:23.730 I/godot   ( 7825):   [USER] File not found: user://textures/fabric/facade_fabric.webp
+[dev] 11-05 20:56:23.752 I/godot   ( 7825):   [DEFAULT] Validation PASS: res://ASSETS/materials/fabric/facade_fabric.png
+[dev] 11-05 20:56:23.752 I/godot   ( 7825): [RESOLVER] facade_fabric resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:56:23.755 I/godot   ( 7825): 
+[dev] 11-05 20:56:23.755 I/godot   ( 7825): Attempting to resolve: facade_cardboard (folder cardboard)
+[dev] 11-05 20:56:23.756 I/godot   ( 7825):   [USER] File not found: user://textures/cardboard/facade_cardboard.png
+[dev] 11-05 20:56:23.756 I/godot   ( 7825):   [USER] File not found: user://textures/cardboard/facade_cardboard.webp
+[dev] 11-05 20:56:23.782 I/godot   ( 7825):   [DEFAULT] Validation PASS: res://ASSETS/materials/cardboard/facade_cardboard.png
+[dev] 11-05 20:56:23.782 I/godot   ( 7825): [RESOLVER] facade_cardboard resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:56:23.870 I/godot   ( 7825): [SOFT-SHEET] 2792 voxel(s) of soft materials: 2792 drawn by a cloth at rest (SoftSheet3D), 0 as one flat plane
+[dev] 11-05 20:56:24.213 I/godot   ( 7825): [LOAD-SPLIT] board3d.materials: 9 material(s) 513 ms, decal catalogue 343
+[dev] 11-05 20:56:24.475 I/godot   ( 7825): [LOAD-SPLIT] board3d.collect: materials + decals 893 ms (texture resolve 237, build 22), claim walk 225
+[dev] 11-05 20:56:25.270 I/godot   ( 7825): [LOAD-SPLIT] prop shadows: mesh props 0 ms (voxelize 0), voxel props 45
+[dev] 11-05 20:56:25.270 I/godot   ( 7825): [BOARD3D] 241984 voxel(s) (slices 65088, columns 480, slabs 176600) → 181500 face(s) → 1417 quad(s) in 432 chunk(s), 35 material(s), plane levels 78..103; collect 1121 ms, mesh 793 ms; source store
+[dev] 11-05 20:56:25.270 I/godot   ( 7825): [TEL] 2 0 12401613 board3d.built voxels=241984 slice_voxels=65088 column_voxels=480 slab_voxels=176600 faces=181500 quads=1417 chunks=432 materials=35 collect_ms=1120.714 mesh_ms=792.582 plane_levels=26
+[dev] 11-05 20:56:25.271 I/godot   ( 7825): [LOAD-SPLIT] board3d.build: plane 28 ms, camera+mirror 22, chunks parallel 638 (worker collect 4183 + merge 802 summed), commit 60, mesh props 0, prop shadows 45, occlusion 1
+[dev] 11-05 20:56:26.101 I/godot   ( 7825): [SOFT-SHEET] cardboard roof at (31, 7) shown AT REST from the load (from the cache): 11 x 8 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:56:26.107 I/godot   ( 7825): [SOFT-SHEET] fabric roof at (35, 7) shown AT REST from the load (from the cache): 11 x 8 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:56:26.109 I/godot   ( 7825): [SOFT-SHEET] fabric wall at wall|0|311|104|80|87|fabric shown AT REST from the load (from the cache): 4 x 4 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:56:26.117 I/godot   ( 7825): [SOFT-SHEET] cardboard wall at wall|1|56|248|80|95|cardboard shown AT REST from the load (from the cache): 10 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:56:26.123 I/godot   ( 7825): [SOFT-SHEET] cardboard wall at wall|0|248|56|80|95|cardboard shown AT REST from the load (from the cache): 7 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:56:26.129 I/godot   ( 7825): [SOFT-SHEET] cardboard wall at wall|0|271|56|80|95|cardboard shown AT REST from the load (from the cache): 7 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:56:26.137 I/godot   ( 7825): [SOFT-SHEET] fabric wall at wall|1|56|280|80|95|fabric shown AT REST from the load (from the cache): 10 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:56:26.143 I/godot   ( 7825): [SOFT-SHEET] fabric wall at wall|0|280|56|80|95|fabric shown AT REST from the load (from the cache): 7 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:56:26.149 I/godot   ( 7825): [SOFT-SHEET] fabric wall at wall|0|303|56|80|95|fabric shown AT REST from the load (from the cache): 7 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:56:26.149 I/godot   ( 7825): [SOFT-SHEET] on the main thread: skin dictionaries 3 ms, SoftSheet3D.setup (mesh, texture, material) 108 ms, show_at_rest 2 ms, for 9 cloth(s)
+[dev] 11-05 20:56:26.149 I/godot   ( 7825): [SOFT-SHEET] voxel handles after the sheets: 5 container(s) turned back into objects (360 voxels), 0 single handle(s) made
+[dev] 11-05 20:56:26.149 I/godot   ( 7825): [SOFT-SHEET] 9 cloth(s) at rest (9 from the cache, 0 settled now): the load waited 0 ms for the workers, 123 ms in all
+[dev] 11-05 20:56:26.150 I/godot   ( 7825): [LOAD-SPLIT] board attach: actors 360 ms, vfx 121, ground overlays 393
+[dev] 11-05 20:56:26.384 I/godot   ( 7825): [PERF-DEV] MAX_FPS — Engine.max_fps = 0
+[dev] 11-05 20:56:26.498 I/godot   ( 7825): [TestZone] 0 pickups
+[dev] 11-05 20:56:26.621 I/godot   ( 7825): [OCC] every view's edge geometry built in 119.3 ms
+[dev] 11-05 20:56:26.659 I/godot   ( 7825): [DEV-HUD-01] DEV VISION Status Panel initialized
+[dev] 11-05 20:56:26.662 I/godot   ( 7825): [TEL] 3 0 13793018 view.framing framing=portrait via=boot render_scale=1.000
+[dev] 11-05 20:56:26.662 V/Godot   ( 7825): OnGodotMainLoopStarted
+[dev] 11-05 20:56:26.778 I/godot   ( 7825): [GLASS-FALL] 1 voxel(s): impact after 240..240 frame(s) (median 240), 1 never meet a floor; 1 crack layer(s)
+[dev] 11-05 20:56:26.896 I/godot   ( 7825): [FLASH] snapshot copied on the GPU in 0.2 ms
+[dev] 11-05 20:56:26.896 I/godot   ( 7825): [TEL] 4 0 14027188 scenario.start steps=12
+[dev] 11-05 20:56:26.896 I/godot   ( 7825): [SCENARIO] 12 step(s)
+[dev] 11-05 20:56:26.896 I/godot   ( 7825): [TEL] 5 0 14027447 scenario.step i=1 step=framing_portrait
+[dev] 11-05 20:56:26.896 I/godot   ( 7825): [SCENARIO] 1/12 framing portrait
+[dev] 11-05 20:56:26.897 I/godot   ( 7825): [TEL] 6 0 14028206 view.framing framing=portrait via=scenario render_scale=1.000
+[dev] 11-05 20:56:26.897 I/godot   ( 7825): [TEL] 7 0 14028460 scenario.step i=2 step=centre_agent
+[dev] 11-05 20:56:26.897 I/godot   ( 7825): [SCENARIO] 2/12 centre agent
+[dev] 11-05 20:56:26.897 I/godot   ( 7825): [TEL] 8 0 14028680 camera.pan_end centre=2432.0,3584.0 via=scenario
+[dev] 11-05 20:56:26.897 I/godot   ( 7825): [TEL] 9 0 14028839 scenario.step i=3 step=zoom_0.9
+[dev] 11-05 20:56:26.897 I/godot   ( 7825): [SCENARIO] 3/12 zoom 0.9
+[dev] 11-05 20:56:26.898 I/godot   ( 7825): [TEL] 10 0 14029077 camera.zoom_end zoom=0.900 via=scenario
+[dev] 11-05 20:56:26.898 I/godot   ( 7825): [TEL] 11 0 14029220 scenario.step i=4 step=frames_60
+[dev] 11-05 20:56:26.898 I/godot   ( 7825): [SCENARIO] 4/12 frames 60
+[dev] 11-05 20:56:27.391 I/godot   ( 7825): [TEL] 12 10 14522636 view.settled framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:29.318 I/godot   ( 7825): [WALK-WARM] 242528 claim(s) indexed in idle frames
+[dev] 11-05 20:56:29.321 I/godot   ( 7825): [TEL] 13 60 16452655 scenario.step i=5 step=wait_8
+[dev] 11-05 20:56:29.321 I/godot   ( 7825): [SCENARIO] 5/12 wait 8
+[dev] 11-05 20:56:29.337 I/godot   ( 7825): [FRAME-PROBE] 40.4 ms/frame · render cpu 0.8 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 57.2 ms · physics 3.6 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:29.337 I/godot   ( 7825): [TEL] 14 60 16468636 frame.window frames=60 ms=40.391 render_cpu=0.815 render_gpu=19.018 draws=65 primitives=41216 objects=82 process_held=57.240 physics_held=3.579 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:29.338 I/godot   ( 7825): [FRAME-SPLIT] per frame: guard cone smooth 29.38 ms (9/f) · room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.04 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:30.694 I/godot   ( 7825): [FRAME-PROBE] 22.6 ms/frame · render cpu 1.3 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 52.9 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:30.695 I/godot   ( 7825): [TEL] 15 120 17825955 frame.window frames=60 ms=22.617 render_cpu=1.288 render_gpu=18.948 draws=65 primitives=41216 objects=82 process_held=52.876 physics_held=0.056 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:30.696 I/godot   ( 7825): [FRAME-SPLIT] per frame: guard cone smooth 3.54 ms (1/f) · room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:31.923 I/godot   ( 7825): [FRAME-PROBE] 20.5 ms/frame · render cpu 1.5 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 30.0 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:31.924 I/godot   ( 7825): [TEL] 16 180 19054713 frame.window frames=60 ms=20.483 render_cpu=1.481 render_gpu=18.941 draws=65 primitives=41216 objects=82 process_held=30.024 physics_held=0.064 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:31.924 I/godot   ( 7825): [FRAME-SPLIT] per frame: guard cone smooth 0.19 ms (0/f) · room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:33.163 I/godot   ( 7825): [FRAME-PROBE] 20.7 ms/frame · render cpu 0.7 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 22.8 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:33.164 I/godot   ( 7825): [TEL] 17 240 20295034 frame.window frames=60 ms=20.669 render_cpu=0.749 render_gpu=18.987 draws=65 primitives=41216 objects=82 process_held=22.780 physics_held=0.070 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:33.165 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:34.380 I/godot   ( 7825): [FRAME-PROBE] 20.3 ms/frame · render cpu 0.7 ms · render gpu 19.2 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 23.1 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:34.381 I/godot   ( 7825): [TEL] 18 300 21511895 frame.window frames=60 ms=20.285 render_cpu=0.678 render_gpu=19.216 draws=65 primitives=41216 objects=82 process_held=23.073 physics_held=0.088 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:34.381 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:35.609 I/godot   ( 7825): [FRAME-PROBE] 20.5 ms/frame · render cpu 1.5 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 23.5 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:35.610 I/godot   ( 7825): [TEL] 19 360 22741038 frame.window frames=60 ms=20.486 render_cpu=1.498 render_gpu=18.953 draws=65 primitives=41216 objects=82 process_held=23.469 physics_held=0.060 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:35.610 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:36.838 I/godot   ( 7825): [FRAME-PROBE] 20.5 ms/frame · render cpu 1.2 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 24.1 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:36.839 I/godot   ( 7825): [TEL] 20 420 23969978 frame.window frames=60 ms=20.480 render_cpu=1.237 render_gpu=18.966 draws=65 primitives=41216 objects=82 process_held=24.082 physics_held=0.059 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:36.840 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:37.276 I/godot   ( 7825): [TEL] 21 441 24407385 scenario.step i=6 step=mark_idle
+[dev] 11-05 20:56:37.276 I/godot   ( 7825): [SCENARIO] 6/12 mark idle
+[dev] 11-05 20:56:37.276 I/godot   ( 7825): [TEL] 22 441 24407701 scenario.mark label=idle
+[dev] 11-05 20:56:37.276 I/godot   ( 7825): [TEL] 23 441 24407852 scenario.step i=7 step=wait_7
+[dev] 11-05 20:56:37.276 I/godot   ( 7825): [SCENARIO] 7/12 wait 7
+[dev] 11-05 20:56:38.067 I/godot   ( 7825): [FRAME-PROBE] 20.5 ms/frame · render cpu 0.7 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 24.7 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:38.068 I/godot   ( 7825): [TEL] 24 480 25198923 frame.window frames=60 ms=20.482 render_cpu=0.748 render_gpu=18.891 draws=65 primitives=41216 objects=82 process_held=24.726 physics_held=0.106 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:38.069 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:39.307 I/godot   ( 7825): [FRAME-PROBE] 20.7 ms/frame · render cpu 0.7 ms · render gpu 19.2 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 24.6 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:39.308 I/godot   ( 7825): [TEL] 25 540 26439176 frame.window frames=60 ms=20.669 render_cpu=0.665 render_gpu=19.174 draws=65 primitives=41216 objects=82 process_held=24.574 physics_held=0.069 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:39.309 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:40.536 I/godot   ( 7825): [FRAME-PROBE] 20.5 ms/frame · render cpu 1.4 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 28.4 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:40.536 I/godot   ( 7825): [TEL] 26 600 27667305 frame.window frames=60 ms=20.473 render_cpu=1.362 render_gpu=18.882 draws=65 primitives=41216 objects=82 process_held=28.388 physics_held=0.075 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:40.536 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:41.765 I/godot   ( 7825): [FRAME-PROBE] 20.5 ms/frame · render cpu 0.7 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 26.5 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:41.765 I/godot   ( 7825): [TEL] 27 660 28896366 frame.window frames=60 ms=20.484 render_cpu=0.669 render_gpu=18.920 draws=65 primitives=41216 objects=82 process_held=26.483 physics_held=0.075 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:41.766 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:42.994 I/godot   ( 7825): [FRAME-PROBE] 20.5 ms/frame · render cpu 0.7 ms · render gpu 18.8 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 24.8 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:42.994 I/godot   ( 7825): [TEL] 28 720 30125392 frame.window frames=60 ms=20.484 render_cpu=0.658 render_gpu=18.841 draws=65 primitives=41216 objects=82 process_held=24.759 physics_held=0.096 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:42.995 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.04 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:44.234 I/godot   ( 7825): [FRAME-PROBE] 20.7 ms/frame · render cpu 0.7 ms · render gpu 19.1 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 23.9 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:44.234 I/godot   ( 7825): [TEL] 29 780 31365127 frame.window frames=60 ms=20.662 render_cpu=0.653 render_gpu=19.084 draws=65 primitives=41216 objects=82 process_held=23.889 physics_held=0.072 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:44.234 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:44.302 I/godot   ( 7825): [TEL] 30 783 31433823 scenario.step i=8 step=actor_bench_agent_light_male_clip_walk_9
+[dev] 11-05 20:56:44.303 I/godot   ( 7825): [SCENARIO] 8/12 actor_bench agent_light_male_clip_walk 9
+[dev] 11-05 20:56:44.522 I/godot   ( 7825): 
+[dev] 11-05 20:56:44.522 I/godot   ( 7825): Attempting to resolve: emblem_ref_skull (folder emblems)
+[dev] 11-05 20:56:44.523 I/godot   ( 7825):   [USER] File not found: user://textures/emblems/emblem_ref_skull.png
+[dev] 11-05 20:56:44.523 I/godot   ( 7825):   [USER] File not found: user://textures/emblems/emblem_ref_skull.webp
+[dev] 11-05 20:56:44.566 I/godot   ( 7825):   [DEFAULT] Validation PASS: res://ASSETS/emblems/emblem_ref_skull.png
+[dev] 11-05 20:56:44.566 I/godot   ( 7825): [RESOLVER] emblem_ref_skull resolved from DEFAULT.png (dims 605x932)
+[dev] 11-05 20:56:44.566 I/godot   ( 7825): [CoatEmblem] emblem_ref_skull from DEFAULT
+[dev] 11-05 20:56:44.576 I/godot   ( 7825): [ACTOR-BENCH] coat emblem: emblem_ref_skull
+[dev] 11-05 20:56:44.576 I/godot   ( 7825): [ACTOR-BENCH] coat push: the legs push the coat
+[dev] 11-05 20:56:44.638 I/godot   ( 7825): [ACTOR-BENCH] agent_light_male x9: 4555 tris and 65 joints and 15 material(s) per rig
+[dev] 11-05 20:56:45.441 I/godot   ( 7825): [ACTOR-BENCH] agent_light_male_clip_walk x9: draw calls 153, primitives 78833, objects 170
+[dev] 11-05 20:56:45.441 I/godot   ( 7825): [TEL] 31 813 32572126 scenario.step i=9 step=wait_3
+[dev] 11-05 20:56:45.441 I/godot   ( 7825): [SCENARIO] 9/12 wait 3
+[dev] 11-05 20:56:46.133 I/godot   ( 7825): [FRAME-PROBE] 31.7 ms/frame · render cpu 1.2 ms · render gpu 24.2 ms · 153 draw call(s) · 78833 primitive(s) · 170 object(s) · process 240.5 ms · physics 0.6 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:46.133 I/godot   ( 7825): [TEL] 32 840 33264400 frame.window frames=60 ms=31.654 render_cpu=1.222 render_gpu=24.230 draws=153 primitives=78833 objects=170 process_held=240.503 physics_held=0.566 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:46.134 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:47.685 I/godot   ( 7825): [FRAME-PROBE] 25.9 ms/frame · render cpu 1.3 ms · render gpu 24.2 ms · 153 draw call(s) · 78833 primitive(s) · 170 object(s) · process 34.3 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:47.686 I/godot   ( 7825): [TEL] 33 900 34817040 frame.window frames=60 ms=25.878 render_cpu=1.279 render_gpu=24.224 draws=153 primitives=78833 objects=170 process_held=34.336 physics_held=0.070 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:47.686 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:48.437 I/godot   ( 7825): [TEL] 34 929 35568403 scenario.step i=10 step=mark_agent_light_male_clip_walk
+[dev] 11-05 20:56:48.437 I/godot   ( 7825): [SCENARIO] 10/12 mark agent_light_male_clip_walk
+[dev] 11-05 20:56:48.437 I/godot   ( 7825): [TEL] 35 929 35568783 scenario.mark label=agent_light_male_clip_walk
+[dev] 11-05 20:56:48.437 I/godot   ( 7825): [TEL] 36 929 35568898 scenario.step i=11 step=wait_14
+[dev] 11-05 20:56:48.438 I/godot   ( 7825): [SCENARIO] 11/12 wait 14
+[dev] 11-05 20:56:49.227 I/godot   ( 7825): [FRAME-PROBE] 25.7 ms/frame · render cpu 1.1 ms · render gpu 24.2 ms · 153 draw call(s) · 78833 primitive(s) · 170 object(s) · process 34.1 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:49.227 I/godot   ( 7825): [TEL] 37 960 36358736 frame.window frames=60 ms=25.695 render_cpu=1.142 render_gpu=24.176 draws=153 primitives=78833 objects=170 process_held=34.069 physics_held=0.092 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:49.228 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:50.769 I/godot   ( 7825): [FRAME-PROBE] 25.7 ms/frame · render cpu 1.2 ms · render gpu 24.3 ms · 153 draw call(s) · 78833 primitive(s) · 170 object(s) · process 33.7 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:50.769 I/godot   ( 7825): [TEL] 38 1020 37900458 frame.window frames=60 ms=25.694 render_cpu=1.174 render_gpu=24.262 draws=153 primitives=78833 objects=170 process_held=33.662 physics_held=0.050 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:50.770 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:52.310 I/godot   ( 7825): [FRAME-PROBE] 25.7 ms/frame · render cpu 1.2 ms · render gpu 24.2 ms · 153 draw call(s) · 78833 primitive(s) · 170 object(s) · process 33.8 ms · physics 0.0 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:52.311 I/godot   ( 7825): [TEL] 39 1080 39442081 frame.window frames=60 ms=25.694 render_cpu=1.163 render_gpu=24.218 draws=153 primitives=78833 objects=170 process_held=33.772 physics_held=0.048 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:52.311 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:53.852 I/godot   ( 7825): [FRAME-PROBE] 25.7 ms/frame · render cpu 1.2 ms · render gpu 24.1 ms · 153 draw call(s) · 78833 primitive(s) · 170 object(s) · process 34.1 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:53.853 I/godot   ( 7825): [TEL] 40 1140 40984007 frame.window frames=60 ms=25.698 render_cpu=1.222 render_gpu=24.103 draws=153 primitives=78833 objects=170 process_held=34.061 physics_held=0.051 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:53.853 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:55.394 I/godot   ( 7825): [FRAME-PROBE] 25.7 ms/frame · render cpu 1.2 ms · render gpu 24.6 ms · 153 draw call(s) · 78833 primitive(s) · 170 object(s) · process 33.7 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:55.394 I/godot   ( 7825): [TEL] 41 1200 42525701 frame.window frames=60 ms=25.695 render_cpu=1.152 render_gpu=24.559 draws=153 primitives=78833 objects=170 process_held=33.667 physics_held=0.051 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:55.395 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:56.936 I/godot   ( 7825): [FRAME-PROBE] 25.7 ms/frame · render cpu 1.2 ms · render gpu 24.5 ms · 153 draw call(s) · 78833 primitive(s) · 170 object(s) · process 33.7 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:56.936 I/godot   ( 7825): [TEL] 42 1260 44067307 frame.window frames=60 ms=25.694 render_cpu=1.198 render_gpu=24.512 draws=153 primitives=78833 objects=170 process_held=33.716 physics_held=0.059 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:56.937 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:56:58.477 I/godot   ( 7825): [FRAME-PROBE] 25.7 ms/frame · render cpu 1.2 ms · render gpu 24.1 ms · 153 draw call(s) · 78833 primitive(s) · 170 object(s) · process 33.8 ms · physics 0.0 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:56:58.478 I/godot   ( 7825): [TEL] 43 1320 45609044 frame.window frames=60 ms=25.695 render_cpu=1.175 render_gpu=24.095 draws=153 primitives=78833 objects=170 process_held=33.779 physics_held=0.050 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:56:58.478 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:00.019 I/godot   ( 7825): [FRAME-PROBE] 25.7 ms/frame · render cpu 1.2 ms · render gpu 24.3 ms · 153 draw call(s) · 78833 primitive(s) · 170 object(s) · process 33.7 ms · physics 0.0 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:00.019 I/godot   ( 7825): [TEL] 44 1380 47150528 frame.window frames=60 ms=25.692 render_cpu=1.157 render_gpu=24.288 draws=153 primitives=78833 objects=170 process_held=33.745 physics_held=0.046 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:00.020 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:01.549 I/godot   ( 7825): [FRAME-PROBE] 25.5 ms/frame · render cpu 1.2 ms · render gpu 24.1 ms · 153 draw call(s) · 78833 primitive(s) · 170 object(s) · process 33.8 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:01.550 I/godot   ( 7825): [TEL] 45 1440 48680925 frame.window frames=60 ms=25.506 render_cpu=1.169 render_gpu=24.112 draws=153 primitives=78833 objects=170 process_held=33.839 physics_held=0.051 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:01.550 I/godot   ( 7825): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:02.435 I/godot   ( 7825): [TEL] 46 1474 49566419 scenario.step i=12 step=quit
+[dev] 11-05 20:57:02.435 I/godot   ( 7825): [SCENARIO] 12/12 quit
+[dev] 11-05 20:57:02.435 I/godot   ( 7825): [TEL] 47 1474 49566816 scenario.end
+[dev] 11-05 20:57:02.881 V/Godot   ( 7825): OnGodotTerminating
+[DIAG-02] force-stopped com.example.infiltraitor
+[DIAG-02] log -> /Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR/docs/measurements/mv4_2026-11-05/actor_agent_light_male_clip_walk_x9.log
+[DIAG-02] captured 384 line(s), no fatal error.
+## docs/measurements/mv4_2026-11-05/actor_agent_light_male_clip_walk_x9.log
+- version: 0.9.107
+- model: moto_g04s
+- os: Android
+- os_version: 34.2a14d76c
+- cpu: 
+- gpu: Mali-G57
+- gpu_api: 1.3.225
+- renderer: mobile
+- screen: [720.0, 1612.0]
+- refresh_hz: 90.0
+- window: [720.0, 1612.0]
+- flags_file: /sdcard/Android/data/com.example.infiltraitor/files/dev_flags.cfg
+- file_sink: /sdcard/Android/data/com.example.infiltraitor/files/telemetry/tel_2026-11-05_20-56-19.jsonl
+- overrides: FRAME_PROBE:1|MAP:PLAYGROUND|MAX_FPS:0|RNG_SEED:1|SCENARIO:framing_portrait;_centre_agent;_zoom_0.9;_frames_60;_wait_8;_mark_idle;_wait_7;_actor_bench_agent_light_male_clip_walk_9;_wait_3;_mark_agent_light_male_clip_walk;_wait_14;_quit|TELEMETRY:1
+- records: 47 · dropped lines: 0 · frame windows: 24
+
+| segment | framing | visible | zoom | windows | ms/frame | render cpu | render gpu | draws | objects | primitives | cells on screen |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| idle | portrait | 390x873 | 0.90 | 7 (+1 straddling) | 20.7 | 0.7 | 19.1 | 65 | 82 | 41216 | 23 |
+| agent_light_male_clip_walk | portrait | 390x873 | 0.90 | 8 (+1 straddling) | 25.7 | 1.2 | 24.2 | 153 | 170 | 78833 | 23 |
+
+### memory — docs/measurements/mv4_2026-11-05/actor_agent_light_male_clip_walk_x9.log
+| segment | polls | from · to | TOTAL PSS MB first · median · last | GL mtrack MB first · median · last | swap PSS MB first · median · last | RSS MB first · median · last | native heap alloc MB first · median · last | native heap free MB first · median · last |
+|---|---|---|---|---|---|---|---|---|
+| (before the first mark) | 5 | 20:56:17 · 20:56:34 | 383 · 573 · 673 | 66 · 196 · 217 | 1 · 0 · 0 | 450 · 644 · 744 | 238 · 296 · 382 | 4 · 142 · 142 |
+| idle | 3 | 20:56:39 · 20:56:47 | 667 · 667 · 689 | 211 · 211 · 217 | 0 · 0 · 0 | 738 · 738 · 759 | 382 · 382 · 395 | 142 · 142 · 138 |
+| agent_light_male_clip_walk | 3 | 20:56:52 · 20:57:01 | 693 · 687 · 685 | 221 · 215 · 213 | 0 · 0 · 0 | 763 · 757 · 755 | 395 · 395 · 395 | 138 · 138 · 138 |
+
+/tmp/actor_dev_flags.cfg: 1 file pushed, 0 skipped. 3.8 MB/s (252 bytes in 0.000s)
+=== agent_light_female_clip_walk x9 ===
+[DIAG-02] device ZF524T5TG5 — motorola moto g04s (Spreadtrum T606), Android 14 / SDK 34, 3834312 kB, 720x1612 @ 280 dpi
+[DIAG-02] ok   — screen on, device unlocked
+[DIAG-02] launched com.example.infiltraitor/com.godot.game.GodotAppLauncher
+[MEM-POLL] 20:57:12  Native Heap   232630   232524       80       92   233532   245864   236415     3963 | GL mtrack    67572    67572        0        0    67572 | Native Heap:   232524                         233532 | Graphics:    67572                          67572 | TOTAL PSS:   387145            TOTAL RSS:   454096       TOTAL SWAP PSS:     1471
+[MEM-POLL] 20:57:16  Native Heap   205042   204956       56       51   205972   340824   189243   145915 | GL mtrack    67572    67572        0        0    67572 | Native Heap:   204956                         205972 | Graphics:    67572                          67572 | TOTAL PSS:   360655            TOTAL RSS:   432636       TOTAL SWAP PSS:      333
+[MEM-POLL] 20:57:21  Native Heap   281882   281796       56       51   282812   442368   286059   149850 | GL mtrack   200448   200448        0        0   200448 | Native Heap:   281796                         282812 | Graphics:   200448                         200448 | TOTAL PSS:   570833            TOTAL RSS:   642816       TOTAL SWAP PSS:      332
+[MEM-POLL] 20:57:25  Native Heap   380034   379948       56       51   380964   546652   392529   146094 | GL mtrack   222372   222372        0        0   222372 | Native Heap:   379948                         380964 | Graphics:   222372                         222372 | TOTAL PSS:   690655            TOTAL RSS:   762180       TOTAL SWAP PSS:      332
+[MEM-POLL] 20:57:29  Native Heap   380050   379964       56       51   380980   546652   392533   146091 | GL mtrack   216224   216224        0        0   216224 | Native Heap:   379964                         380980 | Graphics:   216224                         216224 | TOTAL PSS:   684506            TOTAL RSS:   756032       TOTAL SWAP PSS:      332
+[MEM-POLL] 20:57:34  Native Heap   380054   379968       56       51   380984   546652   392534   146089 | GL mtrack   224420   224420        0        0   224420 | Native Heap:   379968                         380984 | Graphics:   224420                         224420 | TOTAL PSS:   692696            TOTAL RSS:   764232       TOTAL SWAP PSS:      332
+[MEM-POLL] 20:57:38  Native Heap   380066   379980       56       51   380996   546652   392542   146091 | GL mtrack   224420   224420        0        0   224420 | Native Heap:   379980                         380996 | Graphics:   224420                         224420 | TOTAL PSS:   692708            TOTAL RSS:   764244       TOTAL SWAP PSS:      332
+[MEM-POLL] 20:57:43  Native Heap   395122   395036       56       51   396052   553700   404242   142056 | GL mtrack   218508   218508        0        0   218508 | Native Heap:   395036                         396052 | Graphics:   218508                         218508 | TOTAL PSS:   701860            TOTAL RSS:   773396       TOTAL SWAP PSS:      332
+[MEM-POLL] 20:57:47  Native Heap   395126   395040       56       51   396056   553700   404243   142056 | GL mtrack   222608   222608        0        0   222608 | Native Heap:   395040                         396056 | Graphics:   222608                         222608 | TOTAL PSS:   705964            TOTAL RSS:   777500       TOTAL SWAP PSS:      332
+[MEM-POLL] 20:57:51  Native Heap   395130   395044       56       51   396060   553700   404243   142056 | GL mtrack   222608   222608        0        0   222608 | Native Heap:   395044                         396060 | Graphics:   222608                         222608 | TOTAL PSS:   705920            TOTAL RSS:   777504       TOTAL SWAP PSS:      332
+[MEM-POLL] 20:57:56  Native Heap   395130   395044       56       51   396060   553700   404252   142047 | GL mtrack   218508   218508        0        0   218508 | Native Heap:   395044                         396060 | Graphics:   218508                         218508 | TOTAL PSS:   701674            TOTAL RSS:   773172       TOTAL SWAP PSS:      332
+[MEM-POLL] 20:58:00  (not running)
+[DIAG-02] com.example.infiltraitor exited on its own at 20:58:00 — capture ends
+[dev] --------- beginning of main
+[dev] 11-05 20:57:08.013 V/Godot   ( 8076): Initializing Godot plugin registry
+[dev] 11-05 20:57:08.027 V/Godot   ( 8076): InitEngine with params: [--xr_mode_regular, --xr-mode, off, --fullscreen, --background_color, #000000]
+[dev] 11-05 20:57:08.044 V/Godot   ( 8076): Godot native layer initialization completed: true
+[dev] 11-05 20:57:08.044 V/Godot   ( 8076): Setting up native layer with params: [--xr-mode, off, --fullscreen]
+[dev] 11-05 20:57:08.098 V/Godot   ( 8076): Godot native layer setup completed
+[dev] 11-05 20:57:08.098 V/Godot   ( 8076): OnInitRenderView: GodotFragment{fc29790} (adecc97d-613c-401c-b7d6-4ddb5c3723aa id=0x7f07002c)
+[dev] 11-05 20:57:08.111 D/Godot   ( 8076): Render view should be transparent: false
+[dev] 11-05 20:57:08.117 D/Godot   ( 8076): renderingDevice: vulkan (ProjectSettings)
+[dev] 11-05 20:57:08.117 D/Godot   ( 8076): 			renderer: mobile (ProjectSettings)
+[dev] 11-05 20:57:08.135 V/Godot   ( 8076): OnStart: GodotFragment{fc29790} (adecc97d-613c-401c-b7d6-4ddb5c3723aa id=0x7f07002c)
+[dev] 11-05 20:57:08.141 V/Godot   ( 8076): OnResume: GodotFragment{fc29790} (adecc97d-613c-401c-b7d6-4ddb5c3723aa id=0x7f07002c)
+[dev] 11-05 20:57:08.179 I/godot   ( 8076): Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+[dev] 11-05 20:57:08.232 I/godot   ( 8076): Vulkan 1.3.225 - Forward Mobile - Using Device #0: ARM - Mali-G57
+[dev] 11-05 20:57:08.679 I/godot   ( 8076): 
+[dev] 11-05 20:57:14.628 V/Godot   ( 8076): OnGodotSetupCompleted
+[dev] 11-05 20:57:14.642 I/godot   ( 8076): [DevFlags] 6 override(s) from /sdcard/Android/data/com.example.infiltraitor/files/dev_flags.cfg — FRAME_PROBE=1, MAP=PLAYGROUND, MAX_FPS=0, RNG_SEED=1, SCENARIO=framing portrait; centre agent; zoom 0.9; frames 60; wait 8; mark idle; wait 7; actor_bench agent_light_female_clip_walk 9; wait 3; mark agent_light_female_clip_walk; wait 14; quit, TELEMETRY=1
+[dev] 11-05 20:57:14.643 I/godot   ( 8076): [INFILTRAITOR] Version 0.9.107
+[dev] 11-05 20:57:14.646 I/godot   ( 8076): [Telemetry] file sink: /sdcard/Android/data/com.example.infiltraitor/files/telemetry/tel_2026-11-05_20-57-14.jsonl
+[dev] 11-05 20:57:14.647 I/godot   ( 8076): [TEL] 1 0 6602401 session version=0.9.107 os=Android os_version=34.2a14d76c model=moto_g04s cpu= cores=8 gpu=Mali-G57 gpu_vendor=ARM gpu_api=1.3.225 renderer=mobile screen=720,1612 refresh_hz=90.000 dpi=280 window=720,1612 flags_file=/sdcard/Android/data/com.example.infiltraitor/files/dev_flags.cfg file_sink=/sdcard/Android/data/com.example.infiltraitor/files/telemetry/tel_2026-11-05_20-57-14.jsonl overrides=FRAME_PROBE:1|MAP:PLAYGROUND|MAX_FPS:0|RNG_SEED:1|SCENARIO:framing_portrait;_centre_agent;_zoom_0.9;_frames_60;_wait_8;_mark_idle;_wait_7;_actor_bench_agent_light_female_clip_walk_9;_wait_3;_mark_agent_light_female_clip_walk;_wait_14;_quit|TELEMETRY:1
+[dev] 11-05 20:57:14.652 I/godot   ( 8076): [Registries] Autoload initialized
+[dev] 11-05 20:57:14.675 I/godot   ( 8076): [RNG] seeded 1 — particle rolls are reproducible this boot
+[dev] 11-05 20:57:14.692 I/godot   ( 8076): [MaterialRegistry] Registered: brick (color: 0.55,0.29,0.22)
+[dev] 11-05 20:57:14.692 I/godot   ( 8076): [MaterialRegistry] Registered: cardboard (color: 0.70,0.55,0.36)
+[dev] 11-05 20:57:14.692 I/godot   ( 8076): [MaterialRegistry] Registered: carpet (color: 0.46,0.52,0.62)
+[dev] 11-05 20:57:14.692 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_basket (color: 0.31,0.38,0.61)
+[dev] 11-05 20:57:14.692 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_basket_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:57:14.693 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_basket_blue (color: 0.51,0.61,0.79)
+[dev] 11-05 20:57:14.693 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_basket_green (color: 0.26,0.51,0.38)
+[dev] 11-05 20:57:14.693 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_basket_grey (color: 0.68,0.68,0.72)
+[dev] 11-05 20:57:14.693 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_basket_orange (color: 1.00,0.50,0.17)
+[dev] 11-05 20:57:14.693 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_basket_purple (color: 0.51,0.27,0.65)
+[dev] 11-05 20:57:14.693 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_basket_red (color: 0.72,0.19,0.22)
+[dev] 11-05 20:57:14.693 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_basket_tan (color: 0.89,0.75,0.53)
+[dev] 11-05 20:57:14.693 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_basket_yellow (color: 0.99,0.80,0.20)
+[dev] 11-05 20:57:14.693 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_check (color: 0.89,0.75,0.53)
+[dev] 11-05 20:57:14.693 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_check_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:57:14.693 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_check_blue (color: 0.51,0.61,0.78)
+[dev] 11-05 20:57:14.693 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_check_green (color: 0.26,0.51,0.38)
+[dev] 11-05 20:57:14.694 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_check_grey (color: 0.68,0.68,0.72)
+[dev] 11-05 20:57:14.694 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_check_navy (color: 0.31,0.38,0.61)
+[dev] 11-05 20:57:14.694 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_check_orange (color: 1.00,0.49,0.17)
+[dev] 11-05 20:57:14.694 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_check_purple (color: 0.51,0.27,0.65)
+[dev] 11-05 20:57:14.694 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_check_red (color: 0.72,0.19,0.22)
+[dev] 11-05 20:57:14.694 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_check_yellow (color: 0.99,0.80,0.20)
+[dev] 11-05 20:57:14.694 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_diamond (color: 0.26,0.53,0.39)
+[dev] 11-05 20:57:14.694 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_diamond_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:57:14.694 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_diamond_blue (color: 0.53,0.63,0.81)
+[dev] 11-05 20:57:14.694 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_diamond_grey (color: 0.70,0.70,0.74)
+[dev] 11-05 20:57:14.694 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_diamond_navy (color: 0.32,0.39,0.63)
+[dev] 11-05 20:57:14.694 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_diamond_orange (color: 1.00,0.51,0.18)
+[dev] 11-05 20:57:14.694 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_diamond_purple (color: 0.53,0.28,0.67)
+[dev] 11-05 20:57:14.695 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_diamond_red (color: 0.74,0.19,0.23)
+[dev] 11-05 20:57:14.695 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_diamond_tan (color: 0.91,0.77,0.54)
+[dev] 11-05 20:57:14.695 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_diamond_yellow (color: 1.00,0.83,0.21)
+[dev] 11-05 20:57:14.695 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_plain (color: 0.51,0.62,0.79)
+[dev] 11-05 20:57:14.695 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_plain_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:57:14.695 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_plain_green (color: 0.26,0.51,0.38)
+[dev] 11-05 20:57:14.695 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_plain_grey (color: 0.69,0.69,0.72)
+[dev] 11-05 20:57:14.695 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_plain_navy (color: 0.31,0.38,0.62)
+[dev] 11-05 20:57:14.695 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_plain_orange (color: 1.00,0.50,0.17)
+[dev] 11-05 20:57:14.695 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_plain_purple (color: 0.51,0.27,0.65)
+[dev] 11-05 20:57:14.695 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_plain_red (color: 0.72,0.19,0.22)
+[dev] 11-05 20:57:14.695 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_plain_tan (color: 0.89,0.75,0.53)
+[dev] 11-05 20:57:14.696 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_plain_yellow (color: 0.99,0.81,0.21)
+[dev] 11-05 20:57:14.696 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_stripe (color: 0.72,0.19,0.22)
+[dev] 11-05 20:57:14.696 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_stripe_black (color: 0.12,0.12,0.14)
+[dev] 11-05 20:57:14.696 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_stripe_blue (color: 0.51,0.62,0.79)
+[dev] 11-05 20:57:14.696 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_stripe_green (color: 0.26,0.51,0.38)
+[dev] 11-05 20:57:14.696 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_stripe_grey (color: 0.69,0.69,0.72)
+[dev] 11-05 20:57:14.696 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_stripe_navy (color: 0.31,0.38,0.62)
+[dev] 11-05 20:57:14.696 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_stripe_orange (color: 1.00,0.50,0.17)
+[dev] 11-05 20:57:14.696 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_stripe_purple (color: 0.51,0.27,0.65)
+[dev] 11-05 20:57:14.696 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_stripe_tan (color: 0.89,0.75,0.53)
+[dev] 11-05 20:57:14.696 I/godot   ( 8076): [MaterialRegistry] Registered: carpet_stripe_yellow (color: 0.99,0.81,0.21)
+[dev] 11-05 20:57:14.696 I/godot   ( 8076): [MaterialRegistry] Registered: ceramic (color: 0.90,0.89,0.85)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: concrete (color: 0.62,0.62,0.62)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: dirt (color: 0.50,0.38,0.27)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: earth (color: 0.52,0.39,0.26)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: fabric (color: 0.78,0.74,0.66)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: generic (color: 0.55,0.55,0.55)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: glass (color: 0.62,0.74,0.78)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: glass_armored (color: 0.74,0.62,0.78)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: glass_screen_amber (color: 0.70,0.60,0.38)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: glass_screen_green (color: 0.38,0.55,0.42)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: glass_screen_red (color: 0.62,0.40,0.41)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: grass (color: 0.42,0.55,0.29)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: grating (color: 1.00,1.00,1.00)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: grating_dark (color: 0.39,0.42,0.48)
+[dev] 11-05 20:57:14.697 I/godot   ( 8076): [MaterialRegistry] Registered: grating_rust (color: 1.00,0.59,0.31)
+[dev] 11-05 20:57:14.698 I/godot   ( 8076): [MaterialRegistry] Registered: grating_yellow (color: 1.00,1.00,0.23)
+[dev] 11-05 20:57:14.698 I/godot   ( 8076): [MaterialRegistry] Registered: gravel (color: 0.55,0.52,0.49)
+[dev] 11-05 20:57:14.698 I/godot   ( 8076): [MaterialRegistry] Registered: iron_bar (color: 0.63,0.61,0.63)
+[dev] 11-05 20:57:14.698 I/godot   ( 8076): [MaterialRegistry] Registered: leather (color: 0.42,0.27,0.17)
+[dev] 11-05 20:57:14.698 I/godot   ( 8076): [MaterialRegistry] Registered: metal (color: 0.49,0.53,0.56)
+[dev] 11-05 20:57:14.698 I/godot   ( 8076): [MaterialRegistry] Registered: painted_metal (color: 0.45,0.52,0.60)
+[dev] 11-05 20:57:14.698 I/godot   ( 8076): [MaterialRegistry] Registered: paper (color: 0.88,0.85,0.75)
+[dev] 11-05 20:57:14.698 I/godot   ( 8076): [MaterialRegistry] Registered: parquet (color: 0.80,0.58,0.38)
+[dev] 11-05 20:57:14.698 I/godot   ( 8076): [MaterialRegistry] Registered: plastic (color: 0.72,0.72,0.74)
+[dev] 11-05 20:57:14.698 I/godot   ( 8076): [MaterialRegistry] Registered: plywood (color: 0.78,0.63,0.42)
+[dev] 11-05 20:57:14.698 I/godot   ( 8076): [MaterialRegistry] Registered: rubber (color: 0.13,0.13,0.14)
+[dev] 11-05 20:57:14.698 I/godot   ( 8076): [MaterialRegistry] Registered: sand (color: 0.76,0.67,0.51)
+[dev] 11-05 20:57:14.698 I/godot   ( 8076): [MaterialRegistry] Registered: steel_dark (color: 0.22,0.23,0.25)
+[dev] 11-05 20:57:14.699 I/godot   ( 8076): [MaterialRegistry] Registered: steel_plate (color: 0.63,0.66,0.70)
+[dev] 11-05 20:57:14.699 I/godot   ( 8076): [MaterialRegistry] Registered: steel_plate_dark (color: 0.24,0.26,0.30)
+[dev] 11-05 20:57:14.699 I/godot   ( 8076): [MaterialRegistry] Registered: steel_plate_green (color: 0.26,0.52,0.35)
+[dev] 11-05 20:57:14.699 I/godot   ( 8076): [MaterialRegistry] Registered: steel_plate_rust (color: 0.70,0.37,0.19)
+[dev] 11-05 20:57:14.699 I/godot   ( 8076): [MaterialRegistry] Registered: stone (color: 0.55,0.55,0.58)
+[dev] 11-05 20:57:14.699 I/godot   ( 8076): [MaterialRegistry] Registered: tile (color: 0.93,0.92,0.88)
+[dev] 11-05 20:57:14.699 I/godot   ( 8076): [MaterialRegistry] Registered: tile_beige (color: 0.96,0.86,0.67)
+[dev] 11-05 20:57:14.699 I/godot   ( 8076): [MaterialRegistry] Registered: tile_grey (color: 0.67,0.68,0.71)
+[dev] 11-05 20:57:14.699 I/godot   ( 8076): [MaterialRegistry] Registered: upholstery (color: 0.35,0.40,0.47)
+[dev] 11-05 20:57:14.699 I/godot   ( 8076): [MaterialRegistry] Registered: wood (color: 0.66,0.47,0.31)
+[dev] 11-05 20:57:14.700 I/godot   ( 8076): [Registries] Material registry initialized with defaults
+[dev] 11-05 20:57:15.181 I/godot   ( 8076): [Room] Light registry initialized with 0 map lights:
+[dev] 11-05 20:57:15.181 I/godot   ( 8076): [Room] Tile semantics initialized with 0 tiles, 0 light anchors
+[dev] 11-05 20:57:15.181 I/godot   ( 8076): [Room] Shadow projector initialized
+[dev] 11-05 20:57:15.181 I/godot   ( 8076): [Room] Exposure system initialized with 0 light projections
+[dev] 11-05 20:57:15.181 I/godot   ( 8076): [VisionController] Shadow overlay initialized
+[dev] 11-05 20:57:15.181 I/godot   ( 8076): [VisionController] Exposure overlay initialized
+[dev] 11-05 20:57:15.181 I/godot   ( 8076): [VisionController] Tile risk heatmap overlay initialized
+[dev] 11-05 20:57:15.181 I/godot   ( 8076): [VisionController] Elite exposure overlay initialized: [EliteExposureOverlay safe=0 total=0 confidence=0.00 depth_layers=6 stability_types=4]
+[dev] 11-05 20:57:15.202 I/godot   ( 8076): [Registries] File map source initialized
+[dev] 11-05 20:57:15.240 I/godot   ( 8076): [MapFileService] PLAYGROUND (not a segment, info only): the map (44x22 GU) is larger than the envelope reserve (24x48): outside what PB-3 measured; re-run pb3_study.py --only HEAVY
+[dev] 11-05 20:57:15.257 I/godot   ( 8076): [MAP-LAYOUT] PLAYGROUND: 26 poi, 3 region(s), 0 objective(s), 0 exit(s), map (44, 22) x 2.00 storeys (instance -9223371865240631346)
+[dev] 11-05 20:57:15.744 I/godot   ( 8076): [PropRegistry] Registered: locker (footprint: [(0, 0)], storeys: 1, cover: full)
+[dev] 11-05 20:57:15.745 I/godot   ( 8076): [PropRegistry] Registered: pipe_n_00 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:57:15.745 I/godot   ( 8076): [PropRegistry] Registered: pipe_n_11 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:57:15.745 I/godot   ( 8076): [PropRegistry] Registered: nightstand (footprint: [(0, 0)], storeys: 1, cover: quarter)
+[dev] 11-05 20:57:15.746 I/godot   ( 8076): [PropRegistry] Registered: pipe_n_01 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:57:15.746 I/godot   ( 8076): [PropRegistry] Registered: pipe_n_10 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:57:15.746 I/godot   ( 8076): [PropRegistry] Registered: pipe_n_hi_00 (footprint: [(0, 0)], storeys: 2, cover: half)
+[dev] 11-05 20:57:15.747 I/godot   ( 8076): [PropRegistry] Registered: pit_divider (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:57:15.747 I/godot   ( 8076): [PropRegistry] Registered: plywood_table (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:57:15.747 I/godot   ( 8076): [PropRegistry] Registered: pipe_n_hi_10 (footprint: [(0, 0)], storeys: 2, cover: half)
+[dev] 11-05 20:57:15.748 I/godot   ( 8076): [PropRegistry] Registered: wood_table (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:57:15.748 I/godot   ( 8076): [PropRegistry] Registered: pipe_s_01 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:57:15.748 I/godot   ( 8076): [PropRegistry] Registered: pipe_n_hi_01 (footprint: [(0, 0)], storeys: 2, cover: half)
+[dev] 11-05 20:57:15.748 I/godot   ( 8076): [PropRegistry] Registered: pistol_prop (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:57:15.749 I/godot   ( 8076): [PropRegistry] Registered: pipe_n_hi_11 (footprint: [(0, 0)], storeys: 2, cover: half)
+[dev] 11-05 20:57:15.749 I/godot   ( 8076): [PropRegistry] Registered: pipe_s_11 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:57:15.749 I/godot   ( 8076): [PropRegistry] Registered: pipe_s_00 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:57:15.750 I/godot   ( 8076): [PropRegistry] Registered: post_wood (footprint: [(0, 0)], storeys: 2, cover: none)
+[dev] 11-05 20:57:15.750 I/godot   ( 8076): [PropRegistry] Registered: pipe_s_10 (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:57:15.750 I/godot   ( 8076): [PropRegistry] Registered: bed_single (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:57:15.751 I/godot   ( 8076): [PropRegistry] Registered: desk (footprint: [(0, 0)], storeys: 1, cover: half)
+[dev] 11-05 20:57:15.751 I/godot   ( 8076): [PropRegistry] Registered: crate_plywood (footprint: [(0, 0)], storeys: 1, cover: full)
+[dev] 11-05 20:57:15.751 I/godot   ( 8076): [PropRegistry] Registered: grate_n_1 (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:57:15.751 I/godot   ( 8076): [PropRegistry] Registered: crate_full (footprint: [(0, 0)], storeys: 1, cover: full)
+[dev] 11-05 20:57:15.752 I/godot   ( 8076): [PropRegistry] Registered: grate_s_0 (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:57:15.753 I/godot   ( 8076): [PropRegistry] Registered: box_cardboard_pit (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:57:15.753 I/godot   ( 8076): [PropRegistry] Registered: grate_s_1 (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:57:15.753 I/godot   ( 8076): [PropRegistry] Registered: bin (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:57:15.754 I/godot   ( 8076): [PropRegistry] Registered: curb_hi (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:57:15.754 I/godot   ( 8076): [PropRegistry] Registered: grate_n_0 (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:57:15.754 I/godot   ( 8076): [PropRegistry] Registered: curb_lo (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:57:15.755 I/godot   ( 8076): [PropRegistry] Registered: bookshelf (footprint: [(0, 0)], storeys: 1, cover: full)
+[dev] 11-05 20:57:15.755 I/godot   ( 8076): [PropRegistry] Registered: chair (footprint: [(0, 0)], storeys: 1, cover: none)
+[dev] 11-05 20:57:15.755 I/godot   ( 8076): [Registries] Prop registry initialized from disk
+[dev] 11-05 20:57:16.523 I/godot   ( 8076): [VOXEL-CONTAINERS] map load: PLAYGROUND — 0 container(s) (0 voxels) were turned into objects before the store was built
+[dev] 11-05 20:57:16.529 I/godot   ( 8076): [VOXEL-STORE] built (map load: PLAYGROUND) — 242528 claim(s) in 3154 container(s), 1 irregular, 544 multi-claim cell(s), 20.00 MB, 749 ms
+[dev] 11-05 20:57:16.896 I/godot   ( 8076): [OCC-03] Agent z_index set to 34 (max voxel layer z_index: 33, room size: (54, 32))
+[dev] 11-05 20:57:16.918 I/godot   ( 8076): [Room] Light registry initialized with 12 map lights:
+[dev] 11-05 20:57:16.918 I/godot   ( 8076):   - map_light_1 @ cell(10,8) radius=7 type=omni
+[dev] 11-05 20:57:16.918 I/godot   ( 8076):   - map_light_2 @ cell(21,8) radius=6 type=omni
+[dev] 11-05 20:57:16.918 I/godot   ( 8076):   - map_light_3 @ cell(16,15) radius=7 type=omni
+[dev] 11-05 20:57:16.918 I/godot   ( 8076):   - map_light_4 @ cell(15,14) radius=10 type=omni
+[dev] 11-05 20:57:16.918 I/godot   ( 8076):   - map_light_5 @ cell(20,15) radius=8 type=omni
+[dev] 11-05 20:57:16.918 I/godot   ( 8076):   - map_light_6 @ cell(28,8) radius=7 type=omni
+[dev] 11-05 20:57:16.918 I/godot   ( 8076):   - map_light_7 @ cell(32,8) radius=7 type=omni
+[dev] 11-05 20:57:16.918 I/godot   ( 8076):   - map_light_8 @ cell(36,8) radius=7 type=omni
+[dev] 11-05 20:57:16.918 I/godot   ( 8076):   - map_light_9 @ cell(40,8) radius=7 type=omni
+[dev] 11-05 20:57:16.918 I/godot   ( 8076):   - map_light_10 @ cell(44,8) radius=7 type=omni
+[dev] 11-05 20:57:16.918 I/godot   ( 8076):   - map_light_11 @ cell(30,13) radius=8 type=omni
+[dev] 11-05 20:57:16.918 I/godot   ( 8076):   - map_light_12 @ cell(38,13) radius=8 type=omni
+[dev] 11-05 20:57:16.924 I/godot   ( 8076): [Room] Tile semantics initialized with 783 tiles, 12 light anchors
+[dev] 11-05 20:57:18.467 I/godot   ( 8076): [LOAD-SPLIT] lighting.rebuild_all: lights 1 ms, semantics 5, projector 3, shadows+exposure 87, listeners 1454
+[dev] 11-05 20:57:18.467 I/godot   ( 8076): [LOAD-SPLIT] stage 20->25: turn state + fog 0 ms, hud 16, lighting 1550
+[dev] 11-05 20:57:18.667 I/godot   ( 8076): 
+[dev] 11-05 20:57:18.667 I/godot   ( 8076): Attempting to resolve: facade_concrete (folder concrete)
+[dev] 11-05 20:57:18.668 I/godot   ( 8076):   [USER] File not found: user://textures/concrete/facade_concrete.png
+[dev] 11-05 20:57:18.668 I/godot   ( 8076):   [USER] File not found: user://textures/concrete/facade_concrete.webp
+[dev] 11-05 20:57:18.696 I/godot   ( 8076):   [DEFAULT] Validation PASS: res://ASSETS/materials/concrete/facade_concrete.png
+[dev] 11-05 20:57:18.696 I/godot   ( 8076): [RESOLVER] facade_concrete resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:57:18.739 I/godot   ( 8076): 
+[dev] 11-05 20:57:18.739 I/godot   ( 8076): Attempting to resolve: facade_metal (folder metal)
+[dev] 11-05 20:57:18.739 I/godot   ( 8076):   [USER] File not found: user://textures/metal/facade_metal.png
+[dev] 11-05 20:57:18.739 I/godot   ( 8076):   [USER] File not found: user://textures/metal/facade_metal.webp
+[dev] 11-05 20:57:18.776 I/godot   ( 8076):   [DEFAULT] Validation PASS: res://ASSETS/materials/metal/facade_metal.png
+[dev] 11-05 20:57:18.776 I/godot   ( 8076): [RESOLVER] facade_metal resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:57:18.780 I/godot   ( 8076): 
+[dev] 11-05 20:57:18.780 I/godot   ( 8076): Attempting to resolve: facade_stone (folder stone)
+[dev] 11-05 20:57:18.780 I/godot   ( 8076):   [USER] File not found: user://textures/stone/facade_stone.png
+[dev] 11-05 20:57:18.780 I/godot   ( 8076):   [USER] File not found: user://textures/stone/facade_stone.webp
+[dev] 11-05 20:57:18.810 I/godot   ( 8076):   [DEFAULT] Validation PASS: res://ASSETS/materials/stone/facade_stone.png
+[dev] 11-05 20:57:18.810 I/godot   ( 8076): [RESOLVER] facade_stone resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:57:18.814 I/godot   ( 8076): 
+[dev] 11-05 20:57:18.814 I/godot   ( 8076): Attempting to resolve: facade_wood (folder wood)
+[dev] 11-05 20:57:18.814 I/godot   ( 8076):   [USER] File not found: user://textures/wood/facade_wood.png
+[dev] 11-05 20:57:18.814 I/godot   ( 8076):   [USER] File not found: user://textures/wood/facade_wood.webp
+[dev] 11-05 20:57:18.844 I/godot   ( 8076):   [DEFAULT] Validation PASS: res://ASSETS/materials/wood/facade_wood.png
+[dev] 11-05 20:57:18.844 I/godot   ( 8076): [RESOLVER] facade_wood resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:57:18.847 I/godot   ( 8076): 
+[dev] 11-05 20:57:18.847 I/godot   ( 8076): Attempting to resolve: facade_brick (folder brick)
+[dev] 11-05 20:57:18.847 I/godot   ( 8076):   [USER] File not found: user://textures/brick/facade_brick.png
+[dev] 11-05 20:57:18.847 I/godot   ( 8076):   [USER] File not found: user://textures/brick/facade_brick.webp
+[dev] 11-05 20:57:18.880 I/godot   ( 8076):   [DEFAULT] Validation PASS: res://ASSETS/materials/brick/facade_brick.png
+[dev] 11-05 20:57:18.880 I/godot   ( 8076): [RESOLVER] facade_brick resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:57:18.884 I/godot   ( 8076): 
+[dev] 11-05 20:57:18.884 I/godot   ( 8076): Attempting to resolve: facade_plywood (folder plywood)
+[dev] 11-05 20:57:18.884 I/godot   ( 8076):   [USER] File not found: user://textures/plywood/facade_plywood.png
+[dev] 11-05 20:57:18.884 I/godot   ( 8076):   [USER] File not found: user://textures/plywood/facade_plywood.webp
+[dev] 11-05 20:57:18.915 I/godot   ( 8076):   [DEFAULT] Validation PASS: res://ASSETS/materials/plywood/facade_plywood.png
+[dev] 11-05 20:57:18.915 I/godot   ( 8076): [RESOLVER] facade_plywood resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:57:19.008 I/godot   ( 8076): 
+[dev] 11-05 20:57:19.008 I/godot   ( 8076): Attempting to resolve: facade_fabric (folder fabric)
+[dev] 11-05 20:57:19.008 I/godot   ( 8076):   [USER] File not found: user://textures/fabric/facade_fabric.png
+[dev] 11-05 20:57:19.008 I/godot   ( 8076):   [USER] File not found: user://textures/fabric/facade_fabric.webp
+[dev] 11-05 20:57:19.030 I/godot   ( 8076):   [DEFAULT] Validation PASS: res://ASSETS/materials/fabric/facade_fabric.png
+[dev] 11-05 20:57:19.030 I/godot   ( 8076): [RESOLVER] facade_fabric resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:57:19.034 I/godot   ( 8076): 
+[dev] 11-05 20:57:19.034 I/godot   ( 8076): Attempting to resolve: facade_cardboard (folder cardboard)
+[dev] 11-05 20:57:19.034 I/godot   ( 8076):   [USER] File not found: user://textures/cardboard/facade_cardboard.png
+[dev] 11-05 20:57:19.034 I/godot   ( 8076):   [USER] File not found: user://textures/cardboard/facade_cardboard.webp
+[dev] 11-05 20:57:19.060 I/godot   ( 8076):   [DEFAULT] Validation PASS: res://ASSETS/materials/cardboard/facade_cardboard.png
+[dev] 11-05 20:57:19.060 I/godot   ( 8076): [RESOLVER] facade_cardboard resolved from DEFAULT.png (dims 1024x512)
+[dev] 11-05 20:57:19.147 I/godot   ( 8076): [SOFT-SHEET] 2792 voxel(s) of soft materials: 2792 drawn by a cloth at rest (SoftSheet3D), 0 as one flat plane
+[dev] 11-05 20:57:19.490 I/godot   ( 8076): [LOAD-SPLIT] board3d.materials: 9 material(s) 518 ms, decal catalogue 342
+[dev] 11-05 20:57:19.769 I/godot   ( 8076): [LOAD-SPLIT] board3d.collect: materials + decals 898 ms (texture resolve 240, build 23), claim walk 242
+[dev] 11-05 20:57:20.566 I/godot   ( 8076): [LOAD-SPLIT] prop shadows: mesh props 0 ms (voxelize 0), voxel props 46
+[dev] 11-05 20:57:20.566 I/godot   ( 8076): [BOARD3D] 241984 voxel(s) (slices 65088, columns 480, slabs 176600) → 181500 face(s) → 1417 quad(s) in 432 chunk(s), 35 material(s), plane levels 78..103; collect 1141 ms, mesh 795 ms; source store
+[dev] 11-05 20:57:20.566 I/godot   ( 8076): [TEL] 2 0 12522003 board3d.built voxels=241984 slice_voxels=65088 column_voxels=480 slab_voxels=176600 faces=181500 quads=1417 chunks=432 materials=35 collect_ms=1141.497 mesh_ms=794.996 plane_levels=26
+[dev] 11-05 20:57:20.567 I/godot   ( 8076): [LOAD-SPLIT] board3d.build: plane 27 ms, camera+mirror 22, chunks parallel 640 (worker collect 4209 + merge 796 summed), commit 59, mesh props 0, prop shadows 46, occlusion 1
+[dev] 11-05 20:57:21.397 I/godot   ( 8076): [SOFT-SHEET] cardboard roof at (31, 7) shown AT REST from the load (from the cache): 11 x 8 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:57:21.402 I/godot   ( 8076): [SOFT-SHEET] fabric roof at (35, 7) shown AT REST from the load (from the cache): 11 x 8 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:57:21.405 I/godot   ( 8076): [SOFT-SHEET] fabric wall at wall|0|311|104|80|87|fabric shown AT REST from the load (from the cache): 4 x 4 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:57:21.413 I/godot   ( 8076): [SOFT-SHEET] cardboard wall at wall|1|56|248|80|95|cardboard shown AT REST from the load (from the cache): 10 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:57:21.419 I/godot   ( 8076): [SOFT-SHEET] cardboard wall at wall|0|248|56|80|95|cardboard shown AT REST from the load (from the cache): 7 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:57:21.425 I/godot   ( 8076): [SOFT-SHEET] cardboard wall at wall|0|271|56|80|95|cardboard shown AT REST from the load (from the cache): 7 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:57:21.432 I/godot   ( 8076): [SOFT-SHEET] fabric wall at wall|1|56|280|80|95|fabric shown AT REST from the load (from the cache): 10 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:57:21.438 I/godot   ( 8076): [SOFT-SHEET] fabric wall at wall|0|280|56|80|95|fabric shown AT REST from the load (from the cache): 7 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:57:21.444 I/godot   ( 8076): [SOFT-SHEET] fabric wall at wall|0|303|56|80|95|fabric shown AT REST from the load (from the cache): 7 x 7 nodes settled in 0 step(s), 0 ms on a worker
+[dev] 11-05 20:57:21.444 I/godot   ( 8076): [SOFT-SHEET] on the main thread: skin dictionaries 3 ms, SoftSheet3D.setup (mesh, texture, material) 108 ms, show_at_rest 2 ms, for 9 cloth(s)
+[dev] 11-05 20:57:21.444 I/godot   ( 8076): [SOFT-SHEET] voxel handles after the sheets: 5 container(s) turned back into objects (360 voxels), 0 single handle(s) made
+[dev] 11-05 20:57:21.444 I/godot   ( 8076): [SOFT-SHEET] 9 cloth(s) at rest (9 from the cache, 0 settled now): the load waited 0 ms for the workers, 123 ms in all
+[dev] 11-05 20:57:21.445 I/godot   ( 8076): [LOAD-SPLIT] board attach: actors 361 ms, vfx 120, ground overlays 392
+[dev] 11-05 20:57:21.680 I/godot   ( 8076): [PERF-DEV] MAX_FPS — Engine.max_fps = 0
+[dev] 11-05 20:57:21.796 I/godot   ( 8076): [TestZone] 0 pickups
+[dev] 11-05 20:57:21.917 I/godot   ( 8076): [OCC] every view's edge geometry built in 117.9 ms
+[dev] 11-05 20:57:21.954 I/godot   ( 8076): [DEV-HUD-01] DEV VISION Status Panel initialized
+[dev] 11-05 20:57:21.957 I/godot   ( 8076): [TEL] 3 0 13912866 view.framing framing=portrait via=boot render_scale=1.000
+[dev] 11-05 20:57:21.957 V/Godot   ( 8076): OnGodotMainLoopStarted
+[dev] 11-05 20:57:22.069 I/godot   ( 8076): [GLASS-FALL] 1 voxel(s): impact after 240..240 frame(s) (median 240), 1 never meet a floor; 1 crack layer(s)
+[dev] 11-05 20:57:22.183 I/godot   ( 8076): [FLASH] snapshot copied on the GPU in 0.2 ms
+[dev] 11-05 20:57:22.184 I/godot   ( 8076): [TEL] 4 0 14139559 scenario.start steps=12
+[dev] 11-05 20:57:22.184 I/godot   ( 8076): [SCENARIO] 12 step(s)
+[dev] 11-05 20:57:22.184 I/godot   ( 8076): [TEL] 5 0 14139817 scenario.step i=1 step=framing_portrait
+[dev] 11-05 20:57:22.184 I/godot   ( 8076): [SCENARIO] 1/12 framing portrait
+[dev] 11-05 20:57:22.185 I/godot   ( 8076): [TEL] 6 0 14140515 view.framing framing=portrait via=scenario render_scale=1.000
+[dev] 11-05 20:57:22.185 I/godot   ( 8076): [TEL] 7 0 14140736 scenario.step i=2 step=centre_agent
+[dev] 11-05 20:57:22.185 I/godot   ( 8076): [SCENARIO] 2/12 centre agent
+[dev] 11-05 20:57:22.185 I/godot   ( 8076): [TEL] 8 0 14140935 camera.pan_end centre=2432.0,3584.0 via=scenario
+[dev] 11-05 20:57:22.185 I/godot   ( 8076): [TEL] 9 0 14141095 scenario.step i=3 step=zoom_0.9
+[dev] 11-05 20:57:22.185 I/godot   ( 8076): [SCENARIO] 3/12 zoom 0.9
+[dev] 11-05 20:57:22.185 I/godot   ( 8076): [TEL] 10 0 14141321 camera.zoom_end zoom=0.900 via=scenario
+[dev] 11-05 20:57:22.185 I/godot   ( 8076): [TEL] 11 0 14141467 scenario.step i=4 step=frames_60
+[dev] 11-05 20:57:22.186 I/godot   ( 8076): [SCENARIO] 4/12 frames 60
+[dev] 11-05 20:57:22.691 I/godot   ( 8076): [TEL] 12 10 14647214 view.settled framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:24.651 I/godot   ( 8076): [WALK-WARM] 242528 claim(s) indexed in idle frames
+[dev] 11-05 20:57:24.653 I/godot   ( 8076): [TEL] 13 60 16609358 scenario.step i=5 step=wait_8
+[dev] 11-05 20:57:24.654 I/godot   ( 8076): [SCENARIO] 5/12 wait 8
+[dev] 11-05 20:57:24.669 I/godot   ( 8076): [FRAME-PROBE] 41.1 ms/frame · render cpu 0.8 ms · render gpu 19.1 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 56.7 ms · physics 3.5 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:24.669 I/godot   ( 8076): [TEL] 14 60 16625299 frame.window frames=60 ms=41.133 render_cpu=0.814 render_gpu=19.106 draws=65 primitives=41216 objects=82 process_held=56.664 physics_held=3.467 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:24.670 I/godot   ( 8076): [FRAME-SPLIT] per frame: guard cone smooth 29.93 ms (9/f) · room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.04 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:25.976 I/godot   ( 8076): [FRAME-PROBE] 21.8 ms/frame · render cpu 1.4 ms · render gpu 19.1 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 59.5 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:25.976 I/godot   ( 8076): [TEL] 15 120 17931745 frame.window frames=60 ms=21.771 render_cpu=1.351 render_gpu=19.080 draws=65 primitives=41216 objects=82 process_held=59.480 physics_held=0.066 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:25.977 I/godot   ( 8076): [FRAME-SPLIT] per frame: guard cone smooth 2.46 ms (1/f) · room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:27.204 I/godot   ( 8076): [FRAME-PROBE] 20.5 ms/frame · render cpu 1.5 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 27.4 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:27.205 I/godot   ( 8076): [TEL] 16 180 19160600 frame.window frames=60 ms=20.479 render_cpu=1.500 render_gpu=18.862 draws=65 primitives=41216 objects=82 process_held=27.372 physics_held=0.103 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:27.206 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:28.433 I/godot   ( 8076): [FRAME-PROBE] 20.5 ms/frame · render cpu 1.4 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 22.9 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:28.434 I/godot   ( 8076): [TEL] 17 240 20389347 frame.window frames=60 ms=20.482 render_cpu=1.447 render_gpu=19.041 draws=65 primitives=41216 objects=82 process_held=22.928 physics_held=0.076 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:28.434 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:29.673 I/godot   ( 8076): [FRAME-PROBE] 20.7 ms/frame · render cpu 0.7 ms · render gpu 19.3 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 24.1 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:29.673 I/godot   ( 8076): [TEL] 18 300 21629000 frame.window frames=60 ms=20.661 render_cpu=0.660 render_gpu=19.299 draws=65 primitives=41216 objects=82 process_held=24.118 physics_held=0.104 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:29.674 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:30.891 I/godot   ( 8076): [FRAME-PROBE] 20.3 ms/frame · render cpu 1.3 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 27.7 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:30.891 I/godot   ( 8076): [TEL] 19 360 22846869 frame.window frames=60 ms=20.297 render_cpu=1.294 render_gpu=18.980 draws=65 primitives=41216 objects=82 process_held=27.686 physics_held=0.082 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:30.892 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:32.119 I/godot   ( 8076): [FRAME-PROBE] 20.5 ms/frame · render cpu 1.4 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 23.9 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:32.120 I/godot   ( 8076): [TEL] 20 420 24075348 frame.window frames=60 ms=20.477 render_cpu=1.428 render_gpu=18.859 draws=65 primitives=41216 objects=82 process_held=23.900 physics_held=0.069 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:32.120 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:32.635 I/godot   ( 8076): [TEL] 21 445 24591090 scenario.step i=6 step=mark_idle
+[dev] 11-05 20:57:32.635 I/godot   ( 8076): [SCENARIO] 6/12 mark idle
+[dev] 11-05 20:57:32.635 I/godot   ( 8076): [TEL] 22 445 24591426 scenario.mark label=idle
+[dev] 11-05 20:57:32.636 I/godot   ( 8076): [TEL] 23 445 24591590 scenario.step i=7 step=wait_7
+[dev] 11-05 20:57:32.636 I/godot   ( 8076): [SCENARIO] 7/12 wait 7
+[dev] 11-05 20:57:33.349 I/godot   ( 8076): [FRAME-PROBE] 20.5 ms/frame · render cpu 0.7 ms · render gpu 19.2 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 23.2 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:33.349 I/godot   ( 8076): [TEL] 24 480 25304717 frame.window frames=60 ms=20.486 render_cpu=0.678 render_gpu=19.166 draws=65 primitives=41216 objects=82 process_held=23.153 physics_held=0.074 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:33.350 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:34.577 I/godot   ( 8076): [FRAME-PROBE] 20.5 ms/frame · render cpu 1.3 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 24.5 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:34.578 I/godot   ( 8076): [TEL] 25 540 26533561 frame.window frames=60 ms=20.481 render_cpu=1.295 render_gpu=18.949 draws=65 primitives=41216 objects=82 process_held=24.521 physics_held=0.080 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:34.579 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:35.806 I/godot   ( 8076): [FRAME-PROBE] 20.5 ms/frame · render cpu 0.7 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 23.8 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:35.807 I/godot   ( 8076): [TEL] 26 600 27762313 frame.window frames=60 ms=20.480 render_cpu=0.709 render_gpu=18.857 draws=65 primitives=41216 objects=82 process_held=23.817 physics_held=0.098 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:35.808 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:37.035 I/godot   ( 8076): [FRAME-PROBE] 20.5 ms/frame · render cpu 1.3 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 23.3 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:37.036 I/godot   ( 8076): [TEL] 27 660 28991168 frame.window frames=60 ms=20.481 render_cpu=1.283 render_gpu=18.985 draws=65 primitives=41216 objects=82 process_held=23.298 physics_held=0.067 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:37.036 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:38.263 I/godot   ( 8076): [FRAME-PROBE] 20.5 ms/frame · render cpu 0.8 ms · render gpu 19.0 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 23.3 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:38.264 I/godot   ( 8076): [TEL] 28 720 30219612 frame.window frames=60 ms=20.477 render_cpu=0.763 render_gpu=18.966 draws=65 primitives=41216 objects=82 process_held=23.271 physics_held=0.061 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:38.264 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:39.515 I/godot   ( 8076): [FRAME-PROBE] 20.9 ms/frame · render cpu 0.7 ms · render gpu 18.9 ms · 65 draw call(s) · 41216 primitive(s) · 82 object(s) · process 24.1 ms · physics 0.1 ms · 1288 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:39.515 I/godot   ( 8076): [TEL] 29 780 31470847 frame.window frames=60 ms=20.854 render_cpu=0.698 render_gpu=18.876 draws=65 primitives=41216 objects=82 process_held=24.052 physics_held=0.069 nodes=1288 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:39.515 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.06 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:39.651 I/godot   ( 8076): [TEL] 30 786 31606630 scenario.step i=8 step=actor_bench_agent_light_female_clip_walk_9
+[dev] 11-05 20:57:39.651 I/godot   ( 8076): [SCENARIO] 8/12 actor_bench agent_light_female_clip_walk 9
+[dev] 11-05 20:57:39.873 I/godot   ( 8076): 
+[dev] 11-05 20:57:39.873 I/godot   ( 8076): Attempting to resolve: emblem_ref_skull (folder emblems)
+[dev] 11-05 20:57:39.874 I/godot   ( 8076):   [USER] File not found: user://textures/emblems/emblem_ref_skull.png
+[dev] 11-05 20:57:39.874 I/godot   ( 8076):   [USER] File not found: user://textures/emblems/emblem_ref_skull.webp
+[dev] 11-05 20:57:39.914 I/godot   ( 8076):   [DEFAULT] Validation PASS: res://ASSETS/emblems/emblem_ref_skull.png
+[dev] 11-05 20:57:39.914 I/godot   ( 8076): [RESOLVER] emblem_ref_skull resolved from DEFAULT.png (dims 605x932)
+[dev] 11-05 20:57:39.914 I/godot   ( 8076): [CoatEmblem] emblem_ref_skull from DEFAULT
+[dev] 11-05 20:57:39.924 I/godot   ( 8076): [ACTOR-BENCH] coat emblem: emblem_ref_skull
+[dev] 11-05 20:57:39.924 I/godot   ( 8076): [ACTOR-BENCH] coat push: the legs push the coat
+[dev] 11-05 20:57:39.986 I/godot   ( 8076): [ACTOR-BENCH] agent_light_female x9: 4566 tris and 65 joints and 15 material(s) per rig
+[dev] 11-05 20:57:40.777 I/godot   ( 8076): [ACTOR-BENCH] agent_light_female_clip_walk x9: draw calls 153, primitives 78932, objects 170
+[dev] 11-05 20:57:40.777 I/godot   ( 8076): [TEL] 31 816 32733170 scenario.step i=9 step=wait_3
+[dev] 11-05 20:57:40.777 I/godot   ( 8076): [SCENARIO] 9/12 wait 3
+[dev] 11-05 20:57:41.392 I/godot   ( 8076): [FRAME-PROBE] 31.3 ms/frame · render cpu 1.3 ms · render gpu 24.0 ms · 154 draw call(s) · 79382 primitive(s) · 171 object(s) · process 241.4 ms · physics 0.5 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:41.392 I/godot   ( 8076): [TEL] 32 840 33347927 frame.window frames=60 ms=31.285 render_cpu=1.257 render_gpu=23.974 draws=154 primitives=79382 objects=171 process_held=241.412 physics_held=0.522 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:41.393 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:42.922 I/godot   ( 8076): [FRAME-PROBE] 25.5 ms/frame · render cpu 1.2 ms · render gpu 24.1 ms · 153 draw call(s) · 78932 primitive(s) · 170 object(s) · process 33.6 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:42.922 I/godot   ( 8076): [TEL] 33 900 34878053 frame.window frames=60 ms=25.502 render_cpu=1.221 render_gpu=24.079 draws=153 primitives=78932 objects=170 process_held=33.554 physics_held=0.058 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:42.923 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:43.763 I/godot   ( 8076): [TEL] 34 933 35719024 scenario.step i=10 step=mark_agent_light_female_clip_walk
+[dev] 11-05 20:57:43.763 I/godot   ( 8076): [SCENARIO] 10/12 mark agent_light_female_clip_walk
+[dev] 11-05 20:57:43.763 I/godot   ( 8076): [TEL] 35 933 35719381 scenario.mark label=agent_light_female_clip_walk
+[dev] 11-05 20:57:43.763 I/godot   ( 8076): [TEL] 36 933 35719518 scenario.step i=11 step=wait_14
+[dev] 11-05 20:57:43.764 I/godot   ( 8076): [SCENARIO] 11/12 wait 14
+[dev] 11-05 20:57:44.453 I/godot   ( 8076): [FRAME-PROBE] 25.5 ms/frame · render cpu 1.2 ms · render gpu 24.0 ms · 153 draw call(s) · 78932 primitive(s) · 170 object(s) · process 33.5 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:44.453 I/godot   ( 8076): [TEL] 37 960 36408645 frame.window frames=60 ms=25.510 render_cpu=1.210 render_gpu=24.009 draws=153 primitives=78932 objects=170 process_held=33.460 physics_held=0.063 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:44.453 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:45.983 I/godot   ( 8076): [FRAME-PROBE] 25.5 ms/frame · render cpu 1.2 ms · render gpu 24.0 ms · 154 draw call(s) · 79382 primitive(s) · 171 object(s) · process 33.6 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:45.984 I/godot   ( 8076): [TEL] 38 1020 37939354 frame.window frames=60 ms=25.512 render_cpu=1.156 render_gpu=23.977 draws=154 primitives=79382 objects=171 process_held=33.638 physics_held=0.054 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:45.984 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:47.513 I/godot   ( 8076): [FRAME-PROBE] 25.5 ms/frame · render cpu 1.2 ms · render gpu 24.0 ms · 153 draw call(s) · 78932 primitive(s) · 170 object(s) · process 33.9 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:47.514 I/godot   ( 8076): [TEL] 39 1080 39469617 frame.window frames=60 ms=25.505 render_cpu=1.157 render_gpu=24.009 draws=153 primitives=78932 objects=170 process_held=33.871 physics_held=0.055 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:47.514 I/godot   ( 8076): [FRAME-SPLIT] per frame: room vision fog 0.05 ms (1/f) · room temporal lights 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:49.044 I/godot   ( 8076): [FRAME-PROBE] 25.5 ms/frame · render cpu 1.2 ms · render gpu 24.1 ms · 153 draw call(s) · 78932 primitive(s) · 170 object(s) · process 33.6 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:49.044 I/godot   ( 8076): [TEL] 40 1140 41000062 frame.window frames=60 ms=25.508 render_cpu=1.197 render_gpu=24.116 draws=153 primitives=78932 objects=170 process_held=33.644 physics_held=0.065 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:49.045 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:50.575 I/godot   ( 8076): [FRAME-PROBE] 25.5 ms/frame · render cpu 1.1 ms · render gpu 24.1 ms · 154 draw call(s) · 79382 primitive(s) · 171 object(s) · process 33.8 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:50.575 I/godot   ( 8076): [TEL] 41 1200 42530863 frame.window frames=60 ms=25.513 render_cpu=1.142 render_gpu=24.086 draws=154 primitives=79382 objects=171 process_held=33.763 physics_held=0.067 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:50.576 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:52.105 I/godot   ( 8076): [FRAME-PROBE] 25.5 ms/frame · render cpu 1.2 ms · render gpu 24.2 ms · 153 draw call(s) · 78932 primitive(s) · 170 object(s) · process 33.7 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:52.105 I/godot   ( 8076): [TEL] 42 1260 44061039 frame.window frames=60 ms=25.503 render_cpu=1.185 render_gpu=24.182 draws=153 primitives=78932 objects=170 process_held=33.698 physics_held=0.061 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:52.106 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:53.635 I/godot   ( 8076): [FRAME-PROBE] 25.5 ms/frame · render cpu 1.2 ms · render gpu 24.0 ms · 153 draw call(s) · 78932 primitive(s) · 170 object(s) · process 33.7 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:53.636 I/godot   ( 8076): [TEL] 43 1320 45591452 frame.window frames=60 ms=25.507 render_cpu=1.169 render_gpu=24.019 draws=153 primitives=78932 objects=170 process_held=33.679 physics_held=0.071 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:53.636 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:55.166 I/godot   ( 8076): [FRAME-PROBE] 25.5 ms/frame · render cpu 1.2 ms · render gpu 24.0 ms · 154 draw call(s) · 79382 primitive(s) · 171 object(s) · process 33.7 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:55.166 I/godot   ( 8076): [TEL] 44 1380 47121976 frame.window frames=60 ms=25.509 render_cpu=1.158 render_gpu=24.007 draws=154 primitives=79382 objects=171 process_held=33.661 physics_held=0.058 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:55.167 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:56.697 I/godot   ( 8076): [FRAME-PROBE] 25.5 ms/frame · render cpu 1.2 ms · render gpu 24.1 ms · 154 draw call(s) · 79382 primitive(s) · 171 object(s) · process 33.7 ms · physics 0.1 ms · 1487 node(s) · view portrait 390x873 zoom 0.90 gu 23/1728 scale 1.00
+[dev] 11-05 20:57:56.697 I/godot   ( 8076): [TEL] 45 1440 48652783 frame.window frames=60 ms=25.513 render_cpu=1.166 render_gpu=24.074 draws=154 primitives=79382 objects=171 process_held=33.710 physics_held=0.062 nodes=1487 framing=portrait orientation=portrait window=720,1612 canvas=390,844 aspect=expand visible=390.0,873.0 zoom=0.900 centre=2432.0,3584.0 render_scale=1.000 gu_visible=23 gu_total=1728
+[dev] 11-05 20:57:56.697 I/godot   ( 8076): [FRAME-SPLIT] per frame: room temporal lights 0.05 ms (1/f) · room vision fog 0.04 ms (1/f) · guard attention 0.02 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+[dev] 11-05 20:57:57.772 I/godot   ( 8076): [TEL] 46 1482 49727787 scenario.step i=12 step=quit
+[dev] 11-05 20:57:57.772 I/godot   ( 8076): [SCENARIO] 12/12 quit
+[dev] 11-05 20:57:57.772 I/godot   ( 8076): [TEL] 47 1482 49728158 scenario.end
+[dev] 11-05 20:57:58.196 V/Godot   ( 8076): OnGodotTerminating
+[DIAG-02] force-stopped com.example.infiltraitor
+[DIAG-02] log -> /Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR/docs/measurements/mv4_2026-11-05/actor_agent_light_female_clip_walk_x9.log
+[DIAG-02] captured 385 line(s), no fatal error.
+## docs/measurements/mv4_2026-11-05/actor_agent_light_female_clip_walk_x9.log
+- version: 0.9.107
+- model: moto_g04s
+- os: Android
+- os_version: 34.2a14d76c
+- cpu: 
+- gpu: Mali-G57
+- gpu_api: 1.3.225
+- renderer: mobile
+- screen: [720.0, 1612.0]
+- refresh_hz: 90.0
+- window: [720.0, 1612.0]
+- flags_file: /sdcard/Android/data/com.example.infiltraitor/files/dev_flags.cfg
+- file_sink: /sdcard/Android/data/com.example.infiltraitor/files/telemetry/tel_2026-11-05_20-57-14.jsonl
+- overrides: FRAME_PROBE:1|MAP:PLAYGROUND|MAX_FPS:0|RNG_SEED:1|SCENARIO:framing_portrait;_centre_agent;_zoom_0.9;_frames_60;_wait_8;_mark_idle;_wait_7;_actor_bench_agent_light_female_clip_walk_9;_wait_3;_mark_agent_light_female_clip_walk;_wait_14;_quit|TELEMETRY:1
+- records: 47 · dropped lines: 0 · frame windows: 24
+
+| segment | framing | visible | zoom | windows | ms/frame | render cpu | render gpu | draws | objects | primitives | cells on screen |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| idle | portrait | 390x873 | 0.90 | 7 (+1 straddling) | 20.5 | 1.2 | 19.0 | 65 | 82 | 41216 | 23 |
+| agent_light_female_clip_walk | portrait | 390x873 | 0.90 | 8 (+1 straddling) | 25.5 | 1.2 | 24.0 | 153 | 170 | 79157 | 23 |
+
+### memory — docs/measurements/mv4_2026-11-05/actor_agent_light_female_clip_walk_x9.log
+| segment | polls | from · to | TOTAL PSS MB first · median · last | GL mtrack MB first · median · last | swap PSS MB first · median · last | RSS MB first · median · last | native heap alloc MB first · median · last | native heap free MB first · median · last |
+|---|---|---|---|---|---|---|---|---|
+| (before the first mark) | 5 | 20:57:12 · 20:57:29 | 378 · 557 · 668 | 66 · 196 · 211 | 1 · 0 · 0 | 443 · 628 · 738 | 231 · 279 · 383 | 4 · 143 · 143 |
+| idle | 3 | 20:57:34 · 20:57:43 | 676 · 676 · 685 | 219 · 219 · 213 | 0 · 0 · 0 | 746 · 746 · 755 | 383 · 383 · 395 | 143 · 143 · 139 |
+| agent_light_female_clip_walk | 3 | 20:57:47 · 20:57:56 | 689 · 689 · 685 | 217 · 217 · 213 | 0 · 0 · 0 | 759 · 759 · 755 | 395 · 395 · 395 | 139 · 139 · 139 |
+

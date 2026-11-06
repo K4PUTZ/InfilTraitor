@@ -17,6 +17,11 @@ fit/       the coat's fit, Blender working files (ACTOR D97)
   COAT_FIT_<FIG>.blend         the A pose with the fitted coat
   COAT_FIT_<FIG>_T.blend       the T built from the A (tripo_fit_tpose.py)
   COAT_FIT_<FIG>_TFIX.blend    the A rest untouched, the T's correction in a TFix shape key
+  HAT_FIT / HAT_CUT / HAT_SKIN / COATED_<FIG>.blend  the LIGHT chain's stages from the base: hat seated, hair cut, hat skinned, coat-cut variants (ACTOR D106)
+  LIGHT_<FIG>.blend            the LOD's output, the game mesh BEFORE the finishing steps: the anchor the Director hand-edits (ACTOR D107); the male's is edited in its Basis,
+                               the female's `WalkFix` edits live in LIGHT_FEMALE_WF2.blend (LIGHT_FEMALE_WF.blend is its earlier step)
+  WALK_FIX_F<n>_LIGHT_<FIG>.blend  a bank-clip frame baked by tripo_light_bake_frame.py for a hand edit (vertices only), taken back by tripo_pose_fix_back.py
+  AGENT_*_A_STRUCT / _FLAP, RUN_FIX_F8 / F9 / DRAPE  dropped coat experiments of 2026-11-05 (D103-D104), kept as record
 sources/   Tripo downloads, content untouched, renamed:
   tripo_female_base.glb        <- FEMALE_BASE.glb
   tripo_male_base.glb          <- MALE_BASE.glb

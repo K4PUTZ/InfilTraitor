@@ -23,6 +23,8 @@ RATIO = float(os.environ.get("HF_RATIO", "0.05"))
 NEAR = float(os.environ.get("HF_NEAR", "0.008"))
 GAP = float(os.environ.get("HF_GAP", "0.0015"))
 CUT_Z = float(os.environ.get("HF_CUT_Z", "0.902"))   # world height: her original face is kept only BELOW it (the fused skull is her own surface there too)
+EAR_BACK = float(os.environ.get("HF_EAR_BACK", "0.004"))   # the ear's back rim pulled this much toward the head (Director: "um pouquinho mais fechada")
+EAR_TIP = float(os.environ.get("HF_EAR_TIP", "0.003"))     # its pointed top lowered and rounded by this much ("suavizar a ponta")
 HOLE = int(os.environ.get("HF_HOLE", "64"))     # holes up to this many edges are filled
 
 bpy.ops.wm.open_mainfile(filepath=SRC)
@@ -124,6 +126,30 @@ for _ in range(6):
 bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 open_left = sum(1 for e in bm.edges if e.is_boundary)
 nonman = sum(1 for e in bm.edges if len(e.link_faces) > 2)
+# 4. the ears less elfin: an ear vertex is one standing off the skull (|x| over EAR_X0, between the ear's heights); its back rim (toward +y)
+# closes toward the head, its tip (the top) comes down and in, then two smoothing passes over the ear alone
+mw = head.matrix_world; mi = mw.inverted()
+EAR_X0, EAR_Z = 0.040, (0.855, 0.902)
+ear = []
+for v in bm.verts:
+    p = mw @ v.co
+    if abs(p.x) > EAR_X0 and EAR_Z[0] < p.z < EAR_Z[1]:
+        ear.append(v)
+for v in ear:
+    p = mw @ v.co
+    w = min(1.0, (abs(p.x) - EAR_X0) / 0.010)
+    back = max(0.0, min(1.0, (p.y - 0.018) / 0.015))
+    tip = max(0.0, min(1.0, (p.z - 0.878) / 0.016))
+    sx = 1.0 if p.x > 0 else -1.0
+    p.x -= sx * w * (back * EAR_BACK + tip * EAR_TIP * 0.7)
+    p.z -= w * tip * EAR_TIP
+    v.co = mi @ p
+ears = set(ear)
+for _ in range(2):
+    new = {v: v.co.lerp(sum((e.other_vert(v).co for e in v.link_edges), Vector()) / len(v.link_edges), 0.4) for v in ears if v.link_edges}
+    for v, c in new.items():
+        v.co = c
+print(f"[{TAG}] ears reshaped: {len(ear)} vertices (back rim {EAR_BACK*1000:.0f} mm in, tip {EAR_TIP*1000:.0f} mm down)")
 bm.to_mesh(head.data); bm.free(); head.data.update()
 for p in head.data.polygons:
     p.use_smooth = smooth

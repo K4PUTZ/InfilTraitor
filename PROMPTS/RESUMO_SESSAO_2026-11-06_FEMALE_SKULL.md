@@ -10,3 +10,9 @@
 **Owed.** The skull's UVs (the fused part) are redone by `tripo_head_map` when texturing. The base's GLBs (`tripo_export_base.py`) and the LIGHT trial were made from the old head.
 
 **Next.** The hair mask under the hat cut EXACTLY at the brim's position on this head (`tripo_hair_brim_cut.py`, section along the brim), then the hat skinned to the head, the `_Coated` re-cut, the finishing steps.
+
+## Later the same session — the hair under the hat (OPEN BUG, next session)
+
+- `tripo_hair_brim_cut.py` now reads the CURRENT base heads and cuts along the hat's opening angle by angle (commit `ff1e4a87`): the state kept.
+- The Director then saw a GAP between the brim and the cut hair at the temples / sides on both figures ("tem que subir a máscara do cabelo até encostar na aba"). Tried and REVERTED (Director: "vamos voltar um passo"): keeping hair outside the band up to the brim (it poked through the crown), a ray-from-below rule, the hat as a boolean / inside-test mask (`tripo_hair_hat_mask.py`, deleted).
+- Measured on the way: Tripo's hats are CLOSED underneath (a shallow lid spans the opening, rendered from below), which every hat-based mask counts as hat; and the female's hat, seated on the OLD flat skull, opens ~1 cm wider than the new head at the sides, tilted 18° back. The Director's word: "Não é bem isso" — the right fix is still to be agreed at the start of the next session; ask before building.

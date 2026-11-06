@@ -6,7 +6,7 @@
 # (SF_MAP_SUFFIX, e.g. _light, picks the LIGHT's own map).
 # SF_COAT_MAP (a PNG): the coat takes it as its only image, the way tripo_coat_push embeds COAT_TEX.
 # ⚠️ Run it BEFORE tripo_coat_push, never on a finished Agent: Blender's round trip writes the coat's COLOR_0 alpha as 1.0, and that alpha is
-# D94's push direction (found 2026-11-06: the skirt's tips glued together and the coat through the legs after TX-1 / TX-6 were applied this way).
+# D94's push direction; for a texture change on a finished Agent use glb_swap_image.py, which touches no mesh (found 2026-11-06: the skirt's tips glued together and the coat through the legs after TX-1 / TX-6 were applied this way).
 # Env: SF_IN, SF_OUT, SF_FIGURE (female | male), SF_MAPS (PNG folder), SF_PIECES (comma list, default the five below), SF_SPEC, SF_DETAIL, SF_RES (512).  Usage: blender -b -P tripo_surface.py
 import json, math, os, sys
 import numpy as np

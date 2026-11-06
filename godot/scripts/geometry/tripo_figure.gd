@@ -30,7 +30,8 @@ const FRONT_YAW: float = PI
 const COAT_SHADER_PATH := "res://godot/shaders/actor_coat3d.gdshader"   ## ACTOR D94: the coat, two-sided
 const EMBLEM_ID := "emblem_ref_skull"   ## ACTOR D95: the default art is `res://ASSETS/emblems/emblem_ref_skull.png`; a file of that name in `user://textures/emblems/` replaces it
 ## The leather pieces' matte sheen (CHARACTER §7a, 2026-11-06): the strength the board-lit shader adds on the key light's highlight.
-const SHEEN: Dictionary = {"Outfit_Coat": 0.15, "Outfit_Hat": 0.09, "Outfit_Shoes": 0.22}
+## [strength, power]: the coat's matte leather (Director: "Suave está bom") on the trousers too; the shoes glossier, a tighter highlight.
+const SHEEN: Dictionary = {"Outfit_Coat": [0.15, 6.0], "Outfit_Trousers": [0.15, 6.0], "Outfit_Hat": [0.09, 6.0], "Outfit_Shoes": [0.45, 18.0]}
 const MIXAMO_PREFIXES: PackedStringArray = ["mixamorig:", "mixamorig_", ""]
 
 const BANK_CLIP := "res://ASSETS/ANIMATIONS/bank/%s/%s.glb"
@@ -99,7 +100,8 @@ static func apply_sheen(body: Node) -> void:
 		for s in range(mi.mesh.get_surface_count()):
 			var mat := mi.get_active_material(s) as ShaderMaterial
 			if mat != null:
-				mat.set_shader_parameter("sheen", float(SHEEN[key]))
+				mat.set_shader_parameter("sheen", float(SHEEN[key][0]))
+				mat.set_shader_parameter("sheen_power", float(SHEEN[key][1]))
 
 
 ## The game set of `figure`, loaded once and shared; null (loud) when it was never written.

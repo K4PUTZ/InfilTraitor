@@ -1,0 +1,128 @@
+{
+ "_doc": "tripo_face_paint.py's layers per figure (CHARACTER \u00a77a TX-3), in pixels of the 2048 master on FaceUV (x right = the figure's left seen from the front, y down). Landmarks read on tripo_face_uv's base maps, 2026-11-06. Brows = the hair's brown, darker (ACTOR D81: brows match the hair). skin_source = [y0, y1, min lum]: the band the fill reads its skin from.",
+ "female": {
+  "hair_colour": "#3B2A1F",
+  "mid_x": 1005,
+  "eye_boxes": [
+   [
+    672,
+    850,
+    150,
+    46
+   ],
+   [
+    1338,
+    846,
+    168,
+    48
+   ]
+  ],
+  "forehead": {
+   "dark": 0.6,
+   "brow_line": 870
+  },
+  "fill_rects": [
+   [
+    1590,
+    800,
+    1840,
+    1130,
+    0.4
+   ],
+   [
+    0,
+    1350,
+    260,
+    1800,
+    0.4
+   ],
+   [
+    1780,
+    1350,
+    2048,
+    1800,
+    0.4
+   ]
+  ],
+  "brows": {
+   "colour": "#24180F",
+   "curve": [
+    [
+     860,
+     782
+    ],
+    [
+     700,
+     716
+    ],
+    [
+     530,
+     764
+    ]
+   ],
+   "width": [
+    50,
+    16
+   ],
+   "alpha": 0.9
+  },
+  "lips": {
+   "ellipse": [
+    992,
+    1310,
+    225,
+    46
+   ],
+   "colour": "#9C5A5E",
+   "strength": 0.45,
+   "soft_px": 5,
+   "line": [
+    1310,
+    5,
+    0.25
+   ]
+  },
+  "skin_source": [
+   820,
+   1400,
+   0.4
+  ],
+  "strokes": [
+   {
+    "curve": [
+     [
+      800,
+      866
+     ],
+     [
+      690,
+      796
+     ],
+     [
+      508,
+      826
+     ]
+    ],
+    "width": [
+     8,
+     16
+    ],
+    "colour": "#1A1210",
+    "alpha": 0.85
+   }
+  ]
+ },
+ "male": {
+  "hair_colour": "#3B2A1F",
+  "mid_x": 1031,
+  "eye_boxes": [],
+  "fill_hues": [
+   "blue"
+  ],
+  "skin_source": [
+   800,
+   1500,
+   0.3
+  ]
+ }
+}

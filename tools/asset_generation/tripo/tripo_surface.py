@@ -4,6 +4,7 @@
 # trousers) share their slot's fabric. The coat has its own step (tripo_coat_regions + tripo_coat_push). The board's shader draws albedo x texture: there is no sheen in it yet.
 # TX-1 (2026-11-06): the head, hands, hair, belt and buckle too (the game drew them white); a piece whose entry has `map` takes that PNG
 # (SF_MAP_SUFFIX, e.g. _light, picks the LIGHT's own map).
+# SF_COAT_MAP (a PNG): the coat takes it as its only image, the way tripo_coat_push embeds COAT_TEX.
 # Env: SF_IN, SF_OUT, SF_FIGURE (female | male), SF_MAPS (PNG folder), SF_PIECES (comma list, default the five below), SF_SPEC, SF_DETAIL, SF_RES (512).  Usage: blender -b -P tripo_surface.py
 import json, math, os, sys
 import numpy as np
@@ -47,4 +48,10 @@ for o in meshes:
         made[key] = png
         print(f"[{TAG}] {key}: {sp['material']} {sp['colour']} x{sp.get('tile', 12)} -> {png}")
     o.data.materials.clear(); o.data.materials.append(tc.textured_material(f"{key}_tex", made[key]))
+COAT_MAP = os.environ.get("SF_COAT_MAP", "")                         # TX-6: a finished Agent's coat re-dressed in a new tripo_coat_regions map
+if COAT_MAP:                                                          # (the push data lives in the vertex colours and extras, untouched)
+    for o in meshes:
+        if o.name.split(".")[0] == "Outfit_Coat":
+            o.data.materials.clear(); o.data.materials.append(tc.textured_material("coat_tex", COAT_MAP))
+            print(f"[{TAG}] {o.name}: coat map {COAT_MAP}")
 tc.export(os.environ["SF_OUT"], meshes, arm)

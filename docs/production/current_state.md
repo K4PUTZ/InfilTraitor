@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-11-05 · **Branch:** claude/r3d-actors-y5r8hs
+**Version:** 0.9.107 · **Updated:** 2026-11-06 · **Branch:** claude/r3d-actors-y5r8hs
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -593,6 +593,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-11-04_BASE_TRANSITION_CORRECTIVES.md
 - RESUMO_SESSAO_2026-11-04_CLEANUP_TEMP_BANK.md
 - RESUMO_SESSAO_2026-11-05_CORRECTIVES_FLAP.md
+- RESUMO_SESSAO_2026-11-05_MV4_BOARD_MOTO.md
+- RESUMO_SESSAO_2026-11-06_FEMALE_SKULL.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -600,8 +602,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 245
-- Test scripts: 93
+- GDScript modules: 246
+- Test scripts: 94
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 32

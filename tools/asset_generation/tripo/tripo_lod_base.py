@@ -6,7 +6,7 @@
 # Printed per key: the largest displacement on the full and on the light mesh, and the light mesh's worst transfer error, measured back on the
 # FULL vertices (each full vertex's displacement against the light surface's displacement at the same closest point).
 # The .blend is opened and never saved over. Out: LB_OUT (GLB) and LB_BLEND (the same as a .blend, to look at).
-# Env: LB_FIG (female | male), LB_OUT, LB_BLEND, LOD_WELD (default 0.0003), LOD_SCALE (default 1.0).
+# Env: LB_FIG (female | male), LB_IN (default the base), LB_OUT, LB_BLEND, LOD_WELD (default 0.0003), LOD_SCALE (default 1.0).
 # Usage (repo root): blender -b --python-exit-code 1 -P tools/asset_generation/tripo/tripo_lod_base.py
 import os, sys
 import bpy, bmesh
@@ -26,10 +26,13 @@ BLEND = os.path.abspath(os.environ.get("LB_BLEND", OUT[:-4] + ".blend"))
 WELD_DIST = float(os.environ.get("LOD_WELD", "0.0003"))
 SCALE = float(os.environ.get("LOD_SCALE", "1.0"))
 BUDGET = {"Body_Head": 750, "Body_Hands": 450, "Body_Hair": 600, "Outfit_Coat": 1000, "Outfit_Shirt": 700, "Outfit_Trousers": 600,
-          "Outfit_Shoes": 400, "Outfit_Tie": 150, "Outfit_Belt": 250, "Outfit_Buckle": 100}
+          "Outfit_Shoes": 400, "Outfit_Tie": 150, "Outfit_Belt": 250, "Outfit_Buckle": 100,
+          # the hat and the coat-cut variants (tripo_hat_skin / tripo_coated_cut, D106 steps 2-3), tripo_lod's budgets
+          "Body_Hair_Hat": 400, "Outfit_Hat": 450, "Outfit_Shirt_Coated": 300, "Outfit_Trousers_Coated": 500, "Outfit_Belt_Coated": 150}
 SKIP = {"Icosphere"}
 
-bpy.ops.wm.open_mainfile(filepath=os.path.abspath(f"ASSETS/MODELS/base/AGENT_{FIG.upper()}_A.blend"))
+SRC = os.path.abspath(os.environ.get("LB_IN", f"ASSETS/MODELS/base/AGENT_{FIG.upper()}_A.blend"))      # LB_IN: fit/COATED_<FIG>.blend carries the hat and the coat-cut variants
+bpy.ops.wm.open_mainfile(filepath=SRC)
 if bpy.context.object is not None and bpy.context.object.mode != 'OBJECT':
     bpy.ops.object.mode_set(mode='OBJECT')
 arms = [o for o in bpy.data.objects if o.type == 'ARMATURE']
@@ -38,6 +41,9 @@ P = [b.name for b in arm.data.bones if b.name.endswith("Hips")][0][:-4]
 meshes = [o for o in bpy.data.objects if o.type == 'MESH' and o.name not in SKIP]
 for o in arms + meshes:
     o.hide_set(False); o.hide_viewport = False
+for o in meshes:                                      # the game's name for the coat (the base's is `Outfit_Coat.001`, the importer's rename); the finishing steps ask for it
+    if o.name == "Outfit_Coat.001":
+        o.name = o.data.name = "Outfit_Coat"
 
 
 def tris(o):

@@ -1589,8 +1589,10 @@ fixes defects. "Pode seguir na ordem que preferir com todas as etapas."
   painted, the male's blue collar refilled. Retouch the master's PNG by hand: the chain reads it.
 - TX-4: `tripo_face_apply.py`: the head takes FaceUV and the master at 512 (`painted/<fig>_head_light.png`); it is the LIGHT chain's head
   step now (`tripo_head_map.py` stays for the FULL `build_agents.sh` until that is rebuilt).
-- Seen in Godot (take `agent_walk`): from the game camera the hat's brim hides the eyes; what reads is skin, hair and the jaw. Not measured:
-  the Moto with the textures; the official FULL GLB still carries the old head map (the poster renders use the base A + master).
+- Seen in Godot (take `agent_walk`): from the game camera the hat's brim hides the eyes; what reads is skin, hair and the jaw.
+- **Moto g04s, textured (2026-11-06, 9 figures walking, uncapped, `docs/measurements/tx_2026-11-06/`):** female +4.8 ms (25.5 vs 20.7 idle,
+  GPU +5.0), male +5.0 (25.5 vs 20.5, GPU +5.0), render CPU 1.1-1.2 ms; D105 (untextured) read +5.0 for both: the textures cost no frame time.
+  PSS median +0 / +28 MB over idle (D105: +10 to +20). Not covered: the official FULL GLB still carries the old head map (the poster renders use the base A + master).
 
 **Measured (Blender, read-only, 2026-11-06; face region = chin to just above the brow, |x| < 3.6 cm, front-facing, 1 m figure).**
 

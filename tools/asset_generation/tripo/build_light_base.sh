@@ -23,7 +23,7 @@ SCRIPT=tripo_head_map.py step head HEAD_IN=$W/${f}_1uv.glb HEAD_SRC=$M/sources/t
 SCRIPT=tripo_pockets.py step pockets PK_IN=$W/${f}_2head.glb PK_OUT=$W/${f}_3pk.glb
 SCRIPT=tripo_back_trim.py step trim BT_IN=$W/${f}_3pk.glb BT_OUT=$W/${f}_4trim.glb
 SCRIPT=tripo_coat_back_out.py step out BO_IN=$W/${f}_4trim.glb BO_OUT=$W/${f}_5out.glb
-SCRIPT=tripo_surface.py step surface SF_IN=$W/${f}_5out.glb SF_OUT=$W/${f}_6surf.glb SF_FIGURE=$f SF_MAPS=$W/painted
+SCRIPT=tripo_surface.py step surface SF_IN=$W/${f}_5out.glb SF_OUT=$W/${f}_6surf.glb SF_FIGURE=$f SF_MAPS=$W/painted SF_MAP_SUFFIX=_light
 SCRIPT=tripo_coat_regions.py step regions CR_IN=$W/${f}_6surf.glb CR_MAP=$W/painted/${f}_coat_light.png
 SCRIPT=tripo_coat_push.py step push COAT_IN=$W/${f}_6surf.glb COAT_OUT=$W/${f}_LIGHT_D106.glb COAT_TEX=$W/painted/${f}_coat_light.png
 echo "[build_light_base] $f: $W/${f}_LIGHT_D106.glb"

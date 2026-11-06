@@ -5,6 +5,7 @@
 # It writes the PNG only (CR_MAP) and prints the legend; nothing is written to the model: tripo_coat_push embeds the map (COAT_TEX) in the last export.
 # Run on the coat as it will ship (after tripo_coat_back_out, before tripo_coat_push): the UVs do not change after it. Faces made after the UV step (the pocket caps) have no UV: the
 # background is the body colour so they read as body.
+# CR_EDGES (1 with CR_PALETTE=ref), CR_GROOVE (0.55), CR_CATCH (1.30): the edges, step (4).
 # Env: CR_IN (a finished Agent GLB), CR_MAP (PNG out), CR_RES (1024), CR_DETAIL (default ASSETS/MODELS/official/detail/leather.png), CR_TILE (14).  Usage: blender -b -P tripo_coat_regions.py
 import os, sys
 import numpy as np
@@ -16,7 +17,7 @@ import tripo_common as tc
 
 TAG = "tripo_coat_regions"
 arm, P, B, meshes = tc.load(TAG, os.environ["CR_IN"])
-coat = bpy.data.objects.get("Outfit_Coat")
+coat = next((o for o in meshes if o.name.split(".")[0] == "Outfit_Coat"), None)   # the base A carries it as Outfit_Coat.001
 if coat is None or not coat.vertex_groups:
     tc.fail(TAG, "no skinned Outfit_Coat")
 RES = int(os.environ.get("CR_RES", "1024")); TILE = float(os.environ.get("CR_TILE", "14"))
@@ -114,6 +115,7 @@ for kind, n, c, sz in sorted(legend, key=lambda t: (t[0], -t[1])):
 detail = tc.detail_tiled(DETAIL, RES, TILE)                                       # the grain, tiled over the UV square; the regions are painted on it below
 img = np.empty((RES, RES, 3), np.float32); img[:] = rgb["body"]
 drawn = np.zeros((RES, RES), bool)
+rid = np.full((RES, RES), -1, np.int16); RIDS = {k: i for i, k in enumerate(COL)}
 uvl = me.uv_layers[0]; n_nouv = 0
 for p in polys:
     uv = np.array([uvl.data[l].uv[:] for l in p.loop_indices]); x = uv[:, 0] * RES; y = (1.0 - uv[:, 1]) * RES
@@ -132,6 +134,7 @@ for p in polys:
         w0 = ((by - cy) * (gx - cx) + (cx - bx) * (gy - cy)) / den; w1 = ((cy - ay) * (gx - cx) + (ax - cx) * (gy - cy)) / den; w2 = 1 - w0 - w1
         inside = (w0 >= -0.02) & (w1 >= -0.02) & (w2 >= -0.02)
         sub = img[y0:y1 + 1, x0:x1 + 1]; sub[inside] = rgb[region[p.index]]; drawn[y0:y1 + 1, x0:x1 + 1] |= inside
+        rid[y0:y1 + 1, x0:x1 + 1][inside] = RIDS[region[p.index]]
 imp_n = 0
 if os.environ.get("CR_IMPRINTS"):                                              # the merged pieces (tripo_coat_merge): their projected triangles, in UV, in the colour of their kind
     import json
@@ -149,6 +152,31 @@ if os.environ.get("CR_IMPRINTS"):                                              #
             inside = (w0 >= -0.05) & (w1 >= -0.05) & (w2 >= -0.05)
             img[y0:y1 + 1, x0:x1 + 1][inside] = rgb[it["kind"]]; drawn[y0:y1 + 1, x0:x1 + 1] |= inside; imp_n += 1
     print(f"[{TAG}] {imp_n} imprint triangles painted")
+# (4) EDGES (CR_EDGES, default on with the reference palette; Director 2026-11-06, the leather references: blacks, the trims and the edges
+# telling the pieces apart): where two regions meet, or a UV island ends (a hem, a lapel's edge, a side seam), a dark groove and, just
+# inside it, a soft catch light, so each piece reads as a cut panel of leather. Widths scale with CR_RES (2048 = the master).
+EDGES = os.environ.get("CR_EDGES", "1" if os.environ.get("CR_PALETTE", "diag") == "ref" else "0") == "1"
+if EDGES:
+    sc_ = RES / 2048.0
+    # only a trim against the cloth (body / skirt / sleeve / lining meet along jagged face rows, and the coat's UV islands are cut anywhere: no line)
+    TRIM = np.array([k in ("collar", "lapel", "cuff", "cufftab", "button", "flap", "belttab") for k in COL])
+    border = np.zeros((RES, RES), bool)
+    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        nb = np.roll(np.roll(rid, dy, 0), dx, 1)
+        border |= drawn & (nb >= 0) & (TRIM[np.clip(rid, 0, None)] ^ TRIM[np.clip(nb, 0, None)])
+    dist = np.full((RES, RES), 99, np.int16); dist[border] = 0; front = border.copy()
+    for d_ in range(1, int(round(8 * sc_)) + 1):
+        grow = np.zeros_like(front)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            grow |= np.roll(np.roll(front, dy, 0), dx, 1)
+        grow &= drawn & (dist == 99); dist[grow] = d_; front = grow
+    g = float(os.environ.get("CR_GROOVE", "0.55")); hl = float(os.environ.get("CR_CATCH", "1.30"))
+    shade = np.ones((RES, RES), np.float32)
+    shade[dist <= round(2 * sc_)] = g
+    band = (dist > round(2 * sc_)) & (dist <= round(6 * sc_))
+    shade[band] = hl
+    img *= shade[:, :, None]
+    print(f"[{TAG}] edges: {int(border.sum())} border texels, groove x{g}, catch light x{hl}")
 for _ in range(6):                                                             # bleed the painted islands past their edges (filtering, mipmaps)
     grown = drawn.copy()
     for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)):

@@ -1582,6 +1582,12 @@ fixes defects. "Pode seguir na ordem que preferir com todas as etapas."
 - TX-1: `tripo_surface.py` dresses Body_Head (its painted map), Body_Hands, Body_Hair + Body_Hair_Hat, the belts and the buckle.
 - TX-6 (first pass): the coat in `tripo_coat_regions.py`'s REFERENCE palette (`CR_PALETTE=ref`, now the LIGHT chain's default; `SF_COAT_MAP`
   re-dresses a finished coat). In the game no shirt shows through the back or the sleeves; the open front shows the ecru shirt and the buckle.
+- TX-6 (master, later the same day; Director: the leather references, mostly matte with a sheen, no latex, tones of black, the trims and
+  edges varied): the coat's MASTER is painted on the FULL coat (`tripo_coat_regions.py` on `AGENT_<FIG>_BASE_A.glb`, `CR_RES=2048`,
+  `painted/<fig>_coat_master.png`) with step (4), EDGES: a dark groove and a catch light where a trim (collar, lapels, cuffs, tabs, buttons)
+  meets the cloth; the cloth's own region rows and UV cuts get no line (both are jagged on this mesh). The LIGHT's map is DERIVED:
+  `tripo_coat_transfer.py` reads each LIGHT texel from the nearest FULL point (2 mm along the normal, so the lining finds the lining),
+  the LIGHT chain's coat step now. Blender look: roughness 0.55 (D96). In the game the actor shader has no specular: the sheen is not drawn.
 - TX-2: `tripo_face_uv.py` + `face_uv_map.py`: FaceUV is a cylindrical projection, a function of the position (params per figure in
   `painted/<fig>_faceuv.json`), so the FULL and the LIGHT share ONE master and nothing is baked twice (this replaces TX-4's bake).
 - TX-3: `tripo_face_paint.py` + `face_paint.json` -> `painted/<fig>_face_master.png` (2048): Tripo's colour, the female's painted black

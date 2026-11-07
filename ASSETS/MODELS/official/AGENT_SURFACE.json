@@ -1,5 +1,5 @@
 {
- "_doc": "2026-11-06 (Director): the hats carry a TEMPORARY work colour, purple on the female, navy on the male, to tell them apart while texturing. The Agent's surface per slot (ACTOR D87, D89): colour = palette (linear-free sRGB hex), material = a grayscale detail in detail/, tile = repeats per UV unit, rough = roughness, bump = the detail's relief. Black to hide in shadow (Director, 2026-10-31, concept art REFERENCES/Personagem/concept_2026-10-31/). The head carries a painted map (painted/, baked from Tripo's colour by tripo_head_map.py, retouch by hand); the hands take its median skin. 2026-11-02 (Director): the hat in the coat's leather; suggested fabrics: ecru cotton poplin shirt, charcoal wool twill trousers (matte, so the coat stays the only leather), oxblood silk rep tie, shoes in a darker, glossier leather. 2026-11-06 (Director): the trousers in the coat's leather; the shoes a glossier leather (TripoFigure.SHEEN). 2026-11-06 (Director): blue shirt #2E8FD8 and white tie (a police blue; the tie turns at the knot to a black back, a player mechanic).",
+ "_doc": "2026-11-06 (Director): the hats carry a TEMPORARY work colour, purple on the female, navy on the male, to tell them apart while texturing. The Agent's surface per slot (ACTOR D87, D89): colour = palette (linear-free sRGB hex), material = a grayscale detail in detail/, tile = repeats per UV unit, rough = roughness, bump = the detail's relief. Black to hide in shadow (Director, 2026-10-31, concept art REFERENCES/Personagem/concept_2026-10-31/). The head carries a painted map (painted/, baked from Tripo's colour by tripo_head_map.py, retouch by hand); the hands take its median skin. 2026-11-02 (Director): the hat in the coat's leather; suggested fabrics: ecru cotton poplin shirt, charcoal wool twill trousers (matte, so the coat stays the only leather), oxblood silk rep tie, shoes in a darker, glossier leather. 2026-11-06 (Director): the trousers in the coat's leather; the shoes a glossier leather (TripoFigure.SHEEN). 2026-11-06 (Director): blue shirt #2E8FD8 and white tie (a police blue; the tie turns at the knot to a black back, a player mechanic). 2026-11-06 (Director): POLICE uniform = jeans #255C91 (denim), the coat yellow with the police emblem in the shirt's blue; CIVIL = dark trousers and the coat turned inside out (black).",
  "female": {
   "Outfit_Hat": {
    "colour": "#4B2266",
@@ -26,12 +26,12 @@
    "bump": 0.25
   },
   "Outfit_Trousers": {
-   "colour": "#242428",
-   "material": "leather",
-   "tile": 14,
-   "rough": 0.82,
-   "spec": 0.25,
-   "bump": 0.2
+   "colour": "#255C91",
+   "material": "denim",
+   "tile": 18,
+   "rough": 0.9,
+   "spec": 0.15,
+   "bump": 0.3
   },
   "Outfit_Tie": {
    "colour": "#E8E6E0",
@@ -114,12 +114,12 @@
    "bump": 0.25
   },
   "Outfit_Trousers": {
-   "colour": "#242428",
-   "material": "leather",
-   "tile": 14,
-   "rough": 0.82,
-   "spec": 0.25,
-   "bump": 0.2
+   "colour": "#255C91",
+   "material": "denim",
+   "tile": 18,
+   "rough": 0.9,
+   "spec": 0.15,
+   "bump": 0.3
   },
   "Outfit_Tie": {
    "colour": "#E8E6E0",

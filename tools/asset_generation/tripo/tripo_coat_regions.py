@@ -31,8 +31,14 @@ COL = {"body": "#3A3A42", "sleeve": "#323A48", "cuff": "#5C5446", "skirt": "#403
 # flaps) a notch lighter and cooler, the buttons tone on tone, the inside black. CR_PALETTE=ref picks it; the default is the diagnostic one above.
 REF = {"body": "#242428", "sleeve": "#242428", "cuff": "#303036", "skirt": "#222226", "collar": "#2E2E34", "lapel": "#2E2E34", "lining": "#0C0C0E",
        "button": "#34343A", "flap": "#2A2A30", "cufftab": "#303036", "belttab": "#2A2A30", "hip": "#0C0C0E", "other": "#242428"}
+# the POLICE face (Director, 2026-11-06): the coat yellow, its trims a deeper ochre, the inside black (the civil face, worn turned out)
+# (the trims only a shade deeper and no edge lines: the region borders follow jagged face rows, which a strong yellow shows as zigzags)
+POLICE = {"body": "#D8A82A", "sleeve": "#D8A82A", "cuff": "#CC9E26", "skirt": "#D6A629", "collar": "#CC9E26", "lapel": "#CC9E26", "lining": "#0C0C0E",
+          "button": "#2A2A30", "flap": "#CC9E26", "cufftab": "#CC9E26", "belttab": "#CC9E26", "hip": "#CC9E26", "other": "#D8A82A"}
 if os.environ.get("CR_PALETTE", "diag") == "ref":
     COL = REF
+elif os.environ.get("CR_PALETTE", "diag") == "police":
+    COL = POLICE
 rgb = {k: np.array([int(v[i:i + 2], 16) for i in (1, 3, 5)], float) / 255.0 for k, v in COL.items()}
 # (1) islands on the surface welded by position (a GLB splits vertices at seams)
 key = {}; rep = np.zeros(len(V), int)
@@ -78,7 +84,11 @@ for k, fl in isl.items():
 bh = lambda n: np.array((arm.matrix_world @ arm.data.bones[P + n].head_local)[:])                 # B holds only the bones tripo_common needs
 SEGS = [(bh(a), bh(b)) for a, b in (("Hips", "Spine"), ("Spine", "Spine1"), ("Spine1", "Spine2"), ("Spine2", "Neck"))]
 SEGS += [(bh(sd + a), bh(sd + b)) for sd in ("Left", "Right") for a, b in (("Shoulder", "Arm"), ("Arm", "ForeArm"), ("ForeArm", "Hand"))]
+HIPS_C = bh("Hips")
 def away(q):
+    if q[2] < HIPS_C[2]:                        # the skirt: outward is horizontal, from the vertical through the hips (the nearest torso segment pointed DOWN
+        h = np.array([q[0] - HIPS_C[0], q[1] - HIPS_C[1], 0.0])   # there, and whole panels of the outer wall came out "lining": the yellow coat, 2026-11-06)
+        return h / max(np.linalg.norm(h), 1e-12)
     best = None
     for a, b in SEGS:
         ab = b - a; t = np.clip((q - a) @ ab / (ab @ ab), 0, 1); c = a + t * ab; d = np.linalg.norm(q - c)
@@ -105,6 +115,32 @@ for p in polys:
         region[p.index] = "collar"
     elif c[2] > cz - 0.03 * H and nrm[1] < -0.3 and abs(c[0]) < 0.1 * H:
         region[p.index] = "lapel"
+# the lining test is per face (a ray), so lone faces of the OUTER wall come out "lining" and vice versa: black specks on a coloured coat
+# (seen on the yellow police face, 2026-11-06). A face takes its neighbours' side when most of them (by shared edge) disagree with it.
+edge_faces = {}
+for p in polys:
+    for ek in p.edge_keys:
+        edge_faces.setdefault(ek, []).append(p.index)
+nbrs = [[] for _ in polys]
+for fl in edge_faces.values():
+    for a_ in fl:
+        nbrs[a_] += [b_ for b_ in fl if b_ != a_]
+n_flip = 0
+for _ in range(3):
+    lin = [r == "lining" for r in region]; changed = 0
+    for p in polys:
+        nb = nbrs[p.index]
+        if not nb:
+            continue
+        share = sum(lin[j] for j in nb) / len(nb)
+        if lin[p.index] and share < 0.34:
+            region[p.index] = "body"; changed += 1
+        elif not lin[p.index] and share > 0.66 and region[p.index] in ("body", "skirt", "sleeve"):
+            region[p.index] = "lining"; changed += 1
+    n_flip += changed
+    if not changed:
+        break
+print(f"[{TAG}] lining smoothed: {n_flip} faces changed side")
 counts = {}
 for r in region:
     counts[r] = counts.get(r, 0) + 1

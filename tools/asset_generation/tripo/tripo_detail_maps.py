@@ -3,6 +3,7 @@ the palette colour in the shader (a mid grey ~0.8 keeps the colour; the map only
   cotton_poplin  the shirt: a fine plain weave            wool_twill  the trousers: a 2/2 twill, diagonal ribs
   silk_tie       the tie: a fine diagonal rep              leather     shoes, belt: a pebbled grain
   felt           the hat: soft fibrous noise               skin        head, hands: a faint pore noise
+  denim          the police jeans: a 3/1 twill, warp slubs
   hair           strands along V        hair_strands  streaks for the crown UVs (tripo_look)                           metal       buckle: brushed lines
 Tileable by construction (every pattern is periodic over the tile; the noise is made periodic with a wrapped FFT filter).
 Usage: python3 -I tripo_detail_maps.py <out_dir>
@@ -43,3 +44,6 @@ su = pnoise(0.3, 16)[0:1, :].repeat(N, 0)               # one noise row, the sam
 save("hair_strands", np.sin(k * 90 * x + 3 * su) * 0.5 + su + 0.25 * pnoise(1.0, 17), lo=0.35, hi=1.0)
 save("metal", np.sin(k * 300 * y + 0.5 * pnoise(3, 14)) * 0.3 + pnoise(20, 15) * 0.2, lo=0.8)
 print(f"[tripo_detail_maps] wrote 8 maps to {OUT}")
+# denim (2026-11-06, the police uniform's jeans): a 3/1 twill, steep diagonal ribs, the warp's slubs as vertical streaks, a little wash noise
+save("denim", np.sin(k * 64 * (x + 3 * y)) + 0.55 * np.sin(k * 128 * (x + 3 * y)) + 0.45 * pnoise(3, 41) * (1 + 0 * x)
+     + 0.5 * np.repeat(np.random.default_rng(43).standard_normal((1, N)), N, 0) * 0.6 + 0.35 * pnoise(40, 44), lo=0.55, hi=1.0)

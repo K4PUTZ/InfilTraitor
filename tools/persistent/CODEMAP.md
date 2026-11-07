@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**345 scripts · 101250 lines total** (under `godot/scripts/`)
+**345 scripts · 101252 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1449,7 +1449,7 @@ extends `Node3D` · 3573 lines
 
 ### `tripo_figure.gd`
 
-`class_name TripoFigure` · extends `RefCounted` · 187 lines
+`class_name TripoFigure` · extends `RefCounted` · 189 lines
 
 `godot/scripts/geometry/tripo_figure.gd`
 
@@ -1463,8 +1463,8 @@ extends `Node3D` · 3573 lines
 - `STAND_HEIGHT_M` = `1.96`
 - `FRONT_YAW` = `PI`
 - `COAT_SHADER_PATH` = `"res://godot/shaders/actor_coat3d.gdshader"`
-- `EMBLEM_ID` = `"emblem_ref_skull"`
-- `SHEEN` = `{"Outfit_Coat": [0.15, 6.0], "Outfit_Trousers": [0.15, 6.0], "Outfit_Hat": [0.09, 6.0], "Outfit_Shoes": [0.45, 18.0]}`
+- `EMBLEM_ID` = `"emblem_police"`
+- `SHEEN` = `{"Outfit_Coat": [0.15, 6.0], "Outfit_Hat": [0.09, 6.0], "Outfit_Shoes": [0.45, 18.0]}`
 - `MIXAMO_PREFIXES` = `["mixamorig:", "mixamorig_", ""]`
 - `BANK_CLIP` = `"res://ASSETS/ANIMATIONS/bank/%s/%s.glb"`
 - `GAME_LIBRARY` = `"res://ASSETS/ANIMATIONS/game/agent_%s.res"`

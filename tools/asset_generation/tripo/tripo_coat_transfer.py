@@ -1,7 +1,7 @@
 # tripo_coat_transfer.py — the LIGHT coat's map is DERIVED from the FULL coat's master (CHARACTER §7a TX-6, ACTOR D108, 2026-11-06).
 # The coat cannot share one projection the way the head does (an open garment with a lining, lapels, sleeves: the FULL and the LIGHT carry UVs
-# of their own), so each texel of the LIGHT coat's UV is placed on the LIGHT surface (its rest shape, the Basis), moved 2 mm along its face's
-# normal (so the lining finds the lining, the outer wall the outer wall: the two lie ~8 mm apart) and read from the nearest point of the FULL
+# of their own), so each texel of the LIGHT coat's UV is placed on the LIGHT surface (its rest shape, the Basis) and read where a ray from 6 mm off it, back
+# along its face's normal, meets the FULL (so the lining finds the lining, the outer wall the outer wall: the two lie ~8 mm apart; the nearest point is the fallback)
 # coat through the FULL's UV. Nobody paints the LIGHT map: retouch the master (tripo_coat_regions on the FULL, or by hand) and re-run this.
 # Env: CT_LIGHT (the LIGHT Agent GLB), CT_FULL (a GLB with the FULL coat at the same rest: AGENT_<FIG>_BASE_A.glb), CT_MASTER (the FULL coat's
 # PNG), CT_OUT (PNG), CT_RES (1024).  Usage: blender -b -P tripo_coat_transfer.py
@@ -57,8 +57,12 @@ for t in range(len(Tl)):
     w0 = ((by - cy) * (xs - cx) + (cx - bx) * (ys - cy)) / den; w1 = ((cy - ay) * (xs - cx) + (ax - cx) * (ys - cy)) / den; w2 = 1 - w0 - w1
     ins = (w0 >= -0.02) & (w1 >= -0.02) & (w2 >= -0.02) & ~done[ys, xs]
     for yy, xx, a, b, c in zip(ys[ins], xs[ins], w0[ins], w1[ins], w2[ins]):
-        p3 = a * P[0] + b * P[1] + c * P[2] + nrm * 0.002
-        hit = bvh.find_nearest(Vector(p3))
+        p3 = a * P[0] + b * P[1] + c * P[2]
+        # a ray from 6 mm off the face, back along its normal: from outside an outer face meets the outer wall first, from the body's
+        # side a lining face meets the lining first (the nearest point alone picked the other wall in spots: black flecks on the yellow coat)
+        hit = bvh.ray_cast(Vector(p3 + nrm * 0.006), Vector(-nrm), 0.014)
+        if hit[0] is None:
+            hit = bvh.find_nearest(Vector(p3 + nrm * 0.002))
         if hit[0] is None:
             continue
         fi = hit[2]; A, Bv, C = Vf[Tf[fi]]

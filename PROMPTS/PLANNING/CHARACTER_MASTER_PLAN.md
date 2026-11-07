@@ -1,5 +1,7 @@
 # CHARACTER_MASTER_PLAN
-## The Agent — Model, Rig, Poses, Animation, Layering — v2.0
+## The Agent — Model, Rig, Poses, Animation, Layering — v2.1
+
+> ⏭️ **2026-11-07 — texturing (§7a, `ACTOR` D108 proposed, built in practice): the POLICE dress is installed in both LIGHT Agents (blue shirt, white tie, denim jeans, the mustard coat with its black lining, a first police emblem); the coat is CLOSED (the lining stays inside: D94's lining gap and the coat's two sides, `tripo_coat_sides.py`); the female's face retouched. NEXT (§7a's list): the Director paints the faces by hand (`ASSETS/MODELS/fit/FACE_PAINT_<FIG>.blend`), then the shirt's and trousers' defects, the lower face for the game camera, the dress variants in the chain. Record: `PROMPTS/RESUMO_SESSAO_2026-11-07_TEXTURING_POLICE_COAT_SIDES.md`.**
 
 > 🧭 **2026-11-06 — the TEXTURING plan (TX-0 to TX-6, §7a; proposed decisions in `ACTOR` D108, awaiting the Director).** Measured: the male's FULL face has 4x the female's triangles (2 044 vs 518 in the face region, median edge 3.5 vs 5.9 mm) and 2.7x her drawn detail at the SAME texel count in Tripo's 4096 atlas; both LIGHT heads are 750 tris. In the game the face is ~10x9 px. Next: TX-1 (the pieces the game draws white get their maps), no face regenerated before TX-5.
 
@@ -1569,7 +1571,7 @@ recurring classes:
 
 ---
 
-## 7a. Texturing the Agents (TX) — PLANNED 2026-11-06, decisions proposed in `ACTOR` D108
+## 7a. Texturing the Agents (TX) — IN PROGRESS (2026-11-06/07), decisions proposed in `ACTOR` D108
 
 Director, 2026-11-06: texture the characters; the clothes are simple, the faces need work; the male looks far higher-resolution than
 the female (perhaps regenerate her face); some high instances for posters and cutscenes, but the priority is the game camera.
@@ -1577,6 +1579,33 @@ the female (perhaps regenerate her face); some high instances for posters and cu
 **Director's answers (2026-11-06):** cutscenes not decided (stills or any technique): the models must be ready for any case; both hairs stay
 brown; the hats carry a TEMPORARY work colour (female purple `#4B2266`, male navy `#1C2A4A`) to tell them apart; Claude paints, the Director
 fixes defects. "Pode seguir na ordem que preferir com todas as etapas."
+
+**Status 2026-11-07 (session record `PROMPTS/RESUMO_SESSAO_2026-11-07_TEXTURING_POLICE_COAT_SIDES.md`).** Installed in both LIGHT Agents: the
+POLICE dress (blue shirt, white tie, denim jeans, the mustard coat with its black lining, `emblem_police`), the faces on FaceUV, the leather's
+sheen. **The coat is CLOSED** (Director, 2026-11-07): the lining no longer shows through the skirt (D94's lining gap + the coat's two sides).
+**NEXT, in this order:**
+1. **The faces by hand (the Director, from 2026-11-08):** `ASSETS/MODELS/fit/FACE_PAINT_<FIG>.blend` (`tripo_face_paint_file.py`: the LIGHT at
+   rest, the head wearing the 2048 master by path; Image > Save writes `painted/<fig>_face_master.png`). Then Claude: the master at 512 into
+   `painted/<fig>_head_light.png`, `glb_swap_image.py` on `AGENT_<FIG>_LIGHT.glb`, a capture in the game. Both masters are marked
+   `"hand": true` in `face_paint.json`: `tripo_face_paint.py` refuses to write over them (`FP_FORCE=1` overrides and loses the paint).
+2. **The shirt's and the trousers' defects (Director, 2026-11-07, seen in Blender with the coat hidden), NOT investigated:** dark lines on the
+   trousers and breaks on the shirt. To do: close renders of both pieces with their maps; the same with the coat on, as the game shows them
+   (the LIGHT's `_Coated` pieces lose the faces the coat always hides, so part of what shows with the coat hidden never reaches the game);
+   for each defect that does show, its cause: a UV island's border (the bleed, or the denim's weave broken across a seam) or geometry.
+   Not the coat's process: a shirt and trousers are one wall, the lining's fault was the coat's two.
+3. **The lower face for the game camera:** the brim hides the eyes and brows of both figures, so what reads is the nose, the mouth and the
+   chin; their value structure (the mouth line, the jaw's shadow) is the lever. A proposal to make, after the Director's hand paint.
+4. **The male's neck:** a dark line under the jaw (seen 2026-11-07, not looked at).
+5. **The dress variants in the chain:** `build_light_base.sh` builds the CIVIL coat (`CT_MASTER` = the black master) and no dress parameter
+   exists; the installed POLICE coat was made by hand (`CR_PALETTE=police` on the FULL, `tripo_coat_transfer.py`, `tripo_coat_sides.py`,
+   `glb_swap_image.py` + `glb_coat_extras.py`), and so were the jeans (`AGENT_SURFACE.json`). A re-run of the chain as it stands gives the
+   black coat and the jeans. The chain has not been re-run end to end since TX began.
+6. **The in-game switch between the two dresses** (the reversed coat, `ACTOR` D82; the rule in `DESIGN_MASTER_PLAN` §10.6) and **the turning
+   tie** (white face / black back): engine and design work, nothing built.
+7. **The factions' symbols** (the police shield + star is Claude's first proposal; `ASSETS/emblems/*.png` is local only: `*.png` is
+   git-ignored there).
+8. **The female's face geometry** (518 vs 2 044 face tris): only for a poster or a cutscene, when those are decided. **The official FULL GLB**
+   still carries the old head map.
 
 **BUILT 2026-11-06 (applied to the installed LIGHT GLBs; `build_light_base.sh` carries the same steps but was not re-run end to end):**
 - TX-1: `tripo_surface.py` dresses Body_Head (its painted map), Body_Hands, Body_Hair + Body_Hair_Hat, the belts and the buckle.
@@ -1602,8 +1631,8 @@ fixes defects. "Pode seguir na ordem que preferir com todas as etapas."
   The switch between them in the game is not built (the reversed coat revives ACTOR D82). `tripo_coat_regions.py` fixed on the way: the
   skirt's outward is horizontal from the hips (whole outer panels were "lining"), and lone faces take their neighbours' side;
   `tripo_coat_transfer.py` reads along the face's normal. The police coat's lining stays BLACK (Director, 2026-11-06): it is the civil face, so the black seen at the vent and the open front is the lining, by design. ⚠️ But the lining ALSO showed through the OUTSIDE of the skirt (2026-11-07, the lining painted magenta in a walk take): (1) D94's push carried both walls, ~4 mm apart, to the same exit point of a leg capsule; fixed in `coat_push.gdshaderinc` (a face turned to the body stops `push_lining_gap` = 20 mm short; the male's skirt is clean, the female's residue is the same with the push off). (2) The rest was not paint either: in Blender's idle with no push the same wedges show (the outer wall is cut into panels bound to different legs, the lining runs on across the cuts, so a pose opens a cut and the lining comes out); re-weighting the lining to its outer wall did not help, and repainting what a pose reveals turned yellow the back lining seen through the open front (the same faces). Fixed by the SIDE the eye meets: `tripo_coat_sides.py` writes the wall into the coat map's alpha and the colours into the coat's `coat_sides` extras (`glb_coat_extras.py`), and `actor_coat3d.gdshader` draws a back-facing fragment in the other wall's colour (`TripoFigure.apply_sides`); the last step of `build_light_base.sh`. Both figures walk clean; the open front keeps its black lining. Not measured on the Moto (one texture fetch already made, the map now RGBA).
-- Faces, 2026-11-07 (the coat CLOSED by the Director first): the female's master retouched through `face_paint.json` (brows wider and darker, the forehead filled above the brows, a black wedge at her left temple filled, `eye_skin`: the skin-like texels inside the eye boxes take the fill, the under-eye box), installed with `glb_swap_image.py`. At the game camera the hat's brim hides the eyes and brows of both figures: only the nose, mouth and chin read, so the face's game readability is the lower face. The grey band on her forehead in Blender is the fringe's EEVEE shadow, not the map. Her low-poly face (518 vs 2 044 tris) does not show at the game scale; a poster or a cutscene would need it.
-- Trousers in the coat's leather (`AGENT_SURFACE.json`, sheen as the coat), shoes glossier (`SHEEN` [0.45, power 18]; Director, 2026-11-06).
+- Faces, 2026-11-07 (the coat CLOSED by the Director first): the female's master retouched through `face_paint.json` (brows wider and darker, then raised 60 px to the top of the eye socket at the Director's mark, the forehead filled above the brows, a black wedge at her left temple filled, `eye_skin`: the skin-like texels inside the eye boxes take the fill, the under-eye box), installed with `glb_swap_image.py`. At the game camera the hat's brim hides the eyes and brows of both figures: only the nose, mouth and chin read, so the face's game readability is the lower face. The grey band on her forehead in Blender is the fringe's EEVEE shadow, not the map. Her low-poly face (518 vs 2 044 tris) does not show at the game scale; a poster or a cutscene would need it.
+- Trousers in the coat's leather (`AGENT_SURFACE.json`, sheen as the coat), shoes glossier (`SHEEN` [0.45, power 18]; Director, 2026-11-06). *(The leather trousers were replaced the same day by the police jeans, denim and no sheen: above.)*
   A texture change on a finished Agent goes through `glb_swap_image.py` (the JSON and every other buffer byte-identical): the Blender round
   trip turned the coat's COLOR_0 into VEC3 float and a byte copy over it overwrote the coat's JOINTS (seen in Godot, reverted). ⚠️ Running `tripo_surface.py` on a finished Agent wiped the coat's COLOR_0 alpha (D94's push): restored (`165d892f`).
 - TX-2: `tripo_face_uv.py` + `face_uv_map.py`: FaceUV is a cylindrical projection, a function of the position (params per figure in

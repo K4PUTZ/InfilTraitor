@@ -1,5 +1,5 @@
 {
- "_doc": "tripo_face_paint.py's layers per figure (CHARACTER \u00a77a TX-3), in pixels of the 2048 master on FaceUV (x right = the figure's left seen from the front, y down). Landmarks read on tripo_face_uv's base maps, 2026-11-06. Brows = the hair's brown, darker (ACTOR D81: brows match the hair). skin_source = [y0, y1, min lum]: the band the fill reads its skin from. eye_skin = [tolerance, feather]: skin-like texels inside the eye boxes take the fill (the under-eye box, 2026-11-07).",
+ "_doc": "tripo_face_paint.py's layers per figure (CHARACTER \u00a77a TX-3), in pixels of the 2048 master on FaceUV (x right = the figure's left seen from the front, y down). Landmarks read on tripo_face_uv's base maps, 2026-11-06. Brows = the hair's brown, darker (ACTOR D81: brows match the hair). skin_source = [y0, y1, min lum]: the band the fill reads its skin from. eye_skin = [tolerance, feather]: skin-like texels inside the eye boxes take the fill (the under-eye box, 2026-11-07). hand = true: the master is the Director's to paint by hand (from 2026-11-08, ASSETS/MODELS/fit/FACE_PAINT_<FIG>.blend); tripo_face_paint.py refuses to write over it.",
  "female": {
   "hair_colour": "#3B2A1F",
   "mid_x": 1005,
@@ -57,15 +57,15 @@
    "curve": [
     [
      860,
-     782
+     722
     ],
     [
      700,
-     716
+     656
     ],
     [
      530,
-     764
+     704
     ]
    ],
    "width": [
@@ -122,7 +122,8 @@
   "eye_skin": [
    0.14,
    2.5
-  ]
+  ],
+  "hand": true
  },
  "male": {
   "hair_colour": "#3B2A1F",
@@ -135,6 +136,7 @@
    800,
    1500,
    0.3
-  ]
+  ],
+  "hand": true
  }
 }

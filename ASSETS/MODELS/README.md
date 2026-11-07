@@ -22,6 +22,8 @@ fit/       the coat's fit, Blender working files (ACTOR D97)
                                the female's `WalkFix` edits live in LIGHT_FEMALE_WF2.blend (LIGHT_FEMALE_WF.blend is its earlier step)
   WALK_FIX_F<n>_LIGHT_<FIG>.blend  a bank-clip frame baked by tripo_light_bake_frame.py for a hand edit (vertices only), taken back by tripo_pose_fix_back.py
   AGENT_*_A_STRUCT / _FLAP, RUN_FIX_F8 / F9 / DRAPE  dropped coat experiments of 2026-11-05 (D103-D104), kept as record
+  FACE_PAINT_<FIG>.blend       where the Director paints a face by hand (CHARACTER §7a, 2026-11-07): the LIGHT at rest, the head wearing
+                               ../official/painted/<fig>_face_master.png by path; Image > Save writes the master. Rebuilt by tripo_face_paint_file.py
 sources/   Tripo downloads, content untouched, renamed:
   tripo_female_base.glb        <- FEMALE_BASE.glb
   tripo_male_base.glb          <- MALE_BASE.glb

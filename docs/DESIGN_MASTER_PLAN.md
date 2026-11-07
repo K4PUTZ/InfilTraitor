@@ -1296,7 +1296,7 @@ this section's classes is Claude's); the gameplay stays here.
 | What | Detail |
 |---|---|
 | A common pistol | The weapon class's tier 1 (§10.2) |
-| His overcoat | The FID investigators' mustard coat, black inside (§2.1, `ACTOR` D78) |
+| His overcoat | The FID investigators' mustard coat, black inside (§2.1, `ACTOR` D78); reversible, the black face out is the civil dress (§10.6) |
 | Throwing stones | A distraction (a noise on a chosen tile): the bread and butter, a limited stack restocked in the world or replaced by baseballs, glasses, cans (§5.4) |
 | A chokehold or a neck snap | The chokehold knocks a guard out and he **wakes after N turns** (N open, §18); the neck snap kills and he never wakes. The knockout is the non-lethal option every class must hold from the start (§2.6) |
 | An ALARM CLOCK | ONE per mission (Director, 2026-10-23): he sets it for N turns, and when it rings it draws several guards to that zone at once, opening him a way. Later upgraded to a battery RADIO-CLOCK playing a "song" of sirens, shots and screams. **Claude's proposals:** the radio-clock draws more guards from further away, but they arrive ALERT (weapons out, searching); it comes from the evidence room (§15) or is bought. **Retrieval (adopted 2026-10-23):** he may go back for the clock, but a guard who reaches it first CONFISCATES it as evidence (knock him out and search him to get it back), re-arming costs 1 AP, and a second ring in the same mission makes the guards suspect a trick: it raises the alert instead of simply drawing them. That keeps one clock from becoming an endless loop |
@@ -1436,6 +1436,21 @@ which grow as the power station's restoration brings districts back (§2.2; rest
 
 **Readability (`COSMETICS_MASTER_PLAN` C3):** the symbol he shows is gameplay state, so the HUD always says which uniform he shows and whether he holds that faction's access; a
 cosmetic coat still shows the symbol, because the faction's colours and emblem are filled into the coat's accent zones by the game (D78).
+
+
+### 10.6 The reversible coat and the turning tie — `DESIGNED`, the mechanics open (Director, 2026-10-25 and 2026-11-06)
+
+- **The overcoat is reversible** (`ACTOR` D82): the FID's mustard face out, with jeans, is the POLICE dress (Director, 2026-11-06: "Esse vai
+  ser o uniforme de policial"); the black face out, with dark trousers, is the CIVIL one ("quando ele estiver no modo paisana, vamos adotar a
+  calça escura com o casaco preto (que seria na verdade a parte avessa do casaco de polícia)"). Both looks exist as maps on one mesh
+  (`CHARACTER_MASTER_PLAN` §7a, 2026-11-06); the switch does not.
+- **The tie turns** (Director, 2026-11-06: "A gravata branca vai ter um mecanismo para girar horizontalmente na parte do nó, e a parte de
+  trás vai ser preta... mecanismo controlado pelo jogador"): a white face and a black back, turned at the knot by the PLAYER, one more layer of
+  play for hiding or disguise (D82, 2026-10-25: "an advanced disguise"). Not built.
+- **Open, nothing ratified (§18):** what each state changes (detection §4; the recognition up close of §10.5, "his hat, tie and shoes"; the
+  uniform's pass at a distance §2.2); the AP cost of turning the tie and of reversing the coat, and whether either can be done in a guard's
+  sight; how the two dresses meet the backpack's stealth mode (`ACTOR` D100: the coat stowed in the pack, the swap costs a turn; the
+  2026-11-01 direction "the coat only in civil mode") and the LED coat (§10.5), which replaces the common overcoat.
 
 ---
 
@@ -2227,6 +2242,7 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   integration is future.
 - [ ] Exact noise-trail decay rate — needs playtesting.
 - [ ] Exact pause/detour chances in organic patrol — needs playtesting.
+- [ ] The reversible coat and the turning tie (§10.6, Director 2026-11-06): what each state changes for detection and recognition, their AP costs, whether in a guard's sight, and how they meet the backpack's stealth mode (`ACTOR` D100) and the LED coat (§10.5).
 
 ---
 

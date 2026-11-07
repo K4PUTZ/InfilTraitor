@@ -7,15 +7,18 @@
 #   (2) scalp: what our hair covers takes the hair's colour (a gap in the locks reads as hair, not as skin or Tripo's black);
 #   (3) brows and `strokes` (the upper lash line): strokes (a quadratic curve, width tapering inner -> outer), mirrored about `mid_x`;
 #   (4) lips: an ellipse tinted toward `lips.colour` keeping the shading (multiply), the mouth line darkened.
-# The result is the master; the game's map is this file downscaled (tripo_face_apply.py), nothing is painted twice. Retouch it by hand in
-# its PNG and keep FP_KEEP_HAND=1 off when re-running, or the retouch is overwritten (the pipeline reads the file).
-# Env: FP_FIG, FP_IN (tripo_face_uv's folder), FP_SPEC (default face_paint.json beside this file), FP_OUT (the master PNG).
+# The result is the master; the game's map is this file downscaled (tripo_face_apply.py), nothing is painted twice. The Director paints it
+# BY HAND in Blender (tripo_face_paint_file.py, from 2026-11-08): a figure marked `"hand": true` in face_paint.json is refused here, since a
+# re-run starts from Tripo's colour and would wipe the hand paint; FP_FORCE=1 overrides (and loses it).
+# Env: FP_FIG, FP_IN (tripo_face_uv's folder), FP_SPEC (default face_paint.json beside this file), FP_OUT (the master PNG), FP_FORCE.
 import json, os, sys
 import numpy as np
 from PIL import Image, ImageFilter
 
 FIG = os.environ["FP_FIG"]; IN = os.environ["FP_IN"]; OUT = os.environ["FP_OUT"]
 SPEC = json.load(open(os.environ.get("FP_SPEC", os.path.join(os.path.dirname(os.path.abspath(__file__)), "face_paint.json"))))[FIG]
+if SPEC.get("hand") and os.path.exists(OUT) and os.environ.get("FP_FORCE") != "1":
+    sys.exit(f"[tripo_face_paint] {FIG}: the master is painted BY HAND (face_paint.json \"hand\": true); a re-run would wipe it. FP_FORCE=1 to override")
 A = np.asarray(Image.open(f"{IN}/{FIG}_base.png").convert("RGB")).astype(np.float32) / 255.0
 H, W = A.shape[:2]
 valid = np.load(f"{IN}/{FIG}_valid.npy")

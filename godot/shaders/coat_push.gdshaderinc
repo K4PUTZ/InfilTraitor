@@ -10,6 +10,8 @@ uniform vec4 push_cap_a[6];                     // capsule starts (xyz, the skel
 uniform vec4 push_cap_b[6];                     // capsule ends (xyz)
 uniform vec4 push_tent = vec4(0.03, 0.12, 0.5, 0.0);   // the tent's least and greatest width and its width per unit of height
 uniform mat3 push_pelvis = mat3(1.0);           // the pelvis's turn since the rest pose
+uniform float push_lining_gap = 0.02;           // a face turned to the body (the lining) stops this much short (2026-11-07: both walls, 4 mm apart at the median and up to 22 mm on the female, landed on the same exit
+                                                // point of a capsule and the lining showed through the outside of the skirt while walking)
 
 // where the ray p + t d, d a unit vector, LEAVES the capsule a-b of radius r (-1e9 when the line misses it)
 float coat_push_far(vec3 p, vec3 d, vec3 a, vec3 b, float r) {
@@ -60,8 +62,8 @@ float coat_push_far(vec3 p, vec3 d, vec3 a, vec3 b, float r) {
 	return far;
 }
 
-// the skinned vertex p of a coat piece, pushed out of the legs
-vec3 coat_push(vec3 p, vec4 col) {
+// the skinned vertex p of a coat piece (n its skinned normal), pushed out of the legs
+vec3 coat_push(vec3 p, vec3 n, vec4 col) {
 	float mask = 1.0 - col.r;
 	if (push_on < 0.5 || mask <= 0.0) {
 		return p;
@@ -104,6 +106,9 @@ vec3 coat_push(vec3 p, vec4 col) {
 			more = max(more, coat_push_far(q, d, push_cap_a[i].xyz, push_cap_b[i].xyz, push_cap_a[i].w));
 		}
 		push += more * mask;
+		if (dot(n, d) < 0.0) {
+			push = max(push - push_lining_gap, 0.0);   // the lining keeps behind the outer wall
+		}
 	}
 	return p + d * push;
 }

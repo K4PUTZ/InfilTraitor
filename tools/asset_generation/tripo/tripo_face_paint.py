@@ -54,6 +54,8 @@ fill = np.zeros((H, W), bool)
 fb = SPEC.get("forehead")
 if fb:
     fill |= valid & (lum < fb["dark"]) & (cov < 0.5) & (ys < fb["brow_line"]) & ~eyes
+    if "all_above" in fb:                                                  # every forehead texel above this row (Tripo's shading under the fringe read as a grey band, 2026-11-07)
+        fill |= valid & (cov < 0.5) & (ys < fb["all_above"]) & ~eyes
 for x0, y0, x1, y1, dark in SPEC.get("fill_rects", []):
     fill |= valid & (xs >= x0) & (xs <= x1) & (ys >= y0) & (ys <= y1) & (lum < dark)
 for hue in SPEC.get("fill_hues", []):
@@ -66,6 +68,11 @@ if ss:                                                                    # read
     known &= (ys >= ss[0]) & (ys <= ss[1]) & (lum >= ss[2])
 skin = push_pull(A, known)
 out = np.where(fill[..., None], skin, A)
+es = SPEC.get("eye_skin")                                                 # [tolerance, feather px]: inside the eye boxes, the texels that are SKIN (close to the
+if es:                                                                    # fill's skin) take the fill: Tripo's lighter under-eye left a box around each eye (2026-11-07)
+    near = eyes & valid & (np.abs(A - skin).max(2) < es[0])
+    k = soft(near.astype(np.float32), es[1])[..., None] * eyes[..., None]
+    out = out * (1 - k) + skin * k
 # (2) scalp
 hc = hexrgb(SPEC["hair_colour"])
 out = out * (1 - cov[..., None]) + hc[None, None, :] * cov[..., None]

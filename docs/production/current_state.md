@@ -8,6 +8,14 @@
 
 ---
 
+## Where the project stands — 2026-11-07 (the Agents are textured: the POLICE dress; the coat closed; the faces go to the Director's hand)
+
+- **Installed in both LIGHT Agents (`CHARACTER` §7a, `ACTOR` D108 proposed, built in practice):** the faces on ONE FaceUV master shared by the FULL and the LIGHT; the POLICE dress (blue shirt, white tie, denim jeans, the mustard coat with its black lining, a first police emblem); the leather's sheen. Moto g04s, 9 walking: textures +4.8 / +5.0 ms, the sheen +5.2 / +4.8 (both within the noise of the untextured D105).
+- **The coat is CLOSED (Director):** the lining no longer shows through the skirt. Two causes, two fixes: D94's push carried both walls to the same point (`push_lining_gap`, 20 mm), and a pose opens a cut of the outer wall over a continuous lining (the coat's TWO SIDES: the map's alpha says the wall, a back-facing fragment draws the other wall's colour).
+- **A texture change on a finished Agent is a BYTE edit** (`glb_swap_image.py`, `glb_coat_extras.py`): a Blender round trip lost the coat's COLOR_0 (D94's data) twice this session.
+- **Design recorded:** the reversible coat's two dresses (POLICE / CIVIL) and the turning tie are `DESIGN_MASTER_PLAN` §10.6, the mechanics open (§18).
+- **Open, in order (`CHARACTER` §7a "Status 2026-11-07"):** the Director paints the faces by hand (`ASSETS/MODELS/fit/FACE_PAINT_<FIG>.blend`, from 2026-11-08); the shirt's and the trousers' defects (not investigated); the lower face for the game camera; the dress variants in `build_light_base.sh`; the in-game switch and the tie; the factions' symbols. Record: `PROMPTS/RESUMO_SESSAO_2026-11-07_TEXTURING_POLICE_COAT_SIDES.md`.
+
 ## Where the project stands — 2026-11-04 (the cleanup: `temp/`; the animation bank saved and catalogued)
 
 - **`temp/` exists (`tools/persistent/temp_dir.py`):** every generated video, still, filmstrip, render, test APK and work file goes there, git-ignored and invisible to Godot. Nothing reads it between runs, so the Director may delete it at any moment and the next run makes it again. `videos/` is retired; `Screenshots/` keeps Shift+P, `history/` and `verify_baseline/`.
@@ -597,6 +605,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-11-06_FEMALE_SKULL.md
 - RESUMO_SESSAO_2026-11-06_LIGHT_FROM_BASE.md
 - RESUMO_SESSAO_2026-11-06_LIGHT_WALK.md
+- RESUMO_SESSAO_2026-11-07_TEXTURING_POLICE_COAT_SIDES.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

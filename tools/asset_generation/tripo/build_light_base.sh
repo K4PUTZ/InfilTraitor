@@ -4,7 +4,7 @@
 #   fit/HAT_CUT_<FIG>.blend (tripo_hair_brim_cut) -> tripo_hat_skin (hat rigid on Head, the cut hair bound to the hat) -> fit/HAT_SKIN_<FIG>.blend
 #   -> tripo_coated_cut (Outfit_Shirt / Trousers / Belt _Coated, tripo_dress's rules) -> fit/COATED_<FIG>.blend
 #   -> tripo_lod_base (every piece to its budget, the coat's corrective keys carried) -> tripo_uv -> tripo_head_map -> tripo_pockets -> tripo_back_trim
-#   -> tripo_coat_back_out -> tripo_surface -> tripo_coat_regions -> tripo_coat_push.
+#   -> tripo_coat_back_out -> tripo_surface -> tripo_coat_regions -> tripo_coat_push -> tripo_coat_sides.
 # tripo_skirt_fix and tripo_chains_to_hips are NOT run: the base has no skirt chains and no hem bound to the hands (measured 2026-11-06), and skirt_fix would rewrite the
 # coat's own skin (D101 / D104).
 # Out: <work_dir>/<fig>_LIGHT_D106.glb. Nothing is written to ASSETS/MODELS/official/: installing it is a separate decision.
@@ -28,4 +28,9 @@ SCRIPT=tripo_surface.py step surface SF_IN=$W/${f}_5out.glb SF_OUT=$W/${f}_6surf
 # the coat's map is the FULL coat's master carried onto the LIGHT's UV (CHARACTER §7a TX-6; the master: tripo_coat_regions.py on AGENT_<FIG>_BASE_A.glb at 2048, or the Director's retouch)
 SCRIPT=tripo_coat_transfer.py step regions CT_LIGHT=$W/${f}_6surf.glb CT_FULL=$M/official/AGENT_${F}_BASE_A.glb CT_MASTER=$M/official/painted/${f}_coat_master.png CT_OUT=$W/painted/${f}_coat_light.png
 SCRIPT=tripo_coat_push.py step push COAT_IN=$W/${f}_6surf.glb COAT_OUT=$W/${f}_LIGHT_D106.glb COAT_TEX=$W/painted/${f}_coat_light.png
+# the coat's two walls (tripo_coat_sides.py, 2026-11-07): the map's alpha says the wall, a face seen from its back draws the other wall's colour (a lining a pose pushes
+# out through the back vent shows the outer cloth); run on the finished GLB and put in with byte edits (a Blender round trip loses the coat's COLOR_0)
+SCRIPT=tripo_coat_sides.py step sides CS_IN=$W/${f}_LIGHT_D106.glb CS_MAP=$W/painted/${f}_coat_light.png CS_OUT=$W/painted/${f}_coat_light.png CS_JSON=$W/painted/${f}_coat_sides.json
+python3 "$T/glb_swap_image.py" "$W/${f}_LIGHT_D106.glb" "${f}_coat_light" "$W/painted/${f}_coat_light.png"
+python3 "$T/glb_coat_extras.py" "$W/${f}_LIGHT_D106.glb" coat_sides "$W/painted/${f}_coat_sides.json"
 echo "[build_light_base] $f: $W/${f}_LIGHT_D106.glb"

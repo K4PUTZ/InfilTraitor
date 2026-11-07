@@ -86,10 +86,28 @@ static func dress_coat(body: Node, skeleton: Skeleton3D, emblem: bool, push: boo
 	if coat_mat != null:   ## a pushed face turned away would show the trousers behind it
 		coat_mat.shader = BoardLook.graded_shader(COAT_SHADER_PATH)
 		took["emblem"] = CoatEmblem.apply(coat_mat, EMBLEM_ID if emblem else "")
+		apply_sides(coat, coat_mat)
 	if push and skeleton != null:
 		took["push"] = CoatPush3D.attach(skeleton, coat)
 	apply_sheen(body)
 	return took
+
+
+## The coat's two walls (`coat_sides`, baked by tripo_coat_sides.py as the piece's `extras`): a face seen from its back takes the other wall's colour.
+## A coat without the data keeps one colour per face, and says so once.
+static func apply_sides(coat: MeshInstance3D, mat: ShaderMaterial) -> void:
+	var extras: Variant = coat.get_meta("extras") if coat.has_meta("extras") else null
+	var parsed: Variant = null
+	if extras is Dictionary and (extras as Dictionary).has("coat_sides"):
+		parsed = JSON.parse_string(str((extras as Dictionary)["coat_sides"]))
+	if not (parsed is Dictionary) or not (parsed as Dictionary).has("outer") or not (parsed as Dictionary).has("lining"):
+		push_warning("[TripoFigure] %s carries no `coat_sides` data (run tripo_coat_sides.py): a lining a pose pushes out shows its own colour" % coat.name)
+		mat.set_shader_parameter("sides_on", 0.0)
+		return
+	var sides := parsed as Dictionary
+	mat.set_shader_parameter("side_outer", Color.html(str(sides["outer"])))
+	mat.set_shader_parameter("side_lining", Color.html(str(sides["lining"])))
+	mat.set_shader_parameter("sides_on", 1.0)
 
 
 ## The leather's sheen on every piece SHEEN names (its board-lit ShaderMaterial, a coat-cut variant included).

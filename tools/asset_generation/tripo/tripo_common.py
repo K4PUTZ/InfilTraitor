@@ -279,7 +279,7 @@ def export(path, objs, arm):
 
 
 def write_png(path, arr8):
-    """an (H, W, 3) uint8 array as an RGB PNG (no PIL in Blender's Python)"""
+    """an (H, W, 3) uint8 array as an RGB PNG, an (H, W, 4) one as RGBA (no PIL in Blender's Python)"""
     import struct, zlib
     h, w = arr8.shape[:2]
     raw = b"".join(b"\x00" + arr8[r].tobytes() for r in range(h))
@@ -287,7 +287,7 @@ def write_png(path, arr8):
         c = struct.pack(">I", len(d)) + t + d
         return c + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    open(path, "wb").write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
+    open(path, "wb").write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6 if arr8.shape[2] == 4 else 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
 
 
 def detail_tiled(path, res, tile):

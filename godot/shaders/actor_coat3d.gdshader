@@ -10,6 +10,12 @@ uniform vec4 albedo : source_color = vec4(1.0);
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
 uniform float has_tex = 0.0;
 // the leather's matte sheen (CHARACTER §7a; TripoFigure.SHEEN sets it per piece): 0 = none
+// the coat's two walls (2026-11-07, tripo_coat_sides.py): the map's alpha says the wall (1 the outer, 0 the lining) and a fragment seen from its BACK takes the
+// other wall's colour: the lining a pose pushes out through a cut of the outer wall (the back vent, a side seam) shows the outer cloth, the inside of the outer wall
+// shows the lining; through the open front the eye meets the lining's own side, which stays
+uniform float sides_on = 0.0;
+uniform vec4 side_outer : source_color = vec4(1.0);
+uniform vec4 side_lining : source_color = vec4(0.0, 0.0, 0.0, 1.0);
 uniform float sheen = 0.0;
 uniform float sheen_power = 6.0;
 // ACTOR D95 — the coat's EMBLEM: the logo (RGBA, resolved by `CoatEmblem` through the TextureResolver's tiers) laid over the colour inside the coat's baked zone (UV2 = the zone, COLOR.b = its mask)
@@ -37,7 +43,8 @@ void fragment() {
 	float key = plane_key(FRONT_FACING ? v_normal : -v_normal);
 	vec3 base = albedo.rgb;
 	if (has_tex > 0.5) {
-		base *= texture(albedo_tex, UV).rgb;
+		vec4 tx = texture(albedo_tex, UV);
+		base *= (sides_on > 0.5 && !FRONT_FACING) ? (tx.a < 0.5 ? side_outer.rgb : side_lining.rgb) : tx.rgb;
 	}
 	if (has_emblem > 0.5 && FRONT_FACING && UV2.x > 0.0 && UV2.x < 1.0 && UV2.y > 0.0 && UV2.y < 1.0) {   // the outer wall seen from outside only: the lining and the front panels carry no mask / are not front-facing
 		vec4 em = texture(emblem_tex, UV2);

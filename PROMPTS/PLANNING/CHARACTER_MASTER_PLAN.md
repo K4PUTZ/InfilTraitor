@@ -1601,7 +1601,7 @@ fixes defects. "Pode seguir na ordem que preferir com todas as etapas."
   CIVIL = dark trousers and the coat worn inside out (the black face: `painted/<fig>_coat_master.png`, the D96 look). Installed: POLICE.
   The switch between them in the game is not built (the reversed coat revives ACTOR D82). `tripo_coat_regions.py` fixed on the way: the
   skirt's outward is horizontal from the hips (whole outer panels were "lining"), and lone faces take their neighbours' side;
-  `tripo_coat_transfer.py` reads along the face's normal. In the game the coat's black inside shows at the vent and the open front.
+  `tripo_coat_transfer.py` reads along the face's normal. The police coat's lining stays BLACK (Director, 2026-11-06): it is the civil face, so the black seen at the vent and the open front is the lining, by design.
 - Trousers in the coat's leather (`AGENT_SURFACE.json`, sheen as the coat), shoes glossier (`SHEEN` [0.45, power 18]; Director, 2026-11-06).
   A texture change on a finished Agent goes through `glb_swap_image.py` (the JSON and every other buffer byte-identical): the Blender round
   trip turned the coat's COLOR_0 into VEC3 float and a byte copy over it overwrote the coat's JOINTS (seen in Godot, reverted). ⚠️ Running `tripo_surface.py` on a finished Agent wiped the coat's COLOR_0 alpha (D94's push): restored (`165d892f`).

@@ -16,6 +16,13 @@
   - Seen on BOTH figures with no per-figure tuning (the pose is solved on each rig). Captures in `temp/takes/` (disposable): `pistol_aim_4views*.png`, `pistol_raise_E*.png`, `pistol_stow_S.png`.
 - **`MOVEMENT_MASTER_PLAN` §4.1 "In-house levers":** the table of what the kit can make, what the test taught, what only credits can make, the two savers (a clip serves both figures; mirror doubles).
 
+## Later the same day: the poses are edited BY HAND in Blender (Director: "eu monto a base e você refina; incluir as armas na pose")
+- `pose_lab.py open|save|render|reset|status` (`tools/persistent/pose_lab.py`) + `tripo_pose_lab.py` (Blender) + `tripo_pose_dump.gd` (Godot): a `.blend` per pose and figure (`ASSETS/MODELS/fit/POSE_<id>_<FIG>.blend`, the 4 built:
+  draw / aim x male / female), his pose file `ASSETS/ANIMATIONS/poses/<figure>/<id>.json` replaces the solved one, the weapon's placement is part of the pose (one per stop, blended like the arms).
+- Verified against Blender's own exporter (not only a self round trip): 26 bones to 6e-7, the prop to 1e-7; a rehearsal (the pistol pushed 3 cm in Blender -> 3 cm on the board, then `reset`).
+- The lab shows the dressed pieces only and cuts the coat's COLOR_0 link (it draws as red / black paint in Blender; the game's shader reads it); a Blender view is still not the game's light.
+- Selftest `tripo_figure`: a pose file (bone and prop) comes back as written. `actor_mesh3d.gd` no longer has `PISTOL_HAND`: the placement is the pose's.
+
 ## Findings worth keeping (also in the plan)
 - `fire` = a standing LONG-GUN hold (hands 30 cm apart, no recoil: keys vary < 0.002), `shoot` = a run into a kneel, S2 / S3 = fists at the belt: none is a pistol aim. The pistol aim is solved, not copied.
 - Godot: a headless script cannot trust `get_bone_global_pose` after setting poses; `Quaternion.angle_to` has a ~7e-4 rad floor on identical quaternions; a `SkeletonModifier3D` has no skeleton outside the engine's frame

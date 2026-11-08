@@ -621,8 +621,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-11-06_LIGHT_WALK.md
 - RESUMO_SESSAO_2026-11-07_TEXTURING_POLICE_COAT_SIDES.md
 - RESUMO_SESSAO_2026-11-08_AGENT_SWAP_OFFICER.md
-- RESUMO_SESSAO_2026-11-08_CLOSEUP_LEVEL1.md
 - RESUMO_SESSAO_2026-11-08_AIM_IN_HOUSE.md
+- RESUMO_SESSAO_2026-11-08_CLOSEUP_LEVEL1.md
 - RESUMO_SESSAO_2026-11-08_FACES_BY_HAND.md
 <!-- AUTO:END pending_prompts -->
 
@@ -631,7 +631,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 246
+- GDScript modules: 248
 - Test scripts: 94
 - Known maps: 3
 - Shipped facade files: 0

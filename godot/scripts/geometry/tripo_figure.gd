@@ -58,9 +58,17 @@ const FINGER_BONES: PackedStringArray = [
 ## `hand_pitch`: degrees the fingers point UP from forward (a hand folded at the wrist). `draw_pistol` is the beat between the idle arms and the aim: both fists at
 ## the sternum, elbows out, where the gun comes out of the coat.
 const POSES: Dictionary = {
-	"draw_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "two_hand_aim": {"reach": 0.07, "height": -0.075, "gap": 0.05, "pole": 0.9, "hand_pitch": 50.0}},
-	"aim_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "two_hand_aim": {"reach": 0.255, "height": 0.02, "gap": 0.044, "pole": 0.4}},
+	"draw_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.07, "height": -0.075, "gap": 0.05, "pole": 0.9, "hand_pitch": 50.0}},
+	"aim_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.255, "height": 0.02, "gap": 0.044, "pole": 0.4}},
 }
+## THE DIRECTOR'S POSE FILE (2026-11-08): a pose posed BY HAND in Blender (`tools/persistent/pose_lab.py`) is `ASSETS/ANIMATIONS/poses/<figure>/<id>.json` and REPLACES the
+## solved one: {"bones": {Mixamo name without prefix: [x, y, z, w]}, "props": {prop id: {"bone", "pos", "quat", "scale"}}}. Rotations are the bone's LOCAL rotation as Godot reads
+## it (what `Skeleton3D.get_bone_pose_rotation` answers); a prop's transform is relative to the bone's own frame, applied to the model's scene root.
+const POSE_FILE := "res://ASSETS/ANIMATIONS/poses/%s/%s.json"
+## The props a pose may carry (the model in hand). The default placement is what the pose has until somebody places it by hand; the pistol glb's mesh node carries a x100
+## scale (2.45 long, 1.16 tall, 0.31 thick: barrel +X, sights +Y, flank +Z), the placement's `scale` makes it ~0.26 m long.
+const PROP_MODELS: Dictionary = {"pistol": "res://ASSETS/props/pistol_quaternius/pistol.glb"}
+const PROP_DEFAULTS: Dictionary = {"pistol": {"bone": "RightHand", "pos": Vector3(0.0081, 0.0164, 0.010), "scale": 0.0542}}
 ## The library's name on an actor's AnimationPlayer: its clips play as `bank/<id>`.
 const LIBRARY_NAME := &"bank"
 const HIPS := "Hips"
@@ -241,9 +249,94 @@ static func _load_bank_animation(figure: String, id: String) -> Animation:
 	return anim
 
 
+## The pose `id` of `figure`: the Director's file when there is one (`POSE_FILE`), else the solved one. A one-key Animation whose meta `source` says which and whose meta
+## `props` carries the model-in-hand placements. Null (loud) when it cannot be built.
+static func bank_pose(figure: String, id: String) -> Animation:
+	var path: String = POSE_FILE % [figure, id]
+	if FileAccess.file_exists(path):
+		return _pose_from_file(figure, id, path)
+	return solved_pose(figure, id)
+
+
+## The default placement of the prop `prop` in its bone's frame: {bone, pos, quat, scale}. The model's barrel (+X) lies along the fingers (the hand's +Y), its sights (+Y) toward the
+## thumb (the hand's +X) and its flank (+Z) onto the back of the hand (-Z).
+static func prop_default(prop: String) -> Dictionary:
+	var d: Dictionary = PROP_DEFAULTS[prop]
+	var basis := Basis(Vector3(0.0, 1.0, 0.0), Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0))
+	return {"bone": d["bone"], "pos": d["pos"], "quat": basis.get_rotation_quaternion(), "scale": d["scale"]}
+
+
+## A pose read from the Director's JSON (see `POSE_FILE`). Every bone is checked against the rig and a bad row is said loudly with its path; null when nothing usable is in it.
+static func _pose_from_file(figure: String, id: String, path: String) -> Animation:
+	var errors: Array = []
+	var row: Dictionary = JsonFile.read_object(path, "TripoFigure", errors)
+	var rig := _rig(figure)
+	if row.is_empty() or rig.is_empty():
+		if not rig.is_empty():
+			(rig["holder"] as Node).free()
+		return null
+	var holder := rig["holder"] as Node
+	var skeleton := rig["skeleton"] as Skeleton3D
+	var pose := Animation.new()
+	pose.length = 0.1
+	pose.set_meta("source", "file")
+	var bones: Dictionary = row.get("bones", {})
+	for name: String in bones:
+		var idx: int = TripoPoseKitRef.find_bone(skeleton, name)
+		var q: Array = bones[name] as Array if bones[name] is Array else []
+		if idx < 0 or q.size() != 4:
+			push_error("[TripoFigure] %s: bone '%s' is %s: skipped" % [path, name, "not in the rig" if idx < 0 else "not [x, y, z, w]"])
+			continue
+		var track: int = pose.add_track(Animation.TYPE_ROTATION_3D)
+		pose.track_set_path(track, NodePath("%s:%s" % [holder.get_path_to(skeleton), skeleton.get_bone_name(idx)]))
+		pose.rotation_track_insert_key(track, 0.0, Quaternion(float(q[0]), float(q[1]), float(q[2]), float(q[3])).normalized())
+	var props: Dictionary = {}
+	var rows: Dictionary = row.get("props", {})
+	for prop: String in rows:
+		var p: Dictionary = rows[prop] as Dictionary if rows[prop] is Dictionary else {}
+		if not PROP_MODELS.has(prop) or TripoPoseKitRef.find_bone(skeleton, String(p.get("bone", ""))) < 0:
+			push_error("[TripoFigure] %s: prop '%s' is unknown or on a bone the rig lacks: skipped" % [path, prop])
+			continue
+		var pos: Vector3 = JsonFile.vector3(p.get("pos"), Vector3.ZERO, "%s prop %s pos" % [path, prop], errors)
+		var qq: Array = p.get("quat", []) as Array if p.get("quat") is Array else []
+		if qq.size() != 4:
+			push_error("[TripoFigure] %s: prop '%s' has no quat [x, y, z, w]: skipped" % [path, prop])
+			continue
+		props[prop] = {"bone": String(p["bone"]), "pos": pos, "quat": Quaternion(float(qq[0]), float(qq[1]), float(qq[2]), float(qq[3])).normalized(), "scale": float(p.get("scale", 1.0))}
+	pose.set_meta("props", props)
+	holder.free()
+	if pose.get_track_count() == 0:
+		push_error("[TripoFigure] %s holds no usable bone" % path)
+		return null
+	return pose
+
+
+## `pose` as the JSON the Director's file uses (see `POSE_FILE`), bones by Mixamo name without prefix. For the dump that starts a Blender session and for the selftest.
+static func pose_to_json(figure: String, id: String, pose: Animation) -> Dictionary:
+	var bones: Dictionary = {}
+	for t in range(pose.get_track_count()):
+		if pose.track_get_type(t) != Animation.TYPE_ROTATION_3D:
+			continue
+		var name: String = String(pose.track_get_path(t)).get_slice(":", 1)
+		for prefix: String in MIXAMO_PREFIXES:
+			if not prefix.is_empty() and name.begins_with(prefix):
+				name = name.trim_prefix(prefix)
+				break
+		var q: Quaternion = pose.track_get_key_value(t, 0)
+		bones[name] = [q.x, q.y, q.z, q.w]
+	var props: Dictionary = {}
+	var have: Dictionary = pose.get_meta("props", {})
+	for prop: String in have:
+		var p: Dictionary = have[prop]
+		var pos: Vector3 = p["pos"]
+		var qq: Quaternion = p["quat"]
+		props[prop] = {"bone": p["bone"], "pos": [pos.x, pos.y, pos.z], "quat": [qq.x, qq.y, qq.z, qq.w], "scale": p["scale"]}
+	return {"format": "infiltraitor-pose", "v": 1, "figure": figure, "id": id, "bones": bones, "props": props}
+
+
 ## The pose `id` of `figure` (`POSES`) as a one-key Animation: the listed bones' rotations at one time of a bank clip, then its arms solved when the spec says so.
 ## Null (loud) when the clip is missing or the solve fails.
-static func bank_pose(figure: String, id: String) -> Animation:
+static func solved_pose(figure: String, id: String) -> Animation:
 	if not POSES.has(id):
 		push_error("[TripoFigure] no pose '%s' (have %s)" % [id, POSES.keys()])
 		return null
@@ -279,6 +372,11 @@ static func bank_pose(figure: String, id: String) -> Animation:
 		if not solved:
 			push_error("[TripoFigure] the pose '%s' of %s could not be solved" % [id, figure])
 			return null
+	pose.set_meta("source", "solved")
+	var props: Dictionary = {}
+	for prop: String in spec.get("props", []):
+		props[prop] = prop_default(prop)
+	pose.set_meta("props", props)
 	return pose
 
 

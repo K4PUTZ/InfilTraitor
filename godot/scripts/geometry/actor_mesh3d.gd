@@ -74,14 +74,6 @@ const PISTOL_SHOWN_FROM: float = 0.5
 ## The gun grows from this share of its size over the next `PISTOL_GROW` of the path, so it comes out of the coat instead of popping.
 const PISTOL_FROM_SCALE: float = 0.35
 const PISTOL_GROW: float = 0.12
-const PISTOL_MODEL := "res://ASSETS/props/pistol_quaternius/pistol.glb"
-## Where the pistol sits in the right hand's bone space, per figure (the 1 m export's metres, 1 = the figure's height). Measured on the glb (its mesh
-## node carries a x100 scale, so it is 2.45 long): the barrel is its +X, the sights side its +Y (the grip drops to -Y), its flank +Z; the hand's
-## fingers are +Y, its thumb +X, its palm +Z. `scale` makes it about 0.26 m long (a little over the real 0.2 m: it has to read from the 30° camera).
-const PISTOL_HAND: Dictionary = {
-	"male": {"pos": Vector3(0.0081, 0.0164, 0.010), "euler_deg": Vector3.ZERO, "scale": 0.0542},
-	"female": {"pos": Vector3(0.0081, 0.0164, 0.010), "euler_deg": Vector3.ZERO, "scale": 0.0542},
-}
 
 var _board: Node3D = null
 var _source: ActorPose = null
@@ -103,7 +95,8 @@ var _tripo_units: float = 1.0        ## world units per metre of the 1 m Tripo e
 var _aim: ActorAimPoseRef = null      ## the aim layer of a Tripo Agent (null: its game set carries no aim pose)
 var _aim_t: float = 0.0              ## how far the aim has travelled, 0 (down) to 1 (held)
 var _pistol: Node3D = null           ## the pistol in the right hand (hidden until the fists reach the sternum)
-var _pistol_holder: Node3D = null    ## its scale node
+var _pistol_holder: Node3D = null    ## carries the placement (the pose's, blended between the stops) and the grow-in scale
+var _pistol_stops: Array = []        ## [[weight, placement {bone, pos, quat, scale}], ...] one per aim stop, from the poses' `props` meta
 var _walked: float = 0.0             ## ground covered while walking, world units: the move clip's phase
 var _move_pass: float = 0.0          ## world units of ground one pass of the move clip covers
 var _last_ground := Vector2(NAN, NAN)
@@ -270,30 +263,50 @@ func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 		layer.queue_free()
 		return
 	_aim = layer
-	var hand: int = TripoFigureRef.find_bone(_skeleton, "RightHand")
-	var scene := load(PISTOL_MODEL) as PackedScene
+	_build_pistol(stops)
+
+
+## The pistol in the hand: its placement comes from the poses (`props` meta: the Director's, set in Blender, or the default), one per stop, blended between the stops
+## like the arms are. Missing model or bone: said loudly, the agent aims empty-handed.
+func _build_pistol(stops: Array) -> void:
+	_pistol_stops.clear()
+	for stop: Array in stops:
+		var props: Dictionary = (stop[1] as Animation).get_meta("props", {})
+		_pistol_stops.append([float(stop[0]), props["pistol"] if props.has("pistol") else TripoFigureRef.prop_default("pistol")])
+	var bone_name: String = String((_pistol_stops[_pistol_stops.size() - 1][1] as Dictionary)["bone"])
+	var hand: int = TripoFigureRef.find_bone(_skeleton, bone_name)
+	var model_path: String = String(TripoFigureRef.PROP_MODELS["pistol"])
+	var scene := load(model_path) as PackedScene
 	if hand < 0 or scene == null:
-		push_error("[ActorMesh3D] no right hand or no pistol model (%s): the agent aims empty-handed" % PISTOL_MODEL)
+		push_error("[ActorMesh3D] no bone '%s' or no pistol model (%s): the agent aims empty-handed" % [bone_name, model_path])
+		_pistol_stops.clear()
 		return
 	var attach := BoneAttachment3D.new()
 	attach.name = "PistolHand"
 	attach.bone_name = _skeleton.get_bone_name(hand)
 	_skeleton.add_child(attach)
-	var holder := Node3D.new()   ## carries the grow-in scale; the model keeps its own placement
+	var holder := Node3D.new()   ## its transform is the pose's placement of the model's scene root, times the grow-in
 	attach.add_child(holder)
-	var model := scene.instantiate() as Node3D
-	var place: Dictionary = PISTOL_HAND[figure]
-	var s: float = float(place["scale"])
-	var euler: Vector3 = place["euler_deg"]
-	## The model's X (barrel) onto the hand's Y (fingers), its Y (sights) onto the thumb (X), its Z onto the back of the hand (-Z); then the figure's own trim.
-	var basis := Basis(Vector3(0.0, 1.0, 0.0), Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0))
-	basis = Basis.from_euler(Vector3(deg_to_rad(euler.x), deg_to_rad(euler.y), deg_to_rad(euler.z))) * basis
-	model.transform = Transform3D(basis.scaled(Vector3.ONE * s), place["pos"])
-	holder.add_child(model)
+	holder.add_child(scene.instantiate() as Node3D)
 	_apply_board_light(attach)
 	attach.visible = false
 	_pistol = attach
 	_pistol_holder = holder
+
+
+## The pistol's placement at `weight` of the aim path: the stops' placements blended with the same easing the arms use (`ActorAimPose3D`): position and scale lerped,
+## rotation slerped; before the first stop it is the first one.
+func _pistol_placement(weight: float) -> Transform3D:
+	var k: int = 0
+	while k < _pistol_stops.size() - 1 and weight > float(_pistol_stops[k][0]):
+		k += 1
+	var to: Dictionary = _pistol_stops[k][1]
+	var from: Dictionary = to if k == 0 else _pistol_stops[k - 1][1]
+	var from_w: float = 0.0 if k == 0 else float(_pistol_stops[k - 1][0])
+	var t: float = smoothstep(0.0, 1.0, clampf((weight - from_w) / (float(_pistol_stops[k][0]) - from_w), 0.0, 1.0)) if k > 0 else 1.0
+	var q: Quaternion = (from["quat"] as Quaternion).slerp(to["quat"] as Quaternion, t)
+	var s: float = lerpf(float(from["scale"]), float(to["scale"]), t)
+	return Transform3D(Basis(q).scaled(Vector3.ONE * s), (from["pos"] as Vector3).lerp(to["pos"] as Vector3, t))
 
 
 ## The aim layer's weight this frame: toward 1 while the pistol is held aimed and standing, toward 0 otherwise (the raise and the lowering are the same
@@ -307,7 +320,8 @@ func _update_aim(state: Dictionary) -> void:
 	_aim.weight = _aim_t
 	if _pistol != null:
 		_pistol.visible = _aim_t >= PISTOL_SHOWN_FROM
-		_pistol_holder.scale = Vector3.ONE * lerpf(PISTOL_FROM_SCALE, 1.0, clampf((_aim_t - PISTOL_SHOWN_FROM) / PISTOL_GROW, 0.0, 1.0))
+		var grow: float = lerpf(PISTOL_FROM_SCALE, 1.0, clampf((_aim_t - PISTOL_SHOWN_FROM) / PISTOL_GROW, 0.0, 1.0))
+		_pistol_holder.transform = _pistol_placement(_aim_t) * Transform3D(Basis.from_scale(Vector3.ONE * grow), Vector3.ZERO)
 
 
 ## A dev flag through `DevFlags` (the APK's overrides file), or the environment when the autoload is absent (a bare script run).

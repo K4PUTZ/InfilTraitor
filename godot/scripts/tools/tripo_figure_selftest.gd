@@ -85,6 +85,40 @@ func _test_figure(figure: String) -> void:
 	for pose_id: String in TripoFigureRef.POSES:
 		_test_pose(figure, pose_id, lib)
 	_test_aim_layer(figure, lib)
+	_test_pose_file(figure)
+
+
+## The Director's pose file (`TripoFigure.POSE_FILE`): a pose and a prop written as the JSON the Blender lab writes are read back as exactly that, from the file, with the prop's
+## placement in the meta the game reads. A file in `user://` stands in for his: the real path is his, never written by a test.
+func _test_pose_file(figure: String) -> void:
+	var solved: Animation = TripoFigureRef.solved_pose(figure, "aim_pistol")
+	_check(solved != null and solved.get_meta("source", "") == "solved" and (solved.get_meta("props", {}) as Dictionary).has("pistol"),
+		"%s: a solved pose says so and carries its default pistol placement" % figure)
+	if solved == null:
+		return
+	var data: Dictionary = TripoFigureRef.pose_to_json(figure, "aim_pistol", solved)
+	var bones: Dictionary = data["bones"]
+	var moved: Quaternion = Quaternion(Vector3.UP, 0.3)
+	bones["RightForeArm"] = [moved.x, moved.y, moved.z, moved.w]
+	var props: Dictionary = data["props"]
+	props["pistol"]["pos"] = [0.0123, 0.0456, 0.0789]
+	props["pistol"]["scale"] = 0.06
+	var path: String = "user://tripo_pose_file_selftest.json"
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(JSON.stringify(data))
+	file.close()
+	var read: Animation = TripoFigureRef._pose_from_file(figure, "aim_pistol", path)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	_check(read != null and read.get_meta("source", "") == "file", "%s: a pose file is read and says it came from a file" % figure)
+	if read == null:
+		return
+	_check(read.get_track_count() == solved.get_track_count(), "%s: the file's %d bones are all in the pose (%d)" % [figure, solved.get_track_count(), read.get_track_count()])
+	var back: Dictionary = TripoFigureRef.pose_to_json(figure, "aim_pistol", read)
+	var arm: Array = back["bones"]["RightForeArm"]
+	_check(_qdiff(Quaternion(arm[0], arm[1], arm[2], arm[3]), moved) < 0.00001, "%s: the bone he moved comes back as he wrote it" % figure)
+	var prop: Dictionary = (read.get_meta("props") as Dictionary)["pistol"]
+	_check((prop["pos"] as Vector3).distance_to(Vector3(0.0123, 0.0456, 0.0789)) < 0.00001 and absf(float(prop["scale"]) - 0.06) < 0.00001 and prop["bone"] == "RightHand",
+		"%s: the pistol's placement comes back as he wrote it (%s)" % [figure, prop])
 
 
 ## How far apart two rotations are, as the distance between their quaternions (the shorter of q and -q: the same rotation). `Quaternion.angle_to` is not used:

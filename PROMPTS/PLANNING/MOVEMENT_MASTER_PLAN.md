@@ -337,6 +337,15 @@ path back, the gun going away at the chest. No clip was generated. What carries 
 | Aim at the target's real angle | the same kit with the target in the figure's frame: the arms could follow the guard past D44's four facings | not built |
 | Additives (breathing, a head scan, a flinch) | small bone offsets over anything | not built |
 
+**Refining the key poses by hand, in Blender (Director, 2026-11-08: "eu monto a base, você faz o ajuste fino"; built the same day).** The solver is the BASE, the Director's pose is the truth:
+`python3 tools/persistent/pose_lab.py open aim_pistol --figure male` builds `ASSETS/MODELS/fit/POSE_<id>_<FIG>.blend` (the LIGHT Agent in the pose the game has today, the unnamed bones as the idle has them,
+the dressed pieces only, the pistol as the object `PROP_pistol` parented to the hand) and opens it; he poses in Pose Mode, moves the pistol, saves; `pose_lab.py save aim_pistol --figure male --take` writes
+`ASSETS/ANIMATIONS/poses/<figure>/<id>.json`, rebuilds the game set and films the take. A pose file REPLACES the solved pose (`TripoFigure.POSE_FILE`); the weapon's placement is IN the pose (one per stop,
+blended between the stops like the arms), so "push the pistol forward" is a move of that object; an existing .blend is never rebuilt over his work; `reset` sets his file aside. **The conversion is not guessed:**
+Godot dumps every bone's rest rotation, the Blender script derives each bone's frame correction from it, and the result was checked against Blender's OWN glTF exporter read back in Godot (26 bones to 6e-7, the
+prop's placement to 1e-7), and by a rehearsal (a pistol pushed 3 cm in Blender showed 3 cm further on the board). The same pose file plays on both figures; the female has her own .blend when she needs a retouch.
+Files: `tools/persistent/pose_lab.py`, `tools/asset_generation/tripo/tripo_pose_lab.py`, `godot/scripts/tools/tripo_pose_dump.gd`; a pose needs only the key poses, the engine blends (§4.1 levers).
+
 **What the test taught (so it is not rediscovered):**
 - **`fire` is a standing LONG-GUN hold, not a pistol aim, and it has no recoil:** its two hands are 30 cm apart (a rear grip and a fore-end), its torso twisted and its pelvis yawed and leaned
   25 degrees; its keys vary by < 0.002. It is the shotgun / rifle aim, once those have a model on the new figure. **`shoot` is a run into a KNEEL**, not a standing aim.

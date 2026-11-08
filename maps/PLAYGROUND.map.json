@@ -888,9 +888,9 @@
           "id": "agent_close_rail",
           "keys": [
             {
-              "frame": "detail",
+              "frame": "close",
               "target": "@agent_close",
-              "view": "N",
+              "view": "S",
               "hold": 300
             }
           ]
@@ -1323,9 +1323,9 @@
             0.5
           ],
           "extent": [
-            2.5,
-            2.5,
-            1.25
+            0.5,
+            0.5,
+            0.75
           ],
           "tags": [
             "detail"

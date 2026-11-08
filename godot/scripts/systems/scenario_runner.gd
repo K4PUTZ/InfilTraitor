@@ -120,7 +120,7 @@ const ARITY: Dictionary = {
 ## into the anchor's raw ground cell BEFORE parsing, so the event and the camera read the same anchor.
 const CELL_TOKENS: Dictionary = {"throw": [2], "aim": [1], "centre": [1], "place_guard": [2], "walk": [1], "decal_wall": [2], "occ_bench": [1, 2]}
 ## CAPTURE_RAILS (§8.1): framing modes and views of `frame` / `still`.
-const FRAME_MODES: PackedStringArray = ["wide", "detail", "fit"]
+const FRAME_MODES: PackedStringArray = ["wide", "detail", "close", "fit"]
 const VIEWS: PackedStringArray = ["N", "E", "S", "W"]
 const ActorViabilityBenchRef = preload("res://godot/scripts/debug/actor_viability_bench.gd")
 const ScenarioDrawRef = preload("res://godot/scripts/systems/scenario_draw.gd")  ## waits for a drawn frame, never forever (an occluded harness window draws nothing)
@@ -262,7 +262,7 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 				step["name"] = rest[0]
 				rest = rest.slice(1)
 			if rest.size() < 2 or not FRAME_MODES.has(rest[0]):
-				return "%s takes a mode (wide, detail, fit) and at least one target (@id, a region, @map)" % op
+				return "%s takes a mode (wide, detail, close, fit) and at least one target (@id, a region, @map)" % op
 			step["mode"] = rest[0]
 			rest = rest.slice(1)
 			step["view"] = ""

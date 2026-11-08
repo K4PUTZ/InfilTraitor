@@ -531,7 +531,7 @@ static func _check_tags(row: Dictionary, what: String, errors: Array) -> void:
 const KEY_FIELDS: Array[String] = ["frame", "target", "view", "move", "hold", "ease", "turn", "follow", "centre", "zoom"]
 ## `env` (2026-10-17): dev flags the take's events need, `{"SHOT_AGENT_CELL": "40,11"}`; `tools/persistent/capture.py` hands them to the game as `INFILTRAITOR_<key>` (the engine itself ignores the field).
 const TAKE_FIELDS: Array[String] = ["id", "profile", "rail", "steps", "at_key", "after_hold", "length", "seed", "note", "env"]
-const FRAME_MODES: Array[String] = ["wide", "detail", "fit", "explicit"]
+const FRAME_MODES: Array[String] = ["wide", "detail", "close", "fit", "explicit"]
 const EASES: Array[String] = ["linear", "in_out", "out"]
 const TURNS: Array[String] = ["cut", "orbit"]
 const VIEWS: Array[String] = ["N", "E", "S", "W"]

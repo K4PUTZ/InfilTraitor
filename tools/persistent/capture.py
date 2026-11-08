@@ -170,7 +170,7 @@ def main() -> int:
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--take", help="a take id: authored in the map's capture section, or overview / region:<id> / poi:<id>")
     g.add_argument("--still", help="an anchor to frame (a POI, a region, map)")
-    ap.add_argument("--mode", default="wide", choices=["wide", "detail"], help="--still framing")
+    ap.add_argument("--mode", default="wide", choices=["wide", "detail", "close"], help="--still framing")
     ap.add_argument("--view", default="N", choices=["N", "E", "S", "W", "all"], help="--still view")
     ap.add_argument("--profile", default=None, help="the window's profile (default: the profiles file's default, engine 1280x720); "
                     "given explicitly it also overrides a take's own profile in the game (`showcase` = engine at 1920x1080)")

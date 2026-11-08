@@ -11,10 +11,10 @@ extends RefCounted
 const PITCH_DEG: float = -30.0
 const BASE_YAW_DEG: float = 45.0
 const VIEW_YAW: Dictionary = {"N": 0.0, "E": 90.0, "S": 180.0, "W": 270.0}   ## = Board3DLive.VIEW_YAW_DEG
-const MARGIN: Dictionary = {"wide": 0.10, "detail": 0.05, "fit": 0.08}
+const MARGIN: Dictionary = {"wide": 0.10, "detail": 0.05, "fit": 0.08, "close": 0.10}
 ## The capture's own zoom range (the gameplay clamp 0.20 .. 1.20 is right for the player and wrong for a capture: §6.2).
 const ZOOM_MIN: float = 0.08
-const ZOOM_MAX: float = 2.0
+const ZOOM_MAX: float = 4.0
 ## A point framed in `detail` grows to this box around it (x, height, y in world units), so it still frames a scene.
 const DETAIL_MIN_BOX: Vector3 = Vector3(3.0, 1.0, 3.0)
 
@@ -24,7 +24,7 @@ static func basis_for_yaw(yaw_deg: float) -> Basis:
 	return Basis.from_euler(Vector3(deg_to_rad(PITCH_DEG), deg_to_rad(BASE_YAW_DEG + yaw_deg), 0.0))
 
 
-## `boxes`: world AABBs (a zero-size AABB is a point). `mode`: wide / detail / fit. Returns
+## `boxes`: world AABBs (a zero-size AABB is a point). `mode`: wide / detail / close / fit (`close` = the box as authored, no 3 GU floor: a figure fills the frame). Returns
 ## `{ground_centre: Vector2 (world x, z), zoom: float, fits: bool, size: float (world units of height)}`.
 static func frame(boxes: Array, mode: String, yaw_deg: float, canvas: Vector2, px_per_unit: float) -> Dictionary:
 	var b: Basis = basis_for_yaw(yaw_deg)

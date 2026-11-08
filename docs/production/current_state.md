@@ -612,6 +612,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-11-06_LIGHT_FROM_BASE.md
 - RESUMO_SESSAO_2026-11-06_LIGHT_WALK.md
 - RESUMO_SESSAO_2026-11-07_TEXTURING_POLICE_COAT_SIDES.md
+- RESUMO_SESSAO_2026-11-08_FACES_BY_HAND.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

@@ -221,3 +221,34 @@ ASSETS/MODELS/sources/*.jpg
 # the characters' own maps (ACTOR D87): the grayscale details (512, ~100 KB each) and the heads' painted maps (1024, < 1 MB) are sources
 !ASSETS/MODELS/official/detail/*.png
 !ASSETS/MODELS/official/painted/*.png
+
+# ASSET ART IN GIT (Director, 2026-11-08): every model and painting is versioned so a clean clone runs. ASSETS/* still hides
+# the rest (ISOMETRIC generated frames, photo_src, audio outside MUSIC). Heavy media stays out, below.
+!ASSETS/MODELS/
+!ASSETS/MODELS/**
+!ASSETS/TEXTURES/
+!ASSETS/TEXTURES/**
+!ASSETS/props/
+!ASSETS/props/**
+!ASSETS/ANIMATIONS/
+!ASSETS/ANIMATIONS/**
+!ASSETS/materials/*/*.png
+!ASSETS/materials/*/*/
+!ASSETS/materials/*/*/**
+# ...the global image / source-file rules above are re-included here, for ASSETS only
+!ASSETS/**/*.png
+!ASSETS/**/*.jpg
+!ASSETS/**/*.psd
+!ASSETS/**/*.svg
+# Heavy media and regenerable leftovers stay local, anywhere under ASSETS/
+ASSETS/**/*.blend1
+ASSETS/**/*.blend2
+ASSETS/**/*.import
+ASSETS/**/*.mp4
+ASSETS/**/*.mov
+ASSETS/**/*.wav
+ASSETS/**/*.ogg
+ASSETS/**/*.mp3
+ASSETS/**/*.flac
+ASSETS/photo_src/
+ASSETS/ISOMETRIC/source_assets/generated/

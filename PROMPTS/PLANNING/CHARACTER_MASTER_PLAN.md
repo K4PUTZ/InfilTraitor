@@ -1,6 +1,8 @@
 # CHARACTER_MASTER_PLAN
 ## The Agent — Model, Rig, Poses, Animation, Layering — v2.1
 
+> ⏭️ **2026-11-08 (later) — PROVISIONAL (Director): both sides of the coat wear the outer colour on both LIGHT Agents (`tripo_coat_one_colour.py`): the lining that comes out through the outer wall on the LIGHT no longer shows; §7a has the ruling, `docs/production/technical_debt.md` the evidence and the work owed to the optimization phase (M7.0).**
+
 > ⏭️ **2026-11-08 — the faces are DONE: both painted by the Director by hand (a layered PSD with the UV lines as a guide) and installed in the LIGHT Agents; the shirt's "lining" seen in Blender is the `_Coated` pieces poking through the whole ones (the whole shirt alone is clean), and the dark patches on the faces are Blender's shading, not the maps; the shirt's / trousers' defects were not reproduced and are parked (the Director). NEXT (§7a): the lower face for the game camera, the male's neck, the dress variants in the chain, the in-game switch and tie, the factions' symbols. Record: `PROMPTS/RESUMO_SESSAO_2026-11-08_FACES_BY_HAND.md`.**
 > ⏭️ **2026-11-07 — texturing (§7a, `ACTOR` D108 proposed, built in practice): the POLICE dress is installed in both LIGHT Agents (blue shirt, white tie, denim jeans, the mustard coat with its black lining, a first police emblem); the coat is CLOSED (the lining stays inside: D94's lining gap and the coat's two sides, `tripo_coat_sides.py`); the female's face retouched. NEXT (§7a's list): the Director paints the faces by hand (`ASSETS/MODELS/fit/FACE_PAINT_<FIG>.blend`), then the shirt's and trousers' defects, the lower face for the game camera, the dress variants in the chain. Record: `PROMPTS/RESUMO_SESSAO_2026-11-07_TEXTURING_POLICE_COAT_SIDES.md`.**
 
@@ -1584,6 +1586,7 @@ fixes defects. "Pode seguir na ordem que preferir com todas as etapas."
 **Status 2026-11-07 (session record `PROMPTS/RESUMO_SESSAO_2026-11-07_TEXTURING_POLICE_COAT_SIDES.md`).** Installed in both LIGHT Agents: the
 POLICE dress (blue shirt, white tie, denim jeans, the mustard coat with its black lining, `emblem_police`), the faces on FaceUV, the leather's
 sheen. **The coat is CLOSED** (Director, 2026-11-07): the lining no longer shows through the skirt (D94's lining gap + the coat's two sides).
+**2026-11-08 (later), PROVISIONAL (Director): both sides of the coat in the outer colour.** The black wedges on the outside of the coat are the lining coming out through the outer wall on the LIGHT (measured: the FULL with the police master is clean from the side and the back; `docs/production/technical_debt.md`). Until the optimization phase corrects it or regenerates the coat, every texel of the lining's colour wears the outer cloth (`tools/asset_generation/tripo/tripo_coat_one_colour.py`, the map `painted/<fig>_coat_police_one_colour_light.png`) and `coat_sides` has lining = outer. The two-colour map is kept (`painted/<fig>_coat_police_light.png`).
 **NEXT, in this order:**
 1. **DONE 2026-11-08: the faces were painted by hand by the Director (Photopea, a layered PSD with the UV lines as a guide layer made from the mesh's real UVs) and installed: both masters at 512 into `painted/<fig>_head_light.png` and `glb_swap_image.py` on both LIGHT GLBs; checked unlit against the FULL (same colours, no stains: the dark patches seen in Blender previews are its shading, not the map).** Original step: **The faces by hand (the Director, from 2026-11-08):** `ASSETS/MODELS/fit/FACE_PAINT_<FIG>.blend` (`tripo_face_paint_file.py`: the LIGHT at
    rest, the head wearing the 2048 master by path; Image > Save writes `painted/<fig>_face_master.png`). Then Claude: the master at 512 into
@@ -1597,7 +1600,7 @@ sheen. **The coat is CLOSED** (Director, 2026-11-07): the lining no longer shows
 3. **The lower face for the game camera:** the brim hides the eyes and brows of both figures, so what reads is the nose, the mouth and the
    chin; their value structure (the mouth line, the jaw's shadow) is the lever. A proposal to make, after the Director's hand paint.
 4. **The male's neck:** a dark line under the jaw (seen 2026-11-07, not looked at).
-5. **The dress variants in the chain:** `build_light_base.sh` builds the CIVIL coat (`CT_MASTER` = the black master) and no dress parameter
+5. **The dress variants in the chain:** (while the provisional ruling above stands, `tripo_coat_one_colour.py --install` is the last step of the installed POLICE coat.) `build_light_base.sh` builds the CIVIL coat (`CT_MASTER` = the black master) and no dress parameter
    exists; the installed POLICE coat was made by hand (`CR_PALETTE=police` on the FULL, `tripo_coat_transfer.py`, `tripo_coat_sides.py`,
    `glb_swap_image.py` + `glb_coat_extras.py`), and so were the jeans (`AGENT_SURFACE.json`). A re-run of the chain as it stands gives the
    black coat and the jeans. The chain has not been re-run end to end since TX began.

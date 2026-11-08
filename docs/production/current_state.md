@@ -13,6 +13,7 @@
 - **The Tripo male is the game's agent** (`TRIPO_FIGURE=female` swaps, `none` restores the old rig); **the old agent model is the enemy officer** (`actors.officers` in the map, PLAYGROUND guard 6): look only.
 - **The pistol aim is made without a credit:** with the pistol selected the agent brings his fists to the sternum, the gun comes out of the coat, he aims with both hands and puts it away on cancel, on both figures
   (`ActorAimPose3D` layer, poses from a bank frame or solved from hand targets by `TripoPoseKit`, a path of stops). `MOVEMENT` §4.1 "In-house levers" has what it proved and what only credits can make.
+- **The coat is one colour on both sides, PROVISIONALLY (Director):** the lining came out through the outer wall on the LIGHT as black wedges; correcting it or regenerating the coat is owed to the optimization phase (`technical_debt.md`, M7.0).
 - **Deferred to GAMEPLAY (Director):** AP costs (posture included) and the guard's noise indicator. **Unmeasured:** the Moto cost of the aim layer. **Open:** the shotgun / rifle / crouch / prone / throw on the new figure.
   Record: `PROMPTS/RESUMO_SESSAO_2026-11-08_AIM_IN_HOUSE.md`.
 

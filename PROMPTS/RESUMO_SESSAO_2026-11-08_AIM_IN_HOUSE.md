@@ -23,6 +23,11 @@
 - The lab shows the dressed pieces only and cuts the coat's COLOR_0 link (it draws as red / black paint in Blender; the game's shader reads it); a Blender view is still not the game's light.
 - Selftest `tripo_figure`: a pose file (bone and prop) comes back as written. `actor_mesh3d.gd` no longer has `PISTOL_HAND`: the placement is the pose's.
 
+## Later the same day: the coat's two sides made equal (PROVISIONAL, Director)
+- The black patches on the mustard coat: measured with the POLICE master, the FULL is clean from the side and the back (0.45-1.99 %) and the LIGHT is not (2.07-5.41 %): they appear on the LIGHT. A first comparison in this session used the black CIVIL master and told the Director the FULL had them too; that was wrong.
+- `tripo_coat_one_colour.py <figure> --install`: every lining-coloured texel takes the outer cloth's colour and grain, `coat_sides` lining = outer, byte edits (only the coat image's bufferView changed in each GLB, read back equal). No texel of the lining's colour is left; the buttons stay. Seen in the game on both figures, before and after.
+- The note for the optimization phase: `docs/production/technical_debt.md`, M7.0 in `milestones.md`, `CHARACTER` §7a. The three lab `.blend` nobody had edited were rebuilt with the new map; the Director's edited `POSE_aim_pistol_MALE.blend` was left alone.
+
 ## Findings worth keeping (also in the plan)
 - `fire` = a standing LONG-GUN hold (hands 30 cm apart, no recoil: keys vary < 0.002), `shoot` = a run into a kneel, S2 / S3 = fists at the belt: none is a pistol aim. The pistol aim is solved, not copied.
 - Godot: a headless script cannot trust `get_bone_global_pose` after setting poses; `Quaternion.angle_to` has a ~7e-4 rad floor on identical quaternions; a `SkeletonModifier3D` has no skeleton outside the engine's frame

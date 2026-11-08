@@ -365,4 +365,5 @@ def main():
         fail(f"unknown mode {mode}")
 
 
-main()
+if __name__ == "__main__":
+    main()

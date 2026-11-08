@@ -17,6 +17,24 @@
 
 ---
 
+## The coat's lining on the LIGHT Agents (2026-11-08) — for the optimization phase (M7.0)
+
+**Symptom:** black wedges and specks on the outside of the mustard coat of both LIGHT Agents: the flank of the skirt, the back under the collar, the shoulder, the pockets.
+
+**Measured (male, Blender, texture only, the same cameras; share of the coat's pixels at the lining's colour):**
+
+| View | FULL (`AGENT_MALE_BASE_A.glb` wearing `painted/male_coat_police_master.png`), rest / aim | LIGHT (installed two-colour map), rest / aim |
+|---|---|---|
+| Side | 0.45 % / 1.99 % | 5.41 % / 2.07 % |
+| Back 3/4 | 0.68 % / 0.87 % | 2.64 % / 5.40 % |
+| Front 3/4 (mostly the open front, which is legitimately lining) | 9.18 % / 9.71 % | 6.99 % / 9.63 % |
+
+The FULL shows the lining only where it should; the wedges appear on the LIGHT. **So the place to look is the LIGHT's build** (the coat goes from 5 296 to 1 014 faces while its two walls are 1.5-6 mm apart, and the map is carried onto the LIGHT's UV); which of the two steps puts them there was not separated. The Director's hand fit of the coat is in the BASE_A measured clean. ⚠️ Compare against the POLICE master: the first comparison used the black CIVIL master (`male_coat_master.png`), whose regions differ, and wrongly said the FULL had the patches too.
+
+**Provisional solution (Director, 2026-11-08):** both sides of the coat in the outer colour. `tools/asset_generation/tripo/tripo_coat_one_colour.py <figure> --install` writes `painted/<fig>_coat_police_one_colour_light.png` (every texel of the lining's colour takes the outer cloth's colour and grain; the buttons and the alpha are untouched) and sets `coat_sides` lining = outer. Consequence: the inside of the coat, seen through the open front, is mustard; the POLICE dress has no black lining for now.
+
+**To do in the optimization phase (Director):** try to correct it on the LIGHT (decimate the two walls together, or derive the lining from the outer wall after the decimation), **or regenerate the coat in a more professional way**. Then restore the lining: `glb_swap_image.py AGENT_<FIG>_LIGHT.glb <fig>_coat_light painted/<fig>_coat_police_light.png` (the two-colour map, kept) and `glb_coat_extras.py` with `{"version":1,"outer":"#C09525","lining":"#0B0B0D"}`. The black lining is also the CIVIL face of the reversible coat (`DESIGN` §10.6), so that dress needs this solved.
+
 ## Glass explosion on the devices (2026-10-11) — the next session's work
 Moto g04s, GLASS: the blast's heavy frames 702 / 427 / 341 / 279 ms with the under-the-flash collapse swap (619 / 488 / 278 before it);
 the cook ~0.7-0.9 s longer (the support walk). Options and the epilepsy caution for a longer flash: the session summary §4.

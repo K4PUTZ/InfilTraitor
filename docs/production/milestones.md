@@ -1205,6 +1205,7 @@ artifact in the project.**
 **Deliverables:**
 - Comprehensive QA pass
 - Performance optimization (target 60 FPS on 5-year-old devices)
+- **The coat of the LIGHT Agents: correct the lining that comes out through the outer wall, or regenerate the coat more professionally** *(Director-assigned 2026-11-08)*: until then both sides wear the outer colour. Evidence and how to restore the lining: `technical_debt.md`, "The coat's lining on the LIGHT Agents"
 - **Baking System cache + decals — final verification pass** *(Director-assigned
   2026-08-13; see the note below)*
 - **Device profiles: ultra / high / medium / low** *(Director-assigned 2026-10-09)*

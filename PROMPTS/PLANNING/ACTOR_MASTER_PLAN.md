@@ -1,6 +1,8 @@
 # ACTOR_MASTER_PLAN
 ## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v2.9
 
+> ⏭️ **2026-11-08 (later) — PROVISIONAL (Director): the coat's two sides wear the outer colour on both LIGHT Agents (`coat_sides` lining = outer, the map without black): D108's two-sided rule stays in the shader with nothing to tell apart. `CHARACTER` §7a; the work owed: `docs/production/technical_debt.md` (M7.0).**
+
 > ⏭️ **2026-11-08 — the faces painted by hand by the Director are installed in both LIGHT Agents (D108's row); record `PROMPTS/RESUMO_SESSAO_2026-11-08_FACES_BY_HAND.md`.**
 > ⏭️ **2026-11-07 — texturing (D108, still PROPOSED, built in practice by the Director's answers in `CHARACTER` §7a): the POLICE dress is installed (D82's mustard face out, the jeans, the blue shirt, the white tie); the coat's lining no longer shows through the skirt: D94's lining gap (below) and the coat's TWO SIDES (D108's row). Record: `PROMPTS/RESUMO_SESSAO_2026-11-07_TEXTURING_POLICE_COAT_SIDES.md`.**
 

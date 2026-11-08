@@ -1026,6 +1026,8 @@ follows the trail — the same chain as above. The stain and the glow are what a
 
 ## 5. Noise — `BUILT`
 
+> **Director, 2026-11-08 — the guard's noise indicator waits for the GAMEPLAY milestone**, with the AP costs (§3.1). It stays unwired until then.
+
 *Implementation: [`systems/noise.md`](systems/noise.md).*
 
 ### 5.1 Generation per tic

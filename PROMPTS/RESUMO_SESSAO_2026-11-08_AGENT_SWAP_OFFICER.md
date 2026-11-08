@@ -7,4 +7,4 @@
 - Trap met: JSON integers arrive as floats (`[5.0]`) and `Array.has(5)` is false on them; the compiler compares as ints.
 - **Ruling (Director): AP costs (posture included) wait for the GAMEPLAY milestone**, not open yet; until the engine is practically finished no action is restricted. Recorded in `DESIGN_MASTER_PLAN` §3.1; the "posture AP cost never read" item leaves the open list.
 
-## Next (open list, level 2 left): guard noise indicator unwired; the male's belt drape; shirt / trouser defects; then device rounds, MV-4 transitions, the rest as in `RESUMO_SESSAO_2026-11-08_CLOSEUP_LEVEL1.md`.
+## Next (open list, level 2 left): the male's belt drape; shirt / trouser defects; then device rounds, MV-4 transitions, the rest as in `RESUMO_SESSAO_2026-11-08_CLOSEUP_LEVEL1.md`.

@@ -97,6 +97,7 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 	# Convert to ensure proper format.
 	var guards = actors.get("guards", [])
 	runtime["patrols"] = _convert_from_json_compatible(guards)
+	runtime["officer_guards"] = actors.get("officers", [])
 
 	# --- Bridge translation (legacy_compiler): everything MapCompiler needs that the
 	# native sections can't express yet (rooms, dividers, props-in-compiler-shape,

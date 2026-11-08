@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**345 scripts · 101333 lines total** (under `godot/scripts/`)
+**345 scripts · 101363 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -158,7 +158,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1322 lines
+`class_name GuardEnemy` · extends `Node2D` · 1325 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -442,11 +442,11 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 466 lines
+`class_name ActorMesh3D` · extends `Node3D` · 475 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
-> ActorMesh3D — an actor as a live skinned mesh on the 3D board (RENDER3D R3D-ACTORS, `ACTOR` D64). THE MESH SHOWS, `ActorPose` DECIDES (step 3, the bridge). The contract the retired `ActorBillboard3D` kept: the sprite still owns every decision — facing (D44's four, D47's snap at the GU boundary), posture, grip, weapon, the walk's progress, the throw and the head's grid angle — and this node reads them each frame through `ActorPose.mesh_state()` and turns them into a yaw, an action and a time. Nothing in the actor's logic knows which of the two draws it. THE RIG is `tools/asset_generation/r3d_live_rig_export.py`'s: one skinned mesh, every motion a keyed action (`<posture>_<weapon>_<grip>`, `walk_<weapon>`, `throw_raise_<weapon>`, `throw_release_<weapon>`), the weapons on `hand_R` and the grenade on `hand_L` as `BoneAttachment3D`s. An action is never PLAYED: it is SEEKED to the fraction the sprite is at, so the walk stays locked to the step's progress (one cycle per GU, D61) and the throw to the sprite's own clock, which is what fires `throw_released`. LIT the board's way (`actor_mesh3d.gdshader`: no Godot light, one cell-plane fetch; Moto: 9 walking rigs +1.0 ms), its materials kept in sync by `Board3DLive.register_prop_light_material()` exactly as a prop's are. PLACED in BASE world coordinates: the feet are the sprite's 2D position through `Board3DLive.ground_point()` (the N lattice in every view), the yaw is the base grid step's, so a camera yaw turns the figure with the board for free. A TRIPO AGENT (MOVEMENT MV-4, first slice, 2026-11-05): with the dev flag `TRIPO_FIGURE=<female|male>` every actor wears that LIGHT Agent instead (`TripoFigure`: 65 Mixamo joints, the dressed set, the coat two-sided, its emblem, the legs pushing it) and plays the game set's clips: `idle` on its own clock while the actor stands, the move clip (`TRIPO_MOVE`, `walk` by default) while it walks, phased by the GROUND it covers (one pass of the clip per its `travel_m`), so the feet do not slide at any step length. Facing (D44, D47's snap), position and gravity are this node's, unchanged. Not yet on that figure: the weapons in the hand, the aimed grip, crouched and prone, the throw (a Tripo actor stands through them; the throw still releases on the sprite's clock), the clip transitions (a snap, D47's default) and the corrective coat keys (`ACTOR` D103, only on the base).
+> ActorMesh3D — an actor as a live skinned mesh on the 3D board (RENDER3D R3D-ACTORS, `ACTOR` D64). THE MESH SHOWS, `ActorPose` DECIDES (step 3, the bridge). The contract the retired `ActorBillboard3D` kept: the sprite still owns every decision — facing (D44's four, D47's snap at the GU boundary), posture, grip, weapon, the walk's progress, the throw and the head's grid angle — and this node reads them each frame through `ActorPose.mesh_state()` and turns them into a yaw, an action and a time. Nothing in the actor's logic knows which of the two draws it. THE RIG is `tools/asset_generation/r3d_live_rig_export.py`'s: one skinned mesh, every motion a keyed action (`<posture>_<weapon>_<grip>`, `walk_<weapon>`, `throw_raise_<weapon>`, `throw_release_<weapon>`), the weapons on `hand_R` and the grenade on `hand_L` as `BoneAttachment3D`s. An action is never PLAYED: it is SEEKED to the fraction the sprite is at, so the walk stays locked to the step's progress (one cycle per GU, D61) and the throw to the sprite's own clock, which is what fires `throw_released`. LIT the board's way (`actor_mesh3d.gdshader`: no Godot light, one cell-plane fetch; Moto: 9 walking rigs +1.0 ms), its materials kept in sync by `Board3DLive.register_prop_light_material()` exactly as a prop's are. PLACED in BASE world coordinates: the feet are the sprite's 2D position through `Board3DLive.ground_point()` (the N lattice in every view), the yaw is the base grid step's, so a camera yaw turns the figure with the board for free. A TRIPO AGENT (MOVEMENT MV-4, first slice, 2026-11-05; THE AGENT'S DEFAULT since 2026-11-08, the male unless `TRIPO_FIGURE=female`, `none` = the old rig; guards are never affected: the soldier keeps the white rig, the officer wears the old agent's `agent_live.glb`). The agent wears that LIGHT Agent instead (`TripoFigure`: 65 Mixamo joints, the dressed set, the coat two-sided, its emblem, the legs pushing it) and plays the game set's clips: `idle` on its own clock while the actor stands, the move clip (`TRIPO_MOVE`, `walk` by default) while it walks, phased by the GROUND it covers (one pass of the clip per its `travel_m`), so the feet do not slide at any step length. Facing (D44, D47's snap), position and gravity are this node's, unchanged. Not yet on that figure: the weapons in the hand, the aimed grip, crouched and prone, the throw (a Tripo actor stands through them; the throw still releases on the sprite's clock), the clip transitions (a snap, D47's default) and the corrective coat keys (`ACTOR` D103, only on the base).
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/actor_mesh3d.gdshader"`
@@ -456,12 +456,14 @@ extends `ConfirmationDialog` · 64 lines
 - `SHADOW_LIFT` = `0.005`
 - `HeadTurnRef` = `preload("res://godot/scripts/geometry/actor_head_turn3d.gd")`
 - `RIG_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"`
-- `RIG_BY_FAMILY` = `{ "": "agent_live.glb", "_enemy_white": "agent_live_enemy_white.glb", }`
+- `RIG_BY_FAMILY` = `{ "": "agent_live.glb", "_enemy_white": "agent_live_enemy_white.glb", ## The field officer (2026-11-08): the old agent's model, promoted when the Tripo figure became the agent. "_officer": "agent_live.glb", }`
 - `WEAPON_BY_SUFFIX` = `{"": "shotgun", "_pistol": "pistol", "_rifle": "shotgun"}`
 - `METRES_TO_UNITS` = `1.0 / 1.6`
 - `DEFAULT_SHADOW` = `Color(0.0, 0.0, 0.0, 0.28)`
 - `TripoFigureRef` = `preload("res://godot/scripts/geometry/tripo_figure.gd")`
 - `TRIPO_FIGURE_FLAG` = `"TRIPO_FIGURE"`
+- `AGENT_FIGURE_DEFAULT` = `"male"`
+- `TRIPO_FIGURE_NONE` = `"none"`
 - `TRIPO_MOVE_FLAG` = `"TRIPO_MOVE"`
 - `TRIPO_MOVE_DEFAULT` = `"walk"`
 - `TRIPO_IDLE` = `"idle"`
@@ -6980,7 +6982,7 @@ extends `RefCounted` · 404 lines
 
 ### `file_map_source.gd`
 
-`class_name FileMapSource` · extends `RefCounted` · 214 lines
+`class_name FileMapSource` · extends `RefCounted` · 215 lines
 
 `godot/scripts/world/maps/file_map_source.gd`
 
@@ -7028,7 +7030,7 @@ extends `RefCounted` · 404 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 712 lines
+`class_name MapCompiler` · extends `RefCounted` · 719 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -7119,7 +7121,7 @@ extends `RefCounted` · 404 lines
 
 ### `map_sections_v1.gd`
 
-`class_name MapSectionsV1` · extends `RefCounted` · 415 lines
+`class_name MapSectionsV1` · extends `RefCounted` · 424 lines
 
 `godot/scripts/world/maps/persistence/map_sections_v1.gd`
 
@@ -7142,7 +7144,7 @@ extends `RefCounted` · 404 lines
 
 ### `room.gd`
 
-extends `Node2D` · 13169 lines
+extends `Node2D` · 13170 lines
 
 `godot/scripts/world/room.gd`
 

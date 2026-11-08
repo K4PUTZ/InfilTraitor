@@ -6265,6 +6265,7 @@ func _spawn_guards(enemy_defs: Array) -> void:
 			int(entry.get("start_index", 0))
 		)
 		
+		guard.officer = bool(entry.get("officer", false))
 		## CHARACTER Part 7: the baked enemy figure, same swap the agent took.
 		## Idempotent and non-fatal — a guard with no bake keeps its vector
 		## diamond rather than vanishing from the map mid-mission.

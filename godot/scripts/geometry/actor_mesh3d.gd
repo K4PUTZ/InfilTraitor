@@ -17,8 +17,9 @@
 ## PLACED in BASE world coordinates: the feet are the sprite's 2D position through `Board3DLive.ground_point()` (the N
 ## lattice in every view), the yaw is the base grid step's, so a camera yaw turns the figure with the board for free.
 ##
-## A TRIPO AGENT (MOVEMENT MV-4, first slice, 2026-11-05): with the dev flag `TRIPO_FIGURE=<female|male>` every actor wears that
-## LIGHT Agent instead (`TripoFigure`: 65 Mixamo joints, the dressed set, the coat two-sided, its emblem, the legs pushing it) and
+## A TRIPO AGENT (MOVEMENT MV-4, first slice, 2026-11-05; THE AGENT'S DEFAULT since 2026-11-08, the male unless `TRIPO_FIGURE=female`,
+## `none` = the old rig; guards are never affected: the soldier keeps the white rig, the officer wears the old agent's `agent_live.glb`).
+## The agent wears that LIGHT Agent instead (`TripoFigure`: 65 Mixamo joints, the dressed set, the coat two-sided, its emblem, the legs pushing it) and
 ## plays the game set's clips: `idle` on its own clock while the actor stands, the move clip (`TRIPO_MOVE`, `walk` by default)
 ## while it walks, phased by the GROUND it covers (one pass of the clip per its `travel_m`), so the feet do not slide at any step
 ## length. Facing (D44, D47's snap), position and gravity are this node's, unchanged. Not yet on that figure: the weapons in the
@@ -41,6 +42,8 @@ const RIG_DIR := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"
 const RIG_BY_FAMILY := {
 	"": "agent_live.glb",
 	"_enemy_white": "agent_live_enemy_white.glb",
+	## The field officer (2026-11-08): the old agent's model, promoted when the Tripo figure became the agent.
+	"_officer": "agent_live.glb",
 }
 ## `ActorPose.weapon` (a bake suffix) -> the rig's weapon name. The rifle has no grip in `p2_grip_spike.GRIPS`, so it
 ## holds the shotgun, as the frame bake already does.
@@ -52,6 +55,9 @@ const DEFAULT_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
 const TripoFigureRef = preload("res://godot/scripts/geometry/tripo_figure.gd")
 ## Dev flags of the Tripo slice: which Agent every actor wears ("" = the r3d_live rig), and the clip it moves with.
 const TRIPO_FIGURE_FLAG := "TRIPO_FIGURE"
+## The Agent is the male LIGHT figure unless the flag says `female`; `none` puts the old r3d_live rig back on the agent (comparisons).
+const AGENT_FIGURE_DEFAULT := "male"
+const TRIPO_FIGURE_NONE := "none"
 const TRIPO_MOVE_FLAG := "TRIPO_MOVE"
 const TRIPO_MOVE_DEFAULT := "walk"
 const TRIPO_IDLE := "idle"
@@ -112,7 +118,10 @@ static var _warned_action: Dictionary = {}
 
 ## Drive this mesh from `source`. Returns false (and logs) when the rig cannot be loaded, leaving nothing half-built.
 func setup_actor(board: Node3D, source: ActorPose) -> bool:
-	var tripo: String = _dev_value(TRIPO_FIGURE_FLAG, "")
+	## Only the AGENT (family "") wears the Tripo figure; a guard keeps the rig of its own family (soldier, officer).
+	var tripo: String = _dev_value(TRIPO_FIGURE_FLAG, AGENT_FIGURE_DEFAULT) if source.frame_family.is_empty() else ""
+	if tripo == TRIPO_FIGURE_NONE:
+		tripo = ""
 	if not tripo.is_empty():
 		if not TripoFigureRef.FIGURES.has(tripo):
 			push_error("[ActorMesh3D] %s=%s: expected one of %s" % [TRIPO_FIGURE_FLAG, tripo, TripoFigureRef.FIGURES])

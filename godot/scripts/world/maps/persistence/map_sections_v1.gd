@@ -349,21 +349,30 @@ static func register_props(registry) -> void:
 			return { "items": [] }
 	))
 
+## `officers` (optional, added 2026-11-08): the indices into `guards` of the guards that are field OFFICERS (they wear the old agent's
+## model, `GuardEnemy.officer`); absent = every guard is a soldier. Kept only when present, so a map that never names one round-trips
+## byte for byte.
+static func _actors_with_officers(source: Dictionary, out: Dictionary) -> Dictionary:
+	if source.has("officers"):
+		out["officers"] = source["officers"]
+	return out
+
+
 static func register_actors(registry) -> void:
 	var SectionOwner = registry.SectionOwner
 	registry.register(SectionOwner.new(
 		"actors",
 		1,
 		func(fragment: Dictionary) -> Dictionary:
-			return {
+			return _actors_with_officers(fragment, {
 				"agent_start": fragment.get("agent_start", [0, 0]),
 				"guards": fragment.get("guards", [])
-			},
+			}),
 		func(raw: Dictionary) -> Dictionary:
-			return {
+			return _actors_with_officers(raw, {
 				"agent_start": raw.get("agent_start", [0, 0]),
 				"guards": raw.get("guards", [])
-			},
+			}),
 		{},
 		func() -> Dictionary:
 			return {

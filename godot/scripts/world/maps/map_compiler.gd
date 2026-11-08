@@ -27,6 +27,7 @@ extends RefCounted
 ##                        "flicker"?,"flicker_interval"?,                 # small/temporal (fire/candle)
 ##                      }],
 ##     "patrols":       Array[Array[Vector2i]],
+##     "officer_guards": Array[int],  (optional: indices into `patrols` of the guards that are field officers)
 ##   }
 ##
 ## Output layout dict (grid/raw coords) — identical contract to the old builder:
@@ -421,7 +422,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			l["y"] = int(light.get("y", 0)) + buffer
 		light_sources.append(l)
 
-	var enemy_defs := _build_enemy_defs(spec.get("patrols", []), offset, agent_start_raw, blocked_map, map_size)
+	var enemy_defs := _build_enemy_defs(spec.get("patrols", []), offset, agent_start_raw, blocked_map, map_size, spec.get("officer_guards", []))
 
 	## --- half-thickness panels (M3-2b) ---------------------------------------
 	## Offset-adjusted here and nowhere else (architecture Rule 7: maps use
@@ -608,9 +609,14 @@ static func _build_enemy_defs(
 		offset: Vector2i,
 		agent_start_raw: Vector2i,
 		blocked_map: Dictionary,
-		map_size: Vector2i
+		map_size: Vector2i,
+		officer_guards: Array = []
 ) -> Array[Dictionary]:
 	var defs: Array[Dictionary] = []
+	## JSON numbers arrive as floats (`[5.0]`), and `Array.has(5)` is false on them: compare as ints.
+	var officer_set: Dictionary = {}
+	for idx in officer_guards:
+		officer_set[int(idx)] = true
 	for i in range(patrols.size()):
 		var route: Array[Vector2i] = []
 		for raw in patrols[i]:
@@ -630,6 +636,7 @@ static func _build_enemy_defs(
 			"id": "guard_%d" % (i + 1),
 			"route": route,
 			"start_index": 0,
+			"officer": officer_set.has(i),
 		})
 
 	return defs

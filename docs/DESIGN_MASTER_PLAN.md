@@ -862,6 +862,10 @@ because he is dead, or because he is the head of the character's own faction.
 
 *Implementation: [`systems/movement.md`](systems/movement.md), `TurnController`.*
 
+> **Director, 2026-11-08 — AP costs wait for the GAMEPLAY milestone.** Posture changes, and every other action's AP cost, are PLANNED for
+> GAMEPLAY, the second great part of the development, which is not open yet. Until the engine is practically finished NO action is
+> restricted by cost (the posture's AP cost is deliberately never read). Do not wire a cost earlier.
+
 ### 3.1 Base structure
 - Strictly turn-based. The agent gets **2 AP** per turn.
 - Each AP buys: move, gadget/skill, attack, interact, or wait.

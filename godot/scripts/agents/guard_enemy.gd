@@ -90,6 +90,9 @@ var _los_revision: int = 0
 ## Which faction this guard serves (DESIGN_MASTER_PLAN 11.1: agency, militia, corporation). One archetype ships, and it is the Agency's;
 ## the id picks the colour of its reveal silhouette (`ActorMesh3D.REVEAL_PALETTES`).
 var faction: StringName = &"agency"
+## A field OFFICER (2026-11-08): wears the old agent's model (`ActorMesh3D` family `_officer`) instead of the soldier's white blazer. Only the
+## look so far; rank has no rules yet (GAMEPLAY milestone). Set by `Room._spawn_guards` from the map's `actors.officers`, before `attach_sprite`.
+var officer: bool = false
 var cell: Vector2i = Vector2i.ZERO
 var patrol_route: Array[Vector2i] = []
 var patrol_index: int = 0
@@ -1207,7 +1210,7 @@ func attach_sprite(p_room: Node) -> bool:
 	## (hair, beard, eyes, nose) to differentiate front/back. Inherits light
 	## response from test_white (ambient 0.75) to prevent the "branco virou cinza"
 	## issue. The faceless dark-suit _enemy palette remains in the repo.
-	s.frame_family = "_enemy_white"
+	s.frame_family = "_officer" if officer else "_enemy_white"
 	## WHITE-AMBIENT-01 bracket knob, dev-only: dress the guard in another baked
 	## palette family without editing this line between runs. A bracket compared
 	## across separate edits is a bracket compared across separate binaries, and

@@ -10,6 +10,7 @@ ui.main_menu.title,MAIN MENU,MENU PRINCIPAL
 ui.main_menu.resume,RESUME,CONTINUAR
 ui.main_menu.new_game,NEW GAME,NOVO JOGO
 ui.main_menu.load,LOAD GAME,CARREGAR JOGO
+ui.main_menu.no_save,No saved game yet.,Nenhum jogo salvo ainda.
 ui.main_menu.controls,CONTROLS,CONTROLES
 ui.main_menu.options,OPTIONS,OPÇÕES
 ui.main_menu.quit,QUIT TO DESKTOP,SAIR DO JOGO

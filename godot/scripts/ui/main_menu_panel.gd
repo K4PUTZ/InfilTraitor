@@ -6,6 +6,7 @@ signal reset_requested
 signal settings_requested
 signal controls_requested
 signal showcase_requested
+signal load_requested
 
 ## Below this canvas height the menu lays out for a landscape phone (OPTIONS-01).
 const SHORT_SCREEN_HEIGHT: float = 560.0
@@ -27,6 +28,8 @@ const SHORT_SCREEN_HEIGHT: float = 560.0
 @onready var _btn_showcase := Button.new()
 @onready var _btn_options := Button.new()
 @onready var _btn_quit := Button.new()
+## Shown under the buttons when Load is pressed and there is no save to load.
+@onready var _lbl_no_save := Label.new()
 
 func _ready() -> void:
 	pausable = true
@@ -89,9 +92,13 @@ func _ready() -> void:
 	_setup_button(_btn_options, "ui.main_menu.options", _on_options_pressed)
 	_setup_button(_btn_quit, "ui.main_menu.quit", _on_quit_pressed)
 	
-	## Load has no save behind it yet: `SaveState.save_to_file()` has no caller until the stealth loop (roadmap A2). Hidden, and back with it.
-	_btn_load.disabled = true
-	_btn_load.visible = false
+	## Load stays on the menu (Director, 2026-11-08; the interface will change later). With no save behind it, pressing it says so
+	## (`SaveState.save_to_file()` has no caller until the stealth loop, roadmap A2).
+	_lbl_no_save.text = tr("ui.main_menu.no_save")
+	_lbl_no_save.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_lbl_no_save.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lbl_no_save.visible = false
+	_container.add_child(_lbl_no_save)
 	get_viewport().size_changed.connect(_fit_to_screen)
 	_fit_to_screen()
 	## OPTIONS-01: the language can change from Options while this menu is open beneath it.
@@ -113,6 +120,7 @@ func _fit_to_screen() -> void:
 func _apply_texts() -> void:
 	title = tr("ui.main_menu.title")
 	_lbl_title.text = title
+	_lbl_no_save.text = tr("ui.main_menu.no_save")
 	for pair: Array in [[_btn_resume, "ui.main_menu.resume"], [_btn_new_game, "ui.main_menu.new_game"],
 			[_btn_load, "ui.main_menu.load"], [_btn_controls, "ui.main_menu.controls"],
 			[_btn_showcase, "ui.main_menu.showcase"], [_btn_options, "ui.main_menu.options"], [_btn_quit, "ui.main_menu.quit"]]:
@@ -125,6 +133,7 @@ func _apply_texts() -> void:
 ## Enter should undo that, not risk discarding the run.
 func open() -> void:
 	super.open()
+	_lbl_no_save.visible = false
 	_btn_resume.grab_focus()
 
 func _setup_button(btn: Button, text_key: String, callable: Callable) -> void:
@@ -141,7 +150,12 @@ func _on_new_game_pressed() -> void:
 	request_close()
 
 func _on_load_pressed() -> void:
-	pass
+	if not SaveState.has_save():
+		_lbl_no_save.visible = true
+		return
+	_lbl_no_save.visible = false
+	load_requested.emit()
+	request_close()
 
 func _on_controls_pressed() -> void:
 	controls_requested.emit()

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**345 scripts · 101270 lines total** (under `godot/scripts/`)
+**345 scripts · 101297 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -4088,7 +4088,7 @@ extends `Node` · 146 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 356 lines
+`class_name SaveState` · extends `RefCounted` · 363 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -4096,6 +4096,7 @@ extends `Node` · 146 lines
 - `VoxelWeaknessRef` = `preload("res://godot/scripts/systems/destruction/voxel_weakness.gd")`
 - `FORMAT_VERSION` = `3`
 - `OLDEST_READABLE_VERSION` = `1`
+- `DEFAULT_SAVE_PATH` = `"user://save_01.json"`
 
 ---
 
@@ -6498,7 +6499,7 @@ extends `SceneTree` · 428 lines
 
 ### `main_menu_panel.gd`
 
-`class_name MainMenuPanel` · extends `WindowBase` · 156 lines
+`class_name MainMenuPanel` · extends `WindowBase` · 170 lines
 
 `godot/scripts/ui/main_menu_panel.gd`
 
@@ -6509,6 +6510,7 @@ extends `SceneTree` · 428 lines
 - `signal settings_requested`
 - `signal controls_requested`
 - `signal showcase_requested`
+- `signal load_requested`
 
 **Constants / tuning**
 - `SHORT_SCREEN_HEIGHT` = `560.0`
@@ -7140,7 +7142,7 @@ extends `RefCounted` · 404 lines
 
 ### `room.gd`
 
-extends `Node2D` · 13154 lines
+extends `Node2D` · 13160 lines
 
 `godot/scripts/world/room.gd`
 

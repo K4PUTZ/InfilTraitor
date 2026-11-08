@@ -163,6 +163,7 @@ def build(spec: dict, map_id: str, w: int = W, h: int = H) -> dict:
     sec["legacy_compiler"]["lights"] = lights
     ## CAPTURE_RAILS CR-1: the anchors of a generated segment — one region per room (2 storeys, the blocks' height) and its centre
     ## as a POI; the first room's centre is where an event is staged. Never inherited from SRC (PLAYGROUND's anchors are elsewhere).
+    sec.pop("capture", None)   ## PLAYGROUND's rails and takes aim at its own POIs; a segment would fail the load on every one
     sec["layout"] = {"v": 1, "objectives": [],
                      "regions": [{"id": "room_%d" % i, "box": {"min": [x0, y0, 0], "max": [x1, y1, 2]}, "tags": ["room"]}
                                  for i, (x0, x1, y0, y1) in enumerate(rooms)],

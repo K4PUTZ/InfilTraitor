@@ -2973,6 +2973,7 @@ func _ready() -> void:
 	_main_menu_panel = MainMenuPanelClass.new()
 	$HUD.add_child(_main_menu_panel)
 	_main_menu_panel.reset_requested.connect(_on_hud_reset_requested)
+	_main_menu_panel.load_requested.connect(_on_menu_load_requested)
 	_main_menu_panel.controls_requested.connect(_on_controls_requested)
 	_main_menu_panel.showcase_requested.connect(_on_showcase_requested)
 	_main_menu_panel.settings_requested.connect(_on_options_requested)
@@ -3286,6 +3287,11 @@ func _on_hud_end_turn_requested() -> void:
 		return
 	_pending_auto_end_turn = false
 	turn_manager.end_turn()
+
+
+func _on_menu_load_requested() -> void:
+	if not SaveState.load_from_file(self):
+		push_error("[Room] the menu's Load failed; see the [SaveState] line above")
 
 
 func _on_hud_reset_requested() -> void:

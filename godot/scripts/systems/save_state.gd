@@ -286,7 +286,14 @@ static func restore(room, data: Dictionary) -> bool:
 ## because a shipped build cannot write into its own package.
 ## ⚠️ ATTENTION (AUDIT 2026-10-07): nothing in the game calls this yet. The checkpoint is the only state that survives the app being
 ## killed (Director, 2026-10-07), so wiring a checkpoint write is owed with the stealth loop (roadmap A2).
-static func save_to_file(room, path: String = "user://save_01.json") -> bool:
+const DEFAULT_SAVE_PATH: String = "user://save_01.json"
+
+
+static func has_save(path: String = DEFAULT_SAVE_PATH) -> bool:
+	return FileAccess.file_exists(path)
+
+
+static func save_to_file(room, path: String = DEFAULT_SAVE_PATH) -> bool:
 	return write_text_atomic(path, JSON.stringify(capture(room), "\t"))
 
 
@@ -313,7 +320,7 @@ static func write_text_atomic(path: String, text: String) -> bool:
 	return true
 
 
-static func load_from_file(room, path: String = "user://save_01.json") -> bool:
+static func load_from_file(room, path: String = DEFAULT_SAVE_PATH) -> bool:
 	if not FileAccess.file_exists(path):
 		push_error("[SaveState] no save at %s" % path)
 		return false

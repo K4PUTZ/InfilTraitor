@@ -111,7 +111,7 @@ extends Node
 const ARITY: Dictionary = {
 	"framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1,
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
-	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1,
+	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "aim_cancel": 0, "canvas_check": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
 	"container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "walk": 1, "actor_bench": 2, "decal_wall": 2,
 	"skylight_hit": 0, "roof_gravity": 0, "flood": 1, "struct_audit": 0, "struct_cut": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1,
@@ -489,6 +489,11 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "Room has no scenario_aim()")
 			if not bool(room.call("scenario_aim", step["cell"])):
 				return _fail(step, "the aim did not start (see the error above)")
+		"aim_cancel":
+			if not room.has_method("scenario_aim_cancel"):
+				return _fail(step, "Room has no scenario_aim_cancel()")
+			if not bool(room.call("scenario_aim_cancel")):
+				return _fail(step, "there was no grenade aim to cancel (see the error above)")
 		"canvas_check":
 			if not room.has_method("scenario_canvas_check"):
 				return _fail(step, "Room has no scenario_canvas_check()")

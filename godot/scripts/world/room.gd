@@ -12937,6 +12937,15 @@ func scenario_aim(cell: Vector2i) -> bool:
 	return true
 
 
+## Cancels the grenade aim `scenario_aim()` opened (the real `cancel_targeting()`: the arm comes down, the fuse sparks ramp to 0).
+func scenario_aim_cancel() -> bool:
+	if _test_zone_controller == null or not _test_zone_controller.is_in_targeting_mode():
+		push_error("[Room] scenario_aim_cancel: no grenade aim is open")
+		return false
+	_test_zone_controller.cancel_targeting()
+	return true
+
+
 func _draws_on_canvas(node: Node) -> bool:
 	if not (node is CanvasItem) or not node.has_method("_draw") or not (node as CanvasItem).is_visible_in_tree():
 		return false

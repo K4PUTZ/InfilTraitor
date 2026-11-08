@@ -1012,6 +1012,22 @@
           "note": "MOVEMENT MV-4: the agent walks three cells south, stands, then three east (the real tap path); run it with INFILTRAITOR_TRIPO_FIGURE=<female|male> to see a Tripo Agent"
         },
         {
+          "id": "aim_cancel",
+          "profile": "engine",
+          "rail": "agent_close_rail",
+          "steps": [
+            "aim 29,9",
+            "wait 1.0",
+            "aim_cancel",
+            "wait 1.0"
+          ],
+          "at_key": 0,
+          "after_hold": 30,
+          "length": 240,
+          "seed": 1,
+          "note": "A grenade aim opens and is cancelled: the arm comes down in 0.12 s and the fuse sparks ramp to 0 with it"
+        },
+        {
           "id": "agent_closeup",
           "profile": "engine",
           "rail": "agent_close_rail",

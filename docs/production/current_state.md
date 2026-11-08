@@ -1,12 +1,18 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-11-07 · **Branch:** claude/r3d-actors-y5r8hs
+**Version:** 0.9.107 · **Updated:** 2026-11-08 · **Branch:** claude/r3d-actors-y5r8hs
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
 
 ---
+
+## Where the project stands — 2026-11-08 (the faces are done, painted by the Director)
+
+- **Both faces are installed in the LIGHT Agents:** the Director painted the 2048 masters by hand (Photopea, a layered PSD with the UV lines as a guide layer); the 512 maps were swapped into `AGENT_<FIG>_LIGHT.glb` with `glb_swap_image.py` and read back equal. `face_paint.json` keeps `"hand": true`.
+- **Blender previews mislead:** the "lining" on the shirt is the `_Coated` pieces poking through the whole ones (the game draws one set); the dark patches on the faces are the preview's shading (the maps are clean skin, a no-light render shows it). The shirt's / trousers' "defects" were not reproduced and are parked.
+- **Open, in order (`CHARACTER` §7a):** the lower face for the game camera; the male's neck; the dress variants in `build_light_base.sh`; the in-game dress switch and the turning tie; the factions' symbols. Record: `PROMPTS/RESUMO_SESSAO_2026-11-08_FACES_BY_HAND.md`.
 
 ## Where the project stands — 2026-11-07 (the Agents are textured: the POLICE dress; the coat closed; the faces go to the Director's hand)
 

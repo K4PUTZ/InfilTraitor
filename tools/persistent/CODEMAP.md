@@ -2542,9 +2542,9 @@ extends `RefCounted` · 74 lines
 - `PITCH_DEG` = `-30.0`
 - `BASE_YAW_DEG` = `45.0`
 - `VIEW_YAW` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": 270.0}`
-- `MARGIN` = `{"wide": 0.10, "detail": 0.05, "fit": 0.08}`
+- `MARGIN` = `{"wide": 0.10, "detail": 0.05, "fit": 0.08, "close": 0.10}`
 - `ZOOM_MIN` = `0.08`
-- `ZOOM_MAX` = `2.0`
+- `ZOOM_MAX` = `4.0`
 - `DETAIL_MIN_BOX` = `Vector3(3.0, 1.0, 3.0)`
 
 ---
@@ -4123,7 +4123,7 @@ extends `Node` · 787 lines
 **Constants / tuning**
 - `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1, "container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "walk": 1, "actor_bench": 2, "decal_wall": 2, "skylight_hit": 0, "roof_gravity": 0, "flood": 1, "struct_audit": 0, "struct_cut": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1, }`
 - `CELL_TOKENS` = `{"throw": [2], "aim": [1], "centre": [1], "place_guard": [2], "walk": [1], "decal_wall": [2], "occ_bench": [1, 2]}`
-- `FRAME_MODES` = `["wide", "detail", "fit"]`
+- `FRAME_MODES` = `["wide", "detail", "close", "fit"]`
 - `VIEWS` = `["N", "E", "S", "W"]`
 - `ActorViabilityBenchRef` = `preload("res://godot/scripts/debug/actor_viability_bench.gd")`
 - `ScenarioDrawRef` = `preload("res://godot/scripts/systems/scenario_draw.gd")`

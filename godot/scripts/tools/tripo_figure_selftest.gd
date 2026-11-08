@@ -135,7 +135,8 @@ func _test_pose(figure: String, id: String, lib: AnimationLibrary) -> void:
 	var pose: Animation = lib.get_animation(key)
 	var spec: Dictionary = TripoFigureRef.POSES[id]
 	var expected: int = (spec["bones"] as PackedStringArray).size() + (6 if spec.has("two_hand_aim") else 0)
-	_check(pose.get_track_count() == expected, "%s %s: %d rotation tracks (the listed bones, and the six solved arm bones)" % [figure, id, expected])
+	var from_file: bool = TripoFigureRef.bank_pose(figure, id).get_meta("source", "") == "file"
+	_check(from_file or pose.get_track_count() == expected, "%s %s: %d rotation tracks (the listed bones, and the six solved arm bones)" % [figure, id, expected])
 	## The set is the bank and the solver run TODAY: a pose re-spec'd without re-running tripo_game_clips.gd fails here, not on the board.
 	var fresh: Animation = TripoFigureRef.bank_pose(figure, id)
 	var worst: float = INF
@@ -147,6 +148,10 @@ func _test_pose(figure: String, id: String, lib: AnimationLibrary) -> void:
 				if String(fresh.track_get_path(u)).get_slice(":", 1) == name:
 					worst = maxf(worst, _qdiff(pose.track_get_key_value(t, 0) as Quaternion, fresh.track_get_key_value(u, 0) as Quaternion))
 	_check(worst < 0.0001, "%s %s: the game set matches the pose built now (worst bone %.7f)" % [figure, id, worst])
+	## A pose from his file is his: the solver's numbers (`two_hand_aim`) describe a pose it no longer plays. It only has to lay over the idle torso.
+	if fresh != null and fresh.get_meta("source", "") == "file":
+		_check(TripoFigureRef.pose_wrists(figure, pose).size() == 3, "%s %s: the pose file can be laid over the idle torso" % [figure, id])
+		return
 	if not spec.has("two_hand_aim"):
 		return
 	var aim: Dictionary = spec["two_hand_aim"]

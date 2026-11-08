@@ -18,7 +18,8 @@ var _stop_at: PackedFloat32Array = PackedFloat32Array()   ## each stop's weight,
 var _stop_rots: Array = []                                  ## per stop: an Array[Quaternion] aligned with `_bones`
 
 
-## `stops`: [[weight, Animation], ...] ascending, the last weight 1.0. The bones are the first stop's; a bone another stop lacks keeps the stop before's rotation (said once).
+## `stops`: [[weight, Animation], ...] ascending, the last weight 1.0. The bones are every stop's together (a hand-made aim keys the last finger joints, which the clip the draw
+## comes from does not have). A bone a stop lacks keeps the stop before's rotation, or, before its first appearance, takes the next stop's that has it.
 ## A bone the skeleton lacks is skipped (said once). False (loud) when nothing resolved or the stops are not a path.
 func load_stops(skeleton: Skeleton3D, stops: Array) -> bool:
 	_bones.clear()
@@ -33,27 +34,34 @@ func load_stops(skeleton: Skeleton3D, stops: Array) -> bool:
 			push_error("[ActorAimPose3D] the stops' weights must ascend")
 			return false
 		previous = float(stop[0])
-	var first: Dictionary = _rotations(skeleton, stops[0][1] as Animation)
-	if first.is_empty():
-		push_error("[ActorAimPose3D] the first pose has no bone this skeleton owns")
-		return false
-	_bones.append_array(PackedInt32Array(first.keys()))
-	var before: Dictionary = {}
+	var per_stop: Array[Dictionary] = []
+	var union: Dictionary = {}
 	for stop: Array in stops:
 		var here: Dictionary = _rotations(skeleton, stop[1] as Animation)
+		per_stop.append(here)
+		union.merge(here)
+	if union.is_empty():
+		push_error("[ActorAimPose3D] the poses have no bone this skeleton owns")
+		return false
+	_bones.append_array(PackedInt32Array(union.keys()))
+	for i in range(stops.size()):
 		var rots: Array[Quaternion] = []
 		for bone: int in _bones:
-			if here.has(bone):
-				rots.append(here[bone])
-			elif before.has(bone):
-				push_warning("[ActorAimPose3D] a pose lacks bone %s: it keeps the stop before's rotation" % skeleton.get_bone_name(bone))
-				rots.append(before[bone])
-			else:
-				rots.append(first[bone])
-		_stop_at.append(float(stop[0]))
+			rots.append(_rotation_at(per_stop, i, bone))
+		_stop_at.append(float((stops[i] as Array)[0]))
 		_stop_rots.append(rots)
-		before = here
 	return true
+
+
+## `bone` at stop `i`: its own key, else the nearest stop before that has one, else the nearest after.
+func _rotation_at(per_stop: Array[Dictionary], i: int, bone: int) -> Quaternion:
+	for k in range(i, -1, -1):
+		if per_stop[k].has(bone):
+			return per_stop[k][bone] as Quaternion
+	for k in range(i + 1, per_stop.size()):
+		if per_stop[k].has(bone):
+			return per_stop[k][bone] as Quaternion
+	return Quaternion.IDENTITY
 
 
 ## The rotation tracks of `pose` against `skeleton`: bone index -> Quaternion.

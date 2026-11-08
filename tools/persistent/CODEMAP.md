@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**348 scripts · 102238 lines total** (under `godot/scripts/`)
+**348 scripts · 102251 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -425,7 +425,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_aim_pose3d.gd`
 
-`class_name ActorAimPose3D` · extends `SkeletonModifier3D` · 93 lines
+`class_name ActorAimPose3D` · extends `SkeletonModifier3D` · 101 lines
 
 `godot/scripts/geometry/actor_aim_pose3d.gd`
 
@@ -6264,7 +6264,7 @@ extends `SceneTree` · 390 lines
 
 ### `tripo_figure_selftest.gd`
 
-extends `SceneTree` · 224 lines
+extends `SceneTree` · 229 lines
 
 `godot/scripts/tools/tripo_figure_selftest.gd`
 

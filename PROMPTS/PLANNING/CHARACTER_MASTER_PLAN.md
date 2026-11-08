@@ -1584,7 +1584,7 @@ fixes defects. "Pode seguir na ordem que preferir com todas as etapas."
 POLICE dress (blue shirt, white tie, denim jeans, the mustard coat with its black lining, `emblem_police`), the faces on FaceUV, the leather's
 sheen. **The coat is CLOSED** (Director, 2026-11-07): the lining no longer shows through the skirt (D94's lining gap + the coat's two sides).
 **NEXT, in this order:**
-1. **The faces by hand (the Director, from 2026-11-08):** `ASSETS/MODELS/fit/FACE_PAINT_<FIG>.blend` (`tripo_face_paint_file.py`: the LIGHT at
+1. **DONE 2026-11-08: the faces were painted by hand by the Director (Photopea, a layered PSD with the UV lines as a guide layer made from the mesh's real UVs) and installed: both masters at 512 into `painted/<fig>_head_light.png` and `glb_swap_image.py` on both LIGHT GLBs; checked unlit against the FULL (same colours, no stains: the dark patches seen in Blender previews are its shading, not the map).** Original step: **The faces by hand (the Director, from 2026-11-08):** `ASSETS/MODELS/fit/FACE_PAINT_<FIG>.blend` (`tripo_face_paint_file.py`: the LIGHT at
    rest, the head wearing the 2048 master by path; Image > Save writes `painted/<fig>_face_master.png`). Then Claude: the master at 512 into
    `painted/<fig>_head_light.png`, `glb_swap_image.py` on `AGENT_<FIG>_LIGHT.glb`, a capture in the game. Both masters are marked
    `"hand": true` in `face_paint.json`: `tripo_face_paint.py` refuses to write over them (`FP_FORCE=1` overrides and loses the paint).

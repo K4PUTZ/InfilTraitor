@@ -409,12 +409,34 @@ func fuse_fx_stop(grenade: Dictionary) -> void:
 	room.end_fuse_fx(sprite.get_instance_id())
 
 
+## Ramps a running emitter to 0 over `seconds`, then stops it (the aim's cancel: the sparks die with the arm coming down, not before).
+func fuse_fx_fade(grenade: Dictionary, seconds: float) -> void:
+	var sprite = grenade.get("sprite")
+	if sprite == null or not is_instance_valid(sprite):
+		return
+	var key: int = sprite.get_instance_id()
+	if not _fuse_fx.has(key) or seconds <= 0.0:
+		fuse_fx_stop(grenade)
+		return
+	var fx: Dictionary = _fuse_fx[key]
+	fx["fade_total"] = seconds
+	fx["fade_left"] = seconds
+	fx["fade_from"] = float(fx["intensity"])
+
+
 func fuse_fx_tick(dt: float) -> void:
 	if _fuse_fx.is_empty():
 		return
 	var board: Node = room.board3d()
 	for key in _fuse_fx.keys():
 		var fx: Dictionary = _fuse_fx[key]
+		if fx.has("fade_left"):
+			var left: float = float(fx["fade_left"]) - dt
+			if left <= 0.0:
+				fuse_fx_stop(fx["grenade"] as Dictionary)
+				continue
+			fx["fade_left"] = left
+			fx["intensity"] = float(fx["fade_from"]) * left / float(fx["fade_total"])
 		var sprite = (fx["grenade"] as Dictionary).get("sprite")
 		if sprite == null or not is_instance_valid(sprite) or not sprite.visible:
 			_fuse_fx.erase(key)
@@ -692,7 +714,7 @@ func cancel_targeting() -> void:
 		return
 	_targeting_mode = false
 	if _targeting_grenade_index >= 0 and _targeting_grenade_index < _grenades.size():
-		fuse_fx_stop(_grenades[_targeting_grenade_index])
+		fuse_fx_fade(_grenades[_targeting_grenade_index], DebugAgent.THROW_CANCEL_SECONDS)
 	_targeting_grenade_index = -1
 	Telemetry.event("aim.cancel")
 	## Director: *"cancelar a granada [...] bem rapidinho, só pra não sumir de

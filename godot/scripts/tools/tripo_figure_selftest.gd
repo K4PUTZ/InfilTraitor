@@ -2,10 +2,13 @@
 ## what a capture cannot see: that each figure's GAME SET exists, holds the clips the game plays and is the bank decoded today (a stale set
 ## would play yesterday's clip with no error), that every clip is IN PLACE (the grid moves the actor, a drifting Hips would walk it off its
 ## cell) with the Hips at the figure's own height, that the travel the walk is phased by is there, and that the rig answers the bones and
-## pieces the game asks it for.
+## pieces the game asks it for. Since 2026-11-08 also the POSES (`TripoFigure.POSES`, `pose_<id>` in the game set): present, the bank-and-solver output of today,
+## the wrists where the spec puts them, and the aim layer (`ActorAimPose3D`) neutral at weight 0 and exactly the pose at the stops.
 extends SceneTree
 
 const TripoFigureRef = preload("res://godot/scripts/geometry/tripo_figure.gd")
+const AimPoseRef = preload("res://godot/scripts/geometry/actor_aim_pose3d.gd")
+const TripoPoseKitRef = preload("res://godot/scripts/geometry/tripo_pose_kit.gd")
 const DRIFT_MAX_M: float = 0.001     ## the Hips' ground offset, last key against the first, after the decode (the 1 m figure)
 const MATCH_MAX_M: float = 0.0001    ## the game set against a fresh decode of the bank, per Hips key
 
@@ -79,6 +82,78 @@ func _test_figure(figure: String) -> void:
 	var run_m: float = TripoFigureRef.travel_m(lib.get_animation("run"))
 	_check(TripoFigureRef.travel_m(lib.get_animation("idle")) < 0.05, "%s: the idle covers no ground" % figure)
 	_check(walk_m > 1.0 and run_m > walk_m, "%s: the walk covers ground (%.3f m a pass), the run more (%.3f m)" % [figure, walk_m, run_m])
+	for pose_id: String in TripoFigureRef.POSES:
+		_test_pose(figure, pose_id, lib)
+	_test_aim_layer(figure, lib)
+
+
+## How far apart two rotations are, as the distance between their quaternions (the shorter of q and -q: the same rotation). `Quaternion.angle_to` is not used:
+## its acos(2d²-1) leaves a floor of ~7e-4 rad between two IDENTICAL quaternions.
+func _qdiff(a: Quaternion, b: Quaternion) -> float:
+	return minf((a - b).length(), (a + b).length())
+
+
+func _test_pose(figure: String, id: String, lib: AnimationLibrary) -> void:
+	var key: String = TripoFigureRef.POSE_PREFIX + id
+	_check(lib.has_animation(key), "%s: the game set has the pose '%s'" % [figure, key])
+	if not lib.has_animation(key):
+		return
+	var pose: Animation = lib.get_animation(key)
+	var spec: Dictionary = TripoFigureRef.POSES[id]
+	var expected: int = (spec["bones"] as PackedStringArray).size() + (6 if spec.has("two_hand_aim") else 0)
+	_check(pose.get_track_count() == expected, "%s %s: %d rotation tracks (the listed bones, and the six solved arm bones)" % [figure, id, expected])
+	## The set is the bank and the solver run TODAY: a pose re-spec'd without re-running tripo_game_clips.gd fails here, not on the board.
+	var fresh: Animation = TripoFigureRef.bank_pose(figure, id)
+	var worst: float = INF
+	if fresh != null and fresh.get_track_count() == pose.get_track_count():
+		worst = 0.0
+		for t in range(pose.get_track_count()):
+			var name: String = String(pose.track_get_path(t)).get_slice(":", 1)
+			for u in range(fresh.get_track_count()):
+				if String(fresh.track_get_path(u)).get_slice(":", 1) == name:
+					worst = maxf(worst, _qdiff(pose.track_get_key_value(t, 0) as Quaternion, fresh.track_get_key_value(u, 0) as Quaternion))
+	_check(worst < 0.0001, "%s %s: the game set matches the pose built now (worst bone %.7f)" % [figure, id, worst])
+	if not spec.has("two_hand_aim"):
+		return
+	var aim: Dictionary = spec["two_hand_aim"]
+	var wrists: Array[Vector3] = TripoFigureRef.pose_wrists(figure, pose)
+	_check(wrists.size() == 3, "%s %s: the pose can be laid over the idle torso" % [figure, id])
+	if wrists.size() != 3:
+		return
+	var right: Vector3 = wrists[0]
+	var left: Vector3 = wrists[1]
+	var dir: Vector3 = wrists[2]
+	_check(absf(right.y - left.y) < 0.001 and absf(right.z - left.z) < 0.001, "%s %s: both wrists at the same height and distance (%.4f / %.4f apart)" % [figure, id, right.y - left.y, right.z - left.z])
+	_check(absf((left.x - right.x) - float(aim["gap"])) < 0.002, "%s %s: the wrists are the asked gap apart (%.4f, asked %.4f)" % [figure, id, left.x - right.x, float(aim["gap"])])
+	var want_pitch: float = rad_to_deg(atan2(float(aim["height"]), float(aim["reach"])))
+	var pitch: float = rad_to_deg(asin(dir.y))
+	var yaw: float = rad_to_deg(atan2(dir.x, dir.z))
+	_check(absf(yaw) < 0.5 and absf(pitch - want_pitch) < 1.0, "%s %s: aims straight ahead (yaw %.2f°) at the asked pitch (%.2f°, asked %.2f°)" % [figure, id, yaw, pitch, want_pitch])
+
+
+## The aim layer on a real skeleton: untouched at weight 0, the first stop at its weight, the last at 1 (read straight off the bones).
+func _test_aim_layer(figure: String, lib: AnimationLibrary) -> void:
+	var scene := load(TripoFigureRef.rig_path(figure, true)) as PackedScene
+	var body := scene.instantiate() as Node3D
+	var skeleton := body.find_children("*", "Skeleton3D", true, false)[0] as Skeleton3D
+	var draw: Animation = lib.get_animation(TripoFigureRef.POSE_PREFIX + "draw_pistol")
+	var aim: Animation = lib.get_animation(TripoFigureRef.POSE_PREFIX + "aim_pistol")
+	var layer = AimPoseRef.new()
+	skeleton.add_child(layer)
+	_check(layer.load_stops(skeleton, [[0.5, draw], [1.0, aim]]), "%s: the aim layer loads its two stops" % figure)
+	var bone: int = TripoFigureRef.find_bone(skeleton, "RightForeArm")
+	var rest: Quaternion = skeleton.get_bone_pose_rotation(bone)
+	layer.weight = 0.0
+	layer.apply_to(skeleton)
+	_check(_qdiff(skeleton.get_bone_pose_rotation(bone), rest) < 0.00001, "%s: weight 0 leaves the arm as the clip wrote it" % figure)
+	var stops: Array = [[0.5, draw], [1.0, aim]]
+	for stop: Array in stops:
+		layer.weight = float(stop[0])
+		skeleton.reset_bone_poses()
+		layer.apply_to(skeleton)
+		var want: Quaternion = TripoPoseKitRef.bone_rotations(skeleton, stop[1] as Animation, 0.0)[bone]
+		_check(_qdiff(skeleton.get_bone_pose_rotation(bone), want) < 0.0001, "%s: weight %.1f is exactly the pose" % [figure, float(stop[0])])
+	body.free()
 
 
 func _test_clip(figure: String, id: String, lib: AnimationLibrary, hips_rest: Vector3) -> void:

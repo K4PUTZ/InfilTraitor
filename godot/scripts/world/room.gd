@@ -4168,6 +4168,33 @@ func scenario_shoot(index: int) -> bool:
 	return waited < 1800
 
 
+## Scenario step `weapon <id>`: the agent's firearm, as the number keys choose it (`AgentShotController.set_weapon`).
+func scenario_weapon(weapon_id: String) -> bool:
+	if _agent_shot_controller == null:
+		push_error("[Room] scenario_weapon: no shot controller")
+		return false
+	_agent_shot_controller.set_weapon(weapon_id)
+	return true
+
+
+## Scenario step `shot_aim <guard>`: the aim of `scenario_shoot` WITHOUT the trigger: the agent turns toward the guard and raises his
+## weapon (the menu opens on the target). `shot_cancel` puts it down again.
+func scenario_shot_aim(index: int) -> bool:
+	if _agent_shot_controller == null or index < 0 or index >= _guards.size():
+		push_error("[Room] scenario_shot_aim: no shot controller or no guard #%d (%d on the map)" % [index, _guards.size()])
+		return false
+	_agent_shot_controller.open_menu_for(index)
+	return true
+
+
+func scenario_shot_cancel() -> bool:
+	if _agent_shot_controller == null:
+		push_error("[Room] scenario_shot_cancel: no shot controller")
+		return false
+	_agent_shot_controller.cancel_active()
+	return true
+
+
 ## Scenario step `decal_wall <material> <gx,gy>` (R3D-LOOK L1): every damage decal of a material shown at once on one
 ## wall, for a static look judgement. Writes the real damage tuples through the store (no round, no blast, no soot) and
 ## hands the touched voxels to the board, so the marks are drawn by the shipped shader. Rows, from the bottom: a round's

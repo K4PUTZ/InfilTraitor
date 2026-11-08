@@ -38,6 +38,9 @@ func _ready() -> void:
 	if not _test_each_argument_check():
 		get_tree().quit(1)
 		return
+	if not _test_aim_ops():
+		get_tree().quit(1)
+		return
 
 	print("\n✅ TEL-06a SELFTEST PASS\n")
 	get_tree().quit(0)
@@ -79,6 +82,20 @@ func _test_ladder_parses() -> bool:
 		print("[TEST 1] ❌ ladder arguments not typed as written: %s" % [steps])
 		return false
 	print("[TEST 1] ✅ a 24-step ladder parses in order with typed arguments")
+	return true
+
+
+## The weapon-flow steps a take films (a pistol drawn, aimed, put away; a grenade's aim cancelled), typed as written.
+func _test_aim_ops() -> bool:
+	var result: Dictionary = ScenarioRunnerClass.parse("weapon pistol; shot_aim 5; wait 0.9; shot_cancel; aim 28,9; aim_cancel")
+	var steps: Array = result["steps"]
+	var ops: Array = steps.map(func(s: Dictionary) -> String: return str(s["op"]))
+	var typed: bool = str(result["error"]).is_empty() and ops == ["weapon", "shot_aim", "wait", "shot_cancel", "aim", "aim_cancel"] \
+		and steps[0]["weapon"] == "pistol" and steps[1]["index"] == 5 and is_equal_approx(steps[2]["seconds"], 0.9)
+	if not typed:
+		print("[TEST 4] ❌ aim ops — error '%s', ops %s" % [result["error"], ops])
+		return false
+	print("[TEST 4] ✅ weapon / shot_aim / shot_cancel / aim_cancel parse in order with typed arguments")
 	return true
 
 
@@ -126,6 +143,12 @@ func _test_each_argument_check() -> bool:
 		"capture_at LIGHT 2f a.b": "capture_at takes a file name (letters, digits, _ or -)",
 		"probe_store a.b": "probe_store takes a file name (letters, digits, _ or -)",
 		"shoot -1": "shoot takes a guard index >= 0",
+		"shot_aim -1": "shot_aim takes a guard index >= 0",
+		"shot_aim x": "shot_aim takes a guard index >= 0",
+		"shot_cancel now": "'shot_cancel' takes 0 argument(s), got 1",
+		"aim_cancel now": "'aim_cancel' takes 0 argument(s), got 1",
+		"weapon 3d": "weapon takes a weapon id (shotgun, assault_rifle, pistol)",
+		"weapon": "'weapon' takes 1 argument(s), got 0",
 		"reload now": "'reload' takes 0 argument(s), got 1",
 		"perspective up": "perspective takes N, E, S or W",
 		"view_mode fog": "view_mode takes dev, light, heat, numbers, ruler or layout",

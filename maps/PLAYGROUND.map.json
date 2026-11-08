@@ -888,6 +888,15 @@
           ]
         },
         {
+          "id": "agent_aim_rail",
+          "keys": [
+            {"frame": "close", "target": "@agent_close", "view": "S", "hold": 102},
+            {"frame": "close", "target": "@agent_close", "view": "E", "hold": 102},
+            {"frame": "close", "target": "@agent_close", "view": "N", "hold": 102},
+            {"frame": "close", "target": "@agent_close", "view": "W", "hold": 102}
+          ]
+        },
+        {
           "id": "agent_close_rail",
           "keys": [
             {
@@ -1013,6 +1022,17 @@
           "length": 540,
           "seed": 1,
           "note": "MOVEMENT MV-4: the agent walks three cells south, stands, then three east (the real tap path); run it with INFILTRAITOR_TRIPO_FIGURE=<female|male> to see a Tripo Agent"
+        },
+        {
+          "id": "pistol_aim",
+          "profile": "engine",
+          "rail": "agent_aim_rail",
+          "steps": ["weapon pistol", "shot_aim 5", "wait 0.9", "shot_cancel", "wait 0.8", "shot_aim 5", "wait 0.9", "shot_cancel", "wait 0.8", "shot_aim 5", "wait 0.9", "shot_cancel", "wait 0.8", "shot_aim 5", "wait 0.9", "shot_cancel", "wait 0.8"],
+          "at_key": 0,
+          "after_hold": 0,
+          "length": 420,
+          "seed": 1,
+          "note": "The agent draws the pistol (the arms come up, the gun appears in the fist), holds, and puts it away; once per camera view S, E, N, W. Needs the Tripo agent (the default)."
         },
         {
           "id": "aim_cancel",

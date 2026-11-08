@@ -17,6 +17,8 @@
 class_name TripoFigure
 extends RefCounted
 
+const TripoPoseKitRef = preload("res://godot/scripts/geometry/tripo_pose_kit.gd")
+
 const FIGURES: PackedStringArray = ["female", "male"]
 const RIG := "res://ASSETS/MODELS/official/AGENT_%s.glb"
 ## the pieces tripo_dress leaves BESIDE their masked variants (the undressed ones): the dressed set hides them
@@ -40,6 +42,25 @@ const BANK_CLIP := "res://ASSETS/ANIMATIONS/bank/%s/%s.glb"
 const GAME_LIBRARY := "res://ASSETS/ANIMATIONS/game/agent_%s.res"
 ## The clips the game set carries (the three the corrective keys were made on, `ACTOR` D103).
 const GAME_CLIPS: PackedStringArray = ["idle", "walk", "run"]
+## POSES (MOVEMENT, 2026-11-08): a POSE is a handful of bone rotations, ONE KEY: the target a layer blends toward (`ActorAimPose3D`), so raising a weapon,
+## lowering it and putting it away need no clip of their own and cost no credit. Each comes from a frame of a bank clip (`clip`, `time`, for the `bones` listed:
+## Mixamo names without prefix) and/or is solved in code (`TripoPoseKit`). They live in the game set as `pose_<id>`: rotation tracks with one key at 0, never played.
+const POSE_PREFIX := "pose_"
+const FINGER_BONES: PackedStringArray = [
+	"LeftHandIndex1", "LeftHandIndex2", "LeftHandMiddle1", "LeftHandMiddle2", "LeftHandPinky1", "LeftHandPinky2",
+	"LeftHandRing1", "LeftHandRing2", "LeftHandThumb1", "LeftHandThumb2",
+	"RightHandIndex1", "RightHandIndex2", "RightHandMiddle1", "RightHandMiddle2", "RightHandPinky1", "RightHandPinky2",
+	"RightHandRing1", "RightHandRing2", "RightHandThumb1", "RightHandThumb2",
+]
+## `two_hand_aim`: the ARMS are not copied from the clip but SOLVED (`TripoPoseKit`): both wrists `reach` ahead of the middle of the shoulders (the figure's own
+## units, 1 = its height), `height` above that line, `gap` apart, the elbows bent down and `pole` out. The clip then only lends the fingers' grip. (The `fire`
+## frame itself is a long-gun hold, its hands 30 cm apart and its torso twisted: kept for the day a rifle needs it; a pistol wants the hands together.)
+## `hand_pitch`: degrees the fingers point UP from forward (a hand folded at the wrist). `draw_pistol` is the beat between the idle arms and the aim: both fists at
+## the sternum, elbows out, where the gun comes out of the coat.
+const POSES: Dictionary = {
+	"draw_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "two_hand_aim": {"reach": 0.07, "height": -0.075, "gap": 0.05, "pole": 0.9, "hand_pitch": 50.0}},
+	"aim_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "two_hand_aim": {"reach": 0.255, "height": 0.02, "gap": 0.044, "pole": 0.4}},
+}
 ## The library's name on an actor's AnimationPlayer: its clips play as `bank/<id>`.
 const LIBRARY_NAME := &"bank"
 const HIPS := "Hips"
@@ -196,7 +217,99 @@ static func bank_clip(figure: String, id: String, hips_rest: Vector3) -> Animati
 	return anim
 
 
-## The game set of `figure` built from the bank, for a skeleton whose Hips rest at `hips_rest` (what the tool writes).
+## The raw bank clip `id` of `figure` (no Hips decoding): a clip the figure lacks falls back to the other figure's, loudly (both share the 65 Mixamo
+## joints and the bank stores rotations, MOVEMENT §1.3). Null (loud) when there is none.
+static func _load_bank_animation(figure: String, id: String) -> Animation:
+	var path: String = BANK_CLIP % [figure, id]
+	if not ResourceLoader.exists(path):
+		var other: String = "male" if figure == "female" else "female"
+		push_warning("[TripoFigure] %s has no %s clip %s: FALLBACK to the %s one" % [figure, id, path, other])
+		path = BANK_CLIP % [other, id]
+	var scene := load(path) as PackedScene if ResourceLoader.exists(path) else null
+	if scene == null:
+		push_error("[TripoFigure] no bank clip %s" % path)
+		return null
+	var holder := scene.instantiate()
+	var players: Array[Node] = holder.find_children("*", "AnimationPlayer", true, false)
+	if players.is_empty():
+		holder.free()
+		push_error("[TripoFigure] %s holds no animation" % path)
+		return null
+	var src_player := players[0] as AnimationPlayer
+	var anim: Animation = src_player.get_animation(src_player.get_animation_list()[0]).duplicate(true) as Animation
+	holder.free()
+	return anim
+
+
+## The pose `id` of `figure` (`POSES`) as a one-key Animation: the listed bones' rotations at one time of a bank clip, then its arms solved when the spec says so.
+## Null (loud) when the clip is missing or the solve fails.
+static func bank_pose(figure: String, id: String) -> Animation:
+	if not POSES.has(id):
+		push_error("[TripoFigure] no pose '%s' (have %s)" % [id, POSES.keys()])
+		return null
+	var spec: Dictionary = POSES[id]
+	var src: Animation = _load_bank_animation(figure, String(spec["clip"]))
+	if src == null:
+		return null
+	var pose := Animation.new()
+	pose.length = 0.1
+	var wanted: PackedStringArray = spec["bones"]
+	for t in range(src.get_track_count()):
+		if src.track_get_type(t) != Animation.TYPE_ROTATION_3D:
+			continue
+		var bone: String = String(src.track_get_path(t)).get_slice(":", 1)
+		for prefix: String in MIXAMO_PREFIXES:
+			if not prefix.is_empty() and bone.begins_with(prefix):
+				bone = bone.trim_prefix(prefix)
+				break
+		if not wanted.has(bone):
+			continue
+		var track: int = pose.add_track(Animation.TYPE_ROTATION_3D)
+		pose.track_set_path(track, src.track_get_path(t))
+		pose.rotation_track_insert_key(track, 0.0, src.rotation_track_interpolate(t, float(spec["time"])))
+	if pose.get_track_count() != wanted.size():
+		push_warning("[TripoFigure] the pose '%s' of %s has %d of its %d bones (the clip lacks the rest: they keep whatever is playing)" % [id, figure, pose.get_track_count(), wanted.size()])
+	if spec.has("two_hand_aim"):
+		var rig := _rig(figure)
+		var idle: Animation = _load_bank_animation(figure, "idle")
+		var solved: bool = not rig.is_empty() and idle != null \
+			and TripoPoseKitRef.solve_two_hand_aim(rig["skeleton"] as Skeleton3D, idle, pose, spec["two_hand_aim"])
+		if not rig.is_empty():
+			(rig["holder"] as Node).free()
+		if not solved:
+			push_error("[TripoFigure] the pose '%s' of %s could not be solved" % [id, figure])
+			return null
+	return pose
+
+
+## The LIGHT rig of `figure` instantiated for reading its rest data: {holder, skeleton}; the caller frees the holder. {} (loud) when it cannot be read.
+static func _rig(figure: String) -> Dictionary:
+	var scene := load(rig_path(figure, true)) as PackedScene
+	if scene == null:
+		push_error("[TripoFigure] cannot load %s" % rig_path(figure, true))
+		return {}
+	var holder := scene.instantiate()
+	var skeletons: Array[Node] = holder.find_children("*", "Skeleton3D", true, false)
+	if skeletons.is_empty():
+		holder.free()
+		push_error("[TripoFigure] %s has no skeleton" % rig_path(figure, true))
+		return {}
+	return {"holder": holder, "skeleton": skeletons[0]}
+
+
+## [right wrist, left wrist, aim direction] of `pose` laid over the idle pose (skeleton space, +Z the front): what the layer will show at weight 1. For the selftest.
+static func pose_wrists(figure: String, pose: Animation) -> Array[Vector3]:
+	var rig := _rig(figure)
+	var idle: Animation = _load_bank_animation(figure, "idle")
+	var out: Array[Vector3] = []
+	if not rig.is_empty() and idle != null:
+		out = TripoPoseKitRef.wrists_under(rig["skeleton"] as Skeleton3D, idle, pose)
+	if not rig.is_empty():
+		(rig["holder"] as Node).free()
+	return out
+
+
+## The game set of `figure` built from the bank, for a skeleton whose Hips rest at `hips_rest` (what the tool writes): the clips, then the poses.
 static func build_library(figure: String, hips_rest: Vector3) -> AnimationLibrary:
 	var lib := AnimationLibrary.new()
 	for id: String in GAME_CLIPS:
@@ -204,4 +317,9 @@ static func build_library(figure: String, hips_rest: Vector3) -> AnimationLibrar
 		if anim == null:
 			return null
 		lib.add_animation(id, anim)
+	for id: String in POSES:
+		var pose: Animation = bank_pose(figure, id)
+		if pose == null:
+			return null
+		lib.add_animation(POSE_PREFIX + id, pose)
 	return lib

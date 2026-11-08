@@ -1,6 +1,8 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.4
 
+> ⏭️ **2026-11-08 (later) — the pistol aim is made IN-HOUSE (Director: "testar o que a gente consegue fazer na casa"; no credit spent).** The Tripo Agent is now the game's agent (the male by default); with the pistol selected the aim draws it from the coat (fists to the sternum, the gun appears), aims with both hands and puts it away on cancel, on both figures: a pose layer over any clip (`ActorAimPose3D`), poses from a bank frame or SOLVED from hand targets (`TripoPoseKit`), a path of stops. §4.1's "In-house levers" has what it proved, what it taught (`fire` is a long-gun hold, `shoot` a kneel) and what only credits can make. Record: `PROMPTS/RESUMO_SESSAO_2026-11-08_AIM_IN_HOUSE.md`.
+
 > ⏭️ **2026-11-05 (later) — MV-4's first slice is BUILT and measured on the Moto (Director: board + Moto before transitions and texturing).** `TripoFigure` (one authority for dressing a Tripo Agent and decoding the bank), the game set `ASSETS/ANIMATIONS/game/agent_<fig>.res` (idle / walk / run, in place, `travel_m`; written by `tripo_game_clips.gd`, carried by the APK), `ActorMesh3D` wears the LIGHT Agent under `TRIPO_FIGURE=<female|male>` (old rig stays default: no weapons, crouch, prone, throw on the Tripo figure yet), the walk phased by the ground covered (no slide), the scenario's `walk <x,y>`, PLAYGROUND take `agent_walk`. Moto (`ACTOR` D105): 9 LIGHT Agents on a real clip +5.0 ms vs the shipped agent +6.2; the room's 10 actors as Tripo +0.2-0.3; the corrective keys ~+0.5 for 9. **The TEMPO is RATIFIED (Director, 2026-11-05: "O video está perfeito, vamos manter assim"):** the bank's `walk`, phased by the ground at D61's step (it plays at about 2.1x its own pace; D61's 2.86 m/s stands). Record: `PROMPTS/RESUMO_SESSAO_2026-11-05_MV4_BOARD_MOTO.md`.
 
 > ⏭️ **2026-11-05 (end) — the six corrective keys are done (female `IdleFix`/`RunFix`/`WalkFix`, male `IdleFix`/`WalkFix`/`RunFix`, `ACTOR` D103) and the male's front flaps skin uniformly (D104). Next, by the Director's order: the transitions between idle / walk / run (MOVEMENT), then texturing (ACTOR), then the models in the game and on the Moto. Record: `PROMPTS/RESUMO_SESSAO_2026-11-05_CORRECTIVES_FLAP.md`.**
@@ -318,13 +320,45 @@ without it, **P2** = after the demo. Priorities are Claude's proposal, for the D
 | Civilian flees and trips the alarm (AI table) | loop | `flee_01/02` | — | — | P1 |
 | Unassigned (no situation yet) | — | `cast_a_spell`, `flip`, `freaky`, `dig` beyond its uses above | kept in the bank, unused | — | — |
 
+#### In-house levers (2026-11-08, Director: "como podemos otimizar isso, e testar o que a gente consegue fazer na casa"; the pistol aim was the test)
+
+**The test, built and seen on both figures** (`pistol_aim` take, PLAYGROUND; record `PROMPTS/RESUMO_SESSAO_2026-11-08_AIM_IN_HOUSE.md`): with the pistol selected, the aim opens and the agent
+brings both fists to the sternum, the gun comes OUT OF THE COAT there (no holster: the Director's ruling), the arms extend into a two-handed aim, and cancel / firing runs the same
+path back, the gun going away at the chest. No clip was generated. What carries it:
+
+| Lever | What it is | Status |
+|---|---|---|
+| **A pose from a clip frame** | one key of any bank clip, for the bones listed, kept as `pose_<id>` in the game set (`TripoFigure.POSES`) | built, proven (the fingers' grip) |
+| **A pose SOLVED from where the hands go** | `TripoPoseKit`: two-bone IK on the rig's rest data (law of cosines, an elbow pole), the hand turned as asked, each bone's twist kept from the idle arm; both wrists land on their targets to the millimetre (`tripo_figure_selftest`) | built, proven (aim, draw) |
+| **A layer over any clip** | `ActorAimPose3D` (a `SkeletonModifier3D`): a bone subset pulled toward the pose by a weight, over idle / walk / run | built; over the idle proven, over a walk not looked at |
+| **A path of stops** | a list of poses at weights (idle -> fists at the sternum -> aim), a smoothed slerp between, so the arms come to rest at each stop; the reverse is the lowering | built, proven (draw, hold, stow) |
+| **A prop tied to the weight** | the pistol in the right hand, hidden below a weight, grown in from 35 % at the chest | built, proven |
+| Mirror, reverse, retime, cut, loop (§5) | pure transforms of a bank clip | not built, cheap |
+| Aim at the target's real angle | the same kit with the target in the figure's frame: the arms could follow the guard past D44's four facings | not built |
+| Additives (breathing, a head scan, a flinch) | small bone offsets over anything | not built |
+
+**What the test taught (so it is not rediscovered):**
+- **`fire` is a standing LONG-GUN hold, not a pistol aim, and it has no recoil:** its two hands are 30 cm apart (a rear grip and a fore-end), its torso twisted and its pelvis yawed and leaned
+  25 degrees; its keys vary by < 0.002. It is the shotgun / rifle aim, once those have a model on the new figure. **`shoot` is a run into a KNEEL**, not a standing aim.
+  `walking_briskly...pistol` (S3) and `correr_furtivamente...pistol` (S2) hold the fists at the belt / chest, 17 cm apart: a close carry.
+- **Copying a pose's arms onto another torso fails when the clip's pelvis is not ours:** `fire`'s arms laid on the idle torso pointed 31 degrees down and 17 sideways; re-solving only the clavicles
+  left the hands 20 cm apart in depth (the clip's torso was twisted so that they met). The arms are SOLVED, not copied.
+- Godot traps met: a headless script cannot trust `Skeleton3D.get_bone_global_pose` after setting poses (forward kinematics on the rest data is used instead); `Quaternion.angle_to` leaves a ~7e-4 rad
+  floor between two IDENTICAL quaternions (compare components); a `SkeletonModifier3D` outside the engine's frame has no skeleton (`apply_to(skeleton)` is the testable entry); the pistol glb's mesh node
+  carries a x100 scale (its AABB reads 100x too small unless the node is in the tree).
+
+**What this changes in the credits' ranking below:** item 3 (draw / holster, pistol, an aim hold) is **done in-house for the pistol**. By the same rule the upper-body-only rows (hands up, a radio at the ear, reload at the
+belt, a point, a head scan, a flinch) are candidates for the kit before a generation. **What the kit cannot make** is whole-body motion with weight, ground contact and timing: crouch / crawl and their transitions, the takedown from
+behind, cover enter / peek / exit, the real grenade throw, climbing, hit and fall reactions. Those are where credits go. Two more savers: **a clip generated for ONE figure serves the other** (the bank stores rotations and the
+Hips normalised by height; the 102 pairs are half the spend if the female shares the male's), and **mirroring doubles** every asymmetric one (a corner on either side).
+
 #### Credits: what to generate first (Claude's ranking, for the Director)
 
 1. **The cover take** (§2's ruling): wall press → lean out and fire → back → run → corner, one multi-segment take, cut and mirrored.
    One generation serves four P0 rows (full cover, corner, peek, cover → run → cover).
 2. **The takedown from behind, paired** (agent + guard as one take): the non-lethal option every class must hold; nothing in the bank
    comes close.
-3. **Draw / holster, pistol**, plus an aim hold if `shoot` has none: the whole §6.5 flow hangs on it.
+3. ~~**Draw / holster, pistol**, plus an aim hold~~ **done in-house for the pistol (2026-11-08, the lever table above)**; a shotgun / rifle draw and the aim of a crouched or prone figure remain.
 4. **The grenade throw** (overhand, with a lob variant that also serves the stone): replaces `pitch_baseball`.
 5. **Crouch (M4) with crouch walk, and prone / crawl (M5) with get up**: half and minimal cover.
 6. **Style swap (D70) and the knocked-out guard waking up.**

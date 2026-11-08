@@ -28,6 +28,8 @@ func _init() -> void:
 		all_pass = false
 	if not _test_roofs_section():
 		all_pass = false
+	if not _test_actors_officers():
+		all_pass = false
 
 	print("\n" + "=".repeat(70))
 	if all_pass:
@@ -36,6 +38,47 @@ func _init() -> void:
 		print("MAPFILE ROUNDTRIP: SOME TESTS FAILED")
 	print("=".repeat(70) + "\n")
 	quit(0 if all_pass else 1)
+
+## Test 6 (2026-11-08): `actors.officers` (the indices into `guards` of the field officers) survives a save and a load, and a map that never names one does NOT
+## gain the key (it round-trips byte for byte). JSON numbers come back as floats: the compiler compares as ints (`MapCompiler._build_enemy_defs`).
+func _test_actors_officers() -> bool:
+	print("[TEST 6] actors.officers: kept when present, absent when not\n")
+	var registry = MapSectionRegistryClass.new()
+	MapSectionsV1Class.register_all(registry)
+	var service = MapFileServiceClass.new(registry)
+	var path: String = "user://test_officers.map.json"
+	var base = {"id": "OFFICERS_MAP", "meta": {"title": "Officers"}, "sections": {
+		"board": {"v": 1, "inner_size": [20, 15], "buffer": 1, "floor_tile": "floor_SE"},
+		"actors": {"v": 1, "agent_start": [1, 1], "guards": [[[3, 3], [4, 3]], [[6, 6], [7, 6]]], "officers": [1]},
+	}}
+	var saved = service.save_file(path, base)
+	if not saved["ok"]:
+		print("  ✗ save failed: %s" % saved["errors"])
+		return false
+	var loaded = service.load_file(path)
+	if not loaded["ok"]:
+		print("  ✗ load failed: %s" % loaded["errors"])
+		return false
+	var actors: Dictionary = loaded["spec"]["sections"]["actors"]
+	var officers: Array = actors.get("officers", [])
+	if officers.size() != 1 or int(officers[0]) != 1:
+		print("  ✗ officers did not survive: %s" % [actors])
+		return false
+	print("  ✓ officers [1] survived the save and the load")
+	var plain = {"id": "NO_OFFICERS_MAP", "meta": {"title": "Plain"}, "sections": {
+		"board": {"v": 1, "inner_size": [20, 15], "buffer": 1, "floor_tile": "floor_SE"},
+		"actors": {"v": 1, "agent_start": [1, 1], "guards": [[[3, 3], [4, 3]]]},
+	}}
+	service.save_file(path, plain)
+	var reloaded = service.load_file(path)
+	DirAccess.remove_absolute(path)
+	if not reloaded["ok"] or (reloaded["spec"]["sections"]["actors"] as Dictionary).has("officers"):
+		print("  ✗ a map with no officers gained the key: %s" % [reloaded["spec"]["sections"]["actors"]])
+		return false
+	print("  ✓ a map with no officers gains no key")
+	print("  PASS: actors_officers\n")
+	return true
+
 
 ## Test 5 (R3D-7): the `roofs` section is REGISTERED, not merely tolerated. An unregistered section round-trips
 ## verbatim too, so a plain round-trip cannot tell the two apart: what only a registered owner does is give the section

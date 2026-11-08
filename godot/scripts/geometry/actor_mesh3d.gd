@@ -22,9 +22,10 @@
 ## The agent wears that LIGHT Agent instead (`TripoFigure`: 65 Mixamo joints, the dressed set, the coat two-sided, its emblem, the legs pushing it) and
 ## plays the game set's clips: `idle` on its own clock while the actor stands, the move clip (`TRIPO_MOVE`, `walk` by default)
 ## while it walks, phased by the GROUND it covers (one pass of the clip per its `travel_m`), so the feet do not slide at any step
-## length. Facing (D44, D47's snap), position and gravity are this node's, unchanged. Not yet on that figure: the weapons in the
-## hand, the aimed grip, crouched and prone, the throw (a Tripo actor stands through them; the throw still releases on the
-## sprite's clock), the clip transitions (a snap, D47's default) and the corrective coat keys (`ACTOR` D103, only on the base).
+## length. Facing (D44, D47's snap), position and gravity are this node's, unchanged. THE PISTOL (2026-11-08): with `weapon` `_pistol` and `grip` `_aimed` the aim layer
+## (`ActorAimPose3D`, `AIM_STOPS`) takes the arms from the clip through the draw (fists at the sternum, the gun comes out of the coat) to a two-handed aim, and back on cancel.
+## Not yet on that figure: the other weapons in the hand (the shotgun and the rifle stand through the aim), crouched and prone, the throw (a Tripo actor stands through it; the
+## throw still releases on the sprite's clock), the clip transitions (a snap, D47's default) and the corrective coat keys (`ACTOR` D103, only on the base).
 class_name ActorMesh3D
 extends Node3D
 
@@ -61,6 +62,26 @@ const TRIPO_FIGURE_NONE := "none"
 const TRIPO_MOVE_FLAG := "TRIPO_MOVE"
 const TRIPO_MOVE_DEFAULT := "walk"
 const TRIPO_IDLE := "idle"
+## THE AIM LAYER (MOVEMENT, 2026-11-08): while the actor holds the pistol AIMED the arms are pulled from whatever clip plays toward the pose
+## `pose_aim_pistol` (`TripoFigure.POSES`, `ActorAimPose3D`); the pistol is in the right hand only then, and comes out as the fist rises
+## (Director: no holster, it leaves the coat). `AIM_RAISE_S` / `AIM_LOWER_S` are the weight's travel; the gun shows from `PISTOL_SHOWN_FROM` of it.
+const ActorAimPoseRef = preload("res://godot/scripts/geometry/actor_aim_pose3d.gd")
+## The path of the raise: the idle arms, then the fists at the sternum (`draw_pistol`, at half way: the gun appears here, out of the coat), then the aim.
+const AIM_STOPS: Array = [["draw_pistol", 0.5], ["aim_pistol", 1.0]]
+const AIM_RAISE_S: float = 0.36
+const AIM_LOWER_S: float = 0.24
+const PISTOL_SHOWN_FROM: float = 0.5
+## The gun grows from this share of its size over the next `PISTOL_GROW` of the path, so it comes out of the coat instead of popping.
+const PISTOL_FROM_SCALE: float = 0.35
+const PISTOL_GROW: float = 0.12
+const PISTOL_MODEL := "res://ASSETS/props/pistol_quaternius/pistol.glb"
+## Where the pistol sits in the right hand's bone space, per figure (the 1 m export's metres, 1 = the figure's height). Measured on the glb (its mesh
+## node carries a x100 scale, so it is 2.45 long): the barrel is its +X, the sights side its +Y (the grip drops to -Y), its flank +Z; the hand's
+## fingers are +Y, its thumb +X, its palm +Z. `scale` makes it about 0.26 m long (a little over the real 0.2 m: it has to read from the 30° camera).
+const PISTOL_HAND: Dictionary = {
+	"male": {"pos": Vector3(0.0081, 0.0164, 0.010), "euler_deg": Vector3.ZERO, "scale": 0.0542},
+	"female": {"pos": Vector3(0.0081, 0.0164, 0.010), "euler_deg": Vector3.ZERO, "scale": 0.0542},
+}
 
 var _board: Node3D = null
 var _source: ActorPose = null
@@ -79,6 +100,10 @@ var _front_yaw: float = 0.0          ## added to `_yaw` on the model: 0 for the 
 var _tripo: String = ""              ## the Tripo Agent this actor wears ("" = the r3d_live rig)
 var _tripo_move: String = ""         ## the clip it moves with
 var _tripo_units: float = 1.0        ## world units per metre of the 1 m Tripo export (its scale on the board)
+var _aim: ActorAimPoseRef = null      ## the aim layer of a Tripo Agent (null: its game set carries no aim pose)
+var _aim_t: float = 0.0              ## how far the aim has travelled, 0 (down) to 1 (held)
+var _pistol: Node3D = null           ## the pistol in the right hand (hidden until the fists reach the sternum)
+var _pistol_holder: Node3D = null    ## its scale node
 var _walked: float = 0.0             ## ground covered while walking, world units: the move clip's phase
 var _move_pass: float = 0.0          ## world units of ground one pass of the move clip covers
 var _last_ground := Vector2(NAN, NAN)
@@ -217,6 +242,7 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 	TripoFigureRef.hide_pieces(_body, false)
 	_skeleton = skeletons[0] as Skeleton3D
 	_head_bone = TripoFigureRef.find_bone(_skeleton, "Head")
+	_build_aim_layer(lib, figure)   ## before the head turn: a skeleton's modifiers run in child order
 	if _head_bone >= 0:
 		_head = HeadTurnRef.new()
 		_head.set("bone_name", _skeleton.get_bone_name(_head_bone))
@@ -226,6 +252,62 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 	_player.add_animation_library(TripoFigureRef.LIBRARY_NAME, lib)
 	_player.speed_scale = 0.0  ## seeked, never played
 	return true
+
+
+## The aim layer and the pistol in the right hand of a Tripo Agent, from the game set's `pose_aim_pistol`. Missing pose or model: said loudly, the agent
+## simply does not aim (it stands through it, as before).
+func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
+	var stops: Array = []
+	for stop: Array in AIM_STOPS:
+		var pose_id: String = TripoFigureRef.POSE_PREFIX + String(stop[0])
+		if not lib.has_animation(pose_id):
+			push_warning("[ActorMesh3D] the %s game set has no '%s': the agent will not aim (run godot/scripts/tools/tripo_game_clips.gd)" % [figure, pose_id])
+			return
+		stops.append([float(stop[1]), lib.get_animation(pose_id)])
+	var layer: ActorAimPoseRef = ActorAimPoseRef.new()
+	_skeleton.add_child(layer)
+	if not layer.load_stops(_skeleton, stops):
+		layer.queue_free()
+		return
+	_aim = layer
+	var hand: int = TripoFigureRef.find_bone(_skeleton, "RightHand")
+	var scene := load(PISTOL_MODEL) as PackedScene
+	if hand < 0 or scene == null:
+		push_error("[ActorMesh3D] no right hand or no pistol model (%s): the agent aims empty-handed" % PISTOL_MODEL)
+		return
+	var attach := BoneAttachment3D.new()
+	attach.name = "PistolHand"
+	attach.bone_name = _skeleton.get_bone_name(hand)
+	_skeleton.add_child(attach)
+	var holder := Node3D.new()   ## carries the grow-in scale; the model keeps its own placement
+	attach.add_child(holder)
+	var model := scene.instantiate() as Node3D
+	var place: Dictionary = PISTOL_HAND[figure]
+	var s: float = float(place["scale"])
+	var euler: Vector3 = place["euler_deg"]
+	## The model's X (barrel) onto the hand's Y (fingers), its Y (sights) onto the thumb (X), its Z onto the back of the hand (-Z); then the figure's own trim.
+	var basis := Basis(Vector3(0.0, 1.0, 0.0), Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0))
+	basis = Basis.from_euler(Vector3(deg_to_rad(euler.x), deg_to_rad(euler.y), deg_to_rad(euler.z))) * basis
+	model.transform = Transform3D(basis.scaled(Vector3.ONE * s), place["pos"])
+	holder.add_child(model)
+	_apply_board_light(attach)
+	attach.visible = false
+	_pistol = attach
+	_pistol_holder = holder
+
+
+## The aim layer's weight this frame: toward 1 while the pistol is held aimed and standing, toward 0 otherwise (the raise and the lowering are the same
+## travel read both ways), eased; the gun is drawn only once the fist is up.
+func _update_aim(state: Dictionary) -> void:
+	if _aim == null:
+		return
+	var want: bool = String(state["weapon"]) == "_pistol" and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing"
+	var target: float = 1.0 if want else 0.0
+	_aim_t = move_toward(_aim_t, target, get_process_delta_time() / (AIM_RAISE_S if want else AIM_LOWER_S))
+	_aim.weight = _aim_t
+	if _pistol != null:
+		_pistol.visible = _aim_t >= PISTOL_SHOWN_FROM
+		_pistol_holder.scale = Vector3.ONE * lerpf(PISTOL_FROM_SCALE, 1.0, clampf((_aim_t - PISTOL_SHOWN_FROM) / PISTOL_GROW, 0.0, 1.0))
 
 
 ## A dev flag through `DevFlags` (the APK's overrides file), or the environment when the autoload is absent (a bare script run).
@@ -277,6 +359,7 @@ func _sync() -> void:
 	var body_yaw: float = _yaw
 	if not _tripo.is_empty():
 		_show_tripo(float(state["walk"]) >= 0.0, ground)
+		_update_aim(state)
 	else:
 		var weapon: String = String(WEAPON_BY_SUFFIX.get(String(state["weapon"]), "shotgun"))
 		for held: String in _weapons:

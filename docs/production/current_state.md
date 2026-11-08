@@ -8,6 +8,14 @@
 
 ---
 
+## Where the project stands — 2026-11-08 (later: the Tripo Agent is the agent; the pistol aim made in-house)
+
+- **The Tripo male is the game's agent** (`TRIPO_FIGURE=female` swaps, `none` restores the old rig); **the old agent model is the enemy officer** (`actors.officers` in the map, PLAYGROUND guard 6): look only.
+- **The pistol aim is made without a credit:** with the pistol selected the agent brings his fists to the sternum, the gun comes out of the coat, he aims with both hands and puts it away on cancel, on both figures
+  (`ActorAimPose3D` layer, poses from a bank frame or solved from hand targets by `TripoPoseKit`, a path of stops). `MOVEMENT` §4.1 "In-house levers" has what it proved and what only credits can make.
+- **Deferred to GAMEPLAY (Director):** AP costs (posture included) and the guard's noise indicator. **Unmeasured:** the Moto cost of the aim layer. **Open:** the shotgun / rifle / crouch / prone / throw on the new figure.
+  Record: `PROMPTS/RESUMO_SESSAO_2026-11-08_AIM_IN_HOUSE.md`.
+
 ## Where the project stands — 2026-11-08 (the faces are done, painted by the Director)
 
 - **Both faces are installed in the LIGHT Agents:** the Director painted the 2048 masters by hand (Photopea, a layered PSD with the UV lines as a guide layer); the 512 maps were swapped into `AGENT_<FIG>_LIGHT.glb` with `glb_swap_image.py` and read back equal. `face_paint.json` keeps `"hand": true`.
@@ -614,6 +622,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-11-07_TEXTURING_POLICE_COAT_SIDES.md
 - RESUMO_SESSAO_2026-11-08_AGENT_SWAP_OFFICER.md
 - RESUMO_SESSAO_2026-11-08_CLOSEUP_LEVEL1.md
+- RESUMO_SESSAO_2026-11-08_AIM_IN_HOUSE.md
 - RESUMO_SESSAO_2026-11-08_FACES_BY_HAND.md
 <!-- AUTO:END pending_prompts -->
 

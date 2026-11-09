@@ -19,7 +19,7 @@
 # Run inside Blender:  blender -b --python tripo_pose_lab.py -- build   <figure> <pose id> <dump dir> <out .blend> [--glb LIGHT.glb] [--pistol model.glb]
 #                      blender -b --python tripo_pose_lab.py -- extract <saved .blend> <out .json>
 #                      blender -b --python tripo_pose_lab.py -- render  <saved .blend> <out .png>
-import bpy, sys, json, math, os
+import bpy, sys, json, math, os, struct
 from mathutils import Matrix, Quaternion, Vector
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -177,14 +177,31 @@ def load_rig_from_blend():
 
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------
-def prop_world_g(rig, G, bone, placement, node_scale):
-    """the prop mesh node's world transform in glTF space: bone node * placement (the model's scene root) * the mesh node's own scale"""
+def prop_node_matrix(prop):
+    """the model's mesh node transform in glTF space, read from the .glb. Its ROTATION counts as much as its scale: the pistol's node is turned -90 degrees about X, and a
+    placement that ignored it came out a quarter turn off in the game, which instances the whole scene, while Blender looked right (2026-11-09)."""
+    with open(PROP_GLB[prop], "rb") as f:
+        f.read(12)
+        size = struct.unpack("<I", f.read(4))[0]
+        f.read(4)
+        gltf = json.loads(f.read(size))
+    nodes = [n for n in gltf["nodes"] if "mesh" in n]
+    if len(nodes) != 1:
+        fail(f"the {prop} model should have one mesh node, found {len(nodes)}")
+    n = nodes[0]
+    r = n.get("rotation", [0.0, 0.0, 0.0, 1.0])
+    s = n.get("scale", [1.0, 1.0, 1.0])
+    return Matrix.Translation(n.get("translation", [0.0, 0.0, 0.0])) @ quat_xyzw(r).to_matrix().to_4x4() @ Matrix.Diagonal((s[0], s[1], s[2], 1.0))
+
+
+def prop_world_g(rig, G, bone, placement, node_m):
+    """the prop mesh node's world transform in glTF space: bone node * placement (the model's scene root) * the mesh node's own transform"""
     node = rig.node_global(bone, G)
     pos = Vector(placement["pos"])
     q = quat_xyzw(placement["quat"])
     s = float(placement["scale"])
     local = Matrix.Translation(pos) @ q.to_matrix().to_4x4() @ Matrix.Diagonal((s, s, s, 1.0))
-    return node @ local @ Matrix.Diagonal((node_scale, node_scale, node_scale, 1.0))
+    return node @ local @ node_m
 
 
 def cm4():
@@ -270,7 +287,7 @@ def build(figure, pose_id, dump_dir, out_blend, glb, prop_models):
         obj, node_scale = import_prop(prop, holder)
         obj["lab_node_scale"] = node_scale
         obj["lab_bone"] = placement["bone"]
-        world = g_to_blender_world(prop_world_g(rig, G, placement["bone"], placement, node_scale))
+        world = g_to_blender_world(prop_world_g(rig, G, placement["bone"], placement, prop_node_matrix(prop)))
         bpy.context.view_layer.update()
         obj.parent = arm
         obj.parent_type = 'BONE'
@@ -295,6 +312,9 @@ def extract(blend, out_json):
     local, G = rig.read()
     base = {n: quat_xyzw(q) for n, q in json.loads(arm["lab_base"]).items()}
     named = set(json.loads(arm["lab_bones"]))
+    for pb in arm.pose.bones:                # a joint is a rotation: the game plays rotations only (and the Hips' place), so a bone moved with G would land elsewhere there
+        if pb.name != PREFIX + "Hips" and pb.location.length > 1e-4:
+            print(f"[tripo_pose_lab] WARNING: {pb.name} was MOVED ({pb.location.length:.3f}) and the game ignores that: its joint will close there. Alt+G clears it; rotate instead")
     bones = {}
     for n in rig.names:
         moved = qdist(local[n], base[n]) > EPS_CHANGED
@@ -307,9 +327,8 @@ def extract(blend, out_json):
             print(f"[tripo_pose_lab] WARNING: the prop {prop} is gone from the .blend: the pose keeps the default placement")
             continue
         bone = obj["lab_bone"]
-        node_scale = float(obj["lab_node_scale"])
         world_g = blender_world_to_g(arm.matrix_world.inverted() @ obj.matrix_world)
-        local_m = rig.node_global(bone, G).inverted() @ world_g @ Matrix.Diagonal((1 / node_scale,) * 3 + (1.0,))
+        local_m = rig.node_global(bone, G).inverted() @ world_g @ prop_node_matrix(prop).inverted()
         loc, rot, scl = local_m.decompose()
         if max(abs(scl[0] - scl[1]), abs(scl[1] - scl[2])) > 1e-3 * scl[0]:
             print(f"[tripo_pose_lab] WARNING: the {prop} was scaled unevenly ({tuple(scl)}): the pose file keeps one scale, the mean")

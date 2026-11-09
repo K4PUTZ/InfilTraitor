@@ -4,7 +4,7 @@
   "id": "PLAYGROUND",
   "meta": {
     "title": "Destruction Test Zone",
-    "description": "One short wall trio per material at gu y=2, a 3x3 floor zone of the same material at y=4..6, and an overhead light at y=3: concrete x=2, metal x=7, stone x=12, wood x=17, brick x=22, cardboard x=26, fabric x=30, plywood x=34, glass x=38. All nine are BUILT (MATERIALS_MASTER_PLAN M1/M2/M3, 2026-08-21) — the earlier 'RESERVED as open floor' note described a state that ended with the 44x22 reform. The `panels` section adds three half-thickness test elements at y=8 (glass SE at 25, glass SW at 29, fabric SE at 33). The agent starts between the two half-thickness glass panes, central enough that throw_range_gu 7 reaches the brick, cardboard and fabric trios without walking, and every material trio has a guard patrolling its own floor zone, so a shot that misses lands on the material under test."
+    "description": "One short wall trio per material at gu y=2, a 3x3 floor zone of the same material at y=4..6, and an overhead light at y=3: concrete x=2, metal x=7, stone x=12, wood x=17, brick x=22, cardboard x=26, fabric x=30, plywood x=34, glass x=38. All nine are BUILT (MATERIALS_MASTER_PLAN M1/M2/M3, 2026-08-21) — the earlier 'RESERVED as open floor' note described a state that ended with the 44x22 reform. The `panels` section adds a half-thickness fabric element at y=8 (SE at 33); the two loose glass panes that stood beside it left on 2026-11-09 (Director: they spoiled the scene, glass is the block like every other material). The agent starts central enough that throw_range_gu 7 reaches the brick, cardboard and fabric trios without walking, and every material trio has a guard patrolling its own floor zone, so a shot that misses lands on the material under test."
   },
   "sections": {
     "board": {
@@ -562,24 +562,6 @@
     },
     "panels": {
       "items": [
-        {
-          "gu": [
-            25,
-            8
-          ],
-          "face": "SE",
-          "material": "glass",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            29,
-            8
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 2
-        },
         {
           "gu": [
             33,
@@ -1596,30 +1578,6 @@
           ],
           "tags": [
             "event"
-          ]
-        },
-        {
-          "id": "pane_se",
-          "at": [
-            26.0,
-            8.5,
-            1.0
-          ],
-          "tags": [
-            "glass",
-            "detail"
-          ]
-        },
-        {
-          "id": "pane_sw",
-          "at": [
-            29.5,
-            9.0,
-            1.0
-          ],
-          "tags": [
-            "glass",
-            "detail"
           ]
         },
         {

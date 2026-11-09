@@ -103,6 +103,7 @@ func _test_pose_file(figure: String) -> void:
 	var props: Dictionary = data["props"]
 	props["pistol"]["pos"] = [0.0123, 0.0456, 0.0789]
 	props["pistol"]["scale"] = 0.06
+	data["hips_pos"] = [0.01, 0.5, -0.03]
 	var path: String = "user://tripo_pose_file_selftest.json"
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	file.store_string(JSON.stringify(data))
@@ -112,8 +113,9 @@ func _test_pose_file(figure: String) -> void:
 	_check(read != null and read.get_meta("source", "") == "file", "%s: a pose file is read and says it came from a file" % figure)
 	if read == null:
 		return
-	_check(read.get_track_count() == solved.get_track_count(), "%s: the file's %d bones are all in the pose (%d)" % [figure, solved.get_track_count(), read.get_track_count()])
+	_check(read.get_track_count() == solved.get_track_count() + 1, "%s: the file's %d bones and the Hips' place are all in the pose (%d)" % [figure, solved.get_track_count(), read.get_track_count()])
 	var back: Dictionary = TripoFigureRef.pose_to_json(figure, "aim_pistol", read)
+	_check(back.get("hips_pos", []) == [0.01, 0.5, -0.03] or Vector3(back["hips_pos"][0], back["hips_pos"][1], back["hips_pos"][2]).distance_to(Vector3(0.01, 0.5, -0.03)) < 0.00001, "%s: a stance's Hips place comes back as written" % figure)
 	var arm: Array = back["bones"]["RightForeArm"]
 	_check(_qdiff(Quaternion(arm[0], arm[1], arm[2], arm[3]), moved) < 0.00001, "%s: the bone he moved comes back as he wrote it" % figure)
 	var prop: Dictionary = (read.get_meta("props") as Dictionary)["pistol"]
@@ -143,9 +145,11 @@ func _test_pose(figure: String, id: String, lib: AnimationLibrary) -> void:
 	if fresh != null and fresh.get_track_count() == pose.get_track_count():
 		worst = 0.0
 		for t in range(pose.get_track_count()):
+			if pose.track_get_type(t) != Animation.TYPE_ROTATION_3D:
+				continue
 			var name: String = String(pose.track_get_path(t)).get_slice(":", 1)
 			for u in range(fresh.get_track_count()):
-				if String(fresh.track_get_path(u)).get_slice(":", 1) == name:
+				if fresh.track_get_type(u) == Animation.TYPE_ROTATION_3D and String(fresh.track_get_path(u)).get_slice(":", 1) == name:
 					worst = maxf(worst, _qdiff(pose.track_get_key_value(t, 0) as Quaternion, fresh.track_get_key_value(u, 0) as Quaternion))
 	_check(worst < 0.0001, "%s %s: the game set matches the pose built now (worst bone %.7f)" % [figure, id, worst])
 	## A pose from his file is his: the solver's numbers (`two_hand_aim`) describe a pose it no longer plays. It only has to lay over the idle torso.

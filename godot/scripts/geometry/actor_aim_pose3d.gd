@@ -16,6 +16,8 @@ var weight: float = 0.0
 var _bones: PackedInt32Array = PackedInt32Array()
 var _stop_at: PackedFloat32Array = PackedFloat32Array()   ## each stop's weight, ascending, the last one 1.0
 var _stop_rots: Array = []                                  ## per stop: an Array[Quaternion] aligned with `_bones`
+var _pos_bone: int = -1                                     ## the bone a whole-body pose also places (the Hips), -1 when no stop does
+var _stop_pos: Array[Vector3] = []                          ## per stop, its place
 
 
 ## `stops`: [[weight, Animation], ...] ascending, the last weight 1.0. The bones are every stop's together (a hand-made aim keys the last finger joints, which the clip the draw
@@ -50,7 +52,36 @@ func load_stops(skeleton: Skeleton3D, stops: Array) -> bool:
 			rots.append(_rotation_at(per_stop, i, bone))
 		_stop_at.append(float((stops[i] as Array)[0]))
 		_stop_rots.append(rots)
+	_load_positions(skeleton, stops)
 	return true
+
+
+## The position track some stops carry (a whole-body stance moves the Hips; the idle under it must not show through). A stop without one keeps the nearest stop's, as a rotation does.
+func _load_positions(skeleton: Skeleton3D, stops: Array) -> void:
+	_pos_bone = -1
+	_stop_pos.clear()
+	var per_stop: Array = []
+	for stop: Array in stops:
+		var pose := stop[1] as Animation
+		var here: Variant = null
+		for t in range(pose.get_track_count()):
+			if pose.track_get_type(t) == Animation.TYPE_POSITION_3D and pose.track_get_key_count(t) > 0:
+				var idx: int = skeleton.find_bone(String(pose.track_get_path(t)).get_slice(":", 1))
+				if idx >= 0:
+					_pos_bone = idx
+					here = pose.track_get_key_value(t, 0)
+		per_stop.append(here)
+	if _pos_bone < 0:
+		return
+	for i in range(per_stop.size()):
+		var found: Variant = null
+		for k in range(i, -1, -1):
+			if found == null:
+				found = per_stop[k]
+		for k in range(i + 1, per_stop.size()):
+			if found == null:
+				found = per_stop[k]
+		_stop_pos.append(found as Vector3)
 
 
 ## `bone` at stop `i`: its own key, else the nearest stop before that has one, else the nearest after.
@@ -99,3 +130,6 @@ func apply_to(skeleton: Skeleton3D) -> void:
 		var bone: int = _bones[i]
 		var from_q: Quaternion = skeleton.get_bone_pose_rotation(bone) if stop == 0 else (_stop_rots[stop - 1] as Array)[i]
 		skeleton.set_bone_pose_rotation(bone, from_q.slerp(to_rots[i], t))
+	if _pos_bone >= 0:
+		var from_p: Vector3 = skeleton.get_bone_pose_position(_pos_bone) if stop == 0 else _stop_pos[stop - 1]
+		skeleton.set_bone_pose_position(_pos_bone, from_p.lerp(_stop_pos[stop], t))

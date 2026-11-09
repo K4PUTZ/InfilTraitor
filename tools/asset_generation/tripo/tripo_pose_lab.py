@@ -251,6 +251,12 @@ def build(figure, pose_id, dump_dir, out_blend, glb, prop_models):
     for n, q in start["bones"].items():
         local[n] = quat_xyzw(q)
     G = rig.apply(local)
+    hips = start.get("hips_pos", idle.get("hips_pos"))
+    if hips is not None:                     # where the game holds the Hips; the prop is placed below from the bones, so it follows
+        h = arm.pose.bones[PREFIX + "Hips"]
+        m = h.matrix.copy()
+        m.translation = CMT @ Vector(hips)
+        h.matrix = m
     bpy.context.view_layer.update()
     arm["lab_figure"] = figure
     arm["lab_pose"] = pose_id
@@ -309,6 +315,8 @@ def extract(blend, out_json):
             print(f"[tripo_pose_lab] WARNING: the {prop} was scaled unevenly ({tuple(scl)}): the pose file keeps one scale, the mean")
         props[prop] = {"bone": bone, "pos": [loc.x, loc.y, loc.z], "quat": xyzw(rot), "scale": (scl[0] + scl[1] + scl[2]) / 3.0}
     out = {"format": "infiltraitor-pose", "v": 1, "figure": arm["lab_figure"], "id": arm["lab_pose"], "bones": bones, "props": props}
+    if arm.get("lab_whole_body"):            # a stance: the Hips' place is part of the pose
+        out["hips_pos"] = list(CM @ arm.pose.bones[PREFIX + "Hips"].matrix.translation)
     os.makedirs(os.path.dirname(out_json), exist_ok=True)
     with open(out_json, "w") as f:
         json.dump(out, f, indent=1)

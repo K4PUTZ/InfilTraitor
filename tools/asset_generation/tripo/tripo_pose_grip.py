@@ -6,11 +6,12 @@
 # Arms: a two-bone IK that carries each bone's twist over from the pose already in the file (the hinge rule of `TripoPoseKit.solve_arm`), nearly straight.
 # Working in armature space on the pose bones, so the result is an ordinary pose: the Director refines it by hand and `pose_lab.py save` reads it like any other.
 #
-# Run inside Blender:  blender -b --python tripo_pose_grip.py -- <in .blend> <out .blend> [--coat <map.png>] [--render <out prefix>]
-import bpy, math, sys
+# Run inside Blender:  blender -b --python tripo_pose_grip.py -- <in .blend> <out .blend> --idle <figure>_idle.json [--step] [--coat <map.png>] [--render <out prefix>]
+import bpy, json, math, sys
 from mathutils import Matrix, Quaternion, Vector
 
 PREFIX = "mixamorig:"
+CMT = Matrix(((1, 0, 0), (0, 0, -1), (0, 1, 0)))     # glTF (x, y, z) -> Blender (x, -z, y)
 FORWARD = Vector((0.0, -1.0, 0.0))
 UP = Vector((0.0, 0.0, 1.0))
 LEFT = Vector((1.0, 0.0, 0.0))          # the figure's left
@@ -34,6 +35,21 @@ LEFT_PALM = Vector((-0.12, 0.05, 1.0)).normalized()           # where its palm f
 LEFT_PALM_BELOW = 0.010                 # the palm's centre below the butt
 LEFT_PALM_REACH = 0.046                 # wrist to the palm's centre, along the fingers
 LEFT_PALM_SHIFT = Vector((0.000, 0.002, 0.0))
+
+# The stance (Director, 2026-11-08): the idle sways, so the aim replaces the WHOLE body with a still base. The left foot stays, the right goes half a step back, turned out almost 90 degrees.
+STEP_BACK = 0.115                       # the right foot, back
+STEP_OUT = 0.012                        # and out
+STEP_YAW_DEG = -74.0                    # its toes turned toward the figure's right
+STEP_LIFT = 0.035                       # its height at the middle of the step (the draw stop)
+HIPS_BACK = 0.040
+HIPS_DOWN = 0.016
+HIPS_OUT = 0.006
+HIPS_YAW_DEG = -22.0                    # the pelvis follows the back foot
+CHEST_YAW_BACK_DEG = 16.0               # the spine turns most of it back toward the target (over Spine, Spine1, Spine2)
+LEAN_DEG = 8.0                          # the spine's lean into the gun (same three bones)
+HEAD_BACK_DEG = (2.0, 3.0)              # Neck, Head: the lean taken back partly, so the head tips toward the sights but the eyes stay level
+HEAD_YAW_BACK_DEG = 6.0                 # the head finishes facing the target
+LEG_STRAIGHT = 0.997
 
 # Curl (degrees, about each joint's hinge, toward the palm) of the fingers that only wrap.
 CURLS = {
@@ -114,6 +130,63 @@ def solve_arm(p, side, wrist, hand, pole):
     return (hnd.matrix.translation - wrist).length
 
 
+def rz(deg):
+    return Matrix.Rotation(math.radians(deg), 3, 'Z')
+
+
+def rx(deg):
+    return Matrix.Rotation(math.radians(deg), 3, 'X')
+
+
+def solve_leg(p, side, ankle, foot_rot, pole):
+    up, low, foot = p.b(side + "UpLeg"), p.b(side + "Leg"), p.b(side + "Foot")
+    s = up.matrix.translation.copy()
+    k0, a0 = low.matrix.translation.copy(), foot.matrix.translation.copy()
+    l1, l2 = (k0 - s).length, (a0 - k0).length
+    to = ankle - s
+    limit = (l1 + l2) * LEG_STRAIGHT
+    reach = min(to.length, limit)
+    if to.length > limit + 0.001:
+        print(f"[tripo_pose_grip] {side} leg: the ankle is {to.length:.3f} away, the leg gives {limit:.3f}")
+    d = to.normalized()
+    a = s + d * reach
+    ca = max(-1.0, min(1.0, (l1 * l1 + reach * reach - l2 * l2) / (2 * l1 * reach)))
+    side_dir = (pole - d * pole.dot(d)).normalized()
+    k = s + (d * ca + side_dir * math.sqrt(1 - ca * ca)) * l1
+    n1 = (k - s).cross(a - k).normalized()
+    n0 = (k0 - s).cross(a0 - k0).normalized()
+    p.turn(up, triad(k0 - s, n0, k - s, n1))
+    k2, a2 = low.matrix.translation.copy(), foot.matrix.translation.copy()
+    n2 = (k2 - s).cross(a2 - k2).normalized()
+    p.turn(low, triad(a2 - k2, n2, a - k, n1))
+    p.set_rot(foot, foot_rot)
+    return (foot.matrix.translation - ankle).length
+
+
+def stance(p, t, idle_hips):
+    """the whole body at `t` of the way into the stance (1 the aim, 0.5 the middle of the step)"""
+    hips = p.b("Hips")
+    m = hips.matrix.copy()
+    m.translation = idle_hips
+    hips.matrix = m
+    p.refresh()
+    feet = {s: (p.b(s + "Foot").matrix.translation.copy(), p.b(s + "Foot").matrix.to_3x3().normalized()) for s in ("Left", "Right")}
+    m = hips.matrix.copy()
+    m.translation = idle_hips + Vector((-HIPS_OUT, HIPS_BACK, -HIPS_DOWN)) * t
+    hips.matrix = m
+    p.refresh()
+    p.turn(hips, rz(HIPS_YAW_DEG * t))
+    for n in ("Spine", "Spine1", "Spine2"):
+        p.turn(p.b(n), rz(CHEST_YAW_BACK_DEG * t / 3.0) @ rx(LEAN_DEG * t / 3.0))
+    p.turn(p.b("Neck"), rx(-HEAD_BACK_DEG[0] * t))
+    p.turn(p.b("Head"), rz(HEAD_YAW_BACK_DEG * t) @ rx(-HEAD_BACK_DEG[1] * t))
+    left = solve_leg(p, "Left", feet["Left"][0], feet["Left"][1], Vector((0.15, -1.0, 0.0)))
+    lift = STEP_LIFT * math.sin(math.pi * t) if t < 1.0 else 0.0
+    ankle = feet["Right"][0] + Vector((-STEP_OUT * t, STEP_BACK * t, lift))
+    right = solve_leg(p, "Right", ankle, rz(STEP_YAW_DEG * t) @ feet["Right"][1], Vector((-0.75, -0.65, 0.0)))
+    print(f"[tripo_pose_grip] stance at {t}: ankle misses left {left:.4f}, right {right:.4f}")
+
+
 def curl(p, side, finger, angles, palm_dir):
     for i, deg in enumerate(angles):
         pb = p.b(f"{side}Hand{finger}{i + 1}")
@@ -156,13 +229,17 @@ def swap_coat(path, figure):
     print(f"[tripo_pose_grip] coat map replaced from {path}")
 
 
-def pose_it():
+def begin():
     arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
     bpy.context.view_layer.objects.active = arm
     if bpy.context.object.mode != 'POSE':
         bpy.ops.object.mode_set(mode='POSE')
     p = Poser(arm)
     p.refresh()
+    return arm, p
+
+
+def pose_it(arm, p):
     head = bpy.data.objects["Body_Head"]
     dg = bpy.context.evaluated_depsgraph_get()
     mesh = head.evaluated_get(dg).to_mesh()
@@ -253,9 +330,9 @@ def render(prefix, grip):
     cam.data.clip_start = 0.01
     scn.collection.objects.link(cam)
     scn.camera = cam
-    centre = Vector((0.0, -0.14, 0.72))
+    centre = Vector((0.0, -0.06, 0.5))
     shots = [("hands_right", grip, 90.0 + 180.0, 6.0, 0.42), ("hands_left", grip, 90.0, 6.0, 0.42), ("hands_below", grip, 25.0, -38.0, 0.42),
-             ("body_side", centre, 270.0, 6.0, 2.5), ("body_front", centre, 20.0, 8.0, 2.5)]
+             ("body_side", centre, 270.0, 6.0, 3.2), ("body_front", centre, 20.0, 8.0, 3.2), ("feet_top", Vector((0.0, 0.05, 0.03)), 0.0, 88.0, 1.1)]
     for name, target, az, el, dist in shots:
         a, e = math.radians(az), math.radians(el)
         cam.location = target + Vector((math.sin(a) * math.cos(e), -math.cos(a) * math.cos(e), math.sin(e))) * dist
@@ -269,7 +346,14 @@ def render(prefix, grip):
 def main():
     a = after_dashes()
     bpy.ops.wm.open_mainfile(filepath=a[0])
-    arm, grip = pose_it()
+    arm, p = begin()
+    figure = arm["lab_figure"]
+    idle = json.load(open(opt(a, "--idle")))
+    idle_hips = CMT @ Vector(idle["hips_pos"])
+    stance(p, 0.5 if "--step" in a else 1.0, idle_hips)
+    arm["lab_whole_body"] = True
+    arm["lab_bones"] = json.dumps(sorted(b.name[len(PREFIX):] for b in arm.data.bones))
+    grip = p.b("RightHand").matrix.translation.copy() if "--step" in a else pose_it(arm, p)[1]
     if opt(a, "--coat"):
         swap_coat(opt(a, "--coat"), arm["lab_figure"])
     bpy.ops.wm.save_as_mainfile(filepath=a[1])

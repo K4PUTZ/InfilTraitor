@@ -314,7 +314,8 @@ func _pistol_placement(weight: float) -> Transform3D:
 func _update_aim(state: Dictionary) -> void:
 	if _aim == null:
 		return
-	var want: bool = String(state["weapon"]) == "_pistol" and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing"
+	## Standing still only: the aim is a whole-body stance (the idle sways and must not show through), so a walking figure keeps its legs and lowers the gun.
+	var want: bool = String(state["weapon"]) == "_pistol" and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing" and float(state["walk"]) < 0.0
 	var target: float = 1.0 if want else 0.0
 	_aim_t = move_toward(_aim_t, target, get_process_delta_time() / (AIM_RAISE_S if want else AIM_LOWER_S))
 	_aim.weight = _aim_t

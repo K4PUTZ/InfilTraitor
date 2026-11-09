@@ -290,6 +290,12 @@ static func _pose_from_file(figure: String, id: String, path: String) -> Animati
 		var track: int = pose.add_track(Animation.TYPE_ROTATION_3D)
 		pose.track_set_path(track, NodePath("%s:%s" % [holder.get_path_to(skeleton), skeleton.get_bone_name(idx)]))
 		pose.rotation_track_insert_key(track, 0.0, Quaternion(float(q[0]), float(q[1]), float(q[2]), float(q[3])).normalized())
+	if row.has("hips_pos"):   ## a whole-body stance places the Hips too
+		var hips: int = TripoPoseKitRef.find_bone(skeleton, "Hips")
+		var at: Vector3 = JsonFile.vector3(row.get("hips_pos"), Vector3.ZERO, "%s hips_pos" % path, errors)
+		var track: int = pose.add_track(Animation.TYPE_POSITION_3D)
+		pose.track_set_path(track, NodePath("%s:%s" % [holder.get_path_to(skeleton), skeleton.get_bone_name(hips)]))
+		pose.position_track_insert_key(track, 0.0, at)
 	var props: Dictionary = {}
 	var rows: Dictionary = row.get("props", {})
 	for prop: String in rows:
@@ -314,7 +320,11 @@ static func _pose_from_file(figure: String, id: String, path: String) -> Animati
 ## `pose` as the JSON the Director's file uses (see `POSE_FILE`), bones by Mixamo name without prefix. For the dump that starts a Blender session and for the selftest.
 static func pose_to_json(figure: String, id: String, pose: Animation) -> Dictionary:
 	var bones: Dictionary = {}
+	var hips_pos: Array = []
 	for t in range(pose.get_track_count()):
+		if pose.track_get_type(t) == Animation.TYPE_POSITION_3D:
+			var at: Vector3 = pose.track_get_key_value(t, 0)
+			hips_pos = [at.x, at.y, at.z]
 		if pose.track_get_type(t) != Animation.TYPE_ROTATION_3D:
 			continue
 		var name: String = String(pose.track_get_path(t)).get_slice(":", 1)
@@ -331,7 +341,10 @@ static func pose_to_json(figure: String, id: String, pose: Animation) -> Diction
 		var pos: Vector3 = p["pos"]
 		var qq: Quaternion = p["quat"]
 		props[prop] = {"bone": p["bone"], "pos": [pos.x, pos.y, pos.z], "quat": [qq.x, qq.y, qq.z, qq.w], "scale": p["scale"]}
-	return {"format": "infiltraitor-pose", "v": 1, "figure": figure, "id": id, "bones": bones, "props": props}
+	var out: Dictionary = {"format": "infiltraitor-pose", "v": 1, "figure": figure, "id": id, "bones": bones, "props": props}
+	if not hips_pos.is_empty():
+		out["hips_pos"] = hips_pos
+	return out
 
 
 ## The pose `id` of `figure` (`POSES`) as a one-key Animation: the listed bones' rotations at one time of a bank clip, then its arms solved when the spec says so.

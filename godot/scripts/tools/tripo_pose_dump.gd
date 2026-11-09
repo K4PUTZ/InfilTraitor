@@ -69,8 +69,14 @@ func _write_idle(figure: String, out_dir: String) -> int:
 	for i in range(skeleton.get_bone_count()):
 		var q: Quaternion = rots[i] if rots.has(i) else skeleton.get_bone_rest(i).basis.orthonormalized().get_rotation_quaternion()
 		bones[_short(skeleton.get_bone_name(i))] = [q.x, q.y, q.z, q.w]
+	var hips: int = TripoFigureRef.TripoPoseKitRef.find_bone(skeleton, "Hips")
+	var clip: Animation = TripoFigureRef.bank_clip(figure, "idle", skeleton.get_bone_rest(hips).origin)
+	var at: Vector3 = skeleton.get_bone_rest(hips).origin
+	for t in range(clip.get_track_count()):
+		if clip.track_get_type(t) == Animation.TYPE_POSITION_3D:
+			at = clip.position_track_interpolate(t, 0.0)
 	(rig["holder"] as Node).free()
-	return _save(out_dir.path_join("%s_idle.json" % figure), {"format": "infiltraitor-idle", "v": 1, "figure": figure, "bones": bones})
+	return _save(out_dir.path_join("%s_idle.json" % figure), {"format": "infiltraitor-idle", "v": 1, "figure": figure, "bones": bones, "hips_pos": [at.x, at.y, at.z]})
 
 
 func _write_pose(figure: String, id: String, out_dir: String) -> int:

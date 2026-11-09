@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**348 scripts · 102251 lines total** (under `godot/scripts/`)
+**348 scripts · 102309 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -425,7 +425,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_aim_pose3d.gd`
 
-`class_name ActorAimPose3D` · extends `SkeletonModifier3D` · 101 lines
+`class_name ActorAimPose3D` · extends `SkeletonModifier3D` · 135 lines
 
 `godot/scripts/geometry/actor_aim_pose3d.gd`
 
@@ -458,7 +458,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 572 lines
+`class_name ActorMesh3D` · extends `Node3D` · 573 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -1471,7 +1471,7 @@ extends `Node3D` · 3573 lines
 
 ### `tripo_figure.gd`
 
-`class_name TripoFigure` · extends `RefCounted` · 423 lines
+`class_name TripoFigure` · extends `RefCounted` · 436 lines
 
 `godot/scripts/geometry/tripo_figure.gd`
 
@@ -6264,7 +6264,7 @@ extends `SceneTree` · 390 lines
 
 ### `tripo_figure_selftest.gd`
 
-extends `SceneTree` · 229 lines
+extends `SceneTree` · 233 lines
 
 `godot/scripts/tools/tripo_figure_selftest.gd`
 
@@ -6294,7 +6294,7 @@ extends `SceneTree` · 49 lines
 
 ### `tripo_pose_dump.gd`
 
-extends `SceneTree` · 100 lines
+extends `SceneTree` · 106 lines
 
 `godot/scripts/tools/tripo_pose_dump.gd`
 

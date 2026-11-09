@@ -48,6 +48,45 @@ static func bone_global(skeleton: Skeleton3D, bone: int, rots: Dictionary, cache
 	return global
 
 
+## Bends the leg above `foot` so its ankle rides `height` straight up, the foot keeping its orientation in space: a two-bone IK on the thigh and the shin, the knee staying in the plane
+## it bends in. `rots` (bone -> local rotation) is changed in place. False, and `rots` untouched, when the leg cannot reach or has no bend to work with.
+static func lift_foot(skeleton: Skeleton3D, foot: int, rots: Dictionary, height: float) -> bool:
+	var shin: int = skeleton.get_bone_parent(foot)
+	var thigh: int = skeleton.get_bone_parent(shin) if shin >= 0 else -1
+	if thigh < 0:
+		return false
+	var cache: Dictionary = {}
+	var g_thigh: Transform3D = bone_global(skeleton, thigh, rots, cache)
+	var g_shin: Transform3D = bone_global(skeleton, shin, rots, cache)
+	var g_foot: Transform3D = bone_global(skeleton, foot, rots, cache)
+	var hip: Vector3 = g_thigh.origin
+	var knee: Vector3 = g_shin.origin
+	var ankle: Vector3 = g_foot.origin
+	var target: Vector3 = ankle + Vector3.UP * height
+	var upper: float = hip.distance_to(knee)
+	var lower: float = knee.distance_to(ankle)
+	var reach: float = hip.distance_to(target)
+	if reach >= upper + lower or reach <= absf(upper - lower):
+		return false
+	var axis: Vector3 = (target - hip) / reach
+	var bend: Vector3 = (knee - hip) - axis * (knee - hip).dot(axis)
+	if bend.length_squared() < 1e-10:
+		return false
+	var along: float = (upper * upper + reach * reach - lower * lower) / (2.0 * reach)
+	var new_knee: Vector3 = hip + axis * along + bend.normalized() * sqrt(maxf(upper * upper - along * along, 0.0))
+	var swing_thigh := Quaternion((knee - hip).normalized(), (new_knee - hip).normalized())
+	var carried_ankle: Vector3 = hip + swing_thigh * (ankle - hip)
+	var swing_shin := Quaternion((carried_ankle - new_knee).normalized(), (target - new_knee).normalized())
+	var thigh_q: Quaternion = swing_thigh * g_thigh.basis.get_rotation_quaternion()
+	var shin_q: Quaternion = swing_shin * swing_thigh * g_shin.basis.get_rotation_quaternion()
+	var parent: int = skeleton.get_bone_parent(thigh)
+	var parent_q: Quaternion = bone_global(skeleton, parent, rots, cache).basis.get_rotation_quaternion() if parent >= 0 else Quaternion.IDENTITY
+	rots[thigh] = (parent_q.inverse() * thigh_q).normalized()
+	rots[shin] = (thigh_q.inverse() * shin_q).normalized()
+	rots[foot] = (shin_q.inverse() * g_foot.basis.get_rotation_quaternion()).normalized()
+	return true
+
+
 ## A rotation taking the bone-local pair (axis, normal) onto the world pair (axis, normal): the axis exactly, the normal as near as the axis allows.
 static func triad(local_axis: Vector3, local_normal: Vector3, world_axis: Vector3, world_normal: Vector3) -> Basis:
 	var la: Vector3 = local_axis.normalized()

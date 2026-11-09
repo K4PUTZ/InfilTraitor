@@ -36,6 +36,12 @@ const SILHOUETTE_PRIORITY := 20
 const SHADOW_SHADER := "res://godot/shaders/ground_overlay3d.gdshader"
 ## Above the floor, under every ground overlay's lift (0.01+).
 const SHADOW_LIFT: float = 0.005
+## The contact shadow (Director, 2026-11-09): black, this opaque at the centre, this wide on the ground (world units), fading through the rings (share of the radius, share of the opacity) to
+## nothing at the last one.
+const CONTACT_SHADOW_OPACITY: float = 1.0
+const CONTACT_SHADOW_RADIUS: float = 0.27
+const CONTACT_SHADOW_RINGS: Array = [[0.35, 0.6], [1.0, 0.0]]
+const CONTACT_SHADOW_SEGMENTS: int = 32
 const HeadTurnRef = preload("res://godot/scripts/geometry/actor_head_turn3d.gd")
 const RIG_DIR := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"
 ## `ActorPose.frame_family` -> the rig exported from that model. A family with no rig of its own falls back to the
@@ -51,8 +57,6 @@ const RIG_BY_FAMILY := {
 const WEAPON_BY_SUFFIX := {"": "shotgun", "_pistol": "pistol", "_rifle": "shotgun"}
 ## D61: a GU is 1.60 m, and a GU is one world unit; the rig is authored in metres.
 const METRES_TO_UNITS: float = 1.0 / 1.6
-## The 2D contact shadow's colour when the actor's script declares none.
-const DEFAULT_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
 const TripoFigureRef = preload("res://godot/scripts/geometry/tripo_figure.gd")
 ## Dev flags of the Tripo slice: which Agent every actor wears ("" = the r3d_live rig), and the clip it moves with.
 const TRIPO_FIGURE_FLAG := "TRIPO_FIGURE"
@@ -66,8 +70,9 @@ const TRIPO_IDLE := "idle"
 ## `pose_aim_pistol` (`TripoFigure.POSES`, `ActorAimPose3D`); the pistol is in the right hand only then, and comes out as the fist rises
 ## (Director: no holster, it leaves the coat). `AIM_RAISE_S` / `AIM_LOWER_S` are the weight's travel; the gun shows from `PISTOL_SHOWN_FROM` of it.
 const ActorAimPoseRef = preload("res://godot/scripts/geometry/actor_aim_pose3d.gd")
-## The path of the raise: the idle arms, then the fists at the sternum (`draw_pistol`, at half way: the gun appears here, out of the coat), then the aim.
-const AIM_STOPS: Array = [["draw_pistol", 0.5], ["aim_pistol", 1.0]]
+## The path of the raise: the idle arms, then the fists at the sternum (`draw_pistol`, at half way: the gun appears here, out of the coat), then the aim. `step_pistol` is passed through
+## without resting (the third element): the front foot off the floor between the two.
+const AIM_STOPS: Array = [["draw_pistol", 0.5], ["step_pistol", 0.75, true], ["aim_pistol", 1.0]]
 const AIM_RAISE_S: float = 0.36
 const AIM_LOWER_S: float = 0.24
 const PISTOL_SHOWN_FROM: float = 0.5
@@ -256,7 +261,7 @@ func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 		if not lib.has_animation(pose_id):
 			push_warning("[ActorMesh3D] the %s game set has no '%s': the agent will not aim (run godot/scripts/tools/tripo_game_clips.gd)" % [figure, pose_id])
 			return
-		stops.append([float(stop[1]), lib.get_animation(pose_id)])
+		stops.append([float(stop[1]), lib.get_animation(pose_id), stop.size() > 2])
 	var layer: ActorAimPoseRef = ActorAimPoseRef.new()
 	_skeleton.add_child(layer)
 	if not layer.load_stops(_skeleton, stops):
@@ -271,6 +276,8 @@ func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 func _build_pistol(stops: Array) -> void:
 	_pistol_stops.clear()
 	for stop: Array in stops:
+		if bool(stop[2]):                   ## a passing stop carries no placement: the gun blends between the resting ones
+			continue
 		var props: Dictionary = (stop[1] as Animation).get_meta("props", {})
 		_pistol_stops.append([float(stop[0]), props["pistol"] if props.has("pistol") else TripoFigureRef.prop_default("pistol")])
 	var bone_name: String = String((_pistol_stops[_pistol_stops.size() - 1][1] as Dictionary)["bone"])
@@ -506,28 +513,35 @@ func set_status_tint(color: Color, pulse: float) -> void:
 		m.set_shader_parameter("status_pulse", pulse)
 
 
-## R3D-WORLD — the actor's contact shadow, on the ground under the feet: the 2D diamond the actor drew
-## (`ground_shadow_half_px`, `COLOR_SHADOW`), carried through the board's 2D -> ground map, so it is the same shape on the
-## same floor in view N and stays under the feet in every other view. The actor's own 2D shadow is gone (RETIRE-2D); the actor
-## is also handed the board for its dev-vision draws.
+## The actor's contact shadow (Director, 2026-11-09, replacing the diamond R3D-WORLD carried over from the 2D actor): a soft black disc flat on the ground under the feet, which the camera
+## squashes into a horizontal ellipse in every view. The fade lives in the vertex colours, so it takes no texture and goes through the ground marks' own shader (depth-tested, never
+## writing depth, not drawn behind a glass pane). The actor is also handed the board for its dev-vision draws.
 func _build_contact_shadow(actor: Node) -> void:
-	if actor == null or not ("ground_shadow_half_px" in actor):
+	if actor == null:
 		return
-	var half: Vector2 = actor.get("ground_shadow_half_px")
-	var to_gu: Transform2D = _board.call("ground_affine")
-	var constants: Dictionary = actor.get_script().get_script_constant_map() if actor.get_script() != null else {}
-	var colour: Color = constants.get("COLOR_SHADOW", DEFAULT_SHADOW)
-	var verts := PackedVector3Array()
-	var cols := PackedColorArray()
-	for p: Vector2 in [Vector2(0.0, -half.y), Vector2(half.x, 0.0), Vector2(0.0, half.y), Vector2(-half.x, 0.0)]:
-		var g: Vector2 = to_gu.basis_xform(p)
-		verts.append(Vector3(g.x, SHADOW_LIFT, g.y))
-		cols.append(colour)
+	var verts := PackedVector3Array([Vector3(0.0, SHADOW_LIFT, 0.0)])
+	var cols := PackedColorArray([Color(0.0, 0.0, 0.0, CONTACT_SHADOW_OPACITY)])
+	var indices := PackedInt32Array()
+	var n: int = CONTACT_SHADOW_SEGMENTS
+	for r: int in range(CONTACT_SHADOW_RINGS.size()):
+		var ring: Array = CONTACT_SHADOW_RINGS[r]
+		var radius: float = CONTACT_SHADOW_RADIUS * float(ring[0])
+		for s: int in range(n):
+			var a: float = TAU * float(s) / float(n)
+			verts.append(Vector3(cos(a) * radius, SHADOW_LIFT, sin(a) * radius))
+			cols.append(Color(0.0, 0.0, 0.0, CONTACT_SHADOW_OPACITY * float(ring[1])))
+			var next: int = (s + 1) % n
+			var here: int = 1 + r * n
+			if r == 0:
+				indices.append_array(PackedInt32Array([0, here + s, here + next]))
+			else:
+				var inner: int = here - n
+				indices.append_array(PackedInt32Array([inner + s, here + s, here + next, inner + s, here + next, inner + next]))
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_COLOR] = cols
-	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2, 0, 2, 3])
+	arrays[Mesh.ARRAY_INDEX] = indices
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	var node := MeshInstance3D.new()

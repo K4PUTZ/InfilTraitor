@@ -83,6 +83,8 @@ func _test_figure(figure: String) -> void:
 	_check(TripoFigureRef.travel_m(lib.get_animation("idle")) < 0.05, "%s: the idle covers no ground" % figure)
 	_check(walk_m > 1.0 and run_m > walk_m, "%s: the walk covers ground (%.3f m a pass), the run more (%.3f m)" % [figure, walk_m, run_m])
 	for pose_id: String in TripoFigureRef.POSES:
+		if (TripoFigureRef.POSES[pose_id] as Dictionary).has("between"):   ## derived: `_test_passing_stop` covers it
+			continue
 		_test_pose(figure, pose_id, lib)
 	_test_aim_layer(figure, lib)
 	_test_pose_file(figure)
@@ -196,7 +198,43 @@ func _test_aim_layer(figure: String, lib: AnimationLibrary) -> void:
 		layer.apply_to(skeleton)
 		var want: Quaternion = TripoPoseKitRef.bone_rotations(skeleton, stop[1] as Animation, 0.0)[bone]
 		_check(_qdiff(skeleton.get_bone_pose_rotation(bone), want) < 0.0001, "%s: weight %.1f is exactly the pose" % [figure, float(stop[0])])
+	_test_passing_stop(figure, lib, skeleton, layer, draw, aim)
 	body.free()
+
+
+## The passing stop: `step_pistol` sits on the arms' own path (the eased middle of the draw -> aim stretch is exactly it), and the foot that travels between the two stops rides `lift`
+## above where the plain blend leaves it; a foot that does not travel stays on it.
+func _test_passing_stop(figure: String, lib: AnimationLibrary, skeleton: Skeleton3D, layer: Node, draw: Animation, aim: Animation) -> void:
+	var step: Animation = lib.get_animation(TripoFigureRef.POSE_PREFIX + "step_pistol")
+	_check(step != null and layer.load_stops(skeleton, [[0.5, draw], [0.75, step, true], [1.0, aim]]), "%s: the aim layer loads the passing stop" % figure)
+	if step == null:
+		return
+	var spec: Dictionary = TripoFigureRef.POSES["step_pistol"]
+	var from: Dictionary = TripoPoseKitRef.bone_rotations(skeleton, draw, 0.0)
+	var to: Dictionary = TripoPoseKitRef.bone_rotations(skeleton, aim, 0.0)
+	var arm: int = TripoFigureRef.find_bone(skeleton, "RightForeArm")
+	layer.weight = 0.75
+	skeleton.reset_bone_poses()
+	layer.apply_to(skeleton)
+	_check(_qdiff(skeleton.get_bone_pose_rotation(arm), (from[arm] as Quaternion).slerp(to[arm] as Quaternion, 0.5)) < 0.0001, "%s: the arm passes through the middle of its own path" % figure)
+	var plain: Dictionary = {}
+	for bone: int in from:
+		plain[bone] = (from[bone] as Quaternion).slerp(to[bone] as Quaternion, 0.5) if to.has(bone) else from[bone]
+	var foot: int = TripoFigureRef.find_bone(skeleton, String(spec["foot"]))
+	var rose: float = TripoPoseKitRef.bone_global(skeleton, foot, TripoPoseKitRef.bone_rotations(skeleton, step, 0.0), {}).origin.y - TripoPoseKitRef.bone_global(skeleton, foot, plain, {}).origin.y
+	var travel: float = _foot_travel(skeleton, foot, draw, aim)
+	var want: float = float(spec["lift"]) if travel >= TripoFigureRef.STEP_MIN_TRAVEL else 0.0
+	_check(absf(rose - want) < 0.0005, "%s: the foot that travels %.3f rides %.4f above the plain blend (want %.4f)" % [figure, travel, rose, want])
+
+
+## How far the ankle of `foot` moves over the floor between two one-key poses, the Hips' own move included.
+func _foot_travel(skeleton: Skeleton3D, foot: int, a: Animation, b: Animation) -> float:
+	var at_a: Vector3 = TripoPoseKitRef.bone_global(skeleton, foot, TripoPoseKitRef.bone_rotations(skeleton, a, 0.0), {}).origin
+	var at_b: Vector3 = TripoPoseKitRef.bone_global(skeleton, foot, TripoPoseKitRef.bone_rotations(skeleton, b, 0.0), {}).origin
+	var hips_a: Variant = TripoFigureRef._hips_place(a)
+	var hips_b: Variant = TripoFigureRef._hips_place(b)
+	var hips: Vector3 = (hips_b as Vector3) - (hips_a as Vector3) if hips_a != null and hips_b != null else Vector3.ZERO
+	return Vector2(at_b.x - at_a.x + hips.x, at_b.z - at_a.z + hips.z).length()
 
 
 func _test_clip(figure: String, id: String, lib: AnimationLibrary, hips_rest: Vector3) -> void:

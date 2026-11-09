@@ -20,6 +20,7 @@
 #                      blender -b --python tripo_pose_lab.py -- extract <saved .blend> <out .json>
 #                      blender -b --python tripo_pose_lab.py -- render  <saved .blend> <out .png>
 import bpy, sys, json, math, os, struct
+import numpy
 from mathutils import Matrix, Quaternion, Vector
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -235,6 +236,43 @@ def import_prop(prop, node_scale_out):
     return mesh, node_scale
 
 
+def mesh_edit(obj, prop):
+    """What was done to the prop's VERTICES in Edit Mode, as a 4x4 in the object's own frame (his vertices = M @ the model's); the identity when nothing was. Moving, turning or scaling the
+    mesh inside its object leaves the object's matrix alone, so the placement read from that matrix alone puts the ORIGINAL model in the game, off by exactly that edit (2026-11-09: a
+    43 degree turn in Edit Mode). Measured against the model itself, vertex for vertex: a uniform scale, a rotation and a translation."""
+    before = set(bpy.data.objects.keys())
+    bpy.ops.import_scene.gltf(filepath=PROP_GLB[prop])
+    new = [bpy.data.objects[k] for k in bpy.data.objects.keys() if k not in before]
+    source = [o for o in new if o.type == 'MESH']
+    his = numpy.array([v.co[:] for v in obj.data.vertices])
+    model = numpy.array([v.co[:] for v in source[0].data.vertices]) if len(source) == 1 else numpy.zeros((0, 3))
+    for o in new:
+        bpy.data.objects.remove(o)
+    if len(his) != len(model):
+        print(f"[tripo_pose_lab] WARNING: the {prop} mesh has {len(his)} vertices and the model {len(model)}: an edit of its shape cannot reach the game, the placement ignores it")
+        return Matrix.Identity(4)
+    ch, cm = his.mean(axis=0), model.mean(axis=0)
+    a, b = his - ch, model - cm
+    u, s, vt = numpy.linalg.svd(b.T @ a)
+    d = numpy.diag([1.0, 1.0, numpy.sign(numpy.linalg.det(vt.T @ u.T))])
+    r = vt.T @ d @ u.T
+    k = float(numpy.trace(numpy.diag(s) @ d) / (b ** 2).sum())
+    t = ch - k * (r @ cm)
+    worst = float(numpy.linalg.norm(his - (k * (r @ model.T).T + t), axis=1).max())
+    size = float(numpy.linalg.norm(model.max(axis=0) - model.min(axis=0)))
+    if worst > 1e-4 * size:
+        print(f"[tripo_pose_lab] WARNING: the {prop} mesh was reshaped, not only moved (worst vertex {worst:.6f}): the game keeps the model's shape, the placement takes the closest fit")
+    m = Matrix(r.tolist()).to_4x4()
+    for i in range(3):
+        for j in range(3):
+            m[i][j] *= k
+        m[i][3] = float(t[i])
+    if float(numpy.abs(numpy.array(m) - numpy.eye(4)).max()) > 1e-5:
+        angle = math.degrees(Matrix(r.tolist()).to_quaternion().angle)
+        print(f"[tripo_pose_lab] {prop}: the mesh was edited inside its object (turned {angle:.2f} degrees, scaled x{k:.4f}, moved {float(numpy.linalg.norm(t - (ch - cm))):.5f}): carried into the placement")
+    return m
+
+
 def plain_colours():
     """The coat carries its push data in COLOR_0 (`ACTOR` D94) and Blender draws it as red / black / green paint. The game does not (a shader reads it), so the lab cuts the link: the
     materials show their own colour. Only the lab's view changes; the mesh data is untouched."""
@@ -327,7 +365,7 @@ def extract(blend, out_json):
             print(f"[tripo_pose_lab] WARNING: the prop {prop} is gone from the .blend: the pose keeps the default placement")
             continue
         bone = obj["lab_bone"]
-        world_g = blender_world_to_g(arm.matrix_world.inverted() @ obj.matrix_world)
+        world_g = blender_world_to_g(arm.matrix_world.inverted() @ obj.matrix_world @ mesh_edit(obj, prop))
         local_m = rig.node_global(bone, G).inverted() @ world_g @ prop_node_matrix(prop).inverted()
         loc, rot, scl = local_m.decompose()
         if max(abs(scl[0] - scl[1]), abs(scl[1] - scl[2])) > 1e-3 * scl[0]:
@@ -361,8 +399,8 @@ def render(blend, out_png):
     cam.data.lens = 85
     scn.collection.objects.link(cam)
     scn.camera = cam
-    target = Vector((0.0, -0.12, 0.74))
-    views = [("front34", 35.0, 12.0, 2.6), ("side", 90.0, 8.0, 2.6)]
+    target = Vector((0.0, -0.12, 0.5))
+    views = [("front34", 35.0, 12.0, 3.0), ("side", 90.0, 8.0, 3.0)]
     base, ext = os.path.splitext(out_png)
     for name, az, el, dist in views:
         a = math.radians(az)

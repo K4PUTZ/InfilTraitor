@@ -22,7 +22,6 @@ const STEP_DURATION_BASE := 0.13
 const COLOR_BODY := Color(0.86, 0.26, 0.22, 1.0)
 const COLOR_BODY_DARK := Color(0.58, 0.12, 0.10, 1.0)
 const COLOR_HEAD := Color(1.0, 0.87, 0.80, 1.0)
-const COLOR_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
 
 ## Base probabilities by distance, indexed by tile distance
 const FOV_DISTANCE_CURVE: Array[float] = [
@@ -1230,10 +1229,9 @@ func attach_sprite(p_room: Node) -> bool:
 	return true
 
 
-## The contact shadow's half-extents (2D canvas pixels): `ActorMesh3D` reads them and draws the shadow on the ground itself. The
+## `ActorMesh3D` draws the contact shadow on the ground itself. The
 ## 2D shadow, the fallback diamond and the 2D dev-vision draws are gone (RETIRE-2D): the patrol route is a ground canvas on the 3D board
 ## and the detection meter is a `Label3D` above the head. With no board nothing is drawn.
-var ground_shadow_half_px := Vector2(26.0, 10.0)
 const PATROL_DASH_PX := 8.0
 const DETECTION_LABEL_HEIGHT_PX := 82.0
 var _ground: GroundCanvas3D = null

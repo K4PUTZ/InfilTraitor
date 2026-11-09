@@ -112,7 +112,6 @@ var step_duration: float = 0.56
 ## `[CLEANUP]` commit that stopped every wall rendering deleted a var that looked
 ## unused in one file and was written from another — cross-file writes are
 ## invisible to the linter, so the grep is the check, not the linter.)
-const COLOR_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
 
 ## Where the head marker sits, per posture, in the agent's own local space.
 ##
@@ -438,8 +437,6 @@ func _cell_to_world(map_cell: Vector2i) -> Vector2:
 ## PART 2 §10: the three posture diamonds and the head circle that used to be drawn here are GONE, and (RETIRE-2D) so are the 2D contact
 ## shadow, the 104 x 222 silhouette stroke and the 2D cover ring: `ActorMesh3D` draws the figure and its shadow, and the cover ring is a
 ## ground canvas on the 3D board (below). With no board nothing is drawn.
-## The contact shadow's half-extents, in 2D canvas pixels: `ActorMesh3D` reads them and draws the shadow on the ground itself.
-var ground_shadow_half_px := Vector2(28.0, 10.0)
 const COVER_RING_RADIUS_PX := 30.0
 const COVER_RING_SEGMENTS := 32
 var _ground: GroundCanvas3D = null

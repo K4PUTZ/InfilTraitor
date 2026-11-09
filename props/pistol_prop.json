@@ -2,9 +2,9 @@
   "id": "pistol_prop",
   "mesh_tier": 3,
   "mesh_size": [
-    0.25,
-    0.032,
-    0.119
+    0.2768,
+    0.0354,
+    0.1317
   ],
   "material_zones": {
     "default": "metal"

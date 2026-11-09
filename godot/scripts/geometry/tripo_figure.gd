@@ -60,15 +60,20 @@ const FINGER_BONES: PackedStringArray = [
 const POSES: Dictionary = {
 	"draw_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.07, "height": -0.075, "gap": 0.05, "pole": 0.9, "hand_pitch": 50.0}},
 	"aim_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.255, "height": 0.02, "gap": 0.044, "pole": 0.4}},
+	## Derived, never posed or stored (`_between_pose`): the middle of the way from the draw to the aim, the front foot off the floor (`lift`: the rig's own units, Blender's metres on the 1 m figure).
+	"step_pistol": {"between": ["draw_pistol", "aim_pistol"], "foot": "LeftFoot", "lift": 0.02},
 }
+## A foot that travels less than this between the two stops of a derived pose stays on the floor (the figure's units).
+const STEP_MIN_TRAVEL: float = 0.02
 ## THE DIRECTOR'S POSE FILE (2026-11-08): a pose posed BY HAND in Blender (`tools/persistent/pose_lab.py`) is `ASSETS/ANIMATIONS/poses/<figure>/<id>.json` and REPLACES the
 ## solved one: {"bones": {Mixamo name without prefix: [x, y, z, w]}, "props": {prop id: {"bone", "pos", "quat", "scale"}}}. Rotations are the bone's LOCAL rotation as Godot reads
 ## it (what `Skeleton3D.get_bone_pose_rotation` answers); a prop's transform is relative to the bone's own frame, applied to the model's scene root.
 const POSE_FILE := "res://ASSETS/ANIMATIONS/poses/%s/%s.json"
-## The props a pose may carry (the model in hand). The default placement is what the pose has until somebody places it by hand; the pistol glb's mesh node carries a x100
-## scale (2.45 long, 1.16 tall, 0.31 thick: barrel +X, sights +Y, flank +Z), the placement's `scale` makes it ~0.26 m long.
+## The props a pose may carry (the model in hand). The default placement is what the pose has until somebody places it by hand. A weapon's model IS its held size, fixed once by the
+## Director with a figure holding it (2026-11-09; the same proportion goes to `props/<weapon>_prop.json`'s `mesh_size`): the pistol glb has no node transform and measures 0.147 long, 0.070
+## tall, 0.019 thick in the figure's own units (barrel +X, sights +Y, flank +Z), so a placement's `scale` is 1.0.
 const PROP_MODELS: Dictionary = {"pistol": "res://ASSETS/props/pistol_quaternius/pistol.glb"}
-const PROP_DEFAULTS: Dictionary = {"pistol": {"bone": "RightHand", "pos": Vector3(0.0081, 0.0164, 0.010), "scale": 0.0542}}
+const PROP_DEFAULTS: Dictionary = {"pistol": {"bone": "RightHand", "pos": Vector3(0.0081, 0.0164, 0.010), "scale": 1.0}}
 ## The library's name on an actor's AnimationPlayer: its clips play as `bank/<id>`.
 const LIBRARY_NAME := &"bank"
 const HIPS := "Hips"
@@ -252,10 +257,71 @@ static func _load_bank_animation(figure: String, id: String) -> Animation:
 ## The pose `id` of `figure`: the Director's file when there is one (`POSE_FILE`), else the solved one. A one-key Animation whose meta `source` says which and whose meta
 ## `props` carries the model-in-hand placements. Null (loud) when it cannot be built.
 static func bank_pose(figure: String, id: String) -> Animation:
+	if (POSES.get(id, {}) as Dictionary).has("between"):
+		return _between_pose(figure, id, POSES[id])
 	var path: String = POSE_FILE % [figure, id]
 	if FileAccess.file_exists(path):
 		return _pose_from_file(figure, id, path)
 	return solved_pose(figure, id)
+
+
+## A DERIVED pose (a `POSES` row with `between`, Director 2026-11-09): every bone half way along the slerp between two stops, so the layer goes through it without changing the arms' path
+## (`ActorAimPose3D`, a passing stop), and the leg of `foot` bent so its ankle rides `lift` higher there: a step instead of a slide. Built from the two stops, so a re-posed aim carries it along.
+## A foot that does not travel between them (`STEP_MIN_TRAVEL`) stays down. Null (loud) when a stop or the rig is missing.
+static func _between_pose(figure: String, id: String, spec: Dictionary) -> Animation:
+	var ends: Array = spec["between"]
+	var from: Animation = bank_pose(figure, String(ends[0]))
+	var to: Animation = bank_pose(figure, String(ends[1]))
+	var rig := _rig(figure)
+	if from == null or to == null or rig.is_empty():
+		if not rig.is_empty():
+			(rig["holder"] as Node).free()
+		push_error("[TripoFigure] the pose '%s' of %s has no stops or rig to sit between" % [id, figure])
+		return null
+	var holder := rig["holder"] as Node
+	var skeleton := rig["skeleton"] as Skeleton3D
+	var a: Dictionary = TripoPoseKitRef.bone_rotations(skeleton, from, 0.0)
+	var b: Dictionary = TripoPoseKitRef.bone_rotations(skeleton, to, 0.0)
+	var mid: Dictionary = {}
+	for bone: int in a:
+		mid[bone] = (a[bone] as Quaternion).slerp(b[bone] as Quaternion, 0.5) if b.has(bone) else a[bone]
+	for bone: int in b:
+		if not a.has(bone):
+			mid[bone] = b[bone]
+	var hips_a: Variant = _hips_place(from)
+	var hips_b: Variant = _hips_place(to)
+	var foot: int = TripoPoseKitRef.find_bone(skeleton, String(spec["foot"]))
+	if foot < 0:
+		holder.free()
+		push_error("[TripoFigure] the pose '%s' of %s lifts '%s', which the rig lacks" % [id, figure, spec["foot"]])
+		return null
+	var at_a: Vector3 = TripoPoseKitRef.bone_global(skeleton, foot, a, {}).origin + (hips_a as Vector3 if hips_a != null else Vector3.ZERO)
+	var at_b: Vector3 = TripoPoseKitRef.bone_global(skeleton, foot, b, {}).origin + (hips_b as Vector3 if hips_b != null else Vector3.ZERO)
+	if Vector2(at_b.x - at_a.x, at_b.z - at_a.z).length() >= STEP_MIN_TRAVEL and not TripoPoseKitRef.lift_foot(skeleton, foot, mid, float(spec["lift"])):
+		push_warning("[TripoFigure] the pose '%s' of %s: the leg of %s cannot lift, the foot stays down" % [id, figure, spec["foot"]])
+	var pose := Animation.new()
+	pose.length = 0.1
+	pose.set_meta("source", "between")
+	pose.set_meta("props", {})
+	var skeleton_path: NodePath = holder.get_path_to(skeleton)
+	for bone: int in mid:
+		var track: int = pose.add_track(Animation.TYPE_ROTATION_3D)
+		pose.track_set_path(track, NodePath("%s:%s" % [skeleton_path, skeleton.get_bone_name(bone)]))
+		pose.rotation_track_insert_key(track, 0.0, mid[bone] as Quaternion)
+	if hips_a != null and hips_b != null:
+		var track: int = pose.add_track(Animation.TYPE_POSITION_3D)
+		pose.track_set_path(track, NodePath("%s:%s" % [skeleton_path, skeleton.get_bone_name(TripoPoseKitRef.find_bone(skeleton, HIPS))]))
+		pose.position_track_insert_key(track, 0.0, (hips_a as Vector3).lerp(hips_b as Vector3, 0.5))
+	holder.free()
+	return pose
+
+
+## Where a one-key pose places the Hips, null when it does not.
+static func _hips_place(pose: Animation) -> Variant:
+	for t in range(pose.get_track_count()):
+		if pose.track_get_type(t) == Animation.TYPE_POSITION_3D and pose.track_get_key_count(t) > 0:
+			return pose.track_get_key_value(t, 0)
+	return null
 
 
 ## The default placement of the prop `prop` in its bone's frame: {bone, pos, quat, scale}. The model's barrel (+X) lies along the fingers (the hand's +Y), its sights (+Y) toward the

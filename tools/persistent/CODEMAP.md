@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**348 scripts · 102309 lines total** (under `godot/scripts/`)
+**348 scripts · 102475 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -71,7 +71,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 482 lines
+`class_name DebugAgent` · extends `Node2D` · 479 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -92,7 +92,6 @@
 - `COVER_FULL_MULT` = `0.20`
 - `COVER_PARTIAL_MULT` = `0.55`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
-- `COLOR_SHADOW` = `Color(0.0, 0.0, 0.0, 0.28)`
 - `HEAD_OFFSET` = `{ Posture.STANDING: Vector2(0.0, -64.0), Posture.CROUCHING: Vector2(0.0, -44.0), Posture.PRONE: Vector2(26.0, -10.0), }`
 - `MUZZLE_DROP_FRACTION` = `0.18`
 - `THROW_RAISE_SECONDS` = `0.18`
@@ -113,7 +112,6 @@
 - `var cover_state: CoverType = CoverType.NONE`
 - `var cover_direction: Vector2i = Vector2i.ZERO`
 - `var step_duration: float = 0.56`
-- `var ground_shadow_half_px := Vector2(28.0, 10.0)`
 
 **Public API**
 - `func throw_origin() -> Vector2:`
@@ -158,7 +156,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1325 lines
+`class_name GuardEnemy` · extends `Node2D` · 1323 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -178,7 +176,6 @@
 - `COLOR_BODY` = `Color(0.86, 0.26, 0.22, 1.0)`
 - `COLOR_BODY_DARK` = `Color(0.58, 0.12, 0.10, 1.0)`
 - `COLOR_HEAD` = `Color(1.0, 0.87, 0.80, 1.0)`
-- `COLOR_SHADOW` = `Color(0.0, 0.0, 0.0, 0.28)`
 - `FOV_DISTANCE_CURVE` = `[ 1.00, 1.00, 0.95, 0.88, 0.70, 0.48, 0.20, 0.06, 0.01 ]`
 - `FOV_LATERAL_FALLOFF` = `[1.0, 0.50, 0.10]`
 - `COLOR_VISION_SMOOTH` = `Color(1.0, 0.9, 0.2, 0.5)`
@@ -425,11 +422,11 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_aim_pose3d.gd`
 
-`class_name ActorAimPose3D` · extends `SkeletonModifier3D` · 135 lines
+`class_name ActorAimPose3D` · extends `SkeletonModifier3D` · 149 lines
 
 `godot/scripts/geometry/actor_aim_pose3d.gd`
 
-> ActorAimPose3D — a LAYER on a Tripo Agent: pulls a set of bones along a path of stored poses, on top of whatever clip is playing (MOVEMENT, 2026-11-08). WHY a layer and not a clip: the agent aims standing, walking into it or coming out of it; a clip per combination is a credit per combination, and the arms of a held aim do not depend on the legs. A STOP is a pose (`TripoFigure.POSES`, `pose_<id>` in the game set: rotation tracks, one key) at a `weight` along the path: the first stop is reached from the pose the player wrote this frame, each next one from the stop before. `weight` 0 leaves the skeleton untouched, 1 is the last stop; between two stops each bone takes a smoothed slerp, so the arms come to rest at every stop (a beat where the gun can appear). The caller moves `weight`: a raise and a lowering are the same path read forward and back. A `SkeletonModifier3D` for the same reason `ActorHeadTurn3D` is: it must run AFTER the AnimationPlayer has posed the skeleton this frame. Children of a skeleton run in order: add this one BEFORE the head turn, so the head reads the spine the aim left.
+> ActorAimPose3D — a LAYER on a Tripo Agent: pulls a set of bones along a path of stored poses, on top of whatever clip is playing (MOVEMENT, 2026-11-08). WHY a layer and not a clip: the agent aims standing, walking into it or coming out of it; a clip per combination is a credit per combination, and the arms of a held aim do not depend on the legs. A STOP is a pose (`TripoFigure.POSES`, `pose_<id>` in the game set: rotation tracks, one key) at a `weight` along the path: the first stop is reached from the pose the player wrote this frame, each next one from the stop before. `weight` 0 leaves the skeleton untouched, 1 is the last stop; between two stops each bone takes a smoothed slerp, so the arms come to rest at every stop (a beat where the gun can appear). The caller moves `weight`: a raise and a lowering are the same path read forward and back. A PASSING stop (2026-11-09) is a key the path goes through without resting: the easing spans the resting stops around it. A `SkeletonModifier3D` for the same reason `ActorHeadTurn3D` is: it must run AFTER the AnimationPlayer has posed the skeleton this frame. Children of a skeleton run in order: add this one BEFORE the head turn, so the head reads the spine the aim left.
 
 **Public vars**
 - `var weight: float = 0.0`
@@ -458,7 +455,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 573 lines
+`class_name ActorMesh3D` · extends `Node3D` · 587 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -470,12 +467,15 @@ extends `ConfirmationDialog` · 64 lines
 - `SILHOUETTE_PRIORITY` = `20`
 - `SHADOW_SHADER` = `"res://godot/shaders/ground_overlay3d.gdshader"`
 - `SHADOW_LIFT` = `0.005`
+- `CONTACT_SHADOW_OPACITY` = `1.0`
+- `CONTACT_SHADOW_RADIUS` = `0.27`
+- `CONTACT_SHADOW_RINGS` = `[[0.35, 0.6], [1.0, 0.0]]`
+- `CONTACT_SHADOW_SEGMENTS` = `32`
 - `HeadTurnRef` = `preload("res://godot/scripts/geometry/actor_head_turn3d.gd")`
 - `RIG_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"`
 - `RIG_BY_FAMILY` = `{ "": "agent_live.glb", "_enemy_white": "agent_live_enemy_white.glb", ## The field officer (2026-11-08): the old agent's model, promoted when the Tripo figure became the agent. "_officer": "agent_live.glb", }`
 - `WEAPON_BY_SUFFIX` = `{"": "shotgun", "_pistol": "pistol", "_rifle": "shotgun"}`
 - `METRES_TO_UNITS` = `1.0 / 1.6`
-- `DEFAULT_SHADOW` = `Color(0.0, 0.0, 0.0, 0.28)`
 - `TripoFigureRef` = `preload("res://godot/scripts/geometry/tripo_figure.gd")`
 - `TRIPO_FIGURE_FLAG` = `"TRIPO_FIGURE"`
 - `AGENT_FIGURE_DEFAULT` = `"male"`
@@ -484,7 +484,7 @@ extends `ConfirmationDialog` · 64 lines
 - `TRIPO_MOVE_DEFAULT` = `"walk"`
 - `TRIPO_IDLE` = `"idle"`
 - `ActorAimPoseRef` = `preload("res://godot/scripts/geometry/actor_aim_pose3d.gd")`
-- `AIM_STOPS` = `[["draw_pistol", 0.5], ["aim_pistol", 1.0]]`
+- `AIM_STOPS` = `[["draw_pistol", 0.5], ["step_pistol", 0.75, true], ["aim_pistol", 1.0]]`
 - `AIM_RAISE_S` = `0.36`
 - `AIM_LOWER_S` = `0.24`
 - `PISTOL_SHOWN_FROM` = `0.5`
@@ -1471,7 +1471,7 @@ extends `Node3D` · 3573 lines
 
 ### `tripo_figure.gd`
 
-`class_name TripoFigure` · extends `RefCounted` · 436 lines
+`class_name TripoFigure` · extends `RefCounted` · 502 lines
 
 `godot/scripts/geometry/tripo_figure.gd`
 
@@ -1494,19 +1494,13 @@ extends `Node3D` · 3573 lines
 - `GAME_CLIPS` = `["idle", "walk", "run"]`
 - `POSE_PREFIX` = `"pose_"`
 - `FINGER_BONES` = `[ "LeftHandIndex1", "LeftHandIndex2", "LeftHandMiddle1", "LeftHandMiddle2", "LeftHandPinky1", "LeftHandPinky2", "LeftHandRing1", "LeftHandRing2", "LeftHandThumb1", "LeftHandThumb2", "RightHandIndex1", "RightHandIndex2", "RightHandMiddle1", "RightHandMiddle2", "RightHandPinky1", "RightHandPinky2", "RightHandRing1", "RightHandRing2", "RightHandThumb1", "RightHandThumb2", ]`
-- `POSES` = `{ "draw_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.07, "height": -0.075, "gap": 0.05, "pole": 0.9, "hand_pitch": 50.0}}, "aim_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.255, "height": 0.02, "gap": 0.044, "pole": 0.4}}, }`
-- `POSE_FILE` = `"res://ASSETS/ANIMATIONS/poses/%s/%s.json"`
-- `PROP_MODELS` = `{"pistol": "res://ASSETS/props/pistol_quaternius/pistol.glb"}`
-- `PROP_DEFAULTS` = `{"pistol": {"bone": "RightHand", "pos": Vector3(0.0081, 0.0164, 0.010), "scale": 0.0542}}`
-- `LIBRARY_NAME` = `&"bank"`
-- `HIPS` = `"Hips"`
-- `TRAVEL_META` = `&"travel_m"`
+- `POSES` = `{ "draw_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.07, "height": -0.075, "gap": 0.05, "pole": 0.9, "hand_pitch": 50.0}}, "aim_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.255, "height": 0.02, "gap": 0.044, "pole": 0.4}}, ## Derived, never posed or stored (`_between_pose`): the middle of the way from the draw to the aim, the front foot off the floor (`lift`: the rig's own units, Blender's metres on the 1 m figure). "step_pistol": {"between": ["draw_pistol", "aim_pistol"], "foot": "LeftFoot", "lift": 0.02}, }`
 
 ---
 
 ### `tripo_pose_kit.gd`
 
-`class_name TripoPoseKit` · extends `RefCounted` · 161 lines
+`class_name TripoPoseKit` · extends `RefCounted` · 200 lines
 
 `godot/scripts/geometry/tripo_pose_kit.gd`
 
@@ -6264,7 +6258,7 @@ extends `SceneTree` · 390 lines
 
 ### `tripo_figure_selftest.gd`
 
-extends `SceneTree` · 233 lines
+extends `SceneTree` · 271 lines
 
 `godot/scripts/tools/tripo_figure_selftest.gd`
 

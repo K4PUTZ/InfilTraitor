@@ -37,3 +37,12 @@ The 2026-10-07 baseline for the glass grenade was stages 475 / 207 / 740 / 803 m
 
 ## Next
 The Director's fine tuning of the aim (File > Revert first if a Blender holds the old file). Proposed, NOT ruled: one timeline `.blend` per figure (idle, draw, aim, the pistol keyed; the two stops saved as today) and a non-destructive NLA layer to edit Tripo clips (parked: "não vamos mexer nas tripo por enquanto"). Then the MV-4 transitions, the other weapons on the new figure, the Galaxy round.
+
+## Later the same day: the Director's aim, the pistol's size, the contact shadow
+
+- **A turn made in Edit Mode reaches the game now.** The aim's crooked pistol was the mesh turned 43 degrees inside its object; the placement read only the object's matrix. `tripo_pose_lab.py` `mesh_edit` measures the mesh against the model, vertex for vertex, and carries the edit into the placement.
+- **The pistol's size is on the model (x1.107, 6.0 / 5.42).** `pistol.glb` has no node transform any more (the -90 degrees and the x100 are baked into the vertices), every pose's prop `scale` is 1.0, `props/pistol_prop.json` `mesh_size` took the same proportion, `model_rotation_deg` did not change. Both `POSE_aim_pistol_*.blend` read Scale 1.0. The other weapons get the same pass, once each, by hand.
+- **The front foot steps.** `step_pistol` (`TripoFigure.POSES`, derived, never stored) is a PASSING stop of `ActorAimPose3D`: half way from the draw to the aim, the left ankle 0.02 up in the rig's units. A foot that does not travel between the stops stays down (the female's, today).
+- **The contact shadow is a soft black disc** (Director): 100 % at the centre, radius 0.27, on the ground marks' own shader, for the agent and every guard; the diamond, `ground_shadow_half_px` and `COLOR_SHADOW` are gone. Its cost on the Moto was NOT measured.
+
+Open: the gun turns about 41 degrees inside the hand between the draw and the aim (only the aim has the new grip); the female has not had the male's step; four finger bases of the male's left hand are displaced (the game ignores that).

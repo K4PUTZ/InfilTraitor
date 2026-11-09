@@ -4,7 +4,7 @@
 ## aim do not depend on the legs. A STOP is a pose (`TripoFigure.POSES`, `pose_<id>` in the game set: rotation tracks, one key) at a `weight` along the path: the
 ## first stop is reached from the pose the player wrote this frame, each next one from the stop before. `weight` 0 leaves the skeleton untouched, 1 is the last stop;
 ## between two stops each bone takes a smoothed slerp, so the arms come to rest at every stop (a beat where the gun can appear). The caller moves `weight`: a raise and
-## a lowering are the same path read forward and back.
+## a lowering are the same path read forward and back. A PASSING stop (2026-11-09) is a key the path goes through without resting: the easing spans the resting stops around it.
 ##
 ## A `SkeletonModifier3D` for the same reason `ActorHeadTurn3D` is: it must run AFTER the AnimationPlayer has posed the skeleton this frame.
 ## Children of a skeleton run in order: add this one BEFORE the head turn, so the head reads the spine the aim left.
@@ -15,20 +15,25 @@ extends SkeletonModifier3D
 var weight: float = 0.0
 var _bones: PackedInt32Array = PackedInt32Array()
 var _stop_at: PackedFloat32Array = PackedFloat32Array()   ## each stop's weight, ascending, the last one 1.0
+var _passing: Array[bool] = []                              ## per stop: the path goes through it without resting (the last one never)
 var _stop_rots: Array = []                                  ## per stop: an Array[Quaternion] aligned with `_bones`
 var _pos_bone: int = -1                                     ## the bone a whole-body pose also places (the Hips), -1 when no stop does
 var _stop_pos: Array[Vector3] = []                          ## per stop, its place
 
 
-## `stops`: [[weight, Animation], ...] ascending, the last weight 1.0. The bones are every stop's together (a hand-made aim keys the last finger joints, which the clip the draw
+## `stops`: [[weight, Animation, passing?], ...] ascending, the last weight 1.0 and resting. The bones are every stop's together (a hand-made aim keys the last finger joints, which the clip the draw
 ## comes from does not have). A bone a stop lacks keeps the stop before's rotation, or, before its first appearance, takes the next stop's that has it.
 ## A bone the skeleton lacks is skipped (said once). False (loud) when nothing resolved or the stops are not a path.
 func load_stops(skeleton: Skeleton3D, stops: Array) -> bool:
 	_bones.clear()
 	_stop_at.clear()
 	_stop_rots.clear()
+	_passing.clear()
 	if stops.is_empty() or not is_equal_approx(float((stops[stops.size() - 1] as Array)[0]), 1.0):
 		push_error("[ActorAimPose3D] the stops must end at weight 1")
+		return false
+	if (stops[stops.size() - 1] as Array).size() > 2 and bool((stops[stops.size() - 1] as Array)[2]):
+		push_error("[ActorAimPose3D] the last stop must rest")
 		return false
 	var previous: float = 0.0
 	for stop: Array in stops:
@@ -51,6 +56,7 @@ func load_stops(skeleton: Skeleton3D, stops: Array) -> bool:
 		for bone: int in _bones:
 			rots.append(_rotation_at(per_stop, i, bone))
 		_stop_at.append(float((stops[i] as Array)[0]))
+		_passing.append((stops[i] as Array).size() > 2 and bool((stops[i] as Array)[2]))
 		_stop_rots.append(rots)
 	_load_positions(skeleton, stops)
 	return true
@@ -120,11 +126,19 @@ func _process_modification_with_delta(_delta: float) -> void:
 func apply_to(skeleton: Skeleton3D) -> void:
 	if weight <= 0.0 or _bones.is_empty():
 		return
-	var stop: int = 0
-	while stop < _stop_at.size() - 1 and weight > _stop_at[stop]:
+	var end: int = 0                      ## the resting stop this stretch of the path ends at
+	while end < _stop_at.size() - 1 and (weight > _stop_at[end] or _passing[end]):
+		end += 1
+	var begin: int = end - 1              ## the resting stop it starts from, -1 for the pose the player wrote
+	while begin >= 0 and _passing[begin]:
+		begin -= 1
+	var span_from: float = 0.0 if begin < 0 else _stop_at[begin]
+	var eased: float = lerpf(span_from, _stop_at[end], smoothstep(0.0, 1.0, clampf((weight - span_from) / (_stop_at[end] - span_from), 0.0, 1.0)))
+	var stop: int = begin + 1
+	while stop < end and eased > _stop_at[stop]:
 		stop += 1
 	var from_w: float = 0.0 if stop == 0 else _stop_at[stop - 1]
-	var t: float = smoothstep(0.0, 1.0, clampf((weight - from_w) / (_stop_at[stop] - from_w), 0.0, 1.0))
+	var t: float = clampf((eased - from_w) / (_stop_at[stop] - from_w), 0.0, 1.0)
 	var to_rots: Array = _stop_rots[stop]
 	for i in range(_bones.size()):
 		var bone: int = _bones[i]

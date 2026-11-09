@@ -252,3 +252,5 @@ ASSETS/**/*.mp3
 ASSETS/**/*.flac
 ASSETS/photo_src/
 ASSETS/ISOMETRIC/source_assets/generated/
+# The music's approved exports stay versioned (the MUSIC block above): the *.ogg rule here was hiding every new one.
+!ASSETS/AUDIO/MUSIC/**/Export/**/*.ogg

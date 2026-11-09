@@ -54,6 +54,11 @@ def sha256(p):
     return h.hexdigest()
 
 
+def write_record(path, rec):
+    # One byte-identical record on every OS: bytes because text mode means CRLF on Windows; the paths inside are as_posix() for the same reason.
+    path.write_bytes((json.dumps(rec, indent=2) + "\n").encode())
+
+
 def probe_duration(p):
     if not shutil.which("ffprobe"):
         fail("ffprobe not found (install ffmpeg)")
@@ -144,10 +149,10 @@ def cmd_register(a):
     shutil.copy2(src, dest)
     PROV.mkdir(parents=True, exist_ok=True)
     rec = {"id": tid, "context": a.context, "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-           "source_sha256": digest, "raw_path": str(dest.relative_to(ROOT)), "duration_s": probe_duration(dest),
+           "source_sha256": digest, "raw_path": dest.relative_to(ROOT).as_posix(), "duration_s": probe_duration(dest),
            "tool": a.tool, "tool_version": a.tool_version, "license": a.license,
            "prompt": prompt, "params": params, "human_edits": a.edits or "", "notes": a.notes or "", "export": None}
-    (PROV / f"{tid}.json").write_text(json.dumps(rec, indent=2) + "\n")
+    write_record(PROV / f"{tid}.json", rec)
     print(f"[music] registered {tid} ({rec['duration_s']} s) -> provenance/{tid}.json; raw copy in {rec['raw_path']} (git-ignored)")
 
 
@@ -166,13 +171,14 @@ def cmd_export(a):
     out = EXPORT / rec["context"] / f"{rec['id']}.ogg"
     out.parent.mkdir(parents=True, exist_ok=True)
     # -16 LUFS integrated, -1.5 dBTP: a mobile-speaker-friendly master; Vorbis q6.
-    r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(raw), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+    # -ar: loudnorm works at 192 kHz internally and would leave the file there.
+    r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(raw), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "44100",
                         "-c:a", "libvorbis", "-q:a", "6", str(out)], capture_output=True, text=True)
     if r.returncode != 0:
         fail(f"ffmpeg failed: {r.stderr.strip()}")
-    rec["export"] = {"path": str(out.relative_to(ROOT)), "sha256": sha256(out), "format": "ogg vorbis q6, -16 LUFS",
+    rec["export"] = {"path": out.relative_to(ROOT).as_posix(), "sha256": sha256(out), "format": "ogg vorbis q6, 44.1 kHz, -16 LUFS",
                      "exported": datetime.now(timezone.utc).isoformat(timespec="seconds")}
-    pf.write_text(json.dumps(rec, indent=2) + "\n")
+    write_record(pf, rec)
     print(f"[music] exported {rec['export']['path']}")
 
 
@@ -190,8 +196,8 @@ def cmd_stems(a):
             fail(f"stem '{spec}': use name=path to an existing file")
         d = dest / f"{name}{Path(path).suffix.lower()}"
         shutil.copy2(path, d)
-        stems[name] = {"path": str(d.relative_to(ROOT)), "sha256": sha256(d), "duration_s": probe_duration(d)}
-    pf.write_text(json.dumps(rec, indent=2) + "\n")
+        stems[name] = {"path": d.relative_to(ROOT).as_posix(), "sha256": sha256(d), "duration_s": probe_duration(d)}
+    write_record(pf, rec)
     print(f"[music] {rec['id']}: stems {', '.join(stems)} recorded (files in {dest.relative_to(ROOT)}, git-ignored)")
 
 

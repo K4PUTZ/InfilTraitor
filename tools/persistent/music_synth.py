@@ -3,6 +3,7 @@
 ## music_synth.py — render a MIDI line through Surge XT (free, GPL-3, 3 000+ factory presets) with pedalboard.
 ## Surge is a VST3 instrument at ~/Library/Audio/Plug-Ins/VST3/Surge XT.vst3 (extracted from the Homebrew cask's pkg
 ## without sudo) and its factory patches live in ~/Documents/Surge XT/patches_factory/<Category>/<Name>.fxp.
+## On Windows the installer (winget SurgeSynth.SurgeXT) puts them under %CommonProgramFiles%\VST3 and %ProgramData%\Surge XT.
 ## A patch is loaded by swapping the 'sub3' chunk of a .fxp into the plugin's JUCE state (the state's IComponent is
 ## the same chunk, JUCE-base64 encoded) — pedalboard has no preset API of its own.
 ##
@@ -13,8 +14,12 @@ import json, os, re, sys
 from pathlib import Path
 import numpy as np
 
-PLUGIN = os.path.expanduser("~/Library/Audio/Plug-Ins/VST3/Surge XT.vst3")
-PATCHES = Path(os.path.expanduser("~/Documents/Surge XT/patches_factory"))
+if sys.platform == "win32":  # pedalboard refuses the .vst3 bundle folder on Windows and only loads the binary inside it
+    PLUGIN = os.path.expandvars(r"%CommonProgramFiles%\VST3\Surge Synth Team\Surge XT.vst3\Contents\x86_64-win\Surge XT.vst3")
+    PATCHES = Path(os.path.expandvars(r"%ProgramData%\Surge XT\patches_factory"))
+else:
+    PLUGIN = os.path.expanduser("~/Library/Audio/Plug-Ins/VST3/Surge XT.vst3")
+    PATCHES = Path(os.path.expanduser("~/Documents/Surge XT/patches_factory"))
 ALPH = b".ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+"  # JUCE MemoryBlock base64
 SR = 44100
 
@@ -31,7 +36,7 @@ def _b64(data):
 
 
 def find_preset(name):
-    hits = [p for p in PATCHES.rglob("*.fxp") if p.stem == name or str(p.relative_to(PATCHES).with_suffix("")) == name]
+    hits = [p for p in PATCHES.rglob("*.fxp") if p.stem == name or p.relative_to(PATCHES).with_suffix("").as_posix() == name]
     if not hits:
         sys.exit(f"[synth] preset '{name}' not found (use `list`)")
     return hits[0]
@@ -72,7 +77,7 @@ def main():
     if a[0] == "list":
         for p in sorted(PATCHES.rglob("*.fxp")):
             if len(a) < 2 or p.parent.name == a[1]:
-                print(p.relative_to(PATCHES))
+                print(p.relative_to(PATCHES).as_posix())
     elif a[0] == "render":
         import soundfile as sf
         bpm = int(a[a.index("--bpm") + 1]) if "--bpm" in a else 124

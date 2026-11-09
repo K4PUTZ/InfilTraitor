@@ -16,7 +16,7 @@ A = sys.argv[1:]
 line = A[0] if A else sys.exit(__doc__)
 arg = lambda k, d: type(d)(A[A.index(k) + 1]) if k in A else d
 n, seed, bpm = arg("--n", 12), arg("--seed", 1), arg("--bpm", 124)
-out = Path(arg("--out", "/Users/mateus/ace/audition")); out.mkdir(parents=True, exist_ok=True)
+out = Path(arg("--out", str(Path.home() / "ace" / "audition"))); out.mkdir(parents=True, exist_ok=True)
 CATS = {"bass": ["Basses"], "arp": ["Sequences", "Plucks"], "pad": ["Pads"], "lead": ["Leads"]}
 # A minor phrases on the 16th grid: (step, midi, length, velocity)
 PHR = {
@@ -30,7 +30,7 @@ random.Random(seed).shuffle(pool)
 gap = np.zeros((2, int(0.6 * ms.SR)))
 allv, listing = [], []
 for i, p in enumerate(pool[:n], 1):
-    name = str(p.relative_to(ms.PATCHES).with_suffix(""))
+    name = p.relative_to(ms.PATCHES).with_suffix("").as_posix()
     a = ms.render(name, PHR, bpm, 2, tail=1.5)
     peak = max(float(np.abs(a).max()), 1e-6)
     a = a / peak * 0.8  # level-matched so loudness does not bias the choice

@@ -4,6 +4,7 @@
 numpy
 scipy
 soundfile
+pedalboard
 mido
 pretty_midi
 music21

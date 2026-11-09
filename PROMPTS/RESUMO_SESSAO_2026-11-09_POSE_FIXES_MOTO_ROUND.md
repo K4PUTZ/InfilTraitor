@@ -13,7 +13,7 @@
 | Shot menu opening (A/B) | | process spike 72-130 ms per opening with the Tripo figure, 79-134 with `TRIPO_FIGURE=none` | the MENU's, not the layer's; once per opening; not investigated |
 | Oil burning, PIPE_LAB | 19.8 ms, GPU 17.9 | 30.1 ms, GPU 20.0 | was 29.2 on 2026-10-19; about 3 ms under budget, the tightest thing measured |
 | `VoxelFire`, LIQUIDS_LAB's box in the lava (43 voxels: 38 eaten, 5 charred, over 3 turns) | | turn frames 56-58 ms; the same lab's later turns with no fire 27-61 ms | no spike of its own. The 256-voxel cap is NOT measured |
-| Fresh holes + rubble, 5 shotgun rounds on the concrete wall | 19.4 ms (first shot settled) | 19.7 ms, GPU +0.3, +4 300 prims | fits. A shot's tail 46-62 ms; 70-133 ms longest process in a shot's window |
+| Fresh holes + rubble, 5 shotgun rounds on the concrete wall | 19.4 ms (first shot settled) | 19.7 ms, GPU +0.3, +4 300 prims | fits. A shot's tail 21-62 ms; 70-133 ms longest process in a shot's window |
 | STRESS, sequential | | blast 1: commit 143, glass tail 11, worst 167 ms; blast 2: commit 162, glass tail 170; PSS peak 1 057 MiB | every hit-stop stage under its 200 ms ceiling |
 | STRESS, overlap | | blast 1: commit 82, tail 24, worst 188 ms; blast 2: commit 135, tail 147; PSS peak 1 013 MiB | every stage under 200 ms; 0 ERROR |
 | STRESS, `HIT_STOP=0` (control) | | blast 1 worst 96 ms; PSS peak 1 026 MiB; 0 ERROR | |

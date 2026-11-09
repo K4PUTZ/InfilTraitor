@@ -1,12 +1,19 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-11-08 · **Branch:** claude/r3d-actors-y5r8hs
+**Version:** 0.9.107 · **Updated:** 2026-11-09 · **Branch:** claude/r3d-actors-y5r8hs
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
 
 ---
+
+## Where the project stands — 2026-11-09 (the pistol's quarter turn found; the owed Moto round done)
+
+- **The pistol sits in the game as in Blender** (the pose lab ignored the model node's -90 degree rotation), the draw holds it upright, the aim's elbows are closed on both figures. PLAYGROUND lost its two loose glass panes.
+- **Moto g04s, uncapped:** the aim layer costs nothing measurable; burning oil 30.1 ms (the tightest); `VoxelFire` no spike of its own (43 voxels; the 256 cap unmeasured); holes + rubble +0.3 ms after five rounds; STRESS: every hit-stop stage under 200 ms (was up to 803), PSS peak 1 013-1 057 MiB. **New:** the shot menu's opening holds one frame for 72-134 ms (not the aim layer: A/B). **Desktop:** the GLASS smoke boot 16 / 16.
+- **Still owed:** the Galaxy A16 (not connected); PB Q5 is the Director's decision.
+  Record: `PROMPTS/RESUMO_SESSAO_2026-11-09_POSE_FIXES_MOTO_ROUND.md`.
 
 ## Where the project stands — 2026-11-08 (later: the Tripo Agent is the agent; the pistol aim made in-house)
 
@@ -623,6 +630,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-11-07_TEXTURING_POLICE_COAT_SIDES.md
 - RESUMO_SESSAO_2026-11-08_AGENT_SWAP_OFFICER.md
 - RESUMO_SESSAO_2026-11-08_AIM_IN_HOUSE.md
+- RESUMO_SESSAO_2026-11-09_POSE_FIXES_MOTO_ROUND.md
 - RESUMO_SESSAO_2026-11-08_CLOSEUP_LEVEL1.md
 - RESUMO_SESSAO_2026-11-08_FACES_BY_HAND.md
 <!-- AUTO:END pending_prompts -->

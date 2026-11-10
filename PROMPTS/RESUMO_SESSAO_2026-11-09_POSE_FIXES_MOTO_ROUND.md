@@ -56,3 +56,16 @@ The male's draw is the Director's: the left hand pulls the left lapel, the right
 - `mid_pistol` (two fifths from the draw to the aim) is his file; `step_pistol` is now that pose with the front foot lifted, a passing stop at 0.7.
 - Evidence: `verify.py` smoke green, frames read from the take `pistol_aim`. Not measured: the Moto with the morph active.
 - Open: the female has no lapel (coat stays closed, plain blend for `mid_pistol`); the fingers the Director's draw file displaces (up to 9 mm) are ignored by the game.
+
+## The whole male sequence in one scene (2026-11-09, end; the Director edits it next)
+
+`ASSETS/MODELS/fit/SEQ_draw_pistol_MALE.blend` holds the male's draw on one timeline, every keyframe editable (60 fps, frames 1-23, markers): 1 idle, 12 draw (Director's lapel), 17 in-between, 23 aim. Quaternion keys on all bones and the Hips' location; `PROP_pistol` hidden through 12, visible at 13 with the draw's placement, the aim's at 23; `DrawFix` keyed 1: 0, 12: 1, 17: 0.05, 18: 0, 23: 0. It was generated from `POSE_draw_pistol_MALE_GUN.blend` by a throwaway script (not in the repo).
+
+**It is one-way so far: an edit in this file does NOT reach the game.** The read-back is the next job, once the Director has saved his edits. What it must do:
+
+- Read every keyed frame as a stop of `ActorAimPose3D`, new keyframes included (the Director may add them); a stop's place on the timeline is its weight, so dragging a key changes the rhythm. Each stop takes the whole body as that frame shows it.
+- Frame 17 is the `step_pistol` game pose, the front foot ALREADY lifted: the read-back must not let `_lift_stepping_foot` lift it a second time.
+- The game's pistol only blends from the draw's placement to the aim's, and the coat follows a fixed curve (`DRAW_COAT_CLOSED_AT`): both must follow the file's keys if he adds any.
+- The bones' displaced locations were zeroed in the scene (the game plays rotations + the Hips only). Blender's curves between keys only approximate the game's easing.
+
+**Next, in order:** the Director edits the whole sequence; the read-back; then the female's draw (lapel, `DrawFix`, in-between, the gun's placement). The Moto cost of the morph is still not measured.

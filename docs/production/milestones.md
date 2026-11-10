@@ -1205,6 +1205,7 @@ artifact in the project.**
 **Deliverables:**
 - Comprehensive QA pass
 - Performance optimization (target 60 FPS on 5-year-old devices)
+- **Review the WHOLE engine for cost, at the end, before the beta and the playtests** *(Director-assigned 2026-11-10)*: until then a cost is measured only when one change could move processing or memory by more than 5 % on its own (`CLAUDE.md`, verification protocol), so this review is where the small costs that were never measured get added up
 - **The coat of the LIGHT Agents: correct the lining that comes out through the outer wall, or regenerate the coat more professionally** *(Director-assigned 2026-11-08)*: until then both sides wear the outer colour. Evidence and how to restore the lining: `technical_debt.md`, "The coat's lining on the LIGHT Agents"
 - **Baking System cache + decals — final verification pass** *(Director-assigned
   2026-08-13; see the note below)*

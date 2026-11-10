@@ -104,6 +104,8 @@ The numbered list below is what the tiers run and what each step means:
    anyway.
 7. Commit and push on completion — see Git protocol below.
 
+**Measure a cost only when the change, on its own, could move processing or memory by more than 5 %** (Director, 2026-11-10: *"só vai medir alguma coisa que tenha possibilidade de ter sozinha um impacto maior que 5%"*). Against the floor device's budgets that is about 1.7 ms of the 33.3 ms frame or 51 MiB of the 1.0 GiB ceiling. A smaller detail is neither measured nor listed as owed: the whole engine is reviewed at M7.0, before the beta and the playtests.
+
 **Error-handling contract:**
 - `push_error("[ClassName] context: %s" % detail)` — config/asset/spec
   failure; abort cleanly via early return, never leave state partial.

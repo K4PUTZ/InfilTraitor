@@ -1,6 +1,8 @@
 # PERFORMANCE_BUDGET_MASTER_PLAN
 ## One content, many phones: the memory and time budget a segment has to fit — v0.3 (PB-0/1 ratified, PB-2 attributed and acted on)
 
+> ⏭️ **2026-11-10 — WHAT GETS MEASURED (Director).** A cost is measured only when one change could move processing or memory by more than 5 % on its own (about 1.7 ms of the frame or 51 MiB on the Moto). Smaller details are not measured and not listed as owed; the whole engine is reviewed at the end of M7.0's optimization, before the beta and the playtests (`docs/production/milestones.md`).
+
 > ⏭️ **2026-10-19 — GODOT 4.7.2: EVALUATED, THEN THE PROJECT SWITCHED (Director: "ainda é bom ter a última versão"; "pode trocar").**
 > `/Applications/Godot.app` is 4.7.2 (templates `4.7.2.stable`, SHA-512 checked); 4.6.1 is kept as `/Applications/Godot_4.6.1.app`, and
 > `project.godot` says `4.7`. Every device baseline in this plan was taken on 4.6.1; the A/B below says they still hold. The project was evaluated on a

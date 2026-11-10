@@ -4,6 +4,10 @@
 
 **In one line:** the structure holds. What can hurt it is not the shape but eight unwritten mechanisms, four characters who know too much for a free kill order, and a Freelance start state nobody has written down.
 
+> **RATIFIED the same day (Director, 2026-11-10: "Aplica todas as propostas").** Every proposal below is now canon in `DESIGN_MASTER_PLAN`
+> §2.8, and the C list was applied. The items where this audit offered no single answer are `DESIGN` §18's "From the story audit" entry.
+> The text below is the audit as written, before the ruling.
+
 ## Method and limits
 - Read: `docs/DESIGN_MASTER_PLAN.md` §1, §2 (all), §10.0, §10.5, §10.6, §11, §14, §15, §16, §18, §19; `COSMETICS_MASTER_PLAN` §2-§4, §6, §8; the session records of 2026-10-22, 10-23 and 10-24; text searches over `docs/vision/`, `docs/production/`, `MODEL_INVENTORY`, `PROP_PIPELINE_PLAN`.
 - **Nothing here is ratified and no canon text was changed.** The plot was closed on 2026-10-23; every fix below is a PROPOSAL (Claude) waiting for the Director. Section references are to `DESIGN_MASTER_PLAN` unless a plan is named.

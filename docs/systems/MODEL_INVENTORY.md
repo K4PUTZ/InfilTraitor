@@ -87,7 +87,7 @@ jeans, boots, bandana; Corporation suits, earpiece, sunglasses. Rank pieces: rad
 | Prudence Vane | standard F | Marsh's counsel |
 | Thomas Marlow (The Sieve) | standard M | the reporter; civilian |
 | "The Confessor" | standard M | the hired assassin; wears the hat-mask, NO goggles (`ACTOR` D83) |
-| The official investigator who takes the case | standard (open) | |
+| The official investigator who takes the case | none | It is Barrow (`DESIGN` §2.8, 2026-11-10): no model of his own |
 | Pith & Peel's front man | standard M | |
 | Four faction members abroad | standard (open) | one per trip |
 | **Specialists (12):** Cairn (+ dog), Pyre (F), Vault (F) · Ace Skyler (F), Rex Hawke, Chip Voltz · Vespers, Censer (F), Sexton · Ledger (F), Hedge, Escrow (F) | standard / heavy; unmarked = M (`DESIGN` §11.7) | each carries his node's item (§3) |

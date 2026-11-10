@@ -265,7 +265,7 @@ This is still the Investor Demo phase, laying its ground.
 - 5–7 handcrafted levels with progressive difficulty
 - Introduction of mechanics (vision → noise → shadow)
 - Mission briefings and extraction sequences
-- Narrative introduction (agency, agent background)
+- Narrative introduction (the form, the opening at home, the deposition: `DESIGN_MASTER_PLAN` §2.2)
 
 **Exit Criterion:**
 - Chapter 1 playable start to finish

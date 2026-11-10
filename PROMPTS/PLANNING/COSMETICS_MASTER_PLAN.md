@@ -234,7 +234,7 @@ any look, as long as the factions stay complementary and equivalent in power (`D
 **8.4 Named characters (a base + pieces + a face; names in `DESIGN` §2.7):** the Agent (built; Victor Rook by default), his wife Claire, his son
 Leo (photographs only, 8.1), the four leaders (Commissioner Martin Graves, who is also the commissioner who takes the badge; Commander Dale Kessler; "Deacon"; the CEO
 Gordon Pryce, the Senate candidate), **the four successors who take their posts** (Deputy Commissioner Irene Barrow; Duke Hardcastle; "Choirboy";
-Evelyn Marsh), Marsh's counsel Prudence Vane, the official investigator who takes over the case, the front's man at Pith & Peel Holdings, **the reporter, Thomas
+Evelyn Marsh), Marsh's counsel Prudence Vane, the front's man at Pith & Peel Holdings (the dead colleague: a photograph only; the official investigator who takes the case is Barrow, `DESIGN` §2.8, 2026-11-10), **the reporter, Thomas
 Marlow** of *The Sieve* (the finale; civilian clothes, no faction set), **the club's hired assassin** whose hat-mask the Agent takes ("the
 Confessor", proposed; `DESIGN` §2.2), **the four faction members abroad** of the trips (`DESIGN` §2.6, proposed), and civilians (a few base outfits recoloured by the material/palette system). **The Agent himself is four instances** (one per background, §2): his
 look per class is **settled by `ACTOR` D78 and §9**: the same dress, the faction as packaging.
@@ -249,7 +249,7 @@ look per class is **settled by `ACTOR` D78 and §9**: the same dress, the factio
   hostile).
 - **Cut (Director, 2026-10-23):** no child base (8.1); **the rescue only as scenery** (vehicles, cordons, hoardings: no firefighter or paramedic
   set, as `DESIGN` §2.2 has it heard of more than seen); **the TV anchor is 2D** (the epilogue's bulletin is an image on the TV).
-- **Out of the arc:** §11.2's Rival Agent boss has no place in the campaign as written.
+- **Out of the arc:** §11.2's Rival Agent boss has no place in the campaign as written. *(2026-11-10, `DESIGN` §2.8: the Confessor and Hedge fill that tier.)*
 
 **8.5 Order of work (proposed; the first slice ruled 2026-10-23):** the CS-1 split of the hero (C4) proves the slot pipeline. **The first kit is the
 opening every route shares** (Director, 2026-10-23; `PROP_PIPELINE_PLAN` §9): the house, the police station, the devastated town, the power

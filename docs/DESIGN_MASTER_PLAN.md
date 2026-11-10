@@ -71,6 +71,7 @@ system to scale, never to cap (§19 Rule 1).
 
 > 🏁 **The plot is CLOSED (Director, 2026-10-23)** after the faction-dress rulings and a plot pass: what remains is authoring detail and
 > gameplay, none of it structural (§18). Record: `PROMPTS/RESUMO_SESSAO_2026-10-23_FACTION_DRESS_PLOT_CLOSE.md` §4.
+> **2026-11-10: audited; the audit's rulings are §2.8 and win over any older line they touch.**
 
 ### 2.1 The four factions and the reporter (revised 2026-10-22)
 
@@ -515,7 +516,7 @@ so killing him is a kill and a no-kill run must let him live (Claude: follows fr
 (Director). Name: **Thomas Marlow** (the doubter who must see to believe; Marlow, the witness of *Heart of Darkness*; Tomás, Tomasz, Tommaso if
 localised), never a surname that evokes a real case (no "Vale"). Outlet: an independent, reader-funded local investigative site, **The Sieve**
 (§2.7; it replaced *Blind Spot* on 2026-10-22, a real newsletter's name; localised like signage; a registry check before launch). First contact: seen at the police station's door in the opening (he recognises his source being barred from the case); the real approach at the
-hospital after the wife's death, with the trade that opens lap 2 (his leads for the leaders' confessions); the cemetery is kept for the finale. Why
+hospital at the midpoint, when his wife's condition turns critical (2026-11-10; it said "after the wife's death", older than her surviving by default), with the trade that opens lap 2 (his leads for the leaders' confessions); the cemetery is kept for the finale. Why
 only he can close the case: the Militia's clue speaks of "our informant", and only he knows the informant is his own source, because his scoops
 reached the Militia before he published them. The slip at the memorial: a line about the target only the attacker could know (e.g. "it was only
 supposed to be the lower basin").
@@ -581,8 +582,8 @@ the evidence reads as atmosphere; on a second it reads as confession:
 
 The preferred reveal mechanism is the project's own information grammar: an
 outside breach or recovered source removes the Agent's filter and relabels
-`HOSTILE` as `WITNESS`, `WEAPON CACHE` as `EVIDENCE ARCHIVE`, or `EXTRACTION`
-as `ACTIVATION SITE`. **The game has done to the player what the player does to
+`HOSTILE` as `WITNESS`, `WEAPON CACHE` as `EVIDENCE ARCHIVE`, or `RECOVER INTEL`
+as `DESTROY EVIDENCE` (2026-11-10; it said `EXTRACTION` as `ACTIVATION SITE`, the superseded canon's). **The game has done to the player what the player does to
 guards: controlled behaviour by controlling information.** **The outside source
 is the reporter (2026-10-22, §2.2):** his accusation at the finale is the
 reveal, and the relabelling follows it (Claude's mapping of the Director's
@@ -851,10 +852,85 @@ because he is dead, or because he is the head of the character's own faction.
 
 | Sub-leader | Motive | Sub-mission (example) | Exists if |
 |---|---|---|---|
-| Irene Barrow | Graves's chair | Bug Graves's office (the recording goes to her, never to the Agent) → a forged pass that gets him through checkpoints | **The badge:** only once the Agent has lost it |
+| Irene Barrow | Graves's chair | Bug Graves's office (the recording goes to her, never to the Agent) → a forged pass that gets him through checkpoints | **The badge:** only once the Agent has lost it, and while Graves lives (2026-11-10) |
 | Duke Hardcastle | Command, on camera | A staged heroic rescue so he looks the part (a Militia publicity stunt for the cameras, never the official rescue, which stays scenery: ruled 2026-10-23) → the Militia's drone codes | **The leader alive:** only while Kessler lives |
 | "Choirboy" | The club's "brothers" | Spring a cook from a rival chapter → the recipe for an explosive or smoke gadget | **The violence:** gone if the player killed club members in that chapter |
 | Evelyn Marsh | Pryce's chair, and the sale: she backs whoever is winning | Sells, through her counsel Prudence Vane, the guard rotations of the Agent's next target | **Progress:** only once two or more leaders are dead |
+
+### 2.8 The story audit's rulings (Director, 2026-11-10: "Aplica todas as propostas")
+
+Claude's proposals from [`PROMPTS/AUDITS/STORY_AUDIT_2026-11-10.md`](../PROMPTS/AUDITS/STORY_AUDIT_2026-11-10.md), ratified as a whole. Where a
+line above disagrees with this section, this section wins. What the audit could not settle is in §18.
+
+**The lap-2 order (it now has weight):**
+- **Access dies with the leader.** The trust was personal (§2.2, ACCESS), so killing a leader ends the access to his turf and to his L2 store
+  (§11.6), which becomes an infiltration target. **The exception is the character's own faction:** its favour was voiced by the handler (§2.7),
+  who is now the head, so that access stays. The order is the order in which he closes doors on himself: buy before the kill.
+- **Who is blamed for each death, written once:** each successor blames the faction the circle already points him at. Barrow blames the
+  Militia, Hardcastle the Traffickers, "Choirboy" the Corporation, Marsh the Police. It holds for the first death too, when only one successor
+  is in post.
+- **A leader's scene:** the confession and the clue are fixed; his ATTITUDE is keyed by how many leaders have died (surprised, defensive,
+  bargaining, expecting him): 4 x 4 lines, never the 24 orders.
+- **The time states of lap 2** are keyed by the COUNT of deaths, never by which leaders died, and the alert step is data (highly watched zones
+  with a tier threshold in the map's `layout`), not one authored map per case.
+- **Leader confrontations are masked by construction:** he goes in as the Infiltraitor and unmasks only before the leader, so a witness
+  blames the club's assassin, never the Agent.
+
+**The mechanisms behind the clues:**
+- **The Militia's codes are filed with the FID.** A private company flying drones over a strategic complex registers its friendly codes with
+  the federal agency; outside Calm Waters they sit in one restricted police registry, which the leak reads. Kessler knows his informant is a
+  policeman with that access. The drone took off INSIDE the perimeter because the counter-drone screen faces outwards.
+- **The roadblock credential was the colleague's,** the same man who lent his name to Pith & Peel: a front lends what he is asked for and
+  asks nothing. The log Graves reads on the first day carries a dead man's number. The Agent meant to manage him inside the investigation he
+  expected to lead; the flood removed the witness, so "his death is chance" stands.
+- **The chop-shop buyer never took his helmet off.** It holds on every route (the former biker's included), and it is why the club hunts "a
+  rider".
+- **The hours between the strike and the collapse** (pumps down, the reservoir rising) are what make the silent sirens a crime, and they
+  cover his ride home.
+- **Blood:** each death he causes is blamed on a rival and answered; the reprisals' wounded are what the radio counts and the bank loses.
+- **The son is buried at the restored cemetery** because the town buries its dead together, at the memorial.
+
+**Who may know what, and when:**
+- **"Deacon"** believes the man in the Confessor's mask works for the Corporation, the financiers he already suspects. He sees the hat on the
+  Agent only at his own death. His line may say "you killed my man" and never that his man was hunting the rider; he may call the Agent
+  "Confessor" (§2.4).
+- **Pryce** knows more than any other leader, through Hedge, and keeps quiet by choice: each rival's death helps him, and exposing the bettor
+  opens the trading around the disaster, then his books. **He is the sender of Hedge's ambush** (it was open, §18), because of what Hedge saw
+  on the Corporation's trip. His scene stays inside §2.4's suppression.
+- **The reporter** receives in lap 2 only the leaders' SHARES in the disaster (the four failures), never the clues about the trigger: the
+  Agent controls the intelligence (§2.3). He gathers the four clues from leaks during the time jump (each new regime leaks its predecessor's
+  file). What turns him is the memorial: the truce names a dead policeman as the informant, and his informant is standing at the grave. He is
+  an honest partner until that scene.
+- **Graves,** after taking the badge at the pit, believes the Agent found less than he did: one authored beat, on the three routes where the
+  pit comes before his own favour.
+- **Barrow is the official investigator** who takes the case the Agent expected to lead. There is no other.
+
+**What the player is shown, and when (the exposure budget):**
+- **The opening:** the arrival on the bike plays silent. The Agent's voice-over starts once he is inside, so every spoken sentence is true of
+  the image it sits on.
+- **Before the finale each physical match is SAID or CARRIED, never displayed.** The Militia's frame is words in lap 1 ("a rider"), an object
+  in the Confessor's file, and a picture only in the reporter's hand. It resolves the helmet, never the bike or its plate.
+
+**The official version and the endings:**
+- **The Graves-"Deacon" deal leaks at one moment in every order:** in the time jump before the cemetery, when both are dead. Until then the
+  public version is the substation fire and a war between factions.
+- **At the memorial** the picture is four successors, each denouncing a dead man. "Choirboy" has handed over Deacon's cell and stays at the
+  edge (the gate, engines off), never on the stage.
+- **The kill branch:** he is discovered as the reporter's killer, never as the dam's author. The public version is that the reporter drew
+  first, which is true. If *The Sieve* prints the dead man's notes, they read as a conspiracy theory, now with a martyr.
+- **No outside inquiry comes,** and the FID's motto says why ("We'll get back to you."): one line in the epilogue's bulletin.
+
+**The road to Freelance:**
+- **The sub-leaders are safe by staging, never by a special rule:** none is ever a reachable actor on a playable board (a scene, behind
+  glass, a comm-link). The same holds for the reporter before the finale and for the spouse.
+- **The truce is on the STORY, never on the turf.** The memorial freezes the past; Freelance is the fight for what is left: the Militia's
+  unpaid bill against a company sold to Carrion Capital, the club as public enemy raided for show, Barrow's pit, Marsh's sale, the
+  Corporation's missing LED prototype.
+- **Freelance contracts are leaves** (§2.7's rule extended): none carries a piece of the disaster. The endless game never reopens the dam.
+- **The start state:** NO access on any turf, every uniform he earned in the LED coat, and the bounded forged credential (§15) as the only
+  access. A dead man has no face: bare-faced he is a dead inspector to anyone who knew him, masked he is the club's assassin.
+- **The faked death costs identity objects only** (the service pistol, the badge, the ring). Gear, the tree and the uniforms stay.
+- **The reporter's branch** may change Freelance in flavour of equal weight, never in power; the tattoo's art names nothing of the finale.
 
 ---
 
@@ -1494,7 +1570,7 @@ agent's armour.*
 | **Veteran** | Wider cone, peripheral sweeps, partial trail reading | Whoever repeats predictable routes |
 | **Lieutenant** | Radio (exact position to everyone), full trail reading, shadow-based route prediction, check-in protocol | Whoever doesn't cut communications first |
 | **Captain** | Everything above + immune to smoke, sees through disguises, coordinates subordinate positioning, changes routes on suspicion | Whoever relies on a single trick |
-| **Rival Agent** (boss) | A complete mirror of the player: gadgets, cover changes, retreats and regroups, has HP and armour, heals between encounters | Whoever doesn't adapt |
+| **Rival Agent** (boss; in the campaign, the Confessor and Hedge: 2026-11-10) | A complete mirror of the player: gadgets, cover changes, retreats and regroups, has HP and armour, heals between encounters | Whoever doesn't adapt |
 
 **Rank names per faction (2026-10-22, English canon; civil ranks, never military; localised per country later):**
 
@@ -1924,7 +2000,7 @@ chapter coming last in lap 1; the balance pass below), plus one passive and one 
   - dark zones (the goggles' eye-glow trade-off) and thin walls (thermal, X-ray);
   - open ground (the bike, Road sense) and extraction points.
 
-**The Informant — a guaranteed NPC.** A map may contain a Network contact
+**The Informant — a guaranteed NPC.** A map may contain a contact
 embedded in the location. Reaching their tile (1 AP) **before being detected**
 buys exactly one piece of intel: the primary objective's exact position, one
 specific guard's patrol route (overlay, 5 turns), or the nearest secret
@@ -2066,7 +2142,8 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
 - ✅ **The inciting event and the factions** → four factions around GRUB
   DRILL INC, each guilty of one failure that turned the Agent's small attack
   into a massacre and innocent of the attack itself; the player picks the
-  recruiting faction at the police station; two laps around a circle of
+  background in the deposition, and that faction's sub-leader approaches him
+  (revised 2026-10-23); two laps around a circle of
   favours (Director, 2026-10-22; §2.1, §2.2, §2.6).
 - ✅ **The finale and the player's agency after the reveal** → a scene, no
   fight: at a public memorial in the cemetery the Agent lets slip what only
@@ -2168,6 +2245,9 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   not in the hat-mask: the club's assassin wears the mask without them; they come from another faction (possibly the Militia); their
   vision types unlock over time; they are a cosmetic family to sell; the eye glow and its penalty in the dark are theirs; without the
   hat-mask he may wear the balaclava with them (Director, 2026-10-26; §2.2, §10.3, §10.5, §15, `ACTOR` D83).
+- ✅ **The story audit of 2026-11-10** → every proposal ratified (Director, 2026-11-10; §2.8): access dies with the leader (the own faction
+  excepted), one blame map for the 24 orders, the mechanisms behind the four clues, what "Deacon", Pryce and the reporter may know and when,
+  the exposure budget, the official version's single leak moment, the memorial's staging, the kill branch, and Freelance's start state.
 - ✅ **Premium campaign or shared campaign?** → **Shared.** Free and paying
   players can reach the same campaign, Freelance content and powers; payment
   accelerates progression (§16).
@@ -2196,6 +2276,16 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   and equipment (§15); the four trips abroad (§2.6, proposed: one per lap-1
   chapter, a member abroad per faction); the palette's exact values and roles
   (the families are the Director's, `COSMETICS_MASTER_PLAN` §9.4).
+- [ ] From the story audit (2026-11-10, §2.8; the audit offered no single answer for these):
+  whether the masked figure is the official hand of the attack (then the mask is wanted on every turf in Freelance);
+  why a dead man with the offshore money keeps working (it reaches the spouse, or reaching it is Freelance's far horizon);
+  whether the handler, alone among the four clients, suspects whose ghost he pays (the league's reason in the fiction);
+  what Zest and the four store keepers have seen (the mask only, or his face);
+  what a living Marlow, or his files, is in Freelance;
+  whether the neutral missions between the laps already count for the league;
+  whether the spouse hears the slip at the grave;
+  where Marlow's files physically are in the kill branch;
+  how the pit still holds acid in a restored town.
 - [ ] §11.1's counters for FOUR factions (they were written for three; §11.6's
   template proposes them); the
   agency's ranks per country when localised (the English canon is §2.7, §11.2).

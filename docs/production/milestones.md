@@ -1040,7 +1040,7 @@ W-PRECOOK mais cedo, vamos fazer ele no final da milestone de combate."*
 **Deliverables:**
 - 5–7 handcrafted levels
 - Maximum difficulty and coordination
-- Narrative climax (agent's choice: destroy Agency or go public)
+- Narrative climax (the cemetery: kill the reporter or let him live, `DESIGN_MASTER_PLAN` §2.2; it said "destroy Agency or go public", the superseded premise)
 - Freelance mode unlock
 
 **Acceptance Criteria:**

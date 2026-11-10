@@ -17,7 +17,7 @@ ap.add_argument("--duration", type=float, default=30.0)
 ap.add_argument("--seed", type=int, default=42)
 a = ap.parse_args()
 
-bible = json.loads((REPO / "ASSETS/AUDIO/MUSIC/bible.json").read_text())
+bible = json.loads((REPO / "ASSETS/AUDIO/MUSIC/bible.json").read_text(encoding="utf-8-sig"))
 ctx = bible["contexts"][a.context]
 prompt = subprocess.run([sys.executable, str(REPO / "tools/persistent/music_pipeline.py"), "prompt", a.context],
                         capture_output=True, text=True, check=True).stdout.strip()

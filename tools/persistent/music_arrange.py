@@ -13,8 +13,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 import music_synth as ms
 
 ROOT = Path(__file__).resolve().parents[2]
-arr = json.loads((ROOT / "ASSETS/AUDIO/MUSIC/arrangement.json").read_text())
-bible = json.loads((ROOT / "ASSETS/AUDIO/MUSIC/bible.json").read_text())
+arr = json.loads((ROOT / "ASSETS/AUDIO/MUSIC/arrangement.json").read_text(encoding="utf-8-sig"))
+bible = json.loads((ROOT / "ASSETS/AUDIO/MUSIC/bible.json").read_text(encoding="utf-8-sig"))
 ctx = arr["context"]; bpm = bible["contexts"][ctx]["bpm"]; bars = arr["bars"]
 out = Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)
 SR = ms.SR; step = 60.0 / bpm / 4

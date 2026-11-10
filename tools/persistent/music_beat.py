@@ -12,7 +12,7 @@ import soundfile as sf
 
 SR = 44100
 ROOT = Path(__file__).resolve().parents[2]
-bible = json.loads((ROOT / "ASSETS/AUDIO/MUSIC/bible.json").read_text())
+bible = json.loads((ROOT / "ASSETS/AUDIO/MUSIC/bible.json").read_text(encoding="utf-8-sig"))
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 ctx = args[0] if args else "infiltration"
 out = args[1] if len(args) > 1 else "beat.wav"

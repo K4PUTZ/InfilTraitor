@@ -41,7 +41,8 @@ def load_bible():
     if not BIBLE.exists():
         fail(f"{BIBLE} missing")
     try:
-        return json.loads(BIBLE.read_text())
+        # Every text read in the music scripts names this encoding: Python's default on Windows is the ANSI code page, and -sig drops the BOM Windows editors can add.
+        return json.loads(BIBLE.read_text(encoding="utf-8-sig"))
     except json.JSONDecodeError as e:
         fail(f"{BIBLE}: {e}")
 
@@ -107,7 +108,7 @@ def cmd_check(a):
                 errs.append(f"context {cid}: unknown motif '{m}'")
     for f in sorted(PROV.glob("*.json")):
         try:
-            d = json.loads(f.read_text())
+            d = json.loads(f.read_text(encoding="utf-8-sig"))
         except json.JSONDecodeError as e:
             errs.append(f"{f.name}: {e}")
             continue
@@ -138,7 +139,7 @@ def cmd_register(a):
         fail(f"unknown context '{a.context}'")
     if not src.is_file():
         fail(f"{src} not found")
-    prompt = Path(a.prompt_file).read_text().strip() if a.prompt_file else (a.prompt or build_prompt(bible, a.context))
+    prompt = Path(a.prompt_file).read_text(encoding="utf-8-sig").strip() if a.prompt_file else (a.prompt or build_prompt(bible, a.context))
     params = dict(kv.split("=", 1) for kv in a.params.split(",")) if a.params else {}
     digest = sha256(src)
     tid = f"{a.context}-{datetime.now(timezone.utc):%Y%m%d}-{digest[:8]}"
@@ -160,7 +161,7 @@ def cmd_export(a):
     pf = PROV / f"{a.take}.json"
     if not pf.exists():
         fail(f"no take '{a.take}' (see `list`)")
-    rec = json.loads(pf.read_text())
+    rec = json.loads(pf.read_text(encoding="utf-8-sig"))
     raw = ROOT / rec["raw_path"]
     if not raw.exists():
         fail(f"raw take {rec['raw_path']} missing locally (Raw/ is not versioned)")
@@ -186,7 +187,7 @@ def cmd_stems(a):
     pf = PROV / f"{a.take}.json"
     if not pf.exists():
         fail(f"no take '{a.take}' (see `list`)")
-    rec = json.loads(pf.read_text())
+    rec = json.loads(pf.read_text(encoding="utf-8-sig"))
     dest = RAW / rec["context"] / f"{rec['id']}_stems"
     dest.mkdir(parents=True, exist_ok=True)
     stems = rec.setdefault("stems", {})
@@ -203,7 +204,7 @@ def cmd_stems(a):
 
 def cmd_list(a):
     for f in sorted(PROV.glob("*.json")):
-        d = json.loads(f.read_text())
+        d = json.loads(f.read_text(encoding="utf-8-sig"))
         print(f"{d['id']:<36} {d['context']:<13} {d.get('duration_s', '?'):>8}s  {d['tool']} {d['tool_version']}  "
               f"{'EXPORTED' if d.get('export') else 'raw only'}")
 

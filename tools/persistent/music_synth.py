@@ -82,7 +82,7 @@ def main():
         import soundfile as sf
         bpm = int(a[a.index("--bpm") + 1]) if "--bpm" in a else 124
         bars = int(a[a.index("--bars") + 1]) if "--bars" in a else 8
-        audio = render(a[1], json.loads(Path(a[2]).read_text()), bpm, bars)
+        audio = render(a[1], json.loads(Path(a[2]).read_text(encoding="utf-8-sig")), bpm, bars)
         sf.write(a[3], audio.T, SR)
         print(f"[synth] {a[1]} -> {a[3]} (peak {np.abs(audio).max():.3f})")
 

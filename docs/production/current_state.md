@@ -639,6 +639,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-11-08_CLOSEUP_LEVEL1.md
 - RESUMO_SESSAO_2026-11-08_FACES_BY_HAND.md
 - RESUMO_SESSAO_2026-11-09_POSE_FIXES_MOTO_ROUND.md
+- RESUMO_SESSAO_2026-11-10_CODE_HERITAGE_AUDIT.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

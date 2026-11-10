@@ -36,6 +36,7 @@ Python note:
 
 - Current prototype reference: `THEME/Black Tux Pulse.mp3`
 - Working paper: `INFILTRAITOR_Music_Authorship_Project_Paper.pdf`
+- Production record (current state, PC workspace, work history): `MUSIC_PRODUCTION.md`
 
 ## Production mechanism (2026-10-18)
 

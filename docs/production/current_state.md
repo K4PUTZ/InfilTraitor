@@ -8,6 +8,12 @@
 
 ---
 
+## Where the project stands — 2026-11-10 (the code and heritage audit; a draft plan, nothing ratified)
+
+- **A read-only audit of the whole code** (`PROMPTS/AUDITS/CODE_AND_HERITAGE_2026-11-10.md`): the drawing is 3D but the coordinate space is still the 2D plane; a weapon has no single identity and the pistol has three sizes; the 2026-11-04 dead-code list is untouched. No code changed.
+- **A draft plan, v0.1** (`PROMPTS/PLANNING/HERITAGE_AND_LOOSE_ENDS_PLAN.md`): six tracks, each waiting on the Director; his open questions are in the session record.
+  Record: `PROMPTS/RESUMO_SESSAO_2026-11-10_CODE_HERITAGE_AUDIT.md`.
+
 ## Where the project stands — 2026-11-09 (the pistol's quarter turn found; the owed Moto round done)
 
 - **The pistol sits in the game as in Blender** (the pose lab ignored the model node's -90 degree rotation), the draw holds it upright, the aim's elbows are closed on both figures. PLAYGROUND lost its two loose glass panes.
@@ -650,11 +656,11 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 ### Version History
 
 <!-- AUTO:BEGIN version_history -->
-- 39e59bee4 ALPHA BRICK DECALS 0.9.107 - three of six parts built, and every gate that lied got fixed
-- 173f21cd0 ALPHA MATERIALS MASTERPLAN 0.9.106 - five materials land, the milestone is planned, and half-thickness walls turn out not to exist
-- 2f47876b0 [W-WEAPON-01/DOCS] Wood at five, the held weapon gets a seam, and the session closes
-- f3731aff3 ALPHA MOVEMENT FOUNDATION 0.9.104 - the placeholder is gone, he walks, and there is an enemy
-- a04e8c05b ALPHA MOCKUP MODEL FOUNDATION 0.9.103 - the agent stands in the room
+- 39e59bee ALPHA BRICK DECALS 0.9.107 - three of six parts built, and every gate that lied got fixed
+- 173f21cd ALPHA MATERIALS MASTERPLAN 0.9.106 - five materials land, the milestone is planned, and half-thickness walls turn out not to exist
+- 2f47876b [W-WEAPON-01/DOCS] Wood at five, the held weapon gets a seam, and the session closes
+- f3731aff ALPHA MOVEMENT FOUNDATION 0.9.104 - the placeholder is gone, he walks, and there is an enemy
+- a04e8c05 ALPHA MOCKUP MODEL FOUNDATION 0.9.103 - the agent stands in the room
 <!-- AUTO:END version_history -->
 
 ---

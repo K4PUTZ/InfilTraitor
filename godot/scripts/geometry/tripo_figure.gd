@@ -60,8 +60,10 @@ const FINGER_BONES: PackedStringArray = [
 const POSES: Dictionary = {
 	"draw_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.07, "height": -0.075, "gap": 0.05, "pole": 0.9, "hand_pitch": 50.0}},
 	"aim_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.255, "height": 0.02, "gap": 0.044, "pole": 0.4}},
-	## Derived, never posed or stored (`_between_pose`): the middle of the way from the draw to the aim, the front foot off the floor (`lift`: the rig's own units, Blender's metres on the 1 m figure).
-	"step_pistol": {"between": ["draw_pistol", "aim_pistol"], "foot": "LeftFoot", "lift": 0.02},
+	## The Director's in-between (2026-11-09), two fifths of the way from the draw to the aim: his file when he has posed it, else this plain blend.
+	"mid_pistol": {"between": ["draw_pistol", "aim_pistol"], "at": 0.4},
+	## Derived, never posed or stored (`_between_pose`): that in-between with the front foot off the floor (`lift`: the rig's own units, Blender's metres on the 1 m figure); `travel` = the stops the foot goes between.
+	"step_pistol": {"between": ["mid_pistol", "aim_pistol"], "at": 0.0, "travel": ["draw_pistol", "aim_pistol"], "foot": "LeftFoot", "lift": 0.02},
 }
 ## A foot that travels less than this between the two stops of a derived pose stays on the floor (the figure's units).
 const STEP_MIN_TRAVEL: float = 0.02
@@ -257,19 +259,44 @@ static func _load_bank_animation(figure: String, id: String) -> Animation:
 ## The pose `id` of `figure`: the Director's file when there is one (`POSE_FILE`), else the solved one. A one-key Animation whose meta `source` says which and whose meta
 ## `props` carries the model-in-hand placements. Null (loud) when it cannot be built.
 static func bank_pose(figure: String, id: String) -> Animation:
-	if (POSES.get(id, {}) as Dictionary).has("between"):
-		return _between_pose(figure, id, POSES[id])
 	var path: String = POSE_FILE % [figure, id]
 	if FileAccess.file_exists(path):
 		return _pose_from_file(figure, id, path)
+	if (POSES.get(id, {}) as Dictionary).has("between"):
+		return _between_pose(figure, id, POSES[id])
 	return solved_pose(figure, id)
 
 
-## A DERIVED pose (a `POSES` row with `between`, Director 2026-11-09): every bone half way along the slerp between two stops, so the layer goes through it without changing the arms' path
+## The foot of a derived pose's row off the floor, when it travels between the row's stops (`travel`, default its `between`). False (loud) when the rig lacks the foot.
+static func _lift_stepping_foot(figure: String, id: String, spec: Dictionary, skeleton: Skeleton3D, rots: Dictionary, a: Dictionary, b: Dictionary, hips_a: Variant, hips_b: Variant) -> bool:
+	var foot: int = TripoPoseKitRef.find_bone(skeleton, String(spec["foot"]))
+	if foot < 0:
+		push_error("[TripoFigure] the pose '%s' of %s lifts '%s', which the rig lacks" % [id, figure, spec["foot"]])
+		return false
+	var first: Dictionary = a
+	var last: Dictionary = b
+	var hips_first: Variant = hips_a
+	var hips_last: Variant = hips_b
+	if spec.has("travel"):
+		var from: Animation = bank_pose(figure, String((spec["travel"] as Array)[0]))
+		var to: Animation = bank_pose(figure, String((spec["travel"] as Array)[1]))
+		first = TripoPoseKitRef.bone_rotations(skeleton, from, 0.0)
+		last = TripoPoseKitRef.bone_rotations(skeleton, to, 0.0)
+		hips_first = _hips_place(from)
+		hips_last = _hips_place(to)
+	var at_a: Vector3 = TripoPoseKitRef.bone_global(skeleton, foot, first, {}).origin + (hips_first as Vector3 if hips_first != null else Vector3.ZERO)
+	var at_b: Vector3 = TripoPoseKitRef.bone_global(skeleton, foot, last, {}).origin + (hips_last as Vector3 if hips_last != null else Vector3.ZERO)
+	if Vector2(at_b.x - at_a.x, at_b.z - at_a.z).length() >= STEP_MIN_TRAVEL and not TripoPoseKitRef.lift_foot(skeleton, foot, rots, float(spec["lift"])):
+		push_warning("[TripoFigure] the pose '%s' of %s: the leg of %s cannot lift, the foot stays down" % [id, figure, spec["foot"]])
+	return true
+
+
+## A DERIVED pose (a `POSES` row with `between`, Director 2026-11-09): every bone at `at` (default half way) along the slerp between two stops, so the layer goes through it without changing the arms' path
 ## (`ActorAimPose3D`, a passing stop), and the leg of `foot` bent so its ankle rides `lift` higher there: a step instead of a slide. Built from the two stops, so a re-posed aim carries it along.
 ## A foot that does not travel between them (`STEP_MIN_TRAVEL`) stays down. Null (loud) when a stop or the rig is missing.
 static func _between_pose(figure: String, id: String, spec: Dictionary) -> Animation:
 	var ends: Array = spec["between"]
+	var at: float = float(spec.get("at", 0.5))
 	var from: Animation = bank_pose(figure, String(ends[0]))
 	var to: Animation = bank_pose(figure, String(ends[1]))
 	var rig := _rig(figure)
@@ -284,21 +311,15 @@ static func _between_pose(figure: String, id: String, spec: Dictionary) -> Anima
 	var b: Dictionary = TripoPoseKitRef.bone_rotations(skeleton, to, 0.0)
 	var mid: Dictionary = {}
 	for bone: int in a:
-		mid[bone] = (a[bone] as Quaternion).slerp(b[bone] as Quaternion, 0.5) if b.has(bone) else a[bone]
+		mid[bone] = (a[bone] as Quaternion).slerp(b[bone] as Quaternion, at) if b.has(bone) else a[bone]
 	for bone: int in b:
 		if not a.has(bone):
 			mid[bone] = b[bone]
 	var hips_a: Variant = _hips_place(from)
 	var hips_b: Variant = _hips_place(to)
-	var foot: int = TripoPoseKitRef.find_bone(skeleton, String(spec["foot"]))
-	if foot < 0:
+	if spec.has("foot") and not _lift_stepping_foot(figure, id, spec, skeleton, mid, a, b, hips_a, hips_b):
 		holder.free()
-		push_error("[TripoFigure] the pose '%s' of %s lifts '%s', which the rig lacks" % [id, figure, spec["foot"]])
 		return null
-	var at_a: Vector3 = TripoPoseKitRef.bone_global(skeleton, foot, a, {}).origin + (hips_a as Vector3 if hips_a != null else Vector3.ZERO)
-	var at_b: Vector3 = TripoPoseKitRef.bone_global(skeleton, foot, b, {}).origin + (hips_b as Vector3 if hips_b != null else Vector3.ZERO)
-	if Vector2(at_b.x - at_a.x, at_b.z - at_a.z).length() >= STEP_MIN_TRAVEL and not TripoPoseKitRef.lift_foot(skeleton, foot, mid, float(spec["lift"])):
-		push_warning("[TripoFigure] the pose '%s' of %s: the leg of %s cannot lift, the foot stays down" % [id, figure, spec["foot"]])
 	var pose := Animation.new()
 	pose.length = 0.1
 	pose.set_meta("source", "between")
@@ -311,7 +332,7 @@ static func _between_pose(figure: String, id: String, spec: Dictionary) -> Anima
 	if hips_a != null and hips_b != null:
 		var track: int = pose.add_track(Animation.TYPE_POSITION_3D)
 		pose.track_set_path(track, NodePath("%s:%s" % [skeleton_path, skeleton.get_bone_name(TripoPoseKitRef.find_bone(skeleton, HIPS))]))
-		pose.position_track_insert_key(track, 0.0, (hips_a as Vector3).lerp(hips_b as Vector3, 0.5))
+		pose.position_track_insert_key(track, 0.0, (hips_a as Vector3).lerp(hips_b as Vector3, at))
 	holder.free()
 	return pose
 

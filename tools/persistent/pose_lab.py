@@ -31,7 +31,7 @@ GODOT = os.environ.get("GODOT", "/Applications/Godot.app/Contents/MacOS/Godot")
 BLENDER = os.environ.get("BLENDER", "/Applications/Blender.app/Contents/MacOS/Blender")
 LAB = os.path.join(ROOT, "tools", "asset_generation", "tripo", "tripo_pose_lab.py")
 FIGURES = ("male", "female")
-POSES = ("draw_pistol", "aim_pistol")      # `TripoFigure.POSES`
+POSES = ("draw_pistol", "mid_pistol", "aim_pistol")      # `TripoFigure.POSES`
 TEMP = os.path.join(ROOT, "temp", "poses")
 
 

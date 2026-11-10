@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**348 scripts · 102475 lines total** (under `godot/scripts/`)
+**348 scripts · 102519 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -455,7 +455,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 587 lines
+`class_name ActorMesh3D` · extends `Node3D` · 598 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -484,12 +484,12 @@ extends `ConfirmationDialog` · 64 lines
 - `TRIPO_MOVE_DEFAULT` = `"walk"`
 - `TRIPO_IDLE` = `"idle"`
 - `ActorAimPoseRef` = `preload("res://godot/scripts/geometry/actor_aim_pose3d.gd")`
-- `AIM_STOPS` = `[["draw_pistol", 0.5], ["step_pistol", 0.75, true], ["aim_pistol", 1.0]]`
+- `AIM_STOPS` = `[["draw_pistol", 0.5], ["step_pistol", 0.7, true], ["aim_pistol", 1.0]]`
 - `AIM_RAISE_S` = `0.36`
 - `AIM_LOWER_S` = `0.24`
 - `PISTOL_SHOWN_FROM` = `0.5`
-- `PISTOL_FROM_SCALE` = `0.35`
-- `PISTOL_GROW` = `0.12`
+- `DRAW_COAT_SHAPE` = `"DrawFix"`
+- `DRAW_COAT_CLOSED_AT` = `0.75`
 - `REVEAL_PALETTES` = `{ &"agent": {"stripe_a": Color(0.86, 0.96, 1.0), "stripe_b": Color(0.16, 0.28, 0.38), "outline_color": Color(1.0, 1.0, 1.0)}, &"agency": {"stripe_a": Color(0.46, 0.64, 1.0), "stripe_b": Color(0.08, 0.14, 0.40), "outline_color": Color(0.30, 0.56, 1.0)}, &"militia": {"stripe_a": Color(1.0, 0.52, 0.36), "stripe_b": Color(0.40, 0.10, 0.06), "outline_color": Color(1.0, 0.34, 0.18)}, &"corporation": {"stripe_a": Color(1.0, 0.84, 0.30), "stripe_b": Color(0.38, 0.28, 0.04), "outline_color": Color(1.0, 0.74, 0.12)}, &"network": {"stripe_a": Color(0.46, 0.96, 0.62), "stripe_b": Color(0.06, 0.30, 0.14), "outline_color": Color(0.28, 0.90, 0.46)}, }`
 
 **Public vars**
@@ -1471,7 +1471,7 @@ extends `Node3D` · 3573 lines
 
 ### `tripo_figure.gd`
 
-`class_name TripoFigure` · extends `RefCounted` · 502 lines
+`class_name TripoFigure` · extends `RefCounted` · 523 lines
 
 `godot/scripts/geometry/tripo_figure.gd`
 
@@ -1494,7 +1494,7 @@ extends `Node3D` · 3573 lines
 - `GAME_CLIPS` = `["idle", "walk", "run"]`
 - `POSE_PREFIX` = `"pose_"`
 - `FINGER_BONES` = `[ "LeftHandIndex1", "LeftHandIndex2", "LeftHandMiddle1", "LeftHandMiddle2", "LeftHandPinky1", "LeftHandPinky2", "LeftHandRing1", "LeftHandRing2", "LeftHandThumb1", "LeftHandThumb2", "RightHandIndex1", "RightHandIndex2", "RightHandMiddle1", "RightHandMiddle2", "RightHandPinky1", "RightHandPinky2", "RightHandRing1", "RightHandRing2", "RightHandThumb1", "RightHandThumb2", ]`
-- `POSES` = `{ "draw_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.07, "height": -0.075, "gap": 0.05, "pole": 0.9, "hand_pitch": 50.0}}, "aim_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.255, "height": 0.02, "gap": 0.044, "pole": 0.4}}, ## Derived, never posed or stored (`_between_pose`): the middle of the way from the draw to the aim, the front foot off the floor (`lift`: the rig's own units, Blender's metres on the 1 m figure). "step_pistol": {"between": ["draw_pistol", "aim_pistol"], "foot": "LeftFoot", "lift": 0.02}, }`
+- `POSES` = `{ "draw_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.07, "height": -0.075, "gap": 0.05, "pole": 0.9, "hand_pitch": 50.0}}, "aim_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.255, "height": 0.02, "gap": 0.044, "pole": 0.4}}, ## The Director's in-between (2026-11-09), two fifths of the way from the draw to the aim: his file when he has posed it, else this plain blend. "mid_pistol": {"between": ["draw_pistol", "aim_pistol"], "at": 0.4}, ## Derived, never posed or stored (`_between_pose`): that in-between with the front foot off the floor (`lift`: the rig's own units, Blender's metres on the 1 m figure); `travel` = the stops the foot goes between. "step_pistol": {"between": ["mid_pistol", "aim_pistol"], "at": 0.0, "travel": ["draw_pistol", "aim_pistol"], "foot": "LeftFoot", "lift": 0.02}, }`
 
 ---
 
@@ -6258,7 +6258,7 @@ extends `SceneTree` · 390 lines
 
 ### `tripo_figure_selftest.gd`
 
-extends `SceneTree` · 271 lines
+extends `SceneTree` · 283 lines
 
 `godot/scripts/tools/tripo_figure_selftest.gd`
 
@@ -6270,6 +6270,7 @@ extends `SceneTree` · 271 lines
 - `TripoPoseKitRef` = `preload("res://godot/scripts/geometry/tripo_pose_kit.gd")`
 - `DRIFT_MAX_M` = `0.001`
 - `MATCH_MAX_M` = `0.0001`
+- `STEP_AT` = `0.7`
 
 ---
 

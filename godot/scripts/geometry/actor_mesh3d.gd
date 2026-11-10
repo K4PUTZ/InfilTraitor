@@ -72,13 +72,14 @@ const TRIPO_IDLE := "idle"
 const ActorAimPoseRef = preload("res://godot/scripts/geometry/actor_aim_pose3d.gd")
 ## The path of the raise: the idle arms, then the fists at the sternum (`draw_pistol`, at half way: the gun appears here, out of the coat), then the aim. `step_pistol` is passed through
 ## without resting (the third element): the front foot off the floor between the two.
-const AIM_STOPS: Array = [["draw_pistol", 0.5], ["step_pistol", 0.75, true], ["aim_pistol", 1.0]]
+const AIM_STOPS: Array = [["draw_pistol", 0.5], ["step_pistol", 0.7, true], ["aim_pistol", 1.0]]
 const AIM_RAISE_S: float = 0.36
 const AIM_LOWER_S: float = 0.24
 const PISTOL_SHOWN_FROM: float = 0.5
-## The gun grows from this share of its size over the next `PISTOL_GROW` of the path, so it comes out of the coat instead of popping.
-const PISTOL_FROM_SCALE: float = 0.35
-const PISTOL_GROW: float = 0.12
+## The coat opens for the draw (Director, 2026-11-09: the left hand pulls the lapel, the right goes into the gap): the morph `DRAW_COAT_SHAPE`, full at the draw's stop, closed again by
+## `DRAW_COAT_CLOSED_AT` as the left hand lets go. The gun is hidden AT that stop and in the hand from the next frame on, already at the aim's place and size (the poses carry the same placement).
+const DRAW_COAT_SHAPE: String = "DrawFix"
+const DRAW_COAT_CLOSED_AT: float = 0.75
 
 var _board: Node3D = null
 var _source: ActorPose = null
@@ -100,7 +101,9 @@ var _tripo_units: float = 1.0        ## world units per metre of the 1 m Tripo e
 var _aim: ActorAimPoseRef = null      ## the aim layer of a Tripo Agent (null: its game set carries no aim pose)
 var _aim_t: float = 0.0              ## how far the aim has travelled, 0 (down) to 1 (held)
 var _pistol: Node3D = null           ## the pistol in the right hand (hidden until the fists reach the sternum)
-var _pistol_holder: Node3D = null    ## carries the placement (the pose's, blended between the stops) and the grow-in scale
+var _pistol_holder: Node3D = null    ## carries the placement (the pose's, blended between the stops)
+var _coat: MeshInstance3D = null     ## the Agent's coat, when it owns the draw's morph
+var _coat_draw_shape: int = -1       ## that morph's index
 var _pistol_stops: Array = []        ## [[weight, placement {bone, pos, quat, scale}], ...] one per aim stop, from the poses' `props` meta
 var _walked: float = 0.0             ## ground covered while walking, world units: the move clip's phase
 var _move_pass: float = 0.0          ## world units of ground one pass of the move clip covers
@@ -269,6 +272,12 @@ func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 		return
 	_aim = layer
 	_build_pistol(stops)
+	var coat: MeshInstance3D = TripoFigureRef.coat_of(_body)
+	_coat_draw_shape = coat.find_blend_shape_by_name(DRAW_COAT_SHAPE) if coat != null else -1
+	if _coat_draw_shape >= 0:
+		_coat = coat
+	else:
+		push_warning("[ActorMesh3D] the %s coat has no '%s' morph: it stays closed through the draw" % [figure, DRAW_COAT_SHAPE])
 
 
 ## The pistol in the hand: its placement comes from the poses (`props` meta: the Director's, set in Blender, or the default), one per stop, blended between the stops
@@ -292,7 +301,7 @@ func _build_pistol(stops: Array) -> void:
 	attach.name = "PistolHand"
 	attach.bone_name = _skeleton.get_bone_name(hand)
 	_skeleton.add_child(attach)
-	var holder := Node3D.new()   ## its transform is the pose's placement of the model's scene root, times the grow-in
+	var holder := Node3D.new()   ## its transform is the pose's placement of the model's scene root
 	attach.add_child(holder)
 	holder.add_child(scene.instantiate() as Node3D)
 	_apply_board_light(attach)
@@ -326,10 +335,12 @@ func _update_aim(state: Dictionary) -> void:
 	var target: float = 1.0 if want else 0.0
 	_aim_t = move_toward(_aim_t, target, get_process_delta_time() / (AIM_RAISE_S if want else AIM_LOWER_S))
 	_aim.weight = _aim_t
+	if _coat != null:
+		var opened: float = smoothstep(0.0, PISTOL_SHOWN_FROM, _aim_t) if _aim_t <= PISTOL_SHOWN_FROM else 1.0 - smoothstep(PISTOL_SHOWN_FROM, DRAW_COAT_CLOSED_AT, _aim_t)
+		_coat.set_blend_shape_value(_coat_draw_shape, opened)
 	if _pistol != null:
-		_pistol.visible = _aim_t >= PISTOL_SHOWN_FROM
-		var grow: float = lerpf(PISTOL_FROM_SCALE, 1.0, clampf((_aim_t - PISTOL_SHOWN_FROM) / PISTOL_GROW, 0.0, 1.0))
-		_pistol_holder.transform = _pistol_placement(_aim_t) * Transform3D(Basis.from_scale(Vector3.ONE * grow), Vector3.ZERO)
+		_pistol.visible = _aim_t > PISTOL_SHOWN_FROM
+		_pistol_holder.transform = _pistol_placement(_aim_t)
 
 
 ## A dev flag through `DevFlags` (the APK's overrides file), or the environment when the autoload is absent (a bare script run).

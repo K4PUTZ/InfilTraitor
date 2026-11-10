@@ -46,3 +46,13 @@ The Director's fine tuning of the aim (File > Revert first if a Blender holds th
 - **The contact shadow is a soft black disc** (Director): 100 % at the centre, radius 0.27, on the ground marks' own shader, for the agent and every guard; the diamond, `ground_shadow_half_px` and `COLOR_SHADOW` are gone. Its cost on the Moto was NOT measured.
 
 Open: the gun turns about 41 degrees inside the hand between the draw and the aim (only the aim has the new grip); the female has not had the male's step; four finger bases of the male's left hand are displaced (the game ignores that).
+
+## The draw with the lapel (2026-11-09, late)
+
+The male's draw is the Director's: the left hand pulls the left lapel, the right goes into the gap. Files: `ASSETS/MODELS/fit/POSE_draw_pistol_MALE_COAT_EDIT3.blend` (pose + coat), `POSE_draw_pistol_MALE_GUN.blend` (the gun's placement at that stop), `POSE_mid_pistol_MALE.blend` (the in-between).
+
+- The opened coat is the shape key `DrawFix`, written into `AGENT_MALE_LIGHT.glb` as a morph by `tools/asset_generation/tripo/glb_add_morph.py` (a byte edit). **`build_agents.sh` does not carry it: a rebuild of the LIGHT Agent loses it until the tool is run again.** `ActorMesh3D` drives it: full at the draw's stop (0.5), closed by 0.75.
+- The gun is hidden at the draw's stop and in the hand from the next frame, at full size (the grow-in is gone). Its placement at the draw is the Director's, 41.8 degrees from the aim's, and blends to the aim's.
+- `mid_pistol` (two fifths from the draw to the aim) is his file; `step_pistol` is now that pose with the front foot lifted, a passing stop at 0.7.
+- Evidence: `verify.py` smoke green, frames read from the take `pistol_aim`. Not measured: the Moto with the morph active.
+- Open: the female has no lapel (coat stays closed, plain blend for `mid_pistol`); the fingers the Director's draw file displaces (up to 9 mm) are ignored by the game.

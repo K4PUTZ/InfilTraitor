@@ -530,6 +530,44 @@ def sequence_new(pose_blend, idle_json, draw_json, aim_json, out_blend, mid_at):
     print(f"[tripo_pose_lab] wrote {out_blend}: the {arm['lab_figure']} draw on one timeline (frames 1-23, in-between {mid_at} of the way)")
 
 
+def reset_fingers(blend, side):
+    """Puts the finger joints of one hand (`side` Left|Right) of a timeline .blend back to the GAME's idle fingers (`lab_base`) on every key they have (2026-11-11, the Director's request:
+    he finishes the fingers by hand, starting from what the game plays under a sequence). Only the existing keys' values change, never their frames; the file is saved in place."""
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    arm, rig = load_rig_from_blend()
+    base = {n: quat_xyzw(q) for n, q in json.loads(arm["lab_base"]).items()}
+    fingers = [n for n in rig.names if n.startswith(side) and is_finger(n)]
+    bpy.ops.object.mode_set(mode='OBJECT')
+    sc = bpy.context.scene
+    keyed_frames = sorted({round(k.co[0]) for l in arm.animation_data.action.layers for s in l.strips for cb in s.channelbags for fc in cb.fcurves for k in fc.keyframe_points})
+    sc.frame_set(keyed_frames[0])
+    rig.apply({n: base[n] for n in rig.names})        # the idle in Blender's own terms: a finger's delta depends on its own local rotation only
+    bpy.context.view_layer.update()
+    idle = {PREFIX + n: arm.pose.bones[PREFIX + n].rotation_quaternion.copy() for n in fingers}
+    changed = 0
+    for l in arm.animation_data.action.layers:
+        for strip in l.strips:
+            for cb in strip.channelbags:
+                for fc in cb.fcurves:
+                    if not fc.data_path.endswith("rotation_quaternion") or '"' not in fc.data_path:
+                        continue
+                    bone = fc.data_path.split('"')[1]
+                    if bone not in idle:
+                        continue
+                    for k in fc.keyframe_points:
+                        d = idle[bone][fc.array_index] - k.co[1]
+                        k.co[1] += d
+                        k.handle_left[1] += d
+                        k.handle_right[1] += d
+                        changed += 1
+                    fc.update()
+    sc.frame_set(1)
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode='POSE')
+    bpy.ops.wm.save_mainfile()
+    print(f"[tripo_pose_lab] {blend}: {len(fingers)} {side} finger joints back to the game's idle ({changed} key values)")
+
+
 def render(blend, out_png):
     bpy.ops.wm.open_mainfile(filepath=blend)
     scn = bpy.context.scene
@@ -573,6 +611,8 @@ def main():
         build(figure, pose_id, dump_dir, out, glb, PROP_GLB)
     elif mode == "extract":
         extract(a[1], a[2])
+    elif mode == "reset_fingers":
+        reset_fingers(a[1], a[2])
     elif mode == "sequence_new":
         sequence_new(a[1], a[2], a[3], a[4], a[5], float(a[6]))
     elif mode == "sequence":

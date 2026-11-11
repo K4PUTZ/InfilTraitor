@@ -434,7 +434,8 @@ THE CEMETERY — the finale (a scene, no fight: Director, 2026-10-22)
     own gun in the reporter's hand, tells him to do what he thinks
     necessary, and turns his back. The reporter, implicated himself, is
     tempted to erase him, or sets justice after him (the endings to
-    explore: open). The Agent becomes a FUGITIVE.
+    explore: open; RULED 2026-11-10, §2.8: he does nothing and keeps
+    the gun). The Agent becomes a FUGITIVE.
   THE TRUTH STAYS BURIED in both branches (Director, 2026-10-23): the
   blame must never fall on the Agent. If the reporter publishes, the
   faked death (his DNA "dissolved" in the pit) and the truce the four
@@ -457,6 +458,8 @@ EPILOGUE (Director, 2026-10-22)
   into the horizon. Dead to the world, he goes on infiltrating and
   charging for information.
   Unlocks: FREELANCE MODE for that character (COSMETICS_MASTER_PLAN §4).
+  (2026-11-10, §2.8: Freelance is open before it too; the epilogue
+  changes its skin to the dead Agent's.)
 ```
 
 **The epilogue's open joints (Claude's proposals, not yet ratified):**
@@ -698,7 +701,7 @@ drone parts or the front, and then it is one more trail.
 the colleague who lent his name for a cut and died in the flood (§2.2, who takes the blame). For the living Agent that money is untouchable: a
 dead man's account under a federal case. That is why the debt still stands and the bank can take the house in the sad ending, and it gives the
 faked death a second motive beside watching his wife from afar: only a dead man can reach a dead man's money, abroad (the investigation's
-offshore broker, below).
+offshore broker, below). *(Superseded 2026-11-10, §2.8: nobody reaches that money, dead or alive; the watched account is why.)*
 
 **What happened.** The drone struck the substation that powers the pumps and the sirens. The flood was acid: the traffickers' waste had turned the
 reservoir (their failure, below). **Four failures turned a small spill into a massacre; each
@@ -917,7 +920,7 @@ line above disagrees with this section, this section wins. What the audit could 
 - **At the memorial** the picture is four successors, each denouncing a dead man. "Choirboy" has handed over Deacon's cell and stays at the
   edge (the gate, engines off), never on the stage.
 - **The kill branch:** he is discovered as the reporter's killer, never as the dam's author. The public version is that the reporter drew
-  first, which is true. If *The Sieve* prints the dead man's notes, they read as a conspiracy theory, now with a martyr.
+  first, which is true. His files are on a lost tablet, never published (below).
 - **No outside inquiry comes,** and the FID's motto says why ("We'll get back to you."): one line in the epilogue's bulletin.
 
 **The road to Freelance:**
@@ -931,6 +934,38 @@ line above disagrees with this section, this section wins. What the audit could 
   access. A dead man has no face: bare-faced he is a dead inspector to anyone who knew him, masked he is the club's assassin.
 - **The faked death costs identity objects only** (the service pistol, the badge, the ring). Gear, the tree and the uniforms stay.
 - **The reporter's branch** may change Freelance in flavour of equal weight, never in power; the tattoo's art names nothing of the finale.
+
+**The nine open items, answered (Director, 2026-11-10, later; the reconciliations with the older text are Claude's, accepted):**
+- **The mask is everyone's enemy in Freelance.** The attack's hand, in the official version, was seen in a HELMET, never in the mask: the
+  masked figure is the club's assassin, the rider is someone else. The LED coat still shows another faction's uniform and passes from afar;
+  access is closed by default and opened by security cards and other passage mechanisms (§15's bounded credentials). **The hat-mask's crown
+  decides (Claude):** raised, it is a fedora and the uniform passes; lowered, he is the masked man. **The official rider's fate is left open
+  on purpose,** for the future.
+- **Nobody reaches the money.** The account is part of the official version (the bent policeman's bet), so the investigation watches IT, never
+  the Agent: whoever touches it becomes the suspect, the living man and the dead one alike. He can no longer work legally, so the jobs are
+  his living. *(Supersedes §2.6's "only a dead man can reach a dead man's money" as a second motive for the faked death.)*
+- **None of the four clients knows who he is,** the character's own handler included (the canon stands). The league needs no reason in the
+  fiction: it is a separate minigame that scores the player's week.
+- **Zest and Tithe each see TWO customers,** the inspector and the masked man, and remark on it; after his "death" only the masked one comes
+  back. The three stores that need access (the evidence room, the armoury, the R&D floor) serve the inspector only: masked, he is a target
+  there (the simplest reading, chosen by Claude on the Director's "o que for mais simples").
+- **Marlow, alive, is a threat with no reason to act:** he does nothing and keeps the Agent's gun. A tension for the future (in a sequel he
+  could bring the press in). *(Supersedes §2.2's "tempted to erase him, or sets justice after him".)*
+- **Marlow, dead, leaves a lost tablet** with his files, never published, there to be found one day. The two branches weigh the same.
+  *(Supersedes this section's earlier "if The Sieve prints the dead man's notes".)*
+- **Freelance is ONE mode with two skins,** open to newcomers too, with simpler missions that grow with the character's gear (more enemies,
+  challenges, puzzles):
+  - before the epilogue it is the leak's side work: he already sold faceless before the disaster, and no contract names a leader or a
+    successor, so nothing of the campaign is given away;
+  - after the epilogue it is the dead Agent's (the start state above).
+  - **The league counts in Freelance only,** from the first day: its job is to bring the player back daily and among the others; the campaign
+    holds him by its content.
+  - **Freelance kills never count in the campaign's violence average** (the spouse's fate, §2.6). The authored neutral missions between the
+    laps still do (ruled 2026-10-23). Freelance kills may weigh on the league instead: how is open (§18).
+- **The spouse hears the slip and takes it for grief.** The line itself is not written yet (§2.2 holds an example only); it must be one she
+  cannot decode.
+- **The pit is restored** and holds the complex's acid waste again, which the epilogue needs. The blame is the gangs'; the FID keeps an
+  INTERNAL inquiry into its own facilitation, which is Barrow managing her own case.
 
 ---
 
@@ -2276,16 +2311,11 @@ indicators in the others; `INTERFACE_MASTER_PLAN` Part 7.)*
   and equipment (§15); the four trips abroad (§2.6, proposed: one per lap-1
   chapter, a member abroad per faction); the palette's exact values and roles
   (the families are the Director's, `COSMETICS_MASTER_PLAN` §9.4).
-- [ ] From the story audit (2026-11-10, §2.8; the audit offered no single answer for these):
-  whether the masked figure is the official hand of the attack (then the mask is wanted on every turf in Freelance);
-  why a dead man with the offshore money keeps working (it reaches the spouse, or reaching it is Freelance's far horizon);
-  whether the handler, alone among the four clients, suspects whose ghost he pays (the league's reason in the fiction);
-  what Zest and the four store keepers have seen (the mask only, or his face);
-  what a living Marlow, or his files, is in Freelance;
-  whether the neutral missions between the laps already count for the league;
-  whether the spouse hears the slip at the grave;
-  where Marlow's files physically are in the kill branch;
-  how the pit still holds acid in a restored town.
+- [ ] From the story audit (2026-11-10): its nine open items were answered the same day (§2.8). What those answers leave:
+  the official rider's fate (open on purpose, for the future);
+  the exact line of the slip at the grave (one the spouse cannot decode);
+  how Freelance kills weigh on the league;
+  who holds Marlow's tablet, and where.
 - [ ] §11.1's counters for FOUR factions (they were written for three; §11.6's
   template proposes them); the
   agency's ranks per country when localised (the English canon is §2.7, §11.2).

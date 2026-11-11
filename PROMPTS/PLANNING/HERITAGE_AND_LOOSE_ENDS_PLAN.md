@@ -86,3 +86,18 @@ The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PER
   **Not deleted, a question for the Director:** `NEW_MAP` (local only) is NOT merged or duplicate: 23 commits of 2026-06-15/17 (the
   MODULARIZE / REDUCE / NEW_MAP WorldRenderer line) that never reached `main`. `origin/feat/music-composition` is the PC's music, left
   alone.
+
+### T6 — DONE 2026-11-11 (`verify.py smoke` green, 130 s)
+- **JAMES out:** `QWEN.md`, `.README_WORKSPACE.md`, `check_design_scope.py`, `hud_map.py`, the pre-commit gates 0 / 0.5 and the
+  pre-push gate deleted; `origin/feat/design-interface-hud` deleted (tip `febcc430`, 11 commits never merged); `CLAUDE.md`'s
+  Engine-Only block replaced by one rule (Claude owns the interface; rule 11 / L3 stays); the live plans mark him retired.
+- **`CLAUDE.md`:** the TileSet row and the generated-PNG note (no on-disk TileSet since R3D-RETIRE-2D), R3D v1.51 -> v1.61; the
+  pre-commit header cites `CLAUDE.md`, not the retired `OPERATOR_CONTEXT.md`.
+- **`current_state.md`:** 1 772 -> 249 lines (the current section + the generated blocks); everything older moved verbatim to
+  `docs/history/CURRENT_STATE_TO_2026-11-11.md`. The generated header is the version alone and the version history uses a fixed
+  8-character hash, so the file no longer changes by itself (date, branch and hash length did).
+- **Session records:** 183 of 187 moved from `PROMPTS/` to `PROMPTS/DONE/` (the root keeps 2026-11-09 onward); 210 links and paths
+  rewritten in 112 files (the memory included), zero dead references after.
+- **Version:** `project.godot` `config/version` 0.1.0-pre-alpha -> 0.9.107 (what an APK reports, since the preset leaves
+  `version/name` empty), hook-checked as V1 (red on the old value, green after). One tag scheme: `verified/vX.Y.Z`; the old names
+  stay as history. `version/code` and the package id stay `LAUNCH_MASTER_PLAN`'s.

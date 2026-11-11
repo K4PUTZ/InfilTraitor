@@ -39,7 +39,6 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -109,28 +108,6 @@ def run_gen_codemap() -> bool:
     except Exception as e:
         print(f"[CODEMAP] ❌ Exception: {e}", file=sys.stderr)
         return False
-
-
-def get_git_branch() -> str | None:
-    """Return current git branch name, or None if it could not be read.
-
-    It used to answer "unknown", which is a VALUE — it would be written into the
-    header over a correct branch name on any transient failure.
-    """
-    out = _git(["rev-parse", "--abbrev-ref", "HEAD"])
-    return out.strip() if out is not None else None
-
-
-def get_git_head_short() -> str | None:
-    """Return short commit hash, or None if it could not be read."""
-    out = _git(["rev-parse", "--short", "HEAD"])
-    return out.strip() if out is not None else None
-
-
-def get_git_head_subject() -> str | None:
-    """Return current commit subject, or None if it could not be read."""
-    out = _git(["log", "-1", "--format=%s"])
-    return out.strip() if out is not None else None
 
 
 def get_version_string() -> str:
@@ -226,11 +203,13 @@ def get_version_history(lines_count: int = 5) -> list[str] | None:
     not tell that from "VERSION has no history", and five real rows were
     overwritten with "(no version history)".
     """
-    out = _git(["log", "--oneline", "-n", str(lines_count), "--", "VERSION"])
+    ## A fixed 8-character hash (2026-11-11): `--oneline` abbreviates to whatever length git finds unique on THIS
+    ## clone, so two machines wrote two different blocks for the same history.
+    out = _git(["log", "-n", str(lines_count), "--format=%H %s", "--", "VERSION"])
     if out is None:
         return None
     stripped = out.strip()
-    return stripped.split("\n") if stripped else []
+    return [line[:8] + line[40:] for line in stripped.split("\n")] if stripped else []
 
 
 def build_auto_header() -> str | None:
@@ -242,13 +221,12 @@ def build_auto_header() -> str | None:
     reads as a lie ("Last commit: Alpha End Beep" weeks later). Version,
     date and branch are accurate at commit time; for history, use git.
     """
-    branch = get_git_branch()
-    if branch is None:
-        return None
+    ## 2026-11-11 (HERITAGE T6): the date and the branch went too. Both changed with no change to the
+    ## project (a new day, a new `claude/*` vehicle branch, the PC's music branch), so the file was dirty on
+    ## every machine at every session start and every commit carried a meaningless diff. The version is the
+    ## one field that changes only when the project does.
     version = get_version_string()
-    date_str = datetime.now().strftime("%Y-%m-%d")
-
-    return f"**Version:** {version} · **Updated:** {date_str} · **Branch:** {branch}"
+    return f"**Version:** {version}"
 
 
 def build_pending_prompts_block() -> str | None:

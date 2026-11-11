@@ -12,7 +12,7 @@
 > light's CPU cost (`RENDER3D` R3D-LIGHT: an event recomputes its own neighbourhood only).
 
 
-> ⏭️ **2026-09-22 — SOOT-STAMP: soot is no longer a light-field input.** `VoxelLightField.build()` lost its soot/face_soot arguments, `soot_factor()`/`face_soot_code()` and the sooted-voxel jitter exemption are gone; the light apply writes only buckets. Soot is one tone per cell stamped by the event (tone 0 only beside a hole; `soot_face_mult` 0.38/0.60/0.76/0.90). Light is still 12 buckets per voxel — the Director's open question for the next session is whether light should follow the same "limited states" model or move to 3D lights. See `SOOT_MASTER_PLAN`'s top note; `PROMPTS/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
+> ⏭️ **2026-09-22 — SOOT-STAMP: soot is no longer a light-field input.** `VoxelLightField.build()` lost its soot/face_soot arguments, `soot_factor()`/`face_soot_code()` and the sooted-voxel jitter exemption are gone; the light apply writes only buckets. Soot is one tone per cell stamped by the event (tone 0 only beside a hole; `soot_face_mult` 0.38/0.60/0.76/0.90). Light is still 12 buckets per voxel — the Director's open question for the next session is whether light should follow the same "limited states" model or move to 3D lights. See `SOOT_MASTER_PLAN`'s top note; `PROMPTS/DONE/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
 
 > ⏭️ **2026-09-23 — the end of RENDER3D rewritten (Director):** the 2D board retires when nothing depends on it, not when the look matches. R3D-8 is renamed **R3D-END**, with six stages before it (R3D-8 to R3D-13); the look register moves after the end (R3D-LOOK), and rotation becomes R3D-ROT. See `RENDER3D_MASTER_PLAN` v1.19.
 

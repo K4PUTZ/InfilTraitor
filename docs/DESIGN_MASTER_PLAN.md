@@ -70,7 +70,7 @@ system to scale, never to cap (§19 Rule 1).
 ## 2. Narrative — `DESIGNED`
 
 > 🏁 **The plot is CLOSED (Director, 2026-10-23)** after the faction-dress rulings and a plot pass: what remains is authoring detail and
-> gameplay, none of it structural (§18). Record: `PROMPTS/RESUMO_SESSAO_2026-10-23_FACTION_DRESS_PLOT_CLOSE.md` §4.
+> gameplay, none of it structural (§18). Record: `PROMPTS/DONE/RESUMO_SESSAO_2026-10-23_FACTION_DRESS_PLOT_CLOSE.md` §4.
 > **2026-11-10: audited; the audit's rulings are §2.8 and win over any older line they touch.**
 
 ### 2.1 The four factions and the reporter (revised 2026-10-22)

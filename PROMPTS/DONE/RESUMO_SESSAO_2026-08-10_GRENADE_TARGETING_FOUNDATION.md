@@ -1,6 +1,6 @@
 # RESUMO_SESSAO — 2026-08-10 (Grenade Targeting Foundation)
 
-**Continues:** `PROMPTS/RESUMO_SESSAO_2026-08-10_SHRAPNEL_IMPLEMENTATION.md`  
+**Continues:** `PROMPTS/DONE/RESUMO_SESSAO_2026-08-10_SHRAPNEL_IMPLEMENTATION.md`  
 **VERSION:** 0.9.96 (Phase B foundation, no gameplay change yet)  
 **Commits:** 7 commits, Phase B tasks T-MODE through integration (47af86c–ecdae79)  
 **Mode:** Solo mode.

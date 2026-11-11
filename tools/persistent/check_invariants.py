@@ -18,6 +18,9 @@ Checks implemented:
       it replaces B1, which policed the 2D tile placement that no longer exists)
   B4  Baking: FNV-1a constants are pinned in facade_sampler.gd (determinism)
   L3  HUD widgets are named only inside hud_controller.gd (UI-SPLIT-02)
+  V1  One version source: `project.godot`'s `config/version` (what an APK reports when the export
+      preset leaves `version/name` empty, as ours does) equals the `VERSION` file (HERITAGE T6,
+      2026-11-11; they read 0.9.107 and 0.1.0-pre-alpha before)
   L1  LEVEL-RENUMBER: a level handed to the level API (`has_level`, `level_origin`,
       `level_z_index`, `voxel_world_position`) is never an integer literal — it is
       derived (`ground_plane_level()` / `storey_level_base()`), never typed
@@ -318,6 +321,21 @@ def check_file(path: Path) -> list[Violation]:
     return out
 
 
+def check_version() -> list[Violation]:
+    """V1 — `project.godot`'s `config/version` mirrors the `VERSION` file, the one source."""
+    version_file = REPO_ROOT / "VERSION"
+    project = REPO_ROOT / "project.godot"
+    if not version_file.is_file() or not project.is_file():
+        return [Violation("V1 one-version-source", "VERSION", 0, "VERSION or project.godot is missing")]
+    version = version_file.read_text().strip()
+    m = re.search(r'^config/version="([^"]*)"', project.read_text(), re.M)
+    declared = m.group(1) if m else ""
+    if declared != version:
+        return [Violation("V1 one-version-source", "project.godot", 0,
+                          f'config/version is "{declared}" but VERSION is "{version}": set config/version="{version}"')]
+    return []
+
+
 def main(argv: list[str]) -> int:
     quiet = "--quiet" in argv
     if not SCRIPTS_DIR.is_dir():
@@ -327,6 +345,7 @@ def main(argv: list[str]) -> int:
     violations: list[Violation] = []
     for path in sorted(SCRIPTS_DIR.rglob("*.gd"), key=lambda p: p.as_posix()):
         violations.extend(check_file(path))
+    violations.extend(check_version())
 
     if not violations:
         if not quiet:

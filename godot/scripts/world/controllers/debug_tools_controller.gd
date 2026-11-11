@@ -43,8 +43,8 @@ func create_map_loader_button() -> void:
 
 ## ⚠️ TEMPORARY, DEV-ONLY — the touch route into grenade mode (Director,
 ## 2026-09-11: *"não tenho o G disponível no celular"*). The real answer is the
-## player's ACTION BAR, INTERFACE_MASTER_PLAN Part 5 (ACTION-BAR-01, JAMES's
-## branch); DELETE this button when that lands. Press = enter grenade mode,
+## player's ACTION BAR, INTERFACE_MASTER_PLAN Part 5 (ACTION-BAR-01); DELETE this
+## button when that lands. Press = enter grenade mode,
 ## press again while aiming = cancel (the phone has no Esc). The throw itself is
 ## the existing T-TAP — a second tap on the aimed GU.
 ##

@@ -8,7 +8,6 @@
 |---|---|---|
 | `project.godot`, `icon.svg`, `export_presets.cfg` | Godot project (autoloads: `DevFlags`, `VersionInfo`, `Telemetry`, `Localization`, `Registries`), the Android/iOS export presets | yes |
 | `CLAUDE.md` | standing instructions for agent sessions (rules, verification protocol, the architecture's inviolable rules) | yes |
-| `QWEN.md`, `.README_WORKSPACE.md` | the parallel interface workspace's charter and process | yes |
 | `VERSION` | the game's version | yes |
 | `README.md`, `EXPORT_ANDROID.md`, `ANDROID_CONFIG.sh` | landing page; the Android SDK/export guide and config | yes |
 | `godot/` | **all game code, scenes, shaders, localisation** (below) | yes |

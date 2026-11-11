@@ -69,7 +69,7 @@ PY = sys.executable
 
 ## Files that need no boot to be judged. Anything else under godot/, plus project.godot, needs the full tier.
 DOC_PATTERNS = (r"^Library", r"\.md$", r"^docs/", r"^PROMPTS/", r"^Screenshots/", r"CODEMAP\.md$", r"^VERSION$", r"\.uid$")
-QUICK_PATTERNS = (r"^godot/scripts/tools/", r"^tools/", r"^godot/localization/", r"^\.githooks/", r"^QWEN")
+QUICK_PATTERNS = (r"^godot/scripts/tools/", r"^tools/", r"^godot/localization/", r"^\.githooks/")
 
 
 def sh(*args):

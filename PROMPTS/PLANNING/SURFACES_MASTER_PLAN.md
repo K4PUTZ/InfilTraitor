@@ -6,7 +6,7 @@ industrial floors, 50 carpets (`facade_from`), per-map colour (`material_tints`)
 mipmaps), SM-6/6b REAL floor openings and the steam vent (cost cut by the disc shader, §7.1), the three art rooms and their harness.
 🟡 RATIFIED, NOT built: the other mark classes (marking, stroke, dense layer), the stamp regenerator (SM-2b), the customisation milestone (§11).
 
-> **RESUME HERE (next session).** Read `PROMPTS/RESUMO_SESSAO_2026-10-06_SURFACES.md` first. The proposed next stage is **SM-1 Marking** (hazard
+> **RESUME HERE (next session).** Read `PROMPTS/DONE/RESUMO_SESSAO_2026-10-06_SURFACES.md` first. The proposed next stage is **SM-1 Marking** (hazard
 > stripes, road lines, arrows: `class` in `rules.json`, the GU-exact enforcement, `gen_markings.py`, a gallery band), then the open decisions of §7. The
 > Director also asked for: the leaf art redrawn by him (placeholder today), blood and bodily marks (in, `mature`), liquids as a separate parked track.
 
@@ -185,7 +185,7 @@ vents, one noise-shader billboard per vent (a cloud for ~1 layer of the cloud's 
 2026-10-06 (one long session, 32 commits): the R3D-LOOK soot blur baked into the cell plane (Moto +3.6 -> +0.3 ms); then R3D-SURFACES end to end: transitions, tags, voxel
 lattice, corporate and industrial floors, 50 carpets, `facade_from`, `material_tints`, the art rooms (and the discovery that a map is ~46 GU per side), SM-2 scatter
 and its two cost lessons (a stamp COUNT is the wrong budget; mipmaps, not transparent pixels, were the cost), real floor openings, the steam vent and its cost-benefit,
-and two tooling fixes (`ScenarioDraw` for the intermittent hang, the scripted run ignoring the real mouse). Record: `PROMPTS/RESUMO_SESSAO_2026-10-06_SURFACES.md`.
+and two tooling fixes (`ScenarioDraw` for the intermittent hang, the scripted run ignoring the real mouse). Record: `PROMPTS/DONE/RESUMO_SESSAO_2026-10-06_SURFACES.md`.
 The Director's rulings are DS-1..DS-18 in §3.
 
 ## 11. Customisation: the open tree, the merit gate, the ingestion of a photo (DS-16; designed, NOT built)

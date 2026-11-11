@@ -398,7 +398,7 @@ and must persist beside `room._base_damage`.
 **Status: ruled, NOT started (2026-08-27).** It wants its own plan first — §3.3
 below and §5's task table both describe A as the shipped answer and B as
 unnecessary, and under this ruling both need rewriting rather than patching.
-Session: `PROMPTS/RESUMO_SESSAO_2026-08-27_PACING_AND_ORDER.md` §5.
+Session: `PROMPTS/DONE/RESUMO_SESSAO_2026-08-27_PACING_AND_ORDER.md` §5.
 
 ➡️ **THAT PLAN NOW EXISTS: [`SOOT_STORAGE_REFORM.md`](SOOT_STORAGE_REFORM.md)**
 (2026-08-27, still 🟡 not started). Read it before building any of this. Its

@@ -9,7 +9,7 @@
 > ⏭️ **2026-09-23 — per-cell state keeps paying off in 3D:** real Godot lamps cost +24 ms of GPU on the Moto, so the board, the
 > actors and the props all stay lit from the per-cell planes (`RENDER3D_MASTER_PLAN` R3D-SPIKE-3D, `ACTOR` D64/D65).
 
-> ⏭️ **2026-09-22 — SOOT-STAMP: soot left the light pipeline entirely.** It is a stored tone per cell (`Room._soot_map`) stamped once by the event; `VoxelLightField` no longer takes soot, no `apply_light_field*()` writes the soot plane, and the map-wide repaint resets the planes and re-projects the map. Everything here about `_build_soot_snapshot()`, the soot index (§13.x) or soot in the stale set is history. The shot's scoped repaint now uses the stale set (impact frame 116 -> 52 ms desktop). See `SOOT_MASTER_PLAN`'s top note; `PROMPTS/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
+> ⏭️ **2026-09-22 — SOOT-STAMP: soot left the light pipeline entirely.** It is a stored tone per cell (`Room._soot_map`) stamped once by the event; `VoxelLightField` no longer takes soot, no `apply_light_field*()` writes the soot plane, and the map-wide repaint resets the planes and re-projects the map. Everything here about `_build_soot_snapshot()`, the soot index (§13.x) or soot in the stale set is history. The shot's scoped repaint now uses the stale set (impact frame 116 -> 52 ms desktop). See `SOOT_MASTER_PLAN`'s top note; `PROMPTS/DONE/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
 
 
 > ⏭️ **2026-09-23 — the end of RENDER3D rewritten (Director):** the 2D board retires when nothing depends on it, not when the look matches. R3D-8 is renamed **R3D-END**, with six stages before it (R3D-8 to R3D-13); the look register moves after the end (R3D-LOOK), and rotation becomes R3D-ROT. See `RENDER3D_MASTER_PLAN` v1.19.

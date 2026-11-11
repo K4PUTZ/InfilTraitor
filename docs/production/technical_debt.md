@@ -41,7 +41,7 @@ the cook ~0.7-0.9 s longer (the support walk). Options and the epilepsy caution 
 
 ## Capture, glass and AI debt (2026-10-10)
 
-Record: `PROMPTS/RESUMO_SESSAO_2026-10-10_CAPTURE_RAILS.md`; [`CAPTURE_RAILS_MASTER_PLAN`](../../PROMPTS/PLANNING/CAPTURE_RAILS_MASTER_PLAN.md) §2.
+Record: `PROMPTS/DONE/RESUMO_SESSAO_2026-10-10_CAPTURE_RAILS.md`; [`CAPTURE_RAILS_MASTER_PLAN`](../../PROMPTS/PLANNING/CAPTURE_RAILS_MASTER_PLAN.md) §2.
 - **The glass blast's heavy frames on the Moto (GLASS): ~157 ms COMMIT, worst frame ~180-200 ms** (2026-10-11 round 4, was 610-680 ms)
   — every remaining heavy frame is the BLAST's (take frames 202-206), the collapse left the top list. Measured remainders: `damage` 66
   ms and `crazes` 35 ms in the commit, stage 1 ~106 ms, stages 2-3 ~110-135 ms, SIZED by `hit_stop_frame_budget_us` (110 ms; the queue fills
@@ -60,7 +60,7 @@ Record: `PROMPTS/RESUMO_SESSAO_2026-10-10_CAPTURE_RAILS.md`; [`CAPTURE_RAILS_MAS
 
 Targeted scans over `godot/scripts/` (271 files, ~82 k lines) and `tools/`: content loading from `user://`, release-build switches,
 committed secrets, saves, `print`/`printerr`, hard-coded strings, per-frame redraws, Python subprocess use. Record:
-`PROMPTS/RESUMO_SESSAO_2026-10-07_PERF_REVIEW.md`.
+`PROMPTS/DONE/RESUMO_SESSAO_2026-10-07_PERF_REVIEW.md`.
 
 **Fixed in the audit (each with a selftest):**
 - 🔴 **Code execution through a player prop (FIXED).** `PropRegistry` reads prop JSON from `user://props/` and `PropModelFit` did

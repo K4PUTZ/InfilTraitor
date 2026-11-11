@@ -4,7 +4,7 @@
 Director same day and implemented (§10).** Rotation is gone for the player
 build; the mechanism stays alive as a dev/QA tool.
 
-**Continues:** the close of `PROMPTS/RESUMO_SESSAO_2026-08-03_D33_SPIKE.md`,
+**Continues:** the close of `PROMPTS/DONE/RESUMO_SESSAO_2026-08-03_D33_SPIKE.md`,
 which named this "the whole-system engine reassessment" as the explicit next
 step, ahead of D33 Part 1.
 

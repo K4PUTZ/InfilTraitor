@@ -171,7 +171,7 @@ floor material at once). This also forced `MaterialDef.full_color` to be
 retired: the WHITE-vs-tinted bake modulate now reads the texture id's own
 prefix instead of a flag on the material, since one unified `MaterialDef`
 could not represent "tinted on walls, full-color on floors" for concrete
-otherwise. Full writeup: `PROMPTS/RESUMO_SESSAO_2026-08-06_E_MAT_TASK1A.md`.
+otherwise. Full writeup: `PROMPTS/DONE/RESUMO_SESSAO_2026-08-06_E_MAT_TASK1A.md`.
 
 ### Task 1b (E-BAKE) — closed 2026-08-06, commit `2d18a9e`
 
@@ -208,7 +208,7 @@ per declared material into real wall/roof/floor combo usage before
 encode/decode/load/save helpers via a new overridable cache directory)
 measured **1498ms → 31ms** on a second load, 255/255 disk cache hits.
 Firearms (D33 live compositing) verified untouched via a real weapon-fire
-capture. Full writeup: `PROMPTS/RESUMO_SESSAO_2026-08-06_E_BAKE_TASK1B.md`.
+capture. Full writeup: `PROMPTS/DONE/RESUMO_SESSAO_2026-08-06_E_BAKE_TASK1B.md`.
 
 **Supersedes for explosions:** the destruction path described in
 `DESTRUCTION_MASTER_PLAN.md` Part 3 and the whole PERF-01/02/03 + D11 +
@@ -1893,7 +1893,7 @@ animation is not.
 > *"a gente só vai conseguir fazer o fine tuning da fluidez quando todo o
 > mecanismo estiver bem estabelecido"* — so the mechanism landed first.
 >
-> Full detail: `PROMPTS/RESUMO_SESSAO_2026-08-09_EXPLOSION_FLOW.md`.
+> Full detail: `PROMPTS/DONE/RESUMO_SESSAO_2026-08-09_EXPLOSION_FLOW.md`.
 
 <details><summary>The original 2026-08-09 dependency note, kept for the reasoning</summary>
 
@@ -1943,8 +1943,8 @@ animation is not.
 session (0.9.93, "Alpha Explosion Waves") took the blast from "the waves fire" to
 **one organic event**; the 2026-08-09 session (0.9.94, **"Alpha Explosion Flow"**)
 made it **flow** — visible pacing, three separated beats, and no frozen frame.
-Full records: `PROMPTS/RESUMO_SESSAO_2026-08-09_EXPLOSION_FLOW.md` and
-`PROMPTS/RESUMO_SESSAO_2026-08-08_09_EXPLOSION_WAVES.md`; per-topic detail in the
+Full records: `PROMPTS/DONE/RESUMO_SESSAO_2026-08-09_EXPLOSION_FLOW.md` and
+`PROMPTS/DONE/RESUMO_SESSAO_2026-08-08_09_EXPLOSION_WAVES.md`; per-topic detail in the
 E-DENT-01 / E-CRACK-01 / E-SMOKE-01 / E-FLASH-01..03 / E-ORGANIC-01 /
 E-RADIAL-01 / E-NATIVE-01 blocks just above §11's own order of business.
 

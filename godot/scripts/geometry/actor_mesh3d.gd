@@ -70,6 +70,7 @@ const TRIPO_IDLE := "idle"
 ## `pose_aim_pistol` (`TripoFigure.POSES`, `ActorAimPose3D`); the pistol is in the right hand only then, and comes out as the fist rises
 ## (Director: no holster, it leaves the coat). `AIM_RAISE_S` / `AIM_LOWER_S` are the weight's travel; the gun shows from `PISTOL_SHOWN_FROM` of it.
 const ActorAimPoseRef = preload("res://godot/scripts/geometry/actor_aim_pose3d.gd")
+const AimSequenceRef = preload("res://godot/scripts/geometry/aim_sequence.gd")
 ## The path of the raise: the idle arms, then the fists at the sternum (`draw_pistol`, at half way: the gun appears here, out of the coat), then the aim. `step_pistol` is passed through
 ## without resting (the third element): the front foot off the floor between the two.
 const AIM_STOPS: Array = [["draw_pistol", 0.5], ["step_pistol", 0.7, true], ["aim_pistol", 1.0]]
@@ -105,6 +106,8 @@ var _pistol_holder: Node3D = null    ## carries the placement (the pose's, blend
 var _coat: MeshInstance3D = null     ## the Agent's coat, when it owns the draw's morph
 var _coat_draw_shape: int = -1       ## that morph's index
 var _pistol_stops: Array = []        ## [[weight, placement {bone, pos, quat, scale}], ...] one per aim stop, from the poses' `props` meta
+var _sequence: AimSequenceRef = null    ## the Director's timeline of the draw (`AimSequence`), when the figure has one: it replaces `AIM_STOPS`, the coat curve and the gun's blend
+var _raise_s: float = AIM_RAISE_S    ## how long the weight takes to go 0 -> 1 (the sequence's own duration when there is one)
 var _walked: float = 0.0             ## ground covered while walking, world units: the move clip's phase
 var _move_pass: float = 0.0          ## world units of ground one pass of the move clip covers
 var _last_ground := Vector2(NAN, NAN)
@@ -259,18 +262,32 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 ## simply does not aim (it stands through it, as before).
 func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 	var stops: Array = []
-	for stop: Array in AIM_STOPS:
-		var pose_id: String = TripoFigureRef.POSE_PREFIX + String(stop[0])
-		if not lib.has_animation(pose_id):
-			push_warning("[ActorMesh3D] the %s game set has no '%s': the agent will not aim (run godot/scripts/tools/tripo_game_clips.gd)" % [figure, pose_id])
-			return
-		stops.append([float(stop[1]), lib.get_animation(pose_id), stop.size() > 2])
+	_sequence = AimSequenceRef.new()
+	if not _sequence.load_file(figure, AimSequenceRef.PISTOL_DRAW):
+		_sequence = null
+	if _sequence != null:
+		for stop: Dictionary in _sequence.stops:
+			var seq_pose: String = TripoFigureRef.POSE_PREFIX + String(stop["id"])
+			if not lib.has_animation(seq_pose):
+				push_warning("[ActorMesh3D] the %s game set has no '%s': the agent plays the plain draw (run pose_lab.py sequence %s)" % [figure, seq_pose, AimSequenceRef.PISTOL_DRAW])
+				_sequence = null
+				stops.clear()
+				break
+			stops.append([float(stop["weight"]), lib.get_animation(seq_pose), bool(stop["passing"])])
+	if _sequence == null:
+		for stop: Array in AIM_STOPS:
+			var pose_id: String = TripoFigureRef.POSE_PREFIX + String(stop[0])
+			if not lib.has_animation(pose_id):
+				push_warning("[ActorMesh3D] the %s game set has no '%s': the agent will not aim (run godot/scripts/tools/tripo_game_clips.gd)" % [figure, pose_id])
+				return
+			stops.append([float(stop[1]), lib.get_animation(pose_id), stop.size() > 2])
 	var layer: ActorAimPoseRef = ActorAimPoseRef.new()
 	_skeleton.add_child(layer)
 	if not layer.load_stops(_skeleton, stops):
 		layer.queue_free()
 		return
 	_aim = layer
+	_raise_s = _sequence.raise_seconds() if _sequence != null else AIM_RAISE_S
 	_build_pistol(stops)
 	var coat: MeshInstance3D = TripoFigureRef.coat_of(_body)
 	_coat_draw_shape = coat.find_blend_shape_by_name(DRAW_COAT_SHAPE) if coat != null else -1
@@ -289,7 +306,7 @@ func _build_pistol(stops: Array) -> void:
 			continue
 		var props: Dictionary = (stop[1] as Animation).get_meta("props", {})
 		_pistol_stops.append([float(stop[0]), props["pistol"] if props.has("pistol") else TripoFigureRef.prop_default("pistol")])
-	var bone_name: String = String((_pistol_stops[_pistol_stops.size() - 1][1] as Dictionary)["bone"])
+	var bone_name: String = _sequence.gun_bone() if _sequence != null else String((_pistol_stops[_pistol_stops.size() - 1][1] as Dictionary)["bone"])
 	var hand: int = TripoFigureRef.find_bone(_skeleton, bone_name)
 	var model_path: String = String(TripoFigureRef.PROP_MODELS["pistol"])
 	var scene := load(model_path) as PackedScene
@@ -333,8 +350,16 @@ func _update_aim(state: Dictionary) -> void:
 	## Standing still only: the aim is a whole-body stance (the idle sways and must not show through), so a walking figure keeps its legs and lowers the gun.
 	var want: bool = String(state["weapon"]) == "_pistol" and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing" and float(state["walk"]) < 0.0
 	var target: float = 1.0 if want else 0.0
-	_aim_t = move_toward(_aim_t, target, get_process_delta_time() / (AIM_RAISE_S if want else AIM_LOWER_S))
+	_aim_t = move_toward(_aim_t, target, get_process_delta_time() / (_raise_s if want else AIM_LOWER_S))
 	_aim.weight = _aim_t
+	if _sequence != null:   ## his timeline: the coat, the gun's visibility and placement are what he keyed
+		var here: Dictionary = _sequence.at(_aim_t)
+		if _coat != null:
+			_coat.set_blend_shape_value(_coat_draw_shape, float(here["coat"]))
+		if _pistol != null:
+			_pistol.visible = bool(here["visible"])
+			_pistol_holder.transform = here["gun"] as Transform3D
+		return
 	if _coat != null:
 		var opened: float = smoothstep(0.0, PISTOL_SHOWN_FROM, _aim_t) if _aim_t <= PISTOL_SHOWN_FROM else 1.0 - smoothstep(PISTOL_SHOWN_FROM, DRAW_COAT_CLOSED_AT, _aim_t)
 		_coat.set_blend_shape_value(_coat_draw_shape, opened)

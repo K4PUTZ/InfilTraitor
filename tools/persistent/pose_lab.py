@@ -10,6 +10,9 @@ solver); the Director refines them here, in Blender, on the LIGHT Agent, with th
         A .blend that already exists is NEVER overwritten (it holds his work): it is opened as it is. Pose, move the pistol, SAVE (Ctrl+S).
     python3 tools/persistent/pose_lab.py save  aim_pistol [--figure ...] [--take]
         Reads the saved .blend, writes the pose file, rebuilds the game set (`tripo_game_clips.gd`) and, with --take, films the `pistol_aim` take with it.
+    python3 tools/persistent/pose_lab.py sequence draw_pistol [--figure ...] [--take]
+        Reads the timeline `SEQ_<name>_<FIG>.blend` (keyed idle -> draw -> ... -> aim) and writes `ASSETS/ANIMATIONS/sequences/<figure>/<name>.json` + one pose file per keyed frame
+        (`seq_<name>_f<frame>.json`); the game then plays that sequence instead of the plain draw/aim path. Rules: `tripo_pose_lab.sequence`.
     python3 tools/persistent/pose_lab.py render aim_pistol [--figure ...]
         Two stills of the saved .blend (front 3/4 and side), into temp/poses/.
     python3 tools/persistent/pose_lab.py reset aim_pistol --figure male
@@ -94,16 +97,33 @@ def cmd_save(a):
         print(f"[pose_lab] wrote {os.path.relpath(out, ROOT)}")
     run([GODOT, "--headless", "--path", ROOT, "--script", "godot/scripts/tools/tripo_game_clips.gd"], "rebuilding the game set (the poses go into the APK's library)")
     if a.take:
-        for figure in figures_of(a.figure):
-            env = dict(os.environ, INFILTRAITOR_TRIPO_FIGURE=figure)
-            print(f"[pose_lab] filming the take `pistol_aim` with the {figure} ...")
-            r = subprocess.run([sys.executable, "tools/persistent/capture.py", "--map", "PLAYGROUND", "--take", "pistol_aim"], cwd=ROOT, env=env, capture_output=True, text=True)
-            if r.returncode != 0:
-                sys.exit("[pose_lab] the take failed:\n" + r.stdout[-1500:] + r.stderr[-800:])
-            src = os.path.join(ROOT, "temp", "videos", "PLAYGROUND_pistol_aim.mp4")
-            dst = os.path.join(ROOT, "temp", "videos", f"pose_{a.pose}_{figure}.mp4")
-            shutil.copy(src, dst)
-            print(f"[pose_lab] {os.path.relpath(dst, ROOT)}")
+        cmd_take(a)
+
+
+def cmd_take(a):
+    for figure in figures_of(a.figure):
+        env = dict(os.environ, INFILTRAITOR_TRIPO_FIGURE=figure)
+        print(f"[pose_lab] filming the take `pistol_aim` with the {figure} ...")
+        r = subprocess.run([sys.executable, "tools/persistent/capture.py", "--map", "PLAYGROUND", "--take", "pistol_aim"], cwd=ROOT, env=env, capture_output=True, text=True)
+        if r.returncode != 0:
+            sys.exit("[pose_lab] the take failed:\n" + r.stdout[-1500:] + r.stderr[-800:])
+        src = os.path.join(ROOT, "temp", "videos", "PLAYGROUND_pistol_aim.mp4")
+        dst = os.path.join(ROOT, "temp", "videos", f"pose_{a.pose}_{figure}.mp4")
+        shutil.copy(src, dst)
+        print(f"[pose_lab] {os.path.relpath(dst, ROOT)}")
+
+
+def cmd_sequence(a):
+    for figure in figures_of(a.figure):
+        path = os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_{a.pose}_{figure.upper()}.blend")
+        if not os.path.exists(path):
+            sys.exit(f"[pose_lab] {os.path.relpath(path, ROOT)} does not exist")
+        out = os.path.join(ROOT, "ASSETS", "ANIMATIONS", "sequences", figure, f"{a.pose}.json")
+        poses = os.path.join(ROOT, "ASSETS", "ANIMATIONS", "poses", figure)
+        run([BLENDER, "-b", "--python", LAB, "--", "sequence", path, a.pose, out, poses], f"reading {os.path.relpath(path, ROOT)}")
+    run([GODOT, "--headless", "--path", ROOT, "--script", "godot/scripts/tools/tripo_game_clips.gd"], "rebuilding the game set (the poses go into the APK's library)")
+    if a.take:
+        cmd_take(a)
 
 
 def cmd_render(a):
@@ -144,13 +164,13 @@ def cmd_status(_a):
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
-    for name, fn in (("open", cmd_open), ("save", cmd_save), ("render", cmd_render), ("reset", cmd_reset)):
+    for name, fn in (("open", cmd_open), ("save", cmd_save), ("sequence", cmd_sequence), ("render", cmd_render), ("reset", cmd_reset)):
         s = sub.add_parser(name)
         s.add_argument("pose")
         s.add_argument("--figure", default="male", choices=list(FIGURES) + ["both"])
         if name == "open":
             s.add_argument("--no-open", action="store_true")
-        if name == "save":
+        if name in ("save", "sequence"):
             s.add_argument("--take", action="store_true")
         s.set_defaults(fn=fn)
     s = sub.add_parser("status")

@@ -381,6 +381,60 @@ def extract(blend, out_json):
     print(f"[tripo_pose_lab] wrote {out_json}: {len(bones)} bones ({len(moved)} added by the Director: {moved}), props {sorted(props)}")
 
 
+PASSING_MARKERS = ("in-between",)
+
+
+def _gun_placement(arm, rig, G, gun):
+    """The prop's placement against its bone for the frame the scene is on: the same maths `extract` uses."""
+    bone = gun["lab_bone"]
+    world_g = blender_world_to_g(arm.matrix_world.inverted() @ gun.matrix_world @ mesh_edit(gun, "pistol"))
+    local_m = rig.node_global(bone, G).inverted() @ world_g @ prop_node_matrix("pistol").inverted()
+    loc, rot, scl = local_m.decompose()
+    return {"bone": bone, "pos": [loc.x, loc.y, loc.z], "quat": xyzw(rot), "scale": (scl[0] + scl[1] + scl[2]) / 3.0}
+
+
+def sequence(blend, name, seq_json, poses_dir):
+    """THE DIRECTOR'S TIMELINE (2026-11-10): a .blend whose armature action is keyed along a timeline (`SEQ_<name>_<FIG>.blend`: idle, draw, ..., aim) read back as
+    a sequence for `ActorMesh3D`. Every frame the ARMATURE has a key on is a STOP (a pose file `seq_<name>_f<frame>.json`, the same format `extract` writes), placed on the
+    path at weight (frame - first) / (last - first); the first frame is the pose the player wrote (no stop). A stop rests unless it is unmarked or its timeline marker is in
+    `PASSING_MARKERS` (the arms flow through it, `ActorAimPose3D`'s passing stop); the last always rests. The pistol's placement and visibility and the coat's `DrawFix`
+    are sampled at EVERY frame (their own keys, whatever frames those fall on) and played linearly between samples."""
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    sc = bpy.context.scene
+    arm, rig = load_rig_from_blend()
+    base = {n: quat_xyzw(q) for n, q in json.loads(arm["lab_base"]).items()}
+    named = set(json.loads(arm["lab_bones"]))
+    gun = bpy.data.objects["PROP_pistol"]
+    coat_key = bpy.data.objects["Outfit_Coat"].data.shape_keys.key_blocks["DrawFix"]
+    action = arm.animation_data.action
+    keyed = sorted({round(k.co[0]) for l in action.layers for s in l.strips for cb in s.channelbags for fc in cb.fcurves for k in fc.keyframe_points})
+    first, last = sc.frame_start, sc.frame_end
+    markers = {m.frame: m.name for m in sc.timeline_markers}
+    figure = arm["lab_figure"]
+    os.makedirs(poses_dir, exist_ok=True)
+    stops, samples = [], []
+    for f in range(first, last + 1):
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        local, G = rig.read()
+        samples.append({"frame": f, "coat": coat_key.value, "visible": not gun.hide_viewport, "gun": _gun_placement(arm, rig, G, gun)})
+        if f not in keyed or f == first:
+            continue
+        pose_id = f"seq_{name}_f{f}"
+        bones = {n: xyzw(local[n]) for n in rig.names if n in named or qdist(local[n], base[n]) > EPS_CHANGED}
+        out = {"format": "infiltraitor-pose", "v": 1, "figure": figure, "id": pose_id, "bones": bones,
+               "props": {"pistol": samples[-1]["gun"]}, "hips_pos": list(CM @ arm.pose.bones[PREFIX + "Hips"].matrix.translation)}
+        with open(os.path.join(poses_dir, pose_id + ".json"), "w") as fh:
+            json.dump(out, fh, indent=1)
+        passing = f != last and (f not in markers or markers[f] in PASSING_MARKERS)
+        stops.append({"id": pose_id, "frame": f, "weight": (f - first) / float(last - first), "passing": passing})
+    seq = {"format": "infiltraitor-sequence", "v": 1, "figure": figure, "name": name, "fps": sc.render.fps, "first": first, "last": last, "stops": stops, "samples": samples}
+    os.makedirs(os.path.dirname(seq_json), exist_ok=True)
+    with open(seq_json, "w") as fh:
+        json.dump(seq, fh, indent=1)
+    print(f"[tripo_pose_lab] wrote {seq_json}: {len(stops)} stops {[(s['frame'], 'passing' if s['passing'] else 'rests') for s in stops]}, {len(samples)} samples, {sc.render.fps} fps")
+
+
 def render(blend, out_png):
     bpy.ops.wm.open_mainfile(filepath=blend)
     scn = bpy.context.scene
@@ -424,6 +478,8 @@ def main():
         build(figure, pose_id, dump_dir, out, glb, PROP_GLB)
     elif mode == "extract":
         extract(a[1], a[2])
+    elif mode == "sequence":
+        sequence(a[1], a[2], a[3], a[4])
     elif mode == "render":
         render(a[1], a[2])
     else:

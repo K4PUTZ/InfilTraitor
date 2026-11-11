@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**348 scripts · 102519 lines total** (under `godot/scripts/`)
+**349 scripts · 102639 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — actor_pose.gd, agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — actor_viability_bench.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_aim_pose3d.gd, actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, coat_emblem.gd, coat_push3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, footprint_marks3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, liquid_falls3d.gd, liquid_flame_tongues.gd, liquid_flames.gd, liquid_sheet3d.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_rest_cache.gd, soft_sheet_sim.gd, tripo_figure.gd, tripo_pose_kit.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
+- **geometry/** — actor_aim_pose3d.gd, actor_head_turn3d.gd, actor_mesh3d.gd, aim_sequence.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, coat_emblem.gd, coat_push3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, footprint_marks3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, liquid_falls3d.gd, liquid_flame_tongues.gd, liquid_flames.gd, liquid_sheet3d.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_rest_cache.gd, soft_sheet_sim.gd, tripo_figure.gd, tripo_pose_kit.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, layout_overlay3d.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
 - **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, soft_sheet_presets.gd, structural_support.gd, voxel_weakness.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, fluid_container.gd, fluid_plane.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, liquid_agent_status.gd, liquid_corrosion.gd, liquid_exposure.gd, liquid_field.gd, liquid_fire.gd, liquid_fire_lights.gd, liquid_glow.gd, liquid_registry.gd, liquid_surface_state.gd, localization_manager.gd, material_registry.gd, material_rows.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, secondary_tables.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_fire.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
@@ -455,7 +455,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 598 lines
+`class_name ActorMesh3D` · extends `Node3D` · 623 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -484,21 +484,35 @@ extends `ConfirmationDialog` · 64 lines
 - `TRIPO_MOVE_DEFAULT` = `"walk"`
 - `TRIPO_IDLE` = `"idle"`
 - `ActorAimPoseRef` = `preload("res://godot/scripts/geometry/actor_aim_pose3d.gd")`
+- `AimSequenceRef` = `preload("res://godot/scripts/geometry/aim_sequence.gd")`
 - `AIM_STOPS` = `[["draw_pistol", 0.5], ["step_pistol", 0.7, true], ["aim_pistol", 1.0]]`
 - `AIM_RAISE_S` = `0.36`
 - `AIM_LOWER_S` = `0.24`
 - `PISTOL_SHOWN_FROM` = `0.5`
 - `DRAW_COAT_SHAPE` = `"DrawFix"`
 - `DRAW_COAT_CLOSED_AT` = `0.75`
-- `REVEAL_PALETTES` = `{ &"agent": {"stripe_a": Color(0.86, 0.96, 1.0), "stripe_b": Color(0.16, 0.28, 0.38), "outline_color": Color(1.0, 1.0, 1.0)}, &"agency": {"stripe_a": Color(0.46, 0.64, 1.0), "stripe_b": Color(0.08, 0.14, 0.40), "outline_color": Color(0.30, 0.56, 1.0)}, &"militia": {"stripe_a": Color(1.0, 0.52, 0.36), "stripe_b": Color(0.40, 0.10, 0.06), "outline_color": Color(1.0, 0.34, 0.18)}, &"corporation": {"stripe_a": Color(1.0, 0.84, 0.30), "stripe_b": Color(0.38, 0.28, 0.04), "outline_color": Color(1.0, 0.74, 0.12)}, &"network": {"stripe_a": Color(0.46, 0.96, 0.62), "stripe_b": Color(0.06, 0.30, 0.14), "outline_color": Color(0.28, 0.90, 0.46)}, }`
-
-**Public vars**
-- `var silhouette_phase: float = 0.0:`
-- `var reveal_faction: StringName = &"":`
 
 **Public API**
-- `func setup_actor(board: Node3D, source: ActorPose) -> bool:`
 - `func set_status_tint(color: Color, pulse: float) -> void:`
+
+---
+
+### `aim_sequence.gd`
+
+extends `RefCounted` · 89 lines
+
+`godot/scripts/geometry/aim_sequence.gd`
+
+> AimSequence — the Director's timeline of a draw, read back as data for `ActorMesh3D` (MOVEMENT, 2026-11-10). He keys the draw and the aim along a timeline in Blender (`SEQ_<name>_<FIG>.blend`: idle, draw, in-between, aim); `pose_lab.py sequence` reads it back into `ASSETS/ANIMATIONS/sequences/<figure>/<name>.json` and one pose file per keyed frame. THE PATH IS THE TIMELINE: a frame is a weight, `(frame - first) / (last - first)`, the arms' stops are the keyed frames (`stops`, for `ActorAimPose3D`), and the pistol's placement and visibility and the coat's morph are sampled at every frame and read linearly between samples (`at()`). The raise lasts what the timeline lasts at its frame rate (`raise_seconds()`). No `class_name`: a headless run (the game-set tool, the gates) reads a new class_name only after the editor has rescanned, so the users preload this file (`AimSequenceRef`).
+
+**Constants / tuning**
+- `SEQUENCE_FILE` = `"res://ASSETS/ANIMATIONS/sequences/%s/%s.json"`
+- `PISTOL_DRAW` = `"draw_pistol"`
+
+**Public vars**
+- `var fps: float = 24.0`
+- `var first: int = 1`
+- `var last: int = 2`
 
 ---
 
@@ -1471,7 +1485,7 @@ extends `Node3D` · 3573 lines
 
 ### `tripo_figure.gd`
 
-`class_name TripoFigure` · extends `RefCounted` · 523 lines
+`class_name TripoFigure` · extends `RefCounted` · 529 lines
 
 `godot/scripts/geometry/tripo_figure.gd`
 
@@ -1479,6 +1493,7 @@ extends `Node3D` · 3573 lines
 
 **Constants / tuning**
 - `TripoPoseKitRef` = `preload("res://godot/scripts/geometry/tripo_pose_kit.gd")`
+- `AimSequenceRef` = `preload("res://godot/scripts/geometry/aim_sequence.gd")`
 - `FIGURES` = `["female", "male"]`
 - `RIG` = `"res://ASSETS/MODELS/official/AGENT_%s.glb"`
 - `UNDRESSED_PIECES` = `["Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere"]`

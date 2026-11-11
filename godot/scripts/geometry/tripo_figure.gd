@@ -18,6 +18,7 @@ class_name TripoFigure
 extends RefCounted
 
 const TripoPoseKitRef = preload("res://godot/scripts/geometry/tripo_pose_kit.gd")
+const AimSequenceRef = preload("res://godot/scripts/geometry/aim_sequence.gd")
 
 const FIGURES: PackedStringArray = ["female", "male"]
 const RIG := "res://ASSETS/MODELS/official/AGENT_%s.glb"
@@ -516,6 +517,11 @@ static func build_library(figure: String, hips_rest: Vector3) -> AnimationLibrar
 			return null
 		lib.add_animation(id, anim)
 	for id: String in POSES:
+		var pose: Animation = bank_pose(figure, id)
+		if pose == null:
+			return null
+		lib.add_animation(POSE_PREFIX + id, pose)
+	for id: String in AimSequenceRef.pose_ids(figure, AimSequenceRef.PISTOL_DRAW):   ## the Director's timeline: one pose per keyed frame, each from its own file
 		var pose: Animation = bank_pose(figure, id)
 		if pose == null:
 			return null

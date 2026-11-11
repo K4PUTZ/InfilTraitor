@@ -924,9 +924,17 @@ line above disagrees with this section, this section wins. What the audit could 
   - orange is the club's family (`COSMETICS` §9.4), which suits a frame-up meant to look like a biker; for colour-blind players orange
     merges with the mustard coat, so the reveal must separate helmet and frame by more than hue (owed when the scene is built).
 
+- **The frame leaks to TELEVISION at the midpoint, between the laps (Director, 2026-11-10, on Claude's recommendation).** The same point on
+  every route. The Militia's insiders, who already sell access and codes (§2.1), sell it. The player meets it on the scenery's TVs (§5.4),
+  and the Agent watches himself. The police do not confirm it: officially the cause is still the substation fire, and the frame is
+  "unverified". From then on the public suspects the club, which feeds the successors' war in lap 2. **It misleads the reporter too:** he saw
+  an orange helmet on the Agent's bike and sees a white one on television, which is why he closes the case only at the end, when he
+  understands it was a night camera.
+
 **The official version and the endings:**
 - **The Graves-"Deacon" deal leaks at one moment in every order:** in the time jump before the cemetery, when both are dead. Until then the
-  public version is the substation fire and a war between factions.
+  OFFICIAL version is the substation fire and a war between factions; from the midpoint the leaked frame makes an attack the public's
+  suspicion, never the authorities' word (above).
 - **At the memorial** the picture is four successors, each denouncing a dead man. "Choirboy" has handed over Deacon's cell and stays at the
   edge (the gate, engines off), never on the stage.
 - **The kill branch:** he is discovered as the reporter's killer, never as the dam's author. The public version is that the reporter drew

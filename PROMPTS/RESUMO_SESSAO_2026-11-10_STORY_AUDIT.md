@@ -28,3 +28,4 @@
 
 ## Added at the close
 - **The helmet is orange and the night frame shows it white** (Director): seen in colour in the opening, white in the Militia's frame, orange again in a colour replay of the attack at the reveal (`DESIGN` §2.8, the exposure budget). The frame may now be displayed before the finale; the graze must not be readable in it.
+- **The frame leaks to television at the midpoint** (Director, on Claude's recommendation): sold by the Militia's insiders, seen on the scenery's TVs, unconfirmed by the police (officially still the substation fire); it turns the public on the club and misleads the reporter, who saw an orange helmet and sees a white one (`DESIGN` §2.8).

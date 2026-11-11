@@ -263,7 +263,7 @@ bar of the agent's ACTIONS, not a lone button and not a menu on every tap.
   are the bar's categories. Move stays the default (tap / double-tap, unchanged).
 - **§8.7** — attack enters AIM MODE; *"choosing and firing are two separate acts"*.
   The grenade's flow is the model and is already built: first tap aims, a second tap
-  on the same GU throws (T-TAP, `TestZoneController.handle_targeting_click()`).
+  on the same GU throws (T-TAP, `GrenadeController.handle_targeting_click()`).
 - **§10.2 / `WEAPON_MASTER_PLAN` D37** — the agent carries the WHOLE arsenal and *"any
   weapon-selection UI has to survive the carried set growing, so it cannot be N fixed
   slots."* So "Grenade" is NOT a dedicated button: the gadget/weapon entry opens the

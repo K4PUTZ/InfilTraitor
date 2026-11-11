@@ -48,7 +48,7 @@ const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/pers
 ## the global class_name so the dependency is visible where this file is read.
 const GlassOpening = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
 const SelectionControllerClass = preload("res://godot/scripts/world/controllers/selection_controller.gd")
-const TestZoneControllerClass = preload("res://godot/scripts/world/controllers/test_zone_controller.gd")
+const TestZoneControllerClass = preload("res://godot/scripts/world/controllers/grenade_controller.gd")
 ## WEAPON_MASTER_PLAN §6c — the agent shoots. Separate from the bench controller
 ## above, which fires from a static prop; see agent_shot_controller.gd's header.
 const AgentShotControllerClass = preload("res://godot/scripts/world/controllers/agent_shot_controller.gd")
@@ -100,7 +100,7 @@ const OcclusionOverlayClass = preload("res://godot/scripts/overlays/occlusion_ov
 @onready var movement_overlay:    MovementOverlay = $MovementOverlay
 @onready var path_preview:        PathPreview  = $PathPreview
 @onready var selection_overlay:   Node2D       = $SelectionOverlay
-@onready var agent:               DebugAgent   = $Agent
+@onready var agent:               Agent   = $Agent
 @onready var tile_labels_overlay: Node2D       = $TileLabelsOverlay
 ## UI-SPLIT-02 (2026-09-09): the 21 @onready $HUD/... lookups that used to sit
 ## here are gone. HudController resolves every widget from the HUD scene and the
@@ -1158,25 +1158,6 @@ func _draw_rim_shard(cell: Vector2i, level: int, base_key: Vector3i, memo = null
 	return _voxel_board.apply_glass_remnant_at(level, cell, shape_id, mask, flop)
 
 
-## CRACK-06 — restamp every recorded rim shard for the perspective just entered,
-## the same reason `_respawn_base_remnants()` exists (a rebuild places plain glass
-## from voxel state and never re-cuts the atom).
-func _respawn_base_rim_shards() -> void:
-	if _base_rim_shards.is_empty() or _voxel_board == null:
-		return
-	var drawn: int = 0
-	var lost: int = 0
-	var memo: Dictionary = {}
-	for bkey in _base_rim_shards:
-		var k: Vector3i = bkey
-		var vxy := Vector2i(k.x, k.y)
-		if _draw_rim_shard(vxy, k.z, k, memo):
-			drawn += 1
-		else:
-			lost += 1
-	print_debug("[GLASS-RIM-SHARD] %d restamped, %d had no pane or no glass edge"
-		% [drawn, lost])
-
 
 ## ── G4-4 / G-D45 — A REMNANT WHOSE FRAME WAS DESTROYED FALLS WITH IT ─────────
 ##
@@ -1553,25 +1534,6 @@ func _remnant_context(host, memo) -> Array:
 		memo[mkey] = ctx
 	return ctx
 
-
-## G-D35 B-2 — respawn every recorded craze field for the perspective just
-## entered. Runs beside `_respawn_base_cracks()` and for the same reason: the
-## CRACKED states are already back (VL-PERSIST), and the FIELD is a node that the
-## renderer rebuild dropped.
-func _respawn_base_crazes() -> void:
-	if _base_crazes.is_empty() or _voxel_board == null:
-		return
-	var rebuilt: int = 0
-	var lost: int = 0
-	for rec in _base_crazes:
-		var key: Vector3i = rec["base"]
-		var vxy := Vector2i(key.x, key.y)
-		if claim_glass_craze(vxy, key.z, float(rec["intensity"]), false) != 0:
-			rebuilt += 1
-		else:
-			lost += 1
-	print_debug("[GLASS-CRAZE] %d field(s) rebuilt from base coords, %d not rebuilt"
-		% [rebuilt, lost])
 
 
 ## The pick itself, shared by the live claim, the rebuild replay and the crack
@@ -1984,7 +1946,7 @@ var _input_controller: InputControllerClass = null
 var _selection_controller: SelectionControllerClass = null
 
 ## TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop.
-var _test_zone_controller: TestZoneControllerClass = null
+var _grenade_controller: TestZoneControllerClass = null
 ## FRAME-MEM-01 / 2026-07-29: every spinning pickup in the collectibles strip.
 ## _floating_collectible stays as an alias for the first of them, because the
 ## test_collectible capture action and _set_perspective already reference it.
@@ -2055,7 +2017,6 @@ const AIM_Z_PERIMETER: int = 101
 const AIM_Z_DOME: int = 102
 const AIM_Z_RAYS: int = 103
 const AIM_Z_ARC: int = 104
-const AIM_Z_GRENADE: int = 105
 var _ember_overlay: EmberOverlay = null  ## VL-D4 — fading glow VFX for freshly blasted voxels
 var _smoke_spark_overlay: SmokeSparkOverlay = null  ## VFX-01 — smoke puffs + metal/stone sparks
 var _debris_overlay: DebrisOverlay = null  ## VFX-01 — masonry dust + wood chips
@@ -2268,7 +2229,7 @@ var blast_burst_dust_color: Color = Color(0.62, 0.58, 0.52, 1.0)
 ## pass — two concurrent passes would race on the same TileMapLayers.
 ## The @warning_ignore below is load-bearing: Godot's own linter reports this as
 ## UNUSED_PRIVATE_CLASS_VARIABLE, because it cannot see the cross-file write either
-## (weapon_bench_controller.gd, test_zone_controller.gd) — that false warning is
+## (weapon_bench_controller.gd, grenade_controller.gd) — that false warning is
 ## what invited an earlier delete (743bde2) that silently broke both callers'
 ## fire_active()/detonate_active() with a runtime "Invalid access" error.
 @warning_ignore("unused_private_class_variable")
@@ -2281,7 +2242,7 @@ var _shadow_boundary_overlay: Node2D = null  ## ShadowBoundaryOverlay — edges 
 ## (DebugToolsController's VoxelRulerOverlay — denser, voxel-subdivided).
 var _gu_grid_overlay: Node2D = null
 ## DESTRUCTION_MASTER_PLAN Part 3: red blast-radius wireframe preview, shown
-## while a grenade's context menu is open. See TestZoneController.open_menu_for().
+## while a grenade's context menu is open. See GrenadeController.open_menu_for().
 var _blast_wireframe_overlay: Node2D = null
 var _tile_game: Node2D = null   ## TileOverlay for visual gameplay (z=3, mix)
 var _trail_overlay: Node2D = null
@@ -2537,7 +2498,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## Idempotent, so a map reload does not stack a second sprite; it returns
 	## false (having already push_error'd) if the bake is missing, and the agent
 	## stays playable but invisible rather than taking the room down with it.
-	if not agent.attach_sprite(self):
+	if not agent.attach_pose(self):
 		push_warning("[Room] the agent's mesh is unavailable (see the error above)")
 	agent.set_dev_vision(_vision_controller.dev_vision)
 	## W-LOAD-02: the AIMED grip's frames, loaded here instead of on the click
@@ -2547,8 +2508,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## AgentShotController.open_menu_for() still calls set_grip(), which is the
 	## loud path. Director's rule for this session: everything that can be loaded
 	## at the start, is.
-	if agent.sprite != null:
-		agent.sprite.preload_grip(AgentShotControllerClass.GRIP_AIMED)
+	if agent.pose != null:
+		agent.pose.preload_grip(AgentShotControllerClass.GRIP_AIMED)
 
 	# OCC-03: Agent renders above all voxel layers, below dev hover label (z=200)
 	var max_voxel_z_index := _voxel_board.get_max_voxel_z_index()
@@ -3022,7 +2983,7 @@ func _ready() -> void:
 	## keys off `_context_menu.visible` and a second instance would have to be
 	## taught about the first. Which verb it shows, and what confirming it does,
 	## are now passed in per open (DetonateContextMenu.open_at).
-	_test_zone_controller = TestZoneControllerClass.new(self)
+	_grenade_controller = TestZoneControllerClass.new(self)
 	## §6c: the same shared menu instance carries the agent's shot as a second verb.
 	_agent_shot_controller = AgentShotControllerClass.new(self)
 	_context_menu = DetonateContextMenuClass.new()
@@ -3214,19 +3175,6 @@ func _sync_dev_overlay_view() -> void:
 			(node as Node2D).transform = xf
 
 
-## The camera's yaw about the map for the current view, degrees (what `Board3DLive.VIEW_YAW_DEG` holds), for the baked
-## actors' light maths, whose basis is the N camera's.
-func view_yaw_deg() -> float:
-	match _view_direction:
-		"E":
-			return 90.0
-		"S":
-			return 180.0
-		"W":
-			return 270.0
-		_:
-			return 0.0
-
 
 ## R3D-ROT — a rotation turns the CAMERA over one fixed world. The map is never re-laid-out and no Voxel is rebuilt: the
 ## store, the damage, the soot and every record stay in base coordinates, so there is nothing to replay. The board yaws over
@@ -3248,8 +3196,8 @@ func _set_perspective(direction: String) -> void:
 		_camera_controller.stop_shake()
 	## The baked figures pick their frame against the view: the agent and the runtime props recompose.
 	agent.on_perspective_changed()
-	if _test_zone_controller != null:
-		_test_zone_controller.on_view_changed()
+	if _grenade_controller != null:
+		_grenade_controller.on_view_changed()
 	## R3D-WORLD: the VFX in flight are NOT cleared any more. Their positions are world state (the 2D simulation runs in
 	## the base view's lattice and reaches the world through `Board3DLive.lattice_basis()`), so a blast keeps burning in
 	## the same place while the camera turns around it.
@@ -3910,7 +3858,7 @@ func _attach_actor_billboards(board: Node3D = null) -> void:
 		if is_instance_valid(guard):
 			actors.append(guard)
 	for actor in actors:
-		var source: ActorPose = actor.sprite
+		var source: ActorPose = actor.pose
 		if source == null:
 			push_warning("[Room] the 3D board is up but '%s' has no pose node — it is not drawn" % actor.name)
 			continue
@@ -5677,28 +5625,28 @@ signal blast_beat(beat: String)
 ## RETIRE-2 — `throw <index> <x,y>`: the dev grenade thrown to `target` through the real `execute_grenade_throw()`. True when the
 ## throw started; the flight, the fuse and the blast then run on their own, as they do for a player.
 func scenario_throw(index: int, target: Vector2i) -> bool:
-	if _test_zone_controller == null:
-		push_error("[Room] scenario_throw: no TestZoneController — dev grenades exist on PLAYGROUND only")
+	if _grenade_controller == null:
+		push_error("[Room] scenario_throw: no GrenadeController — dev grenades exist on PLAYGROUND only")
 		return false
 	_seed_dev_grenades_if_empty("SCENARIO")
-	var grenades: Array = _test_zone_controller._grenades
+	var grenades: Array = _grenade_controller._grenades
 	if index < 0 or index >= grenades.size() or bool(grenades[index]["detonated"]):
 		push_error("[Room] scenario_throw: dev grenade #%d does not exist or is spent" % index)
 		return false
-	_test_zone_controller._targeting_mode = true
-	_test_zone_controller._targeting_grenade_index = index
-	_test_zone_controller._targeting_target_gu = target
-	_test_zone_controller.execute_grenade_throw()
+	_grenade_controller._targeting_mode = true
+	_grenade_controller._targeting_grenade_index = index
+	_grenade_controller._targeting_target_gu = target
+	_grenade_controller.execute_grenade_throw()
 	return true
 
 
 func scenario_detonate(index: int) -> void:
-	if _test_zone_controller == null:
-		push_error("[Room] scenario_detonate: no TestZoneController — dev grenades exist on PLAYGROUND only")
+	if _grenade_controller == null:
+		push_error("[Room] scenario_detonate: no GrenadeController — dev grenades exist on PLAYGROUND only")
 		scenario_detonation_done.emit(false)
 		return
 	_seed_dev_grenades_if_empty("SCENARIO")
-	var grenades: Array = _test_zone_controller._grenades
+	var grenades: Array = _grenade_controller._grenades
 	if index < 0 or index >= grenades.size() or bool(grenades[index]["detonated"]):
 		push_error("[Room] scenario_detonate: dev grenade #%d does not exist or is spent" % index)
 		scenario_detonation_done.emit(false)
@@ -5706,7 +5654,7 @@ func scenario_detonate(index: int) -> void:
 	centre_camera_on(grenades[index]["gu_cell"])
 	await get_tree().process_frame
 	Telemetry.event("blast.request", {"index": index, "gu": grenades[index]["gu_cell"]})
-	_test_zone_controller.open_menu_for(index)
+	_grenade_controller.open_menu_for(index)
 	## The real click closes the menu BEFORE the action's visuals (DetonateContextMenu._on_action_pressed()); a direct
 	## `detonate_active()` never reaches that handler, so without this the "Detonate / Cancel" popup and the red preview
 	## stay over the whole blast in every capture and recording.
@@ -5714,12 +5662,12 @@ func scenario_detonate(index: int) -> void:
 		_context_menu.close()
 	if _blast_wireframe_overlay != null:
 		_blast_wireframe_overlay.clear()
-	_test_zone_controller.detonate_active()
+	_grenade_controller.detonate_active()
 	## `is_blast_playing()`, not only `is_resolving_action()` — the action lock clears
 	## about halfway through the blast (see the benchmark).
 	var waited: int = 0
 	const MAX_WAIT_FRAMES: int = 3600
-	while (is_resolving_action() or _test_zone_controller.is_blast_playing()) \
+	while (is_resolving_action() or _grenade_controller.is_blast_playing()) \
 			and waited < MAX_WAIT_FRAMES:
 		await get_tree().process_frame
 		waited += 1
@@ -5777,9 +5725,9 @@ func _set_view_mode(which: String) -> void:
 	## T-DEV: the two red aiming diagnostics are gated on dev vision, so toggling
 	## it mid-aim has to rebuild the preview — otherwise the perimeter and the
 	## footprint linger (or stay missing) until the cursor happens to move.
-	if which == "dev" and _test_zone_controller != null \
-			and _test_zone_controller.is_in_targeting_mode():
-		_test_zone_controller._update_grenade_targeting_display()
+	if which == "dev" and _grenade_controller != null \
+			and _grenade_controller.is_in_targeting_mode():
+		_grenade_controller._update_grenade_targeting_display()
 
 
 ## UI-SPLIT-02: one handler, because the signal now says WHICH mode it is.
@@ -6296,7 +6244,7 @@ func _spawn_guards(enemy_defs: Array) -> void:
 		## CHARACTER Part 7: the baked enemy figure, same swap the agent took.
 		## Idempotent and non-fatal — a guard with no bake keeps its vector
 		## diamond rather than vanishing from the map mid-mission.
-		if not guard.attach_sprite(self):
+		if not guard.attach_pose(self):
 			push_warning("[Room] guard '%s' has no mesh (see the error above)" % guard.enemy_id)
 		_guard_coordinator.register_guard(guard)
 		_guards.append(guard)
@@ -6394,7 +6342,7 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 
 
 ## VFX-01: dispatch VoxelBoard.voxel_destroyed to the smoke/spark/debris
-## overlays. Ember keeps its own separate trigger (TestZoneController's
+## overlays. Ember keeps its own separate trigger (GrenadeController's
 ## freshly-scorched-neighbour loop) — that condition ("survives next to a
 ## fresh hole") is different from "this voxel was destroyed", so it isn't
 ## folded in here. Fires for both blast and firearm destruction — both paths
@@ -6439,11 +6387,6 @@ func _clear_orphaned_soot(grid_pos: Vector2i, level: int) -> void:
 ## screenshot of it cannot be compared against anything.
 var _vfx_destroy_count: int = 0
 
-
-func _vfx_count_take() -> int:
-	var n := _vfx_destroy_count
-	_vfx_destroy_count = 0
-	return n
 
 
 ## E-NATIVE-01 (Director, 2026-08-09) — the detonation's visible core, built from
@@ -6568,7 +6511,7 @@ func spawn_blast_burst(world_pos: Vector2, ground_2d: Vector2 = ParticleMath.NO_
 ## overlay, same vocabulary (E-NATIVE-01), no new node.
 ##
 ## A1 (Director, 2026-10-08): *"pode começar a faísca ainda quando o agente está mirando, depois aumenta durante o voo e solta a fumacinha"* and *"o efeito
-## [tem que] acompanhar o pavio em 3D"*. So the fuse is no longer a fixed 2D point lit when the grenade has landed: `TestZoneController` drives one
+## [tem que] acompanhar o pavio em 3D"*. So the fuse is no longer a fixed 2D point lit when the grenade has landed: `GrenadeController` drives one
 ## emitter per live grenade from the aim (at the hand) through the flight and the roll (at the fuse point of the MESH) to the boom, with an INTENSITY
 ## from 0 to 1, and this turns the intensity and the elapsed time into embers and sparks. The smoke is the one the embers already hand over when
 ## they go out (`smoke_on_death`), so a stronger fuse leaves more of it and nothing new is drawn.
@@ -8231,7 +8174,7 @@ func step_prop_debris_fall(job: Dictionary, budget_usec: int) -> bool:
 						_place_debris_piece("%s_%d_%d_%d_%d" % [material_id, k.x, k.y, k.z, j],
 							center + jitter, k.z, material_id, (i + j) % 3, job["tint"], randf_range(0.0, TAU))
 					job["pile_i"] = i + 1
-		if Time.get_ticks_usec() - step_t0 > 30000:  ## PB-6: see TestZoneController._report_slow_step
+		if Time.get_ticks_usec() - step_t0 > 30000:  ## PB-6: see GrenadeController._report_slow_step
 			print("[SLOW-STEP] prop debris phase %d %.1f ms" % [step_phase, float(Time.get_ticks_usec() - step_t0) / 1000.0])
 		if deadline > 0 and Time.get_ticks_usec() >= deadline:
 			return bool(job["done"])
@@ -9133,12 +9076,12 @@ func _apply_guard_reveal() -> void:
 	var dealt: PackedStringArray = _dev_flag("GUARD_FACTIONS", "").split(",", false)
 	var n: int = 0
 	for guard in _guards:
-		if not is_instance_valid(guard) or guard.sprite == null or not guard.sprite.has_meta("figure3d"):
+		if not is_instance_valid(guard) or guard.pose == null or not guard.pose.has_meta("figure3d"):
 			continue
 		if not dealt.is_empty():
 			guard.faction = StringName(dealt[n % dealt.size()].strip_edges())
 			n += 1
-		var billboard: Variant = guard.sprite.get_meta("figure3d")
+		var billboard: Variant = guard.pose.get_meta("figure3d")
 		if is_instance_valid(billboard):
 			(billboard as Node).set("reveal_faction", guard.faction)
 			(billboard as Node).set("reveal_behind_walls", on and _guard_revealed_by_gameplay(guard))
@@ -9774,7 +9717,7 @@ func queue_light_cells(gus: Array) -> void:
 func _liquid_status_line(tag: String) -> String:
 	var st = _liquid_rules().status
 	var info: Dictionary = liquid_at(agent.cell) if agent != null else {}
-	var figure = agent.sprite.get_meta("figure3d") if agent != null and agent.sprite != null and agent.sprite.has_meta("figure3d") else null
+	var figure = agent.pose.get_meta("figure3d") if agent != null and agent.pose != null and agent.pose.has_meta("figure3d") else null
 	var feet: float = (figure as Node3D).position.y if is_instance_valid(figure) else NAN
 	return "[Liquids] %s: at %s in %s (solid %d), feet y %.3f, dose %.2f, burning %d, chill %d, marked %d, glow '%s', sink %.1f, AP %d, loss '%s'" % [tag,
 		str(agent.cell) if agent != null else "-", String(info.get("kind", "-")), int(info.get("solid", 0)), feet, _liquid_dose, st.burning, st.chill, st.marked,
@@ -10108,8 +10051,8 @@ func _telemetry_view_tick() -> void:
 func _process(_delta: float) -> void:
 	MemStage.trace_frame()
 	_sync_dev_overlay_view()
-	if _test_zone_controller != null:
-		_test_zone_controller.fuse_fx_tick(_delta)
+	if _grenade_controller != null:
+		_grenade_controller.fuse_fx_tick(_delta)
 	_tick_liquid_fire_lights(_delta)
 	for k in range(_liquid_flames.size()):    ## M6 F5: the flame balls of every burning body
 		var flame_sheet = _liquid_fire_sheets[k]
@@ -10743,8 +10686,8 @@ func _input(event: InputEvent) -> void:
 			_update_movement_highlight()
 
 			## T-GRENADE: Update grenade targeting display when hover changes
-			if _test_zone_controller != null and _test_zone_controller.is_in_targeting_mode():
-				_test_zone_controller._update_grenade_targeting_display()
+			if _grenade_controller != null and _grenade_controller.is_in_targeting_mode():
+				_grenade_controller._update_grenade_targeting_display()
 
 			## UI-01: Update selection and path preview on hover
 			if _is_selectable_cell(_hovered_cell):
@@ -10808,10 +10751,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		## The WEAPON's aim needs no case here — it is a modal context menu, and
 		## the guard at the top of this function already swallows every click
 		## while `_context_menu.visible`.
-		if _test_zone_controller != null and _test_zone_controller.is_targeting():
+		if _grenade_controller != null and _grenade_controller.is_targeting():
 			var aim_cell := _screen_to_tile(mb.position)
 			if aim_cell != INVALID_CELL:
-				_test_zone_controller.handle_targeting_click(aim_cell)
+				_grenade_controller.handle_targeting_click(aim_cell)
 			get_viewport().set_input_as_handled()
 			return
 
@@ -10827,10 +10770,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		## silently killed the test_zone_menu / test_zone_detonate /
 		## test_zone_escape capture actions, which drive exactly this click.
 		var grenade_index := -1
-		if _test_zone_controller != null:
-			grenade_index = _test_zone_controller.hit_test(mb.position)
+		if _grenade_controller != null:
+			grenade_index = _grenade_controller.hit_test(mb.position)
 		if grenade_index != -1:
-			_test_zone_controller.open_menu_for(grenade_index)
+			_grenade_controller.open_menu_for(grenade_index)
 			get_viewport().set_input_as_handled()
 			return
 		## §6c / B1: right-click an ENEMY opens "Atirar" instead of walking the
@@ -10860,8 +10803,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not mb.pressed:
 		## Left mouse released: check if it was just a click (not a drag handled by CameraController)
 		var cell := _screen_to_tile(mb.position)
-		Telemetry.event("input.tap", {"cell": cell, "aiming": _test_zone_controller != null
-			and _test_zone_controller.is_targeting()})
+		Telemetry.event("input.tap", {"cell": cell, "aiming": _grenade_controller != null
+			and _grenade_controller.is_targeting()})
 
 		## UI-02 / INPUT-SPLIT-01: on TOUCH devices the (emulated) left tap
 		## drives the full mobile flow — first tap selects, tapping the
@@ -10875,8 +10818,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			## Director's 2026-08-19 standardisation); both routes call the same
 			## `handle_targeting_click()`, so select-then-confirm behaves
 			## identically whichever device is driving it.
-			if _test_zone_controller != null \
-					and _test_zone_controller.handle_targeting_click(cell):
+			if _grenade_controller != null \
+					and _grenade_controller.handle_targeting_click(cell):
 				get_viewport().set_input_as_handled()
 				return
 			if DisplayServer.is_touchscreen_available():
@@ -10956,8 +10899,8 @@ func _capture_walk_filmstrip() -> void:
 	## INFILTRAITOR_WALK_PHASES subsamples the baked cycle, so the frame COUNT can
 	## be bracketed against the identical poses instead of a re-bake.
 	var phases_env := OS.get_environment("INFILTRAITOR_WALK_PHASES")
-	if phases_env.is_valid_int() and agent.sprite != null:
-		agent.sprite.set_walk_phase_quantise(phases_env.to_int())
+	if phases_env.is_valid_int() and agent.pose != null:
+		agent.pose.set_walk_phase_quantise(phases_env.to_int())
 	if _camera_controller != null:
 		## Framed on the MIDDLE of the run, not on the agent, so the camera never
 		## moves during the capture. A camera that tracks would hide exactly the
@@ -11074,7 +11017,7 @@ func _pane_by_id(pane_id: String) -> Array:
 ## about a blast on fabric, cardboard, plywood, brick or glass meant editing a
 ## constant. This is the same env-gated dev seam the rest of this file uses.
 func _seed_dev_grenades_if_empty(tag: String) -> void:
-	if _test_zone_controller == null or not _test_zone_controller._grenades.is_empty():
+	if _grenade_controller == null or not _grenade_controller._grenades.is_empty():
 		return
 	var cells: Array = TEST_ZONE_GRENADE_GUS
 	## RENDER3D R3D-0 — through DevFlags so the GLASS reference captures can seed their
@@ -11091,9 +11034,9 @@ func _seed_dev_grenades_if_empty(tag: String) -> void:
 		if not parsed.is_empty():
 			cells = parsed
 	for seed_gu in cells:
-		_test_zone_controller.add_grenade(seed_gu)
+		_grenade_controller.add_grenade(seed_gu)
 	print("[%s] seeded %d dev grenade(s) — PLAYGROUND no longer ships them" % [
-		tag, _test_zone_controller._grenades.size()])
+		tag, _grenade_controller._grenades.size()])
 
 
 ## WEAPON_MASTER_PLAN §6c Part E — the evidence capture for "the agent shoots".
@@ -11471,11 +11414,11 @@ func _capture_detonation_filmstrip() -> void:
 
 	_seed_dev_grenades_if_empty("P-FILM")
 
-	if tz_index < 0 or tz_index >= _test_zone_controller._grenades.size():
+	if tz_index < 0 or tz_index >= _grenade_controller._grenades.size():
 		push_error("[P-FILM] grenade index %d out of range (%d placed)" % [
-			tz_index, _test_zone_controller._grenades.size()])
+			tz_index, _grenade_controller._grenades.size()])
 		return
-	var gu: Vector2i = _test_zone_controller._grenades[tz_index]["gu_cell"]
+	var gu: Vector2i = _grenade_controller._grenades[tz_index]["gu_cell"]
 	if _camera_controller != null and agent != null:
 		_camera_controller.focus_on(agent._cell_to_world(gu))
 	if _fow_controller != null:
@@ -11503,7 +11446,7 @@ func _capture_detonation_filmstrip() -> void:
 	## by the time the action's own visuals play"). close() emits only `closed`,
 	## never `cancelled`, so `_active_index` survives it — cancel_active() is what
 	## would clear it, and that is on the cancelled path.
-	_test_zone_controller.open_menu_for(tz_index)
+	_grenade_controller.open_menu_for(tz_index)
 	if _context_menu != null:
 		_context_menu.close()
 	if _blast_wireframe_overlay != null:
@@ -11511,7 +11454,7 @@ func _capture_detonation_filmstrip() -> void:
 	## CELL-PROBE — armed on the board as it stands one line before the blast, so
 	## every cell it holds is one this detonation is about to act on.
 	cell_probe_arm(gu)
-	_test_zone_controller.detonate_active()
+	_grenade_controller.detonate_active()
 
 	## `RenderingServer.frame_post_draw`, NOT `SceneTree.process_frame`.
 	##
@@ -11535,18 +11478,18 @@ func _capture_detonation_filmstrip() -> void:
 		## carries it, and through the same close-then-detonate order as the
 		## first: the menu must be gone before the blast's own visuals play.
 		if second_at >= 0 and i == second_at:
-			if second_index >= 0 and second_index < _test_zone_controller._grenades.size():
+			if second_index >= 0 and second_index < _grenade_controller._grenades.size():
 				print("[P-FILM] second grenade at frame %d, gu=%s" % [
-					i, _test_zone_controller._grenades[second_index]["gu_cell"]])
-				_test_zone_controller.open_menu_for(second_index)
+					i, _grenade_controller._grenades[second_index]["gu_cell"]])
+				_grenade_controller.open_menu_for(second_index)
 				if _context_menu != null:
 					_context_menu.close()
 				if _blast_wireframe_overlay != null:
 					_blast_wireframe_overlay.clear()
-				_test_zone_controller.detonate_active()
+				_grenade_controller.detonate_active()
 			else:
 				push_warning("[P-FILM] second grenade index %d out of range (%d placed)" % [
-					second_index, _test_zone_controller._grenades.size()])
+					second_index, _grenade_controller._grenades.size()])
 		await ScenarioDrawRef.next_drawn_frame(get_tree())
 		## CELL-PROBE — sampled HERE and not in the idle pass, so probe frame N is
 		## image frame N. A restoration this reports on f124 is the f124 the
@@ -11855,11 +11798,8 @@ func _capture_all_four_views() -> void:
 ## TEST-ZONE placeholder (2026-07-22): open floor cell 2 GU south of each
 ## wall segment's middle voxel (Director's call — clear of the block instead
 ## of hugging it) on the rebuilt PLAYGROUND (maps/PLAYGROUND.map.json) — one
-## grenade per wall material (concrete/metal/stone/wood). The grenade itself
-## is a baked sprite — see TestZoneController's own header for the
-## ACTOR_MASTER_PLAN D1/D2 prototype this became. Populated via
-## TestZoneController whenever PLAYGROUND loads — see
-## _populate_test_zone_if_playground().
+## grenade per wall material (concrete/metal/stone/wood). PLAYGROUND no longer
+## ships them: the dev captures seed them from here (`_seed_dev_grenades_if_empty`).
 const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 	Vector2i(3, 5),   ## concrete wall (gu 2,2 - 4,2)
 	Vector2i(8, 5),   ## metal wall (gu 7,2 - 9,2)
@@ -11915,9 +11855,9 @@ const TEST_ZONE_COLLECTIBLES: Array[Dictionary] = [
 ## boot, before load_map()'s own call site can reach a controller that
 ## doesn't exist yet). No-ops on every map except PLAYGROUND.
 func _populate_test_zone_if_playground() -> void:
-	if _test_zone_controller == null:
+	if _grenade_controller == null:
 		return
-	_test_zone_controller.clear()
+	_grenade_controller.clear()
 	for pickup in _collectibles:
 		if pickup != null and is_instance_valid(pickup):
 			pickup.queue_free()
@@ -11926,10 +11866,9 @@ func _populate_test_zone_if_playground() -> void:
 	## The weapons bench and the floor grenades were RETIRED here 2026-08-17
 	## (Director: "vamos fazer os testes com o agente mesmo, então não
 	## precisamos mais desse esquema") — firing now goes through the agent
-	## himself (WEAPON_MASTER_PLAN §6c), not a static bench prop. Left as dead
-	## constants below (TEST_ZONE_GRENADE_GUS, TEST_ZONE_WEAPON_ROWS,
-	## TEST_ZONE_WALL_GU_X) rather than deleted: they carry real calibration
-	## history (§6b's shotgun row-distance derivation) other docs still cite.
+	## himself (WEAPON_MASTER_PLAN §6c), not a static bench prop. The weapon rows
+	## are gone; TEST_ZONE_GRENADE_GUS stays because the dev captures seed their
+	## grenades from it (`_seed_dev_grenades_if_empty`).
 	if map_id == "PLAYGROUND":
 		var FloatingCollectibleClass = preload("res://godot/scripts/overlays/floating_collectible.gd")
 
@@ -12083,9 +12022,9 @@ func _run_auto_screenshot_capture() -> void:
 	var posture_env := OS.get_environment("INFILTRAITOR_CAPTURE_POSTURE")
 	if posture_env != "" and agent != null:
 		var wanted: Variant = {
-			"standing": DebugAgent.Posture.STANDING,
-			"crouch": DebugAgent.Posture.CROUCHING,
-			"prone": DebugAgent.Posture.PRONE,
+			"standing": Agent.Posture.STANDING,
+			"crouch": Agent.Posture.CROUCHING,
+			"prone": Agent.Posture.PRONE,
 		}.get(posture_env.strip_edges().to_lower())
 		if wanted == null:
 			push_warning("[SCREENSHOT-HOOK-01] Unknown INFILTRAITOR_CAPTURE_POSTURE '%s' — expected standing/crouch/prone" % posture_env)
@@ -12099,7 +12038,7 @@ func _run_auto_screenshot_capture() -> void:
 	## uses on a real move, so what is captured is a facing the game can actually
 	## produce.
 	var facing_env := OS.get_environment("INFILTRAITOR_CAPTURE_FACING")
-	if facing_env != "" and agent != null and agent.sprite != null:
+	if facing_env != "" and agent != null and agent.pose != null:
 		var step: Variant = {
 			"N": Vector2i(0, -1), "E": Vector2i(1, 0),
 			"S": Vector2i(0, 1), "W": Vector2i(-1, 0),
@@ -12107,7 +12046,7 @@ func _run_auto_screenshot_capture() -> void:
 		if step == null:
 			push_warning("[SCREENSHOT-HOOK-01] Unknown INFILTRAITOR_CAPTURE_FACING '%s' — expected N/E/S/W" % facing_env)
 		else:
-			agent.sprite.face_step(step)
+			agent.pose.face_step(step)
 			for _j in range(4):
 				await get_tree().process_frame
 
@@ -12117,12 +12056,12 @@ func _run_auto_screenshot_capture() -> void:
 		## views — the crater/soot must persist through each rotation. Index
 		## defaults to 0 (concrete/metal); INFILTRAITOR_CAPTURE_DETONATE_INDEX
 		## selects another test-zone grenade (VL-D4: 3 = wood).
-		if OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_FIRST") == "1" and _test_zone_controller != null:
+		if OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_FIRST") == "1" and _grenade_controller != null:
 			var detonate_index_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_INDEX")
 			var detonate_index := detonate_index_env.to_int() if detonate_index_env.is_valid_int() else 0
 			_seed_dev_grenades_if_empty("CAPTURE-VIEWS")
-			_test_zone_controller.open_menu_for(detonate_index)
-			_test_zone_controller.detonate_active()
+			_grenade_controller.open_menu_for(detonate_index)
+			_grenade_controller.detonate_active()
 			for _j in range(45):
 				await get_tree().process_frame
 		await _capture_all_four_views()
@@ -12142,7 +12081,7 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "agent_shot" and _agent_shot_controller != null:
 		await _capture_agent_shot()
-	elif capture_action == "detonation_filmstrip" and _test_zone_controller != null:
+	elif capture_action == "detonation_filmstrip" and _grenade_controller != null:
 		await _capture_detonation_filmstrip()
 		get_tree().quit(0)
 		return
@@ -12170,7 +12109,7 @@ func _run_auto_screenshot_capture() -> void:
 		Input.parse_input_event(esc_up)
 		for _j in range(10):
 			await get_tree().process_frame
-	elif (capture_action == "test_zone_view" or capture_action == "test_zone_menu" or capture_action == "test_zone_detonate" or capture_action == "test_zone_escape") and _test_zone_controller != null:
+	elif (capture_action == "test_zone_view" or capture_action == "test_zone_menu" or capture_action == "test_zone_detonate" or capture_action == "test_zone_escape") and _grenade_controller != null:
 		## TEST-ZONE placeholder (2026-07-21) dev capture action, same
 		## standing-tool precedent as end_turn/busted above. "test_zone_view"
 		## just frames the grenade (no click) for a plain look; "test_zone_menu"
@@ -12205,8 +12144,8 @@ func _run_auto_screenshot_capture() -> void:
 			for part in probe_env.split(";", false):
 				var xy := part.split(",")
 				probe_targets.append(Vector2i(int(xy[0]), int(xy[1])))
-			_test_zone_controller.probe_throw_clamp(probe_targets)
-			_test_zone_controller.probe_pick()
+			_grenade_controller.probe_throw_clamp(probe_targets)
+			_grenade_controller.probe_pick()
 		if capture_action != "test_zone_view":
 			## The floor grenades were retired from PLAYGROUND 2026-08-17 (see
 			## _populate_test_zone_if_playground()), so this action seeds its own
@@ -12216,7 +12155,7 @@ func _run_auto_screenshot_capture() -> void:
 			## that reaches DetonationPlanBuilder.print_census(), which is where
 			## the per-surface/material tally (including JUNCTION) is read.
 			_seed_dev_grenades_if_empty("SCREENSHOT-HOOK-01")
-			if _test_zone_controller._grenades.is_empty():
+			if _grenade_controller._grenades.is_empty():
 				push_warning("[SCREENSHOT-HOOK-01] %s: no grenade to detonate" % capture_action)
 				get_tree().quit(1)
 				return
@@ -12227,7 +12166,7 @@ func _run_auto_screenshot_capture() -> void:
 				_set_perspective(view_env)
 				for _v in range(20):
 					await get_tree().process_frame
-				var view_gu: Vector2i = _test_zone_controller._grenades[tz_index]["gu_cell"]
+				var view_gu: Vector2i = _grenade_controller._grenades[tz_index]["gu_cell"]
 				if _camera_controller != null and agent != null:
 					_camera_controller.focus_on(agent._cell_to_world(view_gu))
 				if _fow_controller != null:
@@ -12235,7 +12174,7 @@ func _run_auto_screenshot_capture() -> void:
 				for _v2 in range(10):
 					await get_tree().process_frame
 			## D22-INPUT-01: click the GU floor cell, not the sprite.
-			var g_cell: Vector2i = _test_zone_controller._grenades[tz_index]["gu_cell"]
+			var g_cell: Vector2i = _grenade_controller._grenades[tz_index]["gu_cell"]
 			var click := InputEventMouseButton.new()
 			click.button_index = MOUSE_BUTTON_RIGHT
 			click.pressed = true
@@ -12292,7 +12231,7 @@ func _run_auto_screenshot_capture() -> void:
 			if rotate_after in ["N", "E", "S", "W"]:
 				## Re-read the grenade's GU here: the click block above scopes its
 				## own copy, and this runs whether or not that block ran.
-				var blast_gu: Vector2i = _test_zone_controller._grenades[tz_index]["gu_cell"]
+				var blast_gu: Vector2i = _grenade_controller._grenades[tz_index]["gu_cell"]
 				var gu_base := blast_gu
 				_set_perspective(rotate_after)
 				for _r in range(30):
@@ -12318,7 +12257,7 @@ func _run_auto_screenshot_capture() -> void:
 			for _j in range(10):
 				await get_tree().process_frame
 	elif capture_action in ["grenade_aim", "grenade_throw", "grenade_cancel",
-			"grenade_tap", "grenade_second"] and _test_zone_controller != null:
+			"grenade_tap", "grenade_second"] and _grenade_controller != null:
 		## T-MODE/E-BUBBLE dev capture action (2026-08-10) — the unattended path
 		## for the aiming preview, same standing-tool precedent as weapon_menu
 		## above (which exists so the CONE preview can be captured rather than
@@ -12442,7 +12381,7 @@ func _run_auto_screenshot_capture() -> void:
 					await get_tree().process_frame
 				print("[T-SECOND] shot %d: targeting=%s picked_index=%d" %
 					[shot + 1, is_grenade_targeting(),
-					_test_zone_controller._targeting_grenade_index])
+					_grenade_controller._targeting_grenade_index])
 				var motion2 := InputEventMouseMotion.new()
 				motion2.position = _tile_to_screen_center(aim_cell + second_offset * shot)
 				_input(motion2)
@@ -12772,8 +12711,8 @@ func _run_detonation_benchmark() -> void:
 			+ "dev set has %d — the surplus runs will measure nothing."
 			% DEV_GRENADE_COUNT)
 
-	if _test_zone_controller == null:
-		push_error("[BENCH] no TestZoneController — the benchmark needs the "
+	if _grenade_controller == null:
+		push_error("[BENCH] no GrenadeController — the benchmark needs the "
 			+ "dev grenade set, which only PLAYGROUND seeds.")
 		return
 
@@ -12794,8 +12733,8 @@ func _run_detonation_benchmark() -> void:
 		## Each run takes the next grenade in the dev set.
 		var index: int = grenade_index + run
 		print("[BENCH] --- run %d of %d (grenade #%d) ---" % [run + 1, runs, index])
-		_test_zone_controller.open_menu_for(index)
-		_test_zone_controller.detonate_active()
+		_grenade_controller.open_menu_for(index)
+		_grenade_controller.detonate_active()
 
 		## Wait for the blast to actually finish rather than for a guessed number
 		## of frames. The cap is a safety net, not the expected exit: a run that
@@ -12804,7 +12743,7 @@ func _run_detonation_benchmark() -> void:
 		const MAX_WAIT_FRAMES: int = 3600
 		## `is_blast_playing()`, NOT `is_resolving_action()` — see that method's
 		## own comment. The action lock clears roughly halfway through the blast.
-		while (is_resolving_action() or _test_zone_controller.is_blast_playing()) \
+		while (is_resolving_action() or _grenade_controller.is_blast_playing()) \
 				and waited < MAX_WAIT_FRAMES:
 			await get_tree().process_frame
 			waited += 1
@@ -12948,8 +12887,8 @@ func scenario_canvas_check(label: String) -> void:
 
 ## RETIRE-2D — `aim <x,y>`: the grenade targeting preview on a GU, as a player aiming (stays open).
 func scenario_aim(cell: Vector2i) -> bool:
-	if _test_zone_controller == null:
-		push_error("[Room] scenario_aim: no TestZoneController — dev grenades exist on PLAYGROUND only")
+	if _grenade_controller == null:
+		push_error("[Room] scenario_aim: no GrenadeController — dev grenades exist on PLAYGROUND only")
 		return false
 	_seed_dev_grenades_if_empty("SCENARIO")
 	## `SHOT_AGENT_CELL` places the agent first, as `scenario_shoot()` does: the aim is clamped to the throw range FROM the agent,
@@ -12957,20 +12896,20 @@ func scenario_aim(cell: Vector2i) -> bool:
 	var agent_xy: PackedStringArray = _dev_flag("SHOT_AGENT_CELL", "").split(",")
 	if agent_xy.size() == 2 and agent_xy[0].is_valid_int() and agent_xy[1].is_valid_int():
 		agent.set_cell(Vector2i(agent_xy[0].to_int(), agent_xy[1].to_int()))
-	_test_zone_controller.enter_grenade_mode()
-	if not _test_zone_controller.is_in_targeting_mode():
+	_grenade_controller.enter_grenade_mode()
+	if not _grenade_controller.is_in_targeting_mode():
 		push_error("[Room] scenario_aim: targeting did not open")
 		return false
-	_test_zone_controller._set_targeting_target(cell)
+	_grenade_controller._set_targeting_target(cell)
 	return true
 
 
 ## Cancels the grenade aim `scenario_aim()` opened (the real `cancel_targeting()`: the arm comes down, the fuse sparks ramp to 0).
 func scenario_aim_cancel() -> bool:
-	if _test_zone_controller == null or not _test_zone_controller.is_in_targeting_mode():
+	if _grenade_controller == null or not _grenade_controller.is_in_targeting_mode():
 		push_error("[Room] scenario_aim_cancel: no grenade aim is open")
 		return false
-	_test_zone_controller.cancel_targeting()
+	_grenade_controller.cancel_targeting()
 	return true
 
 
@@ -13004,10 +12943,10 @@ func _on_posture_lower_requested() -> void:
 	print_debug("[ROOM] Handler: posture lower")
 	## Z lowers: STANDING -> CROUCHING -> PRONE
 	var next_posture := agent.posture
-	if agent.posture == DebugAgent.Posture.STANDING:
-		next_posture = DebugAgent.Posture.CROUCHING
-	elif agent.posture == DebugAgent.Posture.CROUCHING:
-		next_posture = DebugAgent.Posture.PRONE
+	if agent.posture == Agent.Posture.STANDING:
+		next_posture = Agent.Posture.CROUCHING
+	elif agent.posture == Agent.Posture.CROUCHING:
+		next_posture = Agent.Posture.PRONE
 	
 	if next_posture != agent.posture:
 		_debug_tools_controller.try_change_posture(next_posture)
@@ -13020,10 +12959,10 @@ func _on_posture_raise_requested() -> void:
 	print_debug("[ROOM] Handler: posture raise")
 	## X raises: PRONE -> CROUCHING -> STANDING
 	var next_posture := agent.posture
-	if agent.posture == DebugAgent.Posture.PRONE:
-		next_posture = DebugAgent.Posture.CROUCHING
-	elif agent.posture == DebugAgent.Posture.CROUCHING:
-		next_posture = DebugAgent.Posture.STANDING
+	if agent.posture == Agent.Posture.PRONE:
+		next_posture = Agent.Posture.CROUCHING
+	elif agent.posture == Agent.Posture.CROUCHING:
+		next_posture = Agent.Posture.STANDING
 	
 	if next_posture != agent.posture:
 		_debug_tools_controller.try_change_posture(next_posture)
@@ -13102,7 +13041,7 @@ func _on_pause_requested() -> void:
 ## T-GRENADE: whether a throw is currently being aimed. InputController asks
 ## before claiming Enter/Escape — see its _is_grenade_targeting().
 func is_grenade_targeting() -> bool:
-	return _test_zone_controller != null and _test_zone_controller.is_in_targeting_mode()
+	return _grenade_controller != null and _grenade_controller.is_in_targeting_mode()
 
 
 ## T-MODE (Phase B): G key to enter grenade targeting mode
@@ -13121,8 +13060,8 @@ func _on_grenade_mode_requested() -> void:
 	## PERF-F7: the grenade's fire is still resolving — see is_resolving_action().
 	if is_resolving_action():
 		return
-	if _test_zone_controller != null:
-		_test_zone_controller.enter_grenade_mode()
+	if _grenade_controller != null:
+		_grenade_controller.enter_grenade_mode()
 
 
 ## T-GRENADE: Enter key to throw grenade
@@ -13130,14 +13069,14 @@ func _on_grenade_throw_requested() -> void:
 	## PERF-F7: the grenade's fire is still resolving — see is_resolving_action().
 	if is_resolving_action():
 		return
-	if _test_zone_controller != null:
-		_test_zone_controller.execute_grenade_throw()
+	if _grenade_controller != null:
+		_grenade_controller.execute_grenade_throw()
 
 
 ## T-GRENADE: ESC key to cancel grenade mode
 func _on_grenade_cancel_requested() -> void:
-	if _test_zone_controller != null:
-		_test_zone_controller.cancel_targeting()
+	if _grenade_controller != null:
+		_grenade_controller.cancel_targeting()
 
 
 func _on_controls_requested() -> void:
@@ -13167,7 +13106,7 @@ func _cancel_context_menu() -> void:
 ##
 ## §6c added the third: the agent's shot, armed from an ENEMY rather than a prop.
 func _cancel_prop_menus() -> void:
-	_test_zone_controller.cancel_active()
+	_grenade_controller.cancel_active()
 	if _agent_shot_controller != null:
 		_agent_shot_controller.cancel_active()
 

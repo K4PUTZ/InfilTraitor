@@ -353,9 +353,6 @@ func _move_pins_out_of_boxes() -> void:
 			pos[o + 2] = at.z
 
 
-func node_index(i: int, j: int) -> int:
-	return i * nz + j
-
 
 func node_position(i: int, j: int) -> Vector3:
 	var o: int = (i * nz + j) * 3
@@ -381,9 +378,6 @@ func alpha() -> float:
 func is_settled() -> bool:
 	return _quiet >= SETTLE_TIME or time >= MAX_SIM_TIME
 
-
-func steps_run() -> int:
-	return _steps
 
 
 ## A result read back from `SoftSheetRestCache`: the node positions of a cloth settled before, at rest (no velocity).

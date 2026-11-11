@@ -43,7 +43,6 @@ var show_depth: bool = true
 var show_confidence: bool = true
 var show_stability: bool = false
 var show_contours: bool = false
-var show_risk_zones: bool = false
 var show_safe_corridors: bool = false
 
 # Opacity control

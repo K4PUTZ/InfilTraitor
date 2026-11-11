@@ -173,7 +173,7 @@ func _build_ctx(built: Dictionary) -> Dictionary:
 		"lights": _real_light_sources(builder),
 		"shadow_results": [],
 		## E-JUNCTION-01: real coverage, not a defaulted-empty ctx — matches
-		## test_zone_controller.gd's real _build_detonation_ctx() shape.
+		## grenade_controller.gd's real _build_detonation_ctx() shape.
 		"junction_columns": built["room"]._junction_columns,
 	}
 

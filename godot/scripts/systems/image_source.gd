@@ -36,10 +36,3 @@ static func load_image(path: String, err_out: Array = []) -> Image:
 	err_out.append(ERR_FILE_NOT_FOUND)
 	return null
 
-
-## `load_image()` wrapped as an ImageTexture — the shape the sprite loaders need.
-static func load_texture(path: String, err_out: Array = []) -> Texture2D:
-	var img := load_image(path, err_out)
-	if img == null:
-		return null
-	return ImageTexture.create_from_image(img)

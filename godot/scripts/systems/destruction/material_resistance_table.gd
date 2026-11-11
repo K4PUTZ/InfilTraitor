@@ -209,10 +209,6 @@ static func flammability(material: String) -> float:
 	return float(_row(material).get("flammability", DEFAULT_FLAMMABILITY))
 
 
-## The gate, named once so no call site re-derives it as `> 0.0` and drifts.
-static func is_combustible(material: String) -> bool:
-	return flammability(material) > 0.0
-
 
 ## A numeric column of a row: a string, a NaN or a number outside [lo, hi] is reported with its row (`load_errors`) and the default stands, never a silent 0 or a NaN in a formula.
 static func _number(row: Dictionary, key: String, default: float, id: String, lo: float = -INF, hi: float = INF) -> float:

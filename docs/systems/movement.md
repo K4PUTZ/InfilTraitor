@@ -2,7 +2,7 @@
 
 > **Grid navigation, turn structure, and action point economy.**
 
-> ✅ **Reconciled against the code 2026-10-02.** **Built:** 2 AP per player turn (`TacticalTurnManager.max_ap`), **3 movement points per AP** (`move_points_per_ap`, each cell costs 1 point, so 3 cells per AP, 6 per full turn), the Dijkstra reach overlay over 4-directional cells with blocked cells and edges (`navigation/movement_overlay.gd`), the path preview, posture costs (`DebugAgent.POSTURE_MOVE_AP_COST`, `POSTURE_CHANGE_AP`), a wall peek (1 AP, reveals 3 tiles). **Spent on nothing yet:** shots and grenade throws are dev tools and cost no AP. **Design only:** the rough-terrain and water-current rows, gadgets and skills with AP costs, Interact, Overwatch. Map sizes vary (`PLAYGROUND` 44x22, `DORM` 14x9): there is no fixed room size.
+> ✅ **Reconciled against the code 2026-10-02.** **Built:** 2 AP per player turn (`TacticalTurnManager.max_ap`), **3 movement points per AP** (`move_points_per_ap`, each cell costs 1 point, so 3 cells per AP, 6 per full turn), the Dijkstra reach overlay over 4-directional cells with blocked cells and edges (`navigation/movement_overlay.gd`), the path preview, posture costs (`Agent.POSTURE_MOVE_AP_COST`, `POSTURE_CHANGE_AP`), a wall peek (1 AP, reveals 3 tiles). **Spent on nothing yet:** shots and grenade throws are dev tools and cost no AP. **Design only:** the rough-terrain and water-current rows, gadgets and skills with AP costs, Interact, Overwatch. Map sizes vary (`PLAYGROUND` 44x22, `DORM` 14x9): there is no fixed room size.
 
 ---
 

@@ -67,7 +67,7 @@ func create_grenade_button() -> void:
 
 
 func _on_grenade_button_pressed() -> void:
-	var tz = room._test_zone_controller
+	var tz = room._grenade_controller
 	if tz != null and tz.is_in_targeting_mode():
 		room._on_grenade_cancel_requested()
 	else:
@@ -133,15 +133,15 @@ func reset_nudge() -> void:
 
 
 ## Try to change agent posture (Z key to cycle STANDING → CROUCHING → PRONE)
-func try_change_posture(new_posture: DebugAgent.Posture) -> void:
+func try_change_posture(new_posture: Agent.Posture) -> void:
 	if room.agent.posture == new_posture:
 		return
 	if room.turn_manager.is_enemy_phase:
 		return
-	if room.turn_manager.current_ap < DebugAgent.POSTURE_CHANGE_AP:
+	if room.turn_manager.current_ap < Agent.POSTURE_CHANGE_AP:
 		return
 		
-	room.turn_manager.consume_ap(DebugAgent.POSTURE_CHANGE_AP)
+	room.turn_manager.consume_ap(Agent.POSTURE_CHANGE_AP)
 	room.agent.set_posture(new_posture)
 	room._refresh_tactical_state()
 

@@ -197,7 +197,7 @@ func add_roof_column_below(key: Vector3i, out: Dictionary) -> void:
 ## (VL-D3); their floor voxels read darker once exposed.
 ## PERF-03 — `geometry_only` says: LIGHTS, SHADOWS, top_wall_level and cover are
 ## unchanged since the last build; only occupancy moved. That is
-## exactly a detonation (TestZoneController.detonate_active() repaints directly
+## exactly a detonation (GrenadeController.detonate_active() repaints directly
 ## and never re-runs the shadow projector), and it is what lets this keep the
 ## caches instead of dropping them. Defaults FALSE, so every other caller —
 ## map load, real light changes — keeps the unconditional
@@ -459,13 +459,6 @@ func is_buried(cell: Vector2i, level: int) -> bool:
 			and _occupancy_has(level + 1, cell)
 
 
-## True when any light the field holds is a fire (a map with none never pays for `warm_for`).
-func has_warm_lights() -> bool:
-	for light in _lights:
-		if light.warmth > 0.0 and (light.active or light.fading):
-			return true
-	return false
-
 
 ## Bucket for one voxel cell at one layer level. 0 = darkest … N-1 = full lit.
 ## PB-6 (2026-10-09) — `bucket_for()` for EVERY cell of one level in one call, the map-wide pass's hot loop: the same maths as
@@ -571,11 +564,6 @@ func buckets_for_level(level: int, cells: Array, maps: Dictionary, origin: Vecto
 		i += 1
 	return out
 
-
-static func _occ_at(map: PackedByteArray, x: int, y: int, width: int, height: int) -> int:
-	if x < 0 or y < 0 or x >= width or y >= height:
-		return 0
-	return 1 if map[y * width + x] != 0 else 0
 
 
 ## Q5 (2026-10-09): the occupancy this field was built from when it is the store's LIVE one (`VoxelStore.occupancy_live()`), else

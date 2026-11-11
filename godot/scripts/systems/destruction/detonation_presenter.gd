@@ -100,7 +100,7 @@ var _writer := DetonationEntryWriter.new()
 var _t0_ms: int = 0
 
 
-## Same signature as the choreographer's, deliberately: `TestZoneController` wires
+## Same signature as the choreographer's, deliberately: `GrenadeController` wires
 ## both from one call site and a diverging signature is a place for them to differ
 ## in what they were HANDED rather than in what they do.
 func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {},

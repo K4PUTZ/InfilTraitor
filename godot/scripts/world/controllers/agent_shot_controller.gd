@@ -68,7 +68,7 @@ const PELLET_FLOOD_MAX_STEPS: int = 40
 const MUZZLE_LEVELS_ABOVE_GROUND: int = 4
 
 ## How far above a guard's own origin the menu anchors, in pixels. Deliberately
-## NOT DebugAgent.SILHOUETTE_HEIGHT: that constant measures the BAKED figure, and
+## NOT Agent.SILHOUETTE_HEIGHT: that constant measures the BAKED figure, and
 ## agent.gd's own header records that the guards are still vector diamonds
 ## (Part 7). Borrowing the agent's 222 px would float the menu well above a
 ## diamond that is nothing like that tall. Re-derive this from the guard's own
@@ -168,8 +168,8 @@ func set_weapon(weapon_id: String) -> void:
 	## to the shotgun suffix rather than to a guess: a weapon nobody has baked and
 	## a weapon nobody has named should look the same, which is "the one that
 	## exists".
-	if room.agent != null and is_instance_valid(room.agent) and room.agent.sprite != null:
-		room.agent.sprite.set_weapon_bake(String(WEAPON_BAKE_SUFFIX.get(weapon_id, "")))
+	if room.agent != null and is_instance_valid(room.agent) and room.agent.pose != null:
+		room.agent.pose.set_weapon_bake(String(WEAPON_BAKE_SUFFIX.get(weapon_id, "")))
 	if _active_guard_index < 0:
 		return
 	var guards: Array = room._guards
@@ -240,8 +240,8 @@ func open_menu_for(index: int) -> void:
 		## reduction from an arbitrary delta to one of D44's four facings (a
 		## diagonal has no frame and never will), so this passes the raw GU delta
 		## and lets the sprite apply the rule in the one place it lives.
-		if room.agent.sprite != null:
-			room.agent.sprite.face_direction(guard.cell - room.agent.cell)
+		if room.agent.pose != null:
+			room.agent.pose.face_direction(guard.cell - room.agent.cell)
 		room.agent.set_grip(GRIP_AIMED)
 	## W-PRECOOK: the target is picked, so the warm starts NOW. Everything below
 	## is a PREDICTION — nothing is committed and nothing is drawn — so a player
@@ -1241,7 +1241,7 @@ func _craze_pane_around_hole(hit_slice: Slice, hv: Voxel, hit_material: String,
 			% [landings.size(), g24_piles.size(), room.record_glass_shards(g24_piles)])
 
 
-## Same conversion TestZoneController and WeaponBenchController do — room's
+## Same conversion GrenadeController and WeaponBenchController do — room's
 ## {"from","to"} pairs folded into the keyed shape WallEdgeData queries.
 func _blocked_edges_dict() -> Dictionary:
 	var blocked: Dictionary = {}

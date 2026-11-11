@@ -2544,7 +2544,7 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 ##
 ## Restores VL-D4 ("wood ficar em brasa no momento da explosão, e depois de
 ## alguns segundos escurecer"), removed on 2026-08-05 by the `[RESET]` commit
-## `d4124809` along with `TestZoneController._is_freshly_scorched()`, and never
+## `d4124809` along with `GrenadeController._is_freshly_scorched()`, and never
 ## reconnected when Task 5 (E-WAVE) brought the trigger back. Three docs went on
 ## describing it as shipped for eight days; nothing in code had fired one since.
 ##
@@ -3262,7 +3262,7 @@ static func print_census(delta: WorldDelta, source_gu: Vector2i) -> void:
 ## common real case on PLAYGROUND — a real registered Slab always exists at
 ## FLOOR_DEEP_LEVEL) or the fixed earth plane beneath it (only reached once a
 ## SECOND blast opens the deep layer too — D2), WITHOUT applying either to
-## the live layer. Mirrors TestZoneController's pre-reset _expose_below()
+## the live layer. Mirrors GrenadeController's pre-reset _expose_below()
 ## exactly (same two branches, same below_level derivation).
 static func _resolve_expose_below(slab: Slab, voxel_board: VoxelBoardClass, slab_registry: SlabRegistry) -> Array:
 	var below_level: int = slab.level - 1

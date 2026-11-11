@@ -84,9 +84,6 @@ static func make_floor(cell_pos: Vector2i, light_rad: int = 3) -> LightAnchor:
 ## Debugging
 ## ============================================================================
 
-func debug_string() -> String:
-	return "[Anchor %s at %v radius:%d]" % [anchor_type, anchor_cell, light_radius]
-
 func debug_info() -> String:
 	var lines = [
 		"=== Light Anchor ===",

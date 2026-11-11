@@ -825,18 +825,6 @@ func finish_light_apply_job() -> void:
 		pass
 
 
-func light_apply_job_pending() -> bool:
-	return not _apply_job.is_empty()
-
-
-## Every level that has a placed cell in these GUs: what a light's repaint must upload, whatever the scene's heights (a pit, a pipe, a wall, a roof).
-func levels_in_gus(gus: Array) -> Dictionary:
-	var levels: Dictionary = {}
-	for gu in gus:
-		var placements: PackedInt32Array = _placed_by_gu.get(gu, PackedInt32Array())
-		for j: int in range(0, placements.size(), 3):
-			levels[placements[j]] = true
-	return levels
 
 
 ## FIRE LIGHT, sliced: every placed cell (key = Vector3i(x, y, level)) in these GUs, for a job that writes them a few ms a frame (`write_fire_cell`).
@@ -859,18 +847,6 @@ func write_fire_cell(field, key: Vector3i) -> bool:
 	_cell_planes.write_warm(level, cell, field.warm_for(cell, level))
 	return true
 
-
-## FIRE LIGHT — write the warmth plane (A) of every placed cell in these GUs from the field's fire lights. Only the fire ticker calls it (a plain lamp has warmth 0 and
-## never moves it). Returns nothing; flushes like the other apply paths. A cell with 0 before and after is not dirtied.
-func apply_warm_gus(field, gus: Array) -> void:
-	if LIGHT_DISABLED or field == null:
-		return
-	for gu in gus:
-		var placements: PackedInt32Array = _placed_by_gu.get(gu, PackedInt32Array())
-		for j: int in range(0, placements.size(), 3):
-			var cell := Vector2i(placements[j + 1], placements[j + 2])
-			_cell_planes.write_warm(placements[j], cell, field.warm_for(cell, placements[j]))
-	flush_cell_soot()
 
 
 func apply_light_field_gus(field, gus: Array) -> void:
@@ -1048,7 +1024,7 @@ var render_frame_budget_ms: float = 200.0
 ## _reapply_base_damage() (map rebuild/rotation) and
 ## slab_render_selftest.gd all call it expecting immediate completion, and
 ## none of them showed the multi-second stall this exists to avoid. Only
-## TestZoneController.detonate_active() and
+## GrenadeController.detonate_active() and
 ## WeaponBenchController.fire_active() — the two big-batch, player-triggered
 ## paths — use this one.
 ## D11 — `states` filters which DamageStates this pass renders, so a caller can
@@ -1952,42 +1928,6 @@ func _glass_opening_mask(opening_id: String) -> Dictionary:
 	return out
 
 
-## Show or hide every live crack SPRITE, for a same-boot alignment measurement.
-##
-## ⚠️ IT EXISTS BECAUSE THE CROSS-BOOT VERSION IS NOISE. Two boots of the GLASS
-## map differ by tens of thousands of pixels before anything glass-related moves,
-## so "photograph the hole in one boot and the web in another and compare
-## centroids" gives a delta with no meaning — measured 2026-09-04, the same pair
-## of frames put the hole's centroid 22 px apart from itself depending on which
-## mask was used. Hiding the sprite inside ONE boot isolates the web exactly.
-func set_glass_cracks_visible(v: bool) -> void:
-	for c in _glass_cracks:
-		c["visible"] = v
-
-
-## CRACK-04 — bind or UNBIND every live crack's opening void, for a same-boot A/B.
-##
-## ⚠️ IT HAS TO BE ONE BOOT. Two boots of this map differ by tens of thousands of
-## pixels before anything glass-related changes (the agent's selection marker
-## alone was 27 336 px when the rim's A/B was measured), so a diff across boots
-## cannot see a void two voxels wide. Unbinding sets the shader's mask back to its
-## `hint_default_black` default, which reads as "no hole" — the same state a pane
-## that only crazed is in, so this exercises a real code path rather than a
-## capture-only one.
-func set_glass_opening_void(enabled: bool) -> void:
-	for c in _glass_cracks:
-		var crack = c["crack"]
-		if crack == null:
-			continue
-		var oid: String = String(c.get("opening", ""))
-		if oid == "":
-			continue
-		if enabled:
-			var m: Dictionary = _glass_opening_mask(oid)
-			if not m.is_empty():
-				crack.set_opening(m["texture"], m["origin"], m["size"])
-		else:
-			crack.set_opening(null, Vector2.ZERO, Vector2.ONE)
 
 
 ## CRACK-04 — how many of the pane cells an opening shaped (`_glass_shaped_cells`) still hold glass.
@@ -2017,13 +1957,6 @@ func glass_crack_records() -> Array:
 func glass_applied_openings() -> Array:
 	return _glass_applied_openings
 
-
-func glass_crack_count() -> int:
-	var n: int = 0
-	for c in _glass_cracks:
-		if not bool(c.get("field", false)):
-			n += 1
-	return n
 
 
 ## G-D35 B-2 — how many blast-craze FIELDS are live.

@@ -55,7 +55,6 @@ static func storey_level_base(storey_index: int) -> int:
 const TEX_AUTHORING_N: int = 16
 
 ## Voxel atom dimensions
-const VOXEL_ATOM_W: int = 32     ## width
 const VOXEL_ATOM_H: int = 36     ## height: 16 top face + 20 side face
 const VOXEL_TILE_H: int = 16     ## tile height (top face only)
 

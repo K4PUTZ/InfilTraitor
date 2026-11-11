@@ -60,3 +60,29 @@ The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PER
 5. **JAMES is retired** (T6): "Pode remover, vamos trabalhar no Claude, porém no PC para fazer as músicas. O resto da engine continua
    aqui." His charter, gates, `CLAUDE.md` block and branch go; the HUD seam (rule 11 / L3) stays as architecture. The music is worked
    with Claude on the PC, on its own branch.
+
+## 6. Progress
+
+### T1 — DONE 2026-11-11 (`verify.py smoke` green, 130 s)
+- **Dead code:** 33 functions, 23 members and 11 unlistened signals of the 2026-11-04 list deleted, each grepped over the whole repo
+  first. **Kept, because the grep found them alive:** `scenario_reload`, `scenario_skylight_hit`, `scenario_relight` (the scenario
+  runner calls `"scenario_" + op`); the signals `scenario_detonation_done`, `remesh_committed`, `close_requested` (awaited / listened).
+  **Kept on purpose:** the posture tables (`POSTURE_MOVE_AP_COST` …) and the run noise constants (the stealth loop's data, GAMEPLAY
+  milestone), `SaveState.save_to_file()` / `load_from_file()` (T5). `TEST_ZONE_GRENADE_GUS` is LIVE (the dev captures seed their
+  grenades from it); the "weapon rows" were already gone, only a stale comment remained.
+- **Renames:** `DebugAgent` -> `Agent`; `Agent.sprite` / `attach_sprite()` -> `pose` / `attach_pose()` (agent and guard);
+  `TestZoneController` -> `GrenadeController` (`grenade_controller.gd`; the grenade record's `"sprite"` key -> `"prop"`).
+- **`PerspectiveMapper`:** 327 -> 74 lines (the cell maps and `is_valid_direction()` stay); `floor_zone_bake` and `roof_bake` test the
+  base layout, `roof_entity` checks the roof's placement, `slice_geometry` and `voxel_persist` lost their layout-rotation checks.
+- **Files:** the four orphan actor shaders; `generate_master_floor.py`, `migrate_asset_tree.py`, the four `d33_part*_fixture_gen.py`
+  and their fixtures (no selftest read them); `generate_voxel.py` 1 211 -> 665 lines, only the decal family (output diffed identical,
+  44 files and the manifest). ⚠️ Found on the way: the committed `ASSETS/materials/manifest.json` lists `brick`, which the script does
+  not know: running it would drop `brick` from the manifest (not fixed: the manifest's owner should say which is right).
+- **Gates:** `tools/persistent/map_lint.py` (27 maps, ~1 s, proven red on a broken user map) is in `verify.py quick`.
+- **Links:** the seven dead links repointed.
+- **Git:** local `main` fast-forwarded; the worktree under `temp/` and `claude/unruffled-austin-9e2806` (local + remote) removed; the
+  merged `origin/claude/{jolly-feynman-nynib1, project-thread-o218nn, project-thread-qtb3s4}` deleted; the three stashes dropped
+  (`a06b1a21`, `df2a7598`, `4ef40530`, recoverable with `git stash apply <hash>` until git collects them).
+  **Not deleted, a question for the Director:** `NEW_MAP` (local only) is NOT merged or duplicate: 23 commits of 2026-06-15/17 (the
+  MODULARIZE / REDUCE / NEW_MAP WorldRenderer line) that never reached `main`. `origin/feat/music-composition` is the PC's music, left
+  alone.

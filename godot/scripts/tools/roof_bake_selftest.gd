@@ -15,7 +15,6 @@ const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd
 const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
 const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
-const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 
 class MinimalRoom extends Node:
 	## Assigned duck-typed by room_builder during build_from_layout — the
@@ -39,7 +38,7 @@ func _init() -> void:
 	print("ROOF-BAKE-01/02 — Roof baked-surface SELFTEST")
 	print("=".repeat(70) + "\n")
 
-	test_5_rotated_view_roofs_follow_structures()
+	test_5_roofs_follow_structures()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -63,17 +62,16 @@ func _fail(msg: String) -> void:
 	failed += 1
 
 
-## Boot the real PLAYGROUND through the exact room.gd::load_map() path,
-## optionally rotated. Returns {room, renderer, layout} or empty on failure.
-func _build_playground(direction: String) -> Dictionary:
+## Boot the real PLAYGROUND through the exact room.gd::load_map() path, in its
+## base layout (the only one the game builds: rotation is camera-only since
+## R3D-ROT). Returns {room, renderer, layout} or empty on failure.
+func _build_playground() -> Dictionary:
 	var file_source := FileMapSourceClass.new()
 	var spec: Dictionary = file_source.get_runtime_spec("PLAYGROUND")
 	if spec.is_empty():
 		_fail("FileMapSource.get_runtime_spec('PLAYGROUND') returned empty")
 		return {}
 	var layout: Dictionary = MapCompilerClass.compile(spec)
-	if direction != "N":
-		layout = PerspectiveMapperClass.layout_with_perspective(layout, direction)
 
 	var room := MinimalRoom.new()
 	root.add_child(room)
@@ -86,21 +84,20 @@ func _build_playground(direction: String) -> Dictionary:
 	return {"room": room, "renderer": voxel_board, "layout": layout}
 
 
-func test_5_rotated_view_roofs_follow_structures() -> void:
-	print("[TEST 5] E view (02a): every block's roof Slab exists at its ROTATED position with its material")
+## Rewritten 2026-11-11 (HERITAGE T1) on the base layout: it used to rotate the layout to the E view through
+## `PerspectiveMapper.layout_with_perspective()`, a path the game stopped running at R3D-ROT.
+func test_5_roofs_follow_structures() -> void:
+	print("[TEST 5] every block's roof Slab exists at its position with its material")
 	var file_source := FileMapSourceClass.new()
 	var spec: Dictionary = file_source.get_runtime_spec("PLAYGROUND")
 	var base_layout: Dictionary = MapCompilerClass.compile(spec)
 	var base_blocks: Array = base_layout.get("solid_block_instances", [])
-	var base_size: Vector2i = base_layout.get("size", Vector2i.ZERO)
 
-	var built := _build_playground("E")
+	var built := _build_playground()
 	if built.is_empty():
 		return
 	var room: MinimalRoom = built["room"]
 
-	## Own rotation math (E = 90° CW): base (x, y) → (h−1−y, x); a rectangle's
-	## rotated NW corner = (h − y0 − sy, x0), size swaps.
 	var missing := 0
 	var wrong_material := 0
 	for b in base_blocks:
@@ -108,12 +105,10 @@ func test_5_rotated_view_roofs_follow_structures() -> void:
 		var size: Vector2i = b.get("size", Vector2i.ONE)
 		var storeys: int = int(b.get("storeys", 1))
 		var material: String = String(b.get("material", "concrete"))
-		var rot_gu := Vector2i(base_size.y - gu.y - size.y, gu.x)
-		var rot_size := Vector2i(size.y, size.x)
 		var base_level: int = GeometryCoordsClass.storey_level_base(storeys)
-		for rx in range(rot_size.x):
-			for ry in range(rot_size.y):
-				var slab_id := "SLAB_%d_%d_%s_%d" % [rot_gu.x + rx, rot_gu.y + ry, Slab.role_name(Slab.Role.CEILING), base_level]
+		for rx in range(size.x):
+			for ry in range(size.y):
+				var slab_id := "SLAB_%d_%d_%s_%d" % [gu.x + rx, gu.y + ry, Slab.role_name(Slab.Role.CEILING), base_level]
 				var slab: Slab = room._slab_registry.get_slab(slab_id)
 				if slab == null:
 					missing += 1
@@ -122,8 +117,8 @@ func test_5_rotated_view_roofs_follow_structures() -> void:
 					wrong_material += 1
 
 	if missing == 0 and wrong_material == 0 and base_blocks.size() > 0:
-		_pass("All %d blocks have a roof Slab at their independently-rotated E-view position with the correct material" % [base_blocks.size()])
+		_pass("All %d blocks have a roof Slab at their position with the correct material" % [base_blocks.size()])
 	else:
-		_fail("E view: %d rotated block-GUs missing a roof Slab, %d with wrong material" % [missing, wrong_material])
+		_fail("%d block-GUs missing a roof Slab, %d with wrong material" % [missing, wrong_material])
 
 	room.queue_free()

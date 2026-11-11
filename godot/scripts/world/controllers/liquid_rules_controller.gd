@@ -359,8 +359,8 @@ func refresh_agent_look() -> void:
 	elif status.is_glowing():
 		tint = GLOW_TINT
 	var key: String = "%s|%.1f" % [str(tint), pulse]
-	if key != _tint_key and agent != null and agent.sprite != null and agent.sprite.has_meta("figure3d"):
-		var figure = agent.sprite.get_meta("figure3d")
+	if key != _tint_key and agent != null and agent.pose != null and agent.pose.has_meta("figure3d"):
+		var figure = agent.pose.get_meta("figure3d")
 		if is_instance_valid(figure) and figure.has_method("set_status_tint"):
 			figure.set_status_tint(tint, pulse)
 			_tint_key = key

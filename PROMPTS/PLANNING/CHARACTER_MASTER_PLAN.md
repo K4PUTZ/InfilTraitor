@@ -1184,7 +1184,7 @@ taken on trust).
 ```
 p3_posture_export.py       3 postures -> 3 static GLBs (+3 devjoints)
 agent_frame_bake_spike.gd  4 perspectives x albedo+normal, per posture
-AgentSprite                child of DebugAgent; posture, facing, relight
+AgentSprite                child of Agent; posture, facing, relight
 agent.gd::_draw()          three diamonds and a head circle DELETED
 ```
 

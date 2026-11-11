@@ -146,12 +146,6 @@ func write_warm(level: int, cell: Vector2i, warm: int) -> bool:
 	return true
 
 
-func warm_at(level: int, cell: Vector2i) -> int:
-	var p := cell + plane_origin
-	if _outside(p) or not _images.has(level):
-		return 0
-	return (_images[level] as Image).get_pixel(p.x, p.y).a8
-
 
 ## PB-6 (2026-10-09) — `write_bucket()` for a whole level at once: `cells[i]` gets `buckets[i]`, written straight into the image's
 ## bytes (one `get_data()` / `set_data()` instead of a `get_pixel()` / `set_pixel()` pair per cell). Same clamping and the same

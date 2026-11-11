@@ -21,9 +21,6 @@ var _lights: Dictionary = {}  # light_id -> LightSource
 var _lights_by_cell: Dictionary = {}  # Vector2i -> Array[LightSource]
 var _next_id: int = 0
 
-signal light_registered(light)
-signal light_removed(light)
-
 func _ready() -> void:
 	# Registry is passive; initialization only
 	_lights.clear()
@@ -41,8 +38,6 @@ func register_light(light) -> void:
 	if not _lights_by_cell.has(light.cell):
 		_lights_by_cell[light.cell] = []
 	_lights_by_cell[light.cell].append(light)
-	
-	light_registered.emit(light)
 
 ## Remove a light source
 func remove_light(light_id: String) -> void:
@@ -57,8 +52,6 @@ func remove_light(light_id: String) -> void:
 		_lights_by_cell[light.cell].erase(light)
 		if _lights_by_cell[light.cell].is_empty():
 			_lights_by_cell.erase(light.cell)
-	
-	light_removed.emit(light)
 
 ## Get all registered lights
 func get_all_lights() -> Array:

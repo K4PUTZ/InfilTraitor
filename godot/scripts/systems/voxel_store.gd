@@ -420,20 +420,6 @@ func voxel_of(claim: int) -> Voxel:
 	return make_voxel(claim, container)
 
 
-## R3D-CLAIMS C1 — the dirty bit of a claim (it lived on each `Voxel`). Returns true when the bit CHANGED, so the caller keeps its
-## container's `dirty_count` in step exactly as the wrapper did.
-func mark_dirty(claim: int) -> bool:
-	if dirty_bits[claim] != 0:
-		return false
-	dirty_bits[claim] = 1
-	return true
-
-
-func unmark_dirty(claim: int) -> bool:
-	if dirty_bits[claim] == 0:
-		return false
-	dirty_bits[claim] = 0
-	return true
 
 
 func cell_index(x: int, y: int, level: int) -> int:

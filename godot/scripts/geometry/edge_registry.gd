@@ -2,9 +2,6 @@
 ## Port from voxel_registry.gd with edge tracking
 class_name EdgeRegistry
 
-signal edge_registered(edge: Edge)
-signal slice_registered(slice: Slice)
-
 var _edges: Dictionary = {}     ## edge.id → Edge
 var _slices: Dictionary = {}    ## slice.id → Slice
 
@@ -12,7 +9,6 @@ var _slices: Dictionary = {}    ## slice.id → Slice
 ## Register an edge
 func register_edge(edge: Edge) -> void:
 	_edges[edge.id] = edge
-	edge_registered.emit(edge)
 
 
 ## Register a slice; also backfill edge.slice_a_id or slice_b_id
@@ -29,8 +25,6 @@ func register_slice(slice: Slice) -> void:
 		else:
 			push_error("EdgeRegistry.register_slice: slice face %d doesn't match edge faces %d/%d" % 
 				[slice.face, edge.face_a, edge.face_b])
-	
-	slice_registered.emit(slice)
 
 
 ## Get edge by ID; returns null if not found

@@ -89,8 +89,8 @@ master_assets/
 >
 > | Script | Produces | Status |
 > |---|---|---|
-> | **`generate_voxel.py`** | `voxel_{material}.png` — the 32×36 voxel atom | **The base of the entire world.** Permanent. |
-> | **`generate_master_floor.py`** | `floor_{NW,NE,SE,SW}.png` | **The last sprite standing** — `floor_layer` (z=-9), a coordinate/occupancy anchor under the voxel floor stack. Fill is `#FF00FF` magenta on purpose since 2026-09-06 (FLOOR-CRATER-01): a canary, so a cover failure screams instead of hiding as "dirt". |
+> | **`generate_voxel.py`** | `voxel_{material}.png` — the 32×36 voxel atom | ⚠️ **2026-11-11: the atom output is gone; the script now writes only the decal family's placeholders.** |
+> | **`generate_master_floor.py`** | `floor_{NW,NE,SE,SW}.png` | ⚠️ **Deleted 2026-11-11 (HERITAGE T1): no consumer since the 2D board went.** |
 >
 > The four wall/block/crate generators were deleted. See "How to Add New Wall Types"
 > below for what replaced them.
@@ -104,8 +104,7 @@ The two surviving generators build their PNGs programmatically, which buys:
 ### Running the generators
 
 ```bash
-python3 tools/asset_generation/generate_voxel.py         # the voxel atom (4 materials)
-python3 tools/asset_generation/generate_master_floor.py  # floor tiles (4 directions)
+python3 tools/asset_generation/generate_voxel.py         # the decal family's placeholders (2026-11-11)
 ```
 
 After generation, rebuild the TileSet in Godot:

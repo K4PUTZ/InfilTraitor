@@ -29,9 +29,6 @@ static func mark(key: Vector3i) -> void:
 	_cells[key] = true
 
 
-static func is_weak_key(key: Vector3i) -> bool:
-	return not _cells.is_empty() and _cells.has(key)
-
 
 static func is_weak(voxel: Voxel) -> bool:
 	return not _cells.is_empty() and _cells.has(Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level))

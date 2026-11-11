@@ -53,12 +53,6 @@ const STABILITY_TEMPORAL := "temporal"      # Flicker: intermittent
 const STABILITY_DYNAMIC := "dynamic"        # Moving light: temporary
 const STABILITY_OCCLUDED := "occluded"      # Completely hidden: structural protection
 
-const STABILITY_NAMES := {
-	STABILITY_STATIC: "Static",
-	STABILITY_TEMPORAL: "Temporal",
-	STABILITY_DYNAMIC: "Dynamic",
-	STABILITY_OCCLUDED: "Occluded",
-}
 
 ## ============================================================================
 ## Detection & Stealth Multipliers (L-IMP-04)

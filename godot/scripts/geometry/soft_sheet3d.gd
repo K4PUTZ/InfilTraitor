@@ -204,10 +204,6 @@ func is_done() -> bool:
 	return _done
 
 
-## The nodes' last positions (3 floats each), for a future checkpoint record.
-func node_positions() -> PackedFloat64Array:
-	return _sim.pos
-
 
 func _process(delta: float) -> void:
 	if _burn_end > 0.0:

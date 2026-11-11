@@ -157,11 +157,11 @@ Environmental and tactical modifiers:
 ```
 Direct shadow (SHADOW_MULT):    0.30×   (tile blocked by full shadow)
 Penumbra (PENUMBRA_MULT):       0.55×   (shadow edge)
-Agent posture (DebugAgent.POSTURE_DETECTION_MULT):
+Agent posture (Agent.POSTURE_DETECTION_MULT):
     STANDING:    1.0×
     CROUCHING:   <1.0× (user-configurable)
-Cover FULL:                     DebugAgent.COVER_FULL_MULT
-Cover PARTIAL:                  DebugAgent.COVER_PARTIAL_MULT
+Cover FULL:                     Agent.COVER_FULL_MULT
+Cover PARTIAL:                  Agent.COVER_PARTIAL_MULT
 Cover flanking:                 Guard in exposed arc ignores cover (dot product of direction)
 ```
 

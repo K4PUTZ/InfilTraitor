@@ -59,11 +59,6 @@ var receives_shadow: bool = true    ## Can tile be shadowed by obstacles?
 var receives_light: bool = true     ## Can tile receive direct light?
 var blocks_los: bool = false        ## Blocks line-of-sight for agents?
 var blocks_light: bool = false      ## Blocks light propagation?
-var blocks_shadow: bool = false     ## Blocks shadow projection?
-
-## Stealth semantics
-var stealth_modifier: float = 1.0   ## Detection chance multiplier (future)
-var acoustic_dampening: float = 0.0 ## Sound absorption (future)
 
 ## Authored metadata
 var is_light_anchor: bool = false   ## Valid socket for light placement?
@@ -135,15 +130,6 @@ static func make_wall() -> TileSemantics:
 ## ============================================================================
 ## Debugging
 ## ============================================================================
-
-func debug_string() -> String:
-	return "[%s|%s|H:%s] LOS:%s Light:%s" % [
-		HEIGHT_NAMES.get(height_class, "UNKNOWN"),
-		STRUCT_NAMES.get(structural_type, "UNKNOWN"),
-		LAYER_NAMES.get(layer_assignment, "L?"),
-		blocks_los,
-		blocks_light
-	]
 
 func debug_info() -> String:
 	var lines = [

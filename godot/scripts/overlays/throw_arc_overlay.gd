@@ -16,7 +16,7 @@ class_name ThrowArcOverlay
 ## HORIZONTAL distance alone, so a throw straight up or down the screen came out
 ## as a flat line.
 
-## Tuning — `var` per architecture Rule 1. Read by TestZoneController so the
+## Tuning — `var` per architecture Rule 1. Read by GrenadeController so the
 ## flown path and the drawn path cannot drift apart.
 var arc_color: Color = Color(1.0, 0.8, 0.3, 0.7)
 var line_width: float = 2.0

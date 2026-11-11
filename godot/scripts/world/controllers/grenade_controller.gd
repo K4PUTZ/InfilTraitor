@@ -1,25 +1,13 @@
-## TestZoneController — TEST-ZONE placeholder (2026-07-21): right-click
-## "Detonar" on a test prop.
+## GrenadeController — the grenade, whole: the grenades on the map (`_grenades`, each one's
+## `GrenadeProp` mesh under "prop"), AIM MODE (pick a target inside the throw range, the
+## preview), the throw (the agent's raise / release, the flight, the hop and the roll), the fuse
+## effects and the detonation pipeline (prediction, presenter, hit-stop, the committed stages).
 ##
-## ACTOR_MASTER_PLAN D1/D2 prototype (same session): the grenade is a
-## "digital twin" (Quaternius' CC0 "Grenade" model, poly.pizza) rendered via
-## the real-3D-model + normal-map bake technique proven for the shotgun
-## (godot/scripts/tools/grenade_frame_bake_spike.gd, 2026-07-28) — displayed
-## via GrenadeProp (godot/scripts/overlays/grenade_prop.gd), NOT live
-## TileMapLayer voxel cells. Superseded the original single-angle
-## bake_voxel_sprite_3d.gd bake (grenade_bake_x8.png, a hand-placed BoxMesh
-## voxel reconstruction of a CC0 .qb — itself already a v2 over a hand-rolled
-## 2D painter's-algorithm rasterizer, v1) once that was shown to read flat
-## from some angles and to ignore the room's active N/E/S/W perspective
-## entirely, the same class of bug D22 found and fixed for the shotgun.
-## Proves the mechanism ACTOR_MASTER_PLAN D1/D2 describes for one object
-## before Parts 0-2 of that plan get built for real.
-##
-## Registry stays a plain Array[Dictionary] on purpose — scaffolding for the
-## PLAYGROUND rebuild, not a permanent prop-interaction architecture.
-## Delegates to room for shared state, same extraction pattern as
-## SelectionController.
-class_name TestZoneController
+## Renamed from `TestZoneController` on 2026-11-11 (HERITAGE T1): it began 2026-07-21 as the
+## TEST ZONE's "Detonar" on a bench prop and grew into the game's grenade. The flight is still a
+## 2D parabola in screen pixels (`ThrowArcOverlay`); HERITAGE T2 W5 moves it to world state.
+## Delegates to room for shared state, same extraction pattern as SelectionController.
+class_name GrenadeController
 
 const BLAST_IGNITES_LIQUID_GU: float = 3.0   ## M6 F5: how far a blast lights a flammable liquid (the fragmentation grenade's three live rings)
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
@@ -77,9 +65,9 @@ var throw_range_gu: float = 7.0
 ## loses reach, a prone one loses most of it. Nothing is calibrated against
 ## anything yet, and D6 makes these levers rather than constants.
 var throw_range_penalty_gu: Dictionary = {
-	DebugAgent.Posture.STANDING: 0.0,
-	DebugAgent.Posture.CROUCHING: 2.0,
-	DebugAgent.Posture.PRONE: 4.0,
+	Agent.Posture.STANDING: 0.0,
+	Agent.Posture.CROUCHING: 2.0,
+	Agent.Posture.PRONE: 4.0,
 }
 
 ## ── THE SKILL SEAM (Director, 2026-09-07) ─────────────────────────────────────
@@ -218,15 +206,6 @@ const BOMB_ID: String = "frag_grenade"
 var SHAKE_SECONDS: float = 1.0
 var SHAKE_AMPLITUDE_PX: float = 12.0
 
-## P-STROBE (Director, 2026-08-09) — the strobe, exactly as specified: "1 flash
-## frame branco, 1 frame negativo, outro frame branco, outro frame negativo."
-## One entry = one held engine frame. Order is the look; length is the duration.
-const STROBE_SEQUENCE: Array[int] = [
-	ExplosionFlashOverlay.FlashMode.WHITE,
-	ExplosionFlashOverlay.FlashMode.NEGATIVE,
-	ExplosionFlashOverlay.FlashMode.WHITE,
-	ExplosionFlashOverlay.FlashMode.NEGATIVE,
-]
 
 ## How long the fire burns ALONE before the strobe starts — the Director's
 ## "depois do último frame" of the fire.
@@ -260,9 +239,9 @@ func _init(p_room: Node) -> void:
 
 func clear() -> void:
 	for g in _grenades:
-		var sprite: Node3D = g.get("sprite")
-		if sprite != null and is_instance_valid(sprite):
-			sprite.queue_free()
+		var prop: Node3D = g.get("prop")
+		if prop != null and is_instance_valid(prop):
+			prop.queue_free()
 	_grenades.clear()
 	_active_index = -1
 	## RUNTIME-GUARD-01 (2026-08-13): drop an in-flight blast too. This runs on
@@ -285,19 +264,19 @@ func clear() -> void:
 func add_grenade(gu_cell: Vector2i) -> void:
 	var base_cell: Vector2i = gu_cell
 	var board: Node3D = room.board3d()
-	var sprite := GrenadePropClass.new()
+	var prop := GrenadePropClass.new()
 	if board == null:
-		push_error("[TestZoneController] add_grenade: there is no 3D board to put the grenade on")
+		push_error("[GrenadeController] add_grenade: there is no 3D board to put the grenade on")
 		return
-	board.add_child(sprite)
-	if not sprite.setup(room, gu_cell, base_cell, board):
-		sprite.queue_free()
+	board.add_child(prop)
+	if not prop.setup(room, gu_cell, base_cell, board):
+		prop.queue_free()
 		return
-	sprite.screen_position = room.agent._cell_to_world(gu_cell)
+	prop.screen_position = room.agent._cell_to_world(gu_cell)
 	_grenades.append({
 		"gu_cell": gu_cell,
 		"base_cell": base_cell,
-		"sprite": sprite,
+		"prop": prop,
 		"detonated": false,
 	})
 
@@ -310,16 +289,16 @@ func on_view_changed() -> void:
 	for g in _grenades:
 		if g["detonated"]:
 			continue
-		var sprite: GrenadePropClass = g["sprite"]
-		if sprite != null and is_instance_valid(sprite):
-			sprite.update_cell(g["gu_cell"])
+		var prop: GrenadePropClass = g["prop"]
+		if prop != null and is_instance_valid(prop):
+			prop.update_cell(g["gu_cell"])
 
 
 ## Screen-space top-center of the grenade — context menu anchor. The mesh's own top (`ObjectMesh3D.top_world_2d()`), lifted
 ## off its floor point, through the board's camera.
 func _top_screen_pos(grenade: Dictionary) -> Vector2:
-	var sprite: GrenadePropClass = grenade["sprite"]
-	return room.screen_of_lifted(sprite.top_world_2d(), sprite.screen_position + Vector2(0.0, sprite.flight_px))
+	var prop: GrenadePropClass = grenade["prop"]
+	return room.screen_of_lifted(prop.top_world_2d(), prop.screen_position + Vector2(0.0, prop.flight_px))
 
 
 ## Index of the grenade standing on the clicked GU cell, or -1. Director
@@ -387,34 +366,34 @@ var _fuse_fx: Dictionary = {}   ## sprite instance id -> {"grenade": Dictionary,
 
 
 func fuse_fx_start(grenade: Dictionary, intensity: float, hand: bool) -> void:
-	var sprite = grenade.get("sprite")
-	if sprite == null or not is_instance_valid(sprite):
+	var prop = grenade.get("prop")
+	if prop == null or not is_instance_valid(prop):
 		return
-	_fuse_fx[sprite.get_instance_id()] = {"grenade": grenade, "intensity": intensity, "hand": hand}
+	_fuse_fx[prop.get_instance_id()] = {"grenade": grenade, "intensity": intensity, "hand": hand}
 
 
 ## Changes a running emitter; starts it when it is not running (`detonate` can reach the fuse without an aim or a throw).
 func fuse_fx_set(grenade: Dictionary, intensity: float, hand: bool = false) -> void:
-	var sprite = grenade.get("sprite")
-	if sprite == null or not is_instance_valid(sprite):
+	var prop = grenade.get("prop")
+	if prop == null or not is_instance_valid(prop):
 		return
-	_fuse_fx[sprite.get_instance_id()] = {"grenade": grenade, "intensity": intensity, "hand": hand}
+	_fuse_fx[prop.get_instance_id()] = {"grenade": grenade, "intensity": intensity, "hand": hand}
 
 
 func fuse_fx_stop(grenade: Dictionary) -> void:
-	var sprite = grenade.get("sprite")
-	if sprite == null or not is_instance_valid(sprite):
+	var prop = grenade.get("prop")
+	if prop == null or not is_instance_valid(prop):
 		return
-	_fuse_fx.erase(sprite.get_instance_id())
-	room.end_fuse_fx(sprite.get_instance_id())
+	_fuse_fx.erase(prop.get_instance_id())
+	room.end_fuse_fx(prop.get_instance_id())
 
 
 ## Ramps a running emitter to 0 over `seconds`, then stops it (the aim's cancel: the sparks die with the arm coming down, not before).
 func fuse_fx_fade(grenade: Dictionary, seconds: float) -> void:
-	var sprite = grenade.get("sprite")
-	if sprite == null or not is_instance_valid(sprite):
+	var prop = grenade.get("prop")
+	if prop == null or not is_instance_valid(prop):
 		return
-	var key: int = sprite.get_instance_id()
+	var key: int = prop.get_instance_id()
 	if not _fuse_fx.has(key) or seconds <= 0.0:
 		fuse_fx_stop(grenade)
 		return
@@ -437,15 +416,15 @@ func fuse_fx_tick(dt: float) -> void:
 				continue
 			fx["fade_left"] = left
 			fx["intensity"] = float(fx["fade_from"]) * left / float(fx["fade_total"])
-		var sprite = (fx["grenade"] as Dictionary).get("sprite")
-		if sprite == null or not is_instance_valid(sprite) or not sprite.visible:
+		var prop = (fx["grenade"] as Dictionary).get("prop")
+		if prop == null or not is_instance_valid(prop) or not prop.visible:
 			_fuse_fx.erase(key)
 			room.end_fuse_fx(key)
 			continue
 		if bool(fx["hand"]):
 			## The grenade in the raised hand (the live rig's `hand_L` attachment) — NOT `throw_origin()`, which is the head anchor: the first capture
 			## showed the sparks at the agent's face. With no rig grenade showing, the head anchor is the fallback.
-			var figure = room.agent.sprite.get_meta("figure3d") if room.agent.sprite != null and room.agent.sprite.has_meta("figure3d") else null
+			var figure = room.agent.pose.get_meta("figure3d") if room.agent.pose != null and room.agent.pose.has_meta("figure3d") else null
 			var in_hand: Vector3 = (figure as ActorMesh3D).hand_grenade_world() if is_instance_valid(figure) and board != null else ParticleMath.NO_ANCHOR
 			if in_hand != ParticleMath.NO_ANCHOR:
 				var hand_pair: Array[Vector2] = board.call("particle_pair", in_hand)
@@ -453,7 +432,7 @@ func fuse_fx_tick(dt: float) -> void:
 			else:
 				room.tick_fuse_fx(key, room.agent.throw_origin(), room.agent.position, ParticleMath.NO_ANCHOR, float(fx["intensity"]), dt)
 		elif board != null:
-			var point: Vector3 = (sprite as GrenadePropClass).fuse_point_world()
+			var point: Vector3 = (prop as GrenadePropClass).fuse_point_world()
 			var pair: Array[Vector2] = board.call("particle_pair", point)
 			room.tick_fuse_fx(key, pair[0], pair[1], point, float(fx["intensity"]), dt)
 
@@ -552,7 +531,7 @@ func _set_targeting_target_body(cell: Vector2i) -> void:
 	var _t: int = Time.get_ticks_usec()
 	var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
 	if bomb_def == null:
-		push_error("[TestZoneController] targeting: bomb '%s' is not in the registry" % BOMB_ID)
+		push_error("[GrenadeController] targeting: bomb '%s' is not in the registry" % BOMB_ID)
 		cancel_targeting()
 		return
 
@@ -587,8 +566,8 @@ func _set_targeting_target_body(cell: Vector2i) -> void:
 	## He faces what he is about to throw at, and re-faces when the aim moves.
 	## `face_direction()` owns the reduction to D44's four facings, so an
 	## arbitrary GU delta is the right thing to hand it.
-	if room.agent.sprite != null and _targeting_target_gu != origin_gu:
-		room.agent.sprite.face_direction(_targeting_target_gu - origin_gu)
+	if room.agent.pose != null and _targeting_target_gu != origin_gu:
+		room.agent.pose.face_direction(_targeting_target_gu - origin_gu)
 	var target_pos: Vector2 = room.agent._cell_to_world(_targeting_target_gu)
 	_t = _split("aim: face", _t)
 
@@ -704,7 +683,7 @@ func execute_grenade_throw() -> void:
 	## refined) returns false and the arc starts immediately, exactly as it did
 	## before this animation existed.
 	if room.agent.play_throw_release():
-		await room.agent.sprite.throw_released
+		await room.agent.pose.throw_released
 	_start_grenade_throw_animation(target_gu, grenade)
 
 
@@ -714,7 +693,7 @@ func cancel_targeting() -> void:
 		return
 	_targeting_mode = false
 	if _targeting_grenade_index >= 0 and _targeting_grenade_index < _grenades.size():
-		fuse_fx_fade(_grenades[_targeting_grenade_index], DebugAgent.THROW_CANCEL_SECONDS)
+		fuse_fx_fade(_grenades[_targeting_grenade_index], Agent.THROW_CANCEL_SECONDS)
 	_targeting_grenade_index = -1
 	Telemetry.event("aim.cancel")
 	## Director: *"cancelar a granada [...] bem rapidinho, só pra não sumir de
@@ -863,14 +842,14 @@ const THROW_CLEARANCE_PX: float = 30.0
 func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) -> void:
 	## Typed as the prop, not as Sprite2D: the flight drives the ground shadow
 	## through `set_flight_height_px()`, which only GrenadeProp has.
-	var sprite: GrenadePropClass = grenade.get("sprite")
-	if sprite == null or not is_instance_valid(sprite):
-		push_error("[TestZoneController] throw: grenade %s has no sprite to animate" % target_gu)
+	var prop: GrenadePropClass = grenade.get("prop")
+	if prop == null or not is_instance_valid(prop):
+		push_error("[GrenadeController] throw: grenade %s has no prop to animate" % target_gu)
 		return
 
 	var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
 	if bomb_def == null:
-		push_error("[TestZoneController] throw: bomb '%s' is not in the registry" % BOMB_ID)
+		push_error("[GrenadeController] throw: bomb '%s' is not in the registry" % BOMB_ID)
 		return
 
 	var tree: SceneTree = room.get_tree()
@@ -883,7 +862,7 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	## was shown while aiming.
 	var arc = room._throw_arc_overlay
 	if arc == null:
-		push_error("[TestZoneController] throw: no ThrowArcOverlay to take the trajectory from")
+		push_error("[GrenadeController] throw: no ThrowArcOverlay to take the trajectory from")
 		return
 	var launch_px: float = room.agent.throw_launch_height()
 	var arc_height: float = ThrowArcOverlay.arc_height_for(
@@ -921,7 +900,7 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	var ground_start: Vector2 = start_pos + Vector2(0.0, launch_px)
 	var travel: Vector2 = target_world - ground_start
 	var roll_dir: Vector2 = travel.normalized() if travel.length() > 0.001 else Vector2.RIGHT
-	sprite.set_roll_direction(roll_dir)
+	prop.set_roll_direction(roll_dir)
 
 	var origin_gu: Vector2i = room.agent.cell
 	var distance_gu: float = Vector2(target_gu - origin_gu).length()
@@ -968,14 +947,14 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 		var delta: float = room.get_process_delta_time()
 		elapsed += delta
 		var t: float = minf(elapsed / throw_duration_s, 1.0)
-		sprite.screen_position = ThrowArcOverlay.arc_point(
+		prop.screen_position = ThrowArcOverlay.arc_point(
 			start_pos, target_world, t, arc_height, launch_px)
 		turns += flight_rate * delta
-		sprite.roll(turns * TAU)
-		sprite.set_flight_height_px(ground_start.lerp(target_world, t).y - sprite.screen_position.y)
+		prop.roll(turns * TAU)
+		prop.set_flight_height_px(ground_start.lerp(target_world, t).y - prop.screen_position.y)
 		fuse_fx_set(grenade, lerpf(FUSE_AIM_INTENSITY, 1.0, t))
-	sprite.screen_position = target_world
-	sprite.set_flight_height_px(0.0)
+	prop.screen_position = target_world
+	prop.set_flight_height_px(0.0)
 	grenade["gu_cell"] = target_gu
 
 	## The landing hop — Director: "dá um bounce no chão de leve" — with the
@@ -988,12 +967,12 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 		bounced += delta
 		var bt: float = minf(bounced / arc.bounce_duration_s, 1.0)
 		var lift: float = ThrowArcOverlay.bounce_lift(bt, bounce_height)
-		sprite.screen_position = target_world - Vector2(0.0, lift)
+		prop.screen_position = target_world - Vector2(0.0, lift)
 		turns += lerpf(flight_rate, settle_rate, bt) * delta
-		sprite.roll(turns * TAU)
-		sprite.set_flight_height_px(lift)
-	sprite.screen_position = target_world
-	sprite.set_flight_height_px(0.0)
+		prop.roll(turns * TAU)
+		prop.set_flight_height_px(lift)
+	prop.screen_position = target_world
+	prop.set_flight_height_px(0.0)
 	## Back on the ground for real — the post-bounce roll is real floor
 	## contact and belongs under D22-FOLLOWUP's ordinary level-0 sort again.
 
@@ -1036,8 +1015,8 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 				- back_turns * smoothstep(0.0, 1.0, bt2)
 		else:
 			turns = turns_at_rest + forward_turns - back_turns
-		sprite.roll(turns * TAU)
-		sprite.screen_position = target_world \
+		prop.roll(turns * TAU)
+		prop.screen_position = target_world \
 			+ roll_dir * arc.roll_radius_px * TAU * (turns - turns_at_rest)
 
 	## Only if the prediction is STILL going does the fuse stretch, capped so a
@@ -1350,7 +1329,7 @@ func cancel_preproduction() -> void:
 ## A coroutine (it awaits frames), deliberately called WITHOUT await by
 ## detonate_active(): the caller's remaining work — clearing the wireframe,
 ## resetting _active_index — belongs to the click, not to the animation. `self`
-## stays alive because room holds `_test_zone_controller`, the same explicit
+## stays alive because room holds `_grenade_controller`, the same explicit
 ## ownership `_active_presenters` exists for.
 func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		anchor: Vector2, grenade: Dictionary = {}) -> void:
@@ -1451,7 +1430,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	if not hit_stop:
 		presenter.prepare(waves)   ## (a hit-stop blast prepares after its commit: the ramp reads the scorch the commit wrote)
 	var boom_anchor: Vector2 = anchor - Vector2(0.0, blast_pop_height_px)
-	var g_sprite = grenade.get("sprite")
+	var g_sprite = grenade.get("prop")
 	if g_sprite != null and is_instance_valid(g_sprite):
 		var pop_frames: int = maxi(blast_pop_frames, 1)
 		var prev_eased: float = 0.0
@@ -1830,10 +1809,10 @@ func _start_waves(delta, presenter: DetonationPresenter) -> void:
 ## the same geometry _top_screen_pos() uses for the context menu, minus its
 ## camera step, so the two never drift apart.
 func _blast_anchor(grenade: Dictionary) -> Vector2:
-	var sprite: GrenadePropClass = grenade["sprite"]
-	if sprite == null or not is_instance_valid(sprite):
+	var prop: GrenadePropClass = grenade["prop"]
+	if prop == null or not is_instance_valid(prop):
 		return room.agent._cell_to_world(grenade["gu_cell"])
-	return sprite.top_world_2d()
+	return prop.top_world_2d()
 
 
 ## The real ctx DetonationPlanBuilder.build_plan() needs, assembled from the

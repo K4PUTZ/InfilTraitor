@@ -20,9 +20,6 @@
 class_name DetonateContextMenu
 extends Control
 
-## Emitted when the parameterised action button is pressed. The caller decides
-## what that means — see open_at()'s on_confirm.
-signal action_requested
 signal cancelled
 ## GU-GRID-01/ESC-STACK-01: mirrors PanelBase's opened/closed contract (this
 ## menu extends Control directly, not PanelBase, for its custom black-box
@@ -97,7 +94,7 @@ func _ready() -> void:
 ## action_key: a localization key ("ui.context_menu.detonate"/".fire"). Never a
 ## literal string — CLAUDE.md bans hardcoded player-facing text.
 ## on_confirm: invoked when that button is pressed. Defaults to an empty
-## Callable, in which case only the `action_requested` signal is emitted.
+## Callable, in which case the button only closes the menu.
 func open_at(top_anchor_screen_pos: Vector2, gap_above_px: float = 30.0,
 		action_key: String = "ui.context_menu.detonate",
 		on_confirm: Callable = Callable()) -> void:
@@ -133,7 +130,6 @@ func _on_action_pressed() -> void:
 	close()
 	if confirm.is_valid():
 		confirm.call()
-	action_requested.emit()
 
 
 func _on_cancel_pressed() -> void:

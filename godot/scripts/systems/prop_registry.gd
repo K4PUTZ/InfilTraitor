@@ -61,9 +61,6 @@ func register_slot(slot: SlotDef) -> void:
 	slots[slot.id] = slot
 
 
-func get_slot(p_id: String) -> SlotDef:
-	return slots.get(p_id, null)
-
 
 func _scan_slots(dir_path: String) -> void:
 	var dir = DirAccess.open(dir_path)

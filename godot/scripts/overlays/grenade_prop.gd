@@ -6,7 +6,7 @@
 ## change needs no frame swap (the camera turns over one world) and the light and soot come from the world, not from a per-prop
 ## light search.
 ##
-## What the flight code (`TestZoneController`) still drives is unchanged in meaning: `screen_position` and `flight_px`
+## What the flight code (`GrenadeController`) still drives is unchanged in meaning: `screen_position` and `flight_px`
 ## (`ObjectMesh3D`), the roll (`roll()`, about the axis perpendicular to the travel `set_roll_direction()` was given — a roll
 ## across the screen shows the whole turn and one toward the camera shows none, now by geometry instead of by a `roll_dir.x`
 ## factor) and `visible`, which the throw code uses as logic (a detonated grenade is hidden).
@@ -76,9 +76,6 @@ func set_roll_direction(screen_dir: Vector2) -> void:
 func roll(angle: float) -> void:
 	set_tumble(angle, _roll_axis)
 
-
-func billboard_height_px() -> float:
-	return flight_px
 
 
 func set_flight_height_px(px: float) -> void:

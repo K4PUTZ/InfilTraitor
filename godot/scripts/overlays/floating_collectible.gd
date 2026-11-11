@@ -54,9 +54,6 @@ func setup(p_room: Node, p_gu_cell: Vector2i, spec: Dictionary, board: Node3D) -
 	return true
 
 
-func billboard_height_px() -> float:
-	return flight_px
-
 
 func _process(delta: float) -> void:
 	_bob_time += delta

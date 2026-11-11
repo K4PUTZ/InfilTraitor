@@ -19,7 +19,7 @@
 ##  - THE HEAD'S GRID ANGLE (a guard looking where its cone points), clamped to HEAD_YAW_LIMIT_DEG off the body by the mesh.
 ##
 ## It was `AgentSprite`, a `Sprite2D` that drew nothing; it is a plain `Node` now (RETIRE of R3D-RETIRE-2D). The members that
-## name it (`Agent.sprite`, `attach_sprite()`) keep their old names for the callers' sake.
+## hold it are `Agent.pose` / `attach_pose()` (renamed from `sprite` / `attach_sprite()` on 2026-11-11, HERITAGE T1).
 class_name ActorPose
 extends Node
 
@@ -138,9 +138,6 @@ func set_head_yaw_grid_deg(grid_deg: float) -> void:
 	_head_grid_deg = grid_deg
 	_has_head_yaw = true
 
-
-func clear_head_yaw() -> void:
-	_has_head_yaw = false
 
 
 ## Kept for the DEV VISION toggle's call. The yellow-joint dev bake it used to swap in retired with the frame bake; the live

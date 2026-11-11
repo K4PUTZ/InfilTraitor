@@ -17,12 +17,7 @@ extends RefCounted
 
 # Light type constants (semantic names, not magic numbers)
 const TYPE_OMNI := "omni"
-const TYPE_DIRECTIONAL := "directional"
-const TYPE_CONE := "cone"
 const TYPE_AMBIENT := "ambient"
-const TYPE_INTERMITTENT := "intermittent"
-const TYPE_EMERGENCY := "emergency"
-const TYPE_MOBILE := "mobile"
 
 # Height class constants (from L-DOC-02)
 const HEIGHT_FLOOR := 0
@@ -110,7 +105,6 @@ var rotation_phase: float = 0.0    ## Current angle offset
 
 # State machine (L-IMP-06)
 const STATE_ON := "on"
-const STATE_OFF := "off"
 const STATE_FLICKER := "flicker"
 const STATE_PULSE := "pulse"
 
@@ -120,7 +114,6 @@ var energy_multiplier: float = 1.0  ## Applied to tactical_energy for temporal e
 # Track if light changed this frame (for rebuild triggering)
 var changed_this_frame: bool = false
 var last_energy: float = 1.0
-var last_angle: float = 0.0
 
 # Optional tracking
 var light_id: String = ""  ## For debugging and tracking
@@ -250,14 +243,6 @@ func set_flicker(enabled: bool, interval: float = 1.0) -> void:
 ## Get effective tactical energy after temporal effects
 func get_effective_tactical_energy() -> float:
 	return tactical_energy * energy_multiplier
-
-## Check if this light affects a cell (simple radius check, no occlusion yet)
-func affects_cell(target_cell: Vector2i) -> bool:
-	if not active:
-		return false
-	
-	var distance: float = cell.distance_to(target_cell)
-	return distance <= float(radius)
 
 ## Get directional vector for this light (used by cone/directional)
 func get_direction_vector() -> Vector2:

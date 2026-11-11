@@ -271,7 +271,7 @@ func test_throw_perimeter_lands_on_cell_centres() -> void:
 ## fall upward on the way out.
 func test_throw_arc_goes_up() -> void:
 	print("[8] The throw arc rises above its own chord, and lands where aimed\n")
-	var launch := 64.0   ## DebugAgent's standing hand height
+	var launch := 64.0   ## Agent's standing hand height
 	var from_pos := Vector2(400.0, 600.0)
 	var to_pos := Vector2(900.0, 640.0)
 	var apex: float = ThrowArcOverlay.arc_height_for(from_pos, to_pos, 0.35, launch)

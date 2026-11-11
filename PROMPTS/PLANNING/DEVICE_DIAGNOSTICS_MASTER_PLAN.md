@@ -192,7 +192,7 @@ describe one feature, delete a claim instead of reconciling).
 
 | Plan | Owns |
 |---|---|
-| [`DETONATION_PERFORMANCE_MASTER_PLAN`](DETONATION_PERFORMANCE_MASTER_PLAN.md) | The post-detonation stall and how it was closed. The measurements and the method stand. |
+| [`DETONATION_PERFORMANCE_MASTER_PLAN`](../DONE/DETONATION_PERFORMANCE_MASTER_PLAN.md) | The post-detonation stall and how it was closed. The measurements and the method stand. |
 | [`PERFORMANCE_MASTER_PLAN`](../DONE/PERFORMANCE_MASTER_PLAN.md) | Per-cell state leaving the TileSet; the standing engine perf architecture. |
 | **This plan** | **Getting a trustworthy number off a physical Android device, reproducibly and without a human finger.** Nothing else. |
 
@@ -1950,7 +1950,7 @@ at zoom 0.2.
 - Command events at the seams:
   - HUD handlers and board taps in `room.gd`.
   - Pinch, wheel and pan ends plus touch counts in `CameraController`.
-  - Menu, aim and blast in `TestZoneController`.
+  - Menu, aim and blast in `GrenadeController`.
   - End-turn and the enemy phase in `TurnController`.
 
 The desktop run (`TELEMETRY=1 FRAME_PROBE=1 BENCHMARK=1 BENCH_RUNS=1 ZOOM=0.35`)
@@ -2002,7 +2002,7 @@ suite points at still belongs to `PERFORMANCE` or `DETONATION_PERFORMANCE`.
 6. **Loud on absence.** A run missing an expected event fails its analysis; a
    null API reports "unavailable", never a number.
 7. **Seams, not sprinkles.** Events are emitted where a command or mode is
-   DECIDED (the `room.gd` HUD handlers, `CameraController`, `TestZoneController`,
+   DECIDED (the `room.gd` HUD handlers, `CameraController`, `GrenadeController`,
    `TurnController`), never as a print per call site.
 
 ### 14.3 The tasks

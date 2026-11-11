@@ -151,7 +151,6 @@ var holds_started: Array = []
 var rail_frame: int = 0
 var rail_done: bool = true
 
-const EASE_FN: Dictionary = {"linear": 0, "in_out": 1, "out": 2}
 
 
 static func _ease(t: float, kind: String) -> float:

@@ -112,8 +112,3 @@ static func from_json(data: Dictionary) -> WeaponDef:
 
 	return def
 
-
-## True when this weapon has a range to fall off over. A NONE-delivery weapon
-## (flashbang, smoke, dart) legitimately has none.
-func has_range() -> bool:
-	return not step_multipliers.is_empty()

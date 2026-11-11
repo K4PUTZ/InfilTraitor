@@ -13,7 +13,7 @@ class_name ShrapnelOverlay
 ## EmberOverlay/SmokeSparkOverlay).
 ##
 ## Fires at the exact point sprite.visible = false already sets in
-## detonate_active() (test_zone_controller.gd:269).
+## detonate_active() (grenade_controller.gd:269).
 ##
 ## FIXED 2026-08-12 — never fired since `0c728c6`. Two bugs, both silent
 ## because nothing exercises this path except a real detonation:

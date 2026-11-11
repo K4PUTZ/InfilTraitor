@@ -2,7 +2,6 @@ extends Node
 class_name EnemyPhaseController
 ## Runs the enemy phase in sequence so movement and detection stay deterministic.
 
-const DEFAULT_VISION_RANGE := 6
 
 
 func run_single_guard_turn(

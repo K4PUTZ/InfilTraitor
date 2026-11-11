@@ -56,8 +56,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		return ""
 	var origin := Vector3.ZERO
 	var agent: Object = room.get("agent")
-	if agent != null and agent.get("sprite") != null and (agent.sprite as Node).has_meta("figure3d"):
-		origin = (agent.sprite.get_meta("figure3d") as Node3D).position
+	if agent != null and agent.get("pose") != null and (agent.pose as Node).has_meta("figure3d"):
+		origin = (agent.pose.get_meta("figure3d") as Node3D).position
 	if not is_instance_valid(_ticker):
 		_ticker = Ticker.new()
 		_ticker.step = tick
@@ -81,8 +81,8 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		var others: Array = [agent]
 		others.append_array(room.get("_guards") as Array)
 		for other: Variant in others:
-			if other != null and is_instance_valid(other) and other.get("sprite") != null and (other.sprite as Node).has_meta("figure3d"):
-				(other.sprite.get_meta("figure3d") as Node3D).scale = Vector3.ZERO   # `visible` is rewritten every frame by the room; a zero scale is not
+			if other != null and is_instance_valid(other) and other.get("pose") != null and (other.pose as Node).has_meta("figure3d"):
+				(other.pose.get_meta("figure3d") as Node3D).scale = Vector3.ZERO   # `visible` is rewritten every frame by the room; a zero scale is not
 	var hidden: Array[String] = []
 	var facing_k: int = -1            ## `_f0` .. `_f3`: the four BASE grid facings the game uses (ActorMesh3D.yaw_for_direction: multiples of 90 degrees), seen from the camera on the diagonal = 3/4 views; none = facing the camera
 	for k in range(4):

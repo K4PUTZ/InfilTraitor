@@ -57,7 +57,7 @@ size/legibility). **S3 closed and shipped as `DESTRUCTION_MASTER_PLAN` D24**:
 soot for both explosions and firearms is now derived fresh every repaint from
 which voxels are absent, never stored. *(⛔ The "never stored" half is superseded
 by the Director's 2026-08-27 ruling — the soot map becomes the source of truth;
-see [`SOOT_STORAGE_REFORM.md`](SOOT_STORAGE_REFORM.md). **Not started**, so the
+see [`SOOT_STORAGE_REFORM.md`](../DONE/SOOT_STORAGE_REFORM.md). **Not started**, so the
 sentence still describes today's code. What does NOT change is the part S3 was
 about: explosions and firearms keep sharing one mechanism, and both write through
 the same single producer.)* S8 and S9 are explicitly deferred to
@@ -256,7 +256,7 @@ cannot be the same thing as the smoke test.
 
 The engine has exactly one weapon and one destruction shape, and they are welded
 together. `BlastCalculator.flood_gu_rings()` is a wall-aware BFS outward from an
-epicentre; `BombDef.ring_multipliers` is its falloff; `TestZoneController`
+epicentre; `BombDef.ring_multipliers` is its falloff; `GrenadeController`
 hardcodes `BOMB_ID = "frag_grenade"`. That was correct for a grenade and it is
 the *only* thing the codebase knows how to do.
 
@@ -769,7 +769,7 @@ direito)."* The pieces and their real state, audited 2026-07-29:
   the existing right-click block. **Trap:** the guard at the top of that method
   treats any mouse press while `_context_menu.visible` as an outside-click
   cancel; a second menu instance needs that guard to know about both.
-- `TestZoneController` — its own header calls it *"scaffolding [...] not a
+- `GrenadeController` — its own header calls it *"scaffolding [...] not a
   permanent prop-interaction architecture"*, so a sibling controller is the
   path of least resistance, not a generalised multi-prop system.
 

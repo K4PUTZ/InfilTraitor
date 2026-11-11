@@ -61,7 +61,7 @@ calibration / reach on ratified mechanics. **The G-D48 ramp was calibrated on sc
 designed AND REJECTED on 2026-09-10** — a code audit found its central premise false
 (this project has never enabled Y-sorting) and its backbuffer scheme unable to hold
 the `G-D2` container. The problem it addressed is real and now belongs to
-[`RENDER_ORDER_MASTER_PLAN`](RENDER_ORDER_MASTER_PLAN.md), which is spike-gated and
+[`RENDER_ORDER_MASTER_PLAN`](../DONE/RENDER_ORDER_MASTER_PLAN.md), which is spike-gated and
 carries the Director-authorised fallback (glass stays on top, map-authoring warnings).
 §19 is kept below **as a rejected design with its post-mortem** — do not build from
 it. `G-D18b` stays relaxed (the ruling was the Director's, 2026-09-09, and it is
@@ -2158,7 +2158,7 @@ zone and added an existing region-flood trigger; the three above were plumbing.
 **2026-09-10 — the one open glass RENDER task LEFT THIS PLAN.** The `G-D18b` flat
 top-z makes a back pane composite over a wall in front of it. §19 was designed as
 the fix and rejected the same day (see §19's header); the problem is now
-[`RENDER_ORDER_MASTER_PLAN`](RENDER_ORDER_MASTER_PLAN.md)'s, because the root cause
+[`RENDER_ORDER_MASTER_PLAN`](../DONE/RENDER_ORDER_MASTER_PLAN.md)'s, because the root cause
 (`O5`: `z_index` encodes HEIGHT, depth is independent) is not a glass concern — glass
 is the third system to hit it, after props and the occlusion wireframe.
 
@@ -4189,7 +4189,7 @@ cost a minute against the half hour this took.
 
 ### ✅ 18.12 G6b-1 IS BUILT (2026-09-05) — one texture, one draw call, and an EARNED gate
 
-[`shard_field.gd`](../../godot/scripts/overlays/shard_field.gd),
+`shard_field.gd` (its 3D successor: [`shard_field3d.gd`](../../godot/scripts/geometry/shard_field3d.gd)),
 [`glass_shard_field.gdshader`](../../godot/shaders/glass_shard_field.gdshader),
 `GlassShardShapes.atlas_image()`, and
 `INFILTRAITOR_CAPTURE_ACTION=shard_field_demo`.
@@ -4519,7 +4519,7 @@ were superseded by G-D44; `plastic` screen backing and S-4's fracture art remain
 > ⛔ **DO NOT BUILD FROM THIS SECTION.** Designed and rejected the same day. The
 > problem statement in §19.1 is sound and still worth reading; the mechanism from
 > §19.2 down does not work. It now lives, correctly diagnosed and spike-gated, in
-> [`RENDER_ORDER_MASTER_PLAN`](RENDER_ORDER_MASTER_PLAN.md) (`F1`–`F5` there are
+> [`RENDER_ORDER_MASTER_PLAN`](../DONE/RENDER_ORDER_MASTER_PLAN.md) (`F1`–`F5` there are
 > the full findings). The four reasons, in short:
 >
 > - **Y-sorting is not enabled anywhere in this project**, so §19.2's *"each

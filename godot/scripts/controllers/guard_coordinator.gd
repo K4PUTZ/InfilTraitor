@@ -4,10 +4,6 @@ extends Node
 ## Does NOT communicate directly with another controller.
 ## _guards[] belongs to room.gd; accessed via _room._guards.
 
-signal guard_whistled(origin_cell: Vector2i, last_known: Vector2i)
-signal guard_radioed(origin_cell: Vector2i, last_known: Vector2i)
-signal alarm_raised(origin_cell: Vector2i)
-signal all_guards_alerted()
 
 var _room: Node2D
 
@@ -34,8 +30,6 @@ func _on_guard_whistled(origin_cell: Vector2i, last_known: Vector2i) -> void:
 	if last_known == _room.INVALID_CELL:
 		return
 
-	guard_whistled.emit(origin_cell, last_known)
-
 	for guard in _room._guards:
 		if not is_instance_valid(guard):
 			continue
@@ -52,8 +46,6 @@ func _on_guard_whistled(origin_cell: Vector2i, last_known: Vector2i) -> void:
 func _on_guard_radioed(_origin_cell: Vector2i, last_known: Vector2i) -> void:
 	if last_known == _room.INVALID_CELL:
 		return
-
-	guard_radioed.emit(_origin_cell, last_known)
 
 	for guard in _room._guards:
 		if not is_instance_valid(guard):
@@ -79,10 +71,6 @@ func _on_guard_alarmed(origin_cell: Vector2i) -> void:
 	## Set alert meter to maximum
 	_room._alert_meter = _room._alert_max
 	_room._update_alert_label()
-
-	## Emit signal so room.gd can coordinate the response
-	alarm_raised.emit(origin_cell)
-	all_guards_alerted.emit()
 
 
 ## ─────────────────────────────────────────────────────────────────────

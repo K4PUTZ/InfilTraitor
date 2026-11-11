@@ -16,7 +16,6 @@ const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_sour
 const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
 const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
-const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 
 ## LEVEL-RENUMBER — was a hand-copied `-1`. A mirrored constant that does not
 ## follow the thing it mirrors is a second producer, which is the drift this
@@ -42,7 +41,7 @@ func _init() -> void:
 	print("FLOOR-BAKE-01 — Floor-zone baked-surface SELFTEST")
 	print("=".repeat(70) + "\n")
 
-	test_5_rotated_view_zones_follow_declared_material()
+	test_5_zones_follow_declared_material()
 	test_6_buffer_ring_continues_the_edge_ground()
 
 	print("\n" + "=".repeat(70))
@@ -68,16 +67,15 @@ func _fail(msg: String) -> void:
 
 
 ## Boot the real FLOOR_ZONES_TEST map through the exact room.gd::load_map()
-## path, optionally rotated. Returns {room, renderer, layout} or empty.
-func _build_test_map(direction: String) -> Dictionary:
+## path, in its base layout (the only one the game builds: rotation is camera-only
+## since R3D-ROT). Returns {room, renderer, layout} or empty.
+func _build_test_map() -> Dictionary:
 	var file_source := FileMapSourceClass.new()
 	var spec: Dictionary = file_source.get_runtime_spec("FLOOR_ZONES_TEST")
 	if spec.is_empty():
 		_fail("FileMapSource.get_runtime_spec('FLOOR_ZONES_TEST') returned empty")
 		return {}
 	var layout: Dictionary = MapCompilerClass.compile(spec)
-	if direction != "N":
-		layout = PerspectiveMapperClass.layout_with_perspective(layout, direction)
 
 	var room := MinimalRoom.new()
 	root.add_child(room)
@@ -90,36 +88,33 @@ func _build_test_map(direction: String) -> Dictionary:
 	return {"room": room, "renderer": voxel_board, "layout": layout}
 
 
-func test_5_rotated_view_zones_follow_declared_material() -> void:
-	print("[TEST 5] E view: every declared zone's Slab exists at its ROTATED GU with its declared material")
+## Rewritten 2026-11-11 (HERITAGE T1) on the base layout: it used to rotate the layout to the E view through
+## `PerspectiveMapper.layout_with_perspective()`, a path the game stopped running at R3D-ROT.
+func test_5_zones_follow_declared_material() -> void:
+	print("[TEST 5] every declared zone's Slab exists at its GU with its declared material")
 	var file_source := FileMapSourceClass.new()
 	var spec: Dictionary = file_source.get_runtime_spec("FLOOR_ZONES_TEST")
 	var base_layout: Dictionary = MapCompilerClass.compile(spec)
 	var base_zones: Array = base_layout.get("floor_zone_instances", [])
-	var base_size: Vector2i = base_layout.get("size", Vector2i.ZERO)
 
 	if base_zones.is_empty():
-		_fail("FLOOR_ZONES_TEST has zero floor_zone_instances — cannot test rotation")
+		_fail("FLOOR_ZONES_TEST has zero floor_zone_instances — nothing to test")
 		return
 
-	var built := _build_test_map("E")
+	var built := _build_test_map()
 	if built.is_empty():
 		return
 	var room: MinimalRoom = built["room"]
 
-	## Own rotation math (E = 90 CW): base (x, y) -> (h-1-y, x); a
-	## rectangle's rotated NW corner = (h - y0 - sy, x0), size swaps.
 	var missing := 0
 	var wrong_material := 0
 	for z in base_zones:
 		var gu: Vector2i = z.get("gu_cell", Vector2i.ZERO)
 		var size: Vector2i = z.get("size", Vector2i.ONE)
 		var material: String = String(z.get("material", ""))
-		var rot_gu := Vector2i(base_size.y - gu.y - size.y, gu.x)
-		var rot_size := Vector2i(size.y, size.x)
-		for rx in range(rot_size.x):
-			for ry in range(rot_size.y):
-				var slab_id := "SLAB_%d_%d_%s_%d" % [rot_gu.x + rx, rot_gu.y + ry, Slab.role_name(Slab.Role.FLOOR), FLOOR_TOP_LEVEL]
+		for rx in range(size.x):
+			for ry in range(size.y):
+				var slab_id := "SLAB_%d_%d_%s_%d" % [gu.x + rx, gu.y + ry, Slab.role_name(Slab.Role.FLOOR), FLOOR_TOP_LEVEL]
 				var slab: Slab = room._slab_registry.get_slab(slab_id)
 				if slab == null:
 					missing += 1
@@ -128,9 +123,9 @@ func test_5_rotated_view_zones_follow_declared_material() -> void:
 					wrong_material += 1
 
 	if missing == 0 and wrong_material == 0:
-		_pass("All %d declared zones have a FLOOR Slab at their independently-rotated E-view position with the correct material" % [base_zones.size()])
+		_pass("All %d declared zones have a FLOOR Slab at their GU with the correct material" % [base_zones.size()])
 	else:
-		_fail("E view: %d rotated zone-GUs missing a FLOOR Slab, %d with wrong material" % [missing, wrong_material])
+		_fail("%d zone-GUs missing a FLOOR Slab, %d with wrong material" % [missing, wrong_material])
 
 	room.queue_free()
 

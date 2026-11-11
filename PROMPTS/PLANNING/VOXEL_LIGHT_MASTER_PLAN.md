@@ -43,7 +43,7 @@
 > read it before
 > touching `VoxelLightField`, `VoxelBoard.apply_light_field*()`,
 > `godot/shaders/voxel_face_shading.gdshader`, `EmberOverlay`, or the
-> destruction↔lighting seam in `test_zone_controller.gd`. Item 6 (metal
+> destruction↔lighting seam in `grenade_controller.gd`. Item 6 (metal
 > denting/warping), the 4-view prebuild optimization, and per-FACE soot CONTENT
 > are the pieces still open — see their own sections below for status.
 > **Authored:** 2026-07-23 (solo mode).
@@ -372,7 +372,7 @@ room-filling lamp radius, so expect lower cost than the 75ms worst-case above.
    > ⛔ **AND THE STORAGE HALF IS SUPERSEDED AGAIN, 2026-08-27** — Director's
    > ruling: **the soot map becomes the source of truth**, so soot stops being
    > re-derived and becomes stored per-cell state (permanent, and explicitly NOT
-   > accumulating). Plan: [`SOOT_STORAGE_REFORM.md`](SOOT_STORAGE_REFORM.md).
+   > accumulating). Plan: [`SOOT_STORAGE_REFORM.md`](../DONE/SOOT_STORAGE_REFORM.md).
    > **Not started** — the description above is still an accurate account of what
    > the code does today, and only stops being one at that plan's SS-2.
    >

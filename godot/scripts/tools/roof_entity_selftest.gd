@@ -1,13 +1,12 @@
 ## R3D-7 — the free-standing `roofs` entity, end to end on the real OCCLUSION_ROOM map: FileMapSource reads the
-## section, MapCompiler forwards `roof_instances` offset by the board buffer, PerspectiveMapper rotates it (the
-## ROOF-BAKE-02a lesson: without an explicit rotation the roof lands on the wrong GUs in the E/S/W views), and
-## RoomBuilder turns it into two CEILING slabs per GU at the height it names, through the same code a block's roof
-## uses, with NO walls beneath it.
+## section, MapCompiler forwards `roof_instances` offset by the board buffer, and RoomBuilder turns it into two
+## CEILING slabs per GU at the height it names, through the same code a block's roof uses, with NO walls beneath it.
+## (The E/S/W layout-rotation checks went 2026-11-11, HERITAGE T1: rotation is camera-only since R3D-ROT and the
+## game never rotates a layout.)
 extends SceneTree
 
 const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
-const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
 const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
@@ -48,7 +47,7 @@ func _init() -> void:
 		_check(roof["size"] == Vector2i(3, 3) and int(roof["storeys"]) == 3 and roof["kind"] == "flat"
 			and roof["material"] == "concrete", "size 3x3, 3 storeys, concrete, flat")
 		_check(roof["gu_cell"] != Vector2i(11, 11), "gu_cell is offset by the board buffer (%s, not the file's (11, 11))" % str(roof["gu_cell"]))
-		_rotation(layout)
+		_placement(layout)
 		_builder(layout, roof)
 		_unknown_kind(layout, roof)
 		_skylight(layout, roof)
@@ -61,29 +60,20 @@ func _init() -> void:
 		quit(1)
 
 
-## Each view: the roof rectangle equals the rectangle the SAME footprint rotates to as a block (they share the math),
-## and it stays inside the ring of blocks it was declared inside.
-func _rotation(layout: Dictionary) -> void:
-	print("\n[rotation]")
-	var base_size: Vector2i = layout.get("size", Vector2i.ZERO)
-	for direction: String in ["N", "E", "S", "W"]:
-		var mapped: Dictionary = layout if direction == "N" else PerspectiveMapperClass.layout_with_perspective(layout, direction)
-		var roof: Dictionary = (mapped["roof_instances"] as Array)[0]
-		var source: Dictionary = (layout["roof_instances"] as Array)[0]
-		var c0: Vector2i = PerspectiveMapperClass.cell_from_base(source["gu_cell"], direction, base_size) if direction != "N" else source["gu_cell"]
-		var c1: Vector2i = PerspectiveMapperClass.cell_from_base(source["gu_cell"] + source["size"] - Vector2i.ONE, direction, base_size) if direction != "N" else source["gu_cell"] + source["size"] - Vector2i.ONE
-		var expected := Vector2i(mini(c0.x, c1.x), mini(c0.y, c1.y))
-		_check(roof["gu_cell"] == expected and roof["size"] == Vector2i(3, 3),
-			"%s: the roof is at %s (3x3), where its own corners rotate to" % [direction, str(expected)])
-		var lo := Vector2i(1 << 20, 1 << 20)
-		var hi := Vector2i(-(1 << 20), -(1 << 20))
-		for block: Dictionary in mapped.get("solid_block_instances", []):
-			var g: Vector2i = block["gu_cell"]
-			lo = Vector2i(mini(lo.x, g.x), mini(lo.y, g.y))
-			hi = Vector2i(maxi(hi.x, g.x), maxi(hi.y, g.y))
-		var inside: bool = roof["gu_cell"].x > lo.x and roof["gu_cell"].y > lo.y \
-			and roof["gu_cell"].x + 2 < hi.x and roof["gu_cell"].y + 2 < hi.y
-		_check(inside, "%s: the roof is inside the ring of blocks (%s..%s)" % [direction, str(lo), str(hi)])
+## The roof rectangle sits where its source declared it and inside the ring of blocks it was declared inside.
+func _placement(layout: Dictionary) -> void:
+	print("\n[placement]")
+	var roof: Dictionary = (layout["roof_instances"] as Array)[0]
+	_check(roof["size"] == Vector2i(3, 3), "the roof is 3x3 at %s" % str(roof["gu_cell"]))
+	var lo := Vector2i(1 << 20, 1 << 20)
+	var hi := Vector2i(-(1 << 20), -(1 << 20))
+	for block: Dictionary in layout.get("solid_block_instances", []):
+		var g: Vector2i = block["gu_cell"]
+		lo = Vector2i(mini(lo.x, g.x), mini(lo.y, g.y))
+		hi = Vector2i(maxi(hi.x, g.x), maxi(hi.y, g.y))
+	var inside: bool = roof["gu_cell"].x > lo.x and roof["gu_cell"].y > lo.y \
+		and roof["gu_cell"].x + 2 < hi.x and roof["gu_cell"].y + 2 < hi.y
+	_check(inside, "the roof is inside the ring of blocks (%s..%s)" % [str(lo), str(hi)])
 
 
 func _builder(layout: Dictionary, roof: Dictionary) -> void:
@@ -211,13 +201,6 @@ func _skylight(layout: Dictionary, roof: Dictionary) -> void:
 				ids[sl.pane_id] = true
 	_check(ids.size() == 1 and not ids.has(""), "its 9 GUs are ONE pane (%s)" % str(ids.keys()))
 	room2.queue_free()
-
-	for direction: String in ["E", "S", "W"]:
-		var mapped: Dictionary = PerspectiveMapperClass.layout_with_perspective(with_sky, direction)
-		var r: Dictionary = (mapped["roof_instances"] as Array)[0]
-		var sky: Dictionary = r.get("skylight", {})
-		_check(not sky.is_empty() and sky["gu_cell"] == r["gu_cell"] + Vector2i(1, 1) and sky["size"] == Vector2i.ONE,
-			"%s: the skylight turns with its roof (still the centre GU)" % direction)
 
 
 ## ROOF RF-2 (Director, 2026-10-14) — cardboard, fabric and plywood are ONE layer in a roof as in a wall: every GU holds the material in the

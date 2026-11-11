@@ -178,11 +178,6 @@ func is_half_thickness() -> bool:
 	return occupied_sides != OccupiedSides.BOTH
 
 
-## Canonical string identity for hashing (baking, sampling).
-## MUST be stable across runs: derived from GU coordinates, never from instance identity.
-func key_string() -> String:
-	return "E_%d_%d__%d_%d" % [gu_a.x, gu_a.y, gu_b.x, gu_b.y]
-
 
 ## For debugging
 func _to_string() -> String:

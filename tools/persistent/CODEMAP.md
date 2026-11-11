@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**349 scripts · 102641 lines total** (under `godot/scripts/`)
+**349 scripts · 101951 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -21,7 +21,7 @@
 - **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, soft_sheet_presets.gd, structural_support.gd, voxel_weakness.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, fluid_container.gd, fluid_plane.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, liquid_agent_status.gd, liquid_corrosion.gd, liquid_exposure.gd, liquid_field.gd, liquid_fire.gd, liquid_fire_lights.gd, liquid_glow.gd, liquid_registry.gd, liquid_surface_state.gd, localization_manager.gd, material_registry.gd, material_rows.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, secondary_tables.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_fire.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
 - **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, capture_framer_selftest.gd, circle_field_octagon_selftest.gd, cloth_flaps_selftest.gd, coat_push_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, fluid_container_selftest.gd, fluid_plane_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, liquid_fire_selftest.gd, liquid_guards_selftest.gd, liquid_registry_selftest.gd, liquid_rules_selftest.gd, liquid_status_selftest.gd, liquid_test_world.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_rows_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, pane_frame_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_light_selftest.gd, roof_occlusion_selftest.gd, roof_sheet_release_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soft_sheet_sim_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, structural_support_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tripo_figure_selftest.gd, tripo_game_clips.gd, tripo_pose_dump.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_fire_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, options_panel.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
-- **world/** — room_builder.gd, agent_shot_controller.gd, capture_controller.gd, debug_tools_controller.gd, input_controller.gd, liquid_rules_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compass.gd, map_compiler.gd, map_envelope.gd, map_geometry.gd, map_layout.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, roof_sheet_release.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
+- **world/** — room_builder.gd, agent_shot_controller.gd, capture_controller.gd, debug_tools_controller.gd, grenade_controller.gd, input_controller.gd, liquid_rules_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compass.gd, map_compiler.gd, map_envelope.gd, map_geometry.gd, map_layout.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, roof_sheet_release.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -29,11 +29,11 @@
 
 ### `actor_pose.gd`
 
-`class_name ActorPose` · extends `Node` · 233 lines
+`class_name ActorPose` · extends `Node` · 230 lines
 
 `godot/scripts/agents/actor_pose.gd`
 
-> ActorPose — WHAT an actor's figure is doing: its facing, posture, grip, weapon, walk, throw and head. It draws nothing; `ActorMesh3D` draws it (RENDER3D R3D-ACTORS, `ACTOR` D64). R3D-ACTORS step 5 (2026-10-01) RETIRED THE GAMEPLAY FRAME BAKE from this node: the colour/normal frame sets, the head and hat layers, the per-posture anchors and D17's normal-map relight are gone, and with them every texture this file loaded (D42's RAM was the atlases'). What stayed is the half both renderers shared, unchanged in meaning: - FACING, SNAPPED AT THE GU BOUNDARY (D47), one of FOUR (D44, kept for gameplay at step 2: the mesh could turn to any yaw, but whether movement keeps four facings is a design question, and keeping it changes nothing). Stored as the BASE grid step it came from, so it survives a camera turn by construction. - THE POSTURE, THE GRIP, THE WEAPON. Each is now a name the live rig has an action for (`tools/asset_generation/r3d_live_rig_export.py`); a name it does not have is refused loudly and the previous one kept. - THE WALK, read straight off the step's progress (one cycle per GU, D61): no accumulator to drift. Standing only, as before: a crouched or prone figure slides. - THE THROW: raise (held for the aim), release, and the cancel as the raise played backwards (the Director's own reuse rule). `throw_released` fires when the release crosses THROW_RELEASE_FRACTION — the fraction of the key list p3_throw_export.py releases at — and at the latest when the release ends, because `execute_grenade_throw()` awaits it. Standing only, as the bake was. - THE HEAD'S GRID ANGLE (a guard looking where its cone points), clamped to HEAD_YAW_LIMIT_DEG off the body by the mesh. It was `AgentSprite`, a `Sprite2D` that drew nothing; it is a plain `Node` now (RETIRE of R3D-RETIRE-2D). The members that name it (`Agent.sprite`, `attach_sprite()`) keep their old names for the callers' sake.
+> ActorPose — WHAT an actor's figure is doing: its facing, posture, grip, weapon, walk, throw and head. It draws nothing; `ActorMesh3D` draws it (RENDER3D R3D-ACTORS, `ACTOR` D64). R3D-ACTORS step 5 (2026-10-01) RETIRED THE GAMEPLAY FRAME BAKE from this node: the colour/normal frame sets, the head and hat layers, the per-posture anchors and D17's normal-map relight are gone, and with them every texture this file loaded (D42's RAM was the atlases'). What stayed is the half both renderers shared, unchanged in meaning: - FACING, SNAPPED AT THE GU BOUNDARY (D47), one of FOUR (D44, kept for gameplay at step 2: the mesh could turn to any yaw, but whether movement keeps four facings is a design question, and keeping it changes nothing). Stored as the BASE grid step it came from, so it survives a camera turn by construction. - THE POSTURE, THE GRIP, THE WEAPON. Each is now a name the live rig has an action for (`tools/asset_generation/r3d_live_rig_export.py`); a name it does not have is refused loudly and the previous one kept. - THE WALK, read straight off the step's progress (one cycle per GU, D61): no accumulator to drift. Standing only, as before: a crouched or prone figure slides. - THE THROW: raise (held for the aim), release, and the cancel as the raise played backwards (the Director's own reuse rule). `throw_released` fires when the release crosses THROW_RELEASE_FRACTION — the fraction of the key list p3_throw_export.py releases at — and at the latest when the release ends, because `execute_grenade_throw()` awaits it. Standing only, as the bake was. - THE HEAD'S GRID ANGLE (a guard looking where its cone points), clamped to HEAD_YAW_LIMIT_DEG off the body by the mesh. It was `AgentSprite`, a `Sprite2D` that drew nothing; it is a plain `Node` now (RETIRE of R3D-RETIRE-2D). The members that hold it are `Agent.pose` / `attach_pose()` (renamed from `sprite` / `attach_sprite()` on 2026-11-11, HERITAGE T1).
 
 **Signals**
 - `signal throw_released`
@@ -71,7 +71,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 479 lines
+`class_name Agent` · extends `Node2D` · 476 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -79,7 +79,6 @@
 - `signal move_started(from_cell: Vector2i, to_cell: Vector2i)`
 - `signal step_finished(cell: Vector2i)`
 - `signal move_finished(cell: Vector2i)`
-- `signal posture_changed(new_posture: Posture)`
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
@@ -105,10 +104,9 @@
 - `var visual_offset: Vector2 = Vector2.ZERO`
 - `var cell: Vector2i = Vector2i.ZERO`
 - `var vision_radius: int = 7`
-- `var vision_mode: String = "normal"`
 - `var is_moving: bool = false`
 - `var dev_vision: bool = false`
-- `var sprite: ActorPose = null`
+- `var pose: ActorPose = null`
 - `var cover_state: CoverType = CoverType.NONE`
 - `var cover_direction: Vector2i = Vector2i.ZERO`
 - `var step_duration: float = 0.56`
@@ -122,7 +120,7 @@
 - `func set_grip(name: String) -> void:`
 - `func throw_launch_height() -> float:`
 - `func setup(offset: Vector2, start_cell: Vector2i) -> void:`
-- `func attach_sprite(p_room: Node) -> bool:`
+- `func attach_pose(p_room: Node) -> bool:`
 - `func set_cell(new_cell: Vector2i) -> void:`
 - `func get_vision_radius() -> int:`
 - `func set_posture(new_posture: Posture) -> void:`
@@ -156,7 +154,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1323 lines
+`class_name GuardEnemy` · extends `Node2D` · 1320 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -173,9 +171,6 @@
 - `TileOverlayClass` = `preload("res://godot/scripts/overlays/tile_overlay.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 - `STEP_DURATION_BASE` = `0.13`
-- `COLOR_BODY` = `Color(0.86, 0.26, 0.22, 1.0)`
-- `COLOR_BODY_DARK` = `Color(0.58, 0.12, 0.10, 1.0)`
-- `COLOR_HEAD` = `Color(1.0, 0.87, 0.80, 1.0)`
 - `FOV_DISTANCE_CURVE` = `[ 1.00, 1.00, 0.95, 0.88, 0.70, 0.48, 0.20, 0.06, 0.01 ]`
 - `FOV_LATERAL_FALLOFF` = `[1.0, 0.50, 0.10]`
 - `COLOR_VISION_SMOOTH` = `Color(1.0, 0.9, 0.2, 0.5)`
@@ -240,15 +235,9 @@ extends `Node` · 77 lines
 
 ### `guard_coordinator.gd`
 
-extends `Node` · 108 lines
+extends `Node` · 96 lines
 
 `godot/scripts/controllers/guard_coordinator.gd`
-
-**Signals**
-- `signal guard_whistled(origin_cell: Vector2i, last_known: Vector2i)`
-- `signal guard_radioed(origin_cell: Vector2i, last_known: Vector2i)`
-- `signal alarm_raised(origin_cell: Vector2i)`
-- `signal all_guards_alerted()`
 
 **Public API**
 - `func setup(room_ref: Node2D) -> void:`
@@ -518,7 +507,7 @@ extends `RefCounted` · 89 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3573 lines
+extends `Node3D` · 3570 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -635,7 +624,7 @@ extends `Node3D` · 3573 lines
 
 ### `edge.gd`
 
-`class_name Edge` · 195 lines
+`class_name Edge` · 190 lines
 
 `godot/scripts/geometry/edge.gd`
 
@@ -665,7 +654,6 @@ extends `Node3D` · 3573 lines
 - `func occupies_a() -> bool:`
 - `func occupies_b() -> bool:`
 - `func is_half_thickness() -> bool:`
-- `func key_string() -> String:`
 
 ---
 
@@ -687,15 +675,11 @@ extends `Node3D` · 3573 lines
 
 ### `edge_registry.gd`
 
-`class_name EdgeRegistry` · 192 lines
+`class_name EdgeRegistry` · 186 lines
 
 `godot/scripts/geometry/edge_registry.gd`
 
 > Geometry Module — Edge Registry: single source of truth linking model Port from voxel_registry.gd with edge tracking
-
-**Signals**
-- `signal edge_registered(edge: Edge)`
-- `signal slice_registered(slice: Slice)`
 
 **Public API**
 - `func register_edge(edge: Edge) -> void:`
@@ -785,7 +769,7 @@ extends `Node3D` · 3573 lines
 
 ### `geometry_coords.gd`
 
-`class_name GeometryCoords` · 103 lines
+`class_name GeometryCoords` · 102 lines
 
 `godot/scripts/geometry/geometry_coords.gd`
 
@@ -800,7 +784,6 @@ extends `Node3D` · 3573 lines
 - `PLAYABLE_STOREY` = `10`
 - `PLAYABLE_LEVEL` = `PLAYABLE_STOREY * LEVELS_PER_STOREY`
 - `TEX_AUTHORING_N` = `16`
-- `VOXEL_ATOM_W` = `32`
 - `VOXEL_ATOM_H` = `36`
 - `VOXEL_TILE_H` = `16`
 - `FLOOR_TOP_LEVEL` = `PLAYABLE_LEVEL - 1`
@@ -1340,14 +1323,11 @@ extends `Node3D` · 3573 lines
 
 ### `slab_registry.gd`
 
-`class_name SlabRegistry` · 44 lines
+`class_name SlabRegistry` · 42 lines
 
 `godot/scripts/geometry/slab_registry.gd`
 
 > Geometry Module — Slab Registry: single source of truth for Slab containers DESTRUCTION_MASTER_PLAN D1. Mirrors EdgeRegistry's slice-half (get/all/dirty/ clear); no edge-linking half exists because Slab voxels have no edge to link to.
-
-**Signals**
-- `signal slab_registered(slab: Slab)`
 
 **Public API**
 - `func register_slab(slab: Slab) -> void:`
@@ -1400,7 +1380,7 @@ extends `Node3D` · 3573 lines
 
 ### `soft_sheet3d.gd`
 
-`class_name SoftSheet3D` · extends `Node3D` · 564 lines
+`class_name SoftSheet3D` · extends `Node3D` · 560 lines
 
 `godot/scripts/geometry/soft_sheet3d.gd`
 
@@ -1450,7 +1430,7 @@ extends `Node3D` · 3573 lines
 
 ### `soft_sheet_sim.gd`
 
-`class_name SoftSheetSim` · extends `RefCounted` · 765 lines
+`class_name SoftSheetSim` · extends `RefCounted` · 759 lines
 
 `godot/scripts/geometry/soft_sheet_sim.gd`
 
@@ -1573,7 +1553,7 @@ extends `Node3D` · 3573 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2801 lines
+`class_name VoxelBoard` · extends `Node2D` · 2734 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1607,11 +1587,8 @@ extends `Node3D` · 3573 lines
 - `func begin_light_apply_job(field, cells: Dictionary) -> void:`
 - `func step_light_apply_job(budget_us: int) -> bool:`
 - `func finish_light_apply_job() -> void:`
-- `func light_apply_job_pending() -> bool:`
-- `func levels_in_gus(gus: Array) -> Dictionary:`
 - `func placed_keys_in_gus(gus: Array) -> Array:`
 - `func write_fire_cell(field, key: Vector3i) -> bool:`
-- `func apply_warm_gus(field, gus: Array) -> void:`
 - `func apply_light_field_gus(field, gus: Array) -> void:`
 - `func process_dirty(registry: EdgeRegistry) -> void:`
 - `func process_dirty_slabs(registry: SlabRegistry) -> void:`
@@ -1628,7 +1605,12 @@ extends `Node3D` · 3573 lines
 - `func clear_floor_shards() -> void:`
 - `func floor_shard_pile_count() -> int:`
 - `func floor_shard_pile3d_count() -> int:`
-- `func set_glass_cracks_visible(v: bool) -> void:`
+- `func count_glass_shards() -> int:`
+- `func glass_crack_records() -> Array:`
+- `func glass_applied_openings() -> Array:`
+- `func glass_craze_count() -> int:`
+- `func clear_glass_cracks() -> void:`
+- `func clear_glass_rim_cells() -> void:`
 
 ---
 
@@ -1856,7 +1838,7 @@ extends `Node3D` · 3573 lines
 
 ### `elite_exposure_overlay.gd`
 
-extends `Node2D` · 255 lines
+extends `Node2D` · 254 lines
 
 `godot/scripts/overlays/elite_exposure_overlay.gd`
 
@@ -1875,7 +1857,6 @@ extends `Node2D` · 255 lines
 - `var show_confidence: bool = true`
 - `var show_stability: bool = false`
 - `var show_contours: bool = false`
-- `var show_risk_zones: bool = false`
 - `var show_safe_corridors: bool = false`
 - `var overlay_opacity: float = 0.4`
 - `var exposure_system = null`
@@ -1949,7 +1930,7 @@ extends `Node2D` · 164 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `ObjectMesh3D` · 75 lines
+`class_name FloatingCollectible` · extends `ObjectMesh3D` · 72 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -1972,7 +1953,6 @@ extends `Node2D` · 164 lines
 
 **Public API**
 - `func setup(p_room: Node, p_gu_cell: Vector2i, spec: Dictionary, board: Node3D) -> bool:`
-- `func billboard_height_px() -> float:`
 
 ---
 
@@ -2044,11 +2024,11 @@ extends `Node2D` · 164 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `ObjectMesh3D` · 96 lines
+`class_name GrenadeProp` · extends `ObjectMesh3D` · 93 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
-> The grenade on the ground and in flight, as a real mesh (RETIRE-2 of R3D-RETIRE-2D; `ACTOR` D65). It was a `Sprite2D` showing one of four baked frames (`grenade_frames`, a colour + a normal map per compass direction), relit by a per-pixel shader and mirrored into the 3D board by `PropBillboard3D`. Now it IS a node of the 3D board: the Quaternius `Grenade.glb`, coloured by OUR material registry (D66) and lit by the board's cell planes like every prop, so a perspective change needs no frame swap (the camera turns over one world) and the light and soot come from the world, not from a per-prop light search. What the flight code (`TestZoneController`) still drives is unchanged in meaning: `screen_position` and `flight_px` (`ObjectMesh3D`), the roll (`roll()`, about the axis perpendicular to the travel `set_roll_direction()` was given — a roll across the screen shows the whole turn and one toward the camera shows none, now by geometry instead of by a `roll_dir.x` factor) and `visible`, which the throw code uses as logic (a detonated grenade is hidden). GROUND SHADOW (Director, 2026-08-10: *"durante o vôo da granada, a sombra precisa acompanhar no chão, aumentando e diminuindo a opacidade e a difusão, de acordo com a distância vertical. Quando a granada encosta no chão a sombra é muito bem definida e bem menor, por baixo do asset."*). One height drives size, strength and softness, so they cannot disagree about how high the grenade is. `SHADOW_HEIGHT_REF_PX` is where the flight look is fully reached: `ThrowArcOverlay.arc_height_for()` floors every apex at `launch_px * 1.4`, 89.6 px for a standing throw, so even the shortest throw reaches the full effect at its apex and longer ones hold it. The strengths are `FloatingCollectible`'s ratified ground alpha (0.55) and the flight alpha MEASURED on the old shadow (0.35: the softer one read too faint under a body that flies past 90 px).
+> The grenade on the ground and in flight, as a real mesh (RETIRE-2 of R3D-RETIRE-2D; `ACTOR` D65). It was a `Sprite2D` showing one of four baked frames (`grenade_frames`, a colour + a normal map per compass direction), relit by a per-pixel shader and mirrored into the 3D board by `PropBillboard3D`. Now it IS a node of the 3D board: the Quaternius `Grenade.glb`, coloured by OUR material registry (D66) and lit by the board's cell planes like every prop, so a perspective change needs no frame swap (the camera turns over one world) and the light and soot come from the world, not from a per-prop light search. What the flight code (`GrenadeController`) still drives is unchanged in meaning: `screen_position` and `flight_px` (`ObjectMesh3D`), the roll (`roll()`, about the axis perpendicular to the travel `set_roll_direction()` was given — a roll across the screen shows the whole turn and one toward the camera shows none, now by geometry instead of by a `roll_dir.x` factor) and `visible`, which the throw code uses as logic (a detonated grenade is hidden). GROUND SHADOW (Director, 2026-08-10: *"durante o vôo da granada, a sombra precisa acompanhar no chão, aumentando e diminuindo a opacidade e a difusão, de acordo com a distância vertical. Quando a granada encosta no chão a sombra é muito bem definida e bem menor, por baixo do asset."*). One height drives size, strength and softness, so they cannot disagree about how high the grenade is. `SHADOW_HEIGHT_REF_PX` is where the flight look is fully reached: `ThrowArcOverlay.arc_height_for()` floors every apex at `launch_px * 1.4`, 89.6 px for a standing throw, so even the shortest throw reaches the full effect at its apex and longer ones hold it. The strengths are `FloatingCollectible`'s ratified ground alpha (0.55) and the flight alpha MEASURED on the old shadow (0.35: the softer one read too faint under a body that flies past 90 px).
 
 **Constants / tuning**
 - `MODEL_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_grenade/Grenade.glb"`
@@ -2074,7 +2054,6 @@ extends `Node2D` · 164 lines
 - `func fuse_point_world() -> Vector3:`
 - `func set_roll_direction(screen_dir: Vector2) -> void:`
 - `func roll(angle: float) -> void:`
-- `func billboard_height_px() -> float:`
 - `func set_flight_height_px(px: float) -> void:`
 - `func update_cell(p_gu_cell: Vector2i) -> void:`
 
@@ -2616,7 +2595,7 @@ extends `RefCounted` · 37 lines
 
 ### `cell_plane_store.gd`
 
-`class_name CellPlaneStore` · extends `RefCounted` · 303 lines
+`class_name CellPlaneStore` · extends `RefCounted` · 297 lines
 
 `godot/scripts/systems/cell_plane_store.gd`
 
@@ -2930,7 +2909,7 @@ extends `RefCounted` · 37 lines
 
 ### `material_resistance_table.gd`
 
-`class_name MaterialResistanceTable` · 265 lines
+`class_name MaterialResistanceTable` · 261 lines
 
 `godot/scripts/systems/destruction/material_resistance_table.gd`
 
@@ -3022,7 +3001,7 @@ extends `RefCounted` · 37 lines
 
 ### `voxel_weakness.gd`
 
-extends `RefCounted` · 66 lines
+extends `RefCounted` · 63 lines
 
 `godot/scripts/systems/destruction/voxel_weakness.gd`
 
@@ -3035,7 +3014,7 @@ extends `RefCounted` · 66 lines
 
 ### `weapon_def.gd`
 
-`class_name WeaponDef` · 119 lines
+`class_name WeaponDef` · 114 lines
 
 `godot/scripts/systems/destruction/weapon_def.gd`
 
@@ -3120,12 +3099,9 @@ extends `Node` · 236 lines
 
 ### `enemy_phase_controller.gd`
 
-`class_name EnemyPhaseController` · extends `Node` · 131 lines
+`class_name EnemyPhaseController` · extends `Node` · 130 lines
 
 `godot/scripts/systems/enemy_phase_controller.gd`
-
-**Constants / tuning**
-- `DEFAULT_VISION_RANGE` = `6`
 
 **Public API**
 - `func run_single_guard_turn( guard, player_cell: Vector2i, blocked_cells: Dictionary, blocked_edges: Dictionary, room_size: Vector2i, occupied: Dictionary, tic_callback: Callable,   ## room._apply_tic_result noise_callback: Callable,  ## M2-14: room._on_guard_emits_noise (guard noise emission) ## G3 STAGE D — the set the guard's FEET obey, which since G-D8 is not the ## one its eyes do. Empty means "same as `blocked_edges`", so every caller ## that has not been split behaves exactly as it did. movement_edges: Dictionary = {} ) -> Dictionary:`
@@ -3257,7 +3233,7 @@ extends `Node` · 236 lines
 
 ### `image_source.gd`
 
-`class_name ImageSource` · 45 lines
+`class_name ImageSource` · 38 lines
 
 `godot/scripts/systems/image_source.gd`
 
@@ -3277,7 +3253,7 @@ extends `Node` · 236 lines
 
 ### `exposure_system.gd`
 
-`class_name ExposureSystem` · extends `Node` · 484 lines
+`class_name ExposureSystem` · extends `Node` · 478 lines
 
 `godot/scripts/systems/lighting/exposure_system.gd`
 
@@ -3295,7 +3271,6 @@ extends `Node` · 236 lines
 - `STABILITY_TEMPORAL` = `"temporal"`
 - `STABILITY_DYNAMIC` = `"dynamic"`
 - `STABILITY_OCCLUDED` = `"occluded"`
-- `STABILITY_NAMES` = `{ STABILITY_STATIC: "Static", STABILITY_TEMPORAL: "Temporal", STABILITY_DYNAMIC: "Dynamic", STABILITY_OCCLUDED: "Occluded", }`
 - `DETECTION_MULT` = `{ FULL_LIT:      1.00,    # Agent fully visible (100% base chance) DIM:           0.80,    # Dimly lit (80% base chance) PENUMBRA:      0.55,    # Edge of shadow (55% base chance) SHADOW:        0.30,    # Concealed in shadow (30% base chance) DEEP_SHADOW:   0.10,    # Hidden in deep shadow (10% base chance) OCCLUDED_VOID: 0.01,    # Extreme stealth (1% base chance, elite only) }`
 
 **Public vars**
@@ -3330,7 +3305,7 @@ extends `Node` · 236 lines
 
 ### `light_anchor.gd`
 
-`class_name LightAnchor` · extends `RefCounted` · 104 lines
+`class_name LightAnchor` · extends `RefCounted` · 101 lines
 
 `godot/scripts/systems/lighting/light_anchor.gd`
 
@@ -3358,22 +3333,17 @@ extends `Node` · 236 lines
 
 **Public API**
 - `func is_valid() -> bool:`
-- `func debug_string() -> String:`
 - `func debug_info() -> String:`
 
 ---
 
 ### `light_registry.gd`
 
-`class_name LightRegistry` · extends `Node` · 110 lines
+`class_name LightRegistry` · extends `Node` · 103 lines
 
 `godot/scripts/systems/lighting/light_registry.gd`
 
 > LightRegistry — Centralized light source management Responsibilities: ✓ Register/unregister lights ✓ Query lights by position/properties ✓ Track ownership and state Does NOT: ✗ Render lights ✗ Calculate shadows ✗ Compute exposure ✗ Manage visual effects Pure data storage and queries for the lighting system.
-
-**Signals**
-- `signal light_registered(light)`
-- `signal light_removed(light)`
 
 **Public API**
 - `func register_light(light) -> void:`
@@ -3388,7 +3358,7 @@ extends `Node` · 236 lines
 
 ### `light_source.gd`
 
-`class_name LightSource` · extends `RefCounted` · 264 lines
+`class_name LightSource` · extends `RefCounted` · 249 lines
 
 `godot/scripts/systems/lighting/light_source.gd`
 
@@ -3396,12 +3366,7 @@ extends `Node` · 236 lines
 
 **Constants / tuning**
 - `TYPE_OMNI` = `"omni"`
-- `TYPE_DIRECTIONAL` = `"directional"`
-- `TYPE_CONE` = `"cone"`
 - `TYPE_AMBIENT` = `"ambient"`
-- `TYPE_INTERMITTENT` = `"intermittent"`
-- `TYPE_EMERGENCY` = `"emergency"`
-- `TYPE_MOBILE` = `"mobile"`
 - `HEIGHT_FLOOR` = `0`
 - `HEIGHT_LOW_COVER` = `1`
 - `HEIGHT_HUMAN` = `2`
@@ -3484,7 +3449,7 @@ extends `Node` · 236 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 929 lines
+`class_name VoxelLightField` · extends `RefCounted` · 917 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -3983,7 +3948,7 @@ extends `Node` · 236 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 465 lines
+`class_name WorldDelta` · extends `RefCounted` · 463 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -3994,8 +3959,6 @@ extends `Node` · 236 lines
 - `P_STATE` = `0`
 - `P_BLAST` = `1`
 - `P_SIDE` = `2`
-- `P_VARIANT` = `3`
-- `P_SUBSTRATE` = `4`
 - `P_VISIBLE` = `5`
 
 **Public vars**
@@ -4067,7 +4030,7 @@ extends `Node` · 236 lines
 
 ### `prop_registry.gd`
 
-`class_name PropRegistry` · 215 lines
+`class_name PropRegistry` · 212 lines
 
 `godot/scripts/systems/prop_registry.gd`
 
@@ -4249,7 +4212,7 @@ extends `Node` · 798 lines
 
 ### `surface_rules.gd`
 
-`class_name SurfaceRules` · extends `RefCounted` · 115 lines
+`class_name SurfaceRules` · extends `RefCounted` · 103 lines
 
 `godot/scripts/systems/surface_rules.gd`
 
@@ -4446,7 +4409,7 @@ extends `RefCounted` · 86 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 888 lines
+`class_name VoxelStore` · extends `RefCounted` · 874 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
@@ -4497,8 +4460,6 @@ extends `RefCounted` · 86 lines
 - `func make_voxel(claim: int, container: Object) -> Voxel:`
 - `func container_of(claim: int) -> Object:`
 - `func voxel_of(claim: int) -> Voxel:`
-- `func mark_dirty(claim: int) -> bool:`
-- `func unmark_dirty(claim: int) -> bool:`
 - `func cell_index(x: int, y: int, level: int) -> int:`
 - `func has_cell(x: int, y: int, level: int) -> bool:`
 - `func has_solid(x: int, y: int, level: int) -> bool:`
@@ -4929,7 +4890,7 @@ extends `SceneTree` · 78 lines
 
 ### `floor_zone_bake_selftest.gd`
 
-extends `SceneTree` · 196 lines
+extends `SceneTree` · 191 lines
 
 `godot/scripts/tools/floor_zone_bake_selftest.gd`
 
@@ -4940,7 +4901,6 @@ extends `SceneTree` · 196 lines
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
 - `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
-- `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `FLOOR_TOP_LEVEL` = `GeometryCoords.FLOOR_TOP_LEVEL`
 
 **Public vars**
@@ -4948,7 +4908,7 @@ extends `SceneTree` · 196 lines
 - `var failed: int = 0`
 
 **Public API**
-- `func test_5_rotated_view_zones_follow_declared_material() -> void:`
+- `func test_5_zones_follow_declared_material() -> void:`
 - `func test_6_buffer_ring_continues_the_edge_ground() -> void:`
 
 ---
@@ -5930,7 +5890,7 @@ extends `SceneTree` · 527 lines
 
 ### `roof_bake_selftest.gd`
 
-extends `SceneTree` · 129 lines
+extends `SceneTree` · 124 lines
 
 `godot/scripts/tools/roof_bake_selftest.gd`
 
@@ -5942,29 +5902,27 @@ extends `SceneTree` · 129 lines
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
 - `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 
 **Public vars**
 - `var passed: int = 0`
 - `var failed: int = 0`
 
 **Public API**
-- `func test_5_rotated_view_roofs_follow_structures() -> void:`
+- `func test_5_roofs_follow_structures() -> void:`
 
 ---
 
 ### `roof_entity_selftest.gd`
 
-extends `SceneTree` · 248 lines
+extends `SceneTree` · 231 lines
 
 `godot/scripts/tools/roof_entity_selftest.gd`
 
-> R3D-7 — the free-standing `roofs` entity, end to end on the real OCCLUSION_ROOM map: FileMapSource reads the section, MapCompiler forwards `roof_instances` offset by the board buffer, PerspectiveMapper rotates it (the ROOF-BAKE-02a lesson: without an explicit rotation the roof lands on the wrong GUs in the E/S/W views), and RoomBuilder turns it into two CEILING slabs per GU at the height it names, through the same code a block's roof uses, with NO walls beneath it.
+> R3D-7 — the free-standing `roofs` entity, end to end on the real OCCLUSION_ROOM map: FileMapSource reads the section, MapCompiler forwards `roof_instances` offset by the board buffer, and RoomBuilder turns it into two CEILING slabs per GU at the height it names, through the same code a block's roof uses, with NO walls beneath it. (The E/S/W layout-rotation checks went 2026-11-11, HERITAGE T1: rotation is camera-only since R3D-ROT and the game never rotates a layout.)
 
 **Constants / tuning**
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
-- `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
 - `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
@@ -6165,7 +6123,7 @@ extends `SceneTree` · 119 lines
 
 ### `slice_geometry_selftest.gd`
 
-extends `SceneTree` · 210 lines
+extends `SceneTree` · 189 lines
 
 `godot/scripts/tools/slice_geometry_selftest.gd`
 
@@ -6440,16 +6398,15 @@ extends `SceneTree` · 195 lines
 
 ### `voxel_persist_selftest.gd`
 
-extends `SceneTree` · 162 lines
+extends `SceneTree` · 97 lines
 
 `godot/scripts/tools/voxel_persist_selftest.gd`
 
-> VL-PERSIST selftest — the coordinate math destruction persistence relies on. Run: godot --headless --script res://godot/scripts/tools/voxel_persist_selftest.gd Destruction is recorded in BASE (N-frame) voxel coords and re-applied per view by PerspectiveMapper.cell_to_base / cell_from_base at 8× the GU resolution (base_size × VOXELS_PER_UNIT_AXIS). Two properties must hold or holes land on the wrong voxels after a rotation: 1. cell_from_base and cell_to_base are exact inverses at voxel scale. 2. A voxel's rotation is consistent with its owning GU's rotation — the 8×8 quadrant rotates coherently, so a voxel stays inside its rotated GU. 3. GLASS §16.6 — the GEOMETRY the coordinates point at rotates too. Properties 1 and 2 were green for months while every half-thickness PANEL stood still through a quarter turn, because `layout_with_perspective()` never rotated `panel_instances`. A coordinate test cannot see that: the key was right, the pane was not there.
+> VL-PERSIST selftest — the coordinate math destruction persistence relies on. Run: python3 tools/persistent/run_selftests.py --only voxel_persist Destruction is recorded in BASE (N-frame) voxel coords and re-applied per view by PerspectiveMapper.cell_to_base / cell_from_base at 8× the GU resolution (base_size × VOXELS_PER_UNIT_AXIS). Two properties must hold or holes land on the wrong voxels after a rotation: 1. cell_from_base and cell_to_base are exact inverses at voxel scale. 2. A voxel's rotation is consistent with its owning GU's rotation — the 8×8 quadrant rotates coherently, so a voxel stays inside its rotated GU. (Property 3, the panel rotating with `layout_with_perspective()`, went 2026-11-11 with that function, HERITAGE T1: the game stopped rotating a layout at R3D-ROT.)
 
 **Constants / tuning**
 - `PM` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `SliceGeneratorClass` = `preload("res://godot/scripts/geometry/slice_generator.gd")`
 
 **Public vars**
 - `var passed: int = 0`
@@ -6458,7 +6415,6 @@ extends `SceneTree` · 162 lines
 **Public API**
 - `func test_voxel_roundtrip_all_directions() -> void:`
 - `func test_voxel_stays_in_rotated_gu() -> void:`
-- `func test_panel_rotates_with_the_map() -> void:`
 
 ---
 
@@ -6508,14 +6464,13 @@ extends `SceneTree` · 428 lines
 
 ### `detonate_context_menu.gd`
 
-`class_name DetonateContextMenu` · extends `Control` · 141 lines
+`class_name DetonateContextMenu` · extends `Control` · 137 lines
 
 `godot/scripts/ui/detonate_context_menu.gd`
 
 > DetonateContextMenu — small black-box context menu for right-clicking an interactive TEST-ZONE prop (placeholder, 2026-07-21). One parameterised action then a separator then "Cancelar (Esc)". Enter/Space activate the focused button natively (Godot's own Control focus system) — no custom accept handling needed. Esc and outside-clicks are handled by the caller (room.gd owns all mouse/keyboard coordination — see its _unhandled_input), not here, so there is exactly one place deciding "is the menu open" instead of two competing input handlers. WEAPON-FIRE-01 (2026-07-29): the action label and its handler are now passed in at open_at() time, because a second prop type needed a second verb ("Atirar" on a bench weapon vs. "Detonar" on a grenade). One shared menu INSTANCE is deliberate, not incidental: room.gd's _unhandled_input treats any click while `_context_menu.visible` as an outside-click cancel, and a second instance would need that guard to know about both. The class and file name are now historical — this is no longer detonation specific. Renaming both is a follow-up, not a silent partial rename that would leave the file and the class disagreeing.
 
 **Signals**
-- `signal action_requested`
 - `signal cancelled`
 - `signal opened`
 - `signal closed`
@@ -6789,7 +6744,7 @@ extends `Node2D` · 63 lines
 
 ### `capture_controller.gd`
 
-extends `Node` · 252 lines
+extends `Node` · 251 lines
 
 `godot/scripts/world/controllers/capture_controller.gd`
 
@@ -6800,7 +6755,6 @@ extends `Node` · 252 lines
 - `CaptureProfilesRef` = `preload("res://godot/scripts/systems/capture/capture_profiles.gd")`
 - `MapLayoutRef` = `preload("res://godot/scripts/world/maps/map_layout.gd")`
 - `TITLE_BAR_PX` = `28`
-- `EASE_FN` = `{"linear": 0, "in_out": 1, "out": 2}`
 
 **Public vars**
 - `var room: Node = null`
@@ -6842,8 +6796,21 @@ extends `Node` · 252 lines
 - `func toggle_nudge_mode() -> void:`
 - `func apply_nudge(delta: Vector2) -> void:`
 - `func reset_nudge() -> void:`
-- `func try_change_posture(new_posture: DebugAgent.Posture) -> void:`
+- `func try_change_posture(new_posture: Agent.Posture) -> void:`
 - `func is_nudge_mode_active() -> bool:`
+
+---
+
+### `grenade_controller.gd`
+
+`class_name GrenadeController` · 1897 lines
+
+`godot/scripts/world/controllers/grenade_controller.gd`
+
+> GrenadeController — the grenade, whole: the grenades on the map (`_grenades`, each one's `GrenadeProp` mesh under "prop"), AIM MODE (pick a target inside the throw range, the preview), the throw (the agent's raise / release, the flight, the hop and the roll), the fuse effects and the detonation pipeline (prediction, presenter, hit-stop, the committed stages). Renamed from `TestZoneController` on 2026-11-11 (HERITAGE T1): it began 2026-07-21 as the TEST ZONE's "Detonar" on a bench prop and grew into the game's grenade. The flight is still a 2D parabola in screen pixels (`ThrowArcOverlay`); HERITAGE T2 W5 moves it to world state. Delegates to room for shared state, same extraction pattern as SelectionController.
+
+**Constants / tuning**
+- `BLAST_IGNITES_LIQUID_GU` = `3.0`
 
 ---
 
@@ -6931,19 +6898,6 @@ extends `RefCounted` · 404 lines
 
 ---
 
-### `test_zone_controller.gd`
-
-`class_name TestZoneController` · 1918 lines
-
-`godot/scripts/world/controllers/test_zone_controller.gd`
-
-> TestZoneController — TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop. ACTOR_MASTER_PLAN D1/D2 prototype (same session): the grenade is a "digital twin" (Quaternius' CC0 "Grenade" model, poly.pizza) rendered via the real-3D-model + normal-map bake technique proven for the shotgun (godot/scripts/tools/grenade_frame_bake_spike.gd, 2026-07-28) — displayed via GrenadeProp (godot/scripts/overlays/grenade_prop.gd), NOT live TileMapLayer voxel cells. Superseded the original single-angle bake_voxel_sprite_3d.gd bake (grenade_bake_x8.png, a hand-placed BoxMesh voxel reconstruction of a CC0 .qb — itself already a v2 over a hand-rolled 2D painter's-algorithm rasterizer, v1) once that was shown to read flat from some angles and to ignore the room's active N/E/S/W perspective entirely, the same class of bug D22 found and fixed for the shotgun. Proves the mechanism ACTOR_MASTER_PLAN D1/D2 describes for one object before Parts 0-2 of that plan get built for real. Registry stays a plain Array[Dictionary] on purpose — scaffolding for the PLAYGROUND rebuild, not a permanent prop-interaction architecture. Delegates to room for shared state, same extraction pattern as SelectionController.
-
-**Constants / tuning**
-- `BLAST_IGNITES_LIQUID_GU` = `3.0`
-
----
-
 ### `turn_controller.gd`
 
 `class_name TurnController` · 385 lines
@@ -6965,14 +6919,14 @@ extends `RefCounted` · 404 lines
 - `var room: Node`
 - `var turn_manager: TacticalTurnManager = null`
 - `var enemy_phase_controller: EnemyPhaseController = null`
-- `var agent: DebugAgent = null`
+- `var agent: Agent = null`
 - `var camera: Camera2D = null`
 - `var VISUAL_GRID_OFFSET: Vector2 = Vector2.ZERO`
 - `var FOW_REVEAL_RADIUS: int = 0`
 - `var vision_bonus_tiles: int = 0`
 
 **Public API**
-- `func setup( p_turn_manager: TacticalTurnManager, p_enemy_phase_controller: EnemyPhaseController, p_agent: DebugAgent, p_camera: Camera2D, p_fow_controller: Object, p_hud_controller: Object, p_vision_controller: Object, p_guard_coordinator: Object, p_noise_system: Object, p_noise_overlay: Object ) -> void:`
+- `func setup( p_turn_manager: TacticalTurnManager, p_enemy_phase_controller: EnemyPhaseController, p_agent: Agent, p_camera: Camera2D, p_fow_controller: Object, p_hud_controller: Object, p_vision_controller: Object, p_guard_coordinator: Object, p_noise_system: Object, p_noise_overlay: Object ) -> void:`
 - `func set_constants( p_visual_grid_offset: Vector2, p_fow_radius: int, p_vision_bonus: int, p_alert_max: int, p_alert_gain: int ) -> void:`
 - `func set_game_state( p_guards: Array, p_blocked_cells: Dictionary, p_current_blocked_edges: Array[Dictionary], p_room_size: Vector2i ) -> void:`
 - `func get_alert_meter() -> int:`
@@ -7009,12 +6963,11 @@ extends `RefCounted` · 404 lines
 
 ### `level_graph.gd`
 
-`class_name LevelGraph` · extends `RefCounted` · 98 lines
+`class_name LevelGraph` · extends `RefCounted` · 97 lines
 
 `godot/scripts/world/level_graph.gd`
 
 **Constants / tuning**
-- `SEG_SIZE` = `Vector2i(18, 36)`
 - `EXIT_CELLS` = `{ "NW": Vector2i(9, 0), "SE": Vector2i(9, 35), "SW": Vector2i(0, 17), "NE": Vector2i(17, 17), }`
 
 **Public API**
@@ -7210,7 +7163,7 @@ extends `RefCounted` · 404 lines
 
 ### `room.gd`
 
-extends `Node2D` · 13197 lines
+extends `Node2D` · 13136 lines
 
 `godot/scripts/world/room.gd`
 
@@ -7254,7 +7207,7 @@ extends `Node2D` · 13197 lines
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `GlassOpening` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
 - `SelectionControllerClass` = `preload("res://godot/scripts/world/controllers/selection_controller.gd")`
-- `TestZoneControllerClass` = `preload("res://godot/scripts/world/controllers/test_zone_controller.gd")`
+- `TestZoneControllerClass` = `preload("res://godot/scripts/world/controllers/grenade_controller.gd")`
 - `AgentShotControllerClass` = `preload("res://godot/scripts/world/controllers/agent_shot_controller.gd")`
 - `DetonateContextMenuClass` = `preload("res://godot/scripts/ui/detonate_context_menu.gd")`
 - `ModalStackClass` = `preload("res://godot/scripts/ui/modal_stack.gd")`
@@ -7307,7 +7260,7 @@ extends `Node2D` · 13197 lines
 
 ### `tile_semantics.gd`
 
-`class_name TileSemantics` · extends `RefCounted` · 166 lines
+`class_name TileSemantics` · extends `RefCounted` · 152 lines
 
 `godot/scripts/world/tile_semantics.gd`
 
@@ -7340,16 +7293,12 @@ extends `Node2D` · 13197 lines
 - `var receives_light: bool = true`
 - `var blocks_los: bool = false`
 - `var blocks_light: bool = false`
-- `var blocks_shadow: bool = false`
-- `var stealth_modifier: float = 1.0`
-- `var acoustic_dampening: float = 0.0`
 - `var is_light_anchor: bool = false`
 - `var anchor_type: String = ""`
 - `var has_hazard: bool = false`
 - `var hazard_type: String = ""`
 
 **Public API**
-- `func debug_string() -> String:`
 - `func debug_info() -> String:`
 
 ---
@@ -7369,14 +7318,14 @@ extends `Node2D` · 13197 lines
 
 ### `perspective_mapper.gd`
 
-`class_name PerspectiveMapper` · 327 lines
+`class_name PerspectiveMapper` · 74 lines
 
 `godot/scripts/world/utilities/perspective_mapper.gd`
 
-> Perspective Mapper: static utility for isometric perspective transformations. Handles direction-based cell coordinate conversions and tile name suffix remapping. Extracted from room.gd (Task 04 modularization).
+> Perspective Mapper: static utility for the four compass views' cell maps (base N <-> view). Extracted from room.gd (Task 04 modularization). 2026-11-11 (HERITAGE T1): the layout rotation (`layout_with_perspective`, the tile-name and face remaps, `rotated_size`, the light-angle delta) went: rotation is camera-only since R3D-ROT and the game never rotates a layout. What is left are the cell maps the blast and the occlusion still use.
 
 **Constants / tuning**
-- `SUFFIX_MAP` = `{ "N": {"NE": "NE", "SE": "SE", "SW": "SW", "NW": "NW"}, "E": {"NE": "SE", "SE": "SW", "SW": "NW", "NW": "NE"}, "S": {"NE": "SW", "SE": "NW", "SW": "NE", "NW": "SE"}, "W": {"NE": "NW", "SE": "NE", "SW": "SE", "NW": "SW"}, }`
+- `DIRECTIONS` = `["N", "E", "S", "W"]`
 
 ---
 

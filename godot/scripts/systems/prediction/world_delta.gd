@@ -49,8 +49,6 @@ const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/bl
 const P_STATE: int = 0
 const P_BLAST: int = 1
 const P_SIDE: int = 2
-const P_VARIANT: int = 3
-const P_SUBSTRATE: int = 4
 const P_VISIBLE: int = 5
 
 ## The ordered `set_damage()` calls this Delta would make
@@ -354,7 +352,7 @@ func state_of(voxel) -> int:
 ## scorch keep working unchanged. When it is supplied, the proposed scorch lands
 ## through `Room.absorb_scorch()` (min-wins, the store's only writer besides a shot).
 ##
-## ⚠️ The world revision does NOT get bumped here. `TestZoneController` already
+## ⚠️ The world revision does NOT get bumped here. `GrenadeController` already
 ## calls `room.bump_world_revision()` after this returns, and adding a second bump
 ## inside would be a silent extra invalidation of every cached prediction on a
 ## path where performance is the standing priority. The requirement is that a

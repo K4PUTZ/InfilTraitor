@@ -641,6 +641,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-11-09_POSE_FIXES_MOTO_ROUND.md
 - RESUMO_SESSAO_2026-11-10_CODE_HERITAGE_AUDIT.md
 - RESUMO_SESSAO_2026-11-10_STORY_AUDIT.md
+- RESUMO_SESSAO_2026-11-11_DRAW_SEQUENCE.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -1390,7 +1391,7 @@ the blast from "the waves fire" to something that reads right. Full record:
   `apply` param, every existing caller byte-for-byte unaffected). Commit
   `ddbe7dd`.
 - **Task 5 (E-WAVE)** — `DetonationChoreographer` plays the plan back and
-  `TestZoneController.detonate_active()` is reconnected end to end. As shipped
+  `GrenadeController.detonate_active()` is reconnected end to end. As shipped
   this was 15 fixed waves on independent `SceneTreeTimer`s at 40 ms; **both the
   table and the timers were retired on 2026-08-09** (E-ORGANIC-01/E-RADIAL-01,
   above) in favour of a radially-ordered queue paced against a deadline. Real bug caught by the capture itself: a `SceneTreeTimer`'s signal

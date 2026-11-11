@@ -133,12 +133,12 @@ Room (room.gd, Node2D)                 orchestrator
 │     (`_start_board3d_live()`; a map reload removes and rebuilds it; `board3d()` answers with the live one)
 ├── VoxelBoard (VoxelBoard, Node2D, hidden)   NOT a renderer: the level registry, the cell planes' application, the dirty -> `voxel_destroyed` pass, glass crack/rim/shard records, prop containers
 ├── Camera2D · TurnManager · EnemyPhaseController
-├── Agent (DebugAgent) · Enemies (GuardEnemy*, spawned at runtime)       actors drawn by ActorMesh3D (live rig, R3D-ACTORS); ActorPose (a plain Node, was AgentSprite) only decides
+├── Agent (Agent) · Enemies (GuardEnemy*, spawned at runtime)       actors drawn by ActorMesh3D (live rig, R3D-ACTORS); ActorPose (a plain Node, was AgentSprite) only decides
 ├── MovementOverlay · PathPreview · SelectionOverlay · TileLabelsOverlay · FogOfWarOverlay · VisionFogOverlay(FogRect)
 ├── HUD (hud.tscn)        reached ONLY through `HudController` (rule 11)
 │
 │   controllers added in code: LightingController · VisionController · HudController · CameraController · FowController · GuardCoordinator · TurnController
-│   world/controllers: InputController · SelectionController · AgentShotController · TestZoneController (grenades, props) · DebugToolsController · WorldMarkersOverlayController
+│   world/controllers: InputController · SelectionController · AgentShotController · GrenadeController (grenades, props) · DebugToolsController · WorldMarkersOverlayController
 ```
 
 ### The load pipeline (`room.load_map(map_id)`)
@@ -168,7 +168,7 @@ clique/toque direto."*
 target is the GU cell it occupies — `room._screen_to_tile(screen_pos)` resolved
 against the object's own `gu_cell`/`cell` field — never a sprite bounding box
 or radius. Shipped 2026-07-30 for the two floor props that had their own
-sprite-radius `hit_test()`: `TestZoneController` (grenades) and
+sprite-radius `hit_test()`: `GrenadeController` (grenades) and
 `WeaponBenchController` (bench weapons), both now GU-exact. `room._unhandled_input()`
 is otherwise unaffected — it already resolves ordinary move-clicks through
 `_screen_to_tile()`, so this brings prop hit-testing in line with the same
@@ -360,7 +360,7 @@ Detection is **tic-based**: a discrete check fires whenever an actor crosses a t
    - **LOS** via `can_see_cell` (Bresenham with diagonal corner checks against blocked cells/edges),
    - base probability from `FOV_DISTANCE_CURVE`, scaled by `FOV_LATERAL_FALLOFF` (axis offset),
    - **shadow** multiplier from `_shadow_tiles` (see caveat below),
-   - **posture** multiplier (`DebugAgent.POSTURE_DETECTION_MULT`: standing 1.0 / crouch 0.55 / prone 0.20),
+   - **posture** multiplier (`Agent.POSTURE_DETECTION_MULT`: standing 1.0 / crouch 0.55 / prone 0.20),
    - **cover** multiplier (`COVER_FULL_MULT 0.20`, `COVER_PARTIAL_MULT 0.55`) with **flanking** that nullifies cover when the guard is on the exposed arc.
 3. `TicSystem` applies a **state multiplier** (`STATE_MULTIPLIER`: patrol 0.55 … chase 2.80) and rolls `randf() < raw_chance` → `detected`.
 4. `room._apply_tic_result` accumulates `guard.detection` (`DETECTION_GAIN_PER_TIC = 0.4`) or decays it (state-dependent), then escalates the guard via thresholds (`SUSPICIOUS 0.30`, `ALERT 0.60`, `CHASE 1.00`) and the global `_alert_meter`.
@@ -551,7 +551,7 @@ This section is descriptive, not aspirational. These are real properties of the 
 Despite `MODULARIZE-01..06`, `room.gd` still owns: input routing, turn handlers, agent move callbacks, tic application and alert metering, busted/reset flows, the base-record replay (checkpoint persistence), the picking glue, the dev capture/scenario/benchmark entry points, the prop consequence code, and the reads of 38+ distinct dev flags (`_dev_flag("NAME")`). It grew (11 909 lines on 2026-09-15, 11 169 now after R3D-END's deletions) because each track added its seam here. **R3D-ROT removed the rotation half of the replay (the `_base_*` records stay as checkpoint persistence until `SaveState` serialises the store); the dev entry points are the next extraction** (they are not game logic).
 
 ### 15.2 Other oversized files
-`DetonationPlanBuilder` 3 057 lines (one cook, 14 phases: cohesive but huge), `TestZoneController` 1 611 (it became the grenade and prop controller, the name is the placeholder it started as), `guard_enemy.gd` 1 312 (FSM + movement + detection + three `_draw` routines), `VoxelBoard` 2 404 (state, planes, glass records, prop containers), `Board3DLive` (the whole 3D board in one node).
+`DetonationPlanBuilder` 3 057 lines (one cook, 14 phases: cohesive but huge), `GrenadeController` 1 611 (it became the grenade and prop controller, the name is the placeholder it started as), `guard_enemy.gd` 1 312 (FSM + movement + detection + three `_draw` routines), `VoxelBoard` 2 404 (state, planes, glass records, prop containers), `Board3DLive` (the whole 3D board in one node).
 
 ### 15.3 Controller <-> room coupling
 Controllers hold `_room` back-references and read/write room's underscore members (`VisionController` reaches `_room._lighting_controller._shadow_projector`; `AgentShotController` calls `room._on_voxel_destroyed` and `room._release_destroyed_prop_cells`). They are extracted *responsibilities*, not yet *boundaries*. The one boundary that IS enforced is the HUD (rule 11, hook L3).
@@ -563,7 +563,7 @@ Controllers hold `_room` back-references and read/write room's underscore member
 Rotation is the camera's yaw, so no state is recorded or replayed for it any more. The `_base_*` records (`_base_damage`, `_base_shattered_props`, `_base_debris`, the pile and crack records) remain as the CHECKPOINT persistence that `SaveState` restores after `load_map()`. Soot has one truth since 2026-10-02 (SOOT-TRUTH): `Room._soot_map` owns it and the soot plane is its projection (a destroyed voxel's erase clears the plane too, `stamp_soot` ignores cells no voxel stands on, `settle_soot()` paints stamped cells no wave carried); `board_probe.py roundtrip --with-store` reads 0 texels on PLAYGROUND. A prop's blocked GU is erased in place (`_release_destroyed_prop_cells`) but the lamps' cached shadow map is not re-fed (same gap as a burnt wall).
 
 ### 15.6 Hardcoded / inferred data
-Tile semantics and heights are inferred from `blocked_cells`; lights are map-driven (omni only) without authoring tooling; `TestZoneController` still seeds dev grenades; material rows are calibrated by eye with the Director, not derived.
+Tile semantics and heights are inferred from `blocked_cells`; lights are map-driven (omni only) without authoring tooling; `GrenadeController` still seeds dev grenades; material rows are calibrated by eye with the Director, not derived.
 
 ### 15.7 Documentation debt
 `docs/systems/*.md` (ai, lighting, movement, noise, perception, rendering, stealth, occlusion) were re-audited against the code on 2026-10-02: their numbers are verified and each banner says what is built and what is specification. `docs/technical/{ASSET_MAP,TEXTURE_CATALOG}.md` and §2-§14 above still pre-date R3D and were reconciled only as far as their banners say.

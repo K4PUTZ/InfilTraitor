@@ -3,7 +3,6 @@
 ## clear); no edge-linking half exists because Slab voxels have no edge to link to.
 class_name SlabRegistry
 
-signal slab_registered(slab: Slab)
 
 var _slabs: Dictionary = {}    ## slab.id → Slab
 
@@ -11,7 +10,6 @@ var _slabs: Dictionary = {}    ## slab.id → Slab
 ## Register a slab
 func register_slab(slab: Slab) -> void:
 	_slabs[slab.id] = slab
-	slab_registered.emit(slab)
 
 
 ## Get slab by ID; returns null if not found

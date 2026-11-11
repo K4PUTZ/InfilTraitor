@@ -1,5 +1,5 @@
 extends Node2D
-class_name DebugAgent
+class_name Agent
 const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 ## The playable agent: owns its grid cell, converts cell → world position, and
 ## animates step-by-step.
@@ -15,7 +15,6 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 signal move_started(from_cell: Vector2i, to_cell: Vector2i)
 signal step_finished(cell: Vector2i)
 signal move_finished(cell: Vector2i)
-signal posture_changed(new_posture: Posture)
 
 enum Posture { STANDING, CROUCHING, PRONE }
 
@@ -55,16 +54,15 @@ const POSTURE_AIM_MULT: Dictionary = {
 var visual_offset: Vector2 = Vector2.ZERO
 var cell: Vector2i = Vector2i.ZERO
 var vision_radius: int = 7  ## base player visibility radius in tiles; affects enemy fade thresholds
-var vision_mode: String = "normal"  ## future modes: thermal, night vision, xray
 var is_moving: bool = false
 var dev_vision: bool = false
 
-## The baked figure. Null until attach_sprite() succeeds, and every call site
+## The baked figure. Null until attach_pose() succeeds, and every call site
 ## guards on it: a missing bake must degrade to an invisible agent that still
 ## plays, never to a crash in the middle of a turn.
-var sprite: ActorPose = null
+var pose: ActorPose = null
 
-## DebugAgent.Posture -> ActorPose's directory name. The mapping lives here
+## Agent.Posture -> ActorPose's directory name. The mapping lives here
 ## rather than in ActorPose so the dependency runs one way: the renderer knows
 ## nothing about the gameplay enum.
 const POSTURE_SPRITE_NAME: Dictionary = {
@@ -155,8 +153,8 @@ func throw_origin() -> Vector2:
 ## loaded yet. ONE function, because the throw, the arc's launch height and the
 ## muzzle must never disagree about where this figure's hands are.
 func _head_anchor() -> Vector2:
-	if sprite != null:
-		var measured: Vector2 = sprite.head_offset_px()
+	if pose != null:
+		var measured: Vector2 = pose.head_offset_px()
 		if measured != Vector2.ZERO:
 			return measured
 	return HEAD_OFFSET.get(posture, HEAD_OFFSET[Posture.STANDING])
@@ -219,24 +217,24 @@ const THROW_CANCEL_SECONDS: float = 0.12
 
 ## Raise the arm and HOLD the cocked pose for the whole aim.
 func play_throw_raise() -> bool:
-	if sprite == null:
+	if pose == null:
 		return false
-	return sprite.play_throw(ActorPose.THROW_RAISE, THROW_RAISE_SECONDS, true)
+	return pose.play_throw(ActorPose.THROW_RAISE, THROW_RAISE_SECONDS, true)
 
 
 ## Put it back down along the same path, quickly.
 func play_throw_cancel() -> bool:
-	if sprite == null:
+	if pose == null:
 		return false
-	return sprite.play_throw(ActorPose.THROW_RAISE, THROW_CANCEL_SECONDS,
+	return pose.play_throw(ActorPose.THROW_RAISE, THROW_CANCEL_SECONDS,
 		false, true)
 
 
 ## Throw. Emits `sprite.throw_released` on the frame the grenade leaves the hand.
 func play_throw_release() -> bool:
-	if sprite == null:
+	if pose == null:
 		return false
-	return sprite.play_throw(ActorPose.THROW_RELEASE, THROW_RELEASE_SECONDS)
+	return pose.play_throw(ActorPose.THROW_RELEASE, THROW_RELEASE_SECONDS)
 
 
 ## WEAPON_MASTER_PLAN §6c / B4 — raise or lower the held weapon.
@@ -246,8 +244,8 @@ func play_throw_release() -> bool:
 ## (frame_family, posture, dev vision all live there). Duplicating it here would
 ## make two answers to that question possible.
 func set_grip(name: String) -> void:
-	if sprite != null:
-		sprite.set_grip(name)
+	if pose != null:
+		pose.set_grip(name)
 
 
 ## How far above the floor that origin is, in pixels. The ballistic arc needs it
@@ -282,8 +280,8 @@ var _path_queue: Array[Vector2i] = []
 var _walk_progress: float = 0.0:
 	set(value):
 		_walk_progress = value
-		if sprite != null:
-			sprite.set_walk_phase(value)
+		if pose != null:
+			pose.set_walk_phase(value)
 
 
 func setup(offset: Vector2, start_cell: Vector2i) -> void:
@@ -294,8 +292,8 @@ func setup(offset: Vector2, start_cell: Vector2i) -> void:
 ## Part 2 §10's swap. Separate from `setup()` because the sprite needs `room` and
 ## `setup()` is called with a TileMapLayer — and because a caller that has no
 ## room (a headless selftest) must still get a working agent.
-func attach_sprite(p_room: Node) -> bool:
-	if sprite != null:
+func attach_pose(p_room: Node) -> bool:
+	if pose != null:
 		return true
 	var s := ActorPose.new()
 	s.name = "ActorPose"
@@ -306,16 +304,16 @@ func attach_sprite(p_room: Node) -> bool:
 		## silently vanish from the map.
 		s.queue_free()
 		return false
-	sprite = s
-	sprite.set_posture_name(POSTURE_SPRITE_NAME[posture])
+	pose = s
+	pose.set_posture_name(POSTURE_SPRITE_NAME[posture])
 	return true
 
 
 func set_cell(new_cell: Vector2i) -> void:
 	cell = new_cell
 	position = _cell_to_world(new_cell)
-	if sprite != null:
-		sprite.update_for_cell()
+	if pose != null:
+		pose.update_for_cell()
 	queue_redraw()
 
 
@@ -327,9 +325,8 @@ func set_posture(new_posture: Posture) -> void:
 	if new_posture == posture:
 		return
 	posture = new_posture
-	if sprite != null:
-		sprite.set_posture_name(POSTURE_SPRITE_NAME[posture])
-	posture_changed.emit(posture)
+	if pose != null:
+		pose.set_posture_name(POSTURE_SPRITE_NAME[posture])
 	queue_redraw()
 
 
@@ -337,16 +334,16 @@ func set_posture(new_posture: Posture) -> void:
 ## room.gd's one dev switch, the same one the probes already follow.
 func set_dev_vision(enabled: bool) -> void:
 	dev_vision = enabled
-	if sprite != null:
-		sprite.set_dev_vision(enabled)
+	if pose != null:
+		pose.set_dev_vision(enabled)
 	queue_redraw()
 
 
 ## The camera turned (R3D-ROT: the cell never moves). ActorPose stores the facing in base space and
 ## recomposes it against the live view, so this only has to ask for a refresh.
 func on_perspective_changed() -> void:
-	if sprite != null:
-		sprite.update_for_cell()
+	if pose != null:
+		pose.update_for_cell()
 
 
 func update_cover(blocked_cells: Dictionary) -> void:
@@ -387,8 +384,8 @@ func move_along_path(path: Array[Vector2i]) -> void:
 func _step_next() -> void:
 	if _path_queue.is_empty():
 		is_moving = false
-		if sprite != null:
-			sprite.stop_walking()
+		if pose != null:
+			pose.stop_walking()
 		move_finished.emit(cell)
 		queue_redraw()
 		return
@@ -401,8 +398,8 @@ func _step_next() -> void:
 	## facing is set here, once, from the step's own direction, and nothing
 	## interpolates it. Read BEFORE `cell` advances, because the direction is the
 	## difference between where he is and where he is going.
-	if sprite != null:
-		sprite.face_step(next_cell - cell)
+	if pose != null:
+		pose.face_step(next_cell - cell)
 
 	cell = next_cell  ## logical cell advances immediately
 

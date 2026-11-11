@@ -19,9 +19,6 @@ signal radioed(origin_cell: Vector2i, last_known: Vector2i)
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 const STEP_DURATION_BASE := 0.13
 
-const COLOR_BODY := Color(0.86, 0.26, 0.22, 1.0)
-const COLOR_BODY_DARK := Color(0.58, 0.12, 0.10, 1.0)
-const COLOR_HEAD := Color(1.0, 0.87, 0.80, 1.0)
 
 ## Base probabilities by distance, indexed by tile distance
 const FOV_DISTANCE_CURVE: Array[float] = [
@@ -90,16 +87,16 @@ var _los_revision: int = 0
 ## the id picks the colour of its reveal silhouette (`ActorMesh3D.REVEAL_PALETTES`).
 var faction: StringName = &"agency"
 ## A field OFFICER (2026-11-08): wears the old agent's model (`ActorMesh3D` family `_officer`) instead of the soldier's white blazer. Only the
-## look so far; rank has no rules yet (GAMEPLAY milestone). Set by `Room._spawn_guards` from the map's `actors.officers`, before `attach_sprite`.
+## look so far; rank has no rules yet (GAMEPLAY milestone). Set by `Room._spawn_guards` from the map's `actors.officers`, before `attach_pose`.
 var officer: bool = false
 var cell: Vector2i = Vector2i.ZERO
 var patrol_route: Array[Vector2i] = []
 var patrol_index: int = 0
 var facing: Vector2i = Vector2i.UP
-## The baked figure. Null until attach_sprite() succeeds; every call site guards
+## The baked figure. Null until attach_pose() succeeds; every call site guards
 ## on it, and _draw() falls back to the vector diamond so a missing bake leaves a
 ## visible guard rather than an invisible one.
-var sprite: ActorPose = null
+var pose: ActorPose = null
 var state: String = STATE_PATROL
 var state_timer: int = 0
 var last_known_agent_cell: Vector2i = INVALID_CELL
@@ -290,8 +287,8 @@ func _process(delta: float) -> void:
 	##
 	## No-ops until the head bake lands: with no layers on disk `ActorPose`
 	## resolves an empty layer list and this costs one is_empty() per frame.
-	if sprite != null:
-		sprite.set_head_yaw_grid_deg(rad_to_deg(vision_angle))
+	if pose != null:
+		pose.set_head_yaw_grid_deg(rad_to_deg(vision_angle))
 
 	if not _cone_redraw_always and not _cone_inputs_changed():
 		return
@@ -376,7 +373,7 @@ func evaluate_detection(
 		blocked_cells: Dictionary = {},
 		blocked_edges: Dictionary = {},
 		_close_warning_range: int = 2,
-		agent_ref: DebugAgent = null
+		agent_ref: Agent = null
 ) -> Dictionary:
 	var delta := player_cell - cell
 	if delta == Vector2i.ZERO:
@@ -414,16 +411,16 @@ func evaluate_detection(
 
 	## M2-12b: Agent Posture
 	if agent_ref != null:
-		var posture_mult: float = DebugAgent.POSTURE_DETECTION_MULT.get(agent_ref.posture, 1.0)
+		var posture_mult: float = Agent.POSTURE_DETECTION_MULT.get(agent_ref.posture, 1.0)
 		final_prob *= posture_mult
 
 	## M2-10: Cover
-	if agent_ref != null and agent_ref.cover_state != DebugAgent.CoverType.NONE:
+	if agent_ref != null and agent_ref.cover_state != Agent.CoverType.NONE:
 		var cover_mult := 1.0
-		if agent_ref.cover_state == DebugAgent.CoverType.FULL:
-			cover_mult = DebugAgent.COVER_FULL_MULT
-		elif agent_ref.cover_state == DebugAgent.CoverType.PARTIAL:
-			cover_mult = DebugAgent.COVER_PARTIAL_MULT
+		if agent_ref.cover_state == Agent.CoverType.FULL:
+			cover_mult = Agent.COVER_FULL_MULT
+		elif agent_ref.cover_state == Agent.CoverType.PARTIAL:
+			cover_mult = Agent.COVER_PARTIAL_MULT
 
 		## Flanking: a guard on the opposite side of the obstacle ignores cover
 		var flank_dir := -agent_ref.cover_direction  ## exposed side
@@ -568,7 +565,7 @@ func _snap_to_8dir(v: Vector2i) -> Vector2i:
 ## FACING-SYNC-01 (Director, 2026-08-17: "o ângulo da orientação do inimigo
 ## parece estar deslocado 90° em relação ao overlay de detecção no chão").
 ##
-## The baked figure had NO facing update after attach_sprite()'s single
+## The baked figure had NO facing update after attach_pose()'s single
 ## `sprite.face_direction(facing)` — the body stayed frozen at whatever
 ## direction the guard was born with (`facing` defaults to Vector2i.UP) while
 ## `facing_angle_deg` -> `body_angle` -> `vision_angle` kept driving the cone
@@ -580,8 +577,8 @@ func _snap_to_8dir(v: Vector2i) -> Vector2i:
 ## the two funnels every `facing` write already passes through, so a future
 ## caller that sets `facing` cannot forget it.
 func _sync_sprite_facing() -> void:
-	if sprite != null:
-		sprite.face_direction(facing)
+	if pose != null:
+		pose.face_direction(facing)
 
 
 func _update_facing_angle() -> void:
@@ -1200,8 +1197,8 @@ func refresh_vision_smooth() -> void:
 ## Measured on the baked frames: identical silhouette (8961 opaque px both), mean
 ## RGB (56,55,58) vs (86,90,77) — 49.5 levels apart — and near-white pixels
 ## falling 693 -> 243, the remainder being the weapon, which no palette recolours.
-func attach_sprite(p_room: Node) -> bool:
-	if sprite != null:
+func attach_pose(p_room: Node) -> bool:
+	if pose != null:
 		return true
 	var s := ActorPose.new()
 	s.name = "EnemySprite"
@@ -1224,8 +1221,8 @@ func attach_sprite(p_room: Node) -> bool:
 	if not s.setup(p_room):
 		s.queue_free()
 		return false
-	sprite = s
-	sprite.face_direction(facing)
+	pose = s
+	pose.face_direction(facing)
 	return true
 
 

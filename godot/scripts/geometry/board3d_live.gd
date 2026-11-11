@@ -2134,9 +2134,6 @@ func voxel_centre_local(x: int, y: int, level: int) -> Vector3:
 	return Vector3(float(x) + 0.5, float(level - _ground_level) + 0.5, float(y) + 0.5) * unit
 
 
-func crack_mirror() -> Node3D:
-	return _crack_mirror
-
 
 ## How much lighter a fresh face (inside a hole) is than the light at the opening (`FRESH_LIFT`).
 ## The lift of a material whose hole keeps its texture (wood).

@@ -86,18 +86,6 @@ static func kind_density(kind: String) -> float:
 	return float((_patches.get(kind, {}) as Dictionary).get("density", 0.0))
 
 
-static func kind_mature(kind: String) -> bool:
-	_load()
-	return bool((_patches.get(kind, {}) as Dictionary).get("mature", false))
-
-
-static func kinds_of_class(cls: String) -> PackedStringArray:
-	_load()
-	var out := PackedStringArray()
-	for kind: String in _patches:
-		if kind_class(kind) == cls:
-			out.append(kind)
-	return out
 
 
 ## "" when `kind` may lie on a floor with these tags, else why not (one short sentence). A kind with no rule is never allowed.

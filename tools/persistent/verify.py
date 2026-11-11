@@ -6,7 +6,7 @@
 ## just to re-prove determinism, and a 10-minute timeout whenever another Godot was alive). Measured 2026-09-25, one boot is
 ## 15-45 s; the cost was the number of gates, the doubled boots and the hangs. So:
 ##
-##   quick   ~1 min     project_lint, check_invariants, gen_codemap --check, worker_typing_check, run_selftests.
+##   quick   ~1 min     project_lint, check_invariants, gen_codemap --check, worker_typing_check, map_lint, run_selftests.
 ##   smoke   ~1.5 min   quick + a boot of PLAYGROUND and GLASS that rotates E then N (smoke_boot.py): no grenade, no shot. THE DEFAULT for
 ##                      any change under godot/: it catches the runtime wiring the linter cannot, and nothing else is repeated.
 ##   full    ~7 min     quick + the boot gates: ground, shot_3d, occ_canonical, mirror (1 boot), pick (1 boot per map: touch picking from N/E/S/W), roof-yaw (a roof opens and shuts the same from every side), world (the air overlays' lift and axes survive a turn), canvas (no overlay paints the 2D canvas, in the aim / throw / blast / view-mode states), roundtrip + shadow (ONE boot per map, `--with-store`), and the two
@@ -85,6 +85,7 @@ def steps_for(tier: str, have_baseline: bool):
         ("surfaces", False, sh("check_surface.py", "--declared")),
         ("segment-budget", False, sh("segment_budget.py")),
         ("worker-typing", False, sh("worker_typing_check.py")),   ## no untyped operator in code a worker thread runs (Godot 4.6.1 / 4.7.2 race, 2026-10-19)
+        ("map-lint", False, sh("map_lint.py")),   ## every .map.json loads through MapFileService (~1 s; HERITAGE T1, 2026-11-11)
         ("selftests", False, sh("run_selftests.py")),
     ]
     if tier == "docs":

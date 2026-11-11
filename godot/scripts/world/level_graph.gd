@@ -15,7 +15,6 @@ extends RefCounted
 ## A segment with 1 exit entry is a dead end.
 ## A segment absent from the dict has no exits (isolated — content system should add a hatch).
 
-const SEG_SIZE := Vector2i(18, 36)
 
 ## Canonical exit cell for each border side — midpoint of that border edge.
 const EXIT_CELLS: Dictionary = {

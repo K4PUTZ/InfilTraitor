@@ -549,7 +549,7 @@ touched here — a full renumbering is out of scope for a consistency pass.
 ## Stress scenario findings (2026-10-07, roadmap A1)
 Found by `tools/persistent/stress_scenario.py` (desktop, `maps/STRESS.map.json`).
 1. **Overlapping blasts shared one `_active_presenter`: FIXED 2026-10-07.** A second grenade thrown inside the first blast's tail replaced
-   the reference (one "light landed" for two blasts, 8 scripts leaked at exit). `TestZoneController._active_presenters` is a list swept
+   the reference (one "light landed" for two blasts, 8 scripts leaked at exit). `GrenadeController._active_presenters` is a list swept
    by `DetonationPresenter.is_done` (a callback that captured the presenter was a reference cycle, found by `--verbose`). The scenario
    now fails unless both blasts land their light and nothing leaks (`stress_scenario.py`; red proven before, green after).
 2. **The throw's worst frame is the FUSE-END frame, not the plan** (corrects the first reading: `P-COOK` was the scenario throwing without
@@ -586,7 +586,7 @@ and the prop-debris job paid it once per material. Built, all on the desktop, ea
 2. **Debris piles are warmed in a step of their own** (`VoxelBoard.warm_debris_pile`: three texture loads, 34-72 ms desktop).
 3. **The glass rain is deferred out of the world commit** (`WorldDelta.commit(room, defer_rain)` + `commit_glass_rain`): 757 flights = 60 ms
    of the desktop's 128 ms glass commit.
-4. **A task queue after the crater** (`TestZoneController._run_hit_stop_queue`, `hit_stop_frame_budget_us` 110 ms per flash frame): prop rings
+4. **A task queue after the crater** (`GrenadeController._run_hit_stop_queue`, `hit_stop_frame_budget_us` 110 ms per flash frame): prop rings
    and proximity, the debris job, the rain, the persistence, the desktop census. The crater (stage 1) and the glass flush (stage 2's tail) are
    the only visual-critical pieces and always run in the flash. What the flash could not reach goes to `DetonationPresenter.background_step`
    (8 ms per consequence frame) and is drained before the blast ends, so nothing outlives it and the action lock lifts after it.
@@ -617,7 +617,7 @@ because the first blast's tail is playing); a larger budget while the fuse is wa
 
 ## Fuse FX (2026-10-08, Director): sparks from the aim to the boom, following the mesh in 3D
 Before: `spawn_fuse_sputter(anchor)` was a fixed 2D point (`top_world_2d()`, read once) lit only after the grenade landed; it did not follow the roll, the
-flight or the tumble. Now one emitter per live grenade (`TestZoneController.fuse_fx_*`, ticked from `Room._process`; `Room.tick_fuse_fx`): intensity 0.3 at the
+flight or the tumble. Now one emitter per live grenade (`GrenadeController.fuse_fx_*`, ticked from `Room._process`; `Room.tick_fuse_fx`): intensity 0.3 at the
 raised hand (`ActorMesh3D.hand_grenade_world()`, the rig's `hand_L` grenade — `throw_origin()` is the head anchor and put the first version's sparks on the
 face), rising 0.3 -> 1.0 over the flight, 1.0 through the roll and the cook, stopped at the boom; in flight and on the ground it sits on the mesh's fuse point
 (`GrenadeProp.fuse_point_world()`, a model point carried by the pivot, so the tumble moves it). Smoke: a pale explicit puff (the embers' own death puff was a

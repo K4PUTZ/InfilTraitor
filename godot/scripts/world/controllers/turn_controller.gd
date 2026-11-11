@@ -19,7 +19,7 @@ const ACTOR_END_HOLD_DELAY: float = 0.2
 var room: Node
 var turn_manager: TacticalTurnManager = null
 var enemy_phase_controller: EnemyPhaseController = null
-var agent: DebugAgent = null
+var agent: Agent = null
 var camera: Camera2D = null
 
 ## Cached references to arrays/dicts
@@ -60,7 +60,7 @@ func _init(p_room: Node) -> void:
 func setup(
 	p_turn_manager: TacticalTurnManager,
 	p_enemy_phase_controller: EnemyPhaseController,
-	p_agent: DebugAgent,
+	p_agent: Agent,
 	p_camera: Camera2D,
 	p_fow_controller: Object,
 	p_hud_controller: Object,

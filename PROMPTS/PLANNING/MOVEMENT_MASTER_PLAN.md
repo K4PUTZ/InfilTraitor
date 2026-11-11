@@ -1,6 +1,8 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.4
 
+> ⏭️ **2026-11-11 — the draw + aim PLAYS in the game from the Director's timeline, on both figures** (`AimSequence`, `sequences/<fig>/draw_pistol.json`; no finger joints in a sequence; the return as fast as the draw; the female's coat has her own `DrawFix`). The traps (edit the shape key, never the Basis; a stale prop in an old file) and the pose-lab commands are in the record: `PROMPTS/RESUMO_SESSAO_2026-11-11_DRAW_SEQUENCE.md`.**
+
 > ⏭️ **2026-11-09 (end) — the male's draw is on one editable timeline: `ASSETS/MODELS/fit/SEQ_draw_pistol_MALE.blend` (idle, draw, in-between, aim; pistol and `DrawFix` keyed). One-way so far: the read-back to the game's stops is owed once the Director has edited it; then the female's draw. Record: `PROMPTS/RESUMO_SESSAO_2026-11-09_POSE_FIXES_MOTO_ROUND.md` (last section).**
 
 > ⏭️ **2026-11-08 (later) — the pistol aim is made IN-HOUSE (Director: "testar o que a gente consegue fazer na casa"; no credit spent).** The Tripo Agent is now the game's agent (the male by default); with the pistol selected the aim draws it from the coat (fists to the sternum, the gun appears), aims with both hands and puts it away on cancel, on both figures: a pose layer over any clip (`ActorAimPose3D`), poses from a bank frame or SOLVED from hand targets (`TripoPoseKit`), a path of stops. §4.1's "In-house levers" has what it proved, what it taught (`fire` is a long-gun hold, `shoot` a kneel) and what only credits can make. Record: `PROMPTS/RESUMO_SESSAO_2026-11-08_AIM_IN_HOUSE.md`.

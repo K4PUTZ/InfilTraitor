@@ -191,6 +191,22 @@ const MUZZLE_DROP_FRACTION: float = 0.18
 ## HEAD_OFFSET remains the fallback for the frames before a set is loaded.
 ## `throw_origin()` was corrected the same way on 2026-08-19 — see its own note
 ## for why that one waited for a reason to move a tuned arc.
+## HERITAGE T2 W4 — the shot's origin as the pair the effects take: {"pos": 2D point, "floor": 2D floor under it}. From the
+## held weapon's muzzle (`ActorMesh3D.muzzle_global()`) when one is drawn; otherwise the old head-based estimate with its
+## floor at the feet (the old rig, a headless run).
+func muzzle_points() -> Dictionary:
+	var figure: Variant = pose.get_meta("figure3d") if pose != null and pose.has_meta("figure3d") else null
+	if figure != null and is_instance_valid(figure) and (figure as Object).has_method("muzzle_global"):
+		var g: Vector3 = (figure as Object).call("muzzle_global")
+		var board: Node = (figure as Node).get_parent()
+		while board != null and not board.has_method("lift_pair_of_global"):
+			board = board.get_parent()
+		if g != Vector3.INF and board != null:
+			var pair: Array = board.call("lift_pair_of_global", g)
+			return {"pos": pair[0], "floor": pair[1]}
+	return {"pos": muzzle_origin(), "floor": position}
+
+
 func muzzle_origin() -> Vector2:
 	var head: Vector2 = _head_anchor()
 	return position + head - Vector2(0.0, head.y * MUZZLE_DROP_FRACTION)

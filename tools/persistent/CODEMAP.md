@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**352 scripts · 100765 lines total** (under `godot/scripts/`)
+**352 scripts · 100816 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -47,7 +47,7 @@
 
 ### `agent.gd`
 
-`class_name Agent` · extends `Node2D` · 476 lines
+`class_name Agent` · extends `Node2D` · 492 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -89,6 +89,7 @@
 
 **Public API**
 - `func throw_origin() -> Vector2:`
+- `func muzzle_points() -> Dictionary:`
 - `func muzzle_origin() -> Vector2:`
 - `func play_throw_raise() -> bool:`
 - `func play_throw_cancel() -> bool:`
@@ -420,7 +421,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 618 lines
+`class_name ActorMesh3D` · extends `Node3D` · 630 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -456,6 +457,10 @@ extends `ConfirmationDialog` · 64 lines
 - `DRAW_COAT_SHAPE` = `"DrawFix"`
 - `DRAW_COAT_CLOSED_AT` = `0.75`
 
+**Public API**
+- `func muzzle_global() -> Vector3:`
+- `func set_status_tint(color: Color, pulse: float) -> void:`
+
 ---
 
 ### `aim_sequence.gd`
@@ -479,7 +484,7 @@ extends `RefCounted` · 89 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 3570 lines
+extends `Node3D` · 3579 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -2988,7 +2993,7 @@ extends `RefCounted` · 63 lines
 
 ### `weapon_def.gd`
 
-`class_name WeaponDef` · 162 lines
+`class_name WeaponDef` · 168 lines
 
 `godot/scripts/systems/destruction/weapon_def.gd`
 
@@ -3012,6 +3017,7 @@ extends `RefCounted` · 63 lines
 - `var hand_pos: Vector3 = Vector3.ZERO`
 - `var hand_scale: float = 1.0`
 - `var size_certified: String = ""`
+- `var muzzle: Vector3 = Vector3.INF`
 - `var held_as: String = "shotgun"`
 
 **Public API**
@@ -6735,7 +6741,7 @@ extends `Node2D` · 63 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1290 lines
+`class_name AgentShotController` · 1296 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -7233,7 +7239,7 @@ extends `Node` · 872 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10469 lines
+extends `Node2D` · 10471 lines
 
 `godot/scripts/world/room.gd`
 

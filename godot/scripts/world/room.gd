@@ -5791,7 +5791,9 @@ var muzzle_flash_radius_scale: float = 2.0
 ## a rifle held at about waist height on the ~200 px baked figure; a flash placed by it sits at roughly
 ## the right depth. Exact would mean passing the shooter's feet down from the shot controller.
 var muzzle_floor_drop_px: float = 96.0
-func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
+func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2, muzzle_floor: Vector2 = Vector2.INF) -> void:
+	## HERITAGE T2 W4: the floor under the real muzzle when the shooter knows it; the old estimate otherwise.
+	var floor_under: Vector2 = muzzle_floor if muzzle_floor != Vector2.INF else muzzle_pos + Vector2(0.0, muzzle_floor_drop_px)
 	var dir: Vector2 = direction.normalized() if direction.length() > 0.001 else Vector2.RIGHT
 	if _ember_overlay != null:
 		## No velocity and no rise: the core sits at the barrel for its 90 ms and
@@ -5807,7 +5809,7 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 			## pale and forward), never a coal's dark burn-out puff.
 			_ember_overlay.add_ember(at, muzzle_flash_life * randf_range(0.7, 1.3),
 				Vector2.ZERO, 0.0, 0.0, 1.0, 0.0, muzzle_flash_radius_scale, 0.0, false,
-				at + Vector2(0.0, muzzle_floor_drop_px))
+				at + (floor_under - muzzle_pos))
 	if _smoke_spark_overlay != null:
 		## The forward spray. add_sparks() throws a full circle, so the cone is
 		## built here by placing each spark's own start point along the barrel
@@ -5818,7 +5820,7 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 			var spread: Vector2 = dir.rotated(a)
 			var spark_at: Vector2 = muzzle_pos + spread * randf_range(2.0, muzzle_flash_forward_px * 1.6)
 			_smoke_spark_overlay.add_sparks(spark_at, 1, muzzle_spark_color, 1.0, 1.0,
-				spark_at + Vector2(0.0, muzzle_floor_drop_px))
+				spark_at + (floor_under - muzzle_pos))
 		for j in range(muzzle_smoke_puffs):
 			_smoke_spark_overlay.add_smoke(
 				muzzle_pos + dir * randf_range(
@@ -5826,7 +5828,7 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 				muzzle_smoke_color, muzzle_smoke_scale,
 				muzzle_smoke_duration_scale, 0, muzzle_smoke_drift_scale,
 				muzzle_flash_life * muzzle_smoke_delay_factor,
-				muzzle_pos + Vector2(0.0, muzzle_floor_drop_px))
+				floor_under)
 
 
 ## E-SPARK-01 — VFX for a voxel that was HIT but survived (DENTED/CRACKED).

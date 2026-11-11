@@ -175,5 +175,13 @@ The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PER
   hard-coded strip (`TEST_ZONE_COLLECTIBLES`, the pack guns) is deleted. ⚠️ Its ground shadow did not show in the captures: owed.
 - **Found:** a map whose `layout` POI is off the 1/8 lattice is refused at load, and the capture run then HANGS (Movie Maker kept
   writing frames for 5 min) instead of aborting: the scenario never starts. Worth a timeout in `capture.py`.
-- **Open:** W4 (the muzzle from the gun's mesh; a behaviour change of where a shot starts) and W5 (the grenade's flight in world
-  state, out of the 2D parabola).
+- **W4 DONE 2026-11-11 (Director: "o local de onde o tiro sai precisa ser vinculado com a abertura de cada arma, e não em uma
+  coordenada do mundo"):** a weapon row's `model.muzzle` is a point of the MODEL (the pistol: (0.1266, 0.0349, 0), the front face of
+  the slide, measured off the mesh); `ActorMesh3D.muzzle_global()` carries it by the gun's real placement in the hand (the aim poses
+  / the draw timeline), `Board3DLive.lift_pair_of_global()` hands the flash and the tracer that exact point and the floor under it.
+  Take `pistol_shot` (PLAYGROUND): the flash moved from the waist (the old head-based anchor) to the muzzle, before / after on one
+  frame. Falls back to the old anchor when no measured weapon is drawn (the old rig's shotgun; the other weapons need their muzzle
+  measured with their certification, `MOVEMENT` §9 item 7). Unchanged on purpose: the BALLISTIC line is still the grid walk from
+  the shooter's GU (`select_line_impact`), and the target's height `MUZZLE_LEVELS_ABOVE_GROUND` (a misnomer now: it is the target
+  point's height) — moving the shot's gameplay origin to the muzzle is a rule change for GAMEPLAY.
+- **Open:** W5 (the grenade's flight in world state, out of the 2D parabola).

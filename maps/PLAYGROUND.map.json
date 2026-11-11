@@ -1352,6 +1352,22 @@
           "length": 300,
           "seed": 1,
           "note": "material videos (2026-10-17): blast on glass; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=44,11 INFILTRAITOR_SHOT_GUARD_CELL=44,9 (tools/persistent/material_videos.py sets them)"
+        },
+        {
+          "id": "pistol_shot",
+          "profile": "engine",
+          "rail": "agent_aim_rail",
+          "steps": [
+            "weapon pistol",
+            "shot_aim 5",
+            "wait 1.2",
+            "shoot 5"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 200,
+          "seed": 1,
+          "note": "HERITAGE T2 W4: the agent draws the pistol, aims at guard 5 and fires; the flash and the tracer start at the gun's muzzle."
         }
       ]
     },

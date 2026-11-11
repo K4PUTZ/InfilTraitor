@@ -66,6 +66,8 @@ const PELLET_FLOOD_MAX_STEPS: int = 40
 ## Levels ABOVE THE GROUND PLANE, never an absolute level (rule 9): the literal this replaces was a
 ## pre-renumber level, `get_layer()` answered null for it, and every tracer was skipped.
 const MUZZLE_LEVELS_ABOVE_GROUND: int = 4
+## HERITAGE T2 W4: the floor under the current shot's muzzle (2D), for the flash and the tracer.
+var _muzzle_floor: Vector2 = Vector2.INF
 
 ## How far above a guard's own origin the menu anchors, in pixels. Deliberately
 ## NOT Agent.SILHOUETTE_HEIGHT: that constant measures the BAKED figure, and
@@ -466,10 +468,14 @@ func fire_at_active() -> void:
 	## E-MUZZLE-01: the flash fires at the shot, before any damage resolves —
 	## the barrel does not wait to find out what it hit. The origin is the
 	## AGENT's own muzzle anchor (Part A), not a prop cell centre.
-	var muzzle_world: Vector2 = agent.muzzle_origin()
+	## HERITAGE T2 W4: the origin is the held weapon's own muzzle (a point of its model, carried by the gun in the hand).
+	var muzzle: Dictionary = agent.muzzle_points()
+	var muzzle_world: Vector2 = muzzle["pos"]
+	_muzzle_floor = muzzle["floor"]
 	var aim_world: Vector2 = _gu_centre_world(target_gu) - muzzle_world
+	print("[MUZZLE] origin %s floor %s (%s)" % [muzzle_world, _muzzle_floor, "the gun's muzzle" if agent.muzzle_origin() != muzzle_world else "the old anchor"])
 	if aim_world != Vector2.ZERO:
-		room.spawn_muzzle_flash(muzzle_world, aim_world.normalized())
+		room.spawn_muzzle_flash(muzzle_world, aim_world.normalized(), _muzzle_floor)
 
 	var prof_t0: int = Time.get_ticks_usec()
 	var pellet_picks: Array = []
@@ -827,13 +833,13 @@ func _draw_tracer(muzzle_world: Vector2, pick: Dictionary, resolved: Dictionary 
 	## dent decal use, `Board3DLive.voxel_face_point()`), not the centre of the GU it stopped in at muzzle height.
 	var face_end: Array[Vector2] = _impact_face_pair(resolved, shooter_gu)
 	if face_end.size() == 2:
-		room._tracer_overlay.add_tracer(muzzle_world, face_end[0], room.agent.position, face_end[1])
+		room._tracer_overlay.add_tracer(muzzle_world, face_end[0], _muzzle_floor, face_end[1])
 		return
 	var impact_world: Vector2 = _gu_centre_world(pick["gu"])
 	if impact_world == Vector2.ZERO:
 		push_warning("[AgentShotController] tracer skipped — GU %s has no world position" % pick["gu"])
 		return
-	room._tracer_overlay.add_tracer(muzzle_world, impact_world, room.agent.position, _gu_centre_world(pick["gu"], 0))
+	room._tracer_overlay.add_tracer(muzzle_world, impact_world, _muzzle_floor, _gu_centre_world(pick["gu"], 0))
 
 
 ## The 2D particle pair (position, floor) of the centre of the face a wall round struck, or [] (a prop, glass, no 3D board, an unknown face).

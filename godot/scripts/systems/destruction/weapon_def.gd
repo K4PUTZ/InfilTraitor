@@ -95,6 +95,10 @@ var hand_bone: String = "RightHand"
 var hand_pos: Vector3 = Vector3.ZERO
 var hand_scale: float = 1.0
 var size_certified: String = ""
+## HERITAGE T2 W4 — the muzzle: where a round leaves, a point of the MODEL (its own units, the barrel along +X), measured
+## once off the mesh (the front face of the barrel / slide). A shot starts at this point carried by the gun's real
+## placement in the hand, never at a world coordinate. Vector3.INF = not measured (the shot falls back to the old anchor).
+var muzzle: Vector3 = Vector3.INF
 ## The grip the old r3d_live rig holds this weapon with ("shotgun" / "pistol"); "" = it has none, and the figure keeps
 ## what it holds (`ActorPose.set_weapon`).
 var held_as: String = "shotgun"
@@ -135,6 +139,8 @@ static func from_json(data: Dictionary) -> WeaponDef:
 		def.model_path = String(m.get("path", ""))
 		def.surface_materials = m.get("surface_materials", {})
 		def.size_certified = String(m.get("size_certified", ""))
+		if m.has("muzzle"):
+			def.muzzle = JsonFileRef.vector3(m.get("muzzle"), Vector3.INF, "weapon '%s' muzzle" % def.id, [])
 		var hand: Variant = m.get("hand", {})
 		if hand is Dictionary:
 			var h: Dictionary = hand

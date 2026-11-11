@@ -763,6 +763,15 @@ func particle_origin(world_pos: Vector2, floor_pos: Vector2) -> Vector3:
 		ground_point(floor_pos), floor_pos, world_pos, lattice_basis(), _px_per_unit)
 
 
+## HERITAGE T2 W4 — the inverse of `particle_origin()` for a GLOBAL point: [its 2D point, the 2D floor point under it],
+## the pair every emitter and the tracer still take (the 2D contract), so an effect lands back on exactly `p`.
+func lift_pair_of_global(p: Vector3) -> Array:
+	var w: Vector3 = to_local(p)
+	var floor_2d: Vector2 = _origin_2d + _to_gu.affine_inverse() * Vector2(w.x - 0.5, w.z - 0.5)
+	var lifted: Vector2 = floor_2d - Vector2(0.0, w.y * _px_per_unit * ParticleMathRef.COS_ELEVATION)
+	return [lifted, floor_2d]
+
+
 ## RENDER3D R3D-5b — the 2D→ground map itself, for a `GroundCanvas3D` that carries thousands of vertices
 ## and cannot afford a method call each: ground_point(p) = (gu.x + 0.5, 0, gu.y + 0.5) with
 ## gu = ground_affine() * (p - ground_origin()).

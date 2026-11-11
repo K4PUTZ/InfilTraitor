@@ -367,6 +367,18 @@ func _update_aim(state: Dictionary) -> void:
 		_pistol_holder.transform = _pistol_placement(_aim_t)
 
 
+## HERITAGE T2 W4 — where the held weapon's round leaves, in GLOBAL space: the weapon row's `muzzle` (a point of the model)
+## carried by the gun's real placement in the hand (the pose / the Director's draw timeline). INF when no weapon with a
+## measured muzzle is drawn in the hand (not aiming, the old rig): the caller falls back to its old anchor.
+func muzzle_global() -> Vector3:
+	if _pistol == null or _pistol_holder == null or not _pistol.visible or not _pistol_holder.is_inside_tree():
+		return Vector3.INF
+	var w: WeaponDef = WeaponRegistry.shared().get_weapon("pistol")
+	if w == null or w.muzzle == Vector3.INF:
+		return Vector3.INF
+	return _pistol_holder.global_transform * w.muzzle
+
+
 ## A dev flag (`DevFlag`: the environment, then the APK's overrides file, then `fallback`).
 func _dev_value(flag_name: String, fallback: String) -> String:
 	return DevFlag.value(flag_name, fallback)

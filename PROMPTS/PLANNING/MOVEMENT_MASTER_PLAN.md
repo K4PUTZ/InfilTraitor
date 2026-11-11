@@ -481,7 +481,7 @@ pose stills are agreed before a generation is spent.
    Agent's hands: in the hand, on the floor, on a table, as a pickup (`HERITAGE_AND_LOOSE_ENDS_PLAN` §5 item 2; no readability factor
    for the floor copy). Only the **pistol** is certified (2026-11-09, x1.107; the method is in the session record
    `PROMPTS/RESUMO_SESSAO_2026-11-09_POSE_FIXES_MOTO_ROUND.md`): the shotgun, the rifle, the grenade and every later import are each
-   certified the same way, by hand, once, with the figure holding it. Until then a weapon is drawn at its model's own size and the
+   certified the same way, by hand, once, with the figure holding it, and its MUZZLE measured off the model at the same time (`weapons/<id>.json` `model.muzzle`, HERITAGE T2 W4). Until then a weapon is drawn at its model's own size and the
    engine WARNS that its hand size is not certified (built with HERITAGE T2 W2). Lands with each weapon's pose on the Tripo figure.
 
 ---

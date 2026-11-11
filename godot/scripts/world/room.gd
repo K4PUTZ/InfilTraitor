@@ -32,6 +32,7 @@ const GlassRainOverlay = preload("res://godot/scripts/overlays/glass_rain_overla
 const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const MapLayoutClass     = preload("res://godot/scripts/world/maps/map_layout.gd")
 const CaptureControllerClass = preload("res://godot/scripts/world/controllers/capture_controller.gd")
+const FloatingCollectibleClass = preload("res://godot/scripts/overlays/floating_collectible.gd")
 const ScenarioStepsClass = preload("res://godot/scripts/world/controllers/scenario_steps.gd")
 const LayoutOverlay3DClass = preload("res://godot/scripts/overlays/layout_overlay3d.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
@@ -1908,11 +1909,8 @@ var _selection_controller: SelectionControllerClass = null
 
 ## TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop.
 var _grenade_controller: GrenadeControllerClass = null
-## FRAME-MEM-01 / 2026-07-29: every spinning pickup in the collectibles strip.
-## _floating_collectible stays as an alias for the first of them, because the
-## test_collectible capture action and _set_perspective already reference it.
+## HERITAGE T2 W3: the map's pickups (`_spawn_pickups`), each a weapon floating over its cell.
 var _collectibles: Array[Node] = []
-var _floating_collectible: Node = null
 ## §6c: right-click an ENEMY to open "Atirar" (B1, Director 2026-08-19 — the
 ## action lives on the target's menu, not the shooter's).
 var _agent_shot_controller: AgentShotControllerClass = null
@@ -9896,91 +9894,46 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 	Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2)
 ]
 
-## Collectibles strip — OFF (Director, 2026-07-29: "os objetos coletáveis estão
-## ótimos, pode tirar eles do cenário por enquanto, já vimos que vai
-## funcionar"). The pipeline is proven; the pickups were a demonstration, and a
-## demonstration that has landed is just cost. Real cost: a spinning pickup
-## holds all 120 baked frames (~48 MB VRAM each, measured — FRAME-MEM-01) while
-## a bench prop holds 4, so seven of them were the single most expensive thing
-## in the test zone.
-##
-## The TABLE below stays because it is DATA, not dead code — which object goes
-## in which slot, and each one's scale and shadow factor, all of which had to be
-## derived. Flip this flag to put them back.
-const TEST_ZONE_COLLECTIBLES_ENABLED := false
-
-## A dedicated row south of the whole bench, so nothing a gun is aimed at can be
-## confused with something you pick up, and no collectible ever stands in a
-## firing lane (every weapon fires NORTH, away from this row). One slot per
-## baked object: the grenade plus each bench weapon, since the same 120-frame
-## bake serves both the frozen prop and the spinning pickup.
-const TEST_ZONE_COLLECTIBLE_ROW_Y := 15
-const GUNS_DIR := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/"
-## Each pack surface (as authored) -> OUR registry material (D66).
-const GUN_SURFACES := {"Black": "rubber", "Black2": "rubber", "DarkMetal": "steel_dark", "Metal": "metal", "LightMetal": "metal",
-	"Grey": "metal", "Wood": "wood", "DarkWood": "wood", "Glass": "glass"}
-## `fit_size` is the model's longest side fitted in world units (a handheld at ~1.3x its real length; the pack's pistol is 0.25).
-## `rotation_deg` (90, 0, 0) lays a pack gun flat, as `props/pistol_prop.json` does.
-const TEST_ZONE_COLLECTIBLES: Array[Dictionary] = [
-	{"gu_x": 3, "model": GrenadeProp.MODEL_PATH, "rotation_deg": Vector3.ZERO, "fit_size": GrenadeProp.FIT_SIZE,
-		"surface_materials": GrenadeProp.SURFACE_MATERIALS, "default_material": "metal", "shadow_half_gu": 0.18},
-	{"gu_x": 6, "model": GUNS_DIR + "Shotgun.glb", "rotation_deg": Vector3(90.0, 0.0, 0.0),
-		"fit_size": Vector3(0.79, 0.3, 0.3), "surface_materials": GUN_SURFACES, "default_material": "metal", "shadow_half_gu": 0.36},
-	{"gu_x": 9, "model": GUNS_DIR + "Pistol.glb", "rotation_deg": Vector3(90.0, 0.0, 0.0),
-		"fit_size": Vector3(0.25, 0.3, 0.3), "surface_materials": GUN_SURFACES, "default_material": "metal", "shadow_half_gu": 0.22},
-	{"gu_x": 12, "model": GUNS_DIR + "Revolver.glb", "rotation_deg": Vector3(90.0, 0.0, 0.0),
-		"fit_size": Vector3(0.27, 0.3, 0.3), "surface_materials": GUN_SURFACES, "default_material": "metal", "shadow_half_gu": 0.22},
-	{"gu_x": 15, "model": GUNS_DIR + "Submachine Gun.glb", "rotation_deg": Vector3(90.0, 0.0, 0.0),
-		"fit_size": Vector3(0.55, 0.3, 0.3), "surface_materials": GUN_SURFACES, "default_material": "metal", "shadow_half_gu": 0.3},
-	{"gu_x": 18, "model": GUNS_DIR + "Assault Rifle.glb", "rotation_deg": Vector3(90.0, 0.0, 0.0),
-		"fit_size": Vector3(0.74, 0.3, 0.3), "surface_materials": GUN_SURFACES, "default_material": "metal", "shadow_half_gu": 0.36},
-	{"gu_x": 21, "model": GUNS_DIR + "Sniper Rifle.glb", "rotation_deg": Vector3(90.0, 0.0, 0.0),
-		"fit_size": Vector3(0.87, 0.3, 0.3), "surface_materials": GUN_SURFACES, "default_material": "metal", "shadow_half_gu": 0.4},
-]
-
-
 ## TEST-ZONE placeholder (2026-07-21): called from load_map() (real map
 ## switches, e.g. the map-loader toolbar) and once from _ready() (initial
 ## boot, before load_map()'s own call site can reach a controller that
 ## doesn't exist yet). No-ops on every map except PLAYGROUND.
-func _populate_test_zone_if_playground() -> void:
-	if _grenade_controller == null:
-		return
-	_grenade_controller.clear()
+## HERITAGE T2 W3 — the map's pickups (`pickups` section -> `pickup_instances`): each a weapon floating over its cell. Every
+## map, not only PLAYGROUND; replaces the hard-coded strip of 2026-07 (`TEST_ZONE_COLLECTIBLES`, off since 2026-07-29).
+func _spawn_pickups() -> void:
 	for pickup in _collectibles:
 		if pickup != null and is_instance_valid(pickup):
 			pickup.queue_free()
 	_collectibles.clear()
-	_floating_collectible = null
+	var board: Node = board3d()
+	var wanted: Array = _base_layout.get("pickup_instances", [])
+	if wanted.is_empty():
+		return
+	if board == null:
+		push_error("[Room] %d pickup(s) and no 3D board to put them on" % wanted.size())
+		return
+	for row: Dictionary in wanted:
+		var pickup := FloatingCollectibleClass.new()
+		board.add_child(pickup)
+		if not pickup.setup(self, Vector2i(row["gu_cell"]), String(row["weapon"]), board):
+			pickup.queue_free()
+			continue
+		_collectibles.append(pickup)
+	## A placement summary that can be checked from a log instead of counted off a screenshot.
+	print("[Room] %d pickup(s)" % _collectibles.size())
+
+
+func _populate_test_zone_if_playground() -> void:
+	if _grenade_controller == null:
+		return
+	_grenade_controller.clear()
+	_spawn_pickups()
 	## The weapons bench and the floor grenades were RETIRED here 2026-08-17
 	## (Director: "vamos fazer os testes com o agente mesmo, então não
 	## precisamos mais desse esquema") — firing now goes through the agent
 	## himself (WEAPON_MASTER_PLAN §6c), not a static bench prop. The weapon rows
 	## are gone; TEST_ZONE_GRENADE_GUS stays because the dev captures seed their
 	## grenades from it (`_seed_dev_grenades_if_empty`).
-	if map_id == "PLAYGROUND":
-		var FloatingCollectibleClass = preload("res://godot/scripts/overlays/floating_collectible.gd")
-
-		## ACTOR_MASTER_PLAN D21 — the spinning pickups, one per model (`TEST_ZONE_COLLECTIBLES`: model, fit, materials).
-		if TEST_ZONE_COLLECTIBLES_ENABLED:
-			for collectible in TEST_ZONE_COLLECTIBLES:
-				var board: Node = board3d()
-				var pickup := FloatingCollectibleClass.new()
-				if board == null:
-					push_error("[TestZone] no 3D board to put the pickups on")
-					break
-				board.add_child(pickup)
-				if not pickup.setup(self, Vector2i(int(collectible["gu_x"]), TEST_ZONE_COLLECTIBLE_ROW_Y), collectible, board):
-					pickup.queue_free()
-					continue
-				_collectibles.append(pickup)
-			## The first pickup keeps the _floating_collectible alias the
-			## test_collectible capture action and _set_perspective already use.
-			_floating_collectible = _collectibles[0]
-
-		## Same shape as "[Room] N tiles registered" — a placement summary that
-		## can be checked from a log instead of counted off a screenshot.
-		print("[TestZone] %d pickups" % _collectibles.size())
 
 
 ## GU-GRID-01: re-run whenever room_size can have changed — a real map load

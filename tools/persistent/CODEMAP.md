@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**352 scripts · 100679 lines total** (under `godot/scripts/`)
+**352 scripts · 100765 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,14 +29,11 @@
 
 ### `actor_pose.gd`
 
-`class_name ActorPose` · extends `Node` · 230 lines
+`class_name ActorPose` · extends `Node` · 236 lines
 
 `godot/scripts/agents/actor_pose.gd`
 
 > ActorPose — WHAT an actor's figure is doing: its facing, posture, grip, weapon, walk, throw and head. It draws nothing; `ActorMesh3D` draws it (RENDER3D R3D-ACTORS, `ACTOR` D64). R3D-ACTORS step 5 (2026-10-01) RETIRED THE GAMEPLAY FRAME BAKE from this node: the colour/normal frame sets, the head and hat layers, the per-posture anchors and D17's normal-map relight are gone, and with them every texture this file loaded (D42's RAM was the atlases'). What stayed is the half both renderers shared, unchanged in meaning: - FACING, SNAPPED AT THE GU BOUNDARY (D47), one of FOUR (D44, kept for gameplay at step 2: the mesh could turn to any yaw, but whether movement keeps four facings is a design question, and keeping it changes nothing). Stored as the BASE grid step it came from, so it survives a camera turn by construction. - THE POSTURE, THE GRIP, THE WEAPON. Each is now a name the live rig has an action for (`tools/asset_generation/r3d_live_rig_export.py`); a name it does not have is refused loudly and the previous one kept. - THE WALK, read straight off the step's progress (one cycle per GU, D61): no accumulator to drift. Standing only, as before: a crouched or prone figure slides. - THE THROW: raise (held for the aim), release, and the cancel as the raise played backwards (the Director's own reuse rule). `throw_released` fires when the release crosses THROW_RELEASE_FRACTION — the fraction of the key list p3_throw_export.py releases at — and at the latest when the release ends, because `execute_grenade_throw()` awaits it. Standing only, as the bake was. - THE HEAD'S GRID ANGLE (a guard looking where its cone points), clamped to HEAD_YAW_LIMIT_DEG off the body by the mesh. It was `AgentSprite`, a `Sprite2D` that drew nothing; it is a plain `Node` now (RETIRE of R3D-RETIRE-2D). The members that hold it are `Agent.pose` / `attach_pose()` (renamed from `sprite` / `attach_sprite()` on 2026-11-11, HERITAGE T1).
-
-**Signals**
-- `signal throw_released`
 
 **Constants / tuning**
 - `THROW_RAISE` = `"raise"`
@@ -45,27 +42,6 @@
 - `HEAD_YAW_LIMIT_DEG` = `60.0`
 - `POSTURES` = `["standing", "crouch", "prone"]`
 - `GRIPS` = `["", "_aimed"]`
-- `WEAPONS` = `["", "_pistol"]`
-- `STEPS` = `[Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]`
-- `START_STEP` = `Vector2i(0, -1)`
-
-**Public vars**
-- `var frame_family: String = ""`
-- `var grip: String = ""`
-- `var weapon: String = ""`
-- `var room: Node = null`
-
-**Public API**
-- `func setup(p_room: Node) -> bool:`
-- `func face_step(step: Vector2i) -> void:`
-- `func face_direction(dir: Vector2i) -> void:`
-- `func set_posture_name(name: String) -> void:`
-- `func set_grip(name: String) -> void:`
-- `func preload_grip(name: String) -> bool:`
-- `func set_weapon_bake(name: String) -> bool:`
-- `func set_walk_phase_quantise(_n: int) -> void:`
-- `func set_walk_phase(progress01: float) -> void:`
-- `func stop_walking() -> void:`
 
 ---
 
@@ -444,7 +420,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 621 lines
+`class_name ActorMesh3D` · extends `Node3D` · 618 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -463,7 +439,6 @@ extends `ConfirmationDialog` · 64 lines
 - `HeadTurnRef` = `preload("res://godot/scripts/geometry/actor_head_turn3d.gd")`
 - `RIG_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"`
 - `RIG_BY_FAMILY` = `{ "": "agent_live.glb", "_enemy_white": "agent_live_enemy_white.glb", ## The field officer (2026-11-08): the old agent's model, promoted when the Tripo figure became the agent. "_officer": "agent_live.glb", }`
-- `WEAPON_BY_SUFFIX` = `{"": "shotgun", "_pistol": "pistol", "_rifle": "shotgun"}`
 - `METRES_TO_UNITS` = `1.0 / 1.6`
 - `TripoFigureRef` = `preload("res://godot/scripts/geometry/tripo_figure.gd")`
 - `TRIPO_FIGURE_FLAG` = `"TRIPO_FIGURE"`
@@ -480,9 +455,6 @@ extends `ConfirmationDialog` · 64 lines
 - `PISTOL_SHOWN_FROM` = `0.5`
 - `DRAW_COAT_SHAPE` = `"DrawFix"`
 - `DRAW_COAT_CLOSED_AT` = `0.75`
-
-**Public API**
-- `func set_status_tint(color: Color, pulse: float) -> void:`
 
 ---
 
@@ -1074,7 +1046,7 @@ extends `Node3D` · 3570 lines
 
 ### `object_mesh3d.gd`
 
-`class_name ObjectMesh3D` · extends `Node3D` · 196 lines
+`class_name ObjectMesh3D` · extends `Node3D` · 206 lines
 
 `godot/scripts/geometry/object_mesh3d.gd`
 
@@ -1211,7 +1183,7 @@ extends `Node3D` · 3570 lines
 
 ### `prop_model_fit.gd`
 
-`class_name PropModelFit` · 125 lines
+`class_name PropModelFit` · 139 lines
 
 `godot/scripts/geometry/prop_model_fit.gd`
 
@@ -1465,7 +1437,7 @@ extends `Node3D` · 3570 lines
 
 ### `tripo_figure.gd`
 
-`class_name TripoFigure` · extends `RefCounted` · 529 lines
+`class_name TripoFigure` · extends `RefCounted` · 541 lines
 
 `godot/scripts/geometry/tripo_figure.gd`
 
@@ -1479,6 +1451,7 @@ extends `Node3D` · 3570 lines
 - `UNDRESSED_PIECES` = `["Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere"]`
 - `DRESSED_ONLY_PIECES` = `["Outfit_Coat", "Outfit_Hat", "Body_Hair_Hat", "Outfit_Shirt_Coated", "Outfit_Trousers_Coated", "Outfit_Belt_Coated"]`
 - `STAND_HEIGHT_M` = `1.96`
+- `WORLD_SCALE` = `STAND_HEIGHT_M / 1.6`
 - `FRONT_YAW` = `PI`
 - `COAT_SHADER_PATH` = `"res://godot/shaders/actor_coat3d.gdshader"`
 - `EMBLEM_ID` = `"emblem_police"`
@@ -1930,17 +1903,18 @@ extends `Node2D` · 164 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `ObjectMesh3D` · 72 lines
+`class_name FloatingCollectible` · extends `ObjectMesh3D` · 75 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
-> A floating, spinning pickup — the reusable "simplification" display for any object (`ACTOR_MASTER_PLAN` D21/D17/D14) — as a real mesh (RETIRE-2 of R3D-RETIRE-2D; D65). It was a `Sprite2D` cycling 120 baked frame pairs (colour + normal map + two shadow layers, ~48 MB of VRAM per pickup) through a per-pixel relight shader and mirrored into the 3D board by `PropBillboard3D`. Now the model IS in the world: coloured by OUR material registry (D66), lit by the board's cell planes, turning about the vertical by real yaw (so there is no frame count, no frame cache and no per-view re-pick), and its ground shadow is one soft disc that follows the bob. Behaviour kept from the sprite (Director, 2026-07-27/28): it hovers `HOVER_HEIGHT_PX` above its floor point, bobs with a sine of `BOB_AMPLITUDE_PX` (raised from 6 because the shadow needs the separation to read) over `BOB_PERIOD_SEC`, and spins at `ROTATION_DEG_PER_SEC`. The ground shadow stays pinned to the floor ("deixar claro onde está posicionada a arma em relação ao chão"): small and sharp (alpha 0.55) at the bottom of the bob, bigger and softer (alpha 0.28) at the top. DROPPED WITH THE FRAMES: the static-facing mode ("4 shotguns pointing at the blocks"), which was a frame frozen on a compass yaw measured from the bake; nothing calls it (the weapon bench places no weapons), and a mesh yaw for a model's muzzle would be a new measurement, not a port. `outline_color` and the saturation/contrast grade belonged to the sprite shader.
+> A floating, spinning pickup — the reusable "simplification" display for any object (`ACTOR_MASTER_PLAN` D21/D17/D14) — as a real mesh (RETIRE-2 of R3D-RETIRE-2D; D65). It was a `Sprite2D` cycling 120 baked frame pairs (colour + normal map + two shadow layers, ~48 MB of VRAM per pickup) through a per-pixel relight shader and mirrored into the 3D board by `PropBillboard3D`. Now the model IS in the world: coloured by OUR material registry (D66), lit by the board's cell planes, turning about the vertical by real yaw (so there is no frame count, no frame cache and no per-view re-pick), and its ground shadow is one soft disc that follows the bob. HERITAGE T2 W3 (Director, 2026-11-11: "o item subindo e descendo, flutuando no ar, para evidenciar que é um objeto coletável"): it hovers HOVER_HEIGHT_GU above its cell, bobs BOB_AMPLITUDE_GU over BOB_PERIOD_SEC and spins at ROTATION_DEG_PER_SEC, in WORLD units (the sprite's 60 px and 18 px at the board's 156.8 px a storey). It is a WEAPON row (`weapons/<id>.json` "model") at the size it has in the Agent's hands, lying flat; the map places it (`pickups`). The ground shadow stays pinned to the floor ("deixar claro onde está posicionada a arma em relação ao chão", 2026-07-28): small and sharp (alpha 0.55) at the bottom of the bob, bigger and softer (alpha 0.28) at the top. Rolling on the floor is the grenade's alone; a weapon lying in the scenery is a prop (`"weapon"` in a prop row), not a pickup.
 
 **Constants / tuning**
 - `ROTATION_DEG_PER_SEC` = `36.0`
-- `BOB_AMPLITUDE_PX` = `18.0`
+- `BOB_AMPLITUDE_GU` = `0.115`
 - `BOB_PERIOD_SEC` = `2.0`
-- `HOVER_HEIGHT_PX` = `60.0`
+- `HOVER_HEIGHT_GU` = `0.38`
+- `LIE_FLAT_DEG` = `Vector3(90.0, 0.0, 0.0)`
 - `SHADOW_STRENGTH_AT_BOTTOM` = `0.55`
 - `SHADOW_STRENGTH_AT_TOP` = `0.28`
 - `SHADOW_SOFTNESS_AT_TOP` = `0.6`
@@ -1952,7 +1926,7 @@ extends `Node2D` · 164 lines
 - `var gu_cell: Vector2i = Vector2i.ZERO`
 
 **Public API**
-- `func setup(p_room: Node, p_gu_cell: Vector2i, spec: Dictionary, board: Node3D) -> bool:`
+- `func setup(p_room: Node, p_gu_cell: Vector2i, weapon_id: String, board: Node3D) -> bool:`
 
 ---
 
@@ -3014,13 +2988,14 @@ extends `RefCounted` · 63 lines
 
 ### `weapon_def.gd`
 
-`class_name WeaponDef` · 114 lines
+`class_name WeaponDef` · 162 lines
 
 `godot/scripts/systems/destruction/weapon_def.gd`
 
 > WeaponDef — weapon definition resource. WEAPON_MASTER_PLAN Part 1 (D1/D2/D7). Mirrors BombDef's shape exactly (plain object + from_json() factory, not a Godot Resource), which itself mirrors PropDef — the fourth use of one proven pattern, not a new one. D1: a weapon that touches the scenario declares a DELIVERY SHAPE plus a STEP FALLOFF TABLE. `step_multipliers` is the generalisation of BombDef.ring_multipliers: index 0 is the weapon's own GU (full effect), each further index one step outward along whatever "outward" means for that shape, and the table's LENGTH is the weapon's range. What varies between a grenade, a shotgun and a rifle is only what one step means: RADIAL — a wall-aware BFS ring (BlastCalculator.flood_gu_rings) CONE   — the same BFS, gated to a wedge around a facing (flood_gu_cone) LINE   — penetration depth along a ray (not built yet) NONE   — no voxel damage at all; the effect belongs to perception/noise/AI Deliberately carries only fields something actually consumes today. Rarity, firerate, ammo and AP cost are NOT here — WEAPON_MASTER_PLAN D9 defers them, and a speculative field that nothing reads is a field that rots.
 
 **Constants / tuning**
+- `JsonFileRef` = `preload("res://godot/scripts/systems/json_file.gd")`
 - `DELIVERY_RADIAL` = `"RADIAL"`
 - `DELIVERY_CONE` = `"CONE"`
 - `DELIVERY_LINE` = `"LINE"`
@@ -3033,12 +3008,21 @@ extends `RefCounted` · 63 lines
 - `var step_multipliers: Array[float] = []`
 - `var cone_half_angle_deg: float = 0.0`
 - `var destroy_multiplier: float = 1.0`
+- `var hand_bone: String = "RightHand"`
+- `var hand_pos: Vector3 = Vector3.ZERO`
+- `var hand_scale: float = 1.0`
+- `var size_certified: String = ""`
+- `var held_as: String = "shotgun"`
+
+**Public API**
+- `func world_scale() -> float:`
+- `func world_size(rotation_deg: Vector3 = Vector3.ZERO) -> Vector3:`
 
 ---
 
 ### `weapon_registry.gd`
 
-`class_name WeaponRegistry` · 56 lines
+`class_name WeaponRegistry` · 67 lines
 
 `godot/scripts/systems/destruction/weapon_registry.gd`
 
@@ -4012,7 +3996,7 @@ extends `Node` · 217 lines
 
 ### `prop_def.gd`
 
-`class_name PropDef` · 88 lines
+`class_name PropDef` · 106 lines
 
 `godot/scripts/systems/prop_def.gd`
 
@@ -4038,6 +4022,7 @@ extends `Node` · 217 lines
 - `var vox_materials: Dictionary = {}`
 - `var surface_materials: Dictionary = {}`
 - `var model_rotation_deg: Vector3 = Vector3.ZERO`
+- `var weapon: String = ""`
 - `var fragment_division: int = 0`
 - `var hollow_shell: int = 0`
 
@@ -4087,7 +4072,7 @@ extends `Node` · 217 lines
 
 ### `registries_autoload.gd`
 
-extends `Node` · 146 lines
+extends `Node` · 145 lines
 
 `godot/scripts/systems/registries_autoload.gd`
 
@@ -4528,7 +4513,7 @@ extends `Node` · 172 lines
 
 ### `actor_decisions_selftest.gd`
 
-extends `SceneTree` · 149 lines
+extends `SceneTree` · 150 lines
 
 `godot/scripts/tools/actor_decisions_selftest.gd`
 
@@ -6750,7 +6735,7 @@ extends `Node2D` · 63 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1307 lines
+`class_name AgentShotController` · 1290 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -7086,7 +7071,7 @@ extends `Node` · 872 lines
 
 ### `file_map_source.gd`
 
-`class_name FileMapSource` · extends `RefCounted` · 215 lines
+`class_name FileMapSource` · extends `RefCounted` · 220 lines
 
 `godot/scripts/world/maps/file_map_source.gd`
 
@@ -7134,7 +7119,7 @@ extends `Node` · 872 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 719 lines
+`class_name MapCompiler` · extends `RefCounted` · 728 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -7225,7 +7210,7 @@ extends `Node` · 872 lines
 
 ### `map_sections_v1.gd`
 
-`class_name MapSectionsV1` · extends `RefCounted` · 424 lines
+`class_name MapSectionsV1` · extends `RefCounted` · 441 lines
 
 `godot/scripts/world/maps/persistence/map_sections_v1.gd`
 
@@ -7248,7 +7233,7 @@ extends `Node` · 872 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10516 lines
+extends `Node2D` · 10469 lines
 
 `godot/scripts/world/room.gd`
 
@@ -7282,6 +7267,7 @@ extends `Node2D` · 10516 lines
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `MapLayoutClass` = `preload("res://godot/scripts/world/maps/map_layout.gd")`
 - `CaptureControllerClass` = `preload("res://godot/scripts/world/controllers/capture_controller.gd")`
+- `FloatingCollectibleClass` = `preload("res://godot/scripts/overlays/floating_collectible.gd")`
 - `ScenarioStepsClass` = `preload("res://godot/scripts/world/controllers/scenario_steps.gd")`
 - `LayoutOverlay3DClass` = `preload("res://godot/scripts/overlays/layout_overlay3d.gd")`
 - `LevelGraphClass` = `preload("res://godot/scripts/world/level_graph.gd")`

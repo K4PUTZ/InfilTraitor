@@ -1,11 +1,7 @@
 {
   "id": "pistol_prop",
+  "weapon": "pistol",
   "mesh_tier": 3,
-  "mesh_size": [
-    0.2768,
-    0.0354,
-    0.1317
-  ],
   "material_zones": {
     "default": "metal"
   },
@@ -25,16 +21,10 @@
     "small",
     "cosmetic"
   ],
-  "model": "res://ASSETS/props/pistol_quaternius/pistol.glb",
   "model_rotation_deg": [
     90,
     0,
     0
   ],
-  "surface_materials": {
-    "Metal": "steel_dark",
-    "Black": "rubber",
-    "LightMetal": "metal"
-  },
   "slot": "handgun_floor"
 }

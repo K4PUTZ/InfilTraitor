@@ -6,22 +6,23 @@
 ## material registry (D66), lit by the board's cell planes, turning about the vertical by real yaw (so there is no frame count, no
 ## frame cache and no per-view re-pick), and its ground shadow is one soft disc that follows the bob.
 ##
-## Behaviour kept from the sprite (Director, 2026-07-27/28): it hovers `HOVER_HEIGHT_PX` above its floor point, bobs with a sine of
-## `BOB_AMPLITUDE_PX` (raised from 6 because the shadow needs the separation to read) over `BOB_PERIOD_SEC`, and spins at
-## `ROTATION_DEG_PER_SEC`. The ground shadow stays pinned to the floor ("deixar claro onde está posicionada a arma em relação ao
-## chão"): small and sharp (alpha 0.55) at the bottom of the bob, bigger and softer (alpha 0.28) at the top.
-##
-## DROPPED WITH THE FRAMES: the static-facing mode ("4 shotguns pointing at the blocks"), which was a frame frozen on a compass
-## yaw measured from the bake; nothing calls it (the weapon bench places no weapons), and a mesh yaw for a model's muzzle would
-## be a new measurement, not a port. `outline_color` and the saturation/contrast grade belonged to the sprite shader.
+## HERITAGE T2 W3 (Director, 2026-11-11: "o item subindo e descendo, flutuando no ar, para evidenciar que é um objeto
+## coletável"): it hovers HOVER_HEIGHT_GU above its cell, bobs BOB_AMPLITUDE_GU over BOB_PERIOD_SEC and spins at
+## ROTATION_DEG_PER_SEC, in WORLD units (the sprite's 60 px and 18 px at the board's 156.8 px a storey). It is a WEAPON row
+## (`weapons/<id>.json` "model") at the size it has in the Agent's hands, lying flat; the map places it (`pickups`). The ground
+## shadow stays pinned to the floor ("deixar claro onde está posicionada a arma em relação ao chão", 2026-07-28): small and
+## sharp (alpha 0.55) at the bottom of the bob, bigger and softer (alpha 0.28) at the top. Rolling on the floor is the
+## grenade's alone; a weapon lying in the scenery is a prop (`"weapon"` in a prop row), not a pickup.
 class_name FloatingCollectible
 extends ObjectMesh3D
 
 const ROTATION_DEG_PER_SEC := 36.0
-const BOB_AMPLITUDE_PX := 18.0
+const BOB_AMPLITUDE_GU := 0.115
 const BOB_PERIOD_SEC := 2.0
-## Fixed lift above the floor GU point, independent of the bob, so there is a real gap for the shadow to read against.
-const HOVER_HEIGHT_PX := 60.0
+## Fixed lift above the floor, independent of the bob, so there is a real gap for the shadow to read against.
+const HOVER_HEIGHT_GU := 0.38
+## A pickup lies flat, as the table copy does.
+const LIE_FLAT_DEG := Vector3(90.0, 0.0, 0.0)
 const SHADOW_STRENGTH_AT_BOTTOM := 0.55
 const SHADOW_STRENGTH_AT_TOP := 0.28
 const SHADOW_SOFTNESS_AT_TOP := 0.6
@@ -31,28 +32,32 @@ const SHADOW_SCALE_AT_BOTTOM := 0.90
 var room: Node = null
 var gu_cell: Vector2i = Vector2i.ZERO
 
-var _floor: Vector2 = Vector2.ZERO
+var _ground: Vector3 = Vector3.ZERO
 var _bob_time: float = 0.0
 var _spin: float = 0.0
 
 
-## `spec`: {"model": path, "rotation_deg": Vector3, "fit_size": Vector3, "surface_materials": Dictionary,
-## "default_material": String, "shadow_half_gu": float}. False (logged) when there is no board or the model fails.
-func setup(p_room: Node, p_gu_cell: Vector2i, spec: Dictionary, board: Node3D) -> bool:
+## The weapon `weapon_id` floating over `p_gu_cell`. False (logged) when there is no board or the weapon has no model.
+func setup(p_room: Node, p_gu_cell: Vector2i, weapon_id: String, board: Node3D) -> bool:
 	room = p_room
 	gu_cell = p_gu_cell
 	if board == null:
 		push_error("[FloatingCollectible] no 3D board to draw the pickup on")
 		return false
-	if not setup_object(board, String(spec["model"]), spec.get("rotation_deg", Vector3.ZERO), spec["fit_size"],
-			spec.get("surface_materials", {}), String(spec.get("default_material", "generic")),
-			float(spec.get("shadow_half_gu", 0.3))):
+	var w: WeaponDef = WeaponRegistry.shared().get_weapon(weapon_id)
+	if w == null or w.model_path == "":
+		push_error("[FloatingCollectible] '%s' is not a weapon with a model (weapons/%s.json \"model\"): no pickup at %s" % [weapon_id, weapon_id, p_gu_cell])
 		return false
-	_floor = room.agent._cell_to_world(gu_cell)
+	var size: Vector3 = w.world_size(LIE_FLAT_DEG)
+	if size == Vector3.ZERO:
+		return false
+	var shadow_half: float = clampf(maxf(size.x, size.z) * 0.6, 0.12, 0.4)
+	if not setup_object(board, w.model_path, LIE_FLAT_DEG, size, w.surface_materials, "metal", shadow_half):
+		return false
+	_ground = board.call("ground_point", room.agent._cell_to_world(gu_cell))
 	_apply_bob(0.0)
 	set_process(true)
 	return true
-
 
 
 func _process(delta: float) -> void:
@@ -64,9 +69,7 @@ func _process(delta: float) -> void:
 
 ## `bob_phase`: -1 (top of the bob) .. +1 (bottom, nearest the floor).
 func _apply_bob(bob_phase: float) -> void:
-	var lift: float = HOVER_HEIGHT_PX - bob_phase * BOB_AMPLITUDE_PX
-	screen_position = _floor - Vector2(0.0, lift)
-	flight_px = lift
+	place_world(_ground, HOVER_HEIGHT_GU - bob_phase * BOB_AMPLITUDE_GU)
 	var bottom_frac: float = (bob_phase + 1.0) * 0.5
 	set_shadow(lerpf(SHADOW_STRENGTH_AT_TOP, SHADOW_STRENGTH_AT_BOTTOM, bottom_frac),
 		SHADOW_SOFTNESS_AT_TOP * (1.0 - bottom_frac), lerpf(SHADOW_SCALE_AT_TOP, SHADOW_SCALE_AT_BOTTOM, bottom_frac))

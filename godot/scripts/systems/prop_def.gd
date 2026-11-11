@@ -40,6 +40,10 @@ var vox_materials: Dictionary = {}
 ## `material_zones["default"]`; a material id the registry does not have resolves through its fallback chain.
 var surface_materials: Dictionary = {}
 var model_rotation_deg: Vector3 = Vector3.ZERO
+## HERITAGE T2 W2 — a prop that is a WEAPON lying in the scenery (on the floor, on a table): it names the weapon, and the
+## weapon's row brings the model, the surfaces and the SIZE (the one it has in the Agent's hands); the prop row keeps only
+## how it lies (`model_rotation_deg`) and what it is in play.
+var weapon: String = ""
 ## Tier 4 only: the lattice its fragments fall on is the board's voxel divided by this (1, 2 or 4). 0 = automatic: the finest one that
 ## keeps the prop within `PropVoxelizer.FRAGMENT_BUDGET` fragments. A destroyed prop need not obey the world's voxel size.
 var fragment_division: int = 0
@@ -84,5 +88,19 @@ static func from_json(data: Dictionary, errors: Array = []) -> PropDef:
 	def.fragment_division = int(data.get("fragment_division", 0))
 	def.model_rotation_deg = JsonFileRef.vector3(data.get("model_rotation_deg", [0.0, 0.0, 0.0]), Vector3.ZERO,
 		"prop '%s' model_rotation_deg" % def.id, errors)
+	def.weapon = String(data.get("weapon", ""))
+	if def.weapon != "":
+		var w: WeaponDef = WeaponRegistry.shared().get_weapon(def.weapon)
+		if w == null or w.model_path == "":
+			errors.append("prop '%s': weapon '%s' has no row with a model" % [def.id, def.weapon])
+			push_error("[PropDef] prop '%s' names weapon '%s', which has no row with a model: it keeps its own fields" % [def.id, def.weapon])
+		else:
+			def.model_path = w.model_path
+			def.surface_materials = w.surface_materials
+			var size: Vector3 = w.world_size(def.model_rotation_deg)
+			if size == Vector3.ZERO:
+				push_error("[PropDef] prop '%s': weapon '%s''s model does not load: its size cannot be taken" % [def.id, def.weapon])
+			else:
+				def.mesh_size = size
 
 	return def

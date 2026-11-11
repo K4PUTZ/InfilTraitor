@@ -82,23 +82,6 @@ const GUARD_TOP_PX: float = 72.0
 const GRIP_AIMED: String = "_aimed"
 const GRIP_LOWERED: String = ""
 
-## W-WEAPON-01 (Director, 2026-08-20): *"Vamos trocar a arma empunhada, conforme
-## o número for selecionado."* Weapon id -> the bake-directory suffix
-## ActorPose.weapon takes. The shotgun maps to "" because its posed GLBs are
-## the ones that shipped and their directories carry no weapon segment — the
-## same "the default earns no suffix" rule p3_posture_export.py applies to grips.
-##
-## ⚠️ ONLY THE SHOTGUN ROW HAS ART TODAY. The rifle and pistol rows name
-## directories that do not exist yet, and set_weapon_bake() warns once and keeps
-## the shotgun pose. That is the honest state: the WEAPON changes (ladder,
-## pre-cook, ballistics all switch), the FIGURE does not, until the bakes in
-## PROMPTS/BAKE_ORDER_WEAPON_GRIPS.md are run.
-const WEAPON_BAKE_SUFFIX: Dictionary = {
-	"shotgun": "",
-	"assault_rifle": "_rifle",
-	"pistol": "_pistol",
-}
-
 ## How many DRAWN FRAMES the rounds get to cross before the wall reacts. A frame
 ## count, not a duration: see the note in fire_at_active() for why a duration is
 ## exactly the thing that failed here. 8 frames at 60 Hz is ~0.13 s, which is
@@ -169,7 +152,7 @@ func set_weapon(weapon_id: String) -> void:
 	## a weapon nobody has named should look the same, which is "the one that
 	## exists".
 	if room.agent != null and is_instance_valid(room.agent) and room.agent.pose != null:
-		room.agent.pose.set_weapon_bake(String(WEAPON_BAKE_SUFFIX.get(weapon_id, "")))
+		room.agent.pose.set_weapon(weapon_id)
 	if _active_guard_index < 0:
 		return
 	var guards: Array = room._guards

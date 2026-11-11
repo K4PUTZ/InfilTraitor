@@ -20,6 +20,8 @@
 ## and a speculative field that nothing reads is a field that rots.
 class_name WeaponDef
 
+const JsonFileRef = preload("res://godot/scripts/systems/json_file.gd")
+
 ## D1's four delivery shapes. Stored as a String in JSON (authoring stays
 ## readable) and validated on load — an unknown value loud-fails rather than
 ## silently defaulting to something destructive.
@@ -81,6 +83,22 @@ var soot_radius: int = 3
 var gameplay: Dictionary = {}
 var tags: Array[String] = []
 
+## HERITAGE T2 W1 (2026-11-11) — what the weapon LOOKS like, in one row for every copy of it: in the Agent's hand, on
+## the floor, on a table, as a pickup (`"model"` in `weapons/<id>.json`). Ruling (Director, 2026-11-11): a weapon is
+## ALWAYS the size it was given in the Agent's hands. `size_certified` is the day that size was set by hand with the
+## figure holding it (MOVEMENT_MASTER_PLAN §9 item 7); "" = not yet, and such a weapon WARNS when its row loads.
+var model_path: String = ""
+var surface_materials: Dictionary = {}
+## Where the Tripo figure holds it: the bone, the offset in the bone's frame (figure units) and the scale (1.0 once the
+## size is certified, the proportion being baked into the model).
+var hand_bone: String = "RightHand"
+var hand_pos: Vector3 = Vector3.ZERO
+var hand_scale: float = 1.0
+var size_certified: String = ""
+## The grip the old r3d_live rig holds this weapon with ("shotgun" / "pistol"); "" = it has none, and the figure keeps
+## what it holds (`ActorPose.set_weapon`).
+var held_as: String = "shotgun"
+
 
 ## Factory: parse WeaponDef from a JSON dict — same contract as
 ## BombDef.from_json()/PropDef.from_json().
@@ -110,5 +128,35 @@ static func from_json(data: Dictionary) -> WeaponDef:
 	for tag in data.get("tags", []):
 		def.tags.append(String(tag))
 
+	def.held_as = String(data.get("held_as", "shotgun"))
+	var model: Variant = data.get("model", null)
+	if model is Dictionary:
+		var m: Dictionary = model
+		def.model_path = String(m.get("path", ""))
+		def.surface_materials = m.get("surface_materials", {})
+		def.size_certified = String(m.get("size_certified", ""))
+		var hand: Variant = m.get("hand", {})
+		if hand is Dictionary:
+			var h: Dictionary = hand
+			def.hand_bone = String(h.get("bone", "RightHand"))
+			def.hand_pos = JsonFileRef.vector3(h.get("pos", [0.0, 0.0, 0.0]), Vector3.ZERO, "weapon '%s' hand pos" % def.id, [])
+			def.hand_scale = float(h.get("scale", 1.0))
+		if def.model_path != "" and def.size_certified == "":
+			push_warning("[WeaponDef] '%s': its size in the Agent's hands is not certified yet (MOVEMENT_MASTER_PLAN §9 item 7): it is drawn at its model's own size" % def.id)
+
 	return def
+
+
+## World units per model unit, everywhere this weapon is drawn: the Tripo figure's own scale (the model is held in the
+## figure's units) times the hand scale. The one size of the ruling: the hand, the floor, the table and the pickup.
+func world_scale() -> float:
+	return TripoFigure.WORLD_SCALE * hand_scale
+
+
+## The weapon's box in world units when its model is turned by `rotation_deg` (a table copy lies flat): the size it has in
+## the Agent's hands, measured off the model. Vector3.ZERO when it has no model or the model does not load.
+func world_size(rotation_deg: Vector3 = Vector3.ZERO) -> Vector3:
+	if model_path == "":
+		return Vector3.ZERO
+	return PropModelFit.native_size(model_path, rotation_deg) * world_scale()
 

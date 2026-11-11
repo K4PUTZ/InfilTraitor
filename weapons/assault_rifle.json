@@ -22,5 +22,6 @@
     "automatic"
   ],
   "blowout": 0.65,
-  "soot_radius": 3
+  "soot_radius": 3,
+  "held_as": ""
 }

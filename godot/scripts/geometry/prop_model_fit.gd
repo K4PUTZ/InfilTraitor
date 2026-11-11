@@ -21,6 +21,20 @@ static func fit(path: String, rotation_deg: Vector3, fit_size: Vector3) -> Dicti
 	return out
 
 
+## HERITAGE T2 W2 — the model's own box (no fit) turned by `rotation_deg`, through its node transforms: what a weapon
+## measures in its own units, before the one scale it has everywhere (`WeaponDef.world_size`). Vector3.ZERO on a failure.
+static func native_size(path: String, rotation_deg: Vector3) -> Vector3:
+	var key := "native|%s|%s" % [path, rotation_deg]
+	if _cache.has(key):
+		return _cache[key]
+	var probe: Dictionary = _load_fit(path, rotation_deg, Vector3.ONE)
+	var out: Vector3 = Vector3.ZERO
+	if bool(probe.get("ok", false)):
+		out = probe.get("native", Vector3.ZERO)
+	_cache[key] = out
+	return out
+
+
 ## The placeholder: a box of `size`, standing on Y = 0. What a Tier 4 prop with no model voxelizes from.
 static func box(size: Vector3) -> Dictionary:
 	var key := "box|%s" % size
@@ -122,4 +136,4 @@ static func _load_fit(path: String, rotation_deg: Vector3, fit_size: Vector3) ->
 			var src: Material = meshes[i].mesh.surface_get_material(s)
 			surfaces.append(src.resource_name if src != null else "")
 	root.free()
-	return {"ok": true, "parts": parts, "size": box.size * k, "surfaces": surfaces}
+	return {"ok": true, "parts": parts, "size": box.size * k, "surfaces": surfaces, "native": box.size}

@@ -126,6 +126,11 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 	if roofs_section.get("items", []).size() > 0:
 		runtime["roofs"] = _convert_from_json_compatible(roofs_section["items"])
 
+	# --- Pickups section (HERITAGE T2 W3): a weapon floating over a cell -----
+	var pickups_section = sections.get("pickups", {})
+	if pickups_section.get("items", []).size() > 0:
+		runtime["pickups"] = _convert_from_json_compatible(pickups_section["items"])
+
 	# --- Ground decals section (R3D-SURFACES S2): GU-sized floor marks on a half-GU lattice ---
 	var ground_decals_section = sections.get("ground_decals", {})
 	if ground_decals_section.get("items", []).size() > 0:

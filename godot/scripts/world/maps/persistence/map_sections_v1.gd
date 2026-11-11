@@ -9,6 +9,7 @@ static func register_all(registry) -> void:
 	register_blocks(registry)
 	register_floor_zones(registry)
 	register_roofs(registry)
+	register_pickups(registry)
 	register_ground_decals(registry)
 	register_material_tints(registry)
 	register_ground_scatter(registry)
@@ -143,6 +144,22 @@ static func register_roofs(registry) -> void:
 	var SectionOwner = registry.SectionOwner
 	registry.register(SectionOwner.new(
 		"roofs",
+		1,
+		func(fragment: Dictionary) -> Dictionary:
+			return { "items": fragment.get("items", []) },
+		func(raw: Dictionary) -> Dictionary:
+			return { "items": raw.get("items", []) },
+		{},
+		func() -> Dictionary:
+			return { "items": [] }
+	))
+
+## pickups (HERITAGE T2 W3, 2026-11-11): a weapon floating over a cell to be collected. `{gu, weapon}`: `weapon` is a row of
+## `weapons/` (its model, its surfaces and its size, the one it has in the Agent's hands). Collecting it is GAMEPLAY's.
+static func register_pickups(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	registry.register(SectionOwner.new(
+		"pickups",
 		1,
 		func(fragment: Dictionary) -> Dictionary:
 			return { "items": fragment.get("items", []) },

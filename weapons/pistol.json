@@ -20,5 +20,24 @@
     "sidearm"
   ],
   "blowout": 0.0,
-  "soot_radius": 2
+  "soot_radius": 2,
+  "held_as": "pistol",
+  "model": {
+    "path": "res://ASSETS/props/pistol_quaternius/pistol.glb",
+    "surface_materials": {
+      "Metal": "steel_dark",
+      "Black": "rubber",
+      "LightMetal": "metal"
+    },
+    "hand": {
+      "bone": "RightHand",
+      "pos": [
+        0.0081,
+        0.0164,
+        0.01
+      ],
+      "scale": 1.0
+    },
+    "size_certified": "2026-11-09"
+  }
 }

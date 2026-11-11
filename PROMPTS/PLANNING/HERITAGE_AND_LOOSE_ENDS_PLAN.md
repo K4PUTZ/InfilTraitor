@@ -161,3 +161,19 @@ The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PER
   noise bonus, the FSM's escalation, timers, de-escalation and hearing. It pins what IS, not what is right.
 - **Open, the Director's:** which thresholds are canon (`AI_MASTER_PLAN` carries 0.30 / 0.60 / 1.00); the save's format (the
   `VoxelStore` in the save, and the ~960-line replay retiring with it) is a design call of `roadmap` A2 and is not started.
+
+### T2 — W1, W2, W3 DONE 2026-11-11 (`verify.py smoke` green); W4, W5 open
+- **W1, identity:** a weapon row carries its `model` (path, surfaces, hand bone / offset / scale, `size_certified`) and `held_as`
+  (the old rig's grip; "" = none, the rifle keeps being refused exactly as before). `TripoFigure.PROP_MODELS` / `PROP_DEFAULTS`,
+  the suffix strings (`ActorPose.WEAPONS`, `ActorMesh3D.WEAPON_BY_SUFFIX`, `AgentShotController.WEAPON_BAKE_SUFFIX`) are gone;
+  `ActorPose.set_weapon(id)`. `WeaponRegistry.shared()` is the one registry (the autoload hands it out). An uncertified model WARNS.
+- **W2, one size:** `WeaponDef.world_size()` = the model's own box x `TripoFigure.WORLD_SCALE` (1.225) x the hand scale; a prop row
+  naming `"weapon"` takes model, surfaces and size from it (`props/pistol_prop.json`). The table pistol went 0.277 -> 0.180 GU
+  (captures `PROPS` POI `pistols`, before and after).
+- **W3, the pickup:** map section `pickups` (`{gu, weapon}`, compiled to `pickup_instances`); `FloatingCollectible` hovers 0.38 GU,
+  bobs 0.115 GU, spins, in world units (`ObjectMesh3D.place_world`); PLAYGROUND places a pistol at (25, 11), POI `pickup`. The
+  hard-coded strip (`TEST_ZONE_COLLECTIBLES`, the pack guns) is deleted. ⚠️ Its ground shadow did not show in the captures: owed.
+- **Found:** a map whose `layout` POI is off the 1/8 lattice is refused at load, and the capture run then HANGS (Movie Maker kept
+  writing frames for 5 min) instead of aborting: the scenario never starts. Worth a timeout in `capture.py`.
+- **Open:** W4 (the muzzle from the gun's mesh; a behaviour change of where a shot starts) and W5 (the grenade's flight in world
+  state, out of the 2D parabola).

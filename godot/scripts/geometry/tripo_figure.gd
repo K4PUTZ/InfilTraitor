@@ -28,6 +28,9 @@ const UNDRESSED_PIECES: Array[String] = ["Outfit_Shirt", "Outfit_Trousers", "Out
 const DRESSED_ONLY_PIECES: Array[String] = ["Outfit_Coat", "Outfit_Hat", "Body_Hair_Hat", "Outfit_Shirt_Coated", "Outfit_Trousers_Coated", "Outfit_Belt_Coated"]
 ## The agent stands 9.8 voxels of 0.20 m (CHARACTER_MASTER_PLAN §4.7); Tripo exports a 1 m figure standing on y = 0 (hat included).
 const STAND_HEIGHT_M: float = 1.96
+## World units (GU) per figure unit: the figure stands STAND_HEIGHT_M tall and a GU is 1.6 m (D61). What a held model is
+## scaled by in the hand, and so the one size a weapon has everywhere (HERITAGE T2 W2).
+const WORLD_SCALE: float = STAND_HEIGHT_M / 1.6
 ## Tripo's figure faces +Z (glTF's front); `ActorMesh3D.yaw_for_direction()` turns a front of -Z.
 const FRONT_YAW: float = PI
 const COAT_SHADER_PATH := "res://godot/shaders/actor_coat3d.gdshader"   ## ACTOR D94: the coat, two-sided
@@ -75,8 +78,8 @@ const POSE_FILE := "res://ASSETS/ANIMATIONS/poses/%s/%s.json"
 ## The props a pose may carry (the model in hand). The default placement is what the pose has until somebody places it by hand. A weapon's model IS its held size, fixed once by the
 ## Director with a figure holding it (2026-11-09; the same proportion goes to `props/<weapon>_prop.json`'s `mesh_size`): the pistol glb has no node transform and measures 0.147 long, 0.070
 ## tall, 0.019 thick in the figure's own units (barrel +X, sights +Y, flank +Z), so a placement's `scale` is 1.0.
-const PROP_MODELS: Dictionary = {"pistol": "res://ASSETS/props/pistol_quaternius/pistol.glb"}
-const PROP_DEFAULTS: Dictionary = {"pistol": {"bone": "RightHand", "pos": Vector3(0.0081, 0.0164, 0.010), "scale": 1.0}}
+## HERITAGE T2 W1 (2026-11-11): a prop the figure holds is a WEAPON, and its model and default hand placement are that
+## weapon's row (`weapons/<id>.json` "model"); there is no table of them here any more.
 ## The library's name on an actor's AnimationPlayer: its clips play as `bank/<id>`.
 const LIBRARY_NAME := &"bank"
 const HIPS := "Hips"
@@ -349,9 +352,18 @@ static func _hips_place(pose: Animation) -> Variant:
 ## The default placement of the prop `prop` in its bone's frame: {bone, pos, quat, scale}. The model's barrel (+X) lies along the fingers (the hand's +Y), its sights (+Y) toward the
 ## thumb (the hand's +X) and its flank (+Z) onto the back of the hand (-Z).
 static func prop_default(prop: String) -> Dictionary:
-	var d: Dictionary = PROP_DEFAULTS[prop]
+	var w: WeaponDef = WeaponRegistry.shared().get_weapon(prop)
+	if w == null or w.model_path == "":
+		push_error("[TripoFigure] '%s' is not a weapon with a model (weapons/%s.json \"model\")" % [prop, prop])
+		return {}
 	var basis := Basis(Vector3(0.0, 1.0, 0.0), Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0))
-	return {"bone": d["bone"], "pos": d["pos"], "quat": basis.get_rotation_quaternion(), "scale": d["scale"]}
+	return {"bone": w.hand_bone, "pos": w.hand_pos, "quat": basis.get_rotation_quaternion(), "scale": w.hand_scale}
+
+
+## The model of the prop (a weapon) `prop`, "" when it is not a weapon with one.
+static func prop_model(prop: String) -> String:
+	var w: WeaponDef = WeaponRegistry.shared().get_weapon(prop)
+	return w.model_path if w != null else ""
 
 
 ## A pose read from the Director's JSON (see `POSE_FILE`). Every bone is checked against the rig and a bad row is said loudly with its path; null when nothing usable is in it.
@@ -388,7 +400,7 @@ static func _pose_from_file(figure: String, id: String, path: String) -> Animati
 	var rows: Dictionary = row.get("props", {})
 	for prop: String in rows:
 		var p: Dictionary = rows[prop] as Dictionary if rows[prop] is Dictionary else {}
-		if not PROP_MODELS.has(prop) or TripoPoseKitRef.find_bone(skeleton, String(p.get("bone", ""))) < 0:
+		if prop_model(prop) == "" or TripoPoseKitRef.find_bone(skeleton, String(p.get("bone", ""))) < 0:
 			push_error("[TripoFigure] %s: prop '%s' is unknown or on a bone the rig lacks: skipped" % [path, prop])
 			continue
 		var pos: Vector3 = JsonFile.vector3(p.get("pos"), Vector3.ZERO, "%s prop %s pos" % [path, prop], errors)

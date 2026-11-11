@@ -45,6 +45,7 @@ var _model_size: Vector3 = Vector3.ZERO
 var _tumble: float = 0.0
 var _tumble_axis: Vector3 = Vector3.RIGHT
 var _shadow_half: float = 0.0
+var _world_placed: bool = false
 
 
 ## Build the model and its shadow on `board`. `shadow_half_gu` is the shadow's radius on the floor, in world units (0 = none).
@@ -171,8 +172,17 @@ func model_point_world(p: Vector3) -> Vector3:
 	return _pivot.global_transform * (p - Vector3(0.0, _model_size.y * 0.5, 0.0))
 
 
+## HERITAGE T2 W3 — the object in WORLD units: its base `height` above the floor point `ground` (a world point, the board's
+## own), its shadow on that point. Once called, the 2D contract (`screen_position` / `flight_px`) no longer moves it.
+func place_world(ground: Vector3, height: float) -> void:
+	_world_placed = true
+	position = ground + Vector3.UP * maxf(height, 0.0)
+	if _shadow != null:
+		_shadow.position = ground
+
+
 func _place() -> void:
-	if _board == null:
+	if _board == null or _world_placed:
 		return
 	var ground_2d: Vector2 = screen_position + Vector2(0.0, flight_px)
 	position = _board.call("particle_origin", screen_position, ground_2d)

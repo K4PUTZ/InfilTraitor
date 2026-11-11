@@ -52,9 +52,6 @@ const RIG_BY_FAMILY := {
 	## The field officer (2026-11-08): the old agent's model, promoted when the Tripo figure became the agent.
 	"_officer": "agent_live.glb",
 }
-## `ActorPose.weapon` (a bake suffix) -> the rig's weapon name. The rifle has no grip in `p2_grip_spike.GRIPS`, so it
-## holds the shotgun, as the frame bake already does.
-const WEAPON_BY_SUFFIX := {"": "shotgun", "_pistol": "pistol", "_rifle": "shotgun"}
 ## D61: a GU is 1.60 m, and a GU is one world unit; the rig is authored in metres.
 const METRES_TO_UNITS: float = 1.0 / 1.6
 const TripoFigureRef = preload("res://godot/scripts/geometry/tripo_figure.gd")
@@ -237,7 +234,7 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 	_tripo = figure
 	_tripo_move = move_clip
 	_front_yaw = TripoFigureRef.FRONT_YAW
-	_tripo_units = TripoFigureRef.STAND_HEIGHT_M * METRES_TO_UNITS
+	_tripo_units = TripoFigureRef.WORLD_SCALE
 	_move_pass = TripoFigureRef.travel_m(lib.get_animation(move_clip)) * _tripo_units
 	if _move_pass <= 0.0:
 		push_warning("[ActorMesh3D] the %s clip '%s' covers no ground: it will play frozen while the actor walks" % [figure, move_clip])
@@ -310,7 +307,7 @@ func _build_pistol(stops: Array) -> void:
 		_pistol_stops.append([float(stop[0]), props["pistol"] if props.has("pistol") else TripoFigureRef.prop_default("pistol")])
 	var bone_name: String = _sequence.gun_bone() if _sequence != null else String((_pistol_stops[_pistol_stops.size() - 1][1] as Dictionary)["bone"])
 	var hand: int = TripoFigureRef.find_bone(_skeleton, bone_name)
-	var model_path: String = String(TripoFigureRef.PROP_MODELS["pistol"])
+	var model_path: String = TripoFigureRef.prop_model("pistol")
 	var scene := load(model_path) as PackedScene
 	if hand < 0 or scene == null:
 		push_error("[ActorMesh3D] no bone '%s' or no pistol model (%s): the agent aims empty-handed" % [bone_name, model_path])
@@ -350,7 +347,7 @@ func _update_aim(state: Dictionary) -> void:
 	if _aim == null:
 		return
 	## Standing still only: the aim is a whole-body stance (the idle sways and must not show through), so a walking figure keeps its legs and lowers the gun.
-	var want: bool = String(state["weapon"]) == "_pistol" and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing" and float(state["walk"]) < 0.0
+	var want: bool = String(state["weapon"]) == "pistol" and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing" and float(state["walk"]) < 0.0
 	var target: float = 1.0 if want else 0.0
 	_aim_t = move_toward(_aim_t, target, get_process_delta_time() / (_raise_s if want else _lower_s))
 	_aim.weight = _aim_t
@@ -417,7 +414,7 @@ func _sync() -> void:
 		_show_tripo(float(state["walk"]) >= 0.0, ground)
 		_update_aim(state)
 	else:
-		var weapon: String = String(WEAPON_BY_SUFFIX.get(String(state["weapon"]), "shotgun"))
+		var weapon: String = String(state["weapon"])   ## the grip the rig holds (`ActorPose.set_weapon`, the row's `held_as`)
 		for held: String in _weapons:
 			(_weapons[held] as Node3D).visible = held == weapon
 		var throw_seq: String = state["throw"]

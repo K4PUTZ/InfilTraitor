@@ -32,8 +32,8 @@ const HEAD_YAW_LIMIT_DEG := 60.0
 const POSTURES: PackedStringArray = ["standing", "crouch", "prone"]
 ## Grip suffixes the rig has actions for ("" = lowered).
 const GRIPS: PackedStringArray = ["", "_aimed"]
-## Weapon suffixes the rig holds ("" = the shotgun). The rifle has no grip in p2_grip_spike.GRIPS yet.
-const WEAPONS: PackedStringArray = ["", "_pistol"]
+## The grips the old rig holds a weapon with (a weapon row's `held_as`). The rifle has none in p2_grip_spike.GRIPS yet.
+const HELD: PackedStringArray = ["shotgun", "pistol"]
 const STEPS := [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
 ## The facing a figure starts with: the step the bake's "N" frame drew (screen NE on the N lattice).
 const START_STEP := Vector2i(0, -1)
@@ -41,7 +41,9 @@ const START_STEP := Vector2i(0, -1)
 ## Which model the figure wears ("" = the agent, "_enemy_white" = the guard): `ActorMesh3D.RIG_BY_FAMILY`.
 var frame_family: String = ""
 var grip: String = ""
-var weapon: String = ""
+## The grip the figure holds its weapon with ("shotgun" by default) and the weapon's id ("" = the default).
+var weapon: String = "shotgun"
+var weapon_id: String = ""
 var room: Node = null
 
 signal throw_released
@@ -106,14 +108,18 @@ func preload_grip(name: String) -> bool:
 	return GRIPS.has(name)
 
 
-## W-WEAPON-01 — the HELD weapon, as its suffix ("" = shotgun). A weapon the rig does not hold is refused once, loudly,
-## and the figure keeps the one it has.
-func set_weapon_bake(name: String) -> bool:
-	if not WEAPONS.has(name):
-		_warn_once("weapon:" + name, "[ActorPose] the live rig holds no '%s' — the figure keeps the %s. Add its grip to p2_grip_spike.GRIPS and WEAPONS, and re-run r3d_live_rig_export.py."
-			% [name.trim_prefix("_"), weapon.trim_prefix("_") if weapon != "" else "shotgun"])
+## W-WEAPON-01 / HERITAGE T2 W1 — the HELD weapon, by its id (`weapons/<id>.json`). The rig holds it with the grip its
+## row names (`held_as`); a weapon whose row names none the rig has is refused once, loudly, and the figure keeps the one
+## it has (the rifle today).
+func set_weapon(id: String) -> bool:
+	var w: WeaponDef = WeaponRegistry.shared().get_weapon(id)
+	var held: String = w.held_as if w != null else ""
+	if not HELD.has(held):
+		_warn_once("weapon:" + id, "[ActorPose] the live rig has no grip for '%s' (held_as '%s') — the figure keeps the %s. Add its grip to p2_grip_spike.GRIPS and HELD, and re-run r3d_live_rig_export.py."
+			% [id, held, weapon])
 		return false
-	weapon = name
+	weapon = held
+	weapon_id = id
 	return true
 
 

@@ -102,8 +102,7 @@ func ensure_weapon_registry() -> WeaponRegistryClass:
 	var reg = _weapon_registry
 
 	if reg == null:
-		reg = WeaponRegistryClass.new()
-		reg.load_from_disk()
+		reg = WeaponRegistryClass.shared()   ## HERITAGE T2 W1: the process's one registry
 		_weapon_registry = reg
 		print("[Registries] Weapon registry initialized from disk")
 

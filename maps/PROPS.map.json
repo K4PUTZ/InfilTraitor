@@ -8,48 +8,273 @@
   "sections": {
     "board": {
       "v": 1,
-      "inner_size": [18, 12],
+      "inner_size": [
+        18,
+        12
+      ],
       "buffer": 5,
       "floor_tile": "floor_SE"
     },
     "actors": {
       "v": 1,
-      "agent_start": [5, 10],
+      "agent_start": [
+        5,
+        10
+      ],
       "guards": []
     },
     "floor_zones": {
       "v": 2,
       "items": [
         {
-          "gu": [0, 0],
-          "size": [18, 12],
+          "gu": [
+            0,
+            0
+          ],
+          "size": [
+            18,
+            12
+          ],
           "material": "concrete"
         }
       ]
     },
     "damage_materials": {
       "v": 1,
-      "materials": ["concrete", "wood", "metal"]
+      "materials": [
+        "concrete",
+        "wood",
+        "metal"
+      ]
     },
     "props": {
       "v": 1,
       "items": [
-        { "def": "wood_table", "gu": [12, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "pistol_prop", "gu": [10, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "wood_table", "gu": [13, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "pistol_prop", "gu": [9, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "wood_table", "gu": [14, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "crate_full", "gu": [8, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "plywood_table", "gu": [15, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "crate_full", "gu": [11, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "crate_plywood", "gu": [10, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "bed_single", "gu": [3, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "nightstand", "gu": [4, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "locker", "gu": [5, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "bookshelf", "gu": [6, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "desk", "gu": [7, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "chair", "gu": [8, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "bin", "gu": [9, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 }
+        {
+          "def": "wood_table",
+          "gu": [
+            12,
+            6
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "pistol_prop",
+          "gu": [
+            10,
+            6
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "wood_table",
+          "gu": [
+            13,
+            6
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "pistol_prop",
+          "gu": [
+            9,
+            6
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "wood_table",
+          "gu": [
+            14,
+            6
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "crate_full",
+          "gu": [
+            8,
+            6
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "plywood_table",
+          "gu": [
+            15,
+            6
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "crate_full",
+          "gu": [
+            11,
+            5
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "crate_plywood",
+          "gu": [
+            10,
+            5
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "bed_single",
+          "gu": [
+            3,
+            3
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "nightstand",
+          "gu": [
+            4,
+            3
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "locker",
+          "gu": [
+            5,
+            3
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "bookshelf",
+          "gu": [
+            6,
+            3
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "desk",
+          "gu": [
+            7,
+            3
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "chair",
+          "gu": [
+            8,
+            3
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "bin",
+          "gu": [
+            9,
+            3
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        }
+      ]
+    },
+    "layout": {
+      "v": 1,
+      "poi": [
+        {
+          "id": "pistols",
+          "at": [
+            10.0,
+            6.5,
+            0.25
+          ],
+          "tags": [
+            "detail",
+            "weapon"
+          ]
+        }
       ]
     }
   }

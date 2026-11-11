@@ -180,6 +180,14 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			}
 		roof_instances.append(roof_entry)
 
+	## --- pickups (HERITAGE T2 W3): a weapon floating over a cell; the buffer is applied here and only here (rule 7) ---
+	var pickup_instances: Array[Dictionary] = []
+	for pickup: Dictionary in spec.get("pickups", []):
+		pickup_instances.append({
+			"gu_cell": Vector2i(pickup.get("gu", Vector2i.ZERO)) + offset,
+			"weapon": String(pickup.get("weapon", "")),
+		})
+
 	## --- floor-zone bake regions (author-declared ground material rects) -----
 	## Mirrors solid_block_instances' shape exactly (gu_cell + size + one
 	## property), kept as a rectangle list — not pre-expanded per-GU — so
@@ -468,6 +476,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"voxel_prop_instances": voxel_prop_instances,  ## PropDef-driven voxel props (PROP-01)
 		"solid_block_instances": solid_block_instances,  ## Original per-GU block declarations, offset-adjusted (DESTRUCTION D1-ROOF)
 		"roof_instances": roof_instances,  ## R3D-7: free-standing roofs (an entity of their own), offset-adjusted
+		"pickup_instances": pickup_instances,  ## HERITAGE T2 W3: weapons floating over a cell, offset-adjusted
 		"floor_zone_instances": floor_zone_instances,  ## Author-declared floor material rects, offset-adjusted (floor-zone bake)
 		"panel_instances":  panel_instances,   ## M3-2b: half-thickness elements, offset-adjusted
 		"ground_decal_instances": ground_decal_instances,  ## R3D-SURFACES S2: floor marks, offset-adjusted, base grid only (never rotated)

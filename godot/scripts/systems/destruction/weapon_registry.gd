@@ -14,6 +14,17 @@ var registry: Dictionary = {}  # id → WeaponDef
 ## Every row that could not be read, loudly (`JsonFile`, AUDIT 2026-10-07).
 var load_errors: Array[String] = []
 
+static var _shared: WeaponRegistry = null
+
+
+## HERITAGE T2 W1 — ONE registry for the whole process, loaded on first use: the `Registries` autoload hands out this
+## one, and code with no scene tree (`TripoFigure`, a prop row naming its weapon, a selftest) reads the same rows.
+static func shared() -> WeaponRegistry:
+	if _shared == null:
+		_shared = WeaponRegistry.new()
+		_shared.load_from_disk()
+	return _shared
+
 
 ## Register a weapon definition
 func register(weapon_def) -> void:

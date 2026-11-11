@@ -127,7 +127,7 @@ const TURN_SPEED := 4.0
 ##
 ## NEVER on the play path — the ease IS the animation. `_rotate_towards` is left
 ## exactly as it is for every other caller and every other frame.
-static var FREEZE_TURN: bool = OS.get_environment("INFILTRAITOR_FREEZE_GUARD_TURN") == "1"
+static var FREEZE_TURN: bool = DevFlag.on("FREEZE_GUARD_TURN")
 
 ## Contextual attention
 var attention: GuardAttention = GuardAttention.new()
@@ -220,7 +220,7 @@ func _ready() -> void:
 
 	var flags: Node = get_node_or_null("/root/DevFlags")
 	_cone_redraw_always = flags.on("CONE_REDRAW_ALWAYS") if flags != null \
-			else OS.get_environment("INFILTRAITOR_CONE_REDRAW_ALWAYS") == "1"
+			else DevFlag.on("CONE_REDRAW_ALWAYS")
 
 
 func _rotate_towards(current: float, target: float, speed: float, delta: float) -> float:
@@ -1213,7 +1213,7 @@ func attach_pose(p_room: Node) -> bool:
 	## the previous white pass was judged that way. Any family under
 	## actor_bakes/agent_frames<family>/ works; "_test_white" is the one this
 	## bracket exists for. Unset = the shipped enemy, untouched.
-	var family_env := OS.get_environment("INFILTRAITOR_ENEMY_FAMILY")
+	var family_env := DevFlag.value("ENEMY_FAMILY", "")
 	if family_env != "":
 		s.frame_family = family_env
 		print("[GuardEnemy] WHITE-AMBIENT-01 bracket: frame_family='%s'" % family_env)

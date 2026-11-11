@@ -83,7 +83,7 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 	## Dev-only: reposition the spawn (and so the camera's initial centre, room.gd
 	## `_center_camera()`) without editing the map file — same idiom as
 	## INFILTRAITOR_GRENADE_GUS / INFILTRAITOR_EVENT_TARGET_GU. `"x,y"`.
-	var start_env := OS.get_environment("INFILTRAITOR_AGENT_START_GU")
+	var start_env := DevFlag.value("AGENT_START_GU", "")
 	if start_env != "":
 		var parts := start_env.split(",")
 		if parts.size() == 2 and parts[0].is_valid_int() and parts[1].is_valid_int():

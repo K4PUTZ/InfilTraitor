@@ -106,6 +106,12 @@ The numbered list below is what the tiers run and what each step means:
 
 **Measure a cost only when the change, on its own, could move processing or memory by more than 5 %** (Director, 2026-11-10: *"só vai medir alguma coisa que tenha possibilidade de ter sozinha um impacto maior que 5%"*). Against the floor device's budgets that is about 1.7 ms of the 33.3 ms frame or 51 MiB of the 1.0 GiB ceiling. A smaller detail is neither measured nor listed as owed: the whole engine is reviewed at M7.0, before the beta and the playtests.
 
+**Dev flags (HERITAGE T3, 2026-11-11):** a diagnostic switch is read ONLY through `DevFlag.value / on / num / real`
+(`godot/scripts/systems/dev_flag.gd`: the environment, then the handset's `dev_flags.cfg`, then the registry's default), and
+every flag has a row in `DevFlag.FLAGS` (name, default, what it does). A raw `OS.get_environment("INFILTRAITOR_...")`, a name
+read but not registered, or a row nothing reads fails the commit (**F1**); an unregistered name read at runtime is a loud
+`push_error`.
+
 **Error-handling contract:**
 - `push_error("[ClassName] context: %s" % detail)` — config/asset/spec
   failure; abort cleanly via early return, never leave state partial.
@@ -176,15 +182,13 @@ still undecided. Nothing below changed except that the folder is nearly empty:
 - One-off for a single commit: `INFILTRAITOR_SCREENSHOT_ONCE=1`.
 - `Shift+P` is the Director's own manual capture (saves to `Screenshots/`,
   no subfolder) — never trigger this programmatically.
-- **Frame-by-frame analysis of a detonation:**
-  `python3 tools/persistent/build_filmstrip.py` (P-FILM) — one contact sheet of
-  every frame of ONE blast, to `temp/filmstrip/`. It boots
-  once and passes `--fixed-fps 60`; both matter and neither is optional. A
-  strip stitched from separate boots shows the fire jumping, because
-  `spawn_blast_burst()` uses `randf_range()`; and without the fixed FPS the
-  particle effects age several times too fast per frame while the frame-driven
-  destruction and strobe stay exact, so the sheet lies about exactly what it is
-  being used to judge.
+- **Frame-by-frame analysis of a detonation or a shot:**
+  `python3 tools/persistent/capture.py --map PLAYGROUND --take blast_<material> --sheet 1` (or `shot_<material>`; the
+  P-FILM `build_filmstrip.py` it replaces went on 2026-11-11, HERITAGE T3). It boots once and records at a fixed 60 fps
+  (Movie Maker); both matter and neither is optional. A strip stitched from separate boots shows the fire jumping,
+  because `spawn_blast_burst()` uses `randf_range()`; and without the fixed FPS the particle effects age several times
+  too fast per frame while the frame-driven destruction and strobe stay exact, so the sheet lies about exactly what it
+  is being used to judge.
 - **Captures go through CAPTURE_RAILS (built 2026-10-10):** `python3 tools/persistent/capture.py --map <MAP> --take <id>` (video,
   frame by frame, `--sheet N` for a contact sheet) or `--still <anchor> --mode wide|detail --view N|all`. Frame by the map's anchors
   (`layout` section; `overview`, `region:<id>`, `poi:<id>` exist on every map), never by a typed GU; profile `engine` (desktop, HUD

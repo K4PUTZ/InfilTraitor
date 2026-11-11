@@ -70,6 +70,10 @@ const FLAGS_BASENAME: String = "dev_flags.cfg"
 
 func _ready() -> void:
 	_load_overrides()
+	## HERITAGE T3 (2026-11-11): the static `DevFlag` is the one reader and holds the registry; this autoload
+	## only finds the file. Installed first, so every read below and after resolves the file too.
+	DevFlag.install(_overrides)
+	DevFlag.report_unknown()
 	## DIAG-09 §1b — armed here because this is the earliest point at which a
 	## flag can be read at all, so stage 00 is as close to "engine up, nothing
 	## of ours built yet" as the project can observe.
@@ -102,45 +106,22 @@ func _ready() -> void:
 		% [_overrides.size(), _source, ", ".join(pairs)])
 
 
-## True when the flag resolves to "1". The project's standing convention is
-## `== "1"`, not "any non-empty value", and this preserves it exactly.
+## The four readers delegate to `DevFlag` (the registry, the resolution order, the loud unknown name). Kept so
+## the callers that hold the autoload keep working; new code calls `DevFlag` directly.
 func on(flag_name: String) -> bool:
-	return value(flag_name, "") == "1"
+	return DevFlag.on(flag_name)
 
 
-## The flag's raw string value, or `fallback` when it is set nowhere.
 func value(flag_name: String, fallback: String = "") -> String:
-	var from_env: String = OS.get_environment(FLAG_PREFIX + flag_name)
-	if not from_env.is_empty():
-		return from_env
-	if _overrides.has(flag_name):
-		return String(_overrides[flag_name])
-	return fallback
+	return DevFlag.value(flag_name, fallback)
 
 
-## The flag as an integer. A value that is not a valid integer is a
-## configuration error, not a zero — it is reported and the fallback stands.
 func num(flag_name: String, fallback: int = 0) -> int:
-	var raw: String = value(flag_name, "")
-	if raw.is_empty():
-		return fallback
-	if not raw.is_valid_int():
-		push_warning("[DevFlags] %s=%s is not an integer; using %d"
-			% [flag_name, raw, fallback])
-		return fallback
-	return int(raw)
+	return DevFlag.num(flag_name, fallback)
 
 
-## The flag as a float, with the same contract as `num()`.
 func real(flag_name: String, fallback: float = 0.0) -> float:
-	var raw: String = value(flag_name, "")
-	if raw.is_empty():
-		return fallback
-	if not raw.is_valid_float():
-		push_warning("[DevFlags] %s=%s is not a float; using %f"
-			% [flag_name, raw, fallback])
-		return fallback
-	return float(raw)
+	return DevFlag.real(flag_name, fallback)
 
 
 ## Where the overrides came from — "" when no file was found. For the harness

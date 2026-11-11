@@ -370,13 +370,9 @@ func _update_aim(state: Dictionary) -> void:
 		_pistol_holder.transform = _pistol_placement(_aim_t)
 
 
-## A dev flag through `DevFlags` (the APK's overrides file), or the environment when the autoload is absent (a bare script run).
+## A dev flag (`DevFlag`: the environment, then the APK's overrides file, then `fallback`).
 func _dev_value(flag_name: String, fallback: String) -> String:
-	var flags: Node = get_node_or_null("/root/DevFlags")
-	if flags == null:
-		var from_env: String = OS.get_environment("INFILTRAITOR_" + flag_name)
-		return from_env if not from_env.is_empty() else fallback
-	return String(flags.call("value", flag_name, fallback))
+	return DevFlag.value(flag_name, fallback)
 
 
 ## Where the grenade in the raised hand is, in the world: the `hand_L` attachment's own origin, which the pose seeks every frame. Vector3(INF, INF, INF)

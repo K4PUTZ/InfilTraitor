@@ -42,6 +42,28 @@
 - **C5, the camera and the root.** The 3D camera is driven directly; `Camera2D`, `VISUAL_GRID_OFFSET` (rule 2 retires here) and the `Node2D` root go; the HUD and the flash stay 2D. The one stage that touches input and every capture tool: `verify.py full`, both handsets.
 - **What this buys is correctness and less code, not frame time.** The conversions are a few multiplications per object per frame; no measurement attributes a cost to them, and none was taken for this draft. Decide T4 on maintenance grounds.
 
+### 3.1 The storey height, evaluated (2026-11-11; the Director: "vamos avaliar a possibilidade de unificar o valor dos andares")
+
+Read from the code, not measured on a capture. One storey has three heights in screen pixels:
+
+| Value | Where it comes from | Who still reads it |
+|---|---|---|
+| **160 px** (20 px a level) | the 2D voxel atom (`SIDE_H` 20 = 1.25 x 16): `GeometryCoords.VOXEL_STEP_PX` / `VOXEL_STOREY_HEIGHT_PX`, `IsoProjection.AXIS_Z`, a copy `room.VOXEL_STEP_PX` | `VoxelBoard.voxel_world_position()` and through it the debris, the glass rain and the shards' landings, the shot / blast spark origins (`room.gd`), the shrapnel and occlusion overlays, the shrapnel preview, `OcclusionSet`'s band bounds |
+| **158 px** | measured off the retired 2D block art (286 - 128): `room.WALL_FLOOR_STEP_PX` | the ceiling fixtures' and light rays' lift, the temporal overlay's fixtures, `prop_top_px()` (a throw's clearance over a prop), `Board3DLive.VERTICAL_SCALE_MATCHED` (a dev look option, off) |
+| **156.8 px** (19.6 a level) | what the 3D camera really draws: a true cube, 32 px / sqrt 2 x cos 30 deg | implicitly, every 2D height lifted into the world (`ParticleMath`: / (px per unit x cos 30 deg)) |
+
+**The consequence.** Whatever is placed with 160 or 158 and then lifted into the 3D world lands **2.0 % / 0.8 %** above the true
+voxel: at the third storey 9.6 px (0.061 GU, half a voxel) for the 160 family, 3.6 px (0.023 GU) for the 158 one. Small, and
+it grows with height. Also found: `room_builder.gd` declares a `WALL_FLOOR_STEP_PX` of 20.0 that nothing reads (the same name,
+another meaning), and `COS_ELEVATION` is declared twice (`ParticleMath`, `ObjectMesh3D`).
+
+**Proposal (nothing done, the Director's call):** one value, the camera's, derived once in `GeometryCoords` from the camera's
+geometry (19.6 px a level, 156.8 a storey), read by all three families; the copies and the unused `room_builder` constant go.
+It is a LOOK change (things placed by level come down to the voxel they name): a `--baseline`, `verify.py look`, and
+captures before and after of a blast's debris at the third storey and of the ceiling fixtures. It is cheap (one constant,
+about fifteen call sites) and independent of C2-C5; it also removes the reason `VERTICAL_SCALE_MATCHED` exists. C2-C5 would
+later replace these pixel heights with world units altogether.
+
 ## 4. Not in this plan
 The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PERFORMANCE_BUDGET`, M7.0); the breached-wall passage, posture AP and the noise indicator (GAMEPLAY); audio; iOS.
 
@@ -101,3 +123,30 @@ The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PER
 - **Version:** `project.godot` `config/version` 0.1.0-pre-alpha -> 0.9.107 (what an APK reports, since the preset leaves
   `version/name` empty), hook-checked as V1 (red on the old value, green after). One tag scheme: `verified/vX.Y.Z`; the old names
   stay as history. `version/code` and the package id stay `LAUNCH_MASTER_PLAN`'s.
+
+### T3 — DONE 2026-11-11
+- **Captures on one path:** `auto_screenshot.py` now runs `capture.py --still map` on the last map (13 s, shown); `build_filmstrip.py`
+  (-> `capture.py --take blast_<m> | shot_<m> --sheet 1`), `build_material_matrix.py` (-> `material_videos.py`) and
+  `p3_step_bracket.py` (-> the `agent_walk` take) deleted, with room.gd's old harness: `_run_auto_screenshot_capture()` and its 18
+  capture actions, the filmstrip / shot / walk / glass-rain capture functions, the cell probe and the glass diagnostic backdrop
+  (orphaned by the cut), `RAIN_TIMING_PRESETS` and `GlassRainOverlay.timing_overrides` (the glass track is closed). Shift+P, the
+  benchmark (`BENCHMARK=1`), `HIDE_NON_VOXEL` and the dev grenade seeding stay.
+- **One reader for dev flags:** `DevFlag` (`godot/scripts/systems/dev_flag.gd`): the registry (145 flags, each with its default and
+  what it does), the resolution order (environment, `dev_flags.cfg`, default), safe on worker threads; the `DevFlags` autoload only
+  finds the file and delegates. The 59 raw `OS.get_environment("INFILTRAITOR_*")` reads in 15 files and the two hand-made fallbacks
+  (`ActorMesh3D`, `VoxelBoard`) go through it, so those flags reach an APK for the first time. **F1** (pre-commit) fails a raw read,
+  an unregistered name, or a row nothing reads (red proven on a probe file, and on seven flags read through
+  `room.call("_dev_flag", ...)` that the first extractor missed); `dev_flags_selftest` test 5 pins the registry at runtime.
+- **Scenario steps out of the room:** the 30 `scenario_<op>()` (877 lines) and `scenario_detonation_done` live in
+  `controllers/scenario_steps.gd` (`Room.scenario_steps()`, created on first use); `ScenarioRunner` dispatches to it.
+- `room.gd`: 13 197 (audit) -> 10 588 lines over T1 and T3.
+
+### T5 — findings before the work (2026-11-11, read from the code)
+- **Two `_apply_tic_result()`, two sets of thresholds.** `Room._apply_tic_result()` only delegates to
+  `TurnController._apply_tic_result()` (the controller always exists), so the game runs **0.25 / 0.50 / 0.75**; Room's own
+  fallback and its constants **0.30 / 0.60 / 1.00** never run. `docs/systems/AI_MASTER_PLAN.md` says it re-verified 0.30 / 0.60 /
+  1.00 "against the code" on 2026-10-02: it read the dead copy. Which numbers are canon is the Director's call.
+- **Two alert meters.** `TurnController._alert_meter` accumulates, feeds the HUD bar and decides "busted"; `Room._alert_meter` is the
+  one the three reset paths zero (`load_map`, the HUD's Reset, `_reset_room_state` after busted) and the one the alarm fills
+  (`GuardCoordinator._on_guard_alarmed`). Read, not yet reproduced: after a reset the bar stays where it was and the next enemy
+  phase may say busted again.

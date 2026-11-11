@@ -1614,7 +1614,7 @@ static func _select_deterministic(voxels: Array, container_id: String, salt: Str
 	if n <= 0 or voxels.is_empty():
 		return []
 	var fast: Array = _select_ranked_once(voxels, container_id, salt, n, bias_epicenter)
-	if OS.get_environment("INFILTRAITOR_SELECT_EQUIV") == "1":
+	if DevFlag.on("SELECT_EQUIV"):
 		var slow: Array = _select_deterministic_reference(voxels, container_id, salt, n, bias_epicenter)
 		if not fast.is_empty() and fast != slow:
 			push_error("[BlastCalculator] SELECT-EQUIV: the ranked-once selection differs from the reference (%s, %d of %d)"

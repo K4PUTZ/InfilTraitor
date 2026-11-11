@@ -372,6 +372,8 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 
 
 func _execute(room: Node, step: Dictionary) -> bool:
+	## HERITAGE T3: the ops that act on the room live in `ScenarioSteps` (room.gd -> controllers/scenario_steps.gd).
+	var steps: Node = room.call("scenario_steps") if room.has_method("scenario_steps") else room
 	match str(step["op"]):
 		"framing":
 			if not room.has_method("set_framing"):
@@ -469,104 +471,104 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				_listening = true
 			_armed.append({"step": step, "state": "armed"})
 		"probe":
-			if not room.has_method("scenario_board_probe"):
-				return _fail(step, "Room has no scenario_board_probe()")
+			if not steps.has_method("scenario_board_probe"):
+				return _fail(step, "ScenarioSteps has no scenario_board_probe()")
 			var probe_path: String = _output_path("probes", "%s.txt" % step["name"])
-			var summary: Dictionary = room.call("scenario_board_probe", probe_path, step["name"])
+			var summary: Dictionary = steps.call("scenario_board_probe", probe_path, step["name"])
 			if summary.is_empty():
 				return _fail(step, "no dump was written (see the error above)")
 		"alloc":
 			_alloc(step)
 		"probe_store":
-			if not room.has_method("scenario_board_probe_store"):
-				return _fail(step, "Room has no scenario_board_probe_store()")
+			if not steps.has_method("scenario_board_probe_store"):
+				return _fail(step, "ScenarioSteps has no scenario_board_probe_store()")
 			var store_path: String = _output_path("probes", "%s.txt" % step["name"])
-			if (room.call("scenario_board_probe_store", store_path, step["name"]) as Dictionary).is_empty():
+			if (steps.call("scenario_board_probe_store", store_path, step["name"]) as Dictionary).is_empty():
 				return _fail(step, "no store dump was written (see the error above)")
 		"ground_check":
-			if not room.has_method("scenario_ground_check"):
-				return _fail(step, "Room has no scenario_ground_check()")
-			if not bool(room.call("scenario_ground_check", str(step["name"]))):
+			if not steps.has_method("scenario_ground_check"):
+				return _fail(step, "ScenarioSteps has no scenario_ground_check()")
+			if not bool(steps.call("scenario_ground_check", str(step["name"]))):
 				return _fail(step, "no ground check was made (see the error above)")
 		"aim":
-			if not room.has_method("scenario_aim"):
-				return _fail(step, "Room has no scenario_aim()")
-			if not bool(room.call("scenario_aim", step["cell"])):
+			if not steps.has_method("scenario_aim"):
+				return _fail(step, "ScenarioSteps has no scenario_aim()")
+			if not bool(steps.call("scenario_aim", step["cell"])):
 				return _fail(step, "the aim did not start (see the error above)")
 		"aim_cancel":
-			if not room.has_method("scenario_aim_cancel"):
-				return _fail(step, "Room has no scenario_aim_cancel()")
-			if not bool(room.call("scenario_aim_cancel")):
+			if not steps.has_method("scenario_aim_cancel"):
+				return _fail(step, "ScenarioSteps has no scenario_aim_cancel()")
+			if not bool(steps.call("scenario_aim_cancel")):
 				return _fail(step, "there was no grenade aim to cancel (see the error above)")
 		"canvas_check":
-			if not room.has_method("scenario_canvas_check"):
-				return _fail(step, "Room has no scenario_canvas_check()")
-			room.call("scenario_canvas_check", str(step["name"]))
+			if not steps.has_method("scenario_canvas_check"):
+				return _fail(step, "ScenarioSteps has no scenario_canvas_check()")
+			steps.call("scenario_canvas_check", str(step["name"]))
 		"world_check":
-			if not room.has_method("scenario_world_check"):
-				return _fail(step, "Room has no scenario_world_check()")
-			if not bool(room.call("scenario_world_check", str(step["name"]))):
+			if not steps.has_method("scenario_world_check"):
+				return _fail(step, "ScenarioSteps has no scenario_world_check()")
+			if not bool(steps.call("scenario_world_check", str(step["name"]))):
 				return _fail(step, "the world check could not run (see the error above)")
 		"pick_check":
-			if not room.has_method("scenario_pick_check"):
-				return _fail(step, "Room has no scenario_pick_check()")
-			if not bool(room.call("scenario_pick_check", str(step["name"]))):
+			if not steps.has_method("scenario_pick_check"):
+				return _fail(step, "ScenarioSteps has no scenario_pick_check()")
+			if not bool(steps.call("scenario_pick_check", str(step["name"]))):
 				return _fail(step, "the pick check could not run (see the error above)")
 		"mirror_check":
-			if not room.has_method("scenario_mirror_check"):
-				return _fail(step, "Room has no scenario_mirror_check()")
-			if not bool(room.call("scenario_mirror_check", str(step["name"]))):
+			if not steps.has_method("scenario_mirror_check"):
+				return _fail(step, "ScenarioSteps has no scenario_mirror_check()")
+			if not bool(steps.call("scenario_mirror_check", str(step["name"]))):
 				return _fail(step, "no mirror check was made (see the error above)")
 		"passages":
-			if not room.has_method("scenario_passages"):
-				return _fail(step, "Room has no scenario_passages()")
-			if not bool(room.call("scenario_passages", str(step["name"]))):
+			if not steps.has_method("scenario_passages"):
+				return _fail(step, "ScenarioSteps has no scenario_passages()")
+			if not bool(steps.call("scenario_passages", str(step["name"]))):
 				return _fail(step, "no passages were computed (see the error above)")
 		"shoot", "shot_aim", "shot_cancel", "weapon", "reload", "save_restore", "perspective", "relight", "view_mode", "skylight_hit", "roof_gravity", "flood", "struct_audit", "struct_cut":
 			var method: String = "scenario_" + str(step["op"])
-			if not room.has_method(method):
-				return _fail(step, "Room has no %s()" % method)
+			if not steps.has_method(method):
+				return _fail(step, "ScenarioSteps has no %s()" % method)
 			var ok: bool = false
 			match str(step["op"]):
 				"shoot", "shot_aim":
-					ok = await room.call(method, int(step["index"]))
+					ok = await steps.call(method, int(step["index"]))
 				"weapon":
-					ok = await room.call(method, str(step["weapon"]))
+					ok = await steps.call(method, str(step["weapon"]))
 				"perspective":
-					ok = await room.call(method, str(step["direction"]))
+					ok = await steps.call(method, str(step["direction"]))
 				"view_mode", "flood":
-					ok = await room.call(method, str(step["mode"]))
+					ok = await steps.call(method, str(step["mode"]))
 				_:
-					ok = await room.call(method)
+					ok = await steps.call(method)
 			if not ok:
 				return _fail(step, "%s() did not complete (see the error above)" % method)
 		"decal_wall":
-			if not room.has_method("scenario_decal_wall"):
-				return _fail(step, "Room has no scenario_decal_wall()")
-			if not bool(await room.call("scenario_decal_wall", str(step["material"]), step["cell"])):
+			if not steps.has_method("scenario_decal_wall"):
+				return _fail(step, "ScenarioSteps has no scenario_decal_wall()")
+			if not bool(await steps.call("scenario_decal_wall", str(step["material"]), step["cell"])):
 				return _fail(step, "no decal display was built (see the error above)")
 		"throw":
-			if not room.has_method("scenario_throw"):
-				return _fail(step, "Room has no scenario_throw()")
-			if not bool(room.call("scenario_throw", int(step["index"]), step["cell"])):
+			if not steps.has_method("scenario_throw"):
+				return _fail(step, "ScenarioSteps has no scenario_throw()")
+			if not bool(steps.call("scenario_throw", int(step["index"]), step["cell"])):
 				return _fail(step, "the throw did not start (see the error above)")
 		"detonate":
-			if not room.has_signal("scenario_detonation_done") or not room.has_method("scenario_detonate"):
-				return _fail(step, "Room has no scenario_detonate()")
-			var done: Signal = Signal(room, "scenario_detonation_done")
-			room.call_deferred("scenario_detonate", int(step["index"]))
+			if not steps.has_signal("scenario_detonation_done") or not steps.has_method("scenario_detonate"):
+				return _fail(step, "ScenarioSteps has no scenario_detonate()")
+			var done: Signal = Signal(steps, "scenario_detonation_done")
+			steps.call_deferred("scenario_detonate", int(step["index"]))
 			var detonated: bool = await done
 			if not detonated:
 				return _fail(step, "the detonation did not complete (see the error above)")
 		"place_guard":
-			if not room.has_method("scenario_place_guard"):
-				return _fail(step, "Room has no scenario_place_guard()")
-			if not bool(room.call("scenario_place_guard", int(step["index"]), step["cell"])):
+			if not steps.has_method("scenario_place_guard"):
+				return _fail(step, "ScenarioSteps has no scenario_place_guard()")
+			if not bool(steps.call("scenario_place_guard", int(step["index"]), step["cell"])):
 				return _fail(step, "the guard was not placed (see the error above)")
 		"walk":
-			if not room.has_method("scenario_walk_agent"):
-				return _fail(step, "Room has no scenario_walk_agent()")
-			if not bool(room.call("scenario_walk_agent", step["cell"])):
+			if not steps.has_method("scenario_walk_agent"):
+				return _fail(step, "ScenarioSteps has no scenario_walk_agent()")
+			if not bool(steps.call("scenario_walk_agent", step["cell"])):
 				return _fail(step, "the agent did not start walking (see the error above)")
 		"actor_bench":
 			var bench_line: String = ActorViabilityBenchRef.spawn(room, str(step["model"]), int(step["count"]))
@@ -576,9 +578,9 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				await room.get_tree().process_frame
 			ActorViabilityBenchRef.report_render("%s x%d" % [step["model"], step["count"]])
 		"occ_bench":
-			if not room.has_method("scenario_occ_bench"):
-				return _fail(step, "Room has no scenario_occ_bench()")
-			await room.call("scenario_occ_bench", step["cell1"], step["cell2"], int(step["reps"]))
+			if not steps.has_method("scenario_occ_bench"):
+				return _fail(step, "ScenarioSteps has no scenario_occ_bench()")
+			await steps.call("scenario_occ_bench", step["cell1"], step["cell2"], int(step["reps"]))
 		"quit":
 			## Loud, not skipped: a capture that never fired is a missing picture a
 			## pair would otherwise be compared against in silence.

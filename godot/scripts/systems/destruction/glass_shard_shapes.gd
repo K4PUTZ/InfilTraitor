@@ -214,7 +214,7 @@ const IDS: Array = ["wedge", "sliver", "chip", "hook", "blade"]
 ## ⚠️ CAPTURE-ONLY OVERRIDE, the same convention `GlassOpening.FORCE` uses:
 ## `INFILTRAITOR_GLASS_SHARD=<id>` forces every piece to one member so the family
 ## can be photographed on the real map one shape at a time. Never on the play path.
-static var FORCE: String = OS.get_environment("INFILTRAITOR_GLASS_SHARD")
+static var FORCE: String = DevFlag.value("GLASS_SHARD", "")
 
 
 ## Every member id, in the atlas order.

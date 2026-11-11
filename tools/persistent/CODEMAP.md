@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**349 scripts · 101951 lines total** (under `godot/scripts/`)
+**352 scripts · 100720 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,10 +18,10 @@
 - **geometry/** — actor_aim_pose3d.gd, actor_head_turn3d.gd, actor_mesh3d.gd, aim_sequence.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, coat_emblem.gd, coat_push3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, footprint_marks3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, liquid_falls3d.gd, liquid_flame_tongues.gd, liquid_flames.gd, liquid_sheet3d.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_rest_cache.gd, soft_sheet_sim.gd, tripo_figure.gd, tripo_pose_kit.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, layout_overlay3d.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
-- **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, soft_sheet_presets.gd, structural_support.gd, voxel_weakness.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, fluid_container.gd, fluid_plane.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, liquid_agent_status.gd, liquid_corrosion.gd, liquid_exposure.gd, liquid_field.gd, liquid_fire.gd, liquid_fire_lights.gd, liquid_glow.gd, liquid_registry.gd, liquid_surface_state.gd, localization_manager.gd, material_registry.gd, material_rows.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, secondary_tables.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_fire.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, capture_framer_selftest.gd, circle_field_octagon_selftest.gd, cloth_flaps_selftest.gd, coat_push_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, fluid_container_selftest.gd, fluid_plane_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, liquid_fire_selftest.gd, liquid_guards_selftest.gd, liquid_registry_selftest.gd, liquid_rules_selftest.gd, liquid_status_selftest.gd, liquid_test_world.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_rows_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, pane_frame_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_light_selftest.gd, roof_occlusion_selftest.gd, roof_sheet_release_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soft_sheet_sim_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, structural_support_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tripo_figure_selftest.gd, tripo_game_clips.gd, tripo_pose_dump.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_fire_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
+- **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, soft_sheet_presets.gd, structural_support.gd, voxel_weakness.gd, weapon_def.gd, weapon_registry.gd, dev_flag.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, fluid_container.gd, fluid_plane.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, liquid_agent_status.gd, liquid_corrosion.gd, liquid_exposure.gd, liquid_field.gd, liquid_fire.gd, liquid_fire_lights.gd, liquid_glow.gd, liquid_registry.gd, liquid_surface_state.gd, localization_manager.gd, material_registry.gd, material_rows.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, secondary_tables.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_fire.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
+- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, capture_framer_selftest.gd, circle_field_octagon_selftest.gd, cloth_flaps_selftest.gd, coat_push_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, fluid_container_selftest.gd, fluid_plane_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, liquid_fire_selftest.gd, liquid_guards_selftest.gd, liquid_registry_selftest.gd, liquid_rules_selftest.gd, liquid_status_selftest.gd, liquid_test_world.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_rows_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, pane_frame_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_light_selftest.gd, roof_occlusion_selftest.gd, roof_sheet_release_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soft_sheet_sim_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, stealth_core_selftest.gd, structural_support_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tripo_figure_selftest.gd, tripo_game_clips.gd, tripo_pose_dump.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_fire_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, options_panel.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
-- **world/** — room_builder.gd, agent_shot_controller.gd, capture_controller.gd, debug_tools_controller.gd, grenade_controller.gd, input_controller.gd, liquid_rules_controller.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compass.gd, map_compiler.gd, map_envelope.gd, map_geometry.gd, map_layout.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, roof_sheet_release.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
+- **world/** — room_builder.gd, agent_shot_controller.gd, capture_controller.gd, debug_tools_controller.gd, grenade_controller.gd, input_controller.gd, liquid_rules_controller.gd, scenario_steps.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compass.gd, map_compiler.gd, map_envelope.gd, map_geometry.gd, map_layout.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, roof_sheet_release.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -444,7 +444,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 625 lines
+`class_name ActorMesh3D` · extends `Node3D` · 621 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -1553,7 +1553,7 @@ extends `Node3D` · 3570 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2734 lines
+`class_name VoxelBoard` · extends `Node2D` · 2728 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1958,7 +1958,7 @@ extends `Node2D` · 164 lines
 
 ### `glass_rain_overlay.gd`
 
-`class_name GlassRainOverlay` · extends `Node2D` · 388 lines
+`class_name GlassRainOverlay` · extends `Node2D` · 372 lines
 
 `godot/scripts/overlays/glass_rain_overlay.gd`
 
@@ -2716,7 +2716,7 @@ extends `RefCounted` · 37 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 3570 lines
+`class_name DetonationPlanBuilder` · 3569 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -3061,9 +3061,24 @@ extends `RefCounted` · 63 lines
 
 ---
 
+### `dev_flag.gd`
+
+`class_name DevFlag` · 247 lines
+
+`godot/scripts/systems/dev_flag.gd`
+
+> DevFlag — the ONE way a dev flag is read, and the registry of every flag (HERITAGE T3, 2026-11-11). A dev flag is a diagnostic switch: `INFILTRAITOR_<NAME>` in the environment on desktop, `<NAME>=<value>` in `dev_flags.cfg` on a handset (the `DevFlags` autoload loads that file at boot and hands it to `install()`). Resolution order, unchanged from DIAG-01: the environment, then the file, then the registry's default. WHY A STATIC CLASS NEXT TO THE AUTOLOAD. Half the reads were `OS.get_environment("INFILTRAITOR_*")` straight: static var initialisers, worker-thread code (the detonation plan), classes that are not nodes. None of those can reach `/root/DevFlags`, so a flag they read never reached an APK. `DevFlag` needs no scene tree: the overrides are a Dictionary written once on the main thread at boot and only read after, so a worker may call it (the Godot 4.6.1 / 4.7.2 worker race is about untyped operators, and every value here is typed). THE REGISTRY. `FLAGS` names every flag with its default and what it does. A name that is not in it is a loud `push_error`, at the read and for a `dev_flags.cfg` key at boot (a typo used to read "" in silence and a measurement quietly ran without its switch); `check_invariants.py` F1 fails a commit that reads a raw `INFILTRAITOR_` variable or a flag the registry does not hold, and one the registry holds that nothing reads. A default here is the value the flag has when it is set nowhere. A call site that passes its own fallback overrides it (`value("X", "fallback")`); new code should not, so the default lives in one place.
+
+**Constants / tuning**
+- `PREFIX` = `"INFILTRAITOR_"`
+- `FLAGS` = `{ "AGENT_START_GU": ["", "\"x,y\": puts the agent's spawn (and so the camera's first centre) there without editing the map"], "BENCHMARK": ["", "1: run the detonation benchmark (`_run_detonation_benchmark`) once the map is up, then quit"], "BENCH_GRENADE": ["0", "the benchmark's grenade index among the dev grenades"], "BENCH_RUNS": ["3", "how many detonations the benchmark times"], "BENCH_SETTLE_FRAMES": ["60", "frames the benchmark waits between runs"], "BLAST_MAX_RING": ["-1", "caps a bomb's blast rings (a smaller blast for a measurement); -1 = the bomb's own"], "BLAST_REPORT": ["", "1: print the blast's report in a release build (debug builds always print it)"], "BLAST_SEASON": ["1", "0: the blast without the per-material shot seasoning (RF-S rubble), an A/B"], "BOARD_STEP_MS": ["0", "holds the main thread this many ms after each phase of the 3D board's build (PB-2: a slow load watched step by step)"], "CAPTURE_PROFILE": ["", "the capture profile a take plays under, over the take's own (device_record.py --take uses `perf`)"], "CAPTURE_SHAPE": ["", "portrait / landscape: the shape a capture profile is applied in"], "CAPTURE_TIMING": ["", "1: a take records each frame's real duration to user://captures/<take>_timing.csv (capture.py --realtime)"], "CAPTURE_WINDOW_FIXED": ["", "1: the capture profile does not resize the window (capture.py sets the size itself)"], "CONE_REDRAW_ALWAYS": ["", "1: a guard's vision cone redraws every frame, not only when it changes (a cost A/B)"], "CONSEQUENCE": ["", "1: log the consequence beats of a blast (soot, then light) as they play"], "COSMETIC_DENSITY": ["", "decorative particle density per device (CosmeticDensity.parse); gameplay is never scaled"], "DEV_PANELS": ["", "1: show the dev hover label and the dev panels on the HUD"], "ENEMY_FAMILY": ["", "the guards' figure family (an actor_bakes folder suffix), to compare looks"], "EVENT_FRAMES": ["", "1: report the worst frames of an event (a detonation, a shot): the device track's main instrument"], "FIRE_LIGHT": ["1", "0: a fire casts no light (an A/B of the fire light's cost)"], "FIRE_SURFACE": ["0.1", "the liquid fire's surface glow strength on the sheet"], "FLAME_EMBER_RATE": ["1.3", "the liquid flames' ember rate scale"], "FLAME_H": ["0.75", "the liquid flames' tongue height, GU"], "FLAME_STYLE": ["both", "the liquid flames: embers | tongues | both"], "FLAME_W": ["0.38", "the liquid flames' tongue width, GU"], "FLAT_LIGHT": ["", "1: every light bucket at one tone (a look diagnostic)"], "FLUID_AUTO_TICK": ["0", "seconds of real time per liquid turn (0 = only the game's turns)"], "FLUID_PREROLL": ["0", "liquid turns already run when the map opens (a capture)"], "FLUID_THREAD": ["1", "0: the liquid sheets step on the main thread, not a worker"], "FLUID_VALVE": ["", "\"seconds:body:source:rate;...\": turns a liquid source's valve at those real-time seconds"], "FRAME_PROBE": ["", "1: print per-frame timing lines (DIAG-01's frame probe)"], "FRAMING": ["", "portrait | landscape | desktop: forces the boot viewport framing"], "FREEZE_GUARD_TURN": ["", "1: a guard snaps to its facing instead of easing (a capture of the cone)"], "GLASS_CRACK_CUT": ["", "0..1: how much of a crack's hole is cut from the pane (a look dial); default 1"], "GLASS_CRACK_OPACITY": ["", "the crack web's opacity (a Director look dial, moved twice)"], "GLASS_CRAZE_SHEET": ["", "forces one craze sheet for every crazed pane (photographing the family one at a time)"], "GLASS_CRAZE_TESTTILE": ["", "1: the crazes use the square wrap test tile"], "GLASS_CRAZE_TILE_VOXELS": ["", "the craze wrap tile's span in voxels"], "GLASS_DIAG": ["", "1: dump the glass slices / panes as numbers (a diagnostic of a rotated or sheared pane)"], "GLASS_DIM_SIDE": ["", "a glass voxel's side-face dimness against its main face (look calibration)"], "GLASS_DIM_TOP": ["", "a glass voxel's top-face dimness against its main face (look calibration); default 0.60"], "GLASS_OPENING": ["", "forces one opening shape of the family on every hit (photographed one at a time)"], "GLASS_RIM": ["", "the glass rim treatment A/B on a cut glass voxel"], "GLASS_RING_DIAG": ["", "1: log which blast ring breaks which glass voxel"], "GLASS_SHARD": ["", "forces one shard shape id for every shard (capture-only override)"], "GRADE": ["", "the board's colour grade parameters, \"a,b,c\" (BoardLook.grade_params)"], "GRENADE_GUS": ["", "\"x,y;x,y\": the cells the dev grenades are seeded at (dev captures)"], "GROUND_SCATTER": ["1", "0: no ground scatter (an A/B)"], "GROUND_SCATTER_X": ["1", "multiplies every zone's scatter density (handset measurement at several stamp counts)"], "GROUND_TRANSITIONS": ["1", "0: hard GU edges between grounds (an A/B of the feathered transitions)"], "GUARD_FACTIONS": ["", "\"a,b,...\": the factions dealt to the guards in order (a look comparison)"], "GUARD_REVEAL": ["1", "0: guards are not revealed by the reveal pass"], "HIDE_NODES": ["", "\"pattern,...\": hides every CanvasItem whose name matches (a cost ablation)"], "HIDE_NON_VOXEL": ["", "1: hides everything outside the voxel renderer (a cost ablation)"], "HIT_STOP": ["1", "0: no hit-stop on a bomb tagged hit_stop"], "HOLE_EQUIV": ["", "1: check the fast hole path against the reference one after a blast (an equivalence probe)"], "LAYOUT_RAIL": ["", "the rail id the layout overlay shows"], "LIGHT_BULK": ["1", "0: the light planes are written cell by cell, not in bulk (an A/B)"], "LIGHT_BULK_CHECK": ["", "1: compare the bulk light write with the cell-by-cell one"], "LIGHT_COOK_GATE": ["", "1: check the cooked light against a full repaint (costs a repaint)"], "LIGHT_EQUIV_PROBE": ["", "1: check the scoped light repaint's neighbourhood against a full one"], "LIGHT_SECONDS": ["", "the seconds the consequence light takes to settle (DIAG-19)"], "LIQUID_END_TURNS": ["0", "ends n turns where the agent stands, logging the statuses after each"], "LIQUID_FALLS": ["1", "0: no waterfall effects (an A/B of their cost; the flow is the plane's either way)"], "LIQUID_IGNITE": ["", "\"seconds:x,y,radius;...\" (inner GU): lights the flammable liquids at those real-time seconds"], "LIQUID_WALK": ["", "\"x,y;x,y;...\" (inner GU): walks the agent along that path once the map is up"], "LIQUID_WALK_FROM": ["", "\"x,y\" (inner GU): where LIQUID_WALK starts"], "MAP": ["", "the map to boot (capture-only: never rewrites the persisted choice)"], "MAX_FPS": ["", "caps the frame rate (0 = uncapped); measure the GPU uncapped"], "MEM_CENSUS": ["", "1: print the memory census once the map is loaded"], "MEM_STAGES": ["", "1: mark the memory stages from boot (MemStage)"], "NODE_CENSUS": ["", "1: print every node's class, canvas items and process state"], "NO_BURN": ["", "1: blasts set nothing alight (an ablation)"], "NO_CONSEQUENCE_LIGHT": ["", "1: the consequence light is not played (an instrument, never a look)"], "NO_LIGHT": ["", "1: the board's light is disabled (an ablation; the board is wrong on purpose)"], "NO_LIGHT_COOK": ["", "1: a committed blast does not cook its light change"], "NO_SOOT": ["", "1: the presenter paints no soot"], "NO_VSYNC": ["", "1: vsync off (a CPU-cost question only)"], "NO_WALK_CACHE": ["", "1: the walk cache warmer stays off (the control for its RAM cost)"], "OCC_DISABLE": ["", "1: no occlusion (a capture pair isolates the erased pixels)"], "OCC_LIVE_PROBE": ["", "1: log the live occlusion set against the store"], "OPENED_EDGES_CHECK": ["", "1: check the blast's fast opened-edge set against the slow one"], "PASS_SPLIT": ["1", "0: no depth-reading pass split, the transparent pass merges into the opaque one (the A/B control)"], "PICK_CHECK": ["0", "1: run the touch-picking check from every view after the map loads"], "PLAN_DIGEST": ["", "1: print a digest of each detonation plan (determinism checks)"], "PREDICTION_PROFILE": ["", "1: the prediction's per-phase profile and its worst frame"], "PROPS_MESH_DEMO": ["", "1: the static-props-as-meshes prototype (R3D-PROPS), no map data"], "PROP_DEBUG": ["", "1: log where each mesh prop is placed and how it breaks"], "PROP_SHATTER_DEMO": ["", "1: the prop shatter burst in isolation (R3D-PROPS)"], "RELEASE_VOXELS": ["1", "0: the containers keep their persistent Voxel objects (R3D-CLAIMS C2's A/B, ~990 B each)"], "RENDER3D_CHUNK": ["16", "the 3D board's chunk size in voxels per side"], "RENDER3D_LOAD_PARALLEL": ["1", "0: the board's chunk merge runs serially, not on the WorkerThreadPool (PB-6's A/B)"], "RENDER3D_VSCALE": ["1.0", "the board mesh's vertical scale: matched (158 / 156.8) or a float; 1.0 = true cubes (R3D-3)"], "RENDER3D_VSCALE_MARKER": ["0", "1: a bright one-storey box at a fixed cell, the reference for the vertical-scale look-call"], "RENDER_SCALE": ["", "the 3D render scale on a handset framing (default: the map's)"], "REPAINT_PROFILE": ["", "1: time each phase of a light repaint"], "RNG_SEED": ["", "the run's random seed (captures, device tables)"], "ROOF_FIRE": ["1", "0: fire does not spread across roofs"], "SCALE_3D": ["", "the 3D viewport scale (the canvas stays native)"], "SCALE_3D_MODE": ["fsr", "fsr | bilinear: how SCALE_3D upscales"], "SCENARIO": ["", "a scripted run: steps separated by ';' (ScenarioRunner)"], "SEED_GRENADES": ["0", "1: seed the dev grenades on load"], "SELECT_EQUIV": ["", "1: check the ranked voxel selection against the reference one"], "SELFTEST_DEVFLAG": ["", "dev_flags_selftest's own flag (it sets and reads it)"], "SELFTEST_DEVFLAG_NEVER_SET": ["", "never set: dev_flags_selftest's proof that an unset flag reads its fallback"], "SHOT_AGENT_CELL": ["", "\"x,y\": puts the agent there before a scripted shot"], "SHOT_GUARD_CELL": ["", "\"x,y\": puts the target guard there before a scripted shot"], "SHOT_SCOPE_PROBE": ["", "1: check a scoped repaint after a shot against a full one"], "SHOT_SETTLE_FRAMES": ["30", "frames a scripted shot waits for its impact to settle"], "SHOT_WEAPON": ["", "the weapon a scripted shot fires"], "SKIP_JUNCTIONS": ["", "1: junction columns are left out of the walk (a 2D-era capture instrument)"], "SMOKE_ALPHA_GAIN": ["2.4", "the blast smoke's alpha gain (read once at class load)"], "SMOKE_CHANCE": ["", "a global smoke chance over every material row; < 0 or unset = the rows'"], "SMOKE_FEATHER": ["", "the smoke field's edge feather (default 0.75)"], "SMOKE_SCALE": ["1.7", "the blast smoke's base scale (read once at class load)"], "SOFT_REST": ["1", "0: soft sheets are not settled at load"], "SOFT_REST_CACHE": ["1", "0: soft sheets settle without the rest cache"], "SOFT_SHEET_RELEASE": ["1", "0: a blast does not release the soft roofs (the cloth stays up)"], "SOFT_SHEET_THREAD": ["1", "0: soft sheets simulate on the main thread"], "SOFT_WALLS": ["1", "0: cloth / cardboard walls are not sheets"], "SOOT_SMOOTH": ["1", "0: a floor top reads one cell's soot instead of blending its four nearest (an R3D-LOOK handset A/B)"], "STRETCH_VIEWPORT": ["", "1: the window's content scale mode is VIEWPORT (a cost A/B)"], "STRUCT_CASCADE_S": ["0.04", "seconds between the steps of a structural fall"], "STRUCT_CUT": ["", "\"x,y,level,...\": the cells the struct_cut scenario cuts"], "STRUCT_GRAVITY": ["1", "0: what loses its support does not fall (RF-G)"], "STRUCT_GRAVITY_SCALE": ["1.0", "the structural fall's gravity scale"], "STRUCT_UNIVERSAL": ["1", "0: only the legacy support rule decides what falls"], "SURFACE_PATCH_DEMO": ["", "1: the one-leaf-patch decal prototype (R3D-SURFACES), no map data"], "TELEMETRY": ["", "1: telemetry on"], "TEL_CHANNELS": ["", "\"a,b,...\": the telemetry channels to record"], "TEL_FILE": ["1", "0: telemetry is not written to its file"], "TEL_LOGCAT": ["1", "0: telemetry is not echoed to the log"], "THROW_PROFILE": ["", "1: the throw's timeline (DIAG-22)"], "TRIPO_FIGURE": ["male", "the Agent every actor wears: male | female | none (none = the old r3d_live rig, for comparisons)"], "TRIPO_MOVE": ["walk", "the clip the Tripo figure moves with"], "VENT_STEAM": ["1", "0: no steam plumes from the vents (a handset A/B)"], "VENT_STEAM_KIND": ["", "every vent takes this kind (steam, steam_big)"], "VENT_STEAM_RATE": ["1", "> 1 spaces the puffs out (fewer live puffs)"], "VENT_STEAM_SIZE": ["1", "multiplies the steam puffs' size"], "VFX_DRAW_NOOP": ["", "1: the VFX draw calls do nothing (an ablation)"], "VFX_DRAW_PROBE": ["", "1: count the VFX draw calls"], "WALK_EQUIV": ["", "1: check the fast map walk against the reference one"], "WATER_RAIN": ["", "forces the liquid rain kind (a look study)"], "WATER_STUDY": ["", "forces the liquid look kind (a look study)"], "ZOOM": ["", "the camera zoom (a capture or a cost measurement)"], }`
+- `REGISTRY_DEFAULT` = `"\u0001registry"`
+
+---
+
 ### `dev_flags.gd`
 
-extends `Node` · 236 lines
+extends `Node` · 217 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -4130,7 +4145,7 @@ extends `Node` · 146 lines
 
 ### `scenario_runner.gd`
 
-extends `Node` · 798 lines
+extends `Node` · 800 lines
 
 `godot/scripts/systems/scenario_runner.gd`
 
@@ -4532,7 +4547,7 @@ extends `SceneTree` · 2423 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
-> DESTRUCTION_MASTER_PLAN Part 3 — BlastCalculator selftest. Rodar: godot --headless --script res://godot/scripts/tools/blast_calculator_selftest.gd Synthetic fixtures only (SliceGenerator/SlabGenerator against a hand-built Edge list), same discipline as roof_slab_selftest.gd/slab_render_selftest.gd — no real map involved. Real-map end-to-end proof is the screenshot captures (INFILTRAITOR_CAPTURE_ACTION=test_zone_menu/test_zone_detonate).
+> DESTRUCTION_MASTER_PLAN Part 3 — BlastCalculator selftest. Rodar: godot --headless --script res://godot/scripts/tools/blast_calculator_selftest.gd Synthetic fixtures only (SliceGenerator/SlabGenerator against a hand-built Edge list), same discipline as roof_slab_selftest.gd/slab_render_selftest.gd — no real map involved. Real-map end-to-end proof is the screenshot captures (the old `test_zone_menu` / `test_zone_detonate` capture actions, deleted 2026-11-11).
 
 **Constants / tuning**
 - `PickMathRef` = `preload("res://godot/scripts/geometry/pick_math.gd")`
@@ -4767,7 +4782,7 @@ extends `SceneTree` · 998 lines
 
 ### `dev_flags_selftest.gd`
 
-extends `Node` · 106 lines
+extends `Node` · 134 lines
 
 `godot/scripts/tools/dev_flags_selftest.gd`
 
@@ -4953,7 +4968,7 @@ extends `SceneTree` · 232 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 1689 lines
+extends `SceneTree` · 1690 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -6172,6 +6187,16 @@ extends `Node` · 104 lines
 
 ---
 
+### `stealth_core_selftest.gd`
+
+extends `Node` · 231 lines
+
+`godot/scripts/tools/stealth_core_selftest.gd`
+
+> STEALTH-CORE selftest — the stealth loop AS IT BEHAVES TODAY, pinned before A2 builds on it (HERITAGE T5, 2026-11-11). Nothing here says the numbers are right: it says what they ARE, so a change to any of them is a decision someone makes, never a drift. The live path is `TurnController._apply_tic_result()` (Room's own copy only delegates to it), so its thresholds are the ones pinned: 0.25 / 0.50 / 0.75. 1. NoiseSystem: emit keeps the louder, decay is 0.25 a turn, a tile at or under 0 is gone. 2. TicSystem.evaluate_audio: Manhattan radius 2, distance factor 1 - d / 3, each wall x 0.6, silence is 0. 3. TicSystem.evaluate: raw chance = the guard's final probability x the state multiplier x the exposure multiplier. 4. TurnController._apply_tic_result: gain x 0.4 when seen, the per-state decay when not, the noise bonus, the three thresholds and the alert meter (gain 45 of 100, capped, the alarm at the cap). 5. GuardEnemy's FSM: escalation only, the timers, tick_state's de-escalation, hearing. Run: python3 tools/persistent/run_selftests.py --only stealth_core (a SCENE selftest: `TurnController` reads the `Telemetry` autoload, which only a scene run registers).
+
+---
+
 ### `structural_support_selftest.gd`
 
 extends `SceneTree` · 152 lines
@@ -6877,6 +6902,63 @@ extends `RefCounted` · 404 lines
 
 ---
 
+### `scenario_steps.gd`
+
+extends `Node` · 856 lines
+
+`godot/scripts/world/controllers/scenario_steps.gd`
+
+> ScenarioSteps — the scenario runner's ops that act on the room (`scenario_<op>()`), out of `room.gd` (HERITAGE T3, 2026-11-11). Dev tooling: created on first use by `Room.scenario_steps()`, never in play. `ScenarioRunner` calls these by name (`"scenario_" + op`); each returns whether its step completed and reaches the room's state through `room`, the way the other controllers do.
+
+**Signals**
+- `signal scenario_detonation_done(ok: bool)`
+
+**Constants / tuning**
+- `BoardProbeClass` = `preload("res://godot/scripts/systems/board_probe.gd")`
+- `FluidPlaneRef` = `preload("res://godot/scripts/systems/fluid_plane.gd")`
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
+- `LiquidRegistryRef` = `preload("res://godot/scripts/systems/liquid_registry.gd")`
+- `LiquidSheet3DRef` = `preload("res://godot/scripts/geometry/liquid_sheet3d.gd")`
+- `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
+
+**Public vars**
+- `var room: Node = null`
+
+**Public API**
+- `func setup(p_room: Node) -> void:`
+- `func scenario_ground_check(label: String) -> bool:`
+- `func scenario_world_check(label: String) -> bool:`
+- `func scenario_pick_check(label: String) -> bool:`
+- `func scenario_mirror_check(label: String) -> bool:`
+- `func scenario_board_probe(path: String, label: String) -> Dictionary:`
+- `func scenario_board_probe_store(path: String, label: String) -> Dictionary:`
+- `func scenario_passages(label: String) -> bool:`
+- `func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:`
+- `func scenario_shoot(index: int) -> bool:`
+- `func scenario_weapon(weapon_id: String) -> bool:`
+- `func scenario_shot_aim(index: int) -> bool:`
+- `func scenario_shot_cancel() -> bool:`
+- `func scenario_decal_wall(material_id: String, gu: Vector2i) -> bool:`
+- `func scenario_reload() -> bool:`
+- `func scenario_save_restore() -> bool:`
+- `func scenario_view_mode(mode: String) -> bool:`
+- `func scenario_perspective(direction: String) -> bool:`
+- `func scenario_skylight_hit() -> bool:`
+- `func scenario_struct_audit() -> bool:`
+- `func scenario_struct_cut() -> bool:`
+- `func scenario_flood(mode: String) -> bool:`
+- `func scenario_roof_gravity() -> bool:`
+- `func scenario_relight() -> bool:`
+- `func scenario_throw(index: int, target: Vector2i) -> bool:`
+- `func scenario_detonate(index: int) -> void:`
+- `func scenario_place_guard(index: int, cell: Vector2i) -> bool:`
+- `func scenario_walk_agent(cell: Vector2i) -> bool:`
+- `func scenario_canvas_check(label: String) -> void:`
+- `func scenario_aim(cell: Vector2i) -> bool:`
+- `func scenario_aim_cancel() -> bool:`
+
+---
+
 ### `selection_controller.gd`
 
 `class_name SelectionController` · 98 lines
@@ -7163,7 +7245,7 @@ extends `RefCounted` · 404 lines
 
 ### `room.gd`
 
-extends `Node2D` · 13136 lines
+extends `Node2D` · 10586 lines
 
 `godot/scripts/world/room.gd`
 
@@ -7197,6 +7279,7 @@ extends `Node2D` · 13136 lines
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `MapLayoutClass` = `preload("res://godot/scripts/world/maps/map_layout.gd")`
 - `CaptureControllerClass` = `preload("res://godot/scripts/world/controllers/capture_controller.gd")`
+- `ScenarioStepsClass` = `preload("res://godot/scripts/world/controllers/scenario_steps.gd")`
 - `LayoutOverlay3DClass` = `preload("res://godot/scripts/overlays/layout_overlay3d.gd")`
 - `LevelGraphClass` = `preload("res://godot/scripts/world/level_graph.gd")`
 - `GuardEnemyClass` = `preload("res://godot/scripts/agents/guard_enemy.gd")`
@@ -7207,7 +7290,7 @@ extends `Node2D` · 13136 lines
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `GlassOpening` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
 - `SelectionControllerClass` = `preload("res://godot/scripts/world/controllers/selection_controller.gd")`
-- `TestZoneControllerClass` = `preload("res://godot/scripts/world/controllers/grenade_controller.gd")`
+- `GrenadeControllerClass` = `preload("res://godot/scripts/world/controllers/grenade_controller.gd")`
 - `AgentShotControllerClass` = `preload("res://godot/scripts/world/controllers/agent_shot_controller.gd")`
 - `DetonateContextMenuClass` = `preload("res://godot/scripts/ui/detonate_context_menu.gd")`
 - `ModalStackClass` = `preload("res://godot/scripts/ui/modal_stack.gd")`

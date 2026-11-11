@@ -42,7 +42,7 @@ func setup(sheet: Texture2D, span: Vector2, pane_lo: Vector2, pane_hi: Vector2) 
 	## ⚠️ THE OPACITY IS A DIRECTOR DIAL AND IT MOVED TWICE ALREADY (90% then 80%,
 	## 2026-09-02). `INFILTRAITOR_GLASS_CRACK_OPACITY` overrides the shader default
 	## so a sweep is one boot per value instead of an edit per value.
-	var env := OS.get_environment("INFILTRAITOR_GLASS_CRACK_OPACITY")
+	var env := DevFlag.value("GLASS_CRACK_OPACITY", "")
 	if env != "":
 		_param("crack_opacity", clampf(float(env), 0.0, 1.0))
 

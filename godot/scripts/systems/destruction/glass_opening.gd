@@ -211,7 +211,7 @@ static func pool(size_class: String) -> Array:
 ## to one member, so the family can be photographed on the REAL map one shape at a
 ## time. Never on the play path — the whole point of `pick()` is that a map does
 ## not repeat itself.
-static var FORCE: String = OS.get_environment("INFILTRAITOR_GLASS_OPENING")
+static var FORCE: String = DevFlag.value("GLASS_OPENING", "")
 
 
 static func pick(size_class: String, base_key: String) -> String:

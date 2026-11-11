@@ -89,7 +89,7 @@ static var SCATTER_WEIGHTS: Array[float] = [0.55, 0.30, 0.11, 0.04]
 ## It shipped at 3.0, and the number nobody had converted was what it meant on
 ## screen: 8 voxel cells make a floor TILE, so 3.0 was a push of 0.11..0.375 of a
 ## tile — real, and invisible. The bench swept 0 / 3 / 12 / 30 as MP4s
-## (`build_filmstrip.py --glass-rain default --rain-gain N`, which prints the travel
+## (the old `build_filmstrip.py --glass-rain default --rain-gain N`, deleted 2026-11-11, which prints the travel
 ## it ACTUALLY got off the landings) and 15 is his pick between 12 and 30.
 ##
 ## ⏭️ 2026-10-10: the fall is GRAVITY now (`GlassRainOverlay.gravity_gu_s2`): its time comes from the height, so this constant

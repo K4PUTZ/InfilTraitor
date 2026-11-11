@@ -1588,17 +1588,18 @@ func test_an_unclaimed_hole_is_reshaped_and_the_replay_claims_first() -> void:
 		_fail("unclaimed: board %s, expected the default '%s' %s"
 			% [unclaimed.keys(), default_id, _partial_set(default_id).keys()])
 
-	## THE ORDER, in the caller that actually rebuilds a perspective.
-	var src := FileAccess.get_file_as_string("res://godot/scripts/world/room.gd")
+	## THE ORDER, in the caller that actually replays (the save-restore step; it moved out of room.gd into
+	## `ScenarioSteps` on 2026-11-11, HERITAGE T3, and calls the room's two functions through `room.`).
+	var src := FileAccess.get_file_as_string("res://godot/scripts/world/controllers/scenario_steps.gd")
 	if src == "":
-		_fail("could not read room.gd to check the replay order")
+		_fail("could not read scenario_steps.gd to check the replay order")
 		return
-	var claim_at: int = src.find("\n\t_claim_base_openings()")
-	var reapply_at: int = src.find("\n\t_reapply_base_damage()")
+	var claim_at: int = src.find("\n\troom._claim_base_openings()")
+	var reapply_at: int = src.find("\n\troom._reapply_base_damage()")
 	if claim_at >= 0 and reapply_at >= 0 and claim_at < reapply_at:
-		_pass("room.gd: _claim_base_openings() precedes _reapply_base_damage() in the save-restore replay (the rotation no longer replays anything)")
+		_pass("scenario_steps.gd: _claim_base_openings() precedes _reapply_base_damage() in the save-restore replay (the rotation no longer replays anything)")
 	else:
-		_fail("room.gd: claim at %d, reapply at %d — the replay flushes before it claims, so every hole takes '%s'"
+		_fail("scenario_steps.gd: claim at %d, reapply at %d — the replay flushes before it claims, so every hole takes '%s'"
 			% [claim_at, reapply_at, default_id])
 
 

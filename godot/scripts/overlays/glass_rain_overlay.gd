@@ -100,21 +100,6 @@ var glint_landed: float = 0.25       ## what is left of it once the shard rests
 ## dropping shards under budget is free, because none of them are state.
 var max_shards: int = 3000
 
-## ── CAPTURE-ONLY: a timing preset the Director compares on video ─────────────
-##
-## `Room._capture_glass_rain_timings()` sets this to one row of its preset table
-## before `spawn_glass_rain()`, and `spawn()` folds any key that matches a look
-## `var` above into `self`. Empty on every play path — the defaults ship.
-static var timing_overrides: Dictionary = {}
-
-
-func _apply_timing_overrides() -> void:
-	for k in timing_overrides:
-		if k in self:
-			set(k, timing_overrides[k])
-		else:
-			push_warning("[GlassRainOverlay] timing override '%s' names no look var: ignored" % k)
-
 ## RENDER3D R3D-4e-4 — the shards are drawn by a depth-tested `ShardField3D` (with no board nothing is drawn: the 2D `ShardField`
 ## was removed in RETIRE-2D; a selftest still drives `spawn()` and `_process()` without one). One rain event, one overlay: the 3D
 ## field is freed with it.
@@ -175,7 +160,6 @@ func _exit_tree() -> void:
 ## LOW end of 1..max — fewer pieces means less overlap means less "massa só", and
 ## it keeps G-D44's range intact rather than lowering the ceiling.
 func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
-	_apply_timing_overrides()
 	for f in flights:
 		var key: Vector3i = f["key"]
 		## The state after the prefix every hash of this flight shares (`rain|x,y,z|`), hashed once.

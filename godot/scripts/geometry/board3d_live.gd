@@ -1812,7 +1812,7 @@ func _build_mesh_props() -> void:
 		node.position.x = float(inst.cell.x) + 0.5
 		node.position.z = float(inst.cell.y) + 0.5
 		_mesh_prop_nodes[inst.id] = node
-		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+		if DevFlag.on("PROP_DEBUG"):
 			print("[PROP-DEBUG] mesh prop %s gu=%s placed at world %s" % [inst.id, inst.cell, node.position])
 
 
@@ -1994,7 +1994,7 @@ func remove_mesh_prop(id: String) -> void:
 	var node: Node3D = _mesh_prop_nodes.get(id, null)
 	if node != null and is_instance_valid(node):
 		node.queue_free()
-	elif OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+	elif DevFlag.on("PROP_DEBUG"):
 		print("[PROP-DEBUG] remove_mesh_prop(%s): no live node found (known ids: %s)"
 			% [id, _mesh_prop_nodes.keys()])
 	_mesh_prop_nodes.erase(id)

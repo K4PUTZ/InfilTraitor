@@ -18,6 +18,9 @@ Checks implemented:
       it replaces B1, which policed the 2D tile placement that no longer exists)
   B4  Baking: FNV-1a constants are pinned in facade_sampler.gd (determinism)
   L3  HUD widgets are named only inside hud_controller.gd (UI-SPLIT-02)
+  F1  Dev flags: no `OS.get_environment("INFILTRAITOR_...")` outside dev_flag.gd and the selftests (every read goes through
+      `DevFlag`, so it reaches an APK too); every flag name read is in `DevFlag.FLAGS`, and every name there
+      is read somewhere (HERITAGE T3, 2026-11-11)
   V1  One version source: `project.godot`'s `config/version` (what an APK reports when the export
       preset leaves `version/name` empty, as ours does) equals the `VERSION` file (HERITAGE T6,
       2026-11-11; they read 0.9.107 and 0.1.0-pre-alpha before)
@@ -321,6 +324,54 @@ def check_file(path: Path) -> list[Violation]:
     return out
 
 
+FLAG_READS = (
+    r'\bDevFlags?\.(?:value|on|num|real)\("([A-Z0-9_]+)"',
+    r'\b_dev_(?:flag|flag_on|flag_num|value)\("([A-Z0-9_]+)"',
+    r'\b\w*flags\.(?:value|on|num|real)\("([A-Z0-9_]+)"',
+    r'\.call(?:_deferred)?\("(?:value|on|num|real|_dev_flag|_dev_flag_on|_dev_flag_num|_dev_value)",\s*"([A-Z0-9_]+)"',
+    r'\b_env_float\("([A-Z0-9_]+)"',
+    ## A flag name held in a constant (`const TRIPO_FIGURE_FLAG := "TRIPO_FIGURE"`) and read through it.
+    r'^const \w*FLAG\w*\s*(?::\s*String\s*)?:?=\s*"(?!INFILTRAITOR_)([A-Z0-9_]+)"',
+)
+## Inside the autoload itself the readers are called bare.
+FLAG_READS_BARE = r'(?<![\w.])(?:on|value|num|real)\("([A-Z0-9_]+)"'
+
+
+def check_dev_flags() -> list[Violation]:
+    """F1 — one reader (`DevFlag`), one registry (`DevFlag.FLAGS`), nothing read that it does not hold."""
+    registry_file = SCRIPTS_DIR / "systems" / "dev_flag.gd"
+    if not registry_file.is_file():
+        return [Violation("F1 dev-flags", _rel(registry_file), 0, "dev_flag.gd (the registry) is missing")]
+    registry = set(re.findall(r'^\t"([A-Z0-9_]+)": \[', registry_file.read_text(), re.M))
+    out: list[Violation] = []
+    read: dict[str, str] = {}
+    for path in sorted(SCRIPTS_DIR.rglob("*.gd"), key=lambda p: p.as_posix()):
+        if path == registry_file:
+            continue
+        text = path.read_text(errors="ignore")
+        for lineno, line in enumerate(text.splitlines(), 1):
+            code = line.split("#", 1)[0]
+            ## Exempt from the raw-read half: the autoload (it finds the file) and the selftests under tools/, which
+            ## have to set and read the environment to test the resolution order itself.
+            is_selftest = "/tools/" in path.as_posix()
+            if "OS.get_environment(" in code and "INFILTRAITOR" in code and path.name != "dev_flags.gd" and not is_selftest:
+                out.append(Violation("F1 dev-flags", _rel(path), lineno,
+                                     "a raw INFILTRAITOR_ environment read: use DevFlag.value / on / num / real "
+                                     "(it reaches the APK's dev_flags.cfg too)"))
+            pats = FLAG_READS + ((FLAG_READS_BARE,) if path.name == "dev_flags.gd" else ())
+            for pat in pats:
+                for m in re.finditer(pat, code):
+                    read.setdefault(m.group(1), "%s:%d" % (_rel(path), lineno))
+    for name, where in sorted(read.items()):
+        if name not in registry:
+            out.append(Violation("F1 dev-flags", where.split(":")[0], int(where.split(":")[1]),
+                                 f"'{name}' is read but not registered: add it to DevFlag.FLAGS (dev_flag.gd)"))
+    for name in sorted(registry - set(read)):
+        out.append(Violation("F1 dev-flags", _rel(registry_file), 0,
+                             f"'{name}' is registered but nothing reads it: delete its row"))
+    return out
+
+
 def check_version() -> list[Violation]:
     """V1 — `project.godot`'s `config/version` mirrors the `VERSION` file, the one source."""
     version_file = REPO_ROOT / "VERSION"
@@ -346,6 +397,7 @@ def main(argv: list[str]) -> int:
     for path in sorted(SCRIPTS_DIR.rglob("*.gd"), key=lambda p: p.as_posix()):
         violations.extend(check_file(path))
     violations.extend(check_version())
+    violations.extend(check_dev_flags())
 
     if not violations:
         if not quiet:

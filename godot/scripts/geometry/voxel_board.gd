@@ -91,7 +91,7 @@ const FACE_SOOT_CODE_COUNT: int = 216
 ##
 ## The board is WRONG on purpose. Nothing about this is shippable and no gate,
 ## census or pixel diff taken under it means anything about the real build.
-static var LIGHT_DISABLED: bool = OS.get_environment("INFILTRAITOR_NO_LIGHT") == "1"
+static var LIGHT_DISABLED: bool = DevFlag.on("NO_LIGHT")
 
 
 ## RENDER3D R3D-3 step 5 — the opaque tile is never placed, so `_process_dirty_slice_voxel()`/`_process_dirty_slab_voxel()`'s erase
@@ -138,10 +138,10 @@ var _layers: Dictionary = {}               ## level:int -> true, sparse: the lev
 ## Dimness of a glass voxel's top and side faces against its main face — a LOOK calibration the Director iterates on
 ## (env-overridable, `static var`). The 3D board's pane shader reads them (`Board3DLive`); the 2D atoms that first
 ## carried them are gone (R3D-END END-2).
-static var GLASS_DIM_TOP: float = float(OS.get_environment("INFILTRAITOR_GLASS_DIM_TOP")) \
-	if OS.get_environment("INFILTRAITOR_GLASS_DIM_TOP") != "" else 0.60
-static var GLASS_DIM_SIDE: float = float(OS.get_environment("INFILTRAITOR_GLASS_DIM_SIDE")) \
-	if OS.get_environment("INFILTRAITOR_GLASS_DIM_SIDE") != "" else 0.78
+static var GLASS_DIM_TOP: float = float(DevFlag.value("GLASS_DIM_TOP", "")) \
+	if DevFlag.value("GLASS_DIM_TOP", "") != "" else 0.60
+static var GLASS_DIM_SIDE: float = float(DevFlag.value("GLASS_DIM_SIDE", "")) \
+	if DevFlag.value("GLASS_DIM_SIDE", "") != "" else 0.78
 ## Glass cells erased since the last rim refresh, level -> Array[Vector2i].
 var _glass_rim_dirty: Dictionary = {}
 ## CRACK-04 — region anchor -> the opening claimed for it, consumed by the next
@@ -356,7 +356,7 @@ func apply_debug_nudge(delta: Vector2) -> void:
 ## the same camera. A cut glass voxel reveals GLASS, not a void, so the change is
 ## subtle by nature and the comparison has to be controlled rather than squinted
 ## at — the same lesson the pane-clip capture taught.
-static var GLASS_RIM_ENABLED: bool = OS.get_environment("INFILTRAITOR_GLASS_RIM") != "0"
+static var GLASS_RIM_ENABLED: bool = DevFlag.value("GLASS_RIM", "") != "0"
 
 ## The opening used when a hole arrives with no chosen one. ⚠️ It is a DIAL for
 ## the capture harness, not a fallback the play path is allowed to lean on: the
@@ -381,7 +381,7 @@ func register_geometry(registry: EdgeRegistry, junction_columns: Array = []) -> 
 		_register_slice(slice)
 
 	# Junction columns. INFILTRAITOR_SKIP_JUNCTIONS=1 leaves them out of the walk (a 2D-era capture instrument, TOP-JUNCTION-06).
-	if OS.get_environment("INFILTRAITOR_SKIP_JUNCTIONS") != "1":
+	if not DevFlag.on("SKIP_JUNCTIONS"):
 		for column in junction_columns:
 			_register_junction_column(column)
 
@@ -405,7 +405,7 @@ func _register_slice(slice: Slice) -> void:
 	## GLASS G-D9 — a slice's material is now per-level. `_slice_is_glassy()` is
 	## true when the base OR any band is glass, so the diag and the geometry
 	## still fire for a brick-capped window.
-	if _slice_is_glassy(slice) and OS.get_environment("INFILTRAITOR_GLASS_DIAG") == "1":
+	if _slice_is_glassy(slice) and DevFlag.on("GLASS_DIAG"):
 		print("[GLASS-DIAG] slice %s face=%s gu=%s storeys=%d voxels=%d pane=%s bands=%s" % [
 			slice.id, Face.to_string_name(slice.face), slice.gu_cell,
 			slice.storey_count, slice.voxels.size(),
@@ -1410,19 +1410,19 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 func spawn_glass_craze(spec: Dictionary) -> int:
 	var sheet_id: String = String(spec.get("sheet", ""))
 	var tile_span: Vector2 = spec.get("tile_span", Vector2(8.0, 8.0))
-	var forced := OS.get_environment("INFILTRAITOR_GLASS_CRAZE_SHEET")
+	var forced := DevFlag.value("GLASS_CRAZE_SHEET", "")
 	if forced != "":
 		sheet_id = forced
 		tile_span = GlassCrack.page_span(forced)
 	var sheet: Texture2D = null
-	if OS.get_environment("INFILTRAITOR_GLASS_CRAZE_TESTTILE") == "1":
+	if DevFlag.on("GLASS_CRAZE_TESTTILE"):
 		sheet = _glass_craze_wrap_tile()
 		## ⚠️ THE TEST TILE CARRIES ITS OWN SPAN, AND IT MUST. `tile_span` comes
 		## from the manifest, and no `blast_*` row exists yet — so without this the
 		## square wrap tile would be drawn on the 2:1 fallback page and every ring
 		## in it would render as an ellipse, which is the exact defect the tile is
 		## here to detect. `INFILTRAITOR_GLASS_CRAZE_TILE_VOXELS` sizes it.
-		var tv := OS.get_environment("INFILTRAITOR_GLASS_CRAZE_TILE_VOXELS")
+		var tv := DevFlag.value("GLASS_CRAZE_TILE_VOXELS", "")
 		var side: float = tv.to_float() if tv.is_valid_float() and tv.to_float() > 0.0 else 8.0
 		tile_span = Vector2(side, side)
 	else:
@@ -2010,7 +2010,7 @@ var _glass_occ_dirty_cells: Dictionary = {}
 
 
 static func _env_hole_cut() -> float:
-	var e := OS.get_environment("INFILTRAITOR_GLASS_CRACK_CUT")
+	var e := DevFlag.value("GLASS_CRACK_CUT", "")
 	return clampf(e.to_float(), 0.0, 1.0) if e.is_valid_float() else 1.0
 
 
@@ -2459,15 +2459,9 @@ func apply_glass_opening_at(level: int, cell: Vector2i, opening_id: String) -> i
 	})
 
 
-## PERF-DEV — `DevFlags` when the autoload is reachable, the environment otherwise
-## (`godot --script` contexts), the same resolution as `Room._dev_flag()`. Every
-## read below used `OS.get_environment` directly, which never reaches an APK.
+## PERF-DEV — a dev flag through `DevFlag` (the environment, then the APK's overrides file).
 func _dev_flag(flag_name: String) -> String:
-	if is_inside_tree():
-		var flags: Node = get_node_or_null("/root/DevFlags")
-		if flags != null:
-			return flags.value(flag_name, "")
-	return OS.get_environment("INFILTRAITOR_" + flag_name)
+	return DevFlag.value(flag_name, "")
 
 
 ## LEVEL-RENUMBER — `storey_count` is a COUNT of wall levels, kept as such because

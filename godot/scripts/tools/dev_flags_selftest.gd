@@ -51,6 +51,9 @@ func _ready() -> void:
 	if not _test_num_rejects_garbage():
 		get_tree().quit(1)
 		return
+	if not _test_registry():
+		get_tree().quit(1)
+		return
 
 	print("\n✅ DIAG-01 SELFTEST PASS\n")
 	get_tree().quit(0)
@@ -104,3 +107,28 @@ func _test_num_rejects_garbage() -> bool:
 		return false
 	print("[TEST 4] ✅ num() rejects a non-integer and keeps the fallback (620)")
 	return true
+
+
+## HERITAGE T3 (2026-11-11) — the registry: a registered name is known, an unregistered one is not (and
+## `known()` reports it loudly), and a read with no fallback of its own gets the registry's default.
+## `FLAME_STYLE` is used because its default ("both") is not empty, so "the default" and "nothing" differ.
+func _test_registry() -> bool:
+	if not DevFlag.known(FLAG_NAME):
+		print("[TEST 5] ❌ '%s' is registered but known() says no" % FLAG_NAME)
+		return false
+	print("[TEST 5] (the next ERROR line is expected: an unregistered name is reported)")
+	if DevFlag.known("SELFTEST_NOT_A_REGISTERED_FLAG"):
+		print("[TEST 5] ❌ an unregistered name was accepted")
+		return false
+	if not OS.get_environment("INFILTRAITOR_FLAME_STYLE").is_empty():
+		print("[TEST 5] ⚠️ FLAME_STYLE is set in this environment: the default check is skipped")
+	elif DevFlag.value("FLAME_STYLE") != "both":
+		print("[TEST 5] ❌ value() with no fallback read '%s', not the registry's default 'both'"
+			% DevFlag.value("FLAME_STYLE"))
+		return false
+	if DevFlag.value("FLAME_STYLE", "x") != "x" and OS.get_environment("INFILTRAITOR_FLAME_STYLE").is_empty():
+		print("[TEST 5] ❌ a caller's fallback did not win over the registry's default")
+		return false
+	print("[TEST 5] ✅ the registry knows its flags, refuses an unknown one, and supplies the default")
+	return true
+

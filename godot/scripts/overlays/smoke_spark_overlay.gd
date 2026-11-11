@@ -38,7 +38,7 @@ func set_board3d(board: Node3D) -> void:
 		return
 	_spark_field3d = QuadField3DRef.new()
 	_spark_field3d.attach_rect(board, 3)
-	var feather_env := OS.get_environment("INFILTRAITOR_SMOKE_FEATHER")
+	var feather_env := DevFlag.value("SMOKE_FEATHER", "")
 	var feather: float = feather_env.to_float() if feather_env.is_valid_float() else 0.75
 	_puff_field3d = CircleField3DRef.new()
 	_puff_field3d.attach(board, false, feather, 2)

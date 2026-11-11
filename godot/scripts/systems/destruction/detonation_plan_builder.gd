@@ -116,7 +116,7 @@ static var SMOKE_DURATION_FLOOR: float = 0.55
 ## is smaller than the 32x16 voxel it is venting from, which is a large part of
 ## why the first per-voxel pass measured as invisible; this lifts the base so a
 ## puff at least covers its own voxel.
-static var SMOKE_SCALE_BASE: float = _env_float("INFILTRAITOR_SMOKE_SCALE", 1.7)
+static var SMOKE_SCALE_BASE: float = _env_float("SMOKE_SCALE", 1.7)
 
 ## A per-voxel puff is ONE blob, not the 2-3 cluster VFX-01 gives a lone
 ## destroyed voxel — there are now hundreds of them and each is meant to read as
@@ -147,7 +147,7 @@ static var SMOKE_RISE_MAX: float = 1.55
 ## `INFILTRAITOR_SMOKE_SCALE`, `INFILTRAITOR_SMOKE_CHANCE` (a global override of
 ## every material row). All three exist so the Director picks off a video instead
 ## of off a paragraph, and none is read per entry — see `_env_float()`.
-static var SMOKE_ALPHA_GAIN: float = _env_float("INFILTRAITOR_SMOKE_ALPHA_GAIN", 2.4)
+static var SMOKE_ALPHA_GAIN: float = _env_float("SMOKE_ALPHA_GAIN", 2.4)
 
 
 ## ===========================================================================
@@ -479,7 +479,7 @@ static func _phase_setup(s: Dictionary) -> void:
 	for block in prop_blocks:
 		prop_by_id[block.id] = block
 	s["prop_by_id"] = prop_by_id
-	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+	if DevFlag.on("PROP_DEBUG"):
 		var dbg: Array = []
 		for block in prop_blocks:
 			var fp: Vector2i = (block.voxels[0] as Voxel).grid_pos
@@ -740,7 +740,7 @@ static func _glass_begin(s: Dictionary) -> Dictionary:
 		affected = s["affected"]["slices"]
 		affected_roofs = s["affected"].get("roofs", {})
 
-	var _rdiag: bool = OS.get_environment("INFILTRAITOR_GLASS_RING_DIAG") == "1"
+	var _rdiag: bool = DevFlag.on("GLASS_RING_DIAG")
 	if _rdiag:
 		print("[GLASS-RING-DIAG] source_gu=%s epicenter=%s glass_max_ring=%d shockwave=%s craze=%s"
 			% [source_gu, epicenter, glass_max,
@@ -1654,7 +1654,7 @@ static func _phase_walk_warm(s: Dictionary, deadline: int, store: VoxelStore) ->
 		s["walk_shared"] = true
 		s["walk_scan"] = true
 	var hits: PackedInt32Array = PackedInt32Array(store.gone_claims.keys())
-	if OS.get_environment("INFILTRAITOR_WALK_EQUIV") == "1":
+	if DevFlag.on("WALK_EQUIV"):
 		var scanned: int = 0
 		for b in _WALK_GONE_BYTES:
 			var f: int = state.find(b)
@@ -1694,7 +1694,7 @@ static func _phase_walk_warm(s: Dictionary, deadline: int, store: VoxelStore) ->
 				blast_cells.append(key)
 			else:
 				weapon_cells.append(key)
-	if OS.get_environment("INFILTRAITOR_WALK_EQUIV") == "1":
+	if DevFlag.on("WALK_EQUIV"):
 		_walk_equiv(s, store)
 	s["cursor"] = (s["walk_containers"] as Array).size()
 	s["sub"] = 0
@@ -1839,7 +1839,7 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 		s["soot_todo"] = _soot_todo(s)
 		## The voxels embers lit are CHARRED later, as each flame dies (`delta.fire_char`, `_mark_charred`); the commit stamps their ring's tone.
 		print("[E-CHAR] %d voxel(s) to char after their fire" % (s["delta"] as WorldDelta).fire_char.size())
-		if OS.get_environment("INFILTRAITOR_HOLE_EQUIV") == "1":
+		if DevFlag.on("HOLE_EQUIV"):
 			_hole_equiv(s)
 	var todo: Array = s["soot_todo"]
 	var halo_on: bool = BlastCalculatorClass.soot_halo_on()
@@ -2229,7 +2229,7 @@ static func _plan_blast_pellets(s: Dictionary, deadline: int) -> bool:
 		## The autoload by node, not by name: this script also runs headless in selftests, where a bare `Registries` does not compile.
 		var registries: Node = tree.root.get_node_or_null("/root/Registries") if tree != null else null
 		var weapon = registries.call("get_weapon_registry").get_weapon(RubblePresetsRef.BLAST_WEAPON) if registries != null else null
-		if (String(flags.value("BLAST_SEASON", "1")) if flags != null else OS.get_environment("INFILTRAITOR_BLAST_SEASON")) == "0" \
+		if (String(flags.value("BLAST_SEASON", "1")) if flags != null else DevFlag.value("BLAST_SEASON", "")) == "0" \
 				or weapon == null or weapon.delivery != WeaponDef.DELIVERY_CONE or s["edge_registry"] == null:
 			return true
 		s["pellet_cone"] = 0
@@ -2535,7 +2535,7 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 			touched_cells.append(Vector3i(v.grid_pos.x, v.grid_pos.y, v.level))
 		delta.touched = touched_cells
 		delta.census = s["census"]
-		if OS.get_environment("INFILTRAITOR_PLAN_DIGEST") == "1":
+		if DevFlag.on("PLAN_DIGEST"):
 			print("[PLAN-DIGEST] %s" % plan_digest(delta))
 		_enter_phase(s, PHASE_DONE)
 
@@ -2970,7 +2970,7 @@ static var blast_takes_share: float = 0.70
 ## Read once into a `static var` rather than per call: `build_plan()` is pure and
 ## its output is CACHED, so a switch that could change between two cooks of the
 ## same world revision would hand back a Delta built under the other rule.
-static var no_burn: bool = OS.get_environment("INFILTRAITOR_NO_BURN") == "1"
+static var no_burn: bool = DevFlag.on("NO_BURN")
 
 
 static func _maybe_burn(s: Dictionary, voxel: Voxel, ring: int,
@@ -3562,8 +3562,7 @@ static func _radius_of(cell: Vector2i, epicenter: Vector2i) -> float:
 ## output is cached, so a value that could change between two cooks of the same
 ## world revision would hand back a plan built under different rules.
 static func _env_float(name: String, fallback: float) -> float:
-	var raw := OS.get_environment(name)
-	return raw.to_float() if raw.is_valid_float() else fallback
+	return DevFlag.real(name, fallback)
 
 
 static func _hash_unit(salt: String, cell: Vector2i, level: int) -> float:

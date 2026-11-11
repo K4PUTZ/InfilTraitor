@@ -177,13 +177,8 @@ philosophy and calibration detail `CLAUDE.md` deliberately doesn't duplicate.
   flag on every boot. `diff A B` compares two dumps per voxel and per plane texel. It
   reads the voxel containers and cell planes, never a tile, so it outlives the 2D
   board.
-- `tools/persistent/build_material_matrix.py` — M3-5: one grenade and one shot on
-  every material, as a table, from real boots of the real map. The numbers it
-  prints had been assembled by hand half a dozen times across the materials
-  milestone, each time from a different ad-hoc command line — which is how two
-  runs stop being comparable. Geometry is read from the mapfile, never hardcoded:
-  the material blocks have moved twice, and a table pointing at where they used
-  to be reports zeroes that look like findings.
+- `tools/persistent/material_videos.py` — a shot and an explosion on every PLAYGROUND material (takes `shot_<m>` / `blast_<m>`
+  through `capture.py`). It replaced `build_material_matrix.py` (M3-5), deleted 2026-11-11 with the room's old capture harness.
 - `tools/persistent/check_facade.py` · `check_decal.py` — the two ART acceptance
   gates. Both exist because their failure mode is SILENT: a rejected facade
   falls back to the generic atlas and a mis-delivered decal renders nothing, and

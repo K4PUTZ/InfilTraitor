@@ -39,7 +39,7 @@ static func light_ladder() -> Array[float]:
 	var ladder: Array[float] = [
 		0.12, 0.20, 0.33, 0.40, 0.47, 0.54, 0.61, 0.69, 0.77, 0.85, 0.92, 1.00,
 	]
-	if OS.get_environment("INFILTRAITOR_FLAT_LIGHT") == "1":
+	if DevFlag.on("FLAT_LIGHT"):
 		for i in range(ladder.size()):
 			ladder[i] = 1.0
 		print("[P3-DIAG] INFILTRAITOR_FLAT_LIGHT — light ladder flattened to 1.00")
@@ -63,7 +63,7 @@ static var _shader_cache: Dictionary = {}
 
 ## The active grade as (saturation, contrast, lift): the dev flag when set, else the constants.
 static func grade_params() -> Vector3:
-	var raw: String = OS.get_environment("INFILTRAITOR_GRADE")
+	var raw: String = DevFlag.value("GRADE", "")
 	var loop := Engine.get_main_loop() as SceneTree
 	if raw == "" and loop != null:
 		var flags: Node = loop.root.get_node_or_null("/root/DevFlags")

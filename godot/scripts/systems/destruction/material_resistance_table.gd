@@ -200,8 +200,8 @@ static func smoke_chance(material: String) -> float:
 ## bracket render. Negative means "not set", so 0.0 stays a usable value (no
 ## per-voxel smoke at all, which is the honest floor of the bracket).
 static var _smoke_chance_override: float = (
-	OS.get_environment("INFILTRAITOR_SMOKE_CHANCE").to_float()
-	if OS.get_environment("INFILTRAITOR_SMOKE_CHANCE").is_valid_float() else -1.0)
+	DevFlag.value("SMOKE_CHANCE", "").to_float()
+	if DevFlag.value("SMOKE_CHANCE", "").is_valid_float() else -1.0)
 
 
 ## E-EMBER-01. See DEFAULT_FLAMMABILITY for what the number means.

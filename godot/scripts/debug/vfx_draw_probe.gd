@@ -44,8 +44,8 @@ class_name VfxDrawProbe
 ## `Room._frame_probe`.
 
 ## Live for the whole process. Read once: these are consulted per particle.
-static var enabled: bool = OS.get_environment("INFILTRAITOR_VFX_DRAW_PROBE") == "1"
-static var noop: bool = OS.get_environment("INFILTRAITOR_VFX_DRAW_NOOP") == "1"
+static var enabled: bool = DevFlag.on("VFX_DRAW_PROBE")
+static var noop: bool = DevFlag.on("VFX_DRAW_NOOP")
 
 ## Accumulated inside `_draw()`, across every instrumented overlay.
 static var draw_us: int = 0

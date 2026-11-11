@@ -32,6 +32,7 @@ const GlassRainOverlay = preload("res://godot/scripts/overlays/glass_rain_overla
 const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const MapLayoutClass     = preload("res://godot/scripts/world/maps/map_layout.gd")
 const CaptureControllerClass = preload("res://godot/scripts/world/controllers/capture_controller.gd")
+const ScenarioStepsClass = preload("res://godot/scripts/world/controllers/scenario_steps.gd")
 const LayoutOverlay3DClass = preload("res://godot/scripts/overlays/layout_overlay3d.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
@@ -48,7 +49,7 @@ const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/pers
 ## the global class_name so the dependency is visible where this file is read.
 const GlassOpening = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
 const SelectionControllerClass = preload("res://godot/scripts/world/controllers/selection_controller.gd")
-const TestZoneControllerClass = preload("res://godot/scripts/world/controllers/grenade_controller.gd")
+const GrenadeControllerClass = preload("res://godot/scripts/world/controllers/grenade_controller.gd")
 ## WEAPON_MASTER_PLAN §6c — the agent shoots. Separate from the bench controller
 ## above, which fires from a static prop; see agent_shot_controller.gd's header.
 const AgentShotControllerClass = preload("res://godot/scripts/world/controllers/agent_shot_controller.gd")
@@ -596,7 +597,7 @@ func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 	_last_craze_identity = "anchor=%s level=%d variant=%d" % [
 		anchor_cell,
 		anchor_level, int(plan["variant"])]
-	if OS.get_environment("INFILTRAITOR_GLASS_DIAG") == "1":
+	if DevFlag.on("GLASS_DIAG"):
 		## ⚠️ A NUMBER, NOT A PICTURE, AND IT HAS TO BE. A rotated pane is sheared
 		## on screen, so no two views of one craze can be diffed; the claim is that
 		## the anchor, the variant and the flip are IDENTICAL in every view, and
@@ -1158,7 +1159,6 @@ func _draw_rim_shard(cell: Vector2i, level: int, base_key: Vector3i, memo = null
 	return _voxel_board.apply_glass_remnant_at(level, cell, shape_id, mask, flop)
 
 
-
 ## ── G4-4 / G-D45 — A REMNANT WHOSE FRAME WAS DESTROYED FALLS WITH IT ─────────
 ##
 ## (Director, 2026-09-05: *"Se a moldura for destruída o caco grudado cai/some
@@ -1535,7 +1535,6 @@ func _remnant_context(host, memo) -> Array:
 	return ctx
 
 
-
 ## The pick itself, shared by the live claim, the rebuild replay and the crack
 ## sprite's void, so no two of them can resolve one hole differently. Pure: same
 ## base key, same opening, forever — which is why callers RE-DERIVE it instead of
@@ -1557,40 +1556,6 @@ func glass_base_key(grid_pos: Vector2i, level: int) -> String:
 ## CRACK-04 — re-claim every recorded hole's opening for the perspective just
 ## entered, so a rebuilt hole keeps the shape it was opened with.
 ##
-## ⚠️ CAPTURE-ONLY: STRIP THE BOARD DOWN TO THE THING BEING JUDGED.
-##
-## (Director, 2026-09-04: *"a gente poderia fazer um mapa sem o guarda atrás,
-## porque o amarelo do cone de visão está atrapalhando […] E o chão também poderia
-## ser de uma cor só, pra facilitar o diagnóstico."*)
-##
-## He is diagnosing a HOLE, and the frame behind it carries a guard's vision cone
-## and a two-tone lit floor. Both are the picture doing the arguing. It is also
-## why the numeric check failed the last time it was tried: a colour mask of "what
-## shows through the hole" sampled 103..151 in RED around one impact, so its
-## centroid was biased by which half of the backdrop the hole happened to sit on.
-## A flat backdrop makes that measurement possible, not merely prettier.
-##
-## NEVER on the play path. It hides nodes and modulates a layer; nothing here
-## changes geometry, damage or any decision the game makes.
-func apply_glass_diagnostic_backdrop() -> void:
-	if OS.get_environment("INFILTRAITOR_GLASS_DIAG") != "1":
-		return
-	var hidden: int = 0
-	for g in _guards:
-		if g != null and is_instance_valid(g):
-			g.visible = false
-			hidden += 1
-	## The overlays that draw ON the guards, which do not go with them.
-	for ov in [_vision_controller, _shadow_boundary_overlay, _light_ray_overlay,
-			_ceiling_overlay]:
-		if ov != null and is_instance_valid(ov):
-			ov.visible = false
-	## ⚠️ NOT `[GLASS-DIAG]` — that tag already belongs to the slice dump above,
-	## and two unrelated things under one tag is how a log stops being readable.
-	print("[GLASS-BACKDROP] stripped — %d guard(s) hidden, overlays off, floor flat"
-		% hidden)
-
-
 ## ⚠️ IT APPLIES, IT DOES NOT CLAIM — AND IT RUNS AFTER `_reapply_base_damage()`.
 ## The first version did the opposite of both, on the reasonable-sounding theory
 ## that a rebuild re-erases the glass and the erase flush would consume a claim
@@ -1946,7 +1911,7 @@ var _input_controller: InputControllerClass = null
 var _selection_controller: SelectionControllerClass = null
 
 ## TEST-ZONE placeholder (2026-07-21): right-click "Detonar" on a test prop.
-var _grenade_controller: TestZoneControllerClass = null
+var _grenade_controller: GrenadeControllerClass = null
 ## FRAME-MEM-01 / 2026-07-29: every spinning pickup in the collectibles strip.
 ## _floating_collectible stays as an alias for the first of them, because the
 ## test_collectible capture action and _set_perspective already reference it.
@@ -1991,7 +1956,7 @@ var _dev_panels_on: bool = false
 var _hovered_cell: Vector2i = Vector2i(-1, -1)
 ## A scripted run (`INFILTRAITOR_SCENARIO`, a harness or a dev capture) ignores the REAL mouse: the pointer is wherever the person's hand left it, the
 ## hover outline it draws changed 10 px of a `pixel_gate` capture between two boots of the same code (2026-10-06), and nothing in a scenario needs it.
-var _scripted_run: bool = OS.get_environment("INFILTRAITOR_SCENARIO") != ""
+var _scripted_run: bool = DevFlag.value("SCENARIO", "") != ""
 
 ## DEV-HUD-01: dev vision status panel
 var _dev_vision_status_panel: Control = null
@@ -2604,13 +2569,10 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	if _dev_flag_on("MEM_CENSUS"):
 		_census_after_a_frame("AT LOAD — %s, nothing detonated yet" % map_id)
 
-	## DIAG-10 — the benchmark gets its OWN entry point, deliberately not the
-	## capture-action dispatch. That dispatch lives inside
-	## `_run_auto_screenshot_capture()`, which only runs when screenshot capture
-	## is enabled — so a benchmark hung off it would silently do nothing unless
-	## an unrelated flag happened to be set, which is how it behaved when first
-	## written. A measurement that quietly does not run is worse than one that
-	## fails.
+	## DIAG-10 — the benchmark gets its OWN entry point (the old capture-action
+	## dispatch, deleted 2026-11-11, only ran when screenshot capture was enabled,
+	## so a benchmark hung off it silently did nothing). A measurement that quietly
+	## does not run is worse than one that fails.
 	##
 	## `_benchmark_started` guards against a map RELOAD (F2) starting a second
 	## one on top of the first.
@@ -2983,7 +2945,7 @@ func _ready() -> void:
 	## keys off `_context_menu.visible` and a second instance would have to be
 	## taught about the first. Which verb it shows, and what confirming it does,
 	## are now passed in per open (DetonateContextMenu.open_at).
-	_grenade_controller = TestZoneControllerClass.new(self)
+	_grenade_controller = GrenadeControllerClass.new(self)
 	## §6c: the same shared menu instance carries the agent's shot as a second verb.
 	_agent_shot_controller = AgentShotControllerClass.new(self)
 	_context_menu = DetonateContextMenuClass.new()
@@ -3130,15 +3092,6 @@ func _ready() -> void:
 	## Initialize debug views (S1: FIX-BAKE-06)
 	_initialize_debug_views()
 
-	## SCREENSHOT-HOOK-01: opt-in auto-capture for the pre-commit hook's
-	## dedicated Godot process (INFILTRAITOR_AUTO_SCREENSHOT=1). Never fires
-	## during normal play — the env var is only set by the hook's own launch
-	## command. Deferred a few frames past _ready() so the just-built map has
-	## actually been rasterized before capture (SLICE-02's own probe above
-	## proves _ready() completing does not by itself guarantee a drawn frame).
-	if OS.get_environment("INFILTRAITOR_AUTO_SCREENSHOT") == "1":
-		_run_auto_screenshot_capture()
-
 
 ## The side the camera looks from ("N"/"E"/"S"/"W"): what a presentation asks.
 func view_direction() -> String:
@@ -3173,7 +3126,6 @@ func _sync_dev_overlay_view() -> void:
 	for node: Variant in _dev_view_overlays():
 		if node is Node2D and is_instance_valid(node) and (node as Node2D).visible:
 			(node as Node2D).transform = xf
-
 
 
 ## R3D-ROT — a rotation turns the CAMERA over one fixed world. The map is never re-laid-out and no Voxel is rebuilt: the
@@ -3415,6 +3367,18 @@ func toggle_layout_overlay(rail_id: String = "") -> void:
 
 
 ## CAPTURE_RAILS — the capture controller (dev tooling), created on first use by a scenario op.
+## HERITAGE T3 — the scenario ops (`scenario_<op>()`) live in `ScenarioSteps`, created on first use (dev tooling,
+## never in play), the same way `capture()` creates the CaptureController.
+func scenario_steps() -> Node:
+	var c: Node = get_node_or_null("ScenarioSteps")
+	if c == null:
+		c = ScenarioStepsClass.new()
+		c.name = "ScenarioSteps"
+		add_child(c)
+		c.call("setup", self)
+	return c
+
+
 func capture() -> Node:
 	var c: Node = get_node_or_null("CaptureController")
 	if c == null:
@@ -3436,169 +3400,6 @@ func set_capture_view(ground_centre: Vector2, zoom: float) -> void:
 	var pair: Array = live.call("particle_pair", Vector3(ground_centre.x, 0.0, ground_centre.y))
 	camera.global_position = pair[1]
 	camera.zoom = Vector2(zoom, zoom)
-
-
-## R3D-11 — the `ground_check` scenario step: what gameplay reads of the ground, as digests, plus an in-process
-## comparison of the two authorities over every cell of the map and a 3-cell margin (meaningful on the 2D board, whose floor
-## layer still holds the tiles). `tools/persistent/ground_gate.py` runs it on the 3D and the 2D board and requires every
-## digest to agree.
-func scenario_ground_check(label: String) -> bool:
-	if _room_size == Vector2i.ZERO:
-		push_error("[Room] scenario_ground_check: no floor")
-		return false
-	var size: Vector2i = _room_size
-	var walk_rows: PackedStringArray = []
-	var select_rows: PackedStringArray = []
-	for y in range(-3, size.y + 3):
-		for x in range(-3, size.x + 3):
-			var c := Vector2i(x, y)
-			var grid: bool = GroundGridRef.has_cell(c, size)
-			walk_rows.append("%d,%d=%d" % [x, y, 1 if grid else 0])
-			select_rows.append("%d,%d=%d" % [x, y, 1 if _selection_controller.is_selectable_cell(c) else 0])
-	var costs: Dictionary = movement_overlay._costs
-	var cost_rows: PackedStringArray = []
-	for c: Vector2i in costs:
-		cost_rows.append("%d,%d=%d" % [c.x, c.y, int(costs[c])])
-	cost_rows.sort()
-	var path_rows: PackedStringArray = []
-	var reach: Array = costs.keys()
-	reach.sort()
-	for i in range(0, reach.size(), 7):
-		var path: Array[Vector2i] = movement_overlay.build_path_to(reach[i])
-		path_rows.append("%s:%s" % [reach[i], path])
-	var counts: Dictionary = view_context()
-	print("[GROUND-CHECK] %s size %s | walk %s select %s reach %d %s paths %d %s | view %s/%s"
-		% [label, size,
-			"\n".join(walk_rows).md5_text(), "\n".join(select_rows).md5_text(), cost_rows.size(),
-			"\n".join(cost_rows).md5_text(), path_rows.size(), "\n".join(path_rows).md5_text(),
-			counts.get("gu_visible", "?"), counts.get("gu_total", "?")])
-	return true
-
-
-## The `world_check` scenario step: the two things every overlay that draws in the air stands on, measured in the CURRENT
-## view. (1) `WorldCanvas3D.lift()` of fixed cell points at a fixed height: world state, so its digest must be the same in
-## every view. (2) `screen_axes()`, the pixels one grid step moves by, against what the live camera really does to the
-## same step: direction (cosine) and scale (the viewport pixels per canvas pixel, i.e. the zoom) for each axis.
-## Prints `[WORLD-CHECK] <name> view=<V> lift=<digest> ax=<x,y> ay=<x,y> cos_x=<c> cos_y=<c> zoom_x=<z> zoom_y=<z>`.
-func scenario_world_check(label: String) -> bool:
-	var live: Node = board3d()
-	if live == null:
-		push_error("[Room] scenario_world_check: no 3D board")
-		return false
-	var canvas := WorldCanvas3D.new()
-	canvas.attach(live, self, 0)
-	canvas.begin()
-	var rows: Array = []
-	for cell: Vector2i in [Vector2i(3, 3), Vector2i(7, 4), Vector2i(12, 9), Vector2i(20, 5), Vector2i(2, 11)]:
-		var floor_2d: Vector2 = _world_center_for_cell(cell)
-		var p: Vector3 = canvas.lift(floor_2d + Vector2(0.0, -40.0), floor_2d)
-		rows.append([roundi(p.x * 1000.0), roundi(p.y * 1000.0), roundi(p.z * 1000.0)])
-	var axes: Array[Vector2] = canvas.screen_axes()
-	canvas.detach()
-	## What the camera does to one grid step along x and along y, from the cell (5, 5).
-	var origin: Vector2 = live.call("screen_of_world", Vector3(5.5, 0.0, 5.5))
-	var step_x: Vector2 = (live.call("screen_of_world", Vector3(6.5, 0.0, 5.5)) as Vector2) - origin
-	var step_y: Vector2 = (live.call("screen_of_world", Vector3(5.5, 0.0, 6.5)) as Vector2) - origin
-	var cos_x: float = axes[0].normalized().dot(step_x.normalized())
-	var cos_y: float = axes[1].normalized().dot(step_y.normalized())
-	print("[WORLD-CHECK] %s view=%s lift=%d ax=%.1f,%.1f ay=%.1f,%.1f cos_x=%.5f cos_y=%.5f zoom_x=%.4f zoom_y=%.4f"
-		% [label, _view_direction, hash(rows), axes[0].x, axes[0].y, axes[1].x, axes[1].y, cos_x, cos_y,
-			step_x.length() / maxf(axes[0].length(), 1e-6), step_y.length() / maxf(axes[1].length(), 1e-6)])
-	return true
-
-
-## The `pick_check` scenario step: in the CURRENT view, every on-screen cell's centre goes through the real pick
-## (`_screen_to_tile()`, what a touch reaches) and must come back as that cell. A cell a standing prop covers on screen
-## picks the prop's cell instead (`pick_cell()` asks the prop boxes first, on purpose): counted apart, never a failure.
-## Prints `[PICK-CHECK] <name> view=<N|E|S|W> cells=<n> ok=<a> covered=<b> bad=<c> offscreen=<d>`.
-func scenario_pick_check(label: String) -> bool:
-	var live: Node = board3d()
-	if live == null or _voxel_board == null:
-		push_error("[Room] scenario_pick_check: no 3D board")
-		return false
-	var standing: Dictionary = {}
-	for block: PropBlock in _voxel_board.prop_blocks():
-		if not block.voxels.is_empty():
-			var first: Vector2i = block.voxels[0].grid_pos
-			standing[Vector2i(first.x >> 3, first.y >> 3)] = true
-	for inst: MeshPropInstance in _voxel_board.mesh_props():
-		if not inst.shattered:
-			standing[inst.cell] = true
-	var area: Rect2 = get_viewport().get_visible_rect().grow(-4.0)
-	var ok: int = 0
-	var covered: int = 0
-	var bad: int = 0
-	var offscreen: int = 0
-	var shown: int = 0
-	for x in range(_room_size.x):
-		for y in range(_room_size.y):
-			var cell := Vector2i(x, y)
-			var at: Vector2 = live.call("cell_screen_center", cell)
-			if not area.has_point(at):
-				offscreen += 1
-				continue
-			var picked: Vector2i = _screen_to_tile(at)
-			if picked == cell:
-				ok += 1
-			elif standing.has(picked):
-				covered += 1
-			else:
-				bad += 1
-				if shown < 5:
-					shown += 1
-					print("[PICK-CHECK] %s: cell %s at %s picked %s" % [label, cell, at, picked])
-	print("[PICK-CHECK] %s view=%s cells=%d ok=%d covered=%d bad=%d offscreen=%d"
-		% [label, _view_direction, _room_size.x * _room_size.y, ok, covered, bad, offscreen])
-	return true
-
-
-## R3D-8 — the `mirror_check` scenario step: the 3D board's twins of what the 2D renderer creates. Cracks: one twin per
-## live crack record. Piles: what the 3D board draws equals the live piles. `tools/persistent/mirror_gate.py` reads the line.
-func scenario_mirror_check(label: String) -> bool:
-	var board: Node = board3d()
-	if board == null or _voxel_board == null:
-		push_error("[Room] scenario_mirror_check: no 3D board")
-		return false
-	var records: int = 0
-	for rec: Dictionary in _voxel_board.glass_crack_records():
-		if rec.has("params"):
-			records += 1
-	var mirror: Node = board.get("_crack_mirror")
-	var twins: int = int(mirror.call("twin_count")) if mirror != null else -1
-	print("[MIRROR-CHECK] %s cracks records=%d twins=%d piles base=%d sprites=%d drawn=%d"
-		% [label, records, twins, _base_shards.size(), _voxel_board.floor_shard_pile_count(),
-			_voxel_board.floor_shard_pile3d_count()])
-	return true
-
-
-## RENDER3D R3D-0 — the `probe` scenario step: a `BoardProbe` dump of every voxel
-## container and every cell plane, written to `path`. Returns the summary, or `{}`
-## after the error is reported. Reads the simulation's own record, never a tile, so it
-## judges both boards and outlives the 2D one.
-func scenario_board_probe(path: String, label: String) -> Dictionary:
-	if _voxel_board == null or _edge_registry == null or _slab_registry == null:
-		push_error("[Room] scenario_board_probe: the board is not built (renderer %s, edges %s, slabs %s)"
-			% [_voxel_board != null, _edge_registry != null, _slab_registry != null])
-		return {}
-	var planes: Dictionary = {}
-	for level: Variant in _voxel_board.cell_plane_levels():
-		planes[level] = _voxel_board.cell_plane_image(int(level))
-	var meta: Dictionary = {
-		"map": _dev_flag("MAP", "default"),
-		"perspective": "N",  ## the layout's orientation, fixed since R3D-ROT (the camera's side is not board state)
-		"world_revision": _world_revision,
-		"board3d": board3d() != null,
-	}
-	var summary: Dictionary = BoardProbeClass.write(path, label, _edge_registry, _slab_registry,
-		_junction_columns, planes, VoxelBoard.plane_origin(), meta, _voxel_board.prop_blocks())
-	if summary.is_empty():
-		return {}
-	print("[BOARD-PROBE] %s — %d voxel(s) in %d container(s) (slice %d, column %d, slab %d), %d plane level(s), %d material(s), %.1f MB, %.0f ms → %s"
-		% [label, summary["voxels"], summary["containers"], summary["slice_voxels"],
-		summary["column_voxels"], summary["slab_voxels"], summary["levels"],
-		summary["materials"], float(summary["bytes"]) / 1048576.0, summary["ms"], path])
-	Telemetry.event("board.probe", summary)
-	return summary
 
 
 ## R3D-SURFACES SM-6 — one puff of a vent's plume: the existing world-space smoke, emitted at the vent's floor point.
@@ -3910,59 +3711,6 @@ func _rebuild_voxel_store(reason: String) -> void:
 		store.multi_cells(), float(store.bytes()) / 1048576.0, store.build_ms])
 
 
-## RENDER3D R3D-1b — `scenario_board_probe()`, read from the shadow store instead of the
-## objects, in the same format, so `board_probe.py diff` compares the two directly. The
-## planes are the renderer's, as in the objects' dump.
-func scenario_board_probe_store(path: String, label: String) -> Dictionary:
-	var store: VoxelStore = VoxelStore.active
-	if store == null or _voxel_board == null:
-		push_error("[Room] scenario_board_probe_store: no active store or no renderer")
-		return {}
-	var planes: Dictionary = {}
-	for level: Variant in _voxel_board.cell_plane_levels():
-		planes[level] = _voxel_board.cell_plane_image(int(level))
-	var meta: Dictionary = {
-		"map": _dev_flag("MAP", "default"),
-		"perspective": "N",  ## the layout's orientation, fixed since R3D-ROT (the camera's side is not board state)
-		"world_revision": _world_revision,
-		"board3d": board3d() != null,
-		"source": "store",
-	}
-	var summary: Dictionary = BoardProbeClass.write_store(path, label, store, planes,
-		VoxelBoard.plane_origin(), meta)
-	if summary.is_empty():
-		return {}
-	var mismatches: int = store.grid_mismatches()
-	print("[BOARD-PROBE] %s (store) — %d voxel(s) in %d container(s), %.0f ms → %s"
-		% [label, summary["voxels"], summary["containers"], summary["ms"], path])
-	print("[VOXEL-STORE] %s — grid mismatches %d, writes mirrored %d, unknown container %d, misplaced %d"
-		% [label, mismatches, store.writes_mirrored, store.writes_unknown_container,
-		store.writes_misplaced])
-	if mismatches != 0 or store.writes_unknown_container != 0 or store.writes_misplaced != 0:
-		push_error("[Room] the shadow store has drifted at '%s': grid mismatches %d, unknown-container writes %d, misplaced writes %d"
-			% [label, mismatches, store.writes_unknown_container, store.writes_misplaced])
-	return summary
-
-
-## RENDER3D R3D-1c step 4 instrument — `PassageQuery.passage_class()` for EVERY edge,
-## printed as a per-class count and an MD5 over the sorted "edge_key=class" lines, so two
-## runs (store vs objects) compare in one line. `BoardProbe` cannot see a passage.
-func scenario_passages(label: String) -> bool:
-	if _edge_registry == null:
-		push_error("[Room] scenario_passages: no edge registry")
-		return false
-	var lines: PackedStringArray = []
-	var tally: Dictionary = {}
-	for edge in _edge_registry.all_edges():
-		var pc: String = PassageQuery.class_name_of(PassageQuery.passage_class(edge, _edge_registry))
-		tally[pc] = int(tally.get(pc, 0)) + 1
-		lines.append("%s=%s" % [edge.id, pc])
-	lines.sort()
-	print("[PASSAGES] %s — %d edge(s) %s digest %s"
-		% [label, lines.size(), tally, "\n".join(lines).md5_text()])
-	return true
-
-
 ## RENDER3D R3D-1b gate steps. Each drives the path a player (or a load) takes, so the
 ## shadow store is judged on the writes the game really makes.
 
@@ -3988,273 +3736,6 @@ func _canonical_set_digest(occluded: Dictionary) -> int:
 	return hash(rows)
 
 
-func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
-	var sets: Array[float] = []
-	var paints2d: Array[float] = []
-	var paints3d: Array[float] = []
-	var refreshes: Array[float] = []
-	var frames: Array[float] = []
-	var cells: Array[int] = []
-	var digest: int = 0
-	var wire_digest: int = 0
-	var phases: Array = [[], [], [], [], []]
-	var tails: Array = [[], [], [], [], []]
-	var live: Node = board3d()
-	_occlusion_set.memo_enabled = false  ## the first pass measures the path that recomputes every step
-	var cut_phases: Array = [[], [], [], [], [], [], []]
-	var geo_digest: int = 0
-	var canon_digest: int = 0
-	var canon_geo: int = 0
-	if live != null:
-		live.occ_digest_on = true
-	for i: int in range(reps):
-		agent.set_cell(a if i % 2 == 0 else b)
-		var t0: int = Time.get_ticks_usec()
-		_recompute_occlusion()
-		var step_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
-		sets.append(float(_occ_last_usec[0]) / 1000.0)
-		## Digests are read AFTER the step's own time is taken: building the full per-column set is not part of the step.
-		var occluded: Dictionary = _occlusion_set.get_occluded_cells()
-		cells.append(occluded.size())
-		digest = hash([digest, str(occluded)])
-		canon_digest = hash([canon_digest, _canonical_set_digest(occluded)])
-		wire_digest = hash([wire_digest, str(_occlusion_set.get_wireframe_by_level())])
-		for k: int in range(5):
-			(phases[k] as Array).append(float(_occlusion_set.last_phase_usec[k]) / 1000.0)
-			(tails[k] as Array).append(float(_occlusion_set.last_tail_usec[k]) / 1000.0)
-		if live != null:
-			live.finish_occ_digests()
-			geo_digest = hash([geo_digest, live.last_occ_digest])
-			canon_geo = hash([canon_geo, live.last_occ_canon])
-			for k: int in range(7):
-				(cut_phases[k] as Array).append(float(live.last_occ_usec[k]) / 1000.0)
-		paints2d.append(float(_occ_last_usec[1]) / 1000.0)
-		paints3d.append(float(_occ_last_usec[2]) / 1000.0)
-		refreshes.append(float(_occ_last_usec[3]) / 1000.0)
-		var frame_t0: int = Time.get_ticks_usec()
-		await get_tree().process_frame
-		frames.append(step_ms + float(Time.get_ticks_usec() - frame_t0) / 1000.0)
-	print("[OCC-BENCH] occluded columns per step: min %d, max %d, digest %d, wireframe digest %d" % [cells.min(), cells.max(), digest, wire_digest])
-	print("[OCC-BENCH] canonical set digest %d" % canon_digest)
-	## The revealed roofs, view-independent by design (stored per GU, opened by slab adjacency): `roof_yaw_gate.py` holds this
-	## line equal across the four views.
-	var roof_gus: Dictionary = _occlusion_set.get_roof_gus()
-	var roof_rows: Array = []
-	for gu: Vector2i in roof_gus:
-		var entry: Dictionary = roof_gus[gu]
-		roof_rows.append([gu.x, gu.y, int(entry["min_level"]), int(entry["max_level"]), int(entry["ring"])])
-	roof_rows.sort()
-	print("[OCC-BENCH] canonical roof digest %d, %d roof GU(s) open" % [hash(roof_rows), roof_rows.size()])
-	var tail_names: PackedStringArray = ["roof borders + merge", "set compare", "(unused)", "exposure (per GU)", "wireframe lines"]
-	for k: int in range(5):
-		var tail_total: float = 0.0
-		for v: float in tails[k]:
-			tail_total += v
-		print("[OCC-BENCH]     tail %s: mean %.2f ms" % [tail_names[k], tail_total / float(reps)])
-	var phase_names: PackedStringArray = ["group slices", "edge occlusion", "expand to columns", "roof", "wireframe"]
-	for k: int in range(5):
-		var total_ms: float = 0.0
-		for v: float in phases[k]:
-			total_ms += v
-		print("[OCC-BENCH]   phase %s: mean %.2f ms, max %.2f ms" % [phase_names[k], total_ms / float(reps), (phases[k] as Array).max()])
-	if live != null:
-		print("[OCC-BENCH] cutaway geometry digest %d, canonical %d" % [geo_digest, canon_geo])
-		var cut_names: PackedStringArray = ["texture+uniforms", "outline edges", "side fills", "caps+rims", "merge", "segment ray march", "mesh build"]
-		for k: int in range(7):
-			var cut_total: float = 0.0
-			for v: float in cut_phases[k]:
-				cut_total += v
-			print("[OCC-BENCH]   cutaway %s: mean %.2f ms, max %.2f ms" % [cut_names[k], cut_total / float(reps), (cut_phases[k] as Array).max()])
-	## Second pass, memo on: the same steps again (the agent or the hover returning to cells it has seen).
-	_occlusion_set.memo_enabled = true
-	var memo_digest: int = 0
-	var memo_ms: Array[float] = []
-	for i: int in range(reps):
-		agent.set_cell(a if i % 2 == 0 else b)
-		_recompute_occlusion()
-		memo_ms.append(float(_occ_last_usec[0]) / 1000.0)
-		memo_digest = hash([memo_digest, str(_occlusion_set.get_occluded_cells())])
-		await get_tree().process_frame
-	var memo_total: float = 0.0
-	for v: float in memo_ms:
-		memo_total += v
-	print("[OCC-BENCH] memoised set recompute: mean %.2f ms, max %.2f ms, digest %d (%s the reference pass)" % [
-		memo_total / float(reps), memo_ms.max(), memo_digest, "==" if memo_digest == digest else "DIFFERS FROM"])
-	for row: Array in [["set recompute", sets], ["2D ghost apply", paints2d], ["3D cutaway (on_occlusion)", paints3d], ["2D overlay refresh", refreshes], ["step incl. next frame", frames]]:
-		var values: Array[float] = row[1]
-		var total: float = 0.0
-		for v: float in values:
-			total += v
-		print("[OCC-BENCH] %s: mean %.2f ms, max %.2f ms over %d" % [row[0], total / float(values.size()), values.max(), values.size()])
-
-
-func scenario_shoot(index: int) -> bool:
-	if _agent_shot_controller == null or index < 0 or index >= _guards.size():
-		push_error("[Room] scenario_shoot: no shot controller or no guard #%d (%d on the map)"
-			% [index, _guards.size()])
-		return false
-	var agent_xy: PackedStringArray = _dev_flag("SHOT_AGENT_CELL", "").split(",")
-	if agent_xy.size() == 2 and agent_xy[0].is_valid_int() and agent_xy[1].is_valid_int():
-		agent.set_cell(Vector2i(agent_xy[0].to_int(), agent_xy[1].to_int()))
-	var guard_xy: PackedStringArray = _dev_flag("SHOT_GUARD_CELL", "").split(",")
-	if guard_xy.size() == 2 and guard_xy[0].is_valid_int() and guard_xy[1].is_valid_int():
-		var guard = _guards[index]
-		guard.cell = Vector2i(guard_xy[0].to_int(), guard_xy[1].to_int())
-		guard.position = guard._cell_to_world(guard.cell)
-	_agent_shot_controller.open_menu_for(index)
-	for _f in range(10):
-		await get_tree().process_frame
-	_agent_shot_controller.fire_at_active()
-	var waited: int = 0
-	while (_destruction_render_busy or is_resolving_action()) and waited < 1800:
-		await get_tree().process_frame
-		waited += 1
-	## `SHOT_SETTLE_FRAMES` (default 30): a capture of the impact's own sparks and smoke needs a few frames, not
-	## thirty, because they are gone by then (R3D-7 sparks check).
-	for _f in range(_dev_flag_num("SHOT_SETTLE_FRAMES", 30)):
-		await get_tree().process_frame
-	return waited < 1800
-
-
-## Scenario step `weapon <id>`: the agent's firearm, as the number keys choose it (`AgentShotController.set_weapon`).
-func scenario_weapon(weapon_id: String) -> bool:
-	if _agent_shot_controller == null:
-		push_error("[Room] scenario_weapon: no shot controller")
-		return false
-	_agent_shot_controller.set_weapon(weapon_id)
-	return true
-
-
-## Scenario step `shot_aim <guard>`: the aim of `scenario_shoot` WITHOUT the trigger: the agent turns toward the guard and raises his
-## weapon (the menu opens on the target). `shot_cancel` puts it down again.
-func scenario_shot_aim(index: int) -> bool:
-	if _agent_shot_controller == null or index < 0 or index >= _guards.size():
-		push_error("[Room] scenario_shot_aim: no shot controller or no guard #%d (%d on the map)" % [index, _guards.size()])
-		return false
-	_agent_shot_controller.open_menu_for(index)
-	return true
-
-
-func scenario_shot_cancel() -> bool:
-	if _agent_shot_controller == null:
-		push_error("[Room] scenario_shot_cancel: no shot controller")
-		return false
-	_agent_shot_controller.cancel_active()
-	return true
-
-
-## Scenario step `decal_wall <material> <gx,gy>` (R3D-LOOK L1): every damage decal of a material shown at once on one
-## wall, for a static look judgement. Writes the real damage tuples through the store (no round, no blast, no soot) and
-## hands the touched voxels to the board, so the marks are drawn by the shipped shader. Rows, from the bottom: a round's
-## CRACKED mark, a round's DENTED recess, a blast's CRACKED, a blast's DENTED; columns: the three variants. A mark is one
-## voxel big, so the twelve sit two voxels apart inside the GU's column, on the SW face (+y) of the outermost wall layer.
-func scenario_decal_wall(material_id: String, gu: Vector2i) -> bool:
-	var store: VoxelStore = VoxelStore.active
-	var live: Node = board3d()
-	if store == null or live == null or _voxel_board == null:
-		push_error("[Room] scenario_decal_wall: no active store or no 3D board")
-		return false
-	var base_level: int = _voxel_board.ground_plane_level()
-	var face_y: int = -1  ## the largest y holding an intact, visible voxel of the material with an open SW face
-	for x: int in range(gu.x * 8, gu.x * 8 + 8):
-		for y: int in range(gu.y * 8 - 4, gu.y * 8 + 12):
-			var claim: int = store.owner[store.cell_index(x, y, base_level)]
-			if claim >= 0 and y > face_y and not store.has_cell(x, y + 1, base_level) \
-					and store.material_ids[store.mat[claim]] == material_id:
-				face_y = y
-	if face_y == -1:
-		push_error("[Room] scenario_decal_wall: no %s wall face in the GU column of %s" % [material_id, gu])
-		return false
-	var rows: Array = [
-		[Voxel.DamageState.CRACKED, false], [Voxel.DamageState.DENTED, false],
-		[Voxel.DamageState.CRACKED, true], [Voxel.DamageState.DENTED, true]]
-	var touched: Array = []
-	for r: int in range(rows.size()):
-		for v: int in range(3):
-			var claim: int = store.owner[store.cell_index(gu.x * 8 + 1 + v * 2, face_y, base_level + r * 2)]
-			if claim >= 0 and store.set_damage(claim, int(rows[r][0]), bool(rows[r][1]), Voxel.CarvedSide.LEFT, v, 0):
-				touched.append(store.voxel_of(claim))
-	print("[DECAL-WALL] %s: %d marks on y=%d" % [material_id, touched.size(), face_y])
-	live.call("on_shot_commit", touched)
-	for _f in range(20):
-		await get_tree().process_frame
-	return not touched.is_empty()
-
-
-## F2's map reload: the same `load_map()` the debug panel calls, on the current map.
-func scenario_reload() -> bool:
-	load_map(map_id)
-	for _f in range(10):
-		await get_tree().process_frame
-	return _edge_registry != null
-
-
-## SAVE-01's round trip. No production load flow exists yet (SaveState is plumbing), so
-## this takes the one a rotation already runs: capture, a fresh `load_map()` (which clears
-## the run state), `SaveState.restore()`, then `_reapply_base_damage()` to stamp the
-## restored records back onto the rebuilt voxels.
-func scenario_save_restore() -> bool:
-	var data: Dictionary = SaveState.capture(self)
-	load_map(map_id)
-	if not SaveState.restore(self, data):
-		return false
-	## A recorded hole's opening is claimed BEFORE the replay flushes, or every hole is cut with the default opening.
-	_claim_base_openings()
-	_reapply_base_damage()
-	var gone: Array = []
-	for _b: PropBlock in _voxel_board.prop_blocks():
-		for _v: Voxel in _b.voxels:
-			if _v.damage_state == Voxel.DamageState.DESTROYED:
-				gone.append(_v)
-	if not gone.is_empty() and board3d() != null:
-		board3d().on_shot_commit(gone)
-	_reapply_base_shattered_props()
-	_release_destroyed_prop_cells()
-	rebuild_soft_sheets()   ## the cloths were built from the undamaged map `load_map` made: a replay that destroyed a stall's voxels must take its cloth with it
-	## (A rotation no longer relights: R3D-ROT.) This restore relights after its replay, and
-	## `_reapply_base_damage()` says it must run BEFORE the light-field repaint. Without this the restored world was
-	## lit as the undamaged map: 560 intact floor voxels beside PLAYGROUND's two blasts read bucket 3 where the
-	## world they stand in gives 6-9 (R3D-13). A production load flow has to do the same.
-	_lighting_controller.rebuild_all()
-	_respawn_base_debris()
-	_respawn_base_prop_piles()
-	for _f in range(10):
-		await get_tree().process_frame
-	return true
-
-
-## Scenario step `view_mode`: flip one analysis aid through the toggles the HUD and the F-keys reach. Ten frames
-## follow so the overlay has drawn when the next step captures.
-func scenario_view_mode(mode: String) -> bool:
-	match mode:
-		"numbers":
-			_on_hud_numbers_toggled()
-		"ruler":
-			_debug_tools_controller.toggle_voxel_ruler_overlay()
-		"dev", "light", "heat":
-			_set_view_mode(mode)
-		"layout":
-			toggle_layout_overlay(_dev_flag("LAYOUT_RAIL", ""))
-		_:
-			push_error("[Room] scenario_view_mode: '%s' is not dev, light, heat, numbers, ruler or layout" % mode)
-			return false
-	for _f in range(10):
-		await get_tree().process_frame
-	return true
-
-
-## A perspective rotation, through `_set_perspective()` — the camera's yaw
-## `_capture_all_four_views()` runs, without its captures into Screenshots/history.
-func scenario_perspective(direction: String) -> bool:
-	if not PerspectiveMapperClass.is_valid_direction(direction):
-		push_error("[Room] scenario_perspective: '%s' is not N, E, S or W" % direction)
-		return false
-	_set_perspective(direction)
-	for _f in range(10):
-		await get_tree().process_frame
-	return _view_direction == direction
-
-
 ## R3D-13 — the map-wide light repaint on the world as it stands: the reset, the full apply and
 ## the soot projection a rotation or a SaveState restore runs, with no rebuild around it. Probing
 ## before and after is the one way to ask "does the incremental light equal a full relight of the
@@ -4263,52 +3744,6 @@ func scenario_perspective(direction: String) -> bool:
 ## `SKYLIGHT_HIT_RADIUS` voxels at the pane's centre (its voxels DESTROYED, base-recorded) and a craze field over the rest, flushed the
 ## way the cook's glass is (the dirty pass, the crack re-cut, the openings and their rim, the craze masks), then the board's commit.
 const SKYLIGHT_HIT_RADIUS: float = 6.5
-func scenario_skylight_hit() -> bool:
-	_ensure_glass_index()
-	var ids: Array = []
-	for pid: String in _glass_pane_slices:
-		if pid.begins_with("PANE_SKY_"):
-			ids.append(pid)
-	if ids.is_empty():
-		push_error("[Room] skylight_hit: this map has no skylight")
-		return false
-	ids.sort()
-	var hosts: Array = _glass_pane_slices[ids[0]]
-	var sum := Vector2.ZERO
-	var n: int = 0
-	for h in hosts:
-		var packed: PackedInt32Array = h.cells_packed()
-		for o in range(0, packed.size(), 3):
-			sum += Vector2(float(packed[o]) + 0.5, float(packed[o + 1]) + 0.5)
-			n += 1
-	if n == 0:
-		return false
-	var centre: Vector2 = sum / float(n)
-	var gone: Array = []
-	var keep: Voxel = null
-	for h in hosts:
-		for v: Voxel in h.voxels:
-			if Vector2(float(v.grid_pos.x) + 0.5, float(v.grid_pos.y) + 0.5).distance_to(centre) <= SKYLIGHT_HIT_RADIUS:
-				v.set_damage(Voxel.DamageState.DESTROYED, true, Voxel.CarvedSide.BOTTOM, 0, 0)
-				record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state, v.damage_is_blast, v.damage_carved_side,
-					v.damage_variant, v.damage_substrate, v)
-				gone.append(v)
-			elif keep == null:
-				keep = v
-	await _voxel_board.process_dirty_slabs_async(_slab_registry)
-	var craze_id: int = 0
-	if keep != null:
-		craze_id = claim_glass_craze(keep.grid_pos, keep.level, 0.6)
-	_voxel_board.refresh_glass_crack_occupancy()
-	var shaped: int = _voxel_board.refresh_glass_rims()
-	_voxel_board.refresh_craze_opening_masks()
-	var live: Node = board3d()
-	if live != null:
-		live.on_shot_commit(gone)
-	bump_world_revision()
-	print_debug("[SKYLIGHT-HIT] pane %s: %d voxel(s) destroyed round (%.1f, %.1f), craze %d, %d cell(s) shaped by the opening"
-		% [ids[0], gone.size(), centre.x, centre.y, craze_id, shaped])
-	return true
 
 
 ## ROOF_MASTER_PLAN v0.28 — the DEV event of the bending study: every soft roof of the map lets go under GRAVITY ALONE (no blast, no fire). Each becomes a
@@ -5211,51 +4646,6 @@ func _spawn_cloth_flaps(destroyed: Dictionary, material: String) -> int:
 	return flaps.size()
 
 
-## RF-G G3 audit: every standing voxel of the store asked; an intact map has none without support (a count above 0 names a material the reach table is too strict for).
-func scenario_struct_audit() -> bool:
-	var store: VoxelStore = VoxelStore.active
-	if store == null or _voxel_board == null:
-		push_error("[Room] struct_audit: no store or board")
-		return false
-	var grid: ClaimGrid = ClaimGrid.of_store(store)
-	_fill_anchored(grid)
-	var seeds: Array = []
-	var seen: Dictionary = {}
-	for claim: int in range(store.claims):
-		var k := Vector3i(store.xyz[claim * 3], store.xyz[claim * 3 + 1], store.xyz[claim * 3 + 2])
-		if not seen.has(k):
-			seen[k] = true
-			seeds.append(k)
-	var standing: Dictionary = {}   ## material -> [count, highest level]
-	for k: Vector3i in seeds:
-		var m: Variant = grid.standing_material(k)
-		if m != null:
-			var row: Array = standing.get(String(m), [0, 0])
-			row[0] += 1
-			row[1] = maxi(int(row[1]), k.z)
-			standing[String(m)] = row
-	var t0: int = Time.get_ticks_usec()
-	var loose: Dictionary = StructuralSupport.unsupported(grid, _voxel_board.ground_plane_level(), seeds, {}, false, 1 << 30)   ## the whole map: no cap
-	var by_material: Dictionary = {}
-	var lo := Vector3i(1 << 30, 1 << 30, 1 << 30)
-	var hi := Vector3i(-(1 << 30), -(1 << 30), -(1 << 30))
-	for k: Vector3i in loose:
-		var m: String = grid.material_at(k)
-		by_material[m] = int(by_material.get(m, 0)) + 1
-		lo = Vector3i(mini(lo.x, k.x), mini(lo.y, k.y), mini(lo.z, k.z))
-		hi = Vector3i(maxi(hi.x, k.x), maxi(hi.y, k.y), maxi(hi.z, k.z))
-	if not loose.is_empty():
-		var probe: Vector3i = loose.keys()[loose.size() / 2]
-		var col: String = ""
-		for lv in range(_voxel_board.ground_plane_level(), probe.z + 2):
-			var mm: Variant = grid.standing_material(Vector3i(probe.x, probe.y, lv))
-			col += "." if mm == null else str(mm).substr(0, 1)
-		print("[STRUCT-AUDIT] a loose voxel at %s: its column from the ground up: %s" % [str(probe), col])
-		print("[STRUCT-AUDIT] the loose voxels span x %d..%d, y %d..%d, level %d..%d" % [lo.x, hi.x, lo.y, hi.y, lo.z, hi.z])
-	print("[STRUCT-AUDIT] %d voxel(s) asked, %d with no support %s (%.1f ms); standing by material [count, highest level] %s" % [seeds.size(), loose.size(), str(by_material), float(Time.get_ticks_usec() - t0) / 1000.0, str(standing)])
-	return true
-
-
 ## The cells that hold themselves up by design: the voxels of a prop whose definition says `anchored` (a shelf, a picture).
 func _fill_anchored(grid: ClaimGrid) -> void:
 	var ground: int = _voxel_board.ground_plane_level()
@@ -5265,105 +4655,6 @@ func _fill_anchored(grid: ClaimGrid) -> void:
 				grid.anchored[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
 			elif v.level < ground:
 				grid.below_props[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true   ## a prop in a dug pit (storey -1): held by the pit, not by the plane
-
-
-## RF-G G3 bench: `STRUCT_CUT=<material>,<levels>` destroys the lowest `levels` levels above the ground of EVERY voxel of that material (a wall with its foot gone), through the
-## same commit a blast's damage takes, then asks the support service about it like any event: what hangs over the cut must fall. A dev tool: it is how G3 is seen on a real map.
-func scenario_struct_cut() -> bool:
-	var spec: PackedStringArray = str(_dev_flag("STRUCT_CUT", "")).split(",")
-	var store: VoxelStore = VoxelStore.active
-	if spec.size() != 2 or store == null or _voxel_board == null:
-		push_error("[Room] struct_cut: set STRUCT_CUT=<material>,<levels> and have a board")
-		return false
-	var ground: int = _voxel_board.ground_plane_level()
-	var grid: ClaimGrid = ClaimGrid.of_store(store)
-	var cut: Array = []
-	var seen: Dictionary = {}
-	for claim: int in range(store.claims):
-		var k := Vector3i(store.xyz[claim * 3], store.xyz[claim * 3 + 1], store.xyz[claim * 3 + 2])
-		if seen.has(k) or k.z < ground or k.z >= ground + int(spec[1]) or grid.material_at(k) != spec[0] or grid.damage_at(k) == Voxel.DamageState.DESTROYED:
-			continue
-		seen[k] = true
-		var v: Voxel = grid.voxel_at(k)
-		if v != null:
-			_quiet_destroy[k] = true
-			v.set_damage(Voxel.DamageState.DESTROYED, true, Voxel.CarvedSide.NONE, 0, 0)
-			record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state, v.damage_is_blast, v.damage_carved_side, v.damage_variant, v.damage_substrate, v)
-			cut.append(v)
-	await _voxel_board.process_dirty_slabs_async(_slab_registry)
-	await _voxel_board.process_dirty_async(_edge_registry)
-	board3d().on_shot_commit(cut)
-	bump_world_revision()
-	print("[STRUCT-CUT] %d voxel(s) of %s destroyed up to level +%s" % [cut.size(), spec[0], spec[1]])
-	schedule_structural_support(cut)
-	return true
-
-
-## MATERIALS F12 feasibility bench (see `scenario_runner.gd`, op `flood`): the whole playable floor as one body of water. The plane has no walls (every cell
-## active: the upper bound of a real segment), a closed rim, and a source that keeps the water moving. A timer ticks it every 0.3 s and prints the tick's cost.
-func scenario_flood(mode: String) -> bool:
-	if _flood_timer != null and is_instance_valid(_flood_timer):
-		_flood_timer.queue_free()
-	_flood_timer = null
-	if _flood_sheet != null and is_instance_valid(_flood_sheet):
-		_flood_sheet.queue_free()
-	_flood_sheet = null
-	for old_sheet in _flood_sheets:
-		if is_instance_valid(old_sheet):
-			old_sheet.queue_free()
-	_flood_sheets.clear()
-	if mode == "off":
-		return true
-	var live: Node3D = board3d()
-	if live == null:
-		push_error("[Room] flood: no 3D board")
-		return false
-	if mode.begins_with("ch"):
-		return _flood_channels(live, int(mode.substr(2)), 0.25 if mode.ends_with("q") else 0.5)
-	var pr: Rect2i = _base_layout.get("playable_rect", Rect2i(Vector2i.ZERO, _room_size))
-	var rect := Rect2(Vector2(pr.position), Vector2(pr.size))
-	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
-	var base_y: float = float(GeometryCoords.FLOOR_TOP_LEVEL + 1 - int(live.call("ground_level"))) * unit + LiquidSheet3DRef.LIFT
-	var params: Dictionary = LiquidRegistryRef.resolve("caribe", {})
-	var plane: RefCounted = null
-	if mode != "level":
-		var cell: float = 0.5 if mode == "plane05" else 0.25
-		plane = FluidPlaneRef.new()
-		var cols: int = int(round(rect.size.x / cell)) + 2
-		var rows: int = int(round(rect.size.y / cell)) + 2
-		plane.setup(cols, rows, cell, rect.position - Vector2(cell, cell), 0.9)
-		for r in range(rows):
-			for c in range(cols):
-				if plane.is_rim(c, r):
-					plane.ground[plane.index(c, r)] = FluidPlaneRef.WALL   ## a closed segment: the outer walls hold it
-		plane.add_source(Rect2(rect.position + Vector2(1.0, 1.0), Vector2(2.0, 0.5)), 6.0)
-	var sheet: MeshInstance3D = LiquidSheet3DRef.new()
-	live.add_child(sheet)
-	sheet.setup(rect, base_y, params, Vector2(0.0, 1.0), plane)
-	_flood_sheet = sheet
-	if plane != null:
-		var timer := Timer.new()
-		timer.wait_time = 0.3
-		add_child(timer)
-		var stats: Array = [0, 0.0, 0.0]    ## ticks, total ms, worst ms
-		timer.timeout.connect(func() -> void:
-			var t0: int = Time.get_ticks_usec()
-			sheet.tick()
-			var ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
-			stats[0] = int(stats[0]) + 1
-			stats[1] = float(stats[1]) + ms
-			stats[2] = maxf(float(stats[2]), ms)
-			if int(stats[0]) % 10 == 0:
-				var wet: int = 0
-				for d in plane.depth:
-					if d > 0.05:
-						wet += 1
-				print("[FLOOD] %s grid %dx%d tick %d: mean %.2f ms, worst %.2f ms, wet cells %d of %d, volume %.0f" % [mode, plane.cols, plane.rows, int(stats[0]),
-						float(stats[1]) / float(stats[0]), float(stats[2]), wet, plane.cols * plane.rows, plane.total_volume()]))
-		_flood_timer = timer
-		timer.start()
-	print("[FLOOD] %s started on a %.0f x %.0f GU floor" % [mode, rect.size.x, rect.size.y])
-	return true
 
 
 ## M6 F8: `count` copies of PIPE_LAB's channel (1.5 x 10 GU, 0.25 GU cells, a source at one end, a drain at the other, the curb 2 voxels), side by side, each a
@@ -5413,16 +4704,6 @@ func _flood_channels(live: Node3D, count: int, cell: float) -> bool:
 	timer.start()
 	print("[FLOOD] ch%d started" % count)
 	return true
-
-
-func scenario_roof_gravity() -> bool:
-	var released: int = 0
-	for roof: Dictionary in _base_layout.get("roof_instances", []):
-		if SoftSheetPresets.has(String(roof["material"])) and bool(await release_roof_sheet(roof, false)):   ## the bench lets the cloth go from FLAT (the fall the Moto cost round measures)
-			released += 1
-	if released == 0:
-		push_error("[Room] roof_gravity: this map has no soft roof (materials with a SoftSheetPresets row: %s)" % str(SoftSheetPresets.OF.keys()))
-	return released > 0
 
 
 ## ROOF_MASTER_PLAN v0.28 — a soft roof (`roof`: one entry of the layout's `roof_instances`) becomes a CLOTH. Its voxels leave the board like a pane's
@@ -5599,83 +4880,11 @@ func _release_finish(jobs: Array) -> bool:
 	return true
 
 
-func scenario_relight() -> bool:
-	_repaint_voxel_light_buckets(false)
-	for _f in range(10):
-		await get_tree().process_frame
-	return _voxel_light_field != null
-
-
-## TEL-06b — emitted when `scenario_detonate()` has finished, successfully or not. The
-## runner awaits this signal rather than the coroutine itself, and starts the
-## detonation deferred, so a failure that returns at once cannot fire before it waits.
-signal scenario_detonation_done(ok: bool)
-
 ## RENDER3D R3D-0 — every beat a blast names (`event_probe_beat()`), emitted whether
 ## or not the frame probe is on, so a scenario's `capture_at` can photograph INSIDE a
 ## blast: `detonate` only returns once the blast is over, and the embers are gone by
 ## then.
 signal blast_beat(beat: String)
-
-
-## TEL-06b (DEVICE_DIAGNOSTICS §15.2) — a dev grenade detonated through the menu path
-## (`open_menu_for()` + `detonate_active()`, as the benchmark does), with the camera
-## ON the grenade, returning once the blast has finished playing. DIAG-19 needs the
-## blast on screen in the verdict framing; the benchmark's never was.
-## RETIRE-2 — `throw <index> <x,y>`: the dev grenade thrown to `target` through the real `execute_grenade_throw()`. True when the
-## throw started; the flight, the fuse and the blast then run on their own, as they do for a player.
-func scenario_throw(index: int, target: Vector2i) -> bool:
-	if _grenade_controller == null:
-		push_error("[Room] scenario_throw: no GrenadeController — dev grenades exist on PLAYGROUND only")
-		return false
-	_seed_dev_grenades_if_empty("SCENARIO")
-	var grenades: Array = _grenade_controller._grenades
-	if index < 0 or index >= grenades.size() or bool(grenades[index]["detonated"]):
-		push_error("[Room] scenario_throw: dev grenade #%d does not exist or is spent" % index)
-		return false
-	_grenade_controller._targeting_mode = true
-	_grenade_controller._targeting_grenade_index = index
-	_grenade_controller._targeting_target_gu = target
-	_grenade_controller.execute_grenade_throw()
-	return true
-
-
-func scenario_detonate(index: int) -> void:
-	if _grenade_controller == null:
-		push_error("[Room] scenario_detonate: no GrenadeController — dev grenades exist on PLAYGROUND only")
-		scenario_detonation_done.emit(false)
-		return
-	_seed_dev_grenades_if_empty("SCENARIO")
-	var grenades: Array = _grenade_controller._grenades
-	if index < 0 or index >= grenades.size() or bool(grenades[index]["detonated"]):
-		push_error("[Room] scenario_detonate: dev grenade #%d does not exist or is spent" % index)
-		scenario_detonation_done.emit(false)
-		return
-	centre_camera_on(grenades[index]["gu_cell"])
-	await get_tree().process_frame
-	Telemetry.event("blast.request", {"index": index, "gu": grenades[index]["gu_cell"]})
-	_grenade_controller.open_menu_for(index)
-	## The real click closes the menu BEFORE the action's visuals (DetonateContextMenu._on_action_pressed()); a direct
-	## `detonate_active()` never reaches that handler, so without this the "Detonate / Cancel" popup and the red preview
-	## stay over the whole blast in every capture and recording.
-	if _context_menu != null:
-		_context_menu.close()
-	if _blast_wireframe_overlay != null:
-		_blast_wireframe_overlay.clear()
-	_grenade_controller.detonate_active()
-	## `is_blast_playing()`, not only `is_resolving_action()` — the action lock clears
-	## about halfway through the blast (see the benchmark).
-	var waited: int = 0
-	const MAX_WAIT_FRAMES: int = 3600
-	while (is_resolving_action() or _grenade_controller.is_blast_playing()) \
-			and waited < MAX_WAIT_FRAMES:
-		await get_tree().process_frame
-		waited += 1
-	## One more frame, so `event_probe_report()` has certainly printed.
-	await get_tree().process_frame
-	if waited >= MAX_WAIT_FRAMES:
-		push_warning("[Room] scenario_detonate: grenade #%d still playing after %d frames" % [index, waited])
-	scenario_detonation_done.emit(waited < MAX_WAIT_FRAMES)
 
 
 ## TEL-06a — a zoom through the camera's own clamp, on the timeline like a pinch.
@@ -6388,7 +5597,6 @@ func _clear_orphaned_soot(grid_pos: Vector2i, level: int) -> void:
 var _vfx_destroy_count: int = 0
 
 
-
 ## E-NATIVE-01 (Director, 2026-08-09) — the detonation's visible core, built from
 ## this game's OWN vfx vocabulary instead of an imported sprite sheet.
 ##
@@ -6975,7 +6183,7 @@ func _debris_tint(tint: Color, voxel_point: Vector2, material_id: String) -> Col
 		k *= BoardLook.char_mult(ch)
 	elif tone >= 0 and tone < DEBRIS_SOOT_MULT.size():
 		k *= DEBRIS_SOOT_MULT[tone]
-	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+	if DevFlag.on("PROP_DEBUG"):
 		_debris_tone_hist[tone] = int(_debris_tone_hist.get(tone, 0)) + 1
 	## The pile shader is unshaded and multiplies in LINEAR space: a plain 0.27 displays as ~0.55 and "sooted" debris
 	## stays pale. The factor is meant as a DISPLAYED brightness, so it is taken through the gamma (hue untouched).
@@ -7016,13 +6224,13 @@ func _release_destroyed_prop_cells() -> void:
 		if float(tally[0]) <= prop_collapse_standing_fraction * float(tally[1]):
 			_blocked_cells.erase(gu)
 			released = true
-			if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+			if DevFlag.on("PROP_DEBUG"):
 				print("[PROP-DEBUG] prop on %s collapsed (%d of %d voxels standing): its GU no longer blocks" % [gu, tally[0], tally[1]])
 	for inst: MeshPropInstance in _voxel_board.mesh_props():
 		if inst.shattered and _blocked_cells.has(inst.cell):
 			_blocked_cells.erase(inst.cell)
 			released = true
-			if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+			if DevFlag.on("PROP_DEBUG"):
 				print("[PROP-DEBUG] shattered %s: its GU no longer blocks" % inst.id)
 	if released and movement_overlay != null:
 		movement_overlay.set_blocked_cells(_build_navigation_blocked_cells())
@@ -7090,7 +6298,7 @@ func apply_prop_proximity_effects(gu_rings: Dictionary, bomb_def) -> void:
 	if _voxel_board == null:
 		return
 	var weights: Array = bomb_def.destroy_ring_weights
-	var prop_debug: bool = OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1"
+	var prop_debug: bool = DevFlag.on("PROP_DEBUG")
 	if prop_debug:
 		_print_prop_ring_map(gu_rings)
 	var broke_any: bool = false
@@ -7131,7 +6339,7 @@ var _pending_prop_breaks: Array = []
 ## flash has cleared.
 func release_prop_breaks() -> void:
 	var live: Node = board3d()
-	var prop_debug: bool = OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1"
+	var prop_debug: bool = DevFlag.on("PROP_DEBUG")
 	for pending: Dictionary in _pending_prop_breaks:
 		var inst: MeshPropInstance = pending["inst"]
 		var weight: float = float(pending["weight"])
@@ -7191,7 +6399,7 @@ func _start_prop_fragments(inst: MeshPropInstance, weight: float, ring: int, sou
 	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials)
 	var base_gu: Vector2i = inst.cell
 	node.settled.connect(_on_prop_fragments_settled.bind(base_gu, origin.y, zone_materials, division))
-	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+	if DevFlag.on("PROP_DEBUG"):
 		print("[PROP-DEBUG] %s -> %d fragments of 1/%d GU (%s), weight %.2f, ring %d, blast %s"
 			% [inst.id, cells.size(), 8 * division, "model" if inst.model_path != "" else "box", weight, ring, blast])
 	return true
@@ -7206,7 +6414,7 @@ func _on_prop_fragments_settled(records: Array, base_gu: Vector2i, y0: float, zo
 		base_records.append({"col": r["column"],
 			"level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
 	_base_prop_piles[base_gu] = {"y0": y0, "zone_materials": zone_materials, "records": base_records, "div": division}
-	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+	if DevFlag.on("PROP_DEBUG"):
 		print("[PROP-DEBUG] pile at base GU %s: %d cubes, y0 %.3f" % [base_gu, base_records.size(), y0])
 
 
@@ -7969,7 +7177,7 @@ func _respawn_base_prop_piles() -> void:
 			records.append({"column": r["col"],
 				"level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
 		live.call("spawn_prop_pile", records, float(pile["y0"]), pile["zone_materials"], division)
-		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+		if DevFlag.on("PROP_DEBUG"):
 			print("[PROP-DEBUG] pile of base GU %s laid back: %d cubes" % [base_gu, records.size()])
 	for pile: Dictionary in _base_rubble_piles:
 		var rubble: Array = []
@@ -8136,7 +7344,7 @@ func step_prop_debris_fall(job: Dictionary, budget_usec: int) -> bool:
 					job["landings"] = landings
 					job["rain_i"] = 0
 					job["phase"] = 6
-					if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+					if DevFlag.on("PROP_DEBUG"):
 						var first: Vector3i = piles.keys()[0] if not piles.is_empty() else Vector3i.ZERO
 						print("[PROP-DEBUG] debris soot-tone histogram so far: %s (4 = clean)" % [_debris_tone_hist])
 						var dbg_pile = _voxel_board._debris_piles.get(material_id)
@@ -8340,7 +7548,7 @@ func _repaint_voxel_light_buckets_scoped(gus: Array, sliced: bool = false) -> vo
 	if _voxel_light_field == null:
 		_voxel_light_field = VoxelLightField.new()
 		_voxel_light_field.set_roofs(_roof_slabs)
-	var _sp: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1" or _dev_flag_on("REPAINT_PROFILE")
+	var _sp: bool = DevFlag.on("REPAINT_PROFILE") or _dev_flag_on("REPAINT_PROFILE")
 	var _s1: int = Time.get_ticks_usec()
 	var live_changes: Array[Vector3i] = []
 	var occ: Dictionary = _voxel_board.build_occupancy_live(live_changes)
@@ -8381,7 +7589,7 @@ func _repaint_voxel_light_buckets_scoped(gus: Array, sliced: bool = false) -> vo
 	## THE SCOPE GATE. A scoped repaint is only correct if it leaves the board in
 	## the state a full one would have. Env-gated because it costs a full repaint
 	## on top of the scoped one.
-	if OS.get_environment("INFILTRAITOR_SHOT_SCOPE_PROBE") == "1":
+	if DevFlag.on("SHOT_SCOPE_PROBE"):
 		var before: Dictionary = _perf_snapshot_alts()
 		_voxel_board.apply_light_field(_voxel_light_field)
 		var after: Dictionary = _perf_snapshot_alts()
@@ -8546,7 +7754,7 @@ func shot_repaint_scope(impact_gus: Array) -> Array:
 ## R3D-LIGHT step 1 - `INFILTRAITOR_OCC_LIVE_PROBE=1`: after every live-occupancy sync, walk the map the old way and print how many
 ## cells the store's incremental dictionary disagrees on. 0 is the only answer; it costs the walk it exists to remove.
 func _occ_live_probe(live: Dictionary, where: String) -> void:
-	if OS.get_environment("INFILTRAITOR_OCC_LIVE_PROBE") != "1" or VoxelStore.active == null:
+	if not DevFlag.on("OCC_LIVE_PROBE") or VoxelStore.active == null:
 		return
 	var walk: Dictionary = VoxelStore.active.occupancy_dict()
 	var differ: int = 0
@@ -8586,7 +7794,7 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 	## W-PRECOOK profiling seam, env-gated like every other standing dev probe in
 	## this function. §0's routes are chosen from WHERE the repaint's time goes,
 	## and the only figures on record are from the retired bench in August.
-	var _prof: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1" or _dev_flag_on("REPAINT_PROFILE")
+	var _prof: bool = DevFlag.on("REPAINT_PROFILE") or _dev_flag_on("REPAINT_PROFILE")
 	VoxelBoard.LOAD_PROFILE = _prof
 	var _t0: int = Time.get_ticks_usec()
 	var live_changes: Array[Vector3i] = []
@@ -8643,7 +7851,7 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 	## silently makes the neighbourhood too small — a stale-lighting bug with
 	## no visible symptom until someone looks at the right voxel. Run it after
 	## touching either. Doubles the repaint cost while enabled, hence the gate.
-	if geometry_only and OS.get_environment("INFILTRAITOR_LIGHT_EQUIV_PROBE") == "1":
+	if geometry_only and DevFlag.on("LIGHT_EQUIV_PROBE"):
 		var _snap_a: Dictionary = _perf_snapshot_alts()
 		_repaint_voxel_light_buckets(false)
 		var _snap_b: Dictionary = _perf_snapshot_alts()
@@ -8692,167 +7900,6 @@ func _perf_snapshot_alts() -> Dictionary:
 				_voxel_board.cell_bucket_at(level_i, occ_cell),
 				_voxel_board.cell_soot_at(level_i, occ_cell))
 	return out
-
-
-## --- CELL-PROBE: does a destroyed voxel come back? -----------------------
-##
-## `INFILTRAITOR_CELL_PROBE=1`, sampled from the filmstrip's own frame loop so
-## **probe frame N is image frame N** — the whole point is to name the frame a
-## restoration happens on and then go look at it.
-##
-## WHY IT EXISTS. On 2026-08-27 a 3× slow-motion capture of a fabric blast showed
-## ~4 961 px of voxel-shaped wall reappearing on one frame and staying
-## (`SOOT_STORAGE_REFORM` §5.4). Pixels cannot say whether those cells were ERASED
-## and RE-PLACED or were never erased and only re-drawn, and two confident pixel
-## readings of that same capture were already wrong that day. This reads the
-## VoxelStore instead, which can only answer one way.
-##
-## `PERFORMANCE_MASTER_PLAN` §9.11 carries the claim this tests — *"a destroyed
-## voxel must not be restorable"* — with the status "not reproduced".
-##
-## Scoped to the cells PLACED near the blast at arm time, and sampled with a
-## direct read per key rather than by enumerating the board (R3D-13: the read is the `VoxelStore`'s
-## occupancy, `has_cell()`, because no tile is written):
-## the map-wide walk is 205 000 cells and this runs every frame. A cell that was
-## never placed and later appears is the EXPOSE path and is legitimate, which is
-## also why the armed set is the right scope rather than a limitation.
-const CELL_PROBE_GU: int = 6
-var _cell_probe_on: bool = false
-## Vector3i -> [placed_now: bool, erased_at: int, restores: int]
-var _cell_probe_state: Dictionary = {}
-var _cell_probe_frames: int = 0
-var _cell_probe_erased: int = 0
-var _cell_probe_appeared: int = 0
-var _cell_probe_vanished: int = 0
-var _cell_probe_events: Array = []
-
-
-## Is the cell occupied? No tile is ever written, so the store answers.
-func _cell_probe_has(level: int, cell: Vector2i) -> bool:
-	var store: VoxelStore = VoxelStore.active
-	return store != null and store.has_cell(cell.x, cell.y, level)
-
-
-func cell_probe_arm(gu: Vector2i) -> void:
-	_cell_probe_on = OS.get_environment("INFILTRAITOR_CELL_PROBE") == "1"
-	if not _cell_probe_on or _voxel_board == null:
-		return
-	_cell_probe_state.clear()
-	_cell_probe_events.clear()
-	_cell_probe_frames = 0
-	_cell_probe_erased = 0
-	_cell_probe_appeared = 0
-	_cell_probe_vanished = 0
-	## ⚠️ THE FIRST VERSION OF THIS ARMED ONLY ON PLACED CELLS, AND THAT IS A BLIND
-	## SPOT, NOT A SCOPE. It can see `placed -> erased -> placed` and nothing else —
-	## so a cell that APPEARS during the event and then VANISHES is invisible to it,
-	## which is precisely what the Director suspected was also happening. Arming on
-	## the whole RECTANGLE the blast neighbourhood occupies, empty cells included,
-	## is what makes the two directions symmetric.
-	##
-	## The rectangle is derived from the placed cells within the radius rather than
-	## from a GU-to-cell formula, so there is no second coordinate derivation here
-	## to drift out of step with `GeometryCoords`.
-	var lo := Vector2i(1 << 30, 1 << 30)
-	var hi := Vector2i(-(1 << 30), -(1 << 30))
-	var levels: Array = []
-	var store: VoxelStore = VoxelStore.active
-	if store == null:
-		_cell_probe_on = false
-		return
-	for level in range(store.l0, store.l0 + store.nl):
-		levels.append(level)
-		for y in range((gu.y - CELL_PROBE_GU) * GeometryCoords.VOXELS_PER_UNIT_AXIS, (gu.y + CELL_PROBE_GU + 1) * GeometryCoords.VOXELS_PER_UNIT_AXIS):
-			for x in range((gu.x - CELL_PROBE_GU) * GeometryCoords.VOXELS_PER_UNIT_AXIS, (gu.x + CELL_PROBE_GU + 1) * GeometryCoords.VOXELS_PER_UNIT_AXIS):
-				if store.has_cell(x, y, level):
-					lo = Vector2i(mini(lo.x, x), mini(lo.y, y))
-					hi = Vector2i(maxi(hi.x, x), maxi(hi.y, y))
-	if lo.x > hi.x:
-		push_warning("[CELL-PROBE] nothing placed within %d GU of %s — not armed" % [CELL_PROBE_GU, gu])
-		_cell_probe_on = false
-		return
-	var placed_n: int = 0
-	for level in levels:
-		for y in range(lo.y, hi.y + 1):
-			for x in range(lo.x, hi.x + 1):
-				var here: bool = _cell_probe_has(level, Vector2i(x, y))
-				if here:
-					placed_n += 1
-				## [placed_now, erased_at, restores, was_placed_at_arm]
-				_cell_probe_state[Vector3i(x, y, level)] = [here, -1, 0, here]
-	print("[CELL-PROBE] armed on %d cell(s) (%d placed, %d empty) — rect %s..%s x %d level(s), within %d GU of %s"
-		% [_cell_probe_state.size(), placed_n, _cell_probe_state.size() - placed_n,
-		lo, hi, levels.size(), CELL_PROBE_GU, gu])
-
-
-func cell_probe_frame() -> void:
-	if not _cell_probe_on or _voxel_board == null:
-		return
-	_cell_probe_frames += 1
-	for key in _cell_probe_state.keys():
-		var placed: bool = _cell_probe_has(key.z, Vector2i(key.x, key.y))
-		var rec: Array = _cell_probe_state[key]
-		if bool(rec[0]) == placed:
-			continue
-		if placed:
-			if bool(rec[3]):
-				## ⛔ RESTORED — placed when the probe armed, went away, came back.
-				rec[2] = int(rec[2]) + 1
-				_cell_probe_events.append(["RESTORED", _cell_probe_frames, key, int(rec[1])])
-			else:
-				## APPEARED — never placed at arm time. Normally the expose path
-				## revealing a deep layer, and legitimate on its own.
-				_cell_probe_appeared += 1
-				_cell_probe_events.append(["APPEARED", _cell_probe_frames, key, -1])
-		else:
-			rec[1] = _cell_probe_frames
-			if bool(rec[3]):
-				_cell_probe_erased += 1
-			else:
-				## ⛔ VANISHED — this cell was NOT there at arm time, appeared during
-				## the event, and has now gone again. Nothing in the design puts a
-				## revealed surface back to empty.
-				_cell_probe_vanished += 1
-				_cell_probe_events.append(["VANISHED", _cell_probe_frames, key, -1])
-		rec[0] = placed
-
-
-func cell_probe_report() -> void:
-	if not _cell_probe_on:
-		return
-	var restored_cells: int = 0
-	for key in _cell_probe_state.keys():
-		if int((_cell_probe_state[key] as Array)[2]) > 0:
-			restored_cells += 1
-	print("[CELL-PROBE] %d frame(s) · %d cell(s) armed — %d erased · %d RESTORED (%d cell(s)) · %d appeared · %d VANISHED"
-		% [_cell_probe_frames, _cell_probe_state.size(), _cell_probe_erased,
-		_cell_probe_events.filter(func(e): return e[0] == "RESTORED").size(),
-		restored_cells, _cell_probe_appeared, _cell_probe_vanished])
-	## Per KIND, per FRAME. One clustered frame means a single pass is responsible
-	## and names it; a scatter across the whole event means something else.
-	for kind in ["RESTORED", "VANISHED", "APPEARED"]:
-		var of_kind: Array = _cell_probe_events.filter(func(e): return e[0] == kind)
-		if of_kind.is_empty():
-			continue
-		var by_frame: Dictionary = {}
-		for e in of_kind:
-			by_frame[e[1]] = int(by_frame.get(e[1], 0)) + 1
-		var frames: Array = by_frame.keys()
-		frames.sort()
-		var txt: Array = []
-		for f in frames:
-			txt.append("f%d:%d" % [f, by_frame[f]])
-		print("[CELL-PROBE]   %s by frame: %s" % [kind, ", ".join(txt)])
-		for e in of_kind.slice(0, mini(4, of_kind.size())):
-			if kind == "RESTORED":
-				print("[CELL-PROBE]     cell %s erased on f%d, back on f%d" % [e[2], e[3], e[1]])
-			else:
-				print("[CELL-PROBE]     cell %s on f%d" % [e[2], e[1]])
-	var bad: int = restored_cells + _cell_probe_vanished
-	if bad == 0:
-		print("[CELL-PROBE] VERDICT: nothing came back and nothing vanished after appearing — the board only ever lost cells")
-	else:
-		print("[CELL-PROBE] VERDICT: ⛔ %d restored + %d vanished-after-appearing" % [restored_cells, _cell_probe_vanished])
 
 
 ## --- SOOT-STAMP: the soot map (Director, 2026-09-22) ---------------------------
@@ -9085,34 +8132,6 @@ func _apply_guard_reveal() -> void:
 		if is_instance_valid(billboard):
 			(billboard as Node).set("reveal_faction", guard.faction)
 			(billboard as Node).set("reveal_behind_walls", on and _guard_revealed_by_gameplay(guard))
-
-
-## Scenario step `place_guard`: put guard `index` on `cell` (position and cell, nothing else) and refresh what
-## the vision radius says about it.
-func scenario_place_guard(index: int, cell: Vector2i) -> bool:
-	if index < 0 or index >= _guards.size() or not is_instance_valid(_guards[index]):
-		push_error("[Room] scenario_place_guard: no guard #%d (%d on the map)" % [index, _guards.size()])
-		return false
-	var guard = _guards[index]
-	guard.cell = cell
-	guard.position = guard._cell_to_world(cell)
-	_update_enemy_visibility()
-	return true
-
-
-## MOVEMENT MV-4 — the scenario's `walk <x,y>`: the agent walks to `cell` the way a tap orders it (`SelectionController.try_move_to`: the
-## movement overlay's path, the AP spent, the step's own tween), so a capture or a handset run sees the real walk. False (loud) when it
-## does not start, with the reason the overlay gives.
-func scenario_walk_agent(cell: Vector2i) -> bool:
-	if agent == null or _selection_controller == null:
-		push_error("[Room] scenario_walk_agent: no agent or no selection controller")
-		return false
-	if _selection_controller.try_move_to(cell):
-		return true
-	var reachable: bool = movement_overlay != null and movement_overlay.is_reachable(cell)
-	push_error("[Room] scenario_walk_agent: the agent at %s did not start toward %s (reachable %s, AP %d, moving %s, enemy phase %s)"
-		% [agent.cell, cell, reachable, int(turn_manager.current_ap), agent.is_moving, turn_manager.is_enemy_phase])
-	return false
 
 
 ## R3D-9 — the Room's DEV_VISION aids (exit diamonds, spawn diamond, the playable-area line, the shadow debug tint and
@@ -9378,7 +8397,7 @@ func _recompute_occlusion() -> void:
 	## occlusion set, so a capture pair (same agent cell, occlusion on/off)
 	## isolates exactly the erased pixels — the erased-silhouette boundary is the
 	## ground truth wireframe alignment is measured against.
-	if OS.get_environment("INFILTRAITOR_OCC_DISABLE") == "1":
+	if DevFlag.on("OCC_DISABLE"):
 		var disabled_board: Node = board3d()
 		if disabled_board != null:
 			disabled_board.on_occlusion(OcclusionSetClass.new())
@@ -9973,15 +8992,11 @@ func tick_liquids() -> void:
 
 
 func _dev_flag(flag_name: String, fallback: String = "") -> String:
-	var flags: Node = get_node_or_null("/root/DevFlags")
-	if flags == null:
-		var from_env: String = OS.get_environment("INFILTRAITOR_" + flag_name)
-		return from_env if not from_env.is_empty() else fallback
-	return flags.value(flag_name, fallback)
+	return DevFlag.value(flag_name, fallback)
 
 
 func _dev_flag_on(flag_name: String) -> bool:
-	return _dev_flag(flag_name, "") == "1"
+	return DevFlag.on(flag_name)
 
 
 ## ⚠️ Resolved in `_ready()`, NOT here. A member initialiser runs before the node
@@ -10184,7 +9199,7 @@ func _process(_delta: float) -> void:
 ##
 ## Order is the whole point and is stated once: **soot, then light.** Scorch is
 ## what the light is about to reveal.
-var consequence_beat: bool = OS.get_environment("INFILTRAITOR_CONSEQUENCE") != "0"
+var consequence_beat: bool = DevFlag.value("CONSEQUENCE", "") != "0"
 
 ## §13.4 — *"A atualização da luz que eu coloquei como tempo explícito pode durar
 ## uns 2 segundos, iniciando depois que a fuligem aparecer."* The light does not
@@ -10200,8 +9215,8 @@ var consequence_beat: bool = OS.get_environment("INFILTRAITOR_CONSEQUENCE") != "
 ## smoke has cleared (§7.2 / D-8), so the turn advance is what waits on it.
 ## `INFILTRAITOR_LIGHT_SECONDS` still overrides it.
 var consequence_light_seconds: float = (
-	OS.get_environment("INFILTRAITOR_LIGHT_SECONDS").to_float()
-	if OS.get_environment("INFILTRAITOR_LIGHT_SECONDS").is_valid_float() else 1.0)
+	DevFlag.value("LIGHT_SECONDS", "").to_float()
+	if DevFlag.value("LIGHT_SECONDS", "").is_valid_float() else 1.0)
 ## Twelve rungs is the whole bucket ladder, so a cell whose light moves the full
 ## range steps through every value it passes and one that moves a single rung
 ## flips once. Cells still land TOGETHER — the ramp is a lerp toward the target,
@@ -10483,7 +9498,7 @@ func play_consequence_light(delta = null) -> void:
 	## `_repaint_voxel_light_buckets()` would have. Env-gated
 	## (`INFILTRAITOR_LIGHT_COOK_GATE=1`) because it costs the very re-derivation
 	## the cooked path exists to skip.
-	var gate: bool = cooked and OS.get_environment("INFILTRAITOR_LIGHT_COOK_GATE") == "1"
+	var gate: bool = cooked and DevFlag.on("LIGHT_COOK_GATE")
 
 	var t0: int = Time.get_ticks_usec()
 	var journal: Dictionary = {}
@@ -10828,165 +9843,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				_set_selected_cell(cell)
 
 
-## P-FILM (Director, 2026-08-09): "queria ver se a gente consegue fazer um
-## filmstrip com todos os frames da explosão pra analisar a sequência com mais
-## calma." Dumps every frame of ONE detonation as a numbered PNG;
-## tools/persistent/build_filmstrip.py drives this and stitches the contact
-## sheet.
-##
-## ONE detonation, not one boot per frame — and that is the whole point, not an
-## optimization. Room.spawn_blast_burst() places its embers with randf_range(),
-## so frames stitched from separate runs would show the fire jumping between
-## tiles. Every frame here comes from the same blast.
-##
-## MUST be run with `--fixed-fps 60` (the Python driver passes it). Grabbing the
-## viewport every frame is a GPU→CPU readback and drags real frame time to a
-## crawl, which would matter enormously: the destruction front and the strobe
-## are frame-driven and stay exact no matter how slow the capture runs, but the
-## fire and smoke advance on DELTA, so at the harness's real ~8 fps they would
-## age ~7× too fast per frame and the filmstrip would lie about the effect the
-## Director is trying to judge. `--fixed-fps` pins every delta to 1/60 s and
-## makes the strip a faithful 60 fps read of all three beats at once.
-## CHARACTER Part 3 / §9 #12 — every frame of ONE walk, at one step duration.
-##
-## Feeds `p3_step_bracket.py`, which runs this once per candidate duration and
-## assembles the panels blind. The duration is swept through `agent.step_duration`
-## — the same field the game reads — rather than through a test-only path, so what
-## the Director judges is the real movement code at a different number.
-##
-## `--fixed-fps 60` is MANDATORY here for the same reason build_filmstrip.py
-## states it: grabbing the viewport every frame is a GPU→CPU readback that drags
-## real frame time to a crawl, and the step tween advances on DELTA. Without the
-## pin, every panel would play at the capture's speed instead of its own, which
-## is precisely the quantity under judgement.
-func _capture_walk_filmstrip() -> void:
-	var ms_env := OS.get_environment("INFILTRAITOR_WALK_STEP_MS")
-	var step_ms: float = float(ms_env) if ms_env.is_valid_float() else 130.0
-	var gus_env := OS.get_environment("INFILTRAITOR_WALK_GUS")
-	var gus: int = gus_env.to_int() if gus_env.is_valid_int() else 4
-	var out_name := OS.get_environment("INFILTRAITOR_WALK_OUT")
-	if out_name == "":
-		out_name = "walk_%04dms" % int(step_ms)
-
-	var out_dir := _temp_dir("walk/" + out_name)
-	var existing := DirAccess.open(out_dir)
-	if existing != null:
-		for f in existing.get_files():
-			if f.begins_with("frame_") and f.ends_with(".png"):
-				existing.remove(f)
-
-	## A straight, walkable run of `gus` tiles. Tried in a fixed order and the
-	## first clear one wins, so every duration in the bracket walks the SAME path
-	## — four panels crossing different geometry would compare scenery, not speed.
-	var path: Array[Vector2i] = []
-	for dir: Vector2i in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]:
-		var candidate: Array[Vector2i] = [agent.cell]
-		var clear := true
-		for i in range(1, gus + 1):
-			var c: Vector2i = agent.cell + dir * i
-			if not _is_cell_inside_room(c) or _blocked_cells.has(c):
-				clear = false
-				break
-			candidate.append(c)
-		if clear:
-			path = candidate
-			break
-	if path.is_empty():
-		push_error("[P3-WALK] no clear %d-GU run from %s in any direction" % [gus, agent.cell])
-		return
-
-	agent.step_duration = step_ms / 1000.0
-	## INFILTRAITOR_WALK_PHASES subsamples the baked cycle, so the frame COUNT can
-	## be bracketed against the identical poses instead of a re-bake.
-	var phases_env := OS.get_environment("INFILTRAITOR_WALK_PHASES")
-	if phases_env.is_valid_int() and agent.pose != null:
-		agent.pose.set_walk_phase_quantise(phases_env.to_int())
-	if _camera_controller != null:
-		## Framed on the MIDDLE of the run, not on the agent, so the camera never
-		## moves during the capture. A camera that tracks would hide exactly the
-		## thing being judged: how fast the figure crosses the ground.
-		_camera_controller.focus_on(agent._cell_to_world(path[int(path.size() / 2)]))
-	if _fow_controller != null:
-		_fow_controller.reveal_around(agent.cell, 12)
-	for _s in range(60):
-		await get_tree().process_frame
-
-	## Total frames the move will occupy at the pinned 60 fps, plus a short tail
-	## so the last panel shows him STOPPED rather than cutting mid-stride.
-	var frame_count: int = int(ceil(float(gus) * step_ms / 1000.0 * 60.0)) + 12
-	print("[P3-WALK] %s: %d GUs at %.0f ms -> %.2f m/s, %d frames" % [
-		out_name, gus, step_ms, 1.60 / (step_ms / 1000.0), frame_count])
-
-	agent.move_along_path(path)
-	for i in range(frame_count):
-		await ScenarioDrawRef.next_drawn_frame(get_tree())
-		var img := get_viewport().get_texture().get_image()
-		if img == null:
-			push_error("[P3-WALK] null viewport image at frame %d" % i)
-			continue
-		img.save_png("%s/frame_%03d.png" % [out_dir, i])
-	print("[P3-WALK] wrote %d frames to %s" % [frame_count, out_dir])
-
-
-## The biggest glass PANEL pane on the map, as its slices — `PANE_BLOCK_*`
-## excluded, because a block has no single run axis for a pane basis to be built
-## from. `material` narrows it to one member of the family ("" = any).
-##
-## Shared by the crack demo and the blast demo rather than written twice: they
-## have to photograph the SAME pane for their two frames to be comparable, and
-## two copies of "biggest" is how that quietly stops being true.
-func _biggest_glass_pane(material: String) -> Array:
-	var by_pane: Dictionary = {}
-	for s in _edge_registry.all_slices():
-		if s.pane_id == "" or s.pane_id.begins_with("PANE_BLOCK_"):
-			continue
-		if not GlassMaterials.is_glass(s.material):
-			continue
-		if material != "" and s.material != material:
-			continue
-		by_pane.get_or_add(s.pane_id, [])
-		by_pane[s.pane_id].append(s)
-	var best_id := ""
-	var best_n := 0
-	for pid in by_pane:
-		var n := 0
-		for s in by_pane[pid]:
-			n += s.voxels.size()
-		if n > best_n:
-			best_n = n
-			best_id = pid
-	return by_pane.get(best_id, [])
-
-
-## The glass PANEL pane best suited to reading a shard fall: FRAMED (so remnants
-## show) and mid-size (so the rain is not a wall of white the way the 6-GU
-## storefront is). Scored by anchor count, then by closeness to ~3 GU wide.
-## Falls back to the biggest pane when nothing on the map is framed.
-func _framed_glass_pane() -> Array:
-	var by_pane: Dictionary = {}
-	for s in _edge_registry.all_slices():
-		if s.pane_id == "" or s.pane_id.begins_with("PANE_BLOCK_"):
-			continue
-		if not GlassMaterials.is_glass(s.material):
-			continue
-		by_pane.get_or_add(s.pane_id, [])
-		by_pane[s.pane_id].append(s)
-	var all_slices: Array = _edge_registry.all_slices()
-	var best: Array = []
-	var best_score: float = -1.0
-	for pid in by_pane:
-		var slices: Array = by_pane[pid]
-		var face: int = slices[0].face
-		var anchors: int = GlassShatter.collect_anchor_positions(slices, face, all_slices).size()
-		if anchors == 0:
-			continue
-		var score: float = float(anchors) - absf(float(slices.size()) - 3.0)
-		if score > best_score:
-			best_score = score
-			best = slices
-	return best if not best.is_empty() else _biggest_glass_pane("")
-
-
 ## One named pane's slices, for a capture that has to land on a SPECIFIC pane
 ## rather than the largest one. Empty when nothing on the map carries that id.
 func _pane_by_id(pane_id: String) -> Array:
@@ -11039,151 +9895,6 @@ func _seed_dev_grenades_if_empty(tag: String) -> void:
 		tag, _grenade_controller._grenades.size()])
 
 
-## WEAPON_MASTER_PLAN §6c Part E — the evidence capture for "the agent shoots".
-##
-## Drives the REAL click path, not the controller's methods: a synthetic
-## right-click through _unhandled_input() at the guard's own hit-test cell, then
-## a parsed Enter InputEventKey through the focused Button. Same standing
-## precedent, and the same reason, as test_zone_detonate — calling
-## fire_at_active() directly would prove the damage pipeline works and say
-## nothing about whether the menu can be reached.
-##
-## Both actor cells are overridable because the wave's whole claim is
-## geometric ("GU A to GU B, and the wall C behind it"), and the guard PATROLS —
-## an unattended capture that let him wander would photograph a different shot
-## every run. INFILTRAITOR_SHOT_AGENT_CELL / INFILTRAITOR_SHOT_GUARD_CELL pin
-## both ends; unset, it fires from wherever the two actors happen to stand,
-## which is the honest default for a "does this work at all" run.
-func _capture_agent_shot() -> void:
-	if agent == null or _guards.is_empty():
-		push_error("[AGENT-SHOT-CAPTURE] needs an agent AND at least one guard — PLAYGROUND ships one of each.")
-		return
-	var guard_env_idx := OS.get_environment("INFILTRAITOR_SHOT_GUARD_INDEX")
-	var guard_idx: int = guard_env_idx.to_int() if guard_env_idx.is_valid_int() else 0
-	if guard_idx < 0 or guard_idx >= _guards.size():
-		push_error("[AGENT-SHOT-CAPTURE] guard index %d out of range (%d on the map)"
-			% [guard_idx, _guards.size()])
-		return
-	var guard = _guards[guard_idx]
-	var agent_env := OS.get_environment("INFILTRAITOR_SHOT_AGENT_CELL")
-	if agent_env != "":
-		var ap := agent_env.split(",")
-		if ap.size() == 2:
-			agent.set_cell(Vector2i(ap[0].to_int(), ap[1].to_int()))
-	## GuardEnemy has NO set_cell() — that is the Agent's API, and assuming the
-	## two actors shared it cost one real run to find out (the SCRIPT ERROR
-	## aborted the rest of this function and the process still exited 0, exactly
-	## the trap CLAUDE.md's selftest rule describes). A guard's cell is placed by
-	## its own two fields plus the world transform, the same three lines
-	## `setup()` and `reset_to_route_start()` both use.
-	var guard_env := OS.get_environment("INFILTRAITOR_SHOT_GUARD_CELL")
-	if guard_env != "":
-		var gp := guard_env.split(",")
-		if gp.size() == 2:
-			guard.cell = Vector2i(gp[0].to_int(), gp[1].to_int())
-			guard.position = guard._cell_to_world(guard.cell)
-			guard.queue_redraw()
-
-	## Frame BOTH actors: a capture centred on either one alone cannot show the
-	## trajectory, which is the thing being verified.
-	var mid: Vector2i = (agent.cell + guard.cell) / 2
-	if _camera_controller != null:
-		_camera_controller.focus_on(agent._cell_to_world(mid))
-	var zoom_env := OS.get_environment("INFILTRAITOR_SHOT_ZOOM")
-	if zoom_env.is_valid_float() and _camera_controller != null:
-		_camera_controller.set_zoom_for_capture(zoom_env.to_float())
-	if _fow_controller != null:
-		_fow_controller.reveal_around(mid, 24)
-	_recompute_occlusion()
-	for _i in range(12):
-		await get_tree().process_frame
-
-	print("[AGENT-SHOT-CAPTURE] agent at %s, guard at %s" % [agent.cell, guard.cell])
-	## NAMED, not auto_-prefixed. Screenshots/history/ rotates to the 50 most
-	## recent `auto_` files and never touches anything else, so a capture meant to
-	## be CITED has to opt out of the rotation by not carrying that prefix —
-	## measured 2026-08-03, when 16 of 23 cited captures had already been pruned.
-	var shot_dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
-	DirAccess.make_dir_recursive_absolute(shot_dir)
-	var tag := OS.get_environment("INFILTRAITOR_SHOT_TAG")
-	if tag == "":
-		tag = "default"
-
-	## The real right-click, at the guard's own GU floor cell — the hitbox
-	## AgentShotController.hit_test() actually reads.
-	var click := InputEventMouseButton.new()
-	click.button_index = MOUSE_BUTTON_RIGHT
-	click.pressed = true
-	click.position = _tile_to_screen_center(guard.cell)
-	_unhandled_input(click)
-	for _j in range(12):
-		await get_tree().process_frame
-	if _context_menu == null or not _context_menu.visible:
-		push_error("[AGENT-SHOT-CAPTURE] the right-click did not open a menu on the guard — B1's routing is not reaching AgentShotController.hit_test().")
-		return
-	## FRAME 1 — the menu open on the ENEMY (B1) and the weapon UP (B4). Taken
-	## before the trigger because both are true only while the menu is open: the
-	## shot itself resolves in a single frame and lowers the weapon on its way
-	## out.
-	await _save_shot_frame(shot_dir, "shot_%s_1_aim.png" % tag)
-
-	## INFILTRAITOR_SHOT_CONTROL=1 — the CONTROL run: everything identical up to
-	## and including the menu, then Escape instead of Enter. It exists because
-	## "15 voxels DENTED" and "a mark you can see" are different claims, and the
-	## stone facade is busy enough that squinting at one screenshot cannot tell
-	## them apart. Two frames from the same boot, the same camera path and the
-	## same binary differ ONLY by the shot, so a diff over the wall region is a
-	## measurement rather than an impression.
-	var control := OS.get_environment("INFILTRAITOR_SHOT_CONTROL") == "1"
-	var fire_key: Key = KEY_ESCAPE if control else KEY_ENTER
-	if control:
-		print("[AGENT-SHOT-CAPTURE] CONTROL run — cancelling instead of firing")
-	var key_down := InputEventKey.new()
-	key_down.keycode = fire_key
-	key_down.pressed = true
-	Input.parse_input_event(key_down)
-	var key_up := InputEventKey.new()
-	key_up.keycode = fire_key
-	key_up.pressed = false
-	Input.parse_input_event(key_up)
-
-	## Long enough for the frame-spread render pass to finish and the damage to
-	## be on screen. The TRACER is deliberately gone by then (it lives ~0.2 s):
-	## a capture of the streak needs a much shorter wait, which is what
-	## INFILTRAITOR_SHOT_WAIT_FRAMES is for.
-	## FRAME 2 — the decorative projectile in flight (Part D). TracerOverlay
-	## holds for 0.05 s and fades over 0.16 s, so this frame has to be taken
-	## early or there is nothing to photograph; the number is derived from those
-	## two constants rather than guessed.
-	var tracer_env := OS.get_environment("INFILTRAITOR_SHOT_TRACER_FRAMES")
-	var tracer_wait: int = tracer_env.to_int() if tracer_env.is_valid_int() else 4
-	for _t in range(maxi(tracer_wait, 0)):
-		await get_tree().process_frame
-	await _save_shot_frame(shot_dir, "shot_%s_2_tracer.png" % tag)
-
-	## FRAME 3 — the damage, once the frame-spread render pass has landed it.
-	var wait_env := OS.get_environment("INFILTRAITOR_SHOT_WAIT_FRAMES")
-	var wait: int = wait_env.to_int() if wait_env.is_valid_int() else 90
-	for _k in range(maxi(wait, 0)):
-		await get_tree().process_frame
-	## Reframe onto the impact before the last frame: the wall the round reached
-	## is often nowhere near the shooter (D26 — a miss keeps travelling), and a
-	## capture centred on the shooter proves the shot happened while showing none
-	## of what it did.
-	var impact_env := OS.get_environment("INFILTRAITOR_SHOT_IMPACT_CELL")
-	if impact_env != "" and _camera_controller != null:
-		var ip := impact_env.split(",")
-		if ip.size() == 2:
-			_camera_controller.focus_on(agent._cell_to_world(
-				Vector2i(ip[0].to_int(), ip[1].to_int())))
-			var iz := OS.get_environment("INFILTRAITOR_SHOT_IMPACT_ZOOM")
-			if iz.is_valid_float():
-				_camera_controller.set_zoom_for_capture(iz.to_float())
-			for _f in range(20):
-				await get_tree().process_frame
-	await _save_shot_frame(shot_dir, "shot_%s_3_damage.png" % tag)
-
-
 ## PERF-P3 GATE — hide every CanvasItem/CanvasLayer that is not the voxel
 ## renderer's own subtree. Gate-only; see the call site for why it has to be
 ## this blunt.
@@ -11206,490 +9917,6 @@ func _debug_hide_all_but_voxels(node: Node) -> void:
 			(child as CanvasLayer).visible = false
 			continue
 		_debug_hide_all_but_voxels(child)
-
-
-## One named capture frame for the §6c evidence set. Separate from
-## _capture_screenshot_to_file() because that one owns the Shift+P destination
-## and this one must land in history/ under a name the rotation ignores.
-func _save_shot_frame(dir_path: String, file_name: String) -> void:
-	await ScenarioDrawRef.next_drawn_frame(get_tree())
-	var img := get_viewport().get_texture().get_image()
-	if img == null:
-		push_error("[AGENT-SHOT-CAPTURE] null viewport image for %s" % file_name)
-		return
-	var full := "%s/%s" % [dir_path, file_name]
-	img.save_png(full)
-	print("[AGENT-SHOT-CAPTURE] wrote %s" % full)
-
-
-## temp/ is the one folder for what can be thrown away (`tools/persistent/temp_dir.py` has the rule and the Python side). The Director may delete it at
-## any moment, so whoever writes first makes it again, with the `.gdignore` that keeps the editor from scanning it.
-func _temp_dir(sub: String) -> String:
-	var temp_root := ProjectSettings.globalize_path("res://") + "temp"
-	var temp_sub := temp_root + "/" + sub
-	DirAccess.make_dir_recursive_absolute(temp_sub)
-	var ignore_path := temp_root + "/.gdignore"
-	if not FileAccess.file_exists(ignore_path):
-		var ignore_file := FileAccess.open(ignore_path, FileAccess.WRITE)
-		if ignore_file == null:
-			push_warning("[Room] temp dir: cannot write %s (%s); the editor will scan temp/" % [ignore_path, error_string(FileAccess.get_open_error())])
-	return temp_sub
-
-
-## THE SHOT, FRAME BY FRAME, WITH EACH FRAME'S OWN DURATION.
-##
-## Built 2026-08-19 on the Director's report that everything stutters. Per-phase
-## CPU profiling said the trigger frame fell from 581 ms to ~94 ms, and the
-## report says it got WORSE — which is exactly the shape a profile cannot see:
-## deferring work does not delete it, and a stall broken into six stalls across
-## six frames can read worse than one long one. Only a per-FRAME timeline shows
-## that, so this prints one line per frame and saves one PNG per frame.
-##
-## The number that matters is the frame DELTA, not the CPU inside any one
-## function: a 60 Hz frame is 16.7 ms, and anything above that is a frame the
-## player did not get.
-func _capture_shot_filmstrip() -> void:
-	var out_dir := _temp_dir("filmstrip_shot")
-	var existing := DirAccess.open(out_dir)
-	if existing != null:
-		for f in existing.get_files():
-			if f.begins_with("shot_") and f.ends_with(".png"):
-				existing.remove(f)
-
-	if _guards.is_empty():
-		push_error("[SHOT-FILM] needs a guard")
-		return
-	var idx_env := OS.get_environment("INFILTRAITOR_SHOT_GUARD_INDEX")
-	var guard_idx: int = idx_env.to_int() if idx_env.is_valid_int() else 0
-	guard_idx = clampi(guard_idx, 0, _guards.size() - 1)
-	## GLASS G-D15 / V-D — the same two placement overrides `_capture_agent_shot`
-	## has, for the same reason it has them: this is the ONLY capture action that
-	## fires TWICE in one boot, and a two-shot mechanic (a pane primed by the
-	## first hit and taken by the second) cannot be evidenced across two boots —
-	## the shatter salt carries `_world_revision`, which the first shot bumps, so
-	## two boots are two independent rolls rather than a sequence.
-	var agent_env := OS.get_environment("INFILTRAITOR_SHOT_AGENT_CELL")
-	if agent_env != "" and agent != null:
-		var ap := agent_env.split(",")
-		if ap.size() == 2 and ap[0].is_valid_int() and ap[1].is_valid_int():
-			agent.set_cell(Vector2i(ap[0].to_int(), ap[1].to_int()))
-	var guard_env := OS.get_environment("INFILTRAITOR_SHOT_GUARD_CELL")
-	if guard_env != "":
-		var gp := guard_env.split(",")
-		if gp.size() == 2 and gp[0].is_valid_int() and gp[1].is_valid_int():
-			## GuardEnemy has no set_cell() — its cell is placed by its own two
-			## fields plus the world transform (`_capture_agent_shot`'s own note).
-			var g = _guards[guard_idx]
-			g.cell = Vector2i(gp[0].to_int(), gp[1].to_int())
-			g.position = g._cell_to_world(g.cell)
-			g.queue_redraw()
-	## W-TUNE-01: the sheet's SUBJECT is selectable, because the two things worth
-	## watching are 12 GU apart. Centred between shooter and target (the default)
-	## the figure and the muzzle flash read and the wall does not; the round is
-	## gone before it arrives by design (TRACER_FLIGHT_FRAMES), so a wall-centred
-	## sheet shows the damage and the smoke and no projectile. Pick per question.
-	var focus_env := OS.get_environment("INFILTRAITOR_SHOT_FILM_FOCUS")
-	if _camera_controller != null and agent != null:
-		var focus_cell: Vector2i = (agent.cell + _guards[guard_idx].cell) / 2
-		var fp := focus_env.split(",")
-		if fp.size() == 2 and fp[0].is_valid_int() and fp[1].is_valid_int():
-			focus_cell = Vector2i(fp[0].to_int(), fp[1].to_int())
-		_camera_controller.focus_on(agent._cell_to_world(focus_cell))
-	var zoom_env := OS.get_environment("INFILTRAITOR_SHOT_ZOOM")
-	_camera_controller.set_zoom_for_capture(
-		zoom_env.to_float() if zoom_env.is_valid_float() else 0.5)
-	if _fow_controller != null:
-		_fow_controller.reveal_around(agent.cell, 26)
-	for _i in range(15):
-		await get_tree().process_frame
-
-	## W-TUNE-02: prove the WEAPON KEYS, not just the env override. The override
-	## sets `_weapon_id` directly and would pass whether or not the InputMap
-	## action, the signal and set_weapon() are wired at all; parsing the real digit
-	## key exercises every link in that chain, and the tier print then says which
-	## weapon actually fired. 1 rifle · 2 pistol · 3 shotgun.
-	var wkey_env := OS.get_environment("INFILTRAITOR_SHOT_WEAPON_KEY")
-	if wkey_env.is_valid_int():
-		var wk_down := InputEventKey.new()
-		wk_down.keycode = KEY_0 + wkey_env.to_int()
-		wk_down.pressed = true
-		Input.parse_input_event(wk_down)
-		var wk_up := InputEventKey.new()
-		wk_up.keycode = KEY_0 + wkey_env.to_int()
-		wk_up.pressed = false
-		Input.parse_input_event(wk_up)
-		await get_tree().process_frame
-
-	## INFILTRAITOR_CAPTURE_VIEW (R3D-WORLD): film the shot from that side.
-	var shot_view_env := OS.get_environment("INFILTRAITOR_CAPTURE_VIEW")
-	if shot_view_env in ["N", "E", "S", "W"]:
-		_set_perspective(shot_view_env)
-		for _v in range(20):
-			await get_tree().process_frame
-	var frames_env := OS.get_environment("INFILTRAITOR_SHOT_FILM_FRAMES")
-	var count: int = frames_env.to_int() if frames_env.is_valid_int() else 40
-	var save_images: bool = OS.get_environment("INFILTRAITOR_SHOT_FILM_SAVE") == "1"
-	var fire_at: int = 6
-	var last_us: int = Time.get_ticks_usec()
-	var over_budget: int = 0
-	var worst_ms: float = 0.0
-	## The MENU opens well before the trigger, exactly as a player does it. The
-	## first version opened and fired on the same frame and charged the trigger
-	## with the one-off cost of loading the `aimed` grip's textures — a real cost,
-	## but one that belongs to the aim, not to the shot.
-	var menu_at: int = 1
-	## A SECOND SHOT, on demand, because "expensive" and "expensive ONCE" are
-	## different findings and no single-shot timeline can tell them apart. The
-	## impact frame still costs ~300 ms with 80 ms of CPU in it and zero
-	## alternatives minted (W-PRECOOK-02), so the remaining time is engine-side —
-	## and the two candidates, a first GPU upload of the damage-variant page and a
-	## first particle-material compile, are BOTH one-offs that would vanish on a
-	## second shot. INFILTRAITOR_SHOT_FILM_SECOND_AT=<frame> opens the menu again
-	## at that frame and fires five frames later, exactly as the first one does.
-	var second_env := OS.get_environment("INFILTRAITOR_SHOT_FILM_SECOND_AT")
-	var menu2_at: int = second_env.to_int() if second_env.is_valid_int() else -1
-	var fire2_at: int = (menu2_at + fire_at - menu_at) if menu2_at >= 0 else -1
-	for i in range(count):
-		if i == menu_at or i == menu2_at:
-			_agent_shot_controller.open_menu_for(guard_idx)
-		if i == fire_at or i == fire2_at:
-			_agent_shot_controller.fire_at_active()
-		await ScenarioDrawRef.next_drawn_frame(get_tree())
-		var now_us: int = Time.get_ticks_usec()
-		var ms: float = float(now_us - last_us) / 1000.0
-		last_us = now_us
-		if ms > 17.0:
-			over_budget += 1
-		worst_ms = maxf(worst_ms, ms)
-		print("[SHOT-FILM] frame %02d  %7.1f ms%s" % [i, ms,
-			"   <-- FIRE" if i == fire_at else (
-			"   <-- FIRE 2" if i == fire2_at else (
-			"   <-- MENU" if i == menu_at else (
-			"   <-- MENU 2" if i == menu2_at else (
-			"   <-- DROPPED" if ms > 17.0 else ""))))])
-		## ⚠️ SAVING A PNG COSTS ~180 ms, SO THE TIMED PASS MUST NOT SAVE ONE.
-		## The first version of this harness saved every frame and reported 187 ms
-		## and 184 ms for the two frames BEFORE the trigger — a flat baseline that
-		## is the encoder, not the game. A frame-timing harness that pays 180 ms
-		## per frame cannot measure a 90 ms stall; it can only measure itself.
-		## `INFILTRAITOR_SHOT_FILM_SAVE=1` turns the images back on for a run
-		## where the PICTURES are what is wanted and the timings are known junk.
-		if save_images:
-			var img := get_viewport().get_texture().get_image()
-			if img != null:
-				img.save_png("%s/shot_%02d.png" % [out_dir, i])
-		await get_tree().process_frame
-	print("[SHOT-FILM] %d of %d frames over 17 ms; worst %.1f ms%s" %
-		[over_budget, count, worst_ms,
-		"  (TIMINGS INVALID — images were saved)" if save_images else ""])
-
-
-func _capture_detonation_filmstrip() -> void:
-	var frames_env := OS.get_environment("INFILTRAITOR_FILMSTRIP_FRAMES")
-	var frame_count: int = frames_env.to_int() if frames_env.is_valid_int() else 24
-	var index_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_INDEX")
-	var tz_index: int = index_env.to_int() if index_env.is_valid_int() else 2
-	## P-FILM-2 (Director, 2026-08-23) — *"vamos implementar essas mudanças que
-	## conversamos e fazer o filmstrip com as duas granadas, e aí vai ficar tudo
-	## mais claro."* A SECOND grenade fired partway through the strip, so the sheet
-	## carries both blasts on ONE continuous timeline. That is the case the report
-	## is about: soot repainting wholesale, and *"algumas areas queimam e soltam
-	## fumaça uma segunda vez"* — the shape of a dirty flag cleared in the wrong
-	## place, which frame-by-frame is exactly what can show it.
-	##
-	## Frame index, not seconds, because the strip's own axis is frames.
-	## Empty/absent = the original single-grenade strip, unchanged.
-	var second_env := OS.get_environment("INFILTRAITOR_FILMSTRIP_SECOND_AT")
-	var second_at: int = second_env.to_int() if second_env.is_valid_int() else -1
-	var second_index_env := OS.get_environment("INFILTRAITOR_FILMSTRIP_SECOND_INDEX")
-	var second_index: int = second_index_env.to_int() if second_index_env.is_valid_int() else 1
-
-	var out_dir := _temp_dir("filmstrip")
-	## Stale frames from a shorter previous run would silently pad the strip.
-	var existing := DirAccess.open(out_dir)
-	if existing != null:
-		for f in existing.get_files():
-			if f.begins_with("frame_") and f.ends_with(".png"):
-				existing.remove(f)
-
-	_seed_dev_grenades_if_empty("P-FILM")
-
-	if tz_index < 0 or tz_index >= _grenade_controller._grenades.size():
-		push_error("[P-FILM] grenade index %d out of range (%d placed)" % [
-			tz_index, _grenade_controller._grenades.size()])
-		return
-	var gu: Vector2i = _grenade_controller._grenades[tz_index]["gu_cell"]
-	if _camera_controller != null and agent != null:
-		_camera_controller.focus_on(agent._cell_to_world(gu))
-	if _fow_controller != null:
-		_fow_controller.reveal_around(gu, 12)
-	## Let the camera settle and the fog reveal land BEFORE frame 0, so the
-	## strip opens on the scene the blast is about to change rather than on a
-	## camera still travelling.
-	##
-	## 20 → 60: focus_on() eases rather than snapping, and 20 frames was enough
-	## only sometimes — one sheet opened on frame 0 still showing the agent's
-	## end of the map with the movement overlay up. A filmstrip whose first tile
-	## is a different place is worse than a slow one, and these frames are
-	## simulated (`--fixed-fps`), so the cost is capture time, never fidelity.
-	for _s in range(60):
-		await get_tree().process_frame
-
-	print("[P-FILM] capturing %d frames of one detonation at gu=%s" % [frame_count, gu])
-	## open_menu_for() is only here because detonate_active() reads the
-	## `_active_index` it sets — a direct call never reaches the button handler
-	## that normally closes the menu, and left open it parks "Detonate (Enter) /
-	## Cancel (Esc)" over the blast in EVERY tile of the sheet.
-	##
-	## Closed BEFORE detonating, matching DetonateContextMenu._on_action_pressed()'s
-	## own documented order ("close() must run first so the menu is already gone
-	## by the time the action's own visuals play"). close() emits only `closed`,
-	## never `cancelled`, so `_active_index` survives it — cancel_active() is what
-	## would clear it, and that is on the cancelled path.
-	_grenade_controller.open_menu_for(tz_index)
-	if _context_menu != null:
-		_context_menu.close()
-	if _blast_wireframe_overlay != null:
-		_blast_wireframe_overlay.clear()   ## open_menu_for() draws the red preview
-	## CELL-PROBE — armed on the board as it stands one line before the blast, so
-	## every cell it holds is one this detonation is about to act on.
-	cell_probe_arm(gu)
-	_grenade_controller.detonate_active()
-
-	## `RenderingServer.frame_post_draw`, NOT `SceneTree.process_frame`.
-	##
-	## `process_frame` fires during idle processing, BEFORE the frame is drawn,
-	## so a grab there returns whatever was last presented — normally one frame
-	## behind, and arbitrarily further behind when the main thread has just
-	## blocked. That is exactly this sequence's situation: `detonate_active()`
-	## runs `build_plan()`, ~166 ms of synchronous work, and the first grab after
-	## it came back showing the pre-detonation scene from the other end of the
-	## map (observed on two real sheets).
-	##
-	## Discarding warm-up grabs did hide it, and was the wrong fix twice over:
-	## placed after the detonation it flushed the buffer using the blast's own
-	## opening frames and the sheet lost the head of beat 1, and placed before it
-	## the staleness came straight back, because the 166 ms block is what causes
-	## it. `frame_post_draw` fires after the draw actually completes, so every
-	## grab matches the frame it belongs to and no frames are spent.
-	for i in range(frame_count):
-		## P-FILM-2 — the second grenade, on the frame it was asked for. Fired
-		## BEFORE the grab so the tile that names the frame is the one that
-		## carries it, and through the same close-then-detonate order as the
-		## first: the menu must be gone before the blast's own visuals play.
-		if second_at >= 0 and i == second_at:
-			if second_index >= 0 and second_index < _grenade_controller._grenades.size():
-				print("[P-FILM] second grenade at frame %d, gu=%s" % [
-					i, _grenade_controller._grenades[second_index]["gu_cell"]])
-				_grenade_controller.open_menu_for(second_index)
-				if _context_menu != null:
-					_context_menu.close()
-				if _blast_wireframe_overlay != null:
-					_blast_wireframe_overlay.clear()
-				_grenade_controller.detonate_active()
-			else:
-				push_warning("[P-FILM] second grenade index %d out of range (%d placed)" % [
-					second_index, _grenade_controller._grenades.size()])
-		await ScenarioDrawRef.next_drawn_frame(get_tree())
-		## CELL-PROBE — sampled HERE and not in the idle pass, so probe frame N is
-		## image frame N. A restoration this reports on f124 is the f124 the
-		## filmstrip saved, which is the whole reason the probe is worth having.
-		cell_probe_frame()
-		var img := get_viewport().get_texture().get_image()
-		if img == null:
-			push_error("[P-FILM] null viewport image at frame %d" % i)
-			continue
-		img.save_png("%s/frame_%03d.png" % [out_dir, i])
-	cell_probe_report()
-	print("[P-FILM] wrote %d frames to %s" % [frame_count, out_dir])
-
-
-## ── G4-4 — THE RAIN TIMING BENCH, FOR THE DIRECTOR'S VIDEO ──────────────────
-##
-## `INFILTRAITOR_CAPTURE_ACTION=glass_rain_timings` on the GLASS map. Every rain
-## look value (`fall_frames_*`, `hold`, `fade`, `bounce`, `arc`, `stagger`) is a
-## placeholder `var`, and §18.13 says they want the Director's eye AFTER G4-4
-## spreads the landing — before that it would judge the wrong picture. This is
-## how: pick a pane, shatter it for real (real geometry, real G-D41/G-D42
-## scatter), lay the pile decal, then spawn the rain at ONE named preset and film
-## every frame of its span so `build_filmstrip.py --video` can encode it. No
-## grenade VFX — a clean diagnostic backdrop, so the subject is the fall.
-##
-##   INFILTRAITOR_RAIN_TIMING=snappy|default|floaty|heavy|raked   (default: default)
-##   INFILTRAITOR_RAIN_IMPULSE=0.0..1.0    the shockwave bias    (default: 0.6)
-##   INFILTRAITOR_GLASS_BLAST_PANE=<id>    which pane            (default: biggest)
-##   INFILTRAITOR_RAIN_FRAMES=<n>          frames to film        (default: span+20)
-const RAIN_TIMING_PRESETS: Dictionary = {
-	## 2026-10-10: the fall is gravity now (GlassRainOverlay: `gravity_gu_s2`, `drag_min`, `pop_max_gu_s`); the frame counts went.
-	"snappy": {
-		"gravity_gu_s2": 14.0, "drag_min": 0.8, "pop_max_gu_s": 0.6, "stagger_frames": 6,
-		"bounce_frames": 5, "bounce_scale": 0.10, "hold_frames": 12, "fade_frames": 10},
-	"default": {},   ## the shipped values, untouched
-	"floaty": {
-		"drag_min": 0.3, "pop_max_gu_s": 2.0, "stagger_frames": 16,
-		"bounce_frames": 10, "bounce_scale": 0.22, "hold_frames": 30, "fade_frames": 28},
-	"heavy": {
-		"gravity_gu_s2": 12.0, "drag_min": 0.9, "pop_max_gu_s": 0.4, "stagger_frames": 8,
-		"bounce_frames": 4, "bounce_scale": 0.07, "hold_frames": 44, "fade_frames": 14},
-	"raked": {
-		"drag_min": 0.45, "pop_max_gu_s": 2.5, "stagger_frames": 22,
-		"bounce_frames": 8, "bounce_scale": 0.14, "hold_frames": 18, "fade_frames": 24},
-}
-
-
-func _capture_glass_rain_timings() -> void:
-	if _voxel_board == null or _edge_registry == null or _slab_registry == null:
-		push_error("[GLASS-RAIN-T] no renderer / edge registry / slab registry")
-		return
-	var preset_name := OS.get_environment("INFILTRAITOR_RAIN_TIMING")
-	if preset_name == "" or not RAIN_TIMING_PRESETS.has(preset_name):
-		if preset_name != "":
-			push_warning("[GLASS-RAIN-T] unknown preset %r — using 'default'" % preset_name)
-		preset_name = "default"
-	var imp_env := OS.get_environment("INFILTRAITOR_RAIN_IMPULSE")
-	var impulse_strength: float = float(imp_env) if imp_env.is_valid_float() else 0.6
-	## G-D42 — THE GAIN, as a bench dial (Director, 2026-09-06: *"empurrar os cacos
-	## que caem quando ele quebra com a força da explosão"*).
-	##
-	## ⚠️ `INFILTRAITOR_RAIN_IMPULSE` alone cannot answer that question. It is the
-	## per-ring falloff and is clamped to 1.0, so the very strongest shockwave the
-	## shipped build can produce pushes a shard `SCATTER_IMPULSE_GAIN` = 3 voxel
-	## cells — **0.375 of a floor tile** — and the least-pushed one 0.9 cells, or
-	## 0.11 of a tile. The mechanic is real and its MAGNITUDE is sub-tile, which is
-	## why it reads as no projection at all. Sweeping the gain is what turns "is it
-	## there?" into "how far should it go?", and that is the Director's call.
-	##
-	## Restored below, because a static var is process-wide and this is a capture.
-	var gain_env := OS.get_environment("INFILTRAITOR_RAIN_IMPULSE_GAIN")
-	var gain_before: float = GlassFall.SCATTER_IMPULSE_GAIN
-	if gain_env.is_valid_float():
-		GlassFall.SCATTER_IMPULSE_GAIN = float(gain_env)
-
-	## The big storefront by default — its foot is right where the camera sits, so
-	## the fall fills the frame; a framed window (`INFILTRAITOR_GLASS_BLAST_PANE`,
-	## or `=framed`) is elevated and reads smaller. Remnants are a `glass_blast_demo`
-	## subject; this bench is for the FALL.
-	var pane_id_want := OS.get_environment("INFILTRAITOR_GLASS_BLAST_PANE")
-	var pane_slices: Array
-	if pane_id_want == "framed":
-		pane_slices = _framed_glass_pane()
-	elif pane_id_want != "":
-		pane_slices = _pane_by_id(pane_id_want)
-	else:
-		pane_slices = _biggest_glass_pane("")
-	if pane_slices.is_empty():
-		push_error("[GLASS-RAIN-T] no panel pane to break")
-		return
-
-	var dir := _temp_dir("filmstrip_rain")
-	var existing := DirAccess.open(dir)
-	if existing != null:
-		for f in existing.get_files():
-			if f.begins_with("frame_") and f.ends_with(".png"):
-				existing.remove(f)
-
-	var face: int = pane_slices[0].face
-	var run_is_x: bool = (face == Face.SW or face == Face.NE)
-	var mid: Vector2i = pane_slices[pane_slices.size() / 2].voxels[0].grid_pos
-	var pane_gu := Vector2i(mid.x >> 3, mid.y >> 3)
-	## The grenade's imagined cell, one GU "outside" the pane — the shockwave
-	## direction the real cook computes at `_shatter_glass_panes`.
-	var out_delta := Vector2i(0, 1) if run_is_x else Vector2i(1, 0)
-	var epicenter: Vector2i = mid + out_delta * 8
-
-	apply_glass_diagnostic_backdrop()
-	if _camera_controller != null and agent != null:
-		_camera_controller.set_zoom_for_capture(1.0)
-		_camera_controller.focus_on(agent._cell_to_world(pane_gu)
-			+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
-				* float(_voxel_board.relative_level(pane_slices[0].voxels[0].level))))
-	if _fow_controller != null:
-		_fow_controller.reveal_around(pane_gu, 30)
-	for _s in range(50):
-		await get_tree().process_frame
-
-	## ── shatter the pane FOR REAL: the same plan the cook builds ────────────
-	var all_slices: Array = _edge_registry.all_slices()
-	var anchors: Dictionary = GlassShatter.collect_anchor_positions(pane_slices, face, all_slices)
-	var res: Dictionary = GlassShatter.plan_pane_shatter(pane_slices, face,
-		mid, pane_slices[0].voxels[0].level + 12, 8.5, "RAIN_TIMINGS", anchors)
-	var fallen: Array = []
-	for e in res["destroyed"]:
-		var v: Voxel = e["slice"].voxels[int(e["voxel_index"])]
-		if v.damage_state == Voxel.DamageState.DESTROYED:
-			continue
-		v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
-		fallen.append({"grid_pos": v.grid_pos, "level": v.level})
-	await _voxel_board.process_dirty_async(_edge_registry)
-	var remnant_cells: Array = []
-	for r in res["remnants"]:
-		var rv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
-		remnant_cells.append({"cell": rv.grid_pos, "level": rv.level})
-	claim_glass_remnants(remnant_cells)
-
-	## ── G-D41 / G-D42 — the real scatter, with an impulse toward the room ───
-	var impulse := {
-		"from": Vector2(epicenter),
-		"strength": clampf(impulse_strength, 0.0, 1.0),
-		"lift": 0.0,
-	}
-	var landings: Array = GlassFall.plan_landings(fallen, _slab_registry.all_slabs(), impulse)
-	## ⚠️ HOW FAR IT ACTUALLY WENT, in tiles, read off the landings rather than
-	## computed from the constants — a shard pushed onto a column with no landable
-	## surface is DROPPED by `plan_landings()`, so the mean the eye sees is not the
-	## mean the gain asks for, and at a high gain the loss is the story.
-	var sum_push: float = 0.0
-	var max_push: float = 0.0
-	for lg in landings:
-		var d: float = Vector2(lg["grid_pos"] - lg["origin_pos"]).length()
-		sum_push += d
-		max_push = maxf(max_push, d)
-	var mean_push: float = sum_push / float(maxi(landings.size(), 1))
-	print("[GLASS-RAIN-T] gain=%.1f -> travel mean %.2f cell(s) (%.3f tile), max %.2f cell(s) (%.3f tile); %d of %d shard(s) kept"
-		% [GlassFall.SCATTER_IMPULSE_GAIN, mean_push,
-		mean_push / float(GeometryCoords.VOXELS_PER_UNIT_AXIS), max_push,
-		max_push / float(GeometryCoords.VOXELS_PER_UNIT_AXIS),
-		landings.size(), fallen.size()])
-	GlassFall.SCATTER_IMPULSE_GAIN = gain_before
-	record_glass_shards(GlassFall.pile_by_cell(landings))
-	for _g in range(8):
-		await get_tree().process_frame
-	await ScenarioDrawRef.next_drawn_frame(get_tree())
-
-	## ── the rain, at ONE preset ────────────────────────────────────────────
-	GlassRainOverlay.timing_overrides = RAIN_TIMING_PRESETS[preset_name]
-	var n: int = spawn_glass_rain(landings)
-	GlassRainOverlay.timing_overrides = {}
-	var span: int = 0
-	for r in _voxel_board.get_children():
-		if r is GlassRainOverlay:
-			span = maxi(span, r.span_frames())
-	var frames_env := OS.get_environment("INFILTRAITOR_RAIN_FRAMES")
-	var frame_count: int = frames_env.to_int() if frames_env.is_valid_int() else span + 20
-	print("[GLASS-RAIN-T] preset=%s impulse=%.2f pane=%s: %d flight(s) -> %d shard(s), span %d, filming %d frame(s)"
-		% [preset_name, impulse["strength"], pane_slices[0].pane_id, landings.size(), n, span, frame_count])
-
-	## Frames are cropped to the action, like `glass_rain_demo`'s own filmstrip:
-	## a full 1280x720 makes the shards a speck in the corner. Overridable as
-	## `INFILTRAITOR_RAIN_CROP=x,y,w,h`.
-	var crop := Rect2i(260, 110, 760, 480)
-	var crop_env := OS.get_environment("INFILTRAITOR_RAIN_CROP")
-	if crop_env != "":
-		var p := crop_env.split(",")
-		if p.size() == 4:
-			crop = Rect2i(p[0].to_int(), p[1].to_int(), p[2].to_int(), p[3].to_int())
-
-	for i in range(frame_count):
-		await ScenarioDrawRef.next_drawn_frame(get_tree())
-		var img := get_viewport().get_texture().get_image()
-		if img == null:
-			continue
-		var tile: Image = img.get_region(crop)
-		## ⚠️ CONVERT — a viewport image is not RGBA8, and ffmpeg's glob reader is
-		## fussy about mixed formats across a sequence.
-		tile.convert(Image.FORMAT_RGBA8)
-		tile.save_png("%s/frame_%03d.png" % [dir, i])
-	print("[GLASS-RAIN-T] wrote %d frame(s) (crop %s) to %s" % [frame_count, crop, dir])
 
 
 func _capture_screenshot_to_file() -> void:
@@ -11725,74 +9952,6 @@ func _capture_screenshot_to_file() -> void:
 	var short_name := filename.get_file()
 	print("Screenshot saved: %s" % filename)
 	_show_screenshot_toast("SAVED %s" % short_name)
-
-
-## SCREENSHOT-HOOK-01: entry point for the pre-commit hook's dedicated,
-## off-screen Godot process. Waits for the just-loaded map to actually be
-## rasterized, captures the real viewport (same mechanism as
-## _capture_screenshot_to_file(), separate destination + retention policy),
-## prunes Screenshots/history/ to the 50 most recent files, then
-## quits the process itself — the hook does not need to kill it.
-## OCC-FIX-02: drive the real rotation path and capture one PNG per view, overlay on.
-## Agent is left where he is — the whole point is the SAME agent under four views.
-func _capture_all_four_views() -> void:
-	## OCC-02: the debug overlay paints opaque diamonds over the very cells the ghosts make
-	## see-through, so it must be OFF when the thing under test is the ghosting itself.
-	## INFILTRAITOR_CAPTURE_OVERLAY=1 turns it back on for verifying the SET (OCC-01).
-	var show_overlay := OS.get_environment("INFILTRAITOR_CAPTURE_OVERLAY") == "1"
-	if _occlusion_overlay != null:
-		_occlusion_overlay.visible = show_overlay
-
-	var project_root := ProjectSettings.globalize_path("res://")
-	var history_dir := project_root + "Screenshots/history"
-	DirAccess.make_dir_recursive_absolute(history_dir)
-
-	## ⚠️ FRAMING IS A KNOB NOW, AND THE SCENARIO WORK IS WHY. This capture was
-	## written to photograph one agent's surroundings, so it framed whatever the
-	## camera already held — fine for a rotation A/B, useless for looking at a
-	## RUN of geometry, which is what the Director's window set and everything
-	## after it in the scenario-architecture milestone actually is.
-	##   INFILTRAITOR_CAPTURE_FOCUS=x,y   the GU to centre on (authored coords + buffer)
-	##   INFILTRAITOR_CAPTURE_ZOOM=<f>    smaller sees more
-	## Applied INSIDE the loop: the camera is turned per view and
-	## may be re-framed with it, so a framing set once before the loop survives exactly one
-	## view — which reads as "three of the four captures ignored the setting".
-	var focus_env := OS.get_environment("INFILTRAITOR_CAPTURE_FOCUS")
-	var zoom_env := OS.get_environment("INFILTRAITOR_CAPTURE_ZOOM")
-
-	for view in ["N", "E", "S", "W"]:
-		_set_perspective(view)
-		if _occlusion_overlay != null:
-			_occlusion_overlay.visible = show_overlay
-			_occlusion_overlay.queue_redraw()
-		if _camera_controller != null and agent != null:
-			if focus_env != "":
-				var xy := focus_env.split(",")
-				if xy.size() == 2 and xy[0].is_valid_int() and xy[1].is_valid_int():
-					## The cell is named in BASE coords, which since R3D-ROT are the cells of every view (only the camera turns).
-					var view_cell := Vector2i(xy[0].to_int(), xy[1].to_int())
-					_camera_controller.focus_on(agent._cell_to_world(view_cell))
-					if _fow_controller != null:
-						_fow_controller.reveal_around(view_cell, 40)
-				else:
-					push_warning("[CAPTURE] INFILTRAITOR_CAPTURE_FOCUS=%r — expected \"x,y\""
-						% focus_env)
-			if zoom_env.is_valid_float():
-				_camera_controller.set_zoom_for_capture(zoom_env.to_float())
-		for _f in range(12):
-			await get_tree().process_frame
-
-		var img := get_viewport().get_texture().get_image()
-		if img == null:
-			push_error("[OCC-FIX-02] Null image capturing view %s" % view)
-			continue
-		var path := "%s/occ_view_%s.png" % [history_dir, view]
-		img.save_png(path)
-		print("[OCC-FIX-02] view=%s active=%s agent_cell=%s occluded_cells=%d → %s" % [
-			view, _view_direction, agent.cell,
-			(_occlusion_set.get_occluded_cells().size() if _occlusion_set != null and _occlusion_set.has_method("get_occluded_cells") else -1),
-			path.get_file()
-		])
 
 
 ## TEST-ZONE placeholder (2026-07-22): open floor cell 2 GU south of each
@@ -11905,661 +10064,6 @@ func _refresh_gu_grid_overlay() -> void:
 	_gu_grid_overlay.set_room_size(_room_size)
 
 
-func _run_auto_screenshot_capture() -> void:
-	## A few extra frames past _ready() so the GPU has actually drawn the
-	## map before capture (see the SCREENSHOT-HOOK-01 comment at the call site).
-	for _i in range(10):
-		await get_tree().process_frame
-
-	## Optional pre-capture action, for HUD states that only exist transiently
-	## mid-turn and so cannot be caught by a plain boot capture.
-	## INFILTRAITOR_CAPTURE_ACTION=end_turn really ends the player's turn (the
-	## same call the End Turn button makes) and then waits, so the capture lands
-	## while the enemy-phase banner is actually on screen. Needs a map with
-	## guards — on a guardless map the enemy phase resolves in the same frame and
-	## the banner is gone before any capture can see it.
-	## INFILTRAITOR_CAPTURE_ACTION=busted shows the busted overlay through the
-	## same HudController call the turn controller makes when a guard catches the
-	## agent. Triggered directly, not reached through play — a real capture is
-	## still the point (the overlay must be in the pixels), but reaching it
-	## organically needs a guard to actually spot the agent across several turns.
-	## OCC-FIX-02 — INFILTRAITOR_CAPTURE_VIEWS=1: capture the SAME agent position under
-	## all four perspectives (N/E/S/W), occlusion overlay forced on, one PNG per view.
-	##
-	## This exists because the four-view criterion was not merely unmet, it was
-	## UNMEETABLE. Rotating the view is mouse-only — the perspective pad has no key
-	## binding — so an unattended run cannot rotate the map. OCC-01-b tried to press a
-	## "Q key" that does not exist, the map never turned, and four byte-identical game
-	## windows were reported as four views. The tool was missing; asking a third time
-	## would only have produced a third fabrication.
-	##
-	## _set_perspective() is the same call the pad's buttons make, so this drives the
-	## real rotation path (full layout rebuild), not a camera trick.
-	## INFILTRAITOR_CAPTURE_AGENT_CELL="x,y" (2026-07-16): teleport the agent
-	## through the same cell setter a real move uses, reveal FOW there, and
-	## recompute occlusion — so an unattended capture can exercise ghost bands
-	## and wireframe at any chosen spot (agent_start rarely stands where a
-	## reported visual bug is). Composes with the other capture actions.
-	## ROOF-OCC-01: INFILTRAITOR_CAPTURE_REVEAL_RADIUS overrides the FOW reveal
-	## radius for the teleported capture — a large map's geometry is otherwise
-	## too dark to visually verify anything past the default radius.
-	var agent_cell_env := OS.get_environment("INFILTRAITOR_CAPTURE_AGENT_CELL")
-	if agent_cell_env != "" and agent != null:
-		var cell_parts := agent_cell_env.split(",")
-		if cell_parts.size() == 2:
-			var forced_cell := Vector2i(cell_parts[0].to_int(), cell_parts[1].to_int())
-			var reveal_radius := FOW_REVEAL_RADIUS + vision_bonus_tiles
-			var radius_env := OS.get_environment("INFILTRAITOR_CAPTURE_REVEAL_RADIUS")
-			if radius_env.is_valid_int() and radius_env.to_int() > 0:
-				reveal_radius = radius_env.to_int()
-			agent.set_cell(forced_cell)
-			_fow_controller.reveal_around(forced_cell, reveal_radius)
-			_recompute_occlusion()
-			for _j in range(10):
-				await get_tree().process_frame
-		else:
-			push_warning("[SCREENSHOT-HOOK-01] Bad INFILTRAITOR_CAPTURE_AGENT_CELL '%s' — expected 'x,y'" % agent_cell_env)
-
-	## BENCH-VIEW-01 (2026-07-29): frame an arbitrary cell, at an arbitrary zoom.
-	## AGENT_CELL above deliberately does NOT move the camera (see its own note —
-	## that was found the hard way), which is right for "put the agent here and
-	## check occlusion" but useless for "show me the whole weapons bench at once".
-	## These two are the missing half: FOCUS_CELL="x,y" recentres, and ZOOM (the
-	## CameraController's own 0.20..1.20 range, smaller = further out) pulls back
-	## far enough to fit a 10-row bench in one frame.
-	var focus_env := OS.get_environment("INFILTRAITOR_CAPTURE_FOCUS_CELL")
-	if focus_env != "" and _camera_controller != null and agent != null:
-		var focus_parts := focus_env.split(",")
-		if focus_parts.size() == 2:
-			_camera_controller.focus_on(agent._cell_to_world(
-				Vector2i(focus_parts[0].to_int(), focus_parts[1].to_int())))
-		else:
-			push_warning("[SCREENSHOT-HOOK-01] Bad INFILTRAITOR_CAPTURE_FOCUS_CELL '%s' — expected 'x,y'" % focus_env)
-	var zoom_env := OS.get_environment("INFILTRAITOR_CAPTURE_ZOOM")
-	if zoom_env.is_valid_float() and _camera_controller != null:
-		_camera_controller.set_zoom_for_capture(zoom_env.to_float())
-	if focus_env != "" or zoom_env != "":
-		for _j in range(10):
-			await get_tree().process_frame
-
-	## HEAT-Z-01 (2026-07-28): force one or more analysis modes ON for the capture,
-	## comma-separated ("heat", "light", "dev", "numbers" — the H / L / D / #
-	## on-screen toggles). Same standing-dev-tool precedent as the capture actions
-	## below: a z-order claim about an overlay that is hidden by default cannot be
-	## proven by any unattended capture without a way to switch it on. Routed
-	## through the SAME toggle methods the buttons call, so this exercises the real
-	## path rather than poking `visible` directly.
-	var vision_env := OS.get_environment("INFILTRAITOR_CAPTURE_VISION")
-	if vision_env != "" and _vision_controller != null:
-		for raw_mode in vision_env.split(","):
-			match raw_mode.strip_edges().to_lower():
-				"heat":
-					_vision_controller.toggle_heat()
-				"light":
-					_vision_controller.toggle_light()
-				"dev":
-					_vision_controller.toggle_dev()
-				"numbers":
-					_on_hud_numbers_toggled()
-				_:
-					push_warning("[SCREENSHOT-HOOK-01] Unknown INFILTRAITOR_CAPTURE_VISION mode '%s' — expected heat/light/dev/numbers" % raw_mode)
-		## This block toggles the controller DIRECTLY rather than going through
-		## _set_view_mode(), which is where the agent's yellow-joint bake is kept
-		## in step. Without this line the capture harness would photograph a
-		## developer-tinted agent while the HUD says dev is off — the first
-		## three-posture capture did exactly that.
-		if agent != null:
-			agent.set_dev_vision(_vision_controller.dev_vision)
-		for _j in range(10):
-			await get_tree().process_frame
-
-	## CHARACTER Part 2 §10 — INFILTRAITOR_CAPTURE_POSTURE=standing|crouch|prone.
-	## The swap replaced a placeholder that drew THREE shapes, so verifying it
-	## means photographing three postures; without this an unattended run can only
-	## ever reach the standing one, because posture is changed by a HUD button.
-	## It goes through `set_posture()`, the same call the button makes, so this
-	## drives the real path rather than poking the sprite directly.
-	var posture_env := OS.get_environment("INFILTRAITOR_CAPTURE_POSTURE")
-	if posture_env != "" and agent != null:
-		var wanted: Variant = {
-			"standing": Agent.Posture.STANDING,
-			"crouch": Agent.Posture.CROUCHING,
-			"prone": Agent.Posture.PRONE,
-		}.get(posture_env.strip_edges().to_lower())
-		if wanted == null:
-			push_warning("[SCREENSHOT-HOOK-01] Unknown INFILTRAITOR_CAPTURE_POSTURE '%s' — expected standing/crouch/prone" % posture_env)
-		else:
-			agent.set_posture(wanted)
-			for _j in range(6):
-				await get_tree().process_frame
-
-	## INFILTRAITOR_CAPTURE_FACING=N|E|S|W — the agent's own facing, independent
-	## of the room's perspective (§4.6). Driven through the same `face_step` D47
-	## uses on a real move, so what is captured is a facing the game can actually
-	## produce.
-	var facing_env := OS.get_environment("INFILTRAITOR_CAPTURE_FACING")
-	if facing_env != "" and agent != null and agent.pose != null:
-		var step: Variant = {
-			"N": Vector2i(0, -1), "E": Vector2i(1, 0),
-			"S": Vector2i(0, 1), "W": Vector2i(-1, 0),
-		}.get(facing_env.strip_edges().to_upper())
-		if step == null:
-			push_warning("[SCREENSHOT-HOOK-01] Unknown INFILTRAITOR_CAPTURE_FACING '%s' — expected N/E/S/W" % facing_env)
-		else:
-			agent.pose.face_step(step)
-			for _j in range(4):
-				await get_tree().process_frame
-
-	var capture_action := OS.get_environment("INFILTRAITOR_CAPTURE_ACTION")
-	if OS.get_environment("INFILTRAITOR_CAPTURE_VIEWS") == "1":
-		## VL-PERSIST verification: detonate a grenade first, then capture all four
-		## views — the crater/soot must persist through each rotation. Index
-		## defaults to 0 (concrete/metal); INFILTRAITOR_CAPTURE_DETONATE_INDEX
-		## selects another test-zone grenade (VL-D4: 3 = wood).
-		if OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_FIRST") == "1" and _grenade_controller != null:
-			var detonate_index_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_INDEX")
-			var detonate_index := detonate_index_env.to_int() if detonate_index_env.is_valid_int() else 0
-			_seed_dev_grenades_if_empty("CAPTURE-VIEWS")
-			_grenade_controller.open_menu_for(detonate_index)
-			_grenade_controller.detonate_active()
-			for _j in range(45):
-				await get_tree().process_frame
-		await _capture_all_four_views()
-		get_tree().quit(0)
-		return
-	if capture_action == "end_turn" and turn_manager != null:
-		turn_manager.end_turn()
-		for _j in range(20):
-			await get_tree().process_frame
-	elif capture_action == "busted" and _hud_controller != null:
-		_hud_controller.show_busted()
-		for _j in range(20):
-			await get_tree().process_frame
-	elif capture_action == "shot_filmstrip" and _agent_shot_controller != null:
-		await _capture_shot_filmstrip()
-		get_tree().quit(0)
-		return
-	elif capture_action == "agent_shot" and _agent_shot_controller != null:
-		await _capture_agent_shot()
-	elif capture_action == "detonation_filmstrip" and _grenade_controller != null:
-		await _capture_detonation_filmstrip()
-		get_tree().quit(0)
-		return
-	elif capture_action == "walk_filmstrip" and agent != null:
-		await _capture_walk_filmstrip()
-		get_tree().quit(0)
-		return
-	elif capture_action == "glass_rain_timings":
-		await _capture_glass_rain_timings()
-		get_tree().quit(0)
-		return
-	elif capture_action == "escape_open_menu":
-		## ESC-STACK-01 fallback check: with nothing else open, Escape must
-		## still open the Main Menu (the ModalStack empty-stack branch of
-		## _on_pause_requested()) — the counterpart proof to test_zone_escape,
-		## which checks the non-empty-stack branch closes the top modal
-		## instead. Real Escape InputEventKey, not a direct open() call.
-		var esc_down := InputEventKey.new()
-		esc_down.keycode = KEY_ESCAPE
-		esc_down.pressed = true
-		Input.parse_input_event(esc_down)
-		var esc_up := InputEventKey.new()
-		esc_up.keycode = KEY_ESCAPE
-		esc_up.pressed = false
-		Input.parse_input_event(esc_up)
-		for _j in range(10):
-			await get_tree().process_frame
-	elif (capture_action == "test_zone_view" or capture_action == "test_zone_menu" or capture_action == "test_zone_detonate" or capture_action == "test_zone_escape") and _grenade_controller != null:
-		## TEST-ZONE placeholder (2026-07-21) dev capture action, same
-		## standing-tool precedent as end_turn/busted above. "test_zone_view"
-		## just frames the grenade (no click) for a plain look; "test_zone_menu"
-		## drives _unhandled_input() with a synthetic right-click at grenade
-		## 0's real hit-test position (the same call path a real click
-		## takes); "test_zone_detonate" additionally parses a real Enter
-		## InputEventKey so the focused-Button keyboard route is exercised,
-		## not assumed. "test_zone_escape" (ESC-STACK-01, 2026-07-22) parses a
-		## real Escape InputEventKey after opening the menu — proves the fix
-		## for "Escape opened the Main Menu instead of cancelling the context
-		## menu" through the real InputController._input() -> _on_pause_requested()
-		## -> ModalStack path, not a direct cancel_active() call.
-		## Frames/reveals the whole row (4 walls, gu x=2..19) — not just one
-		## grenade — since TEST_ZONE_GRENADE_GUS now has one entry per wall.
-		## VL-D4: INFILTRAITOR_CAPTURE_DETONATE_INDEX also selects which of the
-		## 4 test-zone grenades this action clicks/frames (default 0, unchanged
-		## behavior for every pre-existing use of this action).
-		var tz_index_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_INDEX")
-		var tz_index := tz_index_env.to_int() if tz_index_env.is_valid_int() else 0
-		var row_center := Vector2i(10, 4)
-		if tz_index > 0 and tz_index < TEST_ZONE_GRENADE_GUS.size():
-			row_center = TEST_ZONE_GRENADE_GUS[tz_index]
-		if _camera_controller != null and agent != null:
-			_camera_controller.focus_on(agent._cell_to_world(row_center))
-		if _fow_controller != null:
-			_fow_controller.reveal_around(row_center, 12)
-		for _c in range(5):
-			await get_tree().process_frame
-		var probe_env := OS.get_environment("INFILTRAITOR_THROW_PROBE")
-		if probe_env != "":
-			var probe_targets: Array = []
-			for part in probe_env.split(";", false):
-				var xy := part.split(",")
-				probe_targets.append(Vector2i(int(xy[0]), int(xy[1])))
-			_grenade_controller.probe_throw_clamp(probe_targets)
-			_grenade_controller.probe_pick()
-		if capture_action != "test_zone_view":
-			## The floor grenades were retired from PLAYGROUND 2026-08-17 (see
-			## _populate_test_zone_if_playground()), so this action seeds its own
-			## — the same fix P-FILM and the four-view capture already carry, and
-			## this is the third and last caller that was left warning-and-quit.
-			## It matters more than the others: this is the only capture path
-			## that reaches DetonationPlanBuilder.print_census(), which is where
-			## the per-surface/material tally (including JUNCTION) is read.
-			_seed_dev_grenades_if_empty("SCREENSHOT-HOOK-01")
-			if _grenade_controller._grenades.is_empty():
-				push_warning("[SCREENSHOT-HOOK-01] %s: no grenade to detonate" % capture_action)
-				get_tree().quit(1)
-				return
-			## INFILTRAITOR_CAPTURE_VIEW (2026-09-29): rotate BEFORE the blast, so a recording sees it from that side
-			## (`CAPTURE_ROTATE_AFTER` rotates once it is over, which is a still's tool, not a video's).
-			var view_env := OS.get_environment("INFILTRAITOR_CAPTURE_VIEW")
-			if view_env in ["N", "E", "S", "W"]:
-				_set_perspective(view_env)
-				for _v in range(20):
-					await get_tree().process_frame
-				var view_gu: Vector2i = _grenade_controller._grenades[tz_index]["gu_cell"]
-				if _camera_controller != null and agent != null:
-					_camera_controller.focus_on(agent._cell_to_world(view_gu))
-				if _fow_controller != null:
-					_fow_controller.reveal_around(view_gu, 12)
-				for _v2 in range(10):
-					await get_tree().process_frame
-			## D22-INPUT-01: click the GU floor cell, not the sprite.
-			var g_cell: Vector2i = _grenade_controller._grenades[tz_index]["gu_cell"]
-			var click := InputEventMouseButton.new()
-			click.button_index = MOUSE_BUTTON_RIGHT
-			click.pressed = true
-			click.position = _tile_to_screen_center(g_cell)
-			_unhandled_input(click)
-			for _j in range(10):
-				await get_tree().process_frame
-		if capture_action == "test_zone_detonate":
-			## Real focus + Enter keypress path (Button.grab_focus() + a
-			## parsed InputEventKey), not a direct signal call — Input.
-			## action_press() alone never reaches Control._gui_input(), so a
-			## real queued key event is required to prove the keyboard route.
-			var key_down := InputEventKey.new()
-			key_down.keycode = KEY_ENTER
-			key_down.pressed = true
-			Input.parse_input_event(key_down)
-			var key_up := InputEventKey.new()
-			key_up.keycode = KEY_ENTER
-			key_up.pressed = false
-			Input.parse_input_event(key_up)
-			## VL-02b: _flash_white() runs a 0.03s + 0.25s tween. Ten frames
-			## caught the capture mid-flash, washing the crater out of every
-			## detonation screenshot. Wait past the tween so the shot shows
-			## the real damage.
-			## E-SMOKE-01 (2026-08-08): 45 frames is past the tween but also past
-			## most of the SMOKE — puffs live 0.6-1.0s scaled down per voxel, so
-			## every detonation capture ever taken has shown the damage with the
-			## VFX already gone. INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES lands
-			## the shot mid-sequence instead, which is the only way to make a
-			## visual claim about smoke at all. Defaults to the historical 45, so
-			## every pre-existing capture invocation is unchanged.
-			var det_wait_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES")
-			var det_wait: int = det_wait_env.to_int() if det_wait_env.is_valid_int() else 45
-			for _j in range(maxi(det_wait, 0)):
-				await get_tree().process_frame
-			## VFX-01 dev verification: the 45-frame wait above is enough to
-			## catch the flash-tween settling, but VFX-01's dust (starts
-			## falling ~1s after the blast) and ember extinguish-puffs (up to
-			## a few seconds) land later than that. Purely additive — 0
-			## frames when unset, same as every other capture-only env var in
-			## this function.
-			var extra_wait_env := OS.get_environment("INFILTRAITOR_CAPTURE_EXTRA_WAIT_FRAMES")
-			var extra_wait: int = extra_wait_env.to_int() if extra_wait_env.is_valid_int() else 0
-			for _e in range(extra_wait):
-				await get_tree().process_frame
-			## FLOOR-DENT-01 (2026-08-01): rotate AFTER the blast, so a capture
-			## proves damage SURVIVES rotation instead of only that it renders
-			## once. Deliberately distinct from INFILTRAITOR_CAPTURE_PERSPECTIVE
-			## (weapon bench), which rotates BEFORE firing and therefore says
-			## nothing about persistence. This is the exact failure class that bit
-			## D23 on 2026-07-31: _base_damage stored too little, so every rotation
-			## silently replayed the wrong marks.
-			var rotate_after := OS.get_environment("INFILTRAITOR_CAPTURE_ROTATE_AFTER")
-			if rotate_after in ["N", "E", "S", "W"]:
-				## Re-read the grenade's GU here: the click block above scopes its
-				## own copy, and this runs whether or not that block ran.
-				var blast_gu: Vector2i = _grenade_controller._grenades[tz_index]["gu_cell"]
-				var gu_base := blast_gu
-				_set_perspective(rotate_after)
-				for _r in range(30):
-					await get_tree().process_frame
-				## The crater moved with the map — follow it, or the capture frames
-				## whatever is now at the old screen position and proves nothing.
-				var gu_now := gu_base
-				if _camera_controller != null and agent != null:
-					_camera_controller.focus_on(agent._cell_to_world(gu_now))
-				if _fow_controller != null:
-					_fow_controller.reveal_around(gu_now, 12)
-				for _r2 in range(10):
-					await get_tree().process_frame
-		if capture_action == "test_zone_escape":
-			var esc_down := InputEventKey.new()
-			esc_down.keycode = KEY_ESCAPE
-			esc_down.pressed = true
-			Input.parse_input_event(esc_down)
-			var esc_up := InputEventKey.new()
-			esc_up.keycode = KEY_ESCAPE
-			esc_up.pressed = false
-			Input.parse_input_event(esc_up)
-			for _j in range(10):
-				await get_tree().process_frame
-	elif capture_action in ["grenade_aim", "grenade_throw", "grenade_cancel",
-			"grenade_tap", "grenade_second"] and _grenade_controller != null:
-		## T-MODE/E-BUBBLE dev capture action (2026-08-10) — the unattended path
-		## for the aiming preview, same standing-tool precedent as weapon_menu
-		## above (which exists so the CONE preview can be captured rather than
-		## described). Real G keypress through InputController and a real
-		## InputEventMouseMotion through _input(), so what the shot proves is the
-		## whole chain: key -> targeting mode -> hover -> perimeter/dome/rays.
-		##
-		## INFILTRAITOR_CAPTURE_AIM_CELL="x,y" is the cell the cursor hovers
-		## (default (11,9), open floor next to the test-zone wall row). Combine
-		## with INFILTRAITOR_CAPTURE_AGENT_CELL to change where the throw starts
-		## and therefore where the perimeter is centred.
-		var aim_cell := Vector2i(11, 9)
-		var aim_env := OS.get_environment("INFILTRAITOR_CAPTURE_AIM_CELL")
-		if aim_env.contains(","):
-			var parts := aim_env.split(",")
-			if parts.size() == 2 and parts[0].is_valid_int() and parts[1].is_valid_int():
-				aim_cell = Vector2i(parts[0].to_int(), parts[1].to_int())
-			else:
-				push_warning("[SCREENSHOT-HOOK-01] Bad INFILTRAITOR_CAPTURE_AIM_CELL '%s' — expected 'x,y'" % aim_env)
-		if _camera_controller != null and agent != null:
-			_camera_controller.focus_on(agent._cell_to_world(aim_cell))
-		if _fow_controller != null:
-			_fow_controller.reveal_around(aim_cell, 14)
-		## The camera tween has to SETTLE before the synthetic motion below is
-		## positioned, or _tile_to_screen_center() is computed against a transform
-		## that is still moving and the hover lands on a different cell. Measured
-		## 2026-08-10: at 5 frames this misfired roughly one run in four at the
-		## harness's ~8 fps.
-		for _c in range(15):
-			await get_tree().process_frame
-
-		## T-DEV: `dev_vision` defaults TRUE in this build (ROTATE-KILL-01), so the
-		## harness always shows the developer's view. This turns it off through the
-		## real V keybind, which is the only way to capture what the player's HUD
-		## actually looks like during a throw.
-		if OS.get_environment("INFILTRAITOR_CAPTURE_NO_DEV") == "1":
-			var v_down := InputEventKey.new()
-			v_down.keycode = KEY_V
-			v_down.pressed = true
-			Input.parse_input_event(v_down)
-			var v_up := InputEventKey.new()
-			v_up.keycode = KEY_V
-			v_up.pressed = false
-			Input.parse_input_event(v_up)
-			for _j in range(6):
-				await get_tree().process_frame
-
-		var g_down := InputEventKey.new()
-		g_down.keycode = KEY_G
-		g_down.pressed = true
-		Input.parse_input_event(g_down)
-		var g_up := InputEventKey.new()
-		g_up.keycode = KEY_G
-		g_up.pressed = false
-		Input.parse_input_event(g_up)
-		for _j in range(5):
-			await get_tree().process_frame
-
-		## The hover is what moves the dome — without it the preview sits on
-		## enter_grenade_mode()'s placeholder cell and the capture proves nothing
-		## about the cursor path.
-		var motion := InputEventMouseMotion.new()
-		motion.position = _tile_to_screen_center(aim_cell)
-		_input(motion)
-		for _j in range(10):
-			await get_tree().process_frame
-
-		if capture_action == "grenade_throw":
-			## Real Enter through InputController's targeting branch — the same
-			## route the player takes, and the only way to prove the throw
-			## coroutine survives its own frame loop. It did not before
-			## 2026-08-10: it called SceneTree.get_physics_frame(), which does not
-			## exist, so the coroutine aborted and nothing ever detonated.
-			var t_down := InputEventKey.new()
-			t_down.keycode = KEY_ENTER
-			t_down.pressed = true
-			Input.parse_input_event(t_down)
-			var t_up := InputEventKey.new()
-			t_up.keycode = KEY_ENTER
-			t_up.pressed = false
-			Input.parse_input_event(t_up)
-			## Past the 0.6 s throw, the fuse wait, and the flash tween — the same
-			## reasoning (and the same env var) test_zone_detonate uses.
-			var throw_wait_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES")
-			var throw_wait: int = throw_wait_env.to_int() if throw_wait_env.is_valid_int() else 120
-			for _j in range(maxi(throw_wait, 0)):
-				await get_tree().process_frame
-
-		if capture_action == "grenade_second":
-			## T-SECOND: throw TWICE from one boot. The Director's bug was that
-			## "uma segunda granada não aparece sendo lançada" — targeting always
-			## selected grenade 0, which after the first throw is spent and
-			## invisible. A capture of one throw can never show this; only the
-			## second one can, so the check is which prop is in the air.
-			##
-			## INFILTRAITOR_CAPTURE_SECOND_OFFSET="x,y" moves where the SECOND
-			## throw lands relative to the first; default (1,0) is the original
-			## behaviour, byte for byte. "0,0" puts both on the same GU, which is
-			## the only way to exercise D2's deep-layer unlock
-			## (`deep_layer_unlocked` reads `_gu_blast_count[gu] > 0`) from the
-			## unattended harness — the Director's "jogando duas ou mais granadas
-			## no mesmo lugar aparecem alguns voxels especiais".
-			var second_offset := Vector2i(1, 0)
-			var offset_env := OS.get_environment("INFILTRAITOR_CAPTURE_SECOND_OFFSET")
-			if offset_env.contains(","):
-				var off_parts := offset_env.split(",")
-				if off_parts.size() == 2 and off_parts[0].is_valid_int() and off_parts[1].is_valid_int():
-					second_offset = Vector2i(off_parts[0].to_int(), off_parts[1].to_int())
-				else:
-					push_warning("[SCREENSHOT-HOOK-01] Bad INFILTRAITOR_CAPTURE_SECOND_OFFSET '%s' — expected 'x,y'" % offset_env)
-			for shot: int in range(2):
-				var g_down2 := InputEventKey.new()
-				g_down2.keycode = KEY_G
-				g_down2.pressed = true
-				Input.parse_input_event(g_down2)
-				var g_up2 := InputEventKey.new()
-				g_up2.keycode = KEY_G
-				g_up2.pressed = false
-				Input.parse_input_event(g_up2)
-				for _j in range(5):
-					await get_tree().process_frame
-				print("[T-SECOND] shot %d: targeting=%s picked_index=%d" %
-					[shot + 1, is_grenade_targeting(),
-					_grenade_controller._targeting_grenade_index])
-				var motion2 := InputEventMouseMotion.new()
-				motion2.position = _tile_to_screen_center(aim_cell + second_offset * shot)
-				_input(motion2)
-				for _j in range(5):
-					await get_tree().process_frame
-				var e_down := InputEventKey.new()
-				e_down.keycode = KEY_ENTER
-				e_down.pressed = true
-				Input.parse_input_event(e_down)
-				var e_up := InputEventKey.new()
-				e_up.keycode = KEY_ENTER
-				e_up.pressed = false
-				Input.parse_input_event(e_up)
-				## Honours INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES like every
-				## other detonating action, defaulting to the 150 this always
-				## used. The blast's own smoke runs 1.8-3.2 s, so 150 frames
-				## lands mid-cloud — fine for "did a second grenade fly", useless
-				## for looking at the crater it left.
-				var second_wait_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES")
-				var second_wait: int = second_wait_env.to_int() if second_wait_env.is_valid_int() else 150
-				for _j in range(maxi(second_wait, 0)):
-					await get_tree().process_frame
-
-		if capture_action == "grenade_tap":
-			## T-TAP: the mobile flow, driven through the real _unhandled_input()
-			## release branch rather than by calling the handler directly. TWO taps
-			## on a cell the hover is NOT already sitting on: the first must only
-			## re-aim, the second must throw. Doing it on the hovered cell instead
-			## would prove nothing, because one tap would already match.
-			var tap_cell := aim_cell + Vector2i(1, 1)
-			for tap: int in range(2):
-				var press := InputEventMouseButton.new()
-				press.button_index = MOUSE_BUTTON_LEFT
-				press.pressed = true
-				press.position = _tile_to_screen_center(tap_cell)
-				_unhandled_input(press)
-				var release := InputEventMouseButton.new()
-				release.button_index = MOUSE_BUTTON_LEFT
-				release.pressed = false
-				release.position = press.position
-				_unhandled_input(release)
-				print("[T-TAP] tap %d on %s: targeting=%s" % [tap + 1, tap_cell, is_grenade_targeting()])
-				for _j in range(6):
-					await get_tree().process_frame
-			var tap_wait_env := OS.get_environment("INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES")
-			var tap_wait: int = tap_wait_env.to_int() if tap_wait_env.is_valid_int() else 120
-			for _j in range(maxi(tap_wait, 0)):
-				await get_tree().process_frame
-
-		if capture_action == "grenade_cancel":
-			## Real Escape, for the branch `ui_pause` used to swallow: with a throw
-			## being aimed, Escape must clear the preview and leave the game
-			## running, NOT open the Main Menu and pause. A capture showing the
-			## menu is this action failing.
-			var c_down := InputEventKey.new()
-			c_down.keycode = KEY_ESCAPE
-			c_down.pressed = true
-			Input.parse_input_event(c_down)
-			var c_up := InputEventKey.new()
-			c_up.keycode = KEY_ESCAPE
-			c_up.pressed = false
-			Input.parse_input_event(c_up)
-			for _j in range(10):
-				await get_tree().process_frame
-			print("[T-GRENADE] after Escape: targeting=%s paused=%s"
-				% [is_grenade_targeting(), get_tree().paused])
-	elif capture_action == "open_showcase" and _main_menu_panel != null:
-		## ACTOR_MASTER_PLAN D20/Part 5a dev verification: real button-handler
-		## path (Main Menu's own _on_showcase_pressed(), same as a real click
-		## would trigger via the emitted signal), not a direct panel.open()
-		## call. Extra wait past the usual capture delay so the GLTF load +
-		## a few auto-spin frames are visibly in the captured pixels.
-		## INFILTRAITOR_CAPTURE_PORTRAIT=1 forces the OS window to the
-		## project's own mobile viewport size (390x844) before opening, so
-		## the D20 adaptive-layout breakpoint can be verified in both
-		## orientations from one capture action — --resolution alone does not
-		## survive room.gd's own boot path in this build.
-		if OS.get_environment("INFILTRAITOR_CAPTURE_PORTRAIT") == "1":
-			if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
-				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-			DisplayServer.window_set_size(Vector2i(390, 844))
-			get_tree().root.content_scale_size = Vector2i(390, 844)
-			for _j in range(5):
-				await get_tree().process_frame
-		_main_menu_panel.open()
-		for _j in range(5):
-			await get_tree().process_frame
-		_main_menu_panel._on_showcase_pressed()
-		for _j in range(40):
-			await get_tree().process_frame
-	elif capture_action == "test_collectible" and _floating_collectible == null:
-		## The strip is off (TEST_ZONE_COLLECTIBLES_ENABLED), so this action has
-		## nothing to frame. Say so — a silent no-op here would look like a
-		## broken capture rather than a disabled fixture.
-		push_warning("[SCREENSHOT-HOOK-01] test_collectible: no pickup in the scene — set TEST_ZONE_COLLECTIBLES_ENABLED to put the strip back")
-	elif capture_action == "test_collectible" and _floating_collectible != null:
-		## ACTOR_MASTER_PLAN D17/D21 dev verification: INFILTRAITOR_CAPTURE_AGENT_CELL
-		## only teleports the agent + reveals FOW, it does not recentre the
-		## camera (found the hard way — two identical "recaptures" before
-		## realizing this) — focus_on() is the real camera-move call the
-		## test_zone_* actions already use for the same reason.
-		var target_cell: Vector2i = _floating_collectible.gu_cell
-		if _camera_controller != null and agent != null:
-			_camera_controller.focus_on(agent._cell_to_world(target_cell))
-		if _fow_controller != null:
-			_fow_controller.reveal_around(target_cell, 8)
-		for _j in range(15):
-			await get_tree().process_frame
-
-	var image := get_viewport().get_texture().get_image()
-	if image == null:
-		push_warning("[SCREENSHOT-HOOK-01] Failed to capture auto-screenshot — image was null")
-		get_tree().quit(1)
-		return
-
-	var project_root := ProjectSettings.globalize_path("res://")
-	var history_dir := project_root + "Screenshots/history"
-	var dir_err := DirAccess.make_dir_recursive_absolute(history_dir)
-	if dir_err != OK and dir_err != ERR_ALREADY_EXISTS:
-		push_warning("[SCREENSHOT-HOOK-01] Could not create history dir (error %d)" % dir_err)
-		get_tree().quit(1)
-		return
-
-	var timestamp := Time.get_datetime_dict_from_system()
-	var date_str := "%04d-%02d-%02d_%02d-%02d-%02d" % [
-		timestamp["year"],
-		timestamp["month"],
-		timestamp["day"],
-		timestamp["hour"],
-		timestamp["minute"],
-		timestamp["second"],
-	]
-	var filename := "%s/auto_%s.png" % [history_dir, date_str]
-
-	var save_err := image.save_png(filename)
-	if save_err != OK:
-		push_warning("[SCREENSHOT-HOOK-01] Failed to save auto-screenshot: %s (error %d)" % [filename, save_err])
-		get_tree().quit(1)
-		return
-
-	print("[SCREENSHOT-HOOK-01] Captured: %s" % filename)
-	_prune_auto_screenshot_history(history_dir)
-	get_tree().quit(0)
-
-
-## Keeps Screenshots/history/ at the 50 most recent auto_*.png
-## files (oldest-first deletion by filename, which sorts chronologically
-## since the timestamp format is zero-padded and lexicographic-safe).
-func _prune_auto_screenshot_history(history_dir: String) -> void:
-	const MAX_HISTORY_FILES := 50
-	var dir := DirAccess.open(history_dir)
-	if dir == null:
-		push_warning("[SCREENSHOT-HOOK-01] Could not open history dir for pruning: %s" % history_dir)
-		return
-
-	var files: Array[String] = []
-	dir.list_dir_begin()
-	var entry := dir.get_next()
-	while entry != "":
-		if not dir.current_is_dir() and entry.begins_with("auto_") and entry.ends_with(".png"):
-			files.append(entry)
-		entry = dir.get_next()
-	dir.list_dir_end()
-
-	if files.size() <= MAX_HISTORY_FILES:
-		return
-
-	files.sort()  ## chronological: zero-padded timestamp in the filename
-	var excess := files.size() - MAX_HISTORY_FILES
-	for i in range(excess):
-		var path := "%s/%s" % [history_dir, files[i]]
-		var rm_err := DirAccess.remove_absolute(path)
-		if rm_err != OK:
-			push_warning("[SCREENSHOT-HOOK-01] Could not prune old screenshot: %s (error %d)" % [path, rm_err])
-		else:
-			print("[SCREENSHOT-HOOK-01] Pruned: %s" % files[i])
-
-
 ## Exibe uma mensagem temporária no HUD (CanvasLayer $HUD).
 ## Aparece no canto inferior-esquerdo e desvanece em 2 s.
 func _show_screenshot_toast(message: String) -> void:
@@ -12657,7 +10161,7 @@ func is_resolving_action() -> bool:
 ## would have hidden the finding that explained both. The per-run `[E-FRAME]`
 ## lines are the result; `[BENCH]` only frames them.
 ##
-## Flags: `CAPTURE_ACTION=benchmark`, `BENCH_RUNS` (default 3),
+## Flags: `BENCHMARK=1`, `BENCH_RUNS` (default 3),
 ## `BENCH_SETTLE_FRAMES` (default 60), `BENCH_GRENADE` (default 0),
 ## `RNG_SEED`. Quits the process when done, so a harness can wait on the exit.
 var _scenario_started: bool = false
@@ -12767,10 +10271,7 @@ func _run_detonation_benchmark() -> void:
 ## `DevFlags.num()` through the same fallback `_dev_flag()` uses, so a `--script`
 ## context behaves as it did before DIAG-01.
 func _dev_flag_num(flag_name: String, fallback: int) -> int:
-	var raw: String = _dev_flag(flag_name, "")
-	if raw.is_empty() or not raw.is_valid_int():
-		return fallback
-	return int(raw)
+	return DevFlag.num(flag_name, fallback)
 
 
 ## PERF-DEV (2026-09-12) — view-side ablations for the device track. All default
@@ -12860,57 +10361,6 @@ func _census_subtree(node: Node) -> Vector2i:
 ## itself, the fallback path an overlay takes only when no board mirrors it. Overlays that never had a 3D target are not flagged.
 ## The members an overlay keeps its 3D target in (ground canvas, world canvas, the VFX particle fields).
 const OVERLAY_TARGET_KEYS: Array[String] = ["_ground", "_tiles_ground", "_world", "_field3d", "_glow_field3d", "_trail_field3d", "_dust_field3d", "_chip_field3d", "_puff_field3d", "_spark_field3d"]
-
-
-## RETIRE-2D — `canvas_check <name>`: one line saying how many overlays that carry a 3D target (`_ground` / `_world`) exist (`examined`),
-## how many of those are visible now (`shown`), and which of them are painting the 2D canvas. `examined` and `shown` are the controls:
-## a check that looked at nothing, or at a state that showed nothing, would print canvas=0 forever.
-func scenario_canvas_check(label: String) -> void:
-	var examined: int = 0
-	var shown: int = 0
-	var drawing: Array[String] = []
-	for node in find_children("*", "CanvasItem", true, false):
-		if not node.has_method("_draw"):
-			continue
-		var has_target: bool = false
-		for key in OVERLAY_TARGET_KEYS:
-			if key in node:
-				has_target = true
-		if has_target:
-			examined += 1
-			if (node as CanvasItem).is_visible_in_tree():
-				shown += 1
-			if _draws_on_canvas(node):
-				drawing.append(String(node.name) + "(" + String(node.get_script().resource_path.get_file()) + ")")
-	print("[CANVAS-CHECK] %s examined=%d shown=%d canvas=%d %s" % [label, examined, shown, drawing.size(), " ".join(drawing)])
-
-
-## RETIRE-2D — `aim <x,y>`: the grenade targeting preview on a GU, as a player aiming (stays open).
-func scenario_aim(cell: Vector2i) -> bool:
-	if _grenade_controller == null:
-		push_error("[Room] scenario_aim: no GrenadeController — dev grenades exist on PLAYGROUND only")
-		return false
-	_seed_dev_grenades_if_empty("SCENARIO")
-	## `SHOT_AGENT_CELL` places the agent first, as `scenario_shoot()` does: the aim is clamped to the throw range FROM the agent,
-	## so a capture of the dome against a given wall needs the agent near it.
-	var agent_xy: PackedStringArray = _dev_flag("SHOT_AGENT_CELL", "").split(",")
-	if agent_xy.size() == 2 and agent_xy[0].is_valid_int() and agent_xy[1].is_valid_int():
-		agent.set_cell(Vector2i(agent_xy[0].to_int(), agent_xy[1].to_int()))
-	_grenade_controller.enter_grenade_mode()
-	if not _grenade_controller.is_in_targeting_mode():
-		push_error("[Room] scenario_aim: targeting did not open")
-		return false
-	_grenade_controller._set_targeting_target(cell)
-	return true
-
-
-## Cancels the grenade aim `scenario_aim()` opened (the real `cancel_targeting()`: the arm comes down, the fuse sparks ramp to 0).
-func scenario_aim_cancel() -> bool:
-	if _grenade_controller == null or not _grenade_controller.is_in_targeting_mode():
-		push_error("[Room] scenario_aim_cancel: no grenade aim is open")
-		return false
-	_grenade_controller.cancel_targeting()
-	return true
 
 
 func _draws_on_canvas(node: Node) -> bool:

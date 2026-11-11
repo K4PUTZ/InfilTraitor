@@ -4,7 +4,7 @@
 ## Synthetic fixtures only (SliceGenerator/SlabGenerator against a hand-built
 ## Edge list), same discipline as roof_slab_selftest.gd/slab_render_selftest.gd
 ## — no real map involved. Real-map end-to-end proof is the screenshot
-## captures (INFILTRAITOR_CAPTURE_ACTION=test_zone_menu/test_zone_detonate).
+## captures (the old `test_zone_menu` / `test_zone_detonate` capture actions, deleted 2026-11-11).
 
 extends SceneTree
 

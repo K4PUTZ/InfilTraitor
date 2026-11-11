@@ -568,6 +568,28 @@ def reset_fingers(blend, side):
     print(f"[tripo_pose_lab] {blend}: {len(fingers)} {side} finger joints back to the game's idle ({changed} key values)")
 
 
+def refresh_prop(blend, prop):
+    """Gives a timeline .blend the prop's CURRENT model (2026-11-11): a .blend built before the model was baked to its held size (the female's, made 2026-11-08) keeps the old mesh, so
+    the pistol looks a sixth of the size and `mesh_edit` folds that into a 0.167 scale the game then plays. The object, its keys and its parenting stay; only the mesh data is swapped."""
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    obj = bpy.data.objects["PROP_" + prop]
+    before = set(bpy.data.objects.keys())
+    bpy.ops.import_scene.gltf(filepath=PROP_GLB[prop])
+    new = [bpy.data.objects[k] for k in bpy.data.objects.keys() if k not in before]
+    source = [o for o in new if o.type == 'MESH']
+    if len(source) != 1:
+        fail(f"the {prop} model should be one mesh object, found {len(source)}")
+    old = obj.data
+    obj.data = source[0].data
+    obj["lab_node_scale"] = source[0].scale[0]
+    for o in new:
+        bpy.data.objects.remove(o)
+    if old.users == 0:
+        bpy.data.meshes.remove(old)
+    print(f"[tripo_pose_lab] {prop}: mesh swapped for the model's current one, object now {tuple(round(x, 4) for x in obj.dimensions)}")
+    bpy.ops.wm.save_mainfile()
+
+
 def render(blend, out_png):
     bpy.ops.wm.open_mainfile(filepath=blend)
     scn = bpy.context.scene
@@ -611,6 +633,8 @@ def main():
         build(figure, pose_id, dump_dir, out, glb, PROP_GLB)
     elif mode == "extract":
         extract(a[1], a[2])
+    elif mode == "refresh_prop":
+        refresh_prop(a[1], a[2])
     elif mode == "reset_fingers":
         reset_fingers(a[1], a[2])
     elif mode == "sequence_new":

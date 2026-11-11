@@ -405,7 +405,9 @@ def sequence(blend, name, seq_json, poses_dir):
     base = {n: quat_xyzw(q) for n, q in json.loads(arm["lab_base"]).items()}
     named = set(json.loads(arm["lab_bones"]))
     gun = bpy.data.objects["PROP_pistol"]
-    coat_key = bpy.data.objects["Outfit_Coat"].data.shape_keys.key_blocks["DrawFix"]
+    coat_key = next((o.data.shape_keys.key_blocks["DrawFix"] for o in bpy.data.objects if o.type == 'MESH' and o.data.shape_keys and "DrawFix" in o.data.shape_keys.key_blocks), None)
+    if coat_key is None:
+        print("[tripo_pose_lab] no 'DrawFix' morph in this .blend: the coat stays closed through the sequence")
     action = arm.animation_data.action
     keyed = sorted({round(k.co[0]) for l in action.layers for s in l.strips for cb in s.channelbags for fc in cb.fcurves for k in fc.keyframe_points})
     first, last = sc.frame_start, sc.frame_end
@@ -417,7 +419,7 @@ def sequence(blend, name, seq_json, poses_dir):
         sc.frame_set(f)
         bpy.context.view_layer.update()
         local, G = rig.read()
-        samples.append({"frame": f, "coat": coat_key.value, "visible": not gun.hide_viewport, "gun": _gun_placement(arm, rig, G, gun)})
+        samples.append({"frame": f, "coat": coat_key.value if coat_key is not None else 0.0, "visible": not gun.hide_viewport, "gun": _gun_placement(arm, rig, G, gun)})
         if f not in keyed or f == first:
             continue
         pose_id = f"seq_{name}_f{f}"
@@ -428,11 +430,98 @@ def sequence(blend, name, seq_json, poses_dir):
             json.dump(out, fh, indent=1)
         passing = f != last and (f not in markers or markers[f] in PASSING_MARKERS)
         stops.append({"id": pose_id, "frame": f, "weight": (f - first) / float(last - first), "passing": passing})
+    shown = next((x["gun"] for x in samples if x["visible"]), None)
+    for x in samples:    # a hidden object is not re-evaluated by Blender: its sampled placement is stale, and the game reads it between a hidden frame and the next one
+        if not x["visible"] and shown is not None:
+            x["gun"] = shown
     seq = {"format": "infiltraitor-sequence", "v": 1, "figure": figure, "name": name, "fps": sc.render.fps, "first": first, "last": last, "stops": stops, "samples": samples}
     os.makedirs(os.path.dirname(seq_json), exist_ok=True)
     with open(seq_json, "w") as fh:
         json.dump(seq, fh, indent=1)
     print(f"[tripo_pose_lab] wrote {seq_json}: {len(stops)} stops {[(s['frame'], 'passing' if s['passing'] else 'rests') for s in stops]}, {len(samples)} samples, {sc.render.fps} fps")
+
+
+def sequence_new(pose_blend, idle_json, draw_json, aim_json, out_blend, mid_at):
+    """THE STARTING TIMELINE of a figure that has none (2026-11-10): the male's `SEQ_*` was the Director's to edit, and the female's starts as a plain version of it, to be edited the
+    same way. Built from the figure's `POSE_<draw>` .blend (the LIGHT Agent, the pistol, the lab data), saved under another name: frames 1-23, markers idle 1 / draw 12 / in-between 17 /
+    aim 23; the idle pose at 1, his draw pose (`poses/<figure>/draw_pistol.json`) at 12, the in-between `mid_at` of the way to his aim pose at 17 (no foot lift: that is his to pose),
+    the aim at 23. `PROP_pistol` is hidden through 12 and in the hand from 13 (the draw's placement, then the blend, then the aim's); `DrawFix` is keyed when the coat has the morph."""
+    bpy.ops.wm.open_mainfile(filepath=pose_blend)
+    sc = bpy.context.scene
+    arm, rig = load_rig_from_blend()
+    idle, draw, aim = read_json(idle_json), read_json(draw_json), read_json(aim_json)
+    base = {n: quat_xyzw(q) for n, q in idle["bones"].items()}
+
+    def local_of(pose):
+        out = dict(base)
+        for n, q in pose["bones"].items():
+            out[n] = quat_xyzw(q)
+        return out
+
+    L_idle, L_draw, L_aim = dict(base), local_of(draw), local_of(aim)
+    L_mid = {n: L_draw[n].slerp(L_aim[n], mid_at) for n in L_draw}
+    hips = {"idle": Vector(idle["hips_pos"]), "draw": Vector(draw["hips_pos"]), "aim": Vector(aim["hips_pos"])}
+    hips["mid"] = hips["draw"].lerp(hips["aim"], mid_at)
+    pl_draw, pl_aim = draw["props"]["pistol"], aim["props"]["pistol"]
+    pl_mid = {"bone": pl_draw["bone"], "pos": list(Vector(pl_draw["pos"]).lerp(Vector(pl_aim["pos"]), mid_at)), "scale": pl_draw["scale"] + (pl_aim["scale"] - pl_draw["scale"]) * mid_at,
+              "quat": xyzw(quat_xyzw(pl_draw["quat"]).slerp(quat_xyzw(pl_aim["quat"]), mid_at))}
+    gun = bpy.data.objects["PROP_pistol"]
+    gun.rotation_mode = 'QUATERNION'
+    coat_key = next((o.data.shape_keys.key_blocks["DrawFix"] for o in bpy.data.objects if o.type == 'MESH' and o.data.shape_keys and "DrawFix" in o.data.shape_keys.key_blocks), None)
+    node_m = prop_node_matrix("pistol")
+    if arm.animation_data:
+        arm.animation_data_clear()
+    gun.animation_data_clear()
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    def settle(local, hips_pos, placement, visible):
+        """The body and the gun as the pose has them, read off BEFORE any key exists (a key on the armature makes every later update re-read the animation over what was just set)."""
+        G = rig.apply(local)
+        bpy.context.view_layer.update()   # the Hips' matrix is read next: stale it would carry the PREVIOUS pose's rotation into this one
+        h = arm.pose.bones[PREFIX + "Hips"]
+        m = h.matrix.copy()
+        m.translation = CMT @ hips_pos
+        h.matrix = m
+        bpy.context.view_layer.update()
+        gun.matrix_world = arm.matrix_world @ g_to_blender_world(prop_world_g(rig, G, placement["bone"], placement, node_m))
+        bpy.context.view_layer.update()
+        return {"bones": {pb.name: pb.rotation_quaternion.copy() for pb in arm.pose.bones}, "hips": h.location.copy(),
+                "gun": (gun.location.copy(), gun.rotation_quaternion.copy(), gun.scale.copy()), "visible": visible}
+
+    plan = [(1, L_idle, hips["idle"], pl_draw, False), (12, L_draw, hips["draw"], pl_draw, False), (13, L_draw, hips["draw"], pl_draw, True),
+            (17, L_mid, hips["mid"], pl_mid, True), (23, L_aim, hips["aim"], pl_aim, True)]
+    body_frames = {1, 12, 17, 23}
+    settled = [(frame, settle(local, hips_pos, placement, visible)) for frame, local, hips_pos, placement, visible in plan]
+    for frame, st in settled:
+        if frame in body_frames:
+            for pb in arm.pose.bones:
+                pb.rotation_mode = 'QUATERNION'
+                pb.rotation_quaternion = st["bones"][pb.name]
+                pb.keyframe_insert("rotation_quaternion", frame=frame)
+            hips_bone = arm.pose.bones[PREFIX + "Hips"]
+            hips_bone.location = st["hips"]
+            hips_bone.keyframe_insert("location", frame=frame)
+        gun.location, gun.rotation_quaternion, gun.scale = st["gun"]
+        gun.hide_viewport = gun.hide_render = not st["visible"]
+        for path in ("location", "rotation_quaternion", "scale", "hide_viewport", "hide_render"):
+            gun.keyframe_insert(path, frame=frame)
+    if coat_key is not None:
+        for frame, value in ((1, 0.0), (12, 1.0), (17, 0.05), (18, 0.0), (23, 0.0)):
+            coat_key.value = value
+            coat_key.keyframe_insert("value", frame=frame)
+    else:
+        print("[tripo_pose_lab] no 'DrawFix' morph in this figure's coat: the coat is not keyed (its lapel is still to be made)")
+    sc.frame_start, sc.frame_end = 1, 23
+    for name, frame in (("idle", 1), ("draw", 12), ("in-between", 17), ("aim", 23)):
+        sc.timeline_markers.new(name, frame=frame)
+    sc.frame_set(1)
+    bpy.context.view_layer.objects.active = arm
+    for o in bpy.data.objects:
+        o.select_set(False)
+    arm.select_set(True)
+    bpy.ops.object.mode_set(mode='POSE')
+    bpy.ops.wm.save_as_mainfile(filepath=out_blend)
+    print(f"[tripo_pose_lab] wrote {out_blend}: the {arm['lab_figure']} draw on one timeline (frames 1-23, in-between {mid_at} of the way)")
 
 
 def render(blend, out_png):
@@ -478,6 +567,8 @@ def main():
         build(figure, pose_id, dump_dir, out, glb, PROP_GLB)
     elif mode == "extract":
         extract(a[1], a[2])
+    elif mode == "sequence_new":
+        sequence_new(a[1], a[2], a[3], a[4], a[5], float(a[6]))
     elif mode == "sequence":
         sequence(a[1], a[2], a[3], a[4])
     elif mode == "render":

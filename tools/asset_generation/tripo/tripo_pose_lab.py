@@ -382,6 +382,12 @@ def extract(blend, out_json):
 
 
 PASSING_MARKERS = ("in-between",)
+FINGER_NAMES = ("Index", "Middle", "Pinky", "Ring", "Thumb")
+
+
+def is_finger(bone):
+    """A finger joint (LeftHandIndex1 ...): a sequence stops at the palm, the fingers keep whatever the clip underneath plays (Director 2026-11-11: he finishes them by hand)."""
+    return "Hand" in bone and any(f in bone for f in FINGER_NAMES)
 
 
 def _gun_placement(arm, rig, G, gun):
@@ -423,7 +429,7 @@ def sequence(blend, name, seq_json, poses_dir):
         if f not in keyed or f == first:
             continue
         pose_id = f"seq_{name}_f{f}"
-        bones = {n: xyzw(local[n]) for n in rig.names if n in named or qdist(local[n], base[n]) > EPS_CHANGED}
+        bones = {n: xyzw(local[n]) for n in rig.names if (n in named or qdist(local[n], base[n]) > EPS_CHANGED) and not is_finger(n)}
         out = {"format": "infiltraitor-pose", "v": 1, "figure": figure, "id": pose_id, "bones": bones,
                "props": {"pistol": samples[-1]["gun"]}, "hips_pos": list(CM @ arm.pose.bones[PREFIX + "Hips"].matrix.translation)}
         with open(os.path.join(poses_dir, pose_id + ".json"), "w") as fh:

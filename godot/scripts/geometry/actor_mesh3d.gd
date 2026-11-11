@@ -107,6 +107,7 @@ var _coat: MeshInstance3D = null     ## the Agent's coat, when it owns the draw'
 var _coat_draw_shape: int = -1       ## that morph's index
 var _pistol_stops: Array = []        ## [[weight, placement {bone, pos, quat, scale}], ...] one per aim stop, from the poses' `props` meta
 var _sequence: AimSequenceRef = null    ## the Director's timeline of the draw (`AimSequence`), when the figure has one: it replaces `AIM_STOPS`, the coat curve and the gun's blend
+var _lower_s: float = AIM_LOWER_S    ## and back: the sequence's own duration too (Director 2026-11-11: a draw is quick by nature, the way back is as quick as the way there)
 var _raise_s: float = AIM_RAISE_S    ## how long the weight takes to go 0 -> 1 (the sequence's own duration when there is one)
 var _walked: float = 0.0             ## ground covered while walking, world units: the move clip's phase
 var _move_pass: float = 0.0          ## world units of ground one pass of the move clip covers
@@ -288,6 +289,7 @@ func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 		return
 	_aim = layer
 	_raise_s = _sequence.raise_seconds() if _sequence != null else AIM_RAISE_S
+	_lower_s = _raise_s if _sequence != null else AIM_LOWER_S
 	_build_pistol(stops)
 	var coat: MeshInstance3D = TripoFigureRef.coat_of(_body)
 	_coat_draw_shape = coat.find_blend_shape_by_name(DRAW_COAT_SHAPE) if coat != null else -1
@@ -350,7 +352,7 @@ func _update_aim(state: Dictionary) -> void:
 	## Standing still only: the aim is a whole-body stance (the idle sways and must not show through), so a walking figure keeps its legs and lowers the gun.
 	var want: bool = String(state["weapon"]) == "_pistol" and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing" and float(state["walk"]) < 0.0
 	var target: float = 1.0 if want else 0.0
-	_aim_t = move_toward(_aim_t, target, get_process_delta_time() / (_raise_s if want else AIM_LOWER_S))
+	_aim_t = move_toward(_aim_t, target, get_process_delta_time() / (_raise_s if want else _lower_s))
 	_aim.weight = _aim_t
 	if _sequence != null:   ## his timeline: the coat, the gun's visibility and placement are what he keyed
 		var here: Dictionary = _sequence.at(_aim_t)

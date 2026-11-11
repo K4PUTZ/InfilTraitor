@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**352 scripts · 100720 lines total** (under `godot/scripts/`)
+**352 scripts · 100679 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -4152,7 +4152,7 @@ extends `Node` · 800 lines
 > ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) throw <index> <x,y>                  RETIRE-2: dev grenade #index THROWN to the GU x,y through the real throw (the agent's release, the arc, the landing hop, the roll, the fuse, the blast); returns at once, so follow it with `frames`/`capture_at` aim <x,y>                            RETIRE-2D: the grenade targeting preview on a GU (the perimeter, the dome, the arc, the shrapnel rays, the footprint and the virtual grenade), as a player aiming; stays open canvas_check <name>                  RETIRE-2D: prints `[CANVAS-CHECK] <name> examined=N canvas=M <names>`: how many overlays that have a 3D target there are, and which of them are painting the 2D canvas instead capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read container_stats <name>               R3D-CLAIMS C2: prints how many released containers were converted back to full `Voxel` objects and how many single handles were made (`VoxelContainer.Stats`) probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points needs that guard to exist (GLASS has none: the step aborts the scenario) reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` view_mode dev|light|heat|numbers|ruler   flips one analysis aid, through the same toggles the HUD and the F-keys reach (the dev overlays under a camera yaw need a scenario to switch them on; call it again to flip it back) pick_check <name>                    touch picking in the CURRENT view: the centre of every on-screen cell goes through the real pick (`_screen_to_tile`) and must come back as that cell (or the standing prop that covers it); prints `[PICK-CHECK]` (tools/persistent/pick_gate.py reads it) world_check <name>                   the maths the air overlays (tracer, throw arc, aim dome, lamps) stand on, in the CURRENT view: where `WorldCanvas3D.lift()` puts fixed points (world state, must not move with the view) and whether `screen_axes()` is what the camera really does to a grid step; prints `[WORLD-CHECK]` (tools/persistent/world_gate.py) relight                              R3D-13: the map-wide light repaint on the CURRENT world, in place — what a rotation or a restore runs, without either (a probe before and after names what the incremental light left different from a full relight) flood <mode>                         MATERIALS F12 feasibility bench: the WHOLE playable floor under water, as one body. plane05 / plane025 = a `FluidPlane` of 0.5 / 0.25 GU cells (no walls: every cell is active, the upper bound) driven by a source, ticked every 0.3 s, drawn by a driven `LiquidSheet3D`; ch1 / ch4 / ch8 = that many copies of PIPE_LAB's real channel (1.5 x 10 GU, 0.5 GU cells since F8, source + drain, ch8q = 8 of them at the old 0.25 GU cells, closed curb), each with its own driven sheet: the M6 F8 cost of N bodies; level = one flat sheet and no sim (the "level model"); off = remove it. Prints `[FLOOD]` lines (`Room.scenario_flood`) struct_audit                         ROOF_MASTER_PLAN RF-G G3: asks `StructuralSupport` about EVERY standing voxel of the map and prints how many have no support (an intact map must say 0) and what the walk cost (`Room.scenario_struct_audit`) struct_cut                           RF-G G3 bench: dev flag `STRUCT_CUT=<material>,<levels>` destroys the foot of every voxel of that material, then the support service runs roof_gravity                         ROOF_MASTER_PLAN v0.28: every soft roof (fabric) lets go under gravity alone and becomes a cloth hanging from what held it (`Room.scenario_roof_gravity`) passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed walk <x,y>                           MOVEMENT MV-4: the agent walks to a cell the way a tap orders it (`Room.scenario_walk_agent`: the real path, the AP spent); fails when the cell is unreachable or the AP is short actor_bench <agent|agent_*> <n>     dev viability test: n live rigs of the shipped agent or a Tripo Agent on the board, lit its way (`ActorViabilityBench`), draw calls printed after 30 frames quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
 
 **Constants / tuning**
-- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "aim_cancel": 0, "canvas_check": 1, "probe_store": 1, "shoot": 1, "weapon": 1, "shot_aim": 1, "shot_cancel": 0, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1, "container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "walk": 1, "actor_bench": 2, "decal_wall": 2, "skylight_hit": 0, "roof_gravity": 0, "flood": 1, "struct_audit": 0, "struct_cut": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1, }`
+- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "aim_cancel": 0, "canvas_check": 1, "probe_store": 1, "shoot": 1, "weapon": 1, "shot_aim": 1, "shot_cancel": 0, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1, "container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "walk": 1, "actor_bench": 2, "decal_wall": 2, "skylight_hit": 0, "roof_gravity": 0, "flood": 1, "struct_audit": 0, "struct_cut": 0, "alert_reset": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1, }`
 - `CELL_TOKENS` = `{"throw": [2], "aim": [1], "centre": [1], "place_guard": [2], "walk": [1], "decal_wall": [2], "occ_bench": [1, 2]}`
 - `FRAME_MODES` = `["wide", "detail", "close", "fit"]`
 - `VIEWS` = `["N", "E", "S", "W"]`
@@ -6904,7 +6904,7 @@ extends `RefCounted` · 404 lines
 
 ### `scenario_steps.gd`
 
-extends `Node` · 856 lines
+extends `Node` · 872 lines
 
 `godot/scripts/world/controllers/scenario_steps.gd`
 
@@ -6956,6 +6956,7 @@ extends `Node` · 856 lines
 - `func scenario_canvas_check(label: String) -> void:`
 - `func scenario_aim(cell: Vector2i) -> bool:`
 - `func scenario_aim_cancel() -> bool:`
+- `func scenario_alert_reset() -> bool:`
 
 ---
 
@@ -6982,7 +6983,7 @@ extends `Node` · 856 lines
 
 ### `turn_controller.gd`
 
-`class_name TurnController` · 385 lines
+`class_name TurnController` · 398 lines
 
 `godot/scripts/world/controllers/turn_controller.gd`
 
@@ -7012,6 +7013,8 @@ extends `Node` · 856 lines
 - `func set_constants( p_visual_grid_offset: Vector2, p_fow_radius: int, p_vision_bonus: int, p_alert_max: int, p_alert_gain: int ) -> void:`
 - `func set_game_state( p_guards: Array, p_blocked_cells: Dictionary, p_current_blocked_edges: Array[Dictionary], p_room_size: Vector2i ) -> void:`
 - `func get_alert_meter() -> int:`
+- `func reset_alert_meter() -> void:`
+- `func raise_alarm() -> void:`
 
 ---
 
@@ -7245,7 +7248,7 @@ extends `Node` · 856 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10586 lines
+extends `Node2D` · 10516 lines
 
 `godot/scripts/world/room.gd`
 

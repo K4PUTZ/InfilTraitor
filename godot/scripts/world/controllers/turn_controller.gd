@@ -111,6 +111,19 @@ func get_alert_meter() -> int:
 	return _alert_meter
 
 
+## HERITAGE T5 — the room's resets (a map load, the HUD's Reset, the reset after busted) zero THIS meter, the only one.
+func reset_alert_meter() -> void:
+	_alert_meter = 0
+	_update_alert_label()
+
+
+## HERITAGE T5 — the global alarm (`GuardCoordinator._on_guard_alarmed`) fills the meter. An assignment, not an
+## accumulation: rule 5's accumulation stays in `_apply_tic_result()`.
+func raise_alarm() -> void:
+	_alert_meter = _alert_max
+	_update_alert_label()
+
+
 ## Signal handlers
 
 func _on_hud_end_turn_requested() -> void:

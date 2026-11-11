@@ -1885,15 +1885,11 @@ var _selected_cell: Vector2i = INVALID_CELL
 ## R3D-ROT — the camera's side. The layout's orientation is N for the life of a map (the old `_active_perspective` and every
 ## conversion through it were the identity once rotation stopped re-laying the map out, and went at R3D-ROT).
 var _view_direction: String = "N"
-var _alert_meter: int = 0
-
+## The alert meter's size and its gain, handed to the TurnController (`set_constants`), which OWNS the meter (HERITAGE
+## T5, 2026-11-11: the room kept a second meter that the resets zeroed and nothing else read, so a Reset left the live one
+## full; the thresholds 0.30 / 0.60 / 1.00 that sat here were a fallback that never ran — the game's are the controller's).
 var _alert_max: int = 100
 var _alert_gain_full: int = 45
-
-## ID-01: Detection meter thresholds for state transitions
-const DETECTION_THRESHOLD_SUSPICIOUS := 0.30
-const DETECTION_THRESHOLD_ALERT      := 0.60
-const DETECTION_THRESHOLD_CHASE      := 1.00
 
 const ENEMY_CAMERA_TWEEN_DURATION := 0.45
 const ENEMY_PHASE_MAX_OPEN_ZOOM := 0.65
@@ -2543,7 +2539,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	if _noise_overlay != null:
 		_noise_overlay.queue_redraw()
 
-	_alert_meter = 0
+	if _turn_controller != null:
+		_turn_controller.reset_alert_meter()
 	_update_alert_label()
 	_update_guard_los_data()
 	_populate_test_zone_if_playground()
@@ -3211,7 +3208,8 @@ func _on_hud_reset_requested() -> void:
 	_center_camera(_agent_start_cell)
 	movement_overlay.clear_overlay()
 	path_preview.clear_path()
-	_alert_meter = 0
+	if _turn_controller != null:
+		_turn_controller.reset_alert_meter()
 	_update_alert_label()
 	## Dev 04: clear trail on reset
 	_agent_trail.clear()
@@ -5135,84 +5133,18 @@ func _on_agent_step_finished(step_cell: Vector2i) -> void:
 	_tic_voxel_system()
 
 
-## Wrapper: processes auditory detection for all guards
+## Wrapper: auditory detection runs in the TurnController (the one stealth seam).
 func _process_audio_detection() -> void:
 	if _turn_controller != null:
 		_turn_controller._process_audio_detection()
-	elif _noise_system != null:
-		var blocked_edges: Dictionary = enemy_phase_controller.build_blocked_edge_set(
-			_current_blocked_edges
-		)
-		for guard in _guards:
-			if not is_instance_valid(guard):
-				continue
-			for noise_tile in _noise_system.get_noisy_tiles():
-				var intensity: float = _noise_system.get_intensity(noise_tile)
-				if intensity <= 0.0:
-					continue
-				var perceived: float = TicSystem.evaluate_audio(
-					guard, noise_tile, intensity, blocked_edges
-				)
-				if perceived > 0.0:
-					guard.hear_noise(noise_tile, perceived)
 
 
-## Wrapper: processes the result of a detection tic for a guard
+## Wrapper: the detection tic's result goes to the TurnController, the one place it is applied (canon rule 5).
 func _apply_tic_result(guard, result: TicSystem.TicResult) -> void:
-	if _turn_controller != null:
-		_turn_controller._apply_tic_result(guard, result)
-	else:
-		## Fallback: accumulate or decay the guard's detection field
-		if result.visible:
-			guard.detection = clampf(
-				guard.detection + result.raw_chance * TicSystem.DETECTION_GAIN_PER_TIC,
-				0.0, 1.0
-			)
-		else:
-			## Decay outside the cone
-			var decay := _get_detection_decay(guard.state)
-			guard.detection = clampf(guard.detection + decay, 0.0, 1.0)
-
-		## M2-04: Noise amplifies detection if the guard already sees the tile
-		if _noise_system != null:
-			var noise_intensity: float = _noise_system.get_intensity(agent.cell)
-			if noise_intensity > 0.0 and result.visible:
-				var bonus: float = noise_intensity * 0.3
-				guard.detection = clampf(guard.detection + bonus, 0.0, 1.0)
-
-		if _vision_controller.dev_vision:
-			guard.queue_redraw()
-
-		## ID-01: Gradual threshold-based escalation — only when the agent is visible
-		if result.visible:
-			if guard.detection >= DETECTION_THRESHOLD_CHASE:
-				guard.observe_player(true, 3, agent.cell)
-				_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
-				if _alert_meter >= _alert_max:
-					_guard_coordinator._on_guard_alarmed(guard.cell)
-			elif guard.detection >= DETECTION_THRESHOLD_ALERT:
-				guard.observe_player(true, 2, agent.cell)
-				_alert_meter = mini(_alert_max, _alert_meter + _alert_gain_full)
-				if _alert_meter >= _alert_max:
-					_guard_coordinator._on_guard_alarmed(guard.cell)
-			elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
-				guard.observe_player(true, 1, agent.cell)
-
-		_update_alert_label()
-
-
-## Processes detection decay based on guard state
-func _get_detection_decay(state: String) -> float:
-	match state:
-		"patrol":
-			return -0.15
-		"suspicious":
-			return -0.06
-		"alert":
-			return -0.04
-		"chase":
-			return -0.01
-	return -0.10
+	if _turn_controller == null:
+		push_error("[Room] a detection tic with no TurnController: dropped")
+		return
+	_turn_controller._apply_tic_result(guard, result)
 
 
 ## Processes the result of a detection tic for a guard.
@@ -5342,7 +5274,8 @@ func _reset_room_state() -> void:
 	_soot_map.clear()   ## the scorch describes damage a reset undid
 	_soot_unsettled.clear()
 	## Zero the global alert
-	_alert_meter = 0
+	if _turn_controller != null:
+		_turn_controller.reset_alert_meter()
 
 	## Reset the agent position
 	agent.set_cell(_agent_start_cell)
@@ -8070,9 +8003,6 @@ func _update_alert_label() -> void:
 		return
 	if _turn_controller != null:
 		var pct := float(_turn_controller.get_alert_meter()) / float(_alert_max)
-		_hud_controller.update_alert(pct)
-	else:
-		var pct := float(_alert_meter) / float(_alert_max)
 		_hud_controller.update_alert(pct)
 
 

@@ -854,3 +854,19 @@ func scenario_aim_cancel() -> bool:
 		return false
 	room._grenade_controller.cancel_targeting()
 	return true
+
+
+## HERITAGE T5 (2026-11-11) — the alert meter after the HUD's Reset, on the real room: fill the LIVE meter (the
+## TurnController's: the one the HUD bar shows and the end of the enemy phase reads for "busted"), press Reset through its
+## real handler, and report what that meter reads. 0 = the reset reached it.
+func scenario_alert_reset() -> bool:
+	var tc: Object = room._turn_controller
+	if tc == null:
+		push_error("[ScenarioSteps] alert_reset: no TurnController")
+		return false
+	tc.set("_alert_meter", int(tc.get("_alert_max")))
+	room._on_hud_reset_requested()
+	var after: int = int(tc.call("get_alert_meter"))
+	print("[ALERT-RESET] after the HUD's Reset the live meter reads %d of %d" % [after, int(tc.get("_alert_max"))])
+	return after == 0
+

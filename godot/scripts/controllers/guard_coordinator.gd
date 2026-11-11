@@ -68,9 +68,9 @@ func _on_guard_alarmed(origin_cell: Vector2i) -> void:
 		if guard.state != guard.STATE_CHASE:
 			guard.receive_alert(_room.agent.cell, guard.STATE_CHASE)
 
-	## Set alert meter to maximum
-	_room._alert_meter = _room._alert_max
-	_room._update_alert_label()
+	## Set alert meter to maximum (the TurnController owns the one meter, HERITAGE T5)
+	if _room._turn_controller != null:
+		_room._turn_controller.raise_alarm()
 
 
 ## ─────────────────────────────────────────────────────────────────────

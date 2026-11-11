@@ -146,7 +146,18 @@ The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PER
   `TurnController._apply_tic_result()` (the controller always exists), so the game runs **0.25 / 0.50 / 0.75**; Room's own
   fallback and its constants **0.30 / 0.60 / 1.00** never run. `docs/systems/AI_MASTER_PLAN.md` says it re-verified 0.30 / 0.60 /
   1.00 "against the code" on 2026-10-02: it read the dead copy. Which numbers are canon is the Director's call.
-- **Two alert meters.** `TurnController._alert_meter` accumulates, feeds the HUD bar and decides "busted"; `Room._alert_meter` is the
-  one the three reset paths zero (`load_map`, the HUD's Reset, `_reset_room_state` after busted) and the one the alarm fills
-  (`GuardCoordinator._on_guard_alarmed`). Read, not yet reproduced: after a reset the bar stays where it was and the next enemy
-  phase may say busted again.
+- **Two alert meters.** `TurnController._alert_meter` accumulates, feeds the HUD bar and decides "busted"; `Room._alert_meter` was
+  the one the three reset paths zeroed (`load_map`, the HUD's Reset, `_reset_room_state` after busted) and the alarm filled.
+
+### T5 — first part DONE 2026-11-11 (`verify.py smoke` green)
+- **The meter bug, red then green on the real room:** the scenario op `alert_reset` (fill the live meter, press the HUD's Reset through
+  its handler, read the meter) printed `after the HUD's Reset the live meter reads 100 of 100` before the fix and `0 of 100` after,
+  on PLAYGROUND. It now runs in every `smoke_boot` (both maps).
+- **The seam:** the TurnController owns the one meter (`reset_alert_meter()`, `raise_alarm()`); Room lost its meter, its dead
+  thresholds, its fallback copy of the tic result and of the audio pass, and its decay table; `GuardCoordinator`'s alarm calls the
+  controller. AI-02 / AI-03 land in `TurnController._apply_tic_result()`, the one place.
+- **The pin:** `stealth_core_selftest` (a scene selftest, 48 checks): noise emit / decay, audio radius / distance / walls, the tic's
+  multipliers, the live thresholds 0.25 / 0.50 / 0.75 with the meter (+45 of 100, the cap, one alarm), the per-state decay, the
+  noise bonus, the FSM's escalation, timers, de-escalation and hearing. It pins what IS, not what is right.
+- **Open, the Director's:** which thresholds are canon (`AI_MASTER_PLAN` carries 0.30 / 0.60 / 1.00); the save's format (the
+  `VoxelStore` in the save, and the ~960-line replay retiring with it) is a design call of `roadmap` A2 and is not started.

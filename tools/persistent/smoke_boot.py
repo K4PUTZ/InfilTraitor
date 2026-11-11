@@ -19,7 +19,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
-SCENARIO = "framing portrait; frames 90; perspective E; frames 30; perspective N; frames 30; quit"
+## `alert_reset` (HERITAGE T5, 2026-11-11): the HUD's Reset must zero the live alert meter; the room once zeroed a second
+## meter nobody read and a reset left the bar full (red on that code, green after).
+SCENARIO = "framing portrait; frames 90; perspective E; frames 30; perspective N; frames 30; alert_reset; quit"
 ## Not errors of ours: the actor frame cache warns about loading baked PNGs as images on every boot (a warning, never an ERROR).
 IGNORE = ("Loaded resource as image file",)
 

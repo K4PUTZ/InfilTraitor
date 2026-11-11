@@ -1,9 +1,12 @@
 # HERITAGE_AND_LOOSE_ENDS_PLAN
 ## Closing what the 2D-to-3D transition left, and the registered loose ends — v0.1 DRAFT
 
-> 🟡 **v0.1 · 2026-11-10 · DRAFT, nothing ratified, nothing built.** Drafted at the Director's request from the audit
-> [`CODE_AND_HERITAGE_2026-11-10`](../AUDITS/CODE_AND_HERITAGE_2026-11-10.md), which holds the evidence for every item; this file holds
-> only the work. Each track becomes work when the Director ratifies it. Items owned by another plan stay there and are only pointed at.
+> 🟢 **v0.2 · 2026-11-11 · RATIFIED (Director: "Pode seguir com todas as etapas"), except T4 beyond the storey evaluation.** His
+> rulings are §5. Drafted 2026-11-10 from the audit [`CODE_AND_HERITAGE_2026-11-10`](../AUDITS/CODE_AND_HERITAGE_2026-11-10.md),
+> which holds the evidence for every item; this file holds only the work. Items owned by another plan stay there and are only pointed
+> at.
+>
+> v0.1 (2026-11-10): the draft, nothing ratified.
 
 ## 0. Rules for every track
 - A track changes no behaviour unless it says so. Behaviour-neutral stages close with `verify.py smoke`; a stage that moves where something is drawn takes a `--baseline` first and closes with `verify.py look` (or `full` when it rewires the board, the state or the ground).
@@ -41,3 +44,19 @@
 
 ## 4. Not in this plan
 The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PERFORMANCE_BUDGET`, M7.0); the breached-wall passage, posture AP and the noise indicator (GAMEPLAY); audio; iOS.
+
+## 5. Rulings (2026-11-11)
+
+1. **T1:** the 2026-11-04 dead-code list, the renames (`DebugAgent`, `sprite`, `TestZoneController`) and the git deletions are
+   approved ("Ok").
+2. **T2 W2 — one size, the hand's.** A weapon is ALWAYS the size it was given in the Agent's hands, on the floor, on a table and as a
+   pickup; no readability factor. Only the pistol is certified (2026-11-09); every other weapon is certified the same way later, and a
+   newly imported weapon carries a WARNING until it is. Recorded as owed in `MOVEMENT_MASTER_PLAN` §9 item 7.
+3. **T2 W3 — the pickup floats.** "O item subindo e descendo, flutuando no ar, para evidenciar que é um objeto coletável." Rolling on the
+   floor is the grenade's alone. Weapons also exist as SCENERY (on the floor, on a table): a prop, not a pickup, at the same hand size.
+4. **T4 — not ratified.** "A princípio foi concluído que o espaço 2D pra 3D custa muito pouco, e que a mudança não traria muitos
+   benefícios, mas podemos rever essa decisão. De qualquer forma, vamos avaliar a possibilidade de unificar o valor dos andares." So:
+   evaluate one storey height (C1's last sentence) and report; C1-C5 wait on his review.
+5. **JAMES is retired** (T6): "Pode remover, vamos trabalhar no Claude, porém no PC para fazer as músicas. O resto da engine continua
+   aqui." His charter, gates, `CLAUDE.md` block and branch go; the HUD seam (rule 11 / L3) stays as architecture. The music is worked
+   with Claude on the PC, on its own branch.

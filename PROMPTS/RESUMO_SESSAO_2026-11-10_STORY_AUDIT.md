@@ -25,3 +25,6 @@
 2. The exact line of the slip at the grave.
 3. How Freelance kills weigh on the league.
 4. Who holds Marlow's tablet, and where.
+
+## Added at the close
+- **The helmet is orange and the night frame shows it white** (Director): seen in colour in the opening, white in the Militia's frame, orange again in a colour replay of the attack at the reveal (`DESIGN` §2.8, the exposure budget). The frame may now be displayed before the finale; the graze must not be readable in it.

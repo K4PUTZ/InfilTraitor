@@ -914,6 +914,16 @@ line above disagrees with this section, this section wins. What the audit could 
 - **Before the finale each physical match is SAID or CARRIED, never displayed.** The Militia's frame is words in lap 1 ("a rider"), an object
   in the Confessor's file, and a picture only in the reporter's hand. It resolves the helmet, never the bike or its plate.
 
+- **The helmet is ORANGE; the night frame shows it WHITE (Director, 2026-11-10).** In the opening it is seen in passing, in colour, orange.
+  The Militia's security frame was taken at night, so the same helmet reads white there, which turns the player's suspicion away early. At
+  the reveal the attack is shown again, this time in colour, with the orange helmet. Claude's readings:
+  - it is fair (§2.4): a night camera does render a bright orange as white, so the frame never lies;
+  - it relaxes the line above: the frame MAY be displayed before the finale, because it no longer matches what the player saw; the graze
+    must not be readable in it, or the match comes back;
+  - the replay is one scene at the reveal, of the wall and the drone, never of the flood (§2.1: no recurring flashbacks; §2.6: no spectacle);
+  - orange is the club's family (`COSMETICS` §9.4), which suits a frame-up meant to look like a biker; for colour-blind players orange
+    merges with the mustard coat, so the reveal must separate helmet and frame by more than hue (owed when the scene is built).
+
 **The official version and the endings:**
 - **The Graves-"Deacon" deal leaks at one moment in every order:** in the time jump before the cemetery, when both are dead. Until then the
   public version is the substation fire and a war between factions.

@@ -6,7 +6,7 @@
 > outros games lidam com granadas, especialmente XCOM e Phoenix Point."* And: **fingers are never keyed; a throw goes down to the palms**
 > (the hand bone turns, its finger joints stay as the idle has them).
 >
-> Status: STUDY, nothing ruled. Owner plan: `MOVEMENT_MASTER_PLAN` §7 (a situation of the weapon flow). The flight in the world is
+> Status: STUDY; §6's four questions RULED the same day (right hand, automatic style, whole body turns, bowl = low toss and roll). Owner plan: `MOVEMENT_MASTER_PLAN` §7 (a situation of the weapon flow). The flight in the world is
 > HERITAGE T2 W5, parked into `docs/production/milestones.md` GAMEPLAY-01; this study says what the animation needs from it.
 
 ---
@@ -179,8 +179,8 @@ legs, as the pistol's aim already is.
    headroom, deterministically, and the preview shows which style will be thrown (T4). No player buttons.
 3. ✅ **RULED (Director, 2026-11-12: "Corpo inteiro"): the WHOLE BODY turns** to the throw's exact yaw for the throw (T5) and snaps back to
    its grid facing after; the four facings stay for movement.
-4. **The bowl:** does the grenade stay on the floor the whole way (needs the roll physics in the world, W5), or is it a low toss that
-   lands and rolls?
+4. ✅ **RULED (Director, 2026-11-12: "Lance baixo e rola"): the bowl is a LOW toss that lands short and rolls** the rest of the way
+   (the existing hop-and-roll, lengthened), not a grenade on the floor from the hand.
 
 ---
 

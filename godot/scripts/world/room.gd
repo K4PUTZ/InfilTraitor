@@ -127,15 +127,10 @@ const VISUAL_GRID_OFFSET := Vector2(0.0, 512.0)
 ## 2026-07-12: the layers were created, cleared and then hidden on every build, and nothing
 ## was ever placed into them. Do not recreate them — see docs/technical/ASSET_MAP.md.
 const WALL_BASE_Z_INDEX := 10
-## One storey = the cube's side-face height. Measured from the art: opaque block height 286 −
-## top-diamond 128 = 158 px (block_SE and wall_NE — sistema vértice-alinhado).
-## Upper courses stack on this step so a cube seats exactly on the one below. Tunable.
-const WALL_FLOOR_STEP_PX := 158.0
+## One storey in 2D pixels: `GeometryCoords.VOXEL_STOREY_HEIGHT_PX`, the camera's (HERITAGE T4; it was 158, measured off the
+## retired 2D block art).
+const WALL_FLOOR_STEP_PX: float = GeometryCoords.VOXEL_STOREY_HEIGHT_PX
 
-## Voxel render plane (VOXEL series): 1 storey = 8 voxel rows, each steps 20 px.
-## 20 = 1.25 × VOXEL_TILE_SIZE.y (16). Must match generate_voxel.py SIDE_H.
-## Invariant: storey height (160 px) consistency across voxel stack rendering. ✓
-const VOXEL_STEP_PX: float = 20.0
 
 
 ## SLICE-02: New geometry module state

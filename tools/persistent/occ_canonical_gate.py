@@ -44,7 +44,7 @@ CASES = [
     ("ROOM (5x5 ring + roof, agent inside)", "OCCLUSION_ROOM", "16,16", "17,16", 2281665223, 2707279558),
     ("HALL (floating 15x15 roof)", "OCCLUSION_HALL", "16,16", "17,16", 165414134, 2930668353),
     ("NEST (three nested volumes)", "OCCLUSION_NEST", "8,8", "8,10", 331712424, 1614825779),
-    ("GLASS", "GLASS", "20,19", "17,17", 3834045110, 1746791528),
+    ("GLASS", "GLASS", "20,19", "17,17", 3919617750, 3998856167),   ## re-recorded 2026-11-11: HERITAGE T4, one storey height (the camera's)
     ("PLAYGROUND", "PLAYGROUND", "31,13", "17,9", 2691998715, 163057982),
     ("SIGMA_01 (a real level)", "SIGMA_01", "9,34", "5,32", 2010404612, 3597628886),
     ("ROOM, second pair of cells", "OCCLUSION_ROOM", "16,16", "15,15", 1501394400, 1196143088),

@@ -8,11 +8,15 @@ const VOXELS_PER_UNIT_AXIS: int = 8
 ## Isometric tile dimensions (DIAMOND_DOWN layout)
 const VOXEL_TILE_SIZE: Vector2i = Vector2i(32, 16)
 
-## Pixel step per voxel row (vertical increment per level)
-const VOXEL_STEP_PX: float = 20.0
+## Pixel step per voxel row (vertical increment per level): THE one storey height of the 2D contract (HERITAGE T4,
+## 2026-11-11). It is what the 3D camera really draws a true-cube level at: one GU across is 128 px on the lattice
+## (`IsoProjection.AXIS_X`), so 128 / cos 45° = 181.02 px a world unit, and a vertical unit shows at cos 30° of that;
+## an eighth of it a level. It was 20 (the 2D atom's 1.25 x 16), with 158 (the retired block art) and the camera's 156.8
+## beside it, so anything placed in 2D and lifted into the world landed 0.8-2 % too high. Every height derives from this.
+const VOXEL_STEP_PX: float = 128.0 / 0.70710678 * 0.8660254 / 8.0
 
-## Storey height in pixels: 8 voxels × 20 px/voxel
-const VOXEL_STOREY_HEIGHT_PX: float = 160.0
+## Storey height in pixels: 8 levels (156.77 px)
+const VOXEL_STOREY_HEIGHT_PX: float = VOXEL_STEP_PX * 8.0
 
 ## Render levels per storey (vertical granularity): one storey = 8 TileMapLayer levels
 ## Canonical per VOXEL_MASTER_PLAN.md line 85: "8 voxels × 8 levels = 64 VoxelRefs per slice"

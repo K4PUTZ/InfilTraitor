@@ -41,7 +41,7 @@ class_name IsoProjection
 ## X/Y, GeometryCoords.VOXEL_STOREY_HEIGHT_PX for Z.
 const AXIS_X: Vector2 = Vector2(128.0, 64.0)
 const AXIS_Y: Vector2 = Vector2(-128.0, 64.0)
-const AXIS_Z: Vector2 = Vector2(0.0, -160.0)
+const AXIS_Z: Vector2 = Vector2(0.0, -GeometryCoords.VOXEL_STOREY_HEIGHT_PX)   ## HERITAGE T4: the camera's storey
 
 
 ## The M·Mᵀ off-diagonal term. Zero for this projection, which is what makes

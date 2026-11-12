@@ -19,7 +19,6 @@ const SHADOW_SHADER := "res://godot/shaders/ground_overlay3d.gdshader"
 ## Above the floor, under every ground overlay's lift (0.01+).
 const SHADOW_LIFT: float = 0.005
 const SHADOW_SEGMENTS: int = 12
-const COS_ELEVATION: float = 0.8660254
 
 ## Where the object is drawn, in 2D world pixels (the old sprite's `position`): its base, lifted off the floor by `flight_px`.
 var screen_position: Vector2 = Vector2.ZERO:
@@ -161,7 +160,7 @@ func model_height() -> float:
 func top_world_2d() -> Vector2:
 	if _board == null:
 		return screen_position
-	return screen_position - Vector2(0.0, _model_size.y * float(_board.call("px_per_unit")) * COS_ELEVATION)
+	return screen_position - Vector2(0.0, _model_size.y * float(_board.call("px_per_unit")) * ParticleMath.COS_ELEVATION)
 
 
 ## A point of the MODEL (standing on Y = 0, centred in X / Z, in the fitted size) as a world point: it follows the placement, the flight height and

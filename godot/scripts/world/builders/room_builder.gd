@@ -576,6 +576,5 @@ func _cache_blocked_cells(layout: Dictionary) -> void:
 	_current_light_sources = layout.get("light_sources", [])
 
 
-const WALL_FLOOR_STEP_PX := 20.0
 const WALL_BASE_Z_INDEX := 8
 const INVALID_CELL := Vector2i(-1, -1)

@@ -64,6 +64,16 @@ captures before and after of a blast's debris at the third storey and of the cei
 about fifteen call sites) and independent of C2-C5; it also removes the reason `VERTICAL_SCALE_MATCHED` exists. C2-C5 would
 later replace these pixel heights with world units altogether.
 
+**DONE 2026-11-11 (Director: "fixar em números inteiros seja mais conveniente (160). Mas pode seguir a camera ou qualquer
+outro critério que julgar mais eficiente"):** the camera's value won, because 160 exact would mean stretching every voxel 2 % off
+the cube. `GeometryCoords.VOXEL_STEP_PX` = 128 / cos 45° x cos 30° / 8 = 19.596 px a level (156.77 a storey) is the one value;
+`VOXEL_STOREY_HEIGHT_PX`, `IsoProjection.AXIS_Z` and `room.WALL_FLOOR_STEP_PX` derive from it; `room.VOXEL_STEP_PX`,
+`room_builder`'s unused `WALL_FLOOR_STEP_PX` and `ObjectMesh3D.COS_ELEVATION` went. `verify.py full` against a baseline taken just
+before: every gate identical except the two meant to move: `pixel-gate` GLASS g1, 289 px (202 above noise; the blast's lifted
+effects land on their voxel), and `occ_canonical` GLASS (each wall's screen band now matches the wall the 3D camera draws;
+re-recorded). A new baseline was taken after. ⚠️ The baseline harness failed its own determinism check once and passed on the
+retry (0 px everywhere).
+
 ## 4. Not in this plan
 The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PERFORMANCE_BUDGET`, M7.0); the breached-wall passage, posture AP and the noise indicator (GAMEPLAY); audio; iOS.
 

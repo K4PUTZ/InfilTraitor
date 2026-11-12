@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**352 scripts · 100832 lines total** (under `godot/scripts/`)
+**352 scripts · 100829 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -746,7 +746,7 @@ extends `Node3D` · 3579 lines
 
 ### `geometry_coords.gd`
 
-`class_name GeometryCoords` · 102 lines
+`class_name GeometryCoords` · 106 lines
 
 `godot/scripts/geometry/geometry_coords.gd`
 
@@ -755,16 +755,6 @@ extends `Node3D` · 3579 lines
 **Constants / tuning**
 - `VOXELS_PER_UNIT_AXIS` = `8`
 - `VOXEL_TILE_SIZE` = `Vector2i(32, 16)`
-- `VOXEL_STEP_PX` = `20.0`
-- `VOXEL_STOREY_HEIGHT_PX` = `160.0`
-- `LEVELS_PER_STOREY` = `8`
-- `PLAYABLE_STOREY` = `10`
-- `PLAYABLE_LEVEL` = `PLAYABLE_STOREY * LEVELS_PER_STOREY`
-- `TEX_AUTHORING_N` = `16`
-- `VOXEL_ATOM_H` = `36`
-- `VOXEL_TILE_H` = `16`
-- `FLOOR_TOP_LEVEL` = `PLAYABLE_LEVEL - 1`
-- `FLOOR_DEEP_LEVEL` = `PLAYABLE_LEVEL - 2`
 
 ---
 
@@ -1051,7 +1041,7 @@ extends `Node3D` · 3579 lines
 
 ### `object_mesh3d.gd`
 
-`class_name ObjectMesh3D` · extends `Node3D` · 206 lines
+`class_name ObjectMesh3D` · extends `Node3D` · 205 lines
 
 `godot/scripts/geometry/object_mesh3d.gd`
 
@@ -1061,7 +1051,6 @@ extends `Node3D` · 3579 lines
 - `SHADOW_SHADER` = `"res://godot/shaders/ground_overlay3d.gdshader"`
 - `SHADOW_LIFT` = `0.005`
 - `SHADOW_SEGMENTS` = `12`
-- `COS_ELEVATION` = `0.8660254`
 
 ---
 
@@ -6712,7 +6701,7 @@ extends `Node2D` · 63 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 581 lines
+`class_name RoomBuilder` · 580 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -7236,7 +7225,7 @@ extends `Node` · 872 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10471 lines
+extends `Node2D` · 10466 lines
 
 `godot/scripts/world/room.gd`
 
@@ -7323,8 +7312,7 @@ extends `Node2D` · 10471 lines
 - `INVALID_CELL` = `Vector2i(-9999, -9999)`
 - `VISUAL_GRID_OFFSET` = `Vector2(0.0, 512.0)`
 - `WALL_BASE_Z_INDEX` = `10`
-- `WALL_FLOOR_STEP_PX` = `158.0`
-- `VOXEL_STEP_PX` = `20.0`
+- `WALL_FLOOR_STEP_PX` = `GeometryCoords.VOXEL_STOREY_HEIGHT_PX`
 - `LIQUID_FOOTPRINT_STEPS` = `8`
 - `LIQUID_FOOTPRINT_FADE` = `0.88`
 - `FIRE_LIGHT_BUDGET_US` = `5000`
@@ -7387,7 +7375,7 @@ extends `Node2D` · 10471 lines
 **Constants / tuning**
 - `AXIS_X` = `Vector2(128.0, 64.0)`
 - `AXIS_Y` = `Vector2(-128.0, 64.0)`
-- `AXIS_Z` = `Vector2(0.0, -160.0)`
+- `AXIS_Z` = `Vector2(0.0, -GeometryCoords.VOXEL_STOREY_HEIGHT_PX)`
 
 ---
 

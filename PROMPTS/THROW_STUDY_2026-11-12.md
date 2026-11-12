@@ -177,7 +177,8 @@ legs, as the pistol's aim already is.
    (the draw timeline played back, as quick as the draw), then throws right-handed. The old rig's left-hand grenade (`hand_L`) retires with it.
 2. ✅ **RULED (Director, 2026-11-12: "Automático"): the style is AUTOMATIC** (T1): the solver picks it from posture, cover, distance and
    headroom, deterministically, and the preview shows which style will be thrown (T4). No player buttons.
-3. **T5:** the whole body turns to the throw's exact direction during the throw (proposed), or only the spine twists?
+3. ✅ **RULED (Director, 2026-11-12: "Corpo inteiro"): the WHOLE BODY turns** to the throw's exact yaw for the throw (T5) and snaps back to
+   its grid facing after; the four facings stay for movement.
 4. **The bowl:** does the grenade stay on the floor the whole way (needs the roll physics in the world, W5), or is it a low toss that
    lands and rolls?
 

@@ -382,7 +382,7 @@ def extract(blend, out_json):
     print(f"[tripo_pose_lab] wrote {out_json}: {len(bones)} bones ({len(moved)} added by the Director: {moved}), props {sorted(props)}")
 
 
-PASSING_MARKERS = ("in-between",)
+PASSING_MARKERS = ("in-between", "release", "follow")   # the throw flows through its release and follow-through (2026-11-12)
 FINGER_NAMES = ("Index", "Middle", "Pinky", "Ring", "Thumb")
 
 
@@ -391,13 +391,23 @@ def is_finger(bone):
     return "Hand" in bone and any(f in bone for f in FINGER_NAMES)
 
 
-def _gun_placement(arm, rig, G, gun):
+def _gun_placement(arm, rig, G, gun, prop="pistol"):
     """The prop's placement against its bone for the frame the scene is on: the same maths `extract` uses."""
     bone = gun["lab_bone"]
-    world_g = blender_world_to_g(arm.matrix_world.inverted() @ gun.matrix_world @ mesh_edit(gun, "pistol"))
-    local_m = rig.node_global(bone, G).inverted() @ world_g @ prop_node_matrix("pistol").inverted()
+    world_g = blender_world_to_g(arm.matrix_world.inverted() @ gun.matrix_world @ mesh_edit(gun, prop))
+    local_m = rig.node_global(bone, G).inverted() @ world_g @ prop_node_matrix(prop).inverted()
     loc, rot, scl = local_m.decompose()
     return {"bone": bone, "pos": [loc.x, loc.y, loc.z], "quat": xyzw(rot), "scale": (scl[0] + scl[1] + scl[2]) / 3.0}
+
+
+def _animated_keys(obj):
+    """the shape keys of `obj` whose value is animated (the timeline drives them), by name"""
+    sk = obj.data.shape_keys if obj.type == 'MESH' else None
+    if sk is None or sk.animation_data is None or sk.animation_data.action is None:
+        return []
+    act = sk.animation_data.action
+    curves = [fc for l in act.layers for st in l.strips for cb in st.channelbags for fc in cb.fcurves] if getattr(act, "layers", None) else list(act.fcurves)
+    return sorted({fc.data_path.split('"')[1] for fc in curves if fc.data_path.startswith("key_blocks[")})
 
 
 def sequence(blend, name, seq_json, poses_dir):
@@ -411,8 +421,13 @@ def sequence(blend, name, seq_json, poses_dir):
     arm, rig = load_rig_from_blend()
     base = {n: quat_xyzw(q) for n, q in json.loads(arm["lab_base"]).items()}
     named = set(json.loads(arm["lab_bones"]))
-    gun = bpy.data.objects["PROP_pistol"]
+    prop = (json.loads(arm.get("lab_props", "[]")) or ["pistol"])[0]
+    gun = bpy.data.objects["PROP_" + prop]
+    # the THROW keeps the fingers (Director 2026-11-12: he places them round the grenade on this timeline); the draw leaves them to the clip underneath
+    fingers = name.startswith("throw")
     coat_key = next((o.data.shape_keys.key_blocks["DrawFix"] for o in bpy.data.objects if o.type == 'MESH' and o.data.shape_keys and "DrawFix" in o.data.shape_keys.key_blocks), None)
+    coat_obj = bpy.data.objects.get("Outfit_Coat")
+    morphs = [k for k in (_animated_keys(coat_obj) if coat_obj is not None else []) if k != "DrawFix"]
     if coat_key is None:
         print("[tripo_pose_lab] no 'DrawFix' morph in this .blend: the coat stays closed through the sequence")
     action = arm.animation_data.action
@@ -426,13 +441,14 @@ def sequence(blend, name, seq_json, poses_dir):
         sc.frame_set(f)
         bpy.context.view_layer.update()
         local, G = rig.read()
-        samples.append({"frame": f, "coat": coat_key.value if coat_key is not None else 0.0, "visible": not gun.hide_viewport, "gun": _gun_placement(arm, rig, G, gun)})
+        samples.append({"frame": f, "coat": coat_key.value if coat_key is not None else 0.0, "visible": not gun.hide_viewport, "gun": _gun_placement(arm, rig, G, gun, prop),
+                        "morphs": {k: coat_obj.data.shape_keys.key_blocks[k].value for k in morphs}})
         if f not in keyed or f == first:
             continue
         pose_id = f"seq_{name}_f{f}"
-        bones = {n: xyzw(local[n]) for n in rig.names if (n in named or qdist(local[n], base[n]) > EPS_CHANGED) and not is_finger(n)}
+        bones = {n: xyzw(local[n]) for n in rig.names if (n in named or qdist(local[n], base[n]) > EPS_CHANGED or fingers) and (fingers or not is_finger(n))}
         out = {"format": "infiltraitor-pose", "v": 1, "figure": figure, "id": pose_id, "bones": bones,
-               "props": {"pistol": samples[-1]["gun"]}, "hips_pos": list(CM @ arm.pose.bones[PREFIX + "Hips"].matrix.translation)}
+               "props": {prop: samples[-1]["gun"]}, "hips_pos": list(CM @ arm.pose.bones[PREFIX + "Hips"].matrix.translation)}
         with open(os.path.join(poses_dir, pose_id + ".json"), "w") as fh:
             json.dump(out, fh, indent=1)
         passing = f != last and (f not in markers or markers[f] in PASSING_MARKERS)
@@ -441,7 +457,8 @@ def sequence(blend, name, seq_json, poses_dir):
     for x in samples:    # a hidden object is not re-evaluated by Blender: its sampled placement is stale, and the game reads it between a hidden frame and the next one
         if not x["visible"] and shown is not None:
             x["gun"] = shown
-    seq = {"format": "infiltraitor-sequence", "v": 1, "figure": figure, "name": name, "fps": sc.render.fps, "first": first, "last": last, "stops": stops, "samples": samples}
+    seq = {"format": "infiltraitor-sequence", "v": 1, "figure": figure, "name": name, "fps": sc.render.fps, "first": first, "last": last, "stops": stops, "samples": samples,
+           "prop": prop, "markers": {n: f for f, n in sorted(markers.items())}, "morphs": morphs}
     os.makedirs(os.path.dirname(seq_json), exist_ok=True)
     with open(seq_json, "w") as fh:
         json.dump(seq, fh, indent=1)

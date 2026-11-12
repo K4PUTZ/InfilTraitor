@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**354 scripts · 101115 lines total** (under `godot/scripts/`)
+**354 scripts · 101308 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `actor_pose.gd`
 
-`class_name ActorPose` · extends `Node` · 236 lines
+`class_name ActorPose` · extends `Node` · 241 lines
 
 `godot/scripts/agents/actor_pose.gd`
 
@@ -40,14 +40,12 @@
 - `THROW_RELEASE` = `"release"`
 - `THROW_RELEASE_FRACTION` = `0.5`
 - `HEAD_YAW_LIMIT_DEG` = `60.0`
-- `POSTURES` = `["standing", "crouch", "prone"]`
-- `GRIPS` = `["", "_aimed"]`
 
 ---
 
 ### `agent.gd`
 
-`class_name Agent` · extends `Node2D` · 501 lines
+`class_name Agent` · extends `Node2D` · 517 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -90,6 +88,7 @@
 **Public API**
 - `func throw_origin() -> Vector2:`
 - `func muzzle_points() -> Dictionary:`
+- `func grenade_release_points() -> Dictionary:`
 - `func play_shot_kick() -> bool:`
 - `func muzzle_origin() -> Vector2:`
 - `func play_throw_raise() -> bool:`
@@ -422,7 +421,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 702 lines
+`class_name ActorMesh3D` · extends `Node3D` · 836 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -466,6 +465,11 @@ extends `ConfirmationDialog` · 64 lines
 - `EJECT_RIGHT_M` = `0.8`
 - `EJECT_UP_M` = `1.2`
 - `EJECT_BACK_M` = `0.2`
+- `THROW_TURN_RAD_S` = `TAU`
+
+**Public API**
+- `func muzzle_global() -> Vector3:`
+- `func set_status_tint(color: Color, pulse: float) -> void:`
 
 ---
 
@@ -497,7 +501,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `aim_sequence.gd`
 
-extends `RefCounted` · 89 lines
+extends `RefCounted` · 107 lines
 
 `godot/scripts/geometry/aim_sequence.gd`
 
@@ -506,6 +510,7 @@ extends `RefCounted` · 89 lines
 **Constants / tuning**
 - `SEQUENCE_FILE` = `"res://ASSETS/ANIMATIONS/sequences/%s/%s.json"`
 - `PISTOL_DRAW` = `"draw_pistol"`
+- `THROW_OVERHAND` = `"throw_overhand"`
 
 **Public vars**
 - `var fps: float = 24.0`
@@ -1490,7 +1495,7 @@ extends `Node3D` · 3579 lines
 
 ### `tripo_figure.gd`
 
-`class_name TripoFigure` · extends `RefCounted` · 541 lines
+`class_name TripoFigure` · extends `RefCounted` · 549 lines
 
 `godot/scripts/geometry/tripo_figure.gd`
 
@@ -6864,7 +6869,7 @@ extends `Node` · 251 lines
 
 ### `grenade_controller.gd`
 
-`class_name GrenadeController` · 1897 lines
+`class_name GrenadeController` · 1909 lines
 
 `godot/scripts/world/controllers/grenade_controller.gd`
 

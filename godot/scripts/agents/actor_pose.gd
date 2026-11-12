@@ -29,6 +29,9 @@ const THROW_RELEASE := "release"
 ## keys, half way through the sequence.
 const THROW_RELEASE_FRACTION: float = 0.5
 const HEAD_YAW_LIMIT_DEG := 60.0
+## MOVEMENT 2026-11-12 (the throw's flow, `THROW_STUDY` §5.1): the grid direction the grenade is aimed at (target cell - own cell, BASE grid), set by the grenade's aim
+## while the raise is held; the mesh turns the whole body to it in place. ZERO = none.
+var throw_aim_dir: Vector2 = Vector2.ZERO
 const POSTURES: PackedStringArray = ["standing", "crouch", "prone"]
 ## Grip suffixes the rig has actions for ("" = lowered).
 const GRIPS: PackedStringArray = ["", "_aimed"]
@@ -205,6 +208,8 @@ func mesh_state() -> Dictionary:
 		"walk": _walk_progress if _posture == "standing" else -1.0,
 		"throw": _throw_seq,
 		"throw_u": throw_u,
+		"throw_reversed": _throw_reversed,
+		"throw_dir": throw_aim_dir,
 		"head": _head_grid_deg if _has_head_yaw else NAN,
 	}
 

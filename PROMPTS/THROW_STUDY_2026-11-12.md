@@ -220,3 +220,25 @@ grenade went ~45° off the facing, seen by the Director in Blender).
 - Engine practice: [Unreal forums, correcting the throw direction](https://forums.unrealengine.com/t/grenade-throwing-and-how-to-correct-the-throw-direction/125653)
   · [zombies-fps PR, throw release times](https://github.com/DonnGonzo/zombies-fps/pull/10)
   · [zombonz issue, duplicate grenade at release](https://github.com/je55pr/zombonz/issues/177)
+
+---
+
+## 7. In the game (2026-11-12, first build)
+
+- **Read-back:** `pose_lab.py sequence throw_overhand --figure <fig>` (the timeline's prop is read from the file, the throw KEEPS the fingers,
+  the coat's animated shape keys are sampled per frame as `morphs`, the markers are written; `release` and `follow` are passing stops).
+- **The coat:** the male's `ThrowFix_f12/f15/f18` are morphs of `AGENT_MALE_LIGHT.glb` (`glb_add_morph.py`; `f09` is empty and left out).
+  A rebuild of the LIGHT Agent loses them, as it loses `DrawFix`.
+- **The body:** `ActorMesh3D` plays the timeline on a second path layer (`_update_throw`):
+  - the raise goes at the timeline's pace and waits for a drawn pistol to be put away;
+  - the hold stays at `cocked`;
+  - the release goes cocked → release on the pose's clock, so `throw_released` lands on the release frame;
+  - the follow and the return run at the timeline's pace;
+  - the cancel plays the raise back.
+- **The turn:** `ActorPose.throw_aim_dir`, set by the grenade's aim, turns the whole body in place at 360°/s. Outside a throw the facing
+  still snaps (D47).
+- **The flight:** it starts where the grenade last was in the hand (`Agent.grenade_release_points()`). The PREVIEW arc still starts at the
+  old head anchor, until W5.
+- **Take:** `grenade_throw` (PLAYGROUND, `agent_throw_rail`). Open: the female's timeline is Claude's draft (no coat fix, idle fingers). The
+  "8 resources still in use at exit" line appears with the old rig too: it is the detonation still running when the take quits, not this
+  work.

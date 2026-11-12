@@ -91,6 +91,12 @@ const EJECT_PORT := Vector3(0.06, 0.03, 0.0)
 const EJECT_RIGHT_M: float = 0.8
 const EJECT_UP_M: float = 1.2
 const EJECT_BACK_M: float = 0.2
+## THE THROW (MOVEMENT, 2026-11-12, `PROMPTS/THROW_STUDY_2026-11-12.md` §5.1): the Director's timeline `throw_overhand` (`AimSequence`) on a second path layer. The raise
+## goes idle -> cocked at the timeline's pace and HOLDS there while the player aims, the whole body turning in place to the aimed cell (`ActorPose.throw_aim_dir`,
+## `THROW_TURN_RAD_S`); a drawn pistol is put away first (the raise waits for `_aim_t` to reach 0); the release runs cocked -> release on the pose's clock (so its
+## `throw_released` lands on the timeline's release frame), then the follow-through and the way back to the idle at the timeline's pace; the cancel plays the raise back.
+## The grenade rides the right hand as the timeline places it, and the coat takes the timeline's `ThrowFix_*` morphs.
+const THROW_TURN_RAD_S: float = TAU
 
 var _board: Node3D = null
 var _source: ActorPose = null
@@ -116,6 +122,17 @@ var _shot_hold: float = 0.0          ## the aim is held this long more after a s
 var _aim_t: float = 0.0              ## how far the aim has travelled, 0 (down) to 1 (held)
 var _pistol: Node3D = null           ## the pistol in the right hand (hidden until the fists reach the sternum)
 var _pistol_holder: Node3D = null    ## carries the placement (the pose's, blended between the stops)
+var _throw: ActorAimPoseRef = null   ## the throw's path layer (null: the figure has no throw timeline)
+var _throw_seq: AimSequenceRef = null
+var _throw_w: float = 0.0            ## where along the throw's timeline the body is, 0..1
+var _throw_phase: String = ""        ## "", "raise", "cancel", "release", "recover"
+var _throw_grenade: Node3D = null    ## the grenade in the right hand (a BoneAttachment3D) and its placement holder
+var _throw_grenade_holder: Node3D = null
+var _throw_last_hand: Vector3 = Vector3.INF   ## where the grenade last was in the hand, global: the flight starts there
+var _throw_coat: MeshInstance3D = null
+var _throw_morphs: Dictionary = {}   ## morph name -> blend shape index on the coat
+var _shown_yaw: float = NAN          ## the body's yaw on screen, eased toward the grid facing or the throw's aim
+var _throw_turning_back: bool = false   ## a throw just ended and the body is still turning back to its grid facing
 var _coat: MeshInstance3D = null     ## the Agent's coat, when it owns the draw's morph
 var _coat_draw_shape: int = -1       ## that morph's index
 var _pistol_stops: Array = []        ## [[weight, placement {bone, pos, quat, scale}], ...] one per aim stop, from the poses' `props` meta
@@ -264,6 +281,7 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 	_skeleton = skeletons[0] as Skeleton3D
 	_head_bone = TripoFigureRef.find_bone(_skeleton, "Head")
 	_build_aim_layer(lib, figure)   ## before the head turn: a skeleton's modifiers run in child order
+	_build_throw_layer(lib, figure)
 	if _head_bone >= 0:
 		_head = HeadTurnRef.new()
 		_head.set("bone_name", _skeleton.get_bone_name(_head_bone))
@@ -319,6 +337,108 @@ func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 		_coat = coat
 	else:
 		push_warning("[ActorMesh3D] the %s coat has no '%s' morph: it stays closed through the draw" % [figure, DRAW_COAT_SHAPE])
+
+
+## The throw's timeline as a path layer and the grenade in its hand. No timeline or a missing pose: said once, the agent throws standing still as before.
+func _build_throw_layer(lib: AnimationLibrary, figure: String) -> void:
+	var seq: AimSequenceRef = AimSequenceRef.new()
+	if not seq.load_file(figure, AimSequenceRef.THROW_OVERHAND):
+		return
+	var stops: Array = []
+	for stop: Dictionary in seq.stops:
+		var pose_id: String = TripoFigureRef.POSE_PREFIX + String(stop["id"])
+		if not lib.has_animation(pose_id):
+			push_warning("[ActorMesh3D] the %s game set has no '%s': no throw on this figure (run pose_lab.py sequence %s)" % [figure, pose_id, AimSequenceRef.THROW_OVERHAND])
+			return
+		stops.append([float(stop["weight"]), lib.get_animation(pose_id), bool(stop["passing"])])
+	var layer: ActorAimPoseRef = ActorAimPoseRef.new()
+	_skeleton.add_child(layer)
+	if not layer.load_stops(_skeleton, stops):
+		layer.queue_free()
+		return
+	_throw = layer
+	_throw_seq = seq
+	var hand: int = TripoFigureRef.find_bone(_skeleton, seq.gun_bone())
+	var model: String = TripoFigureRef.prop_model(seq.prop)
+	var scene := load(model) as PackedScene
+	if hand < 0 or scene == null:
+		push_error("[ActorMesh3D] no bone '%s' or no model for '%s' (%s): the agent throws empty-handed" % [seq.gun_bone(), seq.prop, model])
+	else:
+		var attach := BoneAttachment3D.new()
+		attach.name = "GrenadeHand"
+		attach.bone_name = _skeleton.get_bone_name(hand)
+		_skeleton.add_child(attach)
+		var holder := Node3D.new()
+		attach.add_child(holder)
+		holder.add_child(scene.instantiate() as Node3D)
+		_apply_board_light(attach)
+		attach.visible = false
+		_throw_grenade = attach
+		_throw_grenade_holder = holder
+	_throw_coat = TripoFigureRef.coat_of(_body)
+	if _throw_coat != null:
+		for name: String in seq.at(0.5)["morphs"]:
+			var idx: int = _throw_coat.find_blend_shape_by_name(name)
+			if idx >= 0:
+				_throw_morphs[name] = idx
+
+
+## The throw this frame: where along the timeline the body is (`_throw_w`), from the pose's throw and our own pace (see `THROW_TURN_RAD_S`'s note).
+func _update_throw(state: Dictionary) -> void:
+	if _throw == null:
+		return
+	var dt: float = get_process_delta_time()
+	var pace: float = _throw_seq.fps / float(_throw_seq.last - _throw_seq.first)   ## timeline weight per second
+	var cocked: float = _throw_seq.marker_weight("cocked", 0.32)
+	var released: float = _throw_seq.marker_weight("release", 0.56)
+	var seq: String = String(state["throw"])
+	if seq == ActorPose.THROW_RAISE:
+		_throw_phase = "cancel" if bool(state["throw_reversed"]) else "raise"
+	elif seq == ActorPose.THROW_RELEASE:
+		if _throw_phase != "recover":
+			_throw_phase = "release"
+	elif _throw_phase == "release":
+		_throw_phase = "recover"
+	elif _throw_phase != "recover":
+		_throw_phase = "cancel" if _throw_w > 0.0 else ""
+	match _throw_phase:
+		"raise":
+			if _aim_t <= 0.0:   ## the pistol is away first
+				_throw_w = move_toward(_throw_w, cocked, pace * dt)
+		"cancel":
+			_throw_w = move_toward(_throw_w, 0.0, pace * dt)
+			if _throw_w <= 0.0:
+				_throw_phase = ""
+		"release":
+			var u: float = clampf(float(state["throw_u"]) / ActorPose.THROW_RELEASE_FRACTION, 0.0, 1.0)
+			_throw_w = maxf(_throw_w, lerpf(cocked, released, u))
+			if u >= 1.0:
+				_throw_phase = "recover"
+		"recover":
+			_throw_w = move_toward(_throw_w, 1.0, pace * dt)
+			if _throw_w >= 1.0:
+				_throw_w = 0.0
+				_throw_phase = ""
+	_throw.weight = _throw_w
+	var here: Dictionary = _throw_seq.at(_throw_w) if _throw_w > 0.0 else {}
+	if _throw_grenade != null:
+		_throw_grenade.visible = _throw_w > 0.0 and bool(here["visible"])
+		if _throw_w > 0.0:
+			_throw_grenade_holder.transform = here["gun"] as Transform3D
+		if _throw_grenade.visible and _throw_grenade_holder.is_inside_tree():
+			_throw_last_hand = _throw_grenade_holder.global_position
+	for name: String in _throw_morphs:
+		_throw_coat.set_blend_shape_value(int(_throw_morphs[name]), float((here.get("morphs", {}) as Dictionary).get(name, 0.0)))
+
+
+## Where the thrown grenade leaves: the last place it was in the hand (global), INF when this figure has thrown nothing yet with a timeline.
+func throw_release_global() -> Vector3:
+	return _throw_last_hand
+
+
+## Whether the body is in the throw (raised, holding, releasing or coming back): the turn to the aim holds through it.
+func _throwing() -> bool:
+	return _throw_w > 0.0 or _throw_phase != ""
 
 
 ## The pistol in the hand: its placement comes from the poses (`props` meta: the Director's, set in Blender, or the default), one per stop, blended between the stops
@@ -452,6 +572,8 @@ func _dev_value(flag_name: String, fallback: String) -> String:
 ## Where the grenade in the raised hand is, in the world: the `hand_L` attachment's own origin, which the pose seeks every frame. Vector3(INF, INF, INF)
 ## ("none", the emitters' `NO_ANCHOR`) while that grenade is hidden (not in a throw's raise, or past the release).
 func hand_grenade_world() -> Vector3:
+	if _throw_grenade != null and _throw_grenade.visible and _throw_grenade_holder.is_inside_tree():
+		return _throw_grenade_holder.global_position
 	if _grenade == null or not _grenade.visible or not _grenade.is_inside_tree():
 		return Vector3(INF, INF, INF)
 	return _grenade.global_position
@@ -485,11 +607,23 @@ func _sync() -> void:
 	var step: Vector2i = state["step"]
 	if step != Vector2i.ZERO:
 		_yaw = yaw_for_direction(Vector2(step))
-	_body.rotation.y = _yaw + _front_yaw
-	var body_yaw: float = _yaw
+	## The throw turns the whole body in place to the aimed cell (Director 2026-11-12) and back to the grid facing after, at `THROW_TURN_RAD_S`.
+	var want_yaw: float = _yaw
+	var aim_dir: Vector2 = state.get("throw_dir", Vector2.ZERO)
+	if aim_dir != Vector2.ZERO and (_throwing() or String(state["throw"]) != ""):
+		want_yaw = yaw_for_direction(aim_dir)
+	var throwing: bool = _throwing() or String(state["throw"]) != ""
+	if is_nan(_shown_yaw) or not (throwing or _throw_turning_back):   ## outside a throw the facing snaps, as it always did (D47)
+		_shown_yaw = want_yaw
+	var turn: float = wrapf(want_yaw - _shown_yaw, -PI, PI)
+	_shown_yaw += clampf(turn, -THROW_TURN_RAD_S * get_process_delta_time(), THROW_TURN_RAD_S * get_process_delta_time())
+	_throw_turning_back = throwing or absf(wrapf(want_yaw - _shown_yaw, -PI, PI)) > 1e-4
+	_body.rotation.y = _shown_yaw + _front_yaw
+	var body_yaw: float = _shown_yaw
 	if not _tripo.is_empty():
 		_show_tripo(float(state["walk"]) >= 0.0, ground)
 		_update_aim(state)
+		_update_throw(state)
 	else:
 		var weapon: String = String(state["weapon"])   ## the grip the rig holds (`ActorPose.set_weapon`, the row's `held_as`)
 		for held: String in _weapons:

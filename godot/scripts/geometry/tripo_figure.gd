@@ -360,8 +360,14 @@ static func prop_default(prop: String) -> Dictionary:
 	return {"bone": w.hand_bone, "pos": w.hand_pos, "quat": basis.get_rotation_quaternion(), "scale": w.hand_scale}
 
 
-## The model of the prop (a weapon) `prop`, "" when it is not a weapon with one.
+## Props held in a pose that are not weapons (MOVEMENT 2026-11-12: the grenade of the throw timeline).
+const HELD_PROPS: Dictionary = {"grenade": "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_grenade/Grenade.glb"}
+
+
+## The model of the prop `prop` (a weapon, or one of `HELD_PROPS`), "" when it has none.
 static func prop_model(prop: String) -> String:
+	if HELD_PROPS.has(prop):
+		return String(HELD_PROPS[prop])
 	var w: WeaponDef = WeaponRegistry.shared().get_weapon(prop)
 	return w.model_path if w != null else ""
 
@@ -533,7 +539,9 @@ static func build_library(figure: String, hips_rest: Vector3) -> AnimationLibrar
 		if pose == null:
 			return null
 		lib.add_animation(POSE_PREFIX + id, pose)
-	for id: String in AimSequenceRef.pose_ids(figure, AimSequenceRef.PISTOL_DRAW):   ## the Director's timeline: one pose per keyed frame, each from its own file
+	var timeline_ids: PackedStringArray = AimSequenceRef.pose_ids(figure, AimSequenceRef.PISTOL_DRAW)   ## the Director's timelines: one pose per keyed frame, each from its own file
+	timeline_ids.append_array(AimSequenceRef.pose_ids(figure, AimSequenceRef.THROW_OVERHAND))
+	for id: String in timeline_ids:
 		var pose: Animation = bank_pose(figure, id)
 		if pose == null:
 			return null

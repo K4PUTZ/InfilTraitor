@@ -460,6 +460,7 @@ func enter_grenade_mode() -> void:
 		return
 	_targeting_mode = true
 	_targeting_target_gu = room.agent.cell + DEFAULT_TARGET_OFFSET
+	_aim_body_at(_targeting_target_gu)
 	Telemetry.event("aim.enter", {"weapon": "grenade", "index": _targeting_grenade_index})
 	## Director, 2026-08-19: *"Quando o jogador selecionar a GU [...] o agente já
 	## mira."* The arm comes up the moment targeting opens and HOLDS there for the
@@ -562,6 +563,7 @@ func _set_targeting_target_body(cell: Vector2i) -> void:
 
 	_t = _split("aim: start", _t)
 	_targeting_target_gu = _clamp_gu_to_throw_range(cell, origin_gu)
+	_aim_body_at(_targeting_target_gu)
 	_t = _split("aim: clamp", _t)
 	## He faces what he is about to throw at, and re-faces when the aim moves.
 	## `face_direction()` owns the reduction to D44's four facings, so an
@@ -685,6 +687,12 @@ func execute_grenade_throw() -> void:
 	if room.agent.play_throw_release():
 		await room.agent.pose.throw_released
 	_start_grenade_throw_animation(target_gu, grenade)
+
+
+## MOVEMENT 2026-11-12 (THROW_STUDY §5.1): the raised Agent turns in place to face the aimed cell.
+func _aim_body_at(target_gu: Vector2i) -> void:
+	if room.agent != null and room.agent.pose != null and target_gu != room.agent.cell:
+		room.agent.pose.throw_aim_dir = Vector2(target_gu - room.agent.cell)
 
 
 ## Cancel targeting mode
@@ -856,6 +864,10 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	var target_world: Vector2 = room.agent._cell_to_world(target_gu)
 	## Same origin the preview arc used — the agent's hands, not their feet.
 	var start_pos: Vector2 = room.agent.throw_origin()
+	## MOVEMENT 2026-11-12 (THROW_STUDY T2): with a throw timeline the grenade leaves from where it really was in the hand at the release.
+	var from_hand: Dictionary = room.agent.grenade_release_points()
+	if not from_hand.is_empty():
+		start_pos = from_hand["pos"]
 
 	## The flight follows ThrowArcOverlay's OWN parabola, with the overlay's own
 	## ratio — the grenade cannot fly a different curve from the one the player
@@ -864,7 +876,7 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	if arc == null:
 		push_error("[GrenadeController] throw: no ThrowArcOverlay to take the trajectory from")
 		return
-	var launch_px: float = room.agent.throw_launch_height()
+	var launch_px: float = room.agent.throw_launch_height() if from_hand.is_empty() else float(from_hand["launch"])
 	var arc_height: float = ThrowArcOverlay.arc_height_for(
 		start_pos, target_world, arc.arc_height_ratio, launch_px)
 

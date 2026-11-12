@@ -207,6 +207,22 @@ func muzzle_points() -> Dictionary:
 	return {"pos": muzzle_origin(), "floor": position}
 
 
+## MOVEMENT 2026-11-12 — where the thrown grenade leaves, as the pair the flight takes ({"pos": 2D point, "floor": 2D floor under it, "launch": height in px}): the
+## grenade's last place in the figure's hand (`ActorMesh3D.throw_release_global()`); empty when the figure has no throw timeline (the caller keeps `throw_origin()`).
+func grenade_release_points() -> Dictionary:
+	var figure: Variant = pose.get_meta("figure3d") if pose != null and pose.has_meta("figure3d") else null
+	if figure == null or not is_instance_valid(figure) or not (figure as Object).has_method("throw_release_global"):
+		return {}
+	var g: Vector3 = (figure as Object).call("throw_release_global")
+	var board: Node = (figure as Node).get_parent()
+	while board != null and not board.has_method("lift_pair_of_global"):
+		board = board.get_parent()
+	if g == Vector3.INF or board == null:
+		return {}
+	var pair: Array = board.call("lift_pair_of_global", g)
+	return {"pos": pair[0], "floor": pair[1], "launch": maxf((pair[1] as Vector2).y - (pair[0] as Vector2).y, 0.0)}
+
+
 ## MOVEMENT 2026-11-12 — the shot on the figure: the arms and the gun kick and a case is thrown (`ActorMesh3D.fire_kick()`). False when the figure
 ## draws no gun (the old rig, a headless run): nothing kicks.
 func play_shot_kick() -> bool:

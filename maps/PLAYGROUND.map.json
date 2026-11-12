@@ -899,6 +899,17 @@
           ]
         },
         {
+          "id": "agent_throw_rail",
+          "keys": [
+            {
+              "frame": "detail",
+              "target": "@agent_close",
+              "view": "S",
+              "hold": 440
+            }
+          ]
+        },
+        {
           "id": "agent_shot_rail",
           "keys": [
             {
@@ -1064,6 +1075,24 @@
           "length": 420,
           "seed": 1,
           "note": "The agent draws the pistol (the arms come up, the gun appears in the fist), holds, and puts it away; once per camera view S, E, N, W. Needs the Tripo agent (the default)."
+        },
+        {
+          "id": "grenade_throw",
+          "profile": "engine",
+          "rail": "agent_throw_rail",
+          "steps": [
+            "aim 29,11",
+            "wait 1.0",
+            "aim 35,11",
+            "wait 1.0",
+            "throw 0 35,11",
+            "wait 3.0"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 420,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-12: the Agent raises the grenade (the Director's throw_overhand timeline), turns in place to one aimed cell then another, throws: the grenade leaves the hand at the release frame."
         },
         {
           "id": "aim_cancel",

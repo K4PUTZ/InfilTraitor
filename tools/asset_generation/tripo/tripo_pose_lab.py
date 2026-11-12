@@ -536,8 +536,12 @@ def sequence_new(pose_blend, idle_json, draw_json, aim_json, out_blend, mid_at):
 # no held lunge, a short lead step, a shallow dip. The arms, spine and head are the clip's (turned so the release goes along the figure's forward); the LEGS are solved
 # (two-bone IK) to feet that step a fraction of the pitcher's stride; the fingers keep the idle's curl (never keyed: the Director, 2026-11-12). The Director refines it by hand.
 LEG_BONES = ("UpLeg", "Leg", "Foot", "ToeBase", "Toe_End")
-# (timeline frame, clip frame or None for the idle, marker)
-THROW_PLAN = ((1, None, "idle"), (9, 39, "cocked"), (12, 42, "in-between"), (15, 44, "release"), (18, 48, "follow"), (26, None, "idle"))
+# TWO timelines (Director, 2026-11-12: "talvez fosse melhor dividir"): the RAISE (idle -> cocked, held while the Agent turns in place to the aimed cell; the cancel
+# plays it backwards) and the THROW (cocked -> release -> follow -> idle). Each: (timeline frame, clip frame or None for the idle, marker); the grenade's last shown frame.
+THROW_PARTS = {
+    "raise": (((1, None, "idle"), (9, 39, "cocked")), 9),
+    "release": (((1, 39, "cocked"), (4, 42, "in-between"), (7, 44, "release"), (10, 48, "follow"), (18, None, "idle")), 7),
+}
 THROW_STEP = 0.6       # the pitcher's stance (feet against the hips, at the follow-through), narrowed to this
 FOLLOW_FRAME = 48      # the clip frame whose stance the feet keep
 RELEASE_FRAME = 44     # the clip frame of the release (the hand's top speed)
@@ -592,10 +596,11 @@ def _aim_bone(P_clip, head, tail):
     return (axis.rotation_difference((tail - head).normalized()).to_matrix() @ P_clip).normalized()
 
 
-def throw_new(base_blend, clip_glb, out_blend):
+def throw_new(base_blend, clip_glb, out_blend, part):
     """THE STARTING TIMELINE OF THE OVERHAND THROW of one figure, built from its draw timeline (`SEQ_draw_pistol_<FIG>.blend`: the LIGHT Agent, the lab data, frame 1 = the
     game's idle with its Hips) and the bank's `pitch_baseball`. Frames 1-26 at the base's fps, markers per `THROW_PLAN` (the in-between is a passing stop), the grenade
     (`PROP_grenade`) on the right hand until the release frame. The draw's pistol, coat keys and armature keys are dropped; nothing is written over the base file."""
+    THROW_PLAN, shown_until = THROW_PARTS[part]
     bpy.ops.wm.open_mainfile(filepath=base_blend)
     sc = bpy.context.scene
     arm, rig = load_rig_from_blend()
@@ -612,7 +617,7 @@ def throw_new(base_blend, clip_glb, out_blend):
             o.data.shape_keys.animation_data_clear()
             for kb in o.data.shape_keys.key_blocks[1:]:
                 kb.value = 0.0
-    clip_frames = sorted({c for _f, c, _m in THROW_PLAN if c is not None} | {0})
+    clip_frames = sorted({c for plan, _s in THROW_PARTS.values() for _f, c, _m in plan if c is not None} | {0, FOLLOW_FRAME, RELEASE_FRAME})
     clip = _clip_frames(arm, clip_glb, clip_frames)
     # turn the clip so the release runs along the figure's forward (the idle's heel -> toe, both feet)
     fwd = sum(((idle[s + "ToeBase"][1] - idle[s + "Foot"][1]) for s in ("Left", "Right")), Vector())
@@ -723,11 +728,13 @@ def throw_new(base_blend, clip_glb, out_blend):
     gm = gren.matrix_world.copy()
     gm.translation = arm.matrix_world @ palm
     gren.matrix_world = gm
-    for frame, shown in ((1, True), (15, True), (16, False), (26, False)):
+    last = THROW_PLAN[-1][0]
+    keys = [(1, True), (shown_until, True)] + ([(shown_until + 1, False), (last, False)] if shown_until < last else [])
+    for frame, shown in keys:
         gren.hide_viewport = gren.hide_render = not shown
         gren.keyframe_insert("hide_viewport", frame=frame)
         gren.keyframe_insert("hide_render", frame=frame)
-    arm["lab_pose"] = "throw_overhand"
+    arm["lab_pose"] = "throw_" + part
     arm["lab_props"] = json.dumps(["grenade"])
     sc.frame_set(1)
     bpy.context.view_layer.objects.active = arm
@@ -736,7 +743,7 @@ def throw_new(base_blend, clip_glb, out_blend):
     arm.select_set(True)
     bpy.ops.object.mode_set(mode='POSE')
     bpy.ops.wm.save_as_mainfile(filepath=out_blend)
-    print(f"[tripo_pose_lab] wrote {out_blend}: the {arm['lab_figure']} overhand throw, frames 1-26, clip turned {math.degrees(yaw):.1f} deg, "
+    print(f"[tripo_pose_lab] wrote {out_blend}: the {arm['lab_figure']} overhand {part}, frames 1-{last}, clip turned {math.degrees(yaw):.1f} deg, "
           f"step {THROW_STEP}, travel {THROW_TRAVEL}, dip {THROW_DIP}")
 
 
@@ -850,7 +857,7 @@ def main():
     elif mode == "sequence_new":
         sequence_new(a[1], a[2], a[3], a[4], a[5], float(a[6]))
     elif mode == "throw_new":
-        throw_new(a[1], a[2], a[3])
+        throw_new(a[1], a[2], a[3], a[4])
     elif mode == "sequence":
         sequence(a[1], a[2], a[3], a[4])
     elif mode == "render":

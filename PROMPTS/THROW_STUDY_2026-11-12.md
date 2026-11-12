@@ -179,6 +179,10 @@ legs, as the pistol's aim already is.
 3. **On "throw"** the Agent already faces the target and simply plays the rest: cocked → release → follow → idle.
 4. **On cancel**, cocked → idle played backwards (the existing cancel rule).
 
+**Two timelines (Director, 2026-11-12: "talvez fosse melhor dividir"):** `SEQ_throw_raise_<FIG>.blend` (idle 1 -> cocked 9; the cancel
+plays it backwards) and `SEQ_throw_release_<FIG>.blend` (cocked 1, in-between 4, release 7, follow 10, idle 18; the grenade hides from 8).
+The release's first frame is the raise's last to 2e-7. The turn in place sits between the two.
+
 So the timeline's THROW DIRECTION must be the figure's forward: since 2026-11-12 (second pass) the clip is turned so the line from the
 hips to the hand at the release runs along the forward (the first pass used the hand's velocity there, which crosses the body: the
 grenade went ~45° off the facing, seen by the Director in Blender).

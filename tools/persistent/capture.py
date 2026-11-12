@@ -29,6 +29,8 @@ import json
 import os
 import shutil
 import subprocess
+import threading
+import time
 import sys
 import tempfile
 from pathlib import Path
@@ -67,6 +69,9 @@ def take_env(map_id, take_id):
     return {}
 
 
+START_TIMEOUT_S = int(os.environ.get("CAPTURE_START_TIMEOUT_S", "180"))
+
+
 def run_godot(map_id, scenario, window, shape, extra=(), seed=1, timeout=600, env_extra=None):
     env = dict(os.environ, **(env_extra or {}), INFILTRAITOR_MAP=map_id, INFILTRAITOR_SCENARIO=scenario, INFILTRAITOR_RNG_SEED=str(seed),
                INFILTRAITOR_CAPTURE_WINDOW_FIXED="1", INFILTRAITOR_CAPTURE_SHAPE=shape)
@@ -78,11 +83,43 @@ def run_godot(map_id, scenario, window, shape, extra=(), seed=1, timeout=600, en
     if OVERRIDE.exists() and OVERRIDE_MARK not in OVERRIDE.read_text():
         sys.exit("[CAPTURE] %s exists and is not ours: refusing to overwrite it" % OVERRIDE)
     OVERRIDE.write_text("%s\n[display]\n\nwindow/size/viewport_width=%d\nwindow/size/viewport_height=%d\n" % (OVERRIDE_MARK, window[0], window[1]))
+    ## The scenario must START within START_TIMEOUT_S (its "[SCENARIO] N step(s)" line): a map that fails to load never starts
+    ## one, and under Movie Maker the window keeps writing frames until the whole `timeout` (measured 2026-11-11: minutes on a
+    ## PROPS map rejected for a POI off the 1/8 grid). The run is killed then, with the log's errors shown.
+    lines: list = []
+    started = threading.Event()
     try:
-        proc = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=timeout)
+        proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+
+        def pump():
+            for line in proc.stdout:
+                lines.append(line)
+                if line.startswith("[SCENARIO] ") and " step(s)" in line:
+                    started.set()
+        reader = threading.Thread(target=pump, daemon=True)
+        reader.start()
+        t0 = time.monotonic()
+        why = None
+        while proc.poll() is None:
+            elapsed = time.monotonic() - t0
+            if not started.is_set() and elapsed > START_TIMEOUT_S:
+                why = "the scenario did not start within %d s (did the map load?)" % START_TIMEOUT_S
+            elif elapsed > timeout:
+                why = "the run exceeded %d s" % timeout
+            if why:
+                proc.kill()
+                proc.wait()
+                break
+            time.sleep(0.5)
+        reader.join(timeout=5)
     finally:
         OVERRIDE.unlink(missing_ok=True)
-    log = proc.stdout + proc.stderr
+    log = "".join(lines)
+    if why:
+        for line in log.splitlines():
+            if "ERROR" in line or "[SCENARIO]" in line:
+                print("  " + line.strip())
+        sys.exit("[CAPTURE] killed: %s" % why)
     for line in log.splitlines():
         if any(t in line for t in ("[TAKE]", "[RAIL]", "[CAPTURE]", "[FRAME-CHECK]", "[GLASS-COLLAPSE]", "[GLASS-SHATTER]", "[GLASS-OPENING]", "[BLAST-RUBBLE]", "-PASSAGE]", "[SHOT-RUBBLE]", "[ROOF-BLAST]", "[ROOF-FIRE]", "[SOFT-SHEET]", "[STRUCT]", "ABORT", "SCRIPT ERROR", "ERROR:")):
             print("  " + line.strip())

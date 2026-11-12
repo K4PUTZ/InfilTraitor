@@ -40,6 +40,7 @@
 import argparse
 import os
 import shutil
+import time
 import subprocess
 import sys
 from pathlib import Path
@@ -140,6 +141,14 @@ def main() -> int:
             if loose != 0:
                 problems.append("%s %s: %d px differ by more than %d/255 between two boots of the same code"
                                 % (case, label, loose, NOISE))
+                ## Both sides are kept (HERITAGE T3, 2026-11-12): the boot that diverges is as often run 2 as run 1, and
+                ## a lone intermittent failure is only diagnosable from the pair.
+                fail_dir = ROOT / "temp" / "pixel_gate_fail"
+                fail_dir.mkdir(parents=True, exist_ok=True)
+                stamp = time.strftime("%Y%m%d_%H%M%S")
+                for k in (0, 1):
+                    shutil.copy(runs[k][label], fail_dir / ("%s_%s_%s_r%d.png" % (stamp, case, label, k + 1)))
+                print("%s   the two boots are kept in %s (%s_*)" % (TAG, fail_dir.relative_to(ROOT), stamp))
         for label in list(runs[0])[1:]:
             ctl = differing(runs[0]["load"], runs[0][label], NOISE)
             print("%s %s control: load vs %s — %d px" % (TAG, case, label, ctl))

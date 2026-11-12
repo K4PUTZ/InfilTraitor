@@ -1,0 +1,26 @@
+{
+  "name": "bassline-e1",
+  "tempo": 120,
+  "meter": "4/4",
+  "bars": 4,
+  "tracks": [
+    {
+      "name": "Bass",
+      "instrument": { "plugin": "Surge XT", "patch": "Basses/Bass 5" },
+      "gain_db": -6,
+      "clips": [
+        {
+          "name": "E1 quarters",
+          "bar": 1,
+          "bars": 4,
+          "pattern": [
+            { "beat": 1, "note": "E1", "vel": 100, "len": 0.9 },
+            { "beat": 2, "note": "E1", "vel": 100, "len": 0.9 },
+            { "beat": 3, "note": "E1", "vel": 100, "len": 0.9 },
+            { "beat": 4, "note": "E1", "vel": 100, "len": 0.9 }
+          ]
+        }
+      ]
+    }
+  ]
+}

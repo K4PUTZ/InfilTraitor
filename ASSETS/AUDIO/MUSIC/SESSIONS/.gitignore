@@ -1,0 +1,13 @@
+# Ardour scratch inside a session folder: regenerated, machine-specific or a backup
+*.bak
+*.pending
+*.history
+instant.xml
+peaks/
+analysis/
+dead/
+export/
+externals/
+interchange/*/audiofiles/
+# A session that `music_session.py build --force` moved aside
+*.replaced-*/

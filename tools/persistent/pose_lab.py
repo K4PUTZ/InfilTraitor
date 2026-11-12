@@ -14,8 +14,8 @@ solver); the Director refines them here, in Blender, on the LIGHT Agent, with th
         Reads the timeline `SEQ_<name>_<FIG>.blend` (keyed idle -> draw -> ... -> aim) and writes `ASSETS/ANIMATIONS/sequences/<figure>/<name>.json` + one pose file per keyed frame
         (`seq_<name>_f<frame>.json`); the game then plays that sequence instead of the plain draw/aim path. Rules: `tripo_pose_lab.sequence`.
     python3 tools/persistent/pose_lab.py throw_new [--figure ...]
-        Builds the STARTING timelines of the standing overhand throw, `SEQ_throw_raise_<FIG>.blend` (idle -> cocked) and `SEQ_throw_release_<FIG>.blend`
-        (cocked -> release -> follow -> idle), from the figure's draw timeline and the bank's `pitch_baseball`
+        Builds the STARTING timeline of the standing overhand throw, `SEQ_throw_overhand_<FIG>.blend` (idle -> cocked -> release -> follow -> idle, one
+        `ThrowFix_f<frame>` coat key per pose), from the figure's draw timeline and the bank's `pitch_baseball`
         (`tripo_pose_lab.throw_new`; PROMPTS/THROW_STUDY_2026-11-12.md). An existing file is never overwritten.
     python3 tools/persistent/pose_lab.py render aim_pistol [--figure ...]
         Two stills of the saved .blend (front 3/4 and side), into temp/poses/.
@@ -132,7 +132,7 @@ def cmd_sequence(a):
 
 def cmd_throw_new(a):
     for figure in figures_of(a.figure):
-        for part in ("raise", "release"):
+        for part in ("overhand",):
             out = os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_throw_{part}_{figure.upper()}.blend")
             if os.path.exists(out):
                 print(f"[pose_lab] {os.path.relpath(out, ROOT)} exists: it holds your work, so it is left as it is")

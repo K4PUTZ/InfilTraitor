@@ -536,12 +536,15 @@ def sequence_new(pose_blend, idle_json, draw_json, aim_json, out_blend, mid_at):
 # no held lunge, a short lead step, a shallow dip. The arms, spine and head are the clip's (turned so the release goes along the figure's forward); the LEGS are solved
 # (two-bone IK) to feet that step a fraction of the pitcher's stride; the fingers keep the idle's curl (never keyed: the Director, 2026-11-12). The Director refines it by hand.
 LEG_BONES = ("UpLeg", "Leg", "Foot", "ToeBase", "Toe_End")
-# TWO timelines (Director, 2026-11-12: "talvez fosse melhor dividir"): the RAISE (idle -> cocked, held while the Agent turns in place to the aimed cell; the cancel
-# plays it backwards) and the THROW (cocked -> release -> follow -> idle). Each: (timeline frame, clip frame or None for the idle, marker); the grenade's last shown frame.
+# ONE timeline (Director, 2026-11-12: split in two, then back to one so the coat is fixed once): idle -> cocked (held in play while the Agent turns in place to the
+# aimed cell; the cancel plays this stretch backwards) -> in-between -> release -> follow -> idle. (timeline frame, clip frame or None for the idle, marker); the
+# grenade's last shown frame.
 THROW_PARTS = {
-    "raise": (((1, None, "idle"), (9, 39, "cocked")), 9),
-    "release": (((1, 39, "cocked"), (4, 42, "in-between"), (7, 44, "release"), (10, 48, "follow"), (18, None, "idle")), 7),
+    "overhand": (((1, None, "idle"), (9, 39, "cocked"), (12, 42, "in-between"), (15, 44, "release"), (18, 48, "follow"), (26, None, "idle")), 15),
 }
+# THE COAT'S KEYS (Director, 2026-11-12: "não dá pra criar keyframes no casaco também, na mesma timeline?"): one shape key per pose, `ThrowFix_f<frame>`, created
+# empty (a copy of the Basis) and keyed 1 on its own frame, 0 on the poses around it. Fixing the coat at a pose = select that pose's key, edit; nothing to key by hand.
+COAT_OBJECT = "Outfit_Coat"
 THROW_STEP = 0.6       # the pitcher's stance (feet against the hips, at the follow-through), narrowed to this
 FOLLOW_FRAME = 48      # the clip frame whose stance the feet keep
 RELEASE_FRAME = 44     # the clip frame of the release (the hand's top speed)
@@ -734,6 +737,18 @@ def throw_new(base_blend, clip_glb, out_blend, part):
         gren.hide_viewport = gren.hide_render = not shown
         gren.keyframe_insert("hide_viewport", frame=frame)
         gren.keyframe_insert("hide_render", frame=frame)
+    coat = bpy.data.objects.get(COAT_OBJECT)
+    if coat is None or coat.data.shape_keys is None:
+        print(f"[tripo_pose_lab] WARNING: no {COAT_OBJECT} with shape keys: the coat gets no per-pose keys")
+    else:
+        frames = [f for f, _c, _m in THROW_PLAN]
+        for i, (frame, cf, _marker) in enumerate(THROW_PLAN):
+            if cf is None:
+                continue
+            kb = coat.shape_key_add(name=f"ThrowFix_f{frame:02d}", from_mix=False)
+            for f2, v in ((frames[i - 1], 0.0), (frame, 1.0), (frames[i + 1], 0.0)):
+                kb.value = v
+                kb.keyframe_insert("value", frame=f2)
     arm["lab_pose"] = "throw_" + part
     arm["lab_props"] = json.dumps(["grenade"])
     sc.frame_set(1)

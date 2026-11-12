@@ -437,6 +437,12 @@ Each item is a transform on a bank clip; the bank keeps the raw clip, the game u
   Mixamo rig playing a clip, on the Moto, against today's rig (`device_run.py`), uncapped (`MAX_FPS=0`). If it does not fit, the
   options are a reduced skeleton for guards (the fingers are 30 of the 65 joints) or fewer distinct clips loaded at once, and the
   Director chooses.
+- **✅ The pistol SHOT (2026-11-12, Director: "o recoil, o braço reage levemente, e volta pra posição AIM", and a spent case):** procedural, no
+  clip. `ActorRecoil3D` (a modifier after the aim layer) pitches both arms, forearms and wrists about the gun's lateral axis (1.5 / 3 / 7 deg,
+  up in 35 ms, eased back by ~0.3 s); the gun itself kicks 6 deg about the grip and 12 mm back; the aim is held 0.6 s after the shot
+  (`ActorMesh3D.SHOT_HOLD_S`) before the controller's lowering. `ShellCasings3D` (one `MultiMeshInstance3D` per board) throws the case from
+  the port to the shooter's right, it bounces on `stand_height` up to three times and STAYS for the map (cap 256, oldest reused; a lying case is
+  its 48-byte transform, no per-frame cost). Not kept by the checkpoint (HERITAGE T5, built later). Take `pistol_shot`.
 
 ---
 

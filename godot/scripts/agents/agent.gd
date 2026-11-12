@@ -207,6 +207,15 @@ func muzzle_points() -> Dictionary:
 	return {"pos": muzzle_origin(), "floor": position}
 
 
+## MOVEMENT 2026-11-12 — the shot on the figure: the arms and the gun kick and a case is thrown (`ActorMesh3D.fire_kick()`). False when the figure
+## draws no gun (the old rig, a headless run): nothing kicks.
+func play_shot_kick() -> bool:
+	var figure: Variant = pose.get_meta("figure3d") if pose != null and pose.has_meta("figure3d") else null
+	if figure != null and is_instance_valid(figure) and (figure as Object).has_method("fire_kick"):
+		return bool((figure as Object).call("fire_kick"))
+	return false
+
+
 func muzzle_origin() -> Vector2:
 	var head: Vector2 = _head_anchor()
 	return position + head - Vector2(0.0, head.y * MUZZLE_DROP_FRACTION)

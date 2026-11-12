@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**352 scripts · 100839 lines total** (under `godot/scripts/`)
+**354 scripts · 101115 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — actor_pose.gd, agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — actor_viability_bench.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_aim_pose3d.gd, actor_head_turn3d.gd, actor_mesh3d.gd, aim_sequence.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, coat_emblem.gd, coat_push3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, footprint_marks3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, liquid_falls3d.gd, liquid_flame_tongues.gd, liquid_flames.gd, liquid_sheet3d.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_rest_cache.gd, soft_sheet_sim.gd, tripo_figure.gd, tripo_pose_kit.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
+- **geometry/** — actor_aim_pose3d.gd, actor_head_turn3d.gd, actor_mesh3d.gd, actor_recoil3d.gd, aim_sequence.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, coat_emblem.gd, coat_push3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, footprint_marks3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, liquid_falls3d.gd, liquid_flame_tongues.gd, liquid_flames.gd, liquid_sheet3d.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, shell_casings3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_rest_cache.gd, soft_sheet_sim.gd, tripo_figure.gd, tripo_pose_kit.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, layout_overlay3d.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
 - **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, soft_sheet_presets.gd, structural_support.gd, voxel_weakness.gd, weapon_def.gd, weapon_registry.gd, dev_flag.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, fluid_container.gd, fluid_plane.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, liquid_agent_status.gd, liquid_corrosion.gd, liquid_exposure.gd, liquid_field.gd, liquid_fire.gd, liquid_fire_lights.gd, liquid_glow.gd, liquid_registry.gd, liquid_surface_state.gd, localization_manager.gd, material_registry.gd, material_rows.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, secondary_tables.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_fire.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
@@ -47,7 +47,7 @@
 
 ### `agent.gd`
 
-`class_name Agent` · extends `Node2D` · 492 lines
+`class_name Agent` · extends `Node2D` · 501 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -90,6 +90,7 @@
 **Public API**
 - `func throw_origin() -> Vector2:`
 - `func muzzle_points() -> Dictionary:`
+- `func play_shot_kick() -> bool:`
 - `func muzzle_origin() -> Vector2:`
 - `func play_throw_raise() -> bool:`
 - `func play_throw_cancel() -> bool:`
@@ -421,7 +422,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 640 lines
+`class_name ActorMesh3D` · extends `Node3D` · 702 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -456,10 +457,41 @@ extends `ConfirmationDialog` · 64 lines
 - `PISTOL_SHOWN_FROM` = `0.5`
 - `DRAW_COAT_SHAPE` = `"DrawFix"`
 - `DRAW_COAT_CLOSED_AT` = `0.75`
+- `ActorRecoilRef` = `preload("res://godot/scripts/geometry/actor_recoil3d.gd")`
+- `ShellCasingsRef` = `preload("res://godot/scripts/geometry/shell_casings3d.gd")`
+- `GUN_KICK_DEG` = `6.0`
+- `GUN_KICK_BACK` = `0.012`
+- `SHOT_HOLD_S` = `0.6`
+- `EJECT_PORT` = `Vector3(0.06, 0.03, 0.0)`
+- `EJECT_RIGHT_M` = `0.8`
+- `EJECT_UP_M` = `1.2`
+- `EJECT_BACK_M` = `0.2`
+
+---
+
+### `actor_recoil3d.gd`
+
+`class_name ActorRecoil3D` · extends `SkeletonModifier3D` · 82 lines
+
+`godot/scripts/geometry/actor_recoil3d.gd`
+
+> ActorRecoil3D — the kick of a shot on a Tripo Agent's arms (MOVEMENT, 2026-11-12). A LAYER after the aim (`ActorAimPose3D`): on `kick()` the arms, forearms and wrists of BOTH arms pitch up about the gun's own lateral axis (taken at the kick), fast, then ease back to wherever the aim layer holds them. Nothing is stored between shots: the envelope is a function of the time since the kick, and at zero it leaves the skeleton untouched. Two-handed: each joint takes the same world rotation on both sides, so the hands rise together and the grip holds. Procedural on purpose: an upper-body reaction of a quarter second needs no clip (the in-house rule of 2026-11-08: credits are for whole-body motion). A `SkeletonModifier3D` added after the aim layer and before the head turn (children of a skeleton run in order).
+
+**Constants / tuning**
+- `TripoFigureRef` = `preload("res://godot/scripts/geometry/tripo_figure.gd")`
+
+**Public vars**
+- `var arm_deg: float = 1.5`
+- `var forearm_deg: float = 3.0`
+- `var hand_deg: float = 7.0`
+- `var rise_s: float = 0.035`
+- `var settle_s: float = 0.26`
 
 **Public API**
-- `func muzzle_global() -> Vector3:`
-- `func set_status_tint(color: Color, pulse: float) -> void:`
+- `func setup(skeleton: Skeleton3D) -> bool:`
+- `func kick(axis_global: Vector3) -> void:`
+- `func envelope(t: float) -> float:`
+- `func apply_to(skeleton: Skeleton3D, e: float) -> void:`
 
 ---
 
@@ -1254,6 +1286,33 @@ extends `Node3D` · 3579 lines
 - `func flush() -> void:`
 - `func live_count() -> int:`
 - `func clear() -> void:`
+
+---
+
+### `shell_casings3d.gd`
+
+`class_name ShellCasings3D` · extends `MultiMeshInstance3D` · 122 lines
+
+`godot/scripts/geometry/shell_casings3d.gd`
+
+> ShellCasings3D — the spent cases a firearm throws out (MOVEMENT, 2026-11-12). One per board, a child of it (board-local space, the space `Board3DLive.stand_height` answers in), made on the first shot (`of()`). A case is thrown from the gun's ejection port, up and to the shooter's right, spinning; it falls under gravity, bounces on what is under it (`stand_height`: the floor, a crater's bed, a crust) a couple of times, slides to a stop and STAYS, lying on its side. Every case, flying or lying, is one instance of a single `MultiMeshInstance3D` (one draw call; a lying case costs its 48-byte transform and nothing per frame). At `max_lying` the oldest is reused. The cases live as long as the board: a map load drops them (the checkpoint is HERITAGE T5's, built later). The physics is in METRES scaled to board units by the shooter (`units_per_m`, from the gun's own size), so a case falls at the figure's scale.
+
+**Constants / tuning**
+- `NODE_NAME` = `"ShellCasings"`
+- `SHADER_PATH` = `"res://godot/shaders/actor_mesh3d.gdshader"`
+- `BRASS` = `Color(0.78, 0.6, 0.26)`
+
+**Public vars**
+- `var case_length_m: float = 0.03`
+- `var case_radius_m: float = 0.008`
+- `var gravity_m: float = 9.8`
+- `var restitution: float = 0.35`
+- `var friction: float = 0.55`
+- `var rest_speed_m: float = 0.25`
+- `var max_lying: int = 256`
+
+**Public API**
+- `func eject(pos: Vector3, vel_m: Vector3, units_per_m: float) -> void:`
 
 ---
 
@@ -6727,7 +6786,7 @@ extends `Node2D` · 63 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1296 lines
+`class_name AgentShotController` · 1297 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 

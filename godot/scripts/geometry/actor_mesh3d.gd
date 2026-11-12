@@ -78,6 +78,19 @@ const PISTOL_SHOWN_FROM: float = 0.5
 ## `DRAW_COAT_CLOSED_AT` as the left hand lets go. The gun is hidden AT that stop and in the hand from the next frame on, already at the aim's place and size (the poses carry the same placement).
 const DRAW_COAT_SHAPE: String = "DrawFix"
 const DRAW_COAT_CLOSED_AT: float = 0.75
+## THE SHOT (MOVEMENT, 2026-11-12): `fire_kick()` kicks the arms (`ActorRecoil3D`), the gun in the hand (`GUN_KICK_DEG` up about its grip,
+## `GUN_KICK_BACK` back along the barrel, model units) and throws a spent case (`ShellCasings3D`) from `EJECT_PORT` (a point of the pistol model, on
+## top of the slide). The aim is HELD `SHOT_HOLD_S` after the shot, so the arms come back to it before the controller's lowering takes them down.
+const ActorRecoilRef = preload("res://godot/scripts/geometry/actor_recoil3d.gd")
+const ShellCasingsRef = preload("res://godot/scripts/geometry/shell_casings3d.gd")
+const GUN_KICK_DEG: float = 6.0
+const GUN_KICK_BACK: float = 0.012
+const SHOT_HOLD_S: float = 0.6
+const EJECT_PORT := Vector3(0.06, 0.03, 0.0)
+## The case's throw, metres/s: to the shooter's right, up, a little back.
+const EJECT_RIGHT_M: float = 0.8
+const EJECT_UP_M: float = 1.2
+const EJECT_BACK_M: float = 0.2
 
 var _board: Node3D = null
 var _source: ActorPose = null
@@ -97,6 +110,9 @@ var _tripo: String = ""              ## the Tripo Agent this actor wears ("" = t
 var _tripo_move: String = ""         ## the clip it moves with
 var _tripo_units: float = 1.0        ## world units per metre of the 1 m Tripo export (its scale on the board)
 var _aim: ActorAimPoseRef = null      ## the aim layer of a Tripo Agent (null: its game set carries no aim pose)
+var _recoil: ActorRecoilRef = null  ## the shot's kick on the arms (null: no aim layer)
+var _shot_t: float = INF             ## seconds since the last shot (the gun's own kick)
+var _shot_hold: float = 0.0          ## the aim is held this long more after a shot
 var _aim_t: float = 0.0              ## how far the aim has travelled, 0 (down) to 1 (held)
 var _pistol: Node3D = null           ## the pistol in the right hand (hidden until the fists reach the sternum)
 var _pistol_holder: Node3D = null    ## carries the placement (the pose's, blended between the stops)
@@ -288,6 +304,12 @@ func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 		layer.queue_free()
 		return
 	_aim = layer
+	var recoil: ActorRecoilRef = ActorRecoilRef.new()
+	_skeleton.add_child(recoil)   ## after the aim, before the head turn
+	if recoil.setup(_skeleton):
+		_recoil = recoil
+	else:
+		recoil.queue_free()
 	_raise_s = _sequence.raise_seconds() if _sequence != null else AIM_RAISE_S
 	_lower_s = _raise_s if _sequence != null else AIM_LOWER_S
 	_build_pistol(stops)
@@ -350,9 +372,14 @@ func _update_aim(state: Dictionary) -> void:
 	if _aim == null:
 		return
 	## Standing still only: the aim is a whole-body stance (the idle sways and must not show through), so a walking figure keeps its legs and lowers the gun.
-	var want: bool = String(state["weapon"]) == "pistol" and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing" and float(state["walk"]) < 0.0
+	var dt: float = get_process_delta_time()
+	_shot_hold = maxf(0.0, _shot_hold - dt)
+	if _shot_t != INF:
+		_shot_t += dt
+	var want: bool = (String(state["weapon"]) == "pistol" and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing" and float(state["walk"]) < 0.0) \
+		or (_shot_hold > 0.0 and String(state["posture"]) == "standing" and float(state["walk"]) < 0.0)
 	var target: float = 1.0 if want else 0.0
-	_aim_t = move_toward(_aim_t, target, get_process_delta_time() / (_raise_s if want else _lower_s))
+	_aim_t = move_toward(_aim_t, target, dt / (_raise_s if want else _lower_s))
 	_aim.weight = _aim_t
 	if _sequence != null:   ## his timeline: the coat, the gun's visibility and placement are what he keyed
 		var here: Dictionary = _sequence.at(_aim_t)
@@ -360,14 +387,49 @@ func _update_aim(state: Dictionary) -> void:
 			_coat.set_blend_shape_value(_coat_draw_shape, float(here["coat"]))
 		if _pistol != null:
 			_pistol.visible = bool(here["visible"])
-			_pistol_holder.transform = here["gun"] as Transform3D
+			_pistol_holder.transform = (here["gun"] as Transform3D) * _gun_kick()
 		return
 	if _coat != null:
 		var opened: float = smoothstep(0.0, PISTOL_SHOWN_FROM, _aim_t) if _aim_t <= PISTOL_SHOWN_FROM else 1.0 - smoothstep(PISTOL_SHOWN_FROM, DRAW_COAT_CLOSED_AT, _aim_t)
 		_coat.set_blend_shape_value(_coat_draw_shape, opened)
 	if _pistol != null:
 		_pistol.visible = _aim_t > PISTOL_SHOWN_FROM
-		_pistol_holder.transform = _pistol_placement(_aim_t)
+		_pistol_holder.transform = _pistol_placement(_aim_t) * _gun_kick()
+
+
+## The gun's own kick in its model space (barrel +X, up +Y): back along the barrel and up about the grip, on the arms' envelope.
+func _gun_kick() -> Transform3D:
+	if _recoil == null or _shot_t == INF:
+		return Transform3D.IDENTITY
+	var e: float = _recoil.envelope(_shot_t)
+	if e <= 0.0:
+		return Transform3D.IDENTITY
+	return Transform3D(Basis(Vector3(0.0, 0.0, 1.0), deg_to_rad(GUN_KICK_DEG * e)), Vector3(-GUN_KICK_BACK * e, 0.0, 0.0))
+
+
+## A shot from the pistol in the hand: the arms and the gun kick, the aim is held through it, a case flies. False when no gun is drawn (the old rig).
+func fire_kick() -> bool:
+	if _recoil == null or _pistol == null or not _pistol.visible or not _pistol_holder.is_inside_tree():
+		return false
+	var gt: Transform3D = _pistol_holder.global_transform
+	_recoil.kick(gt.basis.z)
+	_shot_t = 0.0
+	_shot_hold = SHOT_HOLD_S
+	_eject_case(gt)
+	return true
+
+
+## The spent case, from the port, in the board's space and at the gun's scale (the model is in metres).
+func _eject_case(gt: Transform3D) -> void:
+	var to_board: Basis = _board.global_basis.inverse()
+	var local_basis: Basis = to_board * gt.basis
+	var units_per_m: float = local_basis.x.length()
+	var w: WeaponDef = WeaponRegistry.shared().get_weapon("pistol")
+	var tip: Vector3 = w.muzzle if w != null and w.muzzle != Vector3.INF else Vector3(1.0, 0.0, 0.0)
+	var barrel: Vector3 = (to_board * (gt.basis * tip)).normalized()   ## grip -> muzzle, as the round leaves
+	var right: Vector3 = barrel.cross(Vector3.UP).normalized()
+	var vel: Vector3 = right * EJECT_RIGHT_M * randf_range(0.8, 1.2) + Vector3.UP * EJECT_UP_M * randf_range(0.85, 1.15) - barrel * EJECT_BACK_M
+	ShellCasingsRef.of(_board).call("eject", _board.to_local(gt * EJECT_PORT), vel, units_per_m)
 
 
 ## HERITAGE T2 W4 — where the held weapon's round leaves, in GLOBAL space: the weapon row's `muzzle` (a point of the model)

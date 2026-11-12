@@ -476,6 +476,7 @@ func fire_at_active() -> void:
 	print("[MUZZLE] origin %s floor %s (%s)" % [muzzle_world, _muzzle_floor, "the gun's muzzle" if agent.muzzle_origin() != muzzle_world else "the old anchor"])
 	if aim_world != Vector2.ZERO:
 		room.spawn_muzzle_flash(muzzle_world, aim_world.normalized(), _muzzle_floor)
+	agent.play_shot_kick()   ## the recoil and the spent case, on the flash's frame
 
 	var prof_t0: int = Time.get_ticks_usec()
 	var pellet_picks: Array = []

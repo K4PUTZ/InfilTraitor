@@ -46,7 +46,7 @@ Older sections (2026-11-09 back to 2026-08-30) and the summer status blocks (dom
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 251
+- GDScript modules: 253
 - Test scripts: 95
 - Known maps: 3
 - Shipped facade files: 0

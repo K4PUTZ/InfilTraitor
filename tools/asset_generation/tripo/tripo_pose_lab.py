@@ -540,6 +540,7 @@ LEG_BONES = ("UpLeg", "Leg", "Foot", "ToeBase", "Toe_End")
 THROW_PLAN = ((1, None, "idle"), (9, 39, "cocked"), (12, 42, "in-between"), (15, 44, "release"), (18, 48, "follow"), (26, None, "idle"))
 THROW_STEP = 0.6       # the pitcher's stance (feet against the hips, at the follow-through), narrowed to this
 FOLLOW_FRAME = 48      # the clip frame whose stance the feet keep
+RELEASE_FRAME = 44     # the clip frame of the release (the hand's top speed)
 THROW_TRAVEL = 0.5     # of the hips' forward travel
 THROW_DIP = 0.35       # of the hips' drop
 GRENADE_SIZE = 0.055   # the model's largest side, in figure heights (a real grenade on a 1.8 m man)
@@ -611,13 +612,15 @@ def throw_new(base_blend, clip_glb, out_blend):
             o.data.shape_keys.animation_data_clear()
             for kb in o.data.shape_keys.key_blocks[1:]:
                 kb.value = 0.0
-    clip_frames = sorted({c for _f, c, _m in THROW_PLAN if c is not None} | {0, 43, 45})
+    clip_frames = sorted({c for _f, c, _m in THROW_PLAN if c is not None} | {0})
     clip = _clip_frames(arm, clip_glb, clip_frames)
     # turn the clip so the release runs along the figure's forward (the idle's heel -> toe, both feet)
     fwd = sum(((idle[s + "ToeBase"][1] - idle[s + "Foot"][1]) for s in ("Left", "Right")), Vector())
     fwd.z = 0.0
     fwd.normalize()
-    rel = clip[45]["RightHand"][1] - clip[43]["RightHand"][1]
+    # the throw's direction = from the hips to the hand at the release (Director 2026-11-12: the hand's VELOCITY there runs ~40 deg across the body, so a throw
+    # turned by it left the grenade going 45 deg off the figure's facing)
+    rel = clip[RELEASE_FRAME]["RightHand"][1] - clip[RELEASE_FRAME]["Hips"][1]
     rel.z = 0.0
     yaw = math.atan2(fwd.y, fwd.x) - math.atan2(rel.y, rel.x)
     Rz = Matrix.Rotation(yaw, 3, 'Z')
@@ -689,6 +692,7 @@ def throw_new(base_blend, clip_glb, out_blend):
             key(frame, None, hips_idle)
         else:
             key(frame, *poses[frame])
+    sc.timeline_markers.clear()          # the base's own markers (the draw's) do not belong to the throw
     for frame, _cf, marker in THROW_PLAN:
         sc.timeline_markers.new(marker, frame=frame)
     sc.frame_start, sc.frame_end = THROW_PLAN[0][0], THROW_PLAN[-1][0]

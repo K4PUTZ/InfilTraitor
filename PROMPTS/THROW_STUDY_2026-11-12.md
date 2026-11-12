@@ -171,6 +171,18 @@ legs, as the pistol's aim already is.
 
 ---
 
+### 5.1 The flow in play (Director, 2026-11-12, RULED)
+
+1. **Idle → cocked**, played once, then a PAUSE at the cocked pose (the raise held, as `ActorPose`'s `raise` already holds).
+2. **While aiming**, the Agent TURNS IN PLACE (a horizontal yaw, the arm still raised) to face the GU the grenade is aimed at: the hovered
+   cell on desktop, the first tap on a phone. This is T5's whole-body turn, done during the aim, not at the release.
+3. **On "throw"** the Agent already faces the target and simply plays the rest: cocked → release → follow → idle.
+4. **On cancel**, cocked → idle played backwards (the existing cancel rule).
+
+So the timeline's THROW DIRECTION must be the figure's forward: since 2026-11-12 (second pass) the clip is turned so the line from the
+hips to the hand at the release runs along the forward (the first pass used the hand's velocity there, which crosses the body: the
+grenade went ~45° off the facing, seen by the Director in Blender).
+
 ## 6. Open questions for the Director
 
 1. ✅ **RULED (Director, 2026-11-12: "Guarda e usa a direita"): the RIGHT hand, always.** With the pistol drawn, the Agent holsters it first

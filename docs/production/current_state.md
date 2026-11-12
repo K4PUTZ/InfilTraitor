@@ -40,6 +40,7 @@ Older sections (2026-11-09 back to 2026-08-30) and the summer status blocks (dom
 - RESUMO_SESSAO_2026-11-11_DRAW_SEQUENCE.md
 - RESUMO_SESSAO_2026-11-12_HERITAGE_CLOSE_CHECKS.md
 - RESUMO_SESSAO_2026-11-12_PISTOL_SHOT_CLOSED.md
+- THROW_STUDY_2026-11-12.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

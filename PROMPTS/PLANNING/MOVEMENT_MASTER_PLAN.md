@@ -456,6 +456,10 @@ HUD off) and ratified it. Expected order, to confirm on the map: locomotion on t
 cover (M2, M3) → weapon flow (§6.5 of the brief: equip, aim, fire, return, cancel) → reactions (hit, fall) → crouch and crawl (M4,
 M5) → the world (pit, liquid, rope: brief §7a).
 
+**The throw (2026-11-12, STUDY, nothing ruled):** [`PROMPTS/THROW_STUDY_2026-11-12.md`](../THROW_STUDY_2026-11-12.md): styles
+(overhand, underhand, bowl, sidearm) x postures, the trajectory picks the animation, the grenade leaves the posed hand, `pitch_baseball`
+cut to frames 36-48, fingers never keyed, four open questions.
+
 **For a clip we have to make (credits or none):** key poses first, in-betweens second (the brief's method, §2.2), now meaning: the
 pose stills are agreed before a generation is spent.
 

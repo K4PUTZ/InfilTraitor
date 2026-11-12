@@ -437,6 +437,9 @@ Each item is a transform on a bank clip; the bank keeps the raw clip, the game u
   Mixamo rig playing a clip, on the Moto, against today's rig (`device_run.py`), uncapped (`MAX_FPS=0`). If it does not fit, the
   options are a reduced skeleton for guards (the fingers are 30 of the 65 joints) or fewer distinct clips loaded at once, and the
   Director chooses.
+- **🏁 CLOSED 2026-11-12 (Director: "Podemos fechar então idle + saque + mira + tiro + holster para os dois modelos"): the pistol cycle on BOTH
+  figures** — idle, the draw (the Director's timeline, `SEQ_draw_pistol_<FIG>.blend`, coat `DrawFix`), the aim, the shot (below) and the
+  holster (the same timeline read back, as quick as the draw). The male's `DrawFix` was re-edited the same day (103 vertices, in the GLB).
 - **✅ The pistol SHOT (2026-11-12, Director: "o recoil, o braço reage levemente, e volta pra posição AIM", and a spent case):** procedural, no
   clip. `ActorRecoil3D` (a modifier after the aim layer) pitches both arms, forearms and wrists about the gun's lateral axis (1.5 / 3 / 7 deg,
   up in 35 ms, eased back by ~0.3 s); the gun itself kicks 6 deg about the grip and 12 mm back; the aim is held 0.6 s after the shot

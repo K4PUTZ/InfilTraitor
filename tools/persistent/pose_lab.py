@@ -13,6 +13,9 @@ solver); the Director refines them here, in Blender, on the LIGHT Agent, with th
     python3 tools/persistent/pose_lab.py sequence draw_pistol [--figure ...] [--take]
         Reads the timeline `SEQ_<name>_<FIG>.blend` (keyed idle -> draw -> ... -> aim) and writes `ASSETS/ANIMATIONS/sequences/<figure>/<name>.json` + one pose file per keyed frame
         (`seq_<name>_f<frame>.json`); the game then plays that sequence instead of the plain draw/aim path. Rules: `tripo_pose_lab.sequence`.
+    python3 tools/persistent/pose_lab.py throw_new [--figure ...]
+        Builds the STARTING timeline of the standing overhand throw, `SEQ_throw_overhand_<FIG>.blend`, from the figure's draw timeline and the bank's `pitch_baseball`
+        (`tripo_pose_lab.throw_new`; PROMPTS/THROW_STUDY_2026-11-12.md). An existing file is never overwritten.
     python3 tools/persistent/pose_lab.py render aim_pistol [--figure ...]
         Two stills of the saved .blend (front 3/4 and side), into temp/poses/.
     python3 tools/persistent/pose_lab.py reset aim_pistol --figure male
@@ -126,6 +129,17 @@ def cmd_sequence(a):
         cmd_take(a)
 
 
+def cmd_throw_new(a):
+    for figure in figures_of(a.figure):
+        out = os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_throw_overhand_{figure.upper()}.blend")
+        if os.path.exists(out):
+            print(f"[pose_lab] {os.path.relpath(out, ROOT)} exists: it holds your work, so it is left as it is")
+            continue
+        base = os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_draw_pistol_{figure.upper()}.blend")
+        clip = os.path.join(ROOT, "ASSETS", "ANIMATIONS", "bank", figure, "pitch_baseball.glb")
+        run([BLENDER, "-b", "--python", LAB, "--", "throw_new", base, clip, out], f"building {os.path.relpath(out, ROOT)}")
+
+
 def cmd_render(a):
     check_pose(a.pose)
     for figure in figures_of(a.figure):
@@ -173,6 +187,9 @@ def main():
         if name in ("save", "sequence"):
             s.add_argument("--take", action="store_true")
         s.set_defaults(fn=fn)
+    s = sub.add_parser("throw_new")
+    s.add_argument("--figure", default="both", choices=list(FIGURES) + ["both"])
+    s.set_defaults(fn=cmd_throw_new)
     s = sub.add_parser("status")
     s.set_defaults(fn=cmd_status)
     a = p.parse_args()

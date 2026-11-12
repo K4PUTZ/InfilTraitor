@@ -25,7 +25,8 @@ from mathutils import Matrix, Quaternion, Vector
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 LIGHT_GLB = os.path.join(ROOT, "ASSETS", "MODELS", "official", "AGENT_%s_LIGHT.glb")
-PROP_GLB = {"pistol": os.path.join(ROOT, "ASSETS", "props", "pistol_quaternius", "pistol.glb")}
+PROP_GLB = {"pistol": os.path.join(ROOT, "ASSETS", "props", "pistol_quaternius", "pistol.glb"),
+            "grenade": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_grenade", "Grenade.glb")}
 PREFIX = "mixamorig:"                       # the Blender importer keeps Tripo's colon; Godot turns it into an underscore
 HIDE = ("Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere")   # the pieces the game's DRESSED set hides (`TripoFigure.UNDRESSED_PIECES`)
 EPS_CHANGED = 1e-3                          # a bone the Director moved: its local rotation differs from the base by more than this (quaternion distance)
@@ -530,6 +531,211 @@ def sequence_new(pose_blend, idle_json, draw_json, aim_json, out_blend, mid_at):
     print(f"[tripo_pose_lab] wrote {out_blend}: the {arm['lab_figure']} draw on one timeline (frames 1-23, in-between {mid_at} of the way)")
 
 
+# ---- THE THROW (MOVEMENT, 2026-11-12; PROMPTS/THROW_STUDY_2026-11-12.md) ------------------------------------------------------------------------------------------------
+# The starting timeline of the standing OVERHAND throw, cut from the bank's `pitch_baseball` (the only throwing arm we hold) and remade where the study says: no knee lift,
+# no held lunge, a short lead step, a shallow dip. The arms, spine and head are the clip's (turned so the release goes along the figure's forward); the LEGS are solved
+# (two-bone IK) to feet that step a fraction of the pitcher's stride; the fingers keep the idle's curl (never keyed: the Director, 2026-11-12). The Director refines it by hand.
+LEG_BONES = ("UpLeg", "Leg", "Foot", "ToeBase", "Toe_End")
+# (timeline frame, clip frame or None for the idle, marker)
+THROW_PLAN = ((1, None, "idle"), (9, 39, "cocked"), (12, 42, "in-between"), (15, 44, "release"), (18, 48, "follow"), (26, None, "idle"))
+THROW_STEP = 0.6       # the pitcher's stance (feet against the hips, at the follow-through), narrowed to this
+FOLLOW_FRAME = 48      # the clip frame whose stance the feet keep
+THROW_TRAVEL = 0.5     # of the hips' forward travel
+THROW_DIP = 0.35       # of the hips' drop
+GRENADE_SIZE = 0.055   # the model's largest side, in figure heights (a real grenade on a 1.8 m man)
+
+
+def _clip_frames(arm, clip_glb, frames):
+    """{clip frame: {short name: (armature-space rotation 3x3, head position)}} for the frames asked, with the Hips' translation in this figure's metres (the bank keeps it
+    divided by the source's hip height, as `tripo_bank_sheets.play` undoes)."""
+    hip_h = (arm.matrix_world @ arm.data.bones[PREFIX + "Hips"].head_local).z
+    before_o, before_a = set(bpy.data.objects), set(bpy.data.actions)
+    bpy.ops.import_scene.gltf(filepath=clip_glb)
+    act = [a for a in bpy.data.actions if a not in before_a][0]
+    for o in [o for o in bpy.data.objects if o not in before_o]:
+        bpy.data.objects.remove(o)
+    curves = [fc for l in act.layers for st in l.strips for cb in st.channelbags for fc in cb.fcurves] if getattr(act, "layers", None) else list(act.fcurves)
+    for fc in curves:
+        if fc.data_path.endswith(".location") and "Hips" in fc.data_path:
+            for kp in fc.keyframe_points:
+                kp.co.y *= hip_h; kp.handle_left.y *= hip_h; kp.handle_right.y *= hip_h
+    ad = arm.animation_data or arm.animation_data_create()
+    ad.action = act
+    if len(getattr(act, "slots", [])):
+        ad.action_slot = act.slots[0]
+    out = {}
+    for f in frames:
+        bpy.context.scene.frame_set(f)
+        bpy.context.view_layer.update()
+        out[f] = {pb.name[len(PREFIX):]: (pb.matrix.to_3x3().normalized(), pb.head.copy()) for pb in arm.pose.bones}
+    ad.action = None
+    bpy.data.actions.remove(act)
+    return out
+
+
+def _two_bone(hip, target, a, b, pole):
+    """The knee of a two-bone chain from `hip` reaching `target` (thigh `a`, shin `b`), bent toward `pole`."""
+    d_vec = target - hip
+    d = min(d_vec.length, (a + b) * 0.999)
+    u = d_vec.normalized()
+    x = (a * a - b * b + d * d) / (2.0 * d)
+    h = math.sqrt(max(a * a - x * x, 0.0))
+    side = (pole - hip) - u * (pole - hip).dot(u)
+    side = side.normalized() if side.length > 1e-6 else Vector((0, -1, 0))
+    return hip + u * x + side * h, hip + u * d
+
+
+def _aim_bone(P_clip, head, tail):
+    """`P_clip` turned the least so the bone's axis (Blender: local +Y) runs head -> tail."""
+    axis = (P_clip @ Vector((0, 1, 0))).normalized()
+    return (axis.rotation_difference((tail - head).normalized()).to_matrix() @ P_clip).normalized()
+
+
+def throw_new(base_blend, clip_glb, out_blend):
+    """THE STARTING TIMELINE OF THE OVERHAND THROW of one figure, built from its draw timeline (`SEQ_draw_pistol_<FIG>.blend`: the LIGHT Agent, the lab data, frame 1 = the
+    game's idle with its Hips) and the bank's `pitch_baseball`. Frames 1-26 at the base's fps, markers per `THROW_PLAN` (the in-between is a passing stop), the grenade
+    (`PROP_grenade`) on the right hand until the release frame. The draw's pistol, coat keys and armature keys are dropped; nothing is written over the base file."""
+    bpy.ops.wm.open_mainfile(filepath=base_blend)
+    sc = bpy.context.scene
+    arm, rig = load_rig_from_blend()
+    sc.frame_set(1)
+    bpy.context.view_layer.update()
+    idle = {pb.name[len(PREFIX):]: (pb.matrix.to_3x3().normalized(), pb.head.copy()) for pb in arm.pose.bones}
+    idle_q = {pb.name: pb.rotation_quaternion.copy() for pb in arm.pose.bones}
+    hips_idle = idle["Hips"][1]
+    arm.animation_data_clear()
+    for o in [o for o in bpy.data.objects if o.name.startswith("PROP_")]:
+        bpy.data.objects.remove(o)
+    for o in bpy.data.objects:
+        if o.type == 'MESH' and o.data.shape_keys:
+            o.data.shape_keys.animation_data_clear()
+            for kb in o.data.shape_keys.key_blocks[1:]:
+                kb.value = 0.0
+    clip_frames = sorted({c for _f, c, _m in THROW_PLAN if c is not None} | {0, 43, 45})
+    clip = _clip_frames(arm, clip_glb, clip_frames)
+    # turn the clip so the release runs along the figure's forward (the idle's heel -> toe, both feet)
+    fwd = sum(((idle[s + "ToeBase"][1] - idle[s + "Foot"][1]) for s in ("Left", "Right")), Vector())
+    fwd.z = 0.0
+    fwd.normalize()
+    rel = clip[45]["RightHand"][1] - clip[43]["RightHand"][1]
+    rel.z = 0.0
+    yaw = math.atan2(fwd.y, fwd.x) - math.atan2(rel.y, rel.x)
+    Rz = Matrix.Rotation(yaw, 3, 'Z')
+    c0 = clip[0]["Hips"][1]
+    def turned(f, n):
+        P, head = clip[f][n]
+        return (Rz @ P).normalized(), c0 + Rz @ (head - c0)
+    thigh = {s: (idle[s + "Leg"][1] - idle[s + "UpLeg"][1]).length for s in ("Left", "Right")}
+    shin = {s: (idle[s + "Foot"][1] - idle[s + "Leg"][1]).length for s in ("Left", "Right")}
+    plant = {}
+    hips_f = turned(FOLLOW_FRAME, "Hips")[1]
+    df = hips_f - turned(0, "Hips")[1]
+    hips_follow = hips_idle + Vector((df.x * THROW_TRAVEL, df.y * THROW_TRAVEL, df.z * THROW_DIP))
+    for s in ("Left", "Right"):
+        rel = turned(FOLLOW_FRAME, s + "Foot")[1] - hips_f
+        plant[s] = Vector((hips_follow.x + rel.x * THROW_STEP, hips_follow.y + rel.y * THROW_STEP, idle[s + "Foot"][1].z))
+    poses = {}
+    for frame, cf, _marker in THROW_PLAN:
+        if cf is None:
+            continue
+        P = {}
+        for n in rig.names:
+            P[n] = turned(cf, n)[0]
+        hips_c = turned(cf, "Hips")[1]
+        hips0 = turned(0, "Hips")[1]
+        d = hips_c - hips0
+        hips = hips_idle + Vector((d.x * THROW_TRAVEL, d.y * THROW_TRAVEL, d.z * THROW_DIP))
+        # the legs: the feet are PLANTED for the whole throw where the clip's follow-through has them against its hips (side-on, the pitcher's stance), the
+        # stance narrowed to THROW_STEP and hung under OUR hips; the step itself is the idle -> cocked interpolation. The knees are solved to them, bent the clip's way.
+        for s in ("Left", "Right"):
+            off = rig.R["Hips"].transposed() @ (arm.data.bones[PREFIX + s + "UpLeg"].head_local - arm.data.bones[PREFIX + "Hips"].head_local)
+            hip_j = hips + P["Hips"] @ off
+            target = plant[s]
+            knee_c = turned(cf, s + "Leg")[1]
+            pole = hip_j + (knee_c - turned(cf, s + "UpLeg")[1]) * 2.0
+            knee, foot = _two_bone(hip_j, target, thigh[s], shin[s], pole)
+            P[s + "UpLeg"] = _aim_bone(P[s + "UpLeg"], hip_j, knee)
+            P[s + "Leg"] = _aim_bone(P[s + "Leg"], knee, foot)
+            for n in (s + "Foot", s + "ToeBase", s + "Toe_End"):
+                if n in P:
+                    P[n] = turned(FOLLOW_FRAME, n)[0]
+        poses[frame] = (P, hips)
+    bpy.context.view_layer.objects.active = arm
+    if arm.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+    def key(frame, P, hips):
+        for n in rig.names:
+            pb = arm.pose.bones[PREFIX + n]
+            pb.rotation_mode = 'QUATERNION'
+            if P is None or is_finger(n):
+                pb.rotation_quaternion = idle_q[pb.name]
+            else:
+                p = rig.parent[n]
+                rp = rig.R[p] if p else Matrix.Identity(3)
+                pp = P[p] if p else Matrix.Identity(3)
+                pb.rotation_quaternion = (rig.R[n].transposed() @ rp @ pp.transposed() @ P[n]).to_quaternion()
+            pb.keyframe_insert("rotation_quaternion", frame=frame)
+        bpy.context.view_layer.update()
+        h = arm.pose.bones[PREFIX + "Hips"]
+        m = h.matrix.copy()
+        m.translation = hips
+        h.matrix = m
+        h.keyframe_insert("location", frame=frame)
+
+    for frame, cf, _marker in THROW_PLAN:
+        sc.frame_set(frame)
+        if cf is None:
+            key(frame, None, hips_idle)
+        else:
+            key(frame, *poses[frame])
+    for frame, _cf, marker in THROW_PLAN:
+        sc.timeline_markers.new(marker, frame=frame)
+    sc.frame_start, sc.frame_end = THROW_PLAN[0][0], THROW_PLAN[-1][0]
+    # the grenade in the right palm, shown until the release
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=PROP_GLB["grenade"])
+    new = [o for o in bpy.data.objects if o not in before]
+    gren = next(o for o in new if o.type == 'MESH')
+    mw = gren.matrix_world.copy()
+    gren.parent = None
+    gren.matrix_world = mw
+    for o in new:
+        if o is not gren:
+            bpy.data.objects.remove(o)
+    gren.name = "PROP_grenade"
+    gren["lab_node_scale"] = gren.scale[0]
+    gren["lab_bone"] = "RightHand"
+    height = max(v[1].z for v in idle.values()) - min(v[1].z for v in idle.values())
+    gren.scale = gren.scale * (GRENADE_SIZE * height / max(gren.dimensions))
+    sc.frame_set(1)
+    bpy.context.view_layer.update()
+    hand = arm.pose.bones[PREFIX + "RightHand"]
+    palm = (arm.pose.bones[PREFIX + "RightHandMiddle1"].head + hand.head) * 0.5
+    gren.parent = arm
+    gren.parent_type = 'BONE'
+    gren.parent_bone = PREFIX + "RightHand"
+    bpy.context.view_layer.update()
+    gm = gren.matrix_world.copy()
+    gm.translation = arm.matrix_world @ palm
+    gren.matrix_world = gm
+    for frame, shown in ((1, True), (15, True), (16, False), (26, False)):
+        gren.hide_viewport = gren.hide_render = not shown
+        gren.keyframe_insert("hide_viewport", frame=frame)
+        gren.keyframe_insert("hide_render", frame=frame)
+    arm["lab_pose"] = "throw_overhand"
+    arm["lab_props"] = json.dumps(["grenade"])
+    sc.frame_set(1)
+    bpy.context.view_layer.objects.active = arm
+    for o in bpy.data.objects:
+        o.select_set(False)
+    arm.select_set(True)
+    bpy.ops.object.mode_set(mode='POSE')
+    bpy.ops.wm.save_as_mainfile(filepath=out_blend)
+    print(f"[tripo_pose_lab] wrote {out_blend}: the {arm['lab_figure']} overhand throw, frames 1-26, clip turned {math.degrees(yaw):.1f} deg, "
+          f"step {THROW_STEP}, travel {THROW_TRAVEL}, dip {THROW_DIP}")
+
+
 def reset_fingers(blend, side):
     """Puts the finger joints of one hand (`side` Left|Right) of a timeline .blend back to the GAME's idle fingers (`lab_base`) on every key they have (2026-11-11, the Director's request:
     he finishes the fingers by hand, starting from what the game plays under a sequence). Only the existing keys' values change, never their frames; the file is saved in place."""
@@ -639,6 +845,8 @@ def main():
         reset_fingers(a[1], a[2])
     elif mode == "sequence_new":
         sequence_new(a[1], a[2], a[3], a[4], a[5], float(a[6]))
+    elif mode == "throw_new":
+        throw_new(a[1], a[2], a[3])
     elif mode == "sequence":
         sequence(a[1], a[2], a[3], a[4])
     elif mode == "render":

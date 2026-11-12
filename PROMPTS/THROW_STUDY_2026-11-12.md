@@ -173,8 +173,8 @@ legs, as the pistol's aim already is.
 
 ## 6. Open questions for the Director
 
-1. **Which hand?** The clip throws right-handed; the old rig threw with the left. With the pistol drawn (right hand), does the Agent holster
-   first, or throw with the left (a mirrored clip)?
+1. ✅ **RULED (Director, 2026-11-12: "Guarda e usa a direita"): the RIGHT hand, always.** With the pistol drawn, the Agent holsters it first
+   (the draw timeline played back, as quick as the draw), then throws right-handed. The old rig's left-hand grenade (`hand_L`) retires with it.
 2. **Automatic style (T1/T4), or player-chosen** (CS2 / Siege-style buttons)? The proposal is automatic and shown in the preview.
 3. **T5:** the whole body turns to the throw's exact direction during the throw (proposed), or only the spine twists?
 4. **The bowl:** does the grenade stay on the floor the whole way (needs the roll physics in the world, W5), or is it a low toss that

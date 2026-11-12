@@ -899,6 +899,17 @@
           ]
         },
         {
+          "id": "agent_shot_rail",
+          "keys": [
+            {
+              "frame": "close",
+              "target": "@agent_close",
+              "view": "S",
+              "hold": 220
+            }
+          ]
+        },
+        {
           "id": "agent_close_rail",
           "keys": [
             {
@@ -1356,7 +1367,7 @@
         {
           "id": "pistol_shot",
           "profile": "engine",
-          "rail": "agent_aim_rail",
+          "rail": "agent_shot_rail",
           "steps": [
             "weapon pistol",
             "shot_aim 5",

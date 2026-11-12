@@ -61,7 +61,12 @@ func setup(p_room: Node, p_gu_cell: Vector2i, weapon_id: String, board: Node3D) 
 	return true
 
 
+var _freeze_idle: bool = DevFlag.on("FREEZE_IDLE")
+
+
 func _process(delta: float) -> void:
+	if _freeze_idle:
+		delta = 0.0   ## `FREEZE_IDLE`: the bob and the spin hold (the light gate)
 	_bob_time += delta
 	_spin += deg_to_rad(ROTATION_DEG_PER_SEC) * delta
 	yaw = _spin

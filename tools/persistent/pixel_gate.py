@@ -66,7 +66,17 @@ MASK = {"PLAYGROUND": (0, 720, 390, 844)}
 CURSOR_RGB = (229, 25, 114)
 
 
+## `--light` (2026-11-12, the Director: the blasts are closed work, the light is what may still cost): NO event. Each map is
+## captured as loaded and again turned to the E view (the light and the occlusion of a second view), so a change to the light
+## shows as pixels without a grenade or a shot in the picture. This is what `verify.py full` holds to the baseline now.
+LIGHT = False
+
+
 def case_env(case: str, settle: int, tag: str):
+    if LIGHT:
+        scenario = ("framing portrait; frames %d; capture %s_load; perspective E; frames %d; capture %s_e; quit"
+                    % (settle, tag, settle, tag))
+        return scenario, {"INFILTRAITOR_FREEZE_IDLE": "1"}, ["load", "e"]
     if case == "PLAYGROUND":
         scenario = ("framing portrait; frames 60; centre %d,%d; zoom 2.2; frames %d; capture %s_load; detonate 0; "
                     "frames %d; capture %s_g0; shoot 0; centre %d,%d; frames %d; capture %s_shot; quit"
@@ -115,8 +125,15 @@ def main() -> int:
     ap.add_argument("--settle", type=int, default=400)
     ap.add_argument("--keep", default="", help="copy the captures of run 1 here")
     ap.add_argument("--against", default="", help="also compare run 1 with the set a `--keep` stored here")
+    ap.add_argument("--light", action="store_true", help="no event: each map as loaded and turned to E (cases default PLAYGROUND,SEG_TYPICAL)")
     ap.add_argument("--single", action="store_true", help="one boot per case, held to --against (no run-to-run check)")
     args = ap.parse_args()
+    global LIGHT
+    LIGHT = args.light
+    if args.light and args.cases == "PLAYGROUND,GLASS":
+        args.cases = "PLAYGROUND,SEG_TYPICAL"
+    if args.light and args.settle == 400:
+        args.settle = 120   ## no fire or smoke to wait out: the light settles with the load
     if args.single and not args.against:
         print("%s ERROR: --single needs --against (one boot alone proves nothing)" % TAG)
         return 2

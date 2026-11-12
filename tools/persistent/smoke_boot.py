@@ -9,7 +9,7 @@
 ##
 ## ~15 s per map. It does not need the machine to itself (no frame-timing dependence), so an open editor does not matter.
 ##
-## Usage:  python3 tools/persistent/smoke_boot.py [--maps PLAYGROUND,GLASS,SIGMA_01]
+## Usage:  python3 tools/persistent/smoke_boot.py [--maps PLAYGROUND,SEG_TYPICAL,SIGMA_01]
 
 import argparse
 import os
@@ -38,7 +38,7 @@ def boot(map_id: str):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--maps", default="PLAYGROUND,GLASS")
+    ap.add_argument("--maps", default="PLAYGROUND,SEG_TYPICAL")
     args = ap.parse_args()
     failed = False
     for map_id in [m.strip() for m in args.maps.split(",") if m.strip()]:

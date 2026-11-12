@@ -56,6 +56,7 @@ const FLAGS: Dictionary = {
 	"FLUID_VALVE": ["", "\"seconds:body:source:rate;...\": turns a liquid source's valve at those real-time seconds"],
 	"FRAME_PROBE": ["", "1: print per-frame timing lines (DIAG-01's frame probe)"],
 	"FRAMING": ["", "portrait | landscape | desktop: forces the boot viewport framing"],
+	"FREEZE_IDLE": ["", "1: idle clips, a pickup's bob and spin hold still (the light gate: a capture independent of how long a view change took)"],
 	"FREEZE_GUARD_TURN": ["", "1: a guard snaps to its facing instead of easing (a capture of the cone)"],
 	"GLASS_CRACK_CUT": ["", "0..1: how much of a crack's hole is cut from the pane (a look dial); default 1"],
 	"GLASS_CRACK_OPACITY": ["", "the crack web's opacity (a Director look dial, moved twice)"],

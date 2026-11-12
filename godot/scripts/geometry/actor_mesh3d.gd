@@ -110,6 +110,9 @@ var _walked: float = 0.0             ## ground covered while walking, world unit
 var _move_pass: float = 0.0          ## world units of ground one pass of the move clip covers
 var _last_ground := Vector2(NAN, NAN)
 var _idle_t: float = 0.0             ## the idle clip's own clock
+## `FREEZE_IDLE` (the light gate, 2026-11-12): the idle clip holds its first frame, so a capture does not depend on how many frames a
+## view change took.
+var _freeze_idle: bool = DevFlag.on("FREEZE_IDLE")
 const FALL_GU_S: float = 3.0          ## how fast an actor drops onto lower ground (GU of height a second)
 const CLIMB_GU_S: float = 1.5         ## and climbs back up
 ## Gameplay decides WHO is revealed (vision, skills and progress are gameplay, not physics); this only draws it: every
@@ -518,7 +521,8 @@ func _show_tripo(walking: bool, ground: Vector2) -> void:
 		if _move_pass > 0.0:
 			t = fposmod(_walked / _move_pass, 1.0) * length
 	else:
-		_idle_t = fposmod(_idle_t + get_process_delta_time(), length)
+		if not _freeze_idle:
+			_idle_t = fposmod(_idle_t + get_process_delta_time(), length)
 		t = _idle_t
 	_player.seek(t, true)
 

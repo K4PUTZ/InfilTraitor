@@ -61,17 +61,23 @@ Two standing duties, both obligations:
 after every change.** The 2D board is gone, so the identity gates have nothing left to protect on an ordinary change. The default is
 the cheap tier; the heavy one runs on request.
 
+**2026-11-12 (Director): the checks follow the work that is left.** *"O objetivo mais grosso da engine, que é explosão, fogo e
+destruição do cenário, já foi atingido"*: what comes next is animation, characters, guard AI, HUD, inventories, and the one cost
+still expected is the LIGHT. The blast / glass / shot gates and 66 selftests of that closed work are **parked, not deleted**
+(`run_selftests.py --all`; each gate by hand, listed in `verify.py`'s `steps_for`). GLASS's intermittent g0 difference (the
+blast's stages sliced by a wall-clock budget even at a fixed FPS) is accepted as known noise.
+
 | Tier | Runs | Time | When |
 |---|---|---|---|
 | `docs` | invariants, codemap | seconds | Markdown / `PROMPTS/` / `docs/` only |
-| `quick` | lint, invariants, codemap, `worker_typing_check` (no untyped operator in worker-thread GDScript: Godot 4.6.1 / 4.7.2 race, 2026-10-19), selftests (items 1, 5, 6 below) | ~1 min | tools, selftests, localisation |
-| `smoke` | `quick` + `smoke_boot.py`: PLAYGROUND and GLASS boot, rotate E then N, no grenade, no shot | ~1.5 min | **the default for any change under `godot/`** (`verify.py` picks it by itself) |
-| `look` | `smoke` + `pixel_gate` held to the stored baseline (no explosions replayed, no other gate) | ~2.5 min | **a change to how something looks** (a colour, a contrast, a fade, a shader). If the change is intended, take a new baseline first (`--baseline`) |
-| `full` | `smoke` + `ground_gate`, `shot_3d_gate`, `occ_canonical_gate`, `mirror_gate`, `pick_gate`, `roof_yaw_gate`, `world_gate`, `roundtrip --with-store`, and the two identity gates held to a stored baseline | ~7 min | **ONLY when the Director asks, or to close a stage that rewires the board / the state / the light / the ground** (`verify.py` never picks it) |
+| `quick` | lint, invariants, codemap, `worker_typing_check` (no untyped operator in worker-thread GDScript: Godot 4.6.1 / 4.7.2 race, 2026-10-19), `map_lint`, `segment_budget`, the 28 selftests NOT parked (actors, stealth, HUD, maps, save, catalogues, light, infrastructure) | ~45 s | tools, selftests, localisation |
+| `smoke` | `quick` + `smoke_boot.py`: PLAYGROUND and SEG_TYPICAL (guards on both) boot, rotate E then N, reset the alert; no grenade, no shot | ~1.5 min | **the default for any change under `godot/`** (`verify.py` picks it by itself) |
+| `look` | `smoke` + the LIGHT gate (`pixel_gate.py --light`: each map as loaded and turned to E, no event, `FREEZE_IDLE` on) held to the stored baseline | ~2.5 min | **a change to how something looks or is lit**. If the change is intended, take a new baseline first (`--baseline`) |
+| `full` | `smoke` + `occ_canonical_gate`, `roof_yaw_gate`, `pick_gate` + the light gate | ~4 min | **a change to the light, the occlusion or the board; or when the Director asks** (`verify.py` never picks it) |
 
-- `verify.py full` wants a baseline taken at the START of the task, on the code before your change: `verify.py --baseline`
-  (two boots per case, ~3.5 min, git-ignored under `Screenshots/verify_baseline/`). Without one the identity gates fall back to
-  their two-boot form and say so.
+- `look` / `full` want a baseline taken at the START of the task, on the code before your change: `verify.py --baseline`
+  (`pixel_gate --light`, two boots per map, ~1 min, git-ignored under `Screenshots/verify_baseline/`). Without one the light gate
+  falls back to its two-boot form and says so.
 - **The boot gates refuse to start while another Godot is alive, the editor included** (`smoke` does not care). Every boot times out
   at 180-300 s.
 - ⚠️ **`pixel_gate.py` is blind to a brightness change under its 8/255 noise floor:** a face-tone change from 0.975 to 0.900 moved
@@ -91,7 +97,7 @@ The numbered list below is what the tiers run and what each step means:
    `print_debug`, assertions).
 4. Visual claims need a real capture (`Screenshots/history/`, or an
    explicit ad-hoc one) — never a written description standing in for one.
-5. `python3 tools/persistent/run_selftests.py` (`--only <name>` for one) —
+5. `python3 tools/persistent/run_selftests.py` (`--only <name>` for one, `--all` with the parked ones) —
    **the arbiter for selftests, the way `project_lint.py` is for compile
    errors.** A bare `godot --script` run of a selftest can print a runtime
    `SCRIPT ERROR`, skip the rest of that function, and still report PASS

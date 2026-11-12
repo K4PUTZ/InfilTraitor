@@ -223,9 +223,29 @@ def report_unrun_tests(ran: list) -> None:
     print("[SELFTEST] Run one by hand: godot --headless --path . --script %s/<name>" % SELFTEST_DIR)
 
 
+## PARKED (Director, 2026-11-12: "o objetivo mais grosso da engine, que é explosão, fogo e destruição do cenário, já foi
+## atingido ... ficar testando vidro, e granadas não é mais necessário"). The suites of the closed engine work — blasts, glass,
+## soot, fire, liquids, cloth, roofs' release, structure, floors and surfaces — no longer run by default; `--all` runs them, `--only`
+## runs any one by name. They stay in the repo: parked, not deleted. What still runs is what the next work moves (actors,
+## animation, AI / stealth, HUD, maps, save, catalogues, light) and the infrastructure.
+PARKED = (
+    "blast_", "detonation_plan", "glass_", "soot_", "liquid_", "fluid_", "soft_sheet", "roof_sheet_release", "roof_bake",
+    "roof_entity", "roof_integration", "roof_slab", "roof_occlusion", "voxel_fire", "structural_support", "cloth_flaps",
+    "floor_", "fixed_floor", "ground_", "earth_variant", "surface_rules", "material_", "paint_palette", "particle_space",
+    "pane_frame", "panel_base", "vent_emitter", "neon_flicker", "cosmetic_density", "circle_field", "half_thickness",
+    "negative_storey", "slab_", "slice_geometry", "prop_fragment_sim", "prop_voxelizer", "voxel_decal", "voxel_handle",
+    "voxel_persist", "voxel_store", "texture_resolver", "resolver_hardening", "passage_query", "occlusion_",
+)
+
+
+def parked(script_rel: str) -> bool:
+    return os.path.basename(script_rel).startswith(PARKED)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run Godot selftests with SCRIPT ERROR detection")
     parser.add_argument("--only", help="substring of the selftest name (e.g. blast_calculator)")
+    parser.add_argument("--all", action="store_true", help="also run the PARKED suites (the closed engine work)")
     args = parser.parse_args()
 
     ## Both shapes: a plain `--script` SceneTree selftest, and a `*_selftest.tscn`
@@ -242,6 +262,10 @@ def main() -> int:
         os.path.relpath(p, PROJECT_ROOT) for p in (script_paths + scene_paths))
     if args.only:
         scripts = [s for s in scripts if args.only in os.path.basename(s)]
+    elif not args.all:
+        n_parked = sum(1 for s in scripts if parked(s))
+        scripts = [s for s in scripts if not parked(s)]
+        print("[SELFTEST] %d parked suite(s) skipped (the closed engine work; `--all` runs them)" % n_parked)
     if not scripts:
         print("[SELFTEST] ERROR: no selftest matches %r under %s" % (args.only, SELFTEST_DIR))
         return 2
@@ -279,7 +303,7 @@ def main() -> int:
                 print("      | %s" % line)
 
     print("[SELFTEST] RESULT: %d clean, %d failed" % (len(scripts) - len(failures), len(failures)))
-    if not args.only:
+    if args.all:
         report_unrun_tests(scripts)
     return 1 if failures else 0
 

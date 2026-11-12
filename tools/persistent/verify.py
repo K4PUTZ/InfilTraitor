@@ -6,27 +6,28 @@
 ## just to re-prove determinism, and a 10-minute timeout whenever another Godot was alive). Measured 2026-09-25, one boot is
 ## 15-45 s; the cost was the number of gates, the doubled boots and the hangs. So:
 ##
-##   quick   ~1 min     project_lint, check_invariants, gen_codemap --check, worker_typing_check, map_lint, run_selftests.
-##   smoke   ~1.5 min   quick + a boot of PLAYGROUND and GLASS that rotates E then N (smoke_boot.py): no grenade, no shot. THE DEFAULT for
-##                      any change under godot/: it catches the runtime wiring the linter cannot, and nothing else is repeated.
-##   full    ~7 min     quick + the boot gates: ground, shot_3d, occ_canonical, mirror (1 boot), pick (1 boot per map: touch picking from N/E/S/W), roof-yaw (a roof opens and shuts the same from every side), world (the air overlays' lift and axes survive a turn), canvas (no overlay paints the 2D canvas, in the aim / throw / blast / view-mode states), roundtrip + shadow (ONE boot per map, `--with-store`), and the two
-##                      identity gates (`board_probe gate`, `pixel_gate`) held to a STORED BASELINE with ONE boot per case.
-##                      For a change that touches the board, the state, the light, the ground, the geometry or the shaders.
-##   look    ~2.5 min   quick + the smoke boot + the PIXEL gate only (held to the stored baseline). For a change to how something LOOKS (a
-##                      colour, a contrast, a fade, a shader): the pictures are what changed, so the pictures are what is checked. If
-##                      the change is intended, take a new baseline first (`--baseline`) and say so; a look change that moves
-##                      pixels is the one case where the pixel gate is SUPPOSED to fail against an old baseline.
+## 2026-11-12 (Director: *"o objetivo mais grosso da engine, que é explosão, fogo e destruição do cenário, já foi atingido ... a única
+## coisa que talvez ainda vai gerar algum custo expressivo são as mudanças na iluminação"*): the checks follow the work that is
+## left (actors, animation, guard AI, HUD, inventories, light). The blast / glass / shot gates and 66 selftests of the closed
+## engine work are PARKED, not deleted: `run_selftests.py --all`, and each gate by hand (listed in `steps_for`).
+##
+##   quick   ~45 s      project_lint, check_invariants, gen_codemap --check, worker_typing_check, map_lint, segment_budget, and
+##                      the selftests NOT parked (28: actors, stealth, HUD, maps, save, catalogues, light, infrastructure).
+##   smoke   ~1.5 min   quick + a boot of PLAYGROUND and SEG_TYPICAL (guards on both) that rotates E then N and resets the alert
+##                      (smoke_boot.py): no grenade, no shot. THE DEFAULT for any change under godot/.
+##   look    ~2.5 min   smoke + the LIGHT gate (`pixel_gate --light`: each map as loaded and turned to E, no event) held to the
+##                      stored baseline. For a change to how something LOOKS or is LIT. If the change is intended, take a new
+##                      baseline first (`--baseline`) and say so.
+##   full    ~4 min     smoke + occ_canonical, roof_yaw, pick + the light gate. For a change to the light, the occlusion or the
+##                      board. Run when the Director asks or to close a stage that rewires them.
 ##   docs    seconds    check_invariants + gen_codemap --check. Markdown / PROMPTS / docs only.
 ##   auto    (default)  picks docs / quick / smoke from the files you changed (`git status`, or the last commit if the tree is clean).
-##                      It NEVER picks `full`: the identity gates replay the same explosions and shots, so they run only when asked
-##                      (`verify.py full`), when the Director asks, or to close a stage that rewires the board.
 ##
-## THE BASELINE. Determinism (two boots of the same code give the same pixels and the same dump) was earned when the gates were
-## built and is re-earned ONLY when a baseline is taken: `verify.py --baseline` runs `pixel_gate --keep` and `board_probe gate
-## --runs 2` (two boots each, so it also proves the harness is deterministic today) and stores them under
-## `Screenshots/verify_baseline/` (git-ignored) with the commit. Take it at the START of a task, on the code before your change;
-## `verify.py full` then holds ONE boot to it. With no baseline the two identity gates fall back to their two-boot form (slower,
-## proves less: a change that alters both boots the same way passes) and the run says so.
+## THE BASELINE. `verify.py --baseline` runs `pixel_gate --light --keep` (two boots per map, so it also proves the harness is
+## deterministic today) and stores it under `Screenshots/verify_baseline/` (git-ignored) with the commit. Take it at the START of
+## a task, on the code before your change. With no baseline the light gate falls back to its two-boot form and says so. (The
+## old baseline replayed two grenades and a shot; GLASS g0 diverged in ~1 boot of 3 because the blast's stages are sliced by a
+## wall-clock budget even at a fixed FPS: accepted as known noise when the blast gates were parked, 2026-11-12.)
 ##
 ## FAILS FAST. A boot gate refuses to start while another Godot is alive (the editor included): concurrent load moves the
 ## frame timing the gates depend on, and a hung boot used to burn a 600 s timeout before saying so. Every boot now times out at
@@ -50,7 +51,7 @@
 ##     python3 tools/persistent/verify.py                 # auto
 ##     python3 tools/persistent/verify.py quick|look|full|docs
 ##     python3 tools/persistent/verify.py --baseline      # take the reference set (two boots per case)
-##     python3 tools/persistent/verify.py full --only ground,mirror --keep-going
+##     python3 tools/persistent/verify.py full --only pick,roof-yaw --keep-going
 ##     python3 tools/persistent/verify.py --list          # the steps of a tier, without running
 
 import argparse
@@ -94,35 +95,24 @@ def steps_for(tier: str, have_baseline: bool):
         return quick
     if tier == "smoke":
         return quick + [("smoke-boot", False, sh("smoke_boot.py"))]
+    ## 2026-11-12 (Director): the blasts, glass, soot and shots are closed engine work; the light is what may still cost. `look`
+    ## and `full` hold the LIGHT capture (each map as loaded and turned to E, no event) to the baseline; `full` adds the
+    ## occlusion / rotation / picking gates. The blast and shot gates are parked: run them by hand when that code is touched
+    ## (`pixel_gate.py`, `board_probe.py gate`, `shot_3d_gate.py`, `struct_audit.py`, `ground_gate.py`, `mirror_gate.py`,
+    ## `world_gate.py`, `canvas_gate.py`, `board_probe.py roundtrip --with-store`).
+    light = (sh("pixel_gate.py", "--light", "--single", "--against", str(BASELINE / "light")) if have_baseline
+             else sh("pixel_gate.py", "--light"))
+    light_step = ("light-gate" if have_baseline else "light-gate (2 boots, NO BASELINE)", True, light)
+    smoke = ("smoke-boot", False, sh("smoke_boot.py"))
     if tier == "look":
-        pixel = (sh("pixel_gate.py", "--single", "--against", str(BASELINE / "pixels")) if have_baseline
-                 else sh("pixel_gate.py"))
-        return quick + [("smoke-boot", False, sh("smoke_boot.py")),
-                        ("pixel-gate" if have_baseline else "pixel-gate (2 boots, NO BASELINE)", True, pixel)]
-    identity = []
-    if have_baseline:
-        identity = [
-            ("probe-gate", True, sh("board_probe.py", "gate", "--runs", "1", "--against", str(BASELINE / "probes"),
-                                    "--out", str(ROOT / "Screenshots" / "verify_baseline" / "_last_probe"))),
-            ("pixel-gate", True, sh("pixel_gate.py", "--single", "--against", str(BASELINE / "pixels"))),
-        ]
-    else:
-        identity = [
-            ("probe-gate (2 boots, NO BASELINE)", True, sh("board_probe.py", "gate")),
-            ("pixel-gate (2 boots, NO BASELINE)", True, sh("pixel_gate.py")),
-        ]
+        return quick + [smoke, light_step]
     return quick + [
-        ("ground", True, sh("ground_gate.py")),
-        ("shot-3d", True, sh("shot_3d_gate.py")),
+        smoke,
         ("occ-canonical", True, sh("occ_canonical_gate.py")),
-        ("mirror", True, sh("mirror_gate.py", "--single")),
-        ("pick", True, sh("pick_gate.py")),
         ("roof-yaw", True, sh("roof_yaw_gate.py")),
-        ("world", True, sh("world_gate.py")),
-        ("struct-audit", True, sh("struct_audit.py")),
-        ("canvas", True, sh("canvas_gate.py")),
-        ("roundtrip+shadow", True, sh("board_probe.py", "roundtrip", "--with-store")),
-    ] + identity
+        ("pick", True, sh("pick_gate.py")),
+        light_step,
+    ]
 
 
 def other_godots():
@@ -190,8 +180,7 @@ def take_baseline() -> int:
     BASELINE.mkdir(parents=True, exist_ok=True)
     print("[verify] baseline of %s%s: two boots per case, so it also proves the harness is deterministic today"
           % (head, " + UNCOMMITTED CHANGES (the baseline is of that tree)" if dirty else ""))
-    for name, cmd in (("pixels", sh("pixel_gate.py", "--keep", str(BASELINE / "pixels"))),
-                      ("probes", sh("board_probe.py", "gate", "--runs", "2", "--out", str(BASELINE / "probes")))):
+    for name, cmd in (("light", sh("pixel_gate.py", "--light", "--keep", str(BASELINE / "light"))),):
         t0 = time.time()
         rc = subprocess.run(cmd, cwd=ROOT).returncode
         print("[verify] baseline %s: %s in %.0f s" % (name, "ok" if rc == 0 else "FAILED (rc %d)" % rc, time.time() - t0))

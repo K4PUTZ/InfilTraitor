@@ -766,6 +766,9 @@ def throw_new(base_blend, clip_glb, out_blend, part):
             for f2, v in ((frames[i - 1], 0.0), (frame, 1.0), (frames[i + 1], 0.0)):
                 kb.value = v
                 kb.keyframe_insert("value", frame=f2)
+        # the first pose's key is the ACTIVE one, so an Edit Mode edit lands in a throw key (2026-11-12: the male's first edit went into the draw's DrawFix,
+        # left active by the base file, where this timeline never shows it)
+        coat.active_shape_key_index = list(coat.data.shape_keys.key_blocks.keys()).index(next(k.name for k in coat.data.shape_keys.key_blocks if k.name.startswith("ThrowFix")))
     arm["lab_pose"] = "throw_" + part
     arm["lab_props"] = json.dumps(["grenade"])
     sc.frame_set(1)

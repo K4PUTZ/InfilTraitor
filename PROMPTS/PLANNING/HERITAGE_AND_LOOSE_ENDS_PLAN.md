@@ -169,7 +169,13 @@ The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PER
 - **The pin:** `stealth_core_selftest` (a scene selftest, 48 checks): noise emit / decay, audio radius / distance / walls, the tic's
   multipliers, the live thresholds 0.25 / 0.50 / 0.75 with the meter (+45 of 100, the cap, one alarm), the per-state decay, the
   noise bonus, the FSM's escalation, timers, de-escalation and hearing. It pins what IS, not what is right.
-- **Open, the Director's:** which thresholds are canon (`AI_MASTER_PLAN` carries 0.30 / 0.60 / 1.00); the save's format (the
+- **The save, RULED 2026-11-11 (Director):** *"o game é efêmero, saiu do app some tudo"*. There is no save file: leaving the app
+  loses everything, back to the lobby and the strategy / world map (to build), where a mission is picked. A CHECKPOINT is the only
+  state kept, valid only for the CURRENT map and never past the session: the map's state (soot, destruction, alarms, open doors,
+  dead guards, ...) so a failure does not restart from zero. So T5's last stage is an IN-MEMORY snapshot of the live state (the
+  `VoxelStore`, the cell planes, the actors, the alert) restored in place, which retires the ~960-line replay; no format, no
+  versioning, no migration. A good cache to run missions is a separate need (load times), not the save.
+- **Was open, the Director's:** which thresholds are canon (`AI_MASTER_PLAN` carries 0.30 / 0.60 / 1.00); the save's format (the
   `VoxelStore` in the save, and the ~960-line replay retiring with it) is a design call of `roadmap` A2 and is not started.
 
 ### T2 — W1, W2, W3 DONE 2026-11-11 (`verify.py smoke` green); W4, W5 open

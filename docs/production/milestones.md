@@ -887,6 +887,13 @@ character conversation.
 Vai tocar em AI dos guardas, movimentação, destruição de lâmpadas, som,
 detecção, etc."* (Director, 2026-08-14)
 
+**⏳ Owed here (Director, 2026-11-11, HERITAGE):**
+- **Calibrate the stealth thresholds.** The game runs 0.25 / 0.50 / 0.75 (`TurnController`); `AI_MASTER_PLAN` carries 0.30 / 0.60 /
+  1.00. Settle them here; `stealth_core_selftest` pins what runs and changes with the ruling.
+- **The ballistic line from the muzzle.** The flash and tracer leave the weapon's muzzle (HERITAGE T2 W4); the hit walk still starts
+  at the shooter's GU at a fixed height. A future round.
+- **The grenade in 3D** (HERITAGE T2 W5): its flight, hop and roll as world state, out of the 2D parabola. A future round.
+
 **Dependencies:** none hard. **Parallel to or prior to GAME-01** — the Director's
 own framing, and the reason this milestone sits above it in this file.
 

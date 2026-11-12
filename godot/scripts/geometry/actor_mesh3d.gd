@@ -562,6 +562,14 @@ func set_status_tint(color: Color, pulse: float) -> void:
 func _build_contact_shadow(actor: Node) -> void:
 	if actor == null:
 		return
+	add_child(contact_shadow_node())
+	if actor.has_method("set_board3d"):
+		actor.call("set_board3d", _board)
+
+
+## The contact shadow as a node of its own, the same disc for every actor and (HERITAGE, 2026-11-11, Director: "a mesma
+## sombrinha genérica que está embaixo dos atores") for a floating pickup, which scales it.
+static func contact_shadow_node() -> MeshInstance3D:
 	var verts := PackedVector3Array([Vector3(0.0, SHADOW_LIFT, 0.0)])
 	var cols := PackedColorArray([Color(0.0, 0.0, 0.0, CONTACT_SHADOW_OPACITY)])
 	var indices := PackedInt32Array()
@@ -594,9 +602,7 @@ func _build_contact_shadow(actor: Node) -> void:
 	mat.shader = load(SHADOW_SHADER)
 	node.material_override = mat
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(node)
-	if actor.has_method("set_board3d"):
-		actor.call("set_board3d", _board)
+	return node
 
 
 func _apply_reveal() -> void:

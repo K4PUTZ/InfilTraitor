@@ -23,16 +23,16 @@ const BOB_PERIOD_SEC := 2.0
 const HOVER_HEIGHT_GU := 0.38
 ## A pickup lies flat, as the table copy does.
 const LIE_FLAT_DEG := Vector3(90.0, 0.0, 0.0)
-const SHADOW_STRENGTH_AT_BOTTOM := 0.55
-const SHADOW_STRENGTH_AT_TOP := 0.28
-const SHADOW_SOFTNESS_AT_TOP := 0.6
-const SHADOW_SCALE_AT_TOP := 1.00
-const SHADOW_SCALE_AT_BOTTOM := 0.90
+## The actors' contact shadow (`ActorMesh3D.contact_shadow_node`), its radius scaled down for a weapon (Director,
+## 2026-11-11: "com o raio um pouco mais reduzido"), growing as the pickup rises and shrinking as it comes down.
+const SHADOW_SCALE_AT_BOTTOM := 0.45
+const SHADOW_SCALE_AT_TOP := 0.6
 
 var room: Node = null
 var gu_cell: Vector2i = Vector2i.ZERO
 
 var _ground: Vector3 = Vector3.ZERO
+var _contact: MeshInstance3D = null
 var _bob_time: float = 0.0
 var _spin: float = 0.0
 
@@ -51,9 +51,10 @@ func setup(p_room: Node, p_gu_cell: Vector2i, weapon_id: String, board: Node3D) 
 	var size: Vector3 = w.world_size(LIE_FLAT_DEG)
 	if size == Vector3.ZERO:
 		return false
-	var shadow_half: float = clampf(maxf(size.x, size.z) * 0.6, 0.12, 0.4)
-	if not setup_object(board, w.model_path, LIE_FLAT_DEG, size, w.surface_materials, "metal", shadow_half):
+	if not setup_object(board, w.model_path, LIE_FLAT_DEG, size, w.surface_materials, "metal", 0.0):
 		return false
+	_contact = ActorMesh3D.contact_shadow_node()
+	board.add_child(_contact)
 	_ground = board.call("ground_point", room.agent._cell_to_world(gu_cell))
 	_apply_bob(0.0)
 	set_process(true)
@@ -71,5 +72,14 @@ func _process(delta: float) -> void:
 func _apply_bob(bob_phase: float) -> void:
 	place_world(_ground, HOVER_HEIGHT_GU - bob_phase * BOB_AMPLITUDE_GU)
 	var bottom_frac: float = (bob_phase + 1.0) * 0.5
-	set_shadow(lerpf(SHADOW_STRENGTH_AT_TOP, SHADOW_STRENGTH_AT_BOTTOM, bottom_frac),
-		SHADOW_SOFTNESS_AT_TOP * (1.0 - bottom_frac), lerpf(SHADOW_SCALE_AT_TOP, SHADOW_SCALE_AT_BOTTOM, bottom_frac))
+	if _contact != null:
+		var k: float = lerpf(SHADOW_SCALE_AT_TOP, SHADOW_SCALE_AT_BOTTOM, bottom_frac)
+		_contact.position = _ground
+		_contact.scale = Vector3(k, 1.0, k)
+		_contact.visible = visible
+
+
+func _exit_tree() -> void:
+	if _contact != null and is_instance_valid(_contact):
+		_contact.queue_free()
+	super._exit_tree()

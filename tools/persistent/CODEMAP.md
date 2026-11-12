@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**352 scripts · 100816 lines total** (under `godot/scripts/`)
+**352 scripts · 100832 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -421,7 +421,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 630 lines
+`class_name ActorMesh3D` · extends `Node3D` · 636 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -1908,7 +1908,7 @@ extends `Node2D` · 164 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `ObjectMesh3D` · 75 lines
+`class_name FloatingCollectible` · extends `ObjectMesh3D` · 85 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -1920,11 +1920,8 @@ extends `Node2D` · 164 lines
 - `BOB_PERIOD_SEC` = `2.0`
 - `HOVER_HEIGHT_GU` = `0.38`
 - `LIE_FLAT_DEG` = `Vector3(90.0, 0.0, 0.0)`
-- `SHADOW_STRENGTH_AT_BOTTOM` = `0.55`
-- `SHADOW_STRENGTH_AT_TOP` = `0.28`
-- `SHADOW_SOFTNESS_AT_TOP` = `0.6`
-- `SHADOW_SCALE_AT_TOP` = `1.00`
-- `SHADOW_SCALE_AT_BOTTOM` = `0.90`
+- `SHADOW_SCALE_AT_BOTTOM` = `0.45`
+- `SHADOW_SCALE_AT_TOP` = `0.6`
 
 **Public vars**
 - `var room: Node = null`

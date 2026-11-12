@@ -105,7 +105,7 @@ The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PER
 - **Git:** local `main` fast-forwarded; the worktree under `temp/` and `claude/unruffled-austin-9e2806` (local + remote) removed; the
   merged `origin/claude/{jolly-feynman-nynib1, project-thread-o218nn, project-thread-qtb3s4}` deleted; the three stashes dropped
   (`a06b1a21`, `df2a7598`, `4ef40530`, recoverable with `git stash apply <hash>` until git collects them).
-  **Not deleted, a question for the Director:** `NEW_MAP` (local only) is NOT merged or duplicate: 23 commits of 2026-06-15/17 (the
+  **Deleted 2026-11-11 on the Director's word ("se não estiver em uso pode limar"; tip `37e29156`):** `NEW_MAP` (local only) is NOT merged or duplicate: 23 commits of 2026-06-15/17 (the
   MODULARIZE / REDUCE / NEW_MAP WorldRenderer line) that never reached `main`. `origin/feat/music-composition` is the PC's music, left
   alone.
 
@@ -184,4 +184,5 @@ The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PER
   measured with their certification, `MOVEMENT` §9 item 7). Unchanged on purpose: the BALLISTIC line is still the grid walk from
   the shooter's GU (`select_line_impact`), and the target's height `MUZZLE_LEVELS_ABOVE_GROUND` (a misnomer now: it is the target
   point's height) — moving the shot's gameplay origin to the muzzle is a rule change for GAMEPLAY.
-- **Open:** W5 (the grenade's flight in world state, out of the 2D parabola).
+- **W5 and the ballistic line from the muzzle: PARKED for a future round (Director, 2026-11-11)**, owed in `docs/production/milestones.md` GAMEPLAY-01, with the stealth thresholds.
+- **The pickup's shadow, 2026-11-11:** the actors' contact disc (`ActorMesh3D.contact_shadow_node()`, shared), at 45-60 % of their radius, growing as the pickup rises.

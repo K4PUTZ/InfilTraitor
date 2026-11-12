@@ -196,7 +196,7 @@ The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PER
   bobs 0.115 GU, spins, in world units (`ObjectMesh3D.place_world`); PLAYGROUND places a pistol at (25, 11), POI `pickup`. The
   hard-coded strip (`TEST_ZONE_COLLECTIBLES`, the pack guns) is deleted. ⚠️ Its ground shadow did not show in the captures: owed.
 - **Found:** a map whose `layout` POI is off the 1/8 lattice is refused at load, and the capture run then HANGS (Movie Maker kept
-  writing frames for 5 min) instead of aborting: the scenario never starts. Worth a timeout in `capture.py`.
+  writing frames for 5 min) instead of aborting: the scenario never starts. Timeout built 2026-11-12 (below).
 - **W4 DONE 2026-11-11 (Director: "o local de onde o tiro sai precisa ser vinculado com a abertura de cada arma, e não em uma
   coordenada do mundo"):** a weapon row's `model.muzzle` is a point of the MODEL (the pistol: (0.1266, 0.0349, 0), the front face of
   the slide, measured off the mesh); `ActorMesh3D.muzzle_global()` carries it by the gun's real placement in the hand (the aim poses
@@ -208,3 +208,22 @@ The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PER
   point's height) — moving the shot's gameplay origin to the muzzle is a rule change for GAMEPLAY.
 - **W5 and the ballistic line from the muzzle: PARKED for a future round (Director, 2026-11-11)**, owed in `docs/production/milestones.md` GAMEPLAY-01, with the stealth thresholds.
 - **The pickup's shadow, 2026-11-11:** the actors' contact disc (`ActorMesh3D.contact_shadow_node()`, shared), at 45-60 % of their radius, growing as the pickup rises.
+
+### 2026-11-12 — the two harness loose ends, and the checks cut to the work left
+
+- **`capture.py` start timeout** (`bb277505`): a run whose scenario never starts (`[SCENARIO] N step(s)`) is killed after
+  `CAPTURE_START_TIMEOUT_S` (180 s), its errors printed. Red-before-green: a map that cannot load was killed at 60 s; before, it ran
+  to the 600 / 1800 s ceiling.
+- **The baseline's intermittence, diagnosed and ACCEPTED** (Director: *"Vamos aceitar"*): GLASS g0 read 87 px strict / 8 above
+  noise in ~1 boot of 3. Those boots ran ONE more process frame before the capture (f1171 vs f1170): the blast's stages (cook,
+  persist, light, props, glass rain) are sliced by a wall-clock budget even at `--fixed-fps`, so the frame the blast ends on depends
+  on the machine. The Agent's idle clip (its own clock) showed it; with the Agent hidden 8 of 8 boots matched. Ruled out on the
+  way: the gameplay RNG (a separate stream changed nothing), counting `frames` from the blast's start (moved other effects), an
+  unlimited cook budget alone (worse). `pixel_gate` now keeps both boots of a failing pair (`temp/pixel_gate_fail/`).
+- **The checks follow the work left** (`84b3a1ba`; Director: *"o objetivo mais grosso da engine ... já foi atingido ... a única
+  coisa que talvez ainda vai gerar algum custo expressivo são as mudanças na iluminação"*): 66 selftests of the closed blast / glass /
+  fire / liquid / cloth / floor work PARKED (`run_selftests.py --all`), 28 run (~25 s); smoke boots PLAYGROUND + SEG_TYPICAL; `look`
+  and `full` hold the LIGHT gate (`pixel_gate --light`: each map loaded and turned to E, no event, `FREEZE_IDLE`) to the baseline;
+  `full` = smoke + occ_canonical + roof_yaw + pick + light (184 s). The blast and shot gates run by hand. `FREEZE_IDLE` (new flag)
+  holds idle clips and a pickup's bob: without it the light baseline also diverged (2 of 3) on the Agent's idle after the turn.
+  Baseline 4 of 4 clean after it.

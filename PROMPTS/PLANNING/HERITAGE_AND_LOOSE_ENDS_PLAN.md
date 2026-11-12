@@ -180,6 +180,7 @@ The Galaxy round, `VoxelFire` at its cap and the shot menu's opening frame (`PER
   damage AND everything derived from it (blocked edges / passages, light, occlusion, soot, props and piles, fires and liquids,
   actors, alarms, doors), or re-derives each from the restored store in one place; nothing is replayed from records.
   **The player's PROGRESSION (the RPG specs) is a different thing: it IS saved, by definition, the moment it happens.**
+  **Scheduled (Director, 2026-11-11): built LAST, just before the optimisation milestone (M7.0), because it must know every system; recorded in `docs/production/roadmap.md`. T5 is closed until then.**
 - **Was open, the Director's:** which thresholds are canon (`AI_MASTER_PLAN` carries 0.30 / 0.60 / 1.00); the save's format (the
   `VoxelStore` in the save, and the ~960-line replay retiring with it) is a design call of `roadmap` A2 and is not started.
 

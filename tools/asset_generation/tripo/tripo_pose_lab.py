@@ -465,6 +465,16 @@ def sequence(blend, name, seq_json, poses_dir):
     print(f"[tripo_pose_lab] wrote {seq_json}: {len(stops)} stops {[(s['frame'], 'passing' if s['passing'] else 'rests') for s in stops]}, {len(samples)} samples, {sc.render.fps} fps")
 
 
+def embed_coat_follow():
+    """Put coat_key_follow.py into the open .blend as a module text, so the active coat key follows the playhead."""
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "coat_key_follow.py")
+    spec = importlib.util.spec_from_file_location("coat_key_follow", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    mod.add_to_blend()
+
+
 def sequence_new(pose_blend, idle_json, draw_json, aim_json, out_blend, mid_at):
     """THE STARTING TIMELINE of a figure that has none (2026-11-10): the male's `SEQ_*` was the Director's to edit, and the female's starts as a plain version of it, to be edited the
     same way. Built from the figure's `POSE_<draw>` .blend (the LIGHT Agent, the pistol, the lab data), saved under another name: frames 1-23, markers idle 1 / draw 12 / in-between 17 /
@@ -544,6 +554,7 @@ def sequence_new(pose_blend, idle_json, draw_json, aim_json, out_blend, mid_at):
         o.select_set(False)
     arm.select_set(True)
     bpy.ops.object.mode_set(mode='POSE')
+    embed_coat_follow()   ## the coat's per-frame keys follow the timeline (coat_key_follow.py)
     bpy.ops.wm.save_as_mainfile(filepath=out_blend)
     print(f"[tripo_pose_lab] wrote {out_blend}: the {arm['lab_figure']} draw on one timeline (frames 1-23, in-between {mid_at} of the way)")
 
@@ -777,6 +788,7 @@ def throw_new(base_blend, clip_glb, out_blend, part):
         o.select_set(False)
     arm.select_set(True)
     bpy.ops.object.mode_set(mode='POSE')
+    embed_coat_follow()   ## the coat's per-frame keys follow the timeline (coat_key_follow.py)
     bpy.ops.wm.save_as_mainfile(filepath=out_blend)
     print(f"[tripo_pose_lab] wrote {out_blend}: the {arm['lab_figure']} overhand {part}, frames 1-{last}, clip turned {math.degrees(yaw):.1f} deg, "
           f"step {THROW_STEP}, travel {THROW_TRAVEL}, dip {THROW_DIP}")
@@ -829,6 +841,7 @@ def rebase_idle(blend, idle_json, out_blend, frames):
     arm["lab_base"] = json.dumps(idle["bones"])
     arm["lab_idle_frame"] = idle_json
     bpy.context.scene.frame_set(frames[0])
+    embed_coat_follow()   ## the coat's per-frame keys follow the timeline (coat_key_follow.py)
     bpy.ops.wm.save_as_mainfile(filepath=out_blend)
     print(f"[tripo_pose_lab] wrote {out_blend}: {changed} key values of frames {frames} are the idle of {os.path.basename(idle_json)}")
 
@@ -946,6 +959,10 @@ def main():
         throw_new(a[1], a[2], a[3], a[4])
     elif mode == "rebase_idle":
         rebase_idle(a[1], a[2], a[3], [int(x) for x in a[4].split(",")])
+    elif mode == "embed_follow":
+        bpy.ops.wm.open_mainfile(filepath=a[1])
+        embed_coat_follow()
+        bpy.ops.wm.save_as_mainfile(filepath=a[2])
     elif mode == "sequence":
         sequence(a[1], a[2], a[3], a[4])
     elif mode == "render":

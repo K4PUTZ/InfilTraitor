@@ -932,6 +932,15 @@
           ]
         },
         {
+          "id": "agent_idle_rail",
+          "keys": [
+            {"frame": "close", "target": "@agent_close", "view": "S", "hold": 240},
+            {"frame": "close", "target": "@agent_close", "view": "E", "hold": 240},
+            {"frame": "close", "target": "@agent_close", "view": "N", "hold": 240},
+            {"frame": "close", "target": "@agent_close", "view": "W", "hold": 240}
+          ]
+        },
+        {
           "id": "wood_rail",
           "keys": [
             {
@@ -1093,6 +1102,19 @@
           "length": 420,
           "seed": 1,
           "note": "MOVEMENT 2026-11-12: the Agent raises the grenade (the Director's throw_overhand timeline), turns in place to one aimed cell then another, throws: the grenade leaves the hand at the release frame."
+        },
+        {
+          "id": "agent_idle",
+          "profile": "engine",
+          "rail": "agent_idle_rail",
+          "steps": [
+            "wait 16.0"
+          ],
+          "at_key": 0,
+          "after_hold": 0,
+          "length": 960,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-12: the Agent stands idle (the bank's idle loop, the coat's IdleFix) for 4 s in each camera view S, E, N, W."
         },
         {
           "id": "aim_cancel",

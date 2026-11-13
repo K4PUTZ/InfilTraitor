@@ -83,6 +83,9 @@ const POSE_FILE := "res://ASSETS/ANIMATIONS/poses/%s/%s.json"
 ## The library's name on an actor's AnimationPlayer: its clips play as `bank/<id>`.
 const LIBRARY_NAME := &"bank"
 const HIPS := "Hips"
+## Per game clip, how far (degrees) both arms are opened away from the body at the shoulders over the WHOLE clip: a layer on the bank's
+## rotations, so the hands clear the coat's skirt (Director, 2026-11-12: the idle's hands went through it). Not in the bank, never baked into it.
+const ARM_OPEN_DEG := {"idle": 6.0}
 const TRAVEL_META := &"travel_m"
 
 static var _libraries: Dictionary = {}
@@ -207,6 +210,7 @@ static func bank_clip(figure: String, id: String, hips_rest: Vector3) -> Animati
 	var src_skeleton := skeletons[0] as Skeleton3D
 	var hips_idx: int = find_bone(src_skeleton, HIPS)
 	var src_rest: Vector3 = src_skeleton.get_bone_rest(hips_idx).origin if hips_idx >= 0 else Vector3.ZERO
+	_open_arms(anim, src_skeleton, float(ARM_OPEN_DEG.get(id, 0.0)))
 	holder.free()
 	anim.loop_mode = Animation.LOOP_LINEAR
 	var hips_track: int = -1
@@ -234,6 +238,30 @@ static func bank_clip(figure: String, id: String, hips_rest: Vector3) -> Animati
 		anim.track_set_key_value(hips_track, k, Vector3(hips_rest.x + off.x - first.x, hips_rest.y + off.y, hips_rest.z + off.z - first.z))
 	anim.set_meta(TRAVEL_META, drift.length())
 	return anim
+
+
+## Opens both arms of `anim` by `degrees` away from the body, at the shoulder, on every key: the rotation about the figure's front axis, expressed in the
+## shoulder's parent frame at REST (the spine's small sway is not followed), put before the key's own rotation. The sign is each arm's own (its forearm lies on
+## the +x or the -x side), so both go outward.
+static func _open_arms(anim: Animation, skeleton: Skeleton3D, degrees: float) -> void:
+	if is_zero_approx(degrees):
+		return
+	for side: String in ["Left", "Right"]:
+		var arm: int = find_bone(skeleton, side + "Arm")
+		var fore: int = find_bone(skeleton, side + "ForeArm")
+		if arm < 0 or fore < 0 or skeleton.get_bone_parent(arm) < 0:
+			push_warning("[TripoFigure] no %s arm to open" % side)
+			continue
+		var out: float = signf(skeleton.get_bone_global_rest(fore).origin.x - skeleton.get_bone_global_rest(arm).origin.x)
+		var parent_rest: Basis = skeleton.get_bone_global_rest(skeleton.get_bone_parent(arm)).basis
+		var axis: Vector3 = (parent_rest.inverse() * Vector3(0, 0, 1)).normalized()
+		var layer := Quaternion(axis, deg_to_rad(degrees) * out)
+		var bone_path: String = String(skeleton.get_bone_name(arm))
+		for t in range(anim.get_track_count()):
+			if anim.track_get_type(t) != Animation.TYPE_ROTATION_3D or not String(anim.track_get_path(t)).ends_with(bone_path):
+				continue
+			for k in range(anim.track_get_key_count(t)):
+				anim.track_set_key_value(t, k, layer * (anim.track_get_key_value(t, k) as Quaternion))
 
 
 ## The raw bank clip `id` of `figure` (no Hips decoding): a clip the figure lacks falls back to the other figure's, loudly (both share the 65 Mixamo

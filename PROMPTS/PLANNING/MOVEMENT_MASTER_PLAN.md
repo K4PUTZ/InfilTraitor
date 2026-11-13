@@ -456,7 +456,10 @@ HUD off) and ratified it. Expected order, to confirm on the map: locomotion on t
 cover (M2, M3) → weapon flow (§6.5 of the brief: equip, aim, fire, return, cancel) → reactions (hit, fall) → crouch and crawl (M4,
 M5) → the world (pit, liquid, rope: brief §7a).
 
-**The throw (2026-11-12, STUDY, nothing ruled):** [`PROMPTS/THROW_STUDY_2026-11-12.md`](../THROW_STUDY_2026-11-12.md): styles
+**The throw (2026-11-12, BUILT standing overhand on both figures; take `grenade_throw`):** one timeline per figure
+`SEQ_throw_overhand_<FIG>.blend` (the Director's), coat keys `ThrowFix_f<frame>` on the same timeline, read back by `pose_lab.py sequence
+throw_overhand`; rulings (right hand, automatic style, whole body turns, bowl = low toss and roll, the in-play flow) in the study's §5.1/§6.
+NEXT: the female's skirt fix, then underhand, bowl, kneeling. The study: [`PROMPTS/THROW_STUDY_2026-11-12.md`](../THROW_STUDY_2026-11-12.md): styles
 (overhand, underhand, bowl, sidearm) x postures, the trajectory picks the animation, the grenade leaves the posed hand, `pitch_baseball`
 cut to frames 36-48, fingers never keyed, four open questions.
 

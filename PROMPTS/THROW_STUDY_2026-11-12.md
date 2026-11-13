@@ -239,6 +239,7 @@ grenade went ~45° off the facing, seen by the Director in Blender).
   still snaps (D47).
 - **The flight:** it starts where the grenade last was in the hand (`Agent.grenade_release_points()`). The PREVIEW arc still starts at the
   old head anchor, until W5.
-- **Take:** `grenade_throw` (PLAYGROUND, `agent_throw_rail`). Open: the female's timeline is Claude's draft (no coat fix, idle fingers). The
+- **Take:** `grenade_throw` (PLAYGROUND, `agent_throw_rail`). The female's grenade placement is the Director's (2026-11-12, read back);
+  **her skirt fix is the NEXT session's** (her `ThrowFix_*` keys are still empty). The
   "8 resources still in use at exit" line appears with the old rig too: it is the detonation still running when the take quits, not this
   work.

@@ -782,6 +782,57 @@ def throw_new(base_blend, clip_glb, out_blend, part):
           f"step {THROW_STEP}, travel {THROW_TRAVEL}, dip {THROW_DIP}")
 
 
+def rebase_idle(blend, idle_json, out_blend, frames):
+    """THE IDLE REFERENCE OF A TIMELINE (MOVEMENT 2026-11-12: frame 145 of the idle is the one whose coat lies farthest from the legs): the body keys of a timeline that ARE the idle
+    (`frames`, e.g. 1 for the draw) are put to the idle pose of `idle_json` (`tripo_pose_dump --idle-frame=N`), every bone and the Hips' place; the other keys are the Director's and
+    stay. Written to ANOTHER file (his .blend is never overwritten), and `lab_base` (what the unkeyed bones show) follows. Key VALUES are replaced on the existing f-curves, so
+    the timing, the handles' types and the coat / prop keys are not touched."""
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    arm, rig = load_rig_from_blend()
+    idle = read_json(idle_json)
+    base = {n: quat_xyzw(q) for n, q in idle["bones"].items()}
+    ad = arm.animation_data
+    action, slot = (ad.action, getattr(ad, "action_slot", None)) if ad else (None, None)
+    if action is None:
+        fail(f"{blend} has no armature action to rebase")
+    ad.action = None                      # no animation re-reads over what is set next
+    bpy.context.view_layer.objects.active = arm
+    if bpy.context.object.mode != 'POSE':
+        bpy.ops.object.mode_set(mode='POSE')
+    rig.apply(base)
+    bpy.context.view_layer.update()
+    h = arm.pose.bones[PREFIX + "Hips"]
+    m = h.matrix.copy()
+    m.translation = CMT @ Vector(idle["hips_pos"])
+    h.matrix = m
+    bpy.context.view_layer.update()
+    rot = {pb.name: pb.rotation_quaternion.copy() for pb in arm.pose.bones}
+    hips_loc = h.location.copy()
+    ad.action = action
+    if slot is not None:
+        ad.action_slot = slot
+    curves = [fc for l in action.layers for st in l.strips for cb in st.channelbags for fc in cb.fcurves] if getattr(action, "layers", None) else list(action.fcurves)
+    changed = 0
+    for fc in curves:
+        dp = fc.data_path
+        if dp.startswith('pose.bones["') and dp.endswith('"].rotation_quaternion'):
+            value = rot[dp[len('pose.bones["'):-len('"].rotation_quaternion')]][fc.array_index]
+        elif dp == f'pose.bones["{PREFIX}Hips"].location':
+            value = hips_loc[fc.array_index]
+        else:
+            continue
+        for frame in frames:
+            if any(abs(k.co[0] - frame) < 1e-3 for k in fc.keyframe_points):
+                fc.keyframe_points.insert(frame, value, options={'REPLACE'})
+                changed += 1
+        fc.update()
+    arm["lab_base"] = json.dumps(idle["bones"])
+    arm["lab_idle_frame"] = idle_json
+    bpy.context.scene.frame_set(frames[0])
+    bpy.ops.wm.save_as_mainfile(filepath=out_blend)
+    print(f"[tripo_pose_lab] wrote {out_blend}: {changed} key values of frames {frames} are the idle of {os.path.basename(idle_json)}")
+
+
 def reset_fingers(blend, side):
     """Puts the finger joints of one hand (`side` Left|Right) of a timeline .blend back to the GAME's idle fingers (`lab_base`) on every key they have (2026-11-11, the Director's request:
     he finishes the fingers by hand, starting from what the game plays under a sequence). Only the existing keys' values change, never their frames; the file is saved in place."""
@@ -893,6 +944,8 @@ def main():
         sequence_new(a[1], a[2], a[3], a[4], a[5], float(a[6]))
     elif mode == "throw_new":
         throw_new(a[1], a[2], a[3], a[4])
+    elif mode == "rebase_idle":
+        rebase_idle(a[1], a[2], a[3], [int(x) for x in a[4].split(",")])
     elif mode == "sequence":
         sequence(a[1], a[2], a[3], a[4])
     elif mode == "render":

@@ -143,6 +143,8 @@ var _walked: float = 0.0             ## ground covered while walking, world unit
 var _move_pass: float = 0.0          ## world units of ground one pass of the move clip covers
 var _last_ground := Vector2(NAN, NAN)
 var _idle_t: float = 0.0             ## the idle clip's own clock
+var _idle_cut: bool = false          ## the idle is held at `IDLE_REFERENCE_FRAME` while a pose layer is up
+const IDLE_REFERENCE_FRAME := 145.0  ## the idle frame every pose layer starts from (24 fps)
 ## `FREEZE_IDLE` (the light gate, 2026-11-12): the idle clip holds its first frame, so a capture does not depend on how many frames a
 ## view change took.
 var _freeze_idle: bool = DevFlag.on("FREEZE_IDLE")
@@ -621,7 +623,7 @@ func _sync() -> void:
 	_body.rotation.y = _shown_yaw + _front_yaw
 	var body_yaw: float = _shown_yaw
 	if not _tripo.is_empty():
-		_show_tripo(float(state["walk"]) >= 0.0, ground)
+		_show_tripo(float(state["walk"]) >= 0.0, ground, state)
 		_update_aim(state)
 		_update_throw(state)
 	else:
@@ -703,7 +705,7 @@ func _show_or_fallback(action: String, u: float, weapon: String) -> void:
 ## The Tripo Agent's clip this frame: the move clip while the actor walks, phased by the ground it has covered (`ground`: the feet
 ## on the board, world units), so one pass of the clip takes exactly its `travel_m` of ground; the idle on its own clock otherwise.
 ## The change between the two is a snap (D47's default; the transitions are MOVEMENT's next step).
-func _show_tripo(walking: bool, ground: Vector2) -> void:
+func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 	if walking and not is_nan(_last_ground.x):
 		_walked += ground.distance_to(_last_ground)
 	_last_ground = ground
@@ -717,8 +719,18 @@ func _show_tripo(walking: bool, ground: Vector2) -> void:
 		if _move_pass > 0.0:
 			t = fposmod(_walked / _move_pass, 1.0) * length
 	else:
-		if not _freeze_idle:
-			_idle_t = fposmod(_idle_t + get_process_delta_time(), length)
+		## The pose layers (aim, draw, throw) all start from the idle's frame 145 (Director 2026-11-13: the frame where the coat is farthest from the
+		## legs, measured on both figures): the moment one is asked for, the idle CUTS to it and holds, no blend, no wait.
+		var layered: bool = _aim_t > 0.0 or _throwing() or String(state["throw"]) != "" \
+			or (String(state["weapon"]) == "pistol" and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing")
+		if layered:
+			if not _idle_cut:
+				_idle_t = minf(IDLE_REFERENCE_FRAME / 24.0, length)
+			_idle_cut = true
+		else:
+			_idle_cut = false
+			if not _freeze_idle:
+				_idle_t = fposmod(_idle_t + get_process_delta_time(), length)
 		t = _idle_t
 	_player.seek(t, true)
 

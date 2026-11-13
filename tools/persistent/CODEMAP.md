@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**354 scripts · 101336 lines total** (under `godot/scripts/`)
+**354 scripts · 101357 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -421,7 +421,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 836 lines
+`class_name ActorMesh3D` · extends `Node3D` · 848 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -6328,11 +6328,11 @@ extends `SceneTree` · 49 lines
 
 ### `tripo_pose_dump.gd`
 
-extends `SceneTree` · 106 lines
+extends `SceneTree` · 115 lines
 
 `godot/scripts/tools/tripo_pose_dump.gd`
 
-> tripo_pose_dump — what a Blender pose session starts from (MOVEMENT, 2026-11-08; `tools/persistent/pose_lab.py` runs it). For one figure it writes into a folder: <figure>_rest.json            every bone of the LIGHT rig: name (Mixamo, no prefix), parent, the REST rotation / origin in skeleton space, as Godot reads them. Blender needs it to turn a Godot local rotation into a pose bone and back without guessing the importer's bone frames. <figure>_idle.json            every bone's LOCAL rotation in the idle clip at t = 0 (the pose a layer sits on): Blender shows the bones a pose does not name as the game has them. <figure>_<id>_start.json      the pose `id` as the game plays it TODAY (the Director's file when there is one, else the solved pose): `TripoFigure.pose_to_json()`. Usage (from the repo root): /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script godot/scripts/tools/tripo_pose_dump.gd -- <figure> <out_dir> [<pose id> ...] With no pose id, every pose of `TripoFigure.POSES` is written.
+> tripo_pose_dump — what a Blender pose session starts from (MOVEMENT, 2026-11-08; `tools/persistent/pose_lab.py` runs it). For one figure it writes into a folder: <figure>_rest.json            every bone of the LIGHT rig: name (Mixamo, no prefix), parent, the REST rotation / origin in skeleton space, as Godot reads them. Blender needs it to turn a Godot local rotation into a pose bone and back without guessing the importer's bone frames. <figure>_idle.json            every bone's LOCAL rotation in the idle clip at t = 0, or at the `--idle-frame=N` asked (24 fps clip frames; MOVEMENT 2026-11-12: frame 145 is the one whose coat lies farthest from the legs, female and male) (the pose a layer sits on): Blender shows the bones a pose does not name as the game has them. <figure>_<id>_start.json      the pose `id` as the game plays it TODAY (the Director's file when there is one, else the solved pose): `TripoFigure.pose_to_json()`. Usage (from the repo root): /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script godot/scripts/tools/tripo_pose_dump.gd -- <figure> <out_dir> [<pose id> ...] With no pose id, every pose of `TripoFigure.POSES` is written. `--idle-frame=N` may stand anywhere after the out_dir.
 
 **Constants / tuning**
 - `TripoFigureRef` = `preload("res://godot/scripts/geometry/tripo_figure.gd")`

@@ -144,7 +144,7 @@ var _move_pass: float = 0.0          ## world units of ground one pass of the mo
 var _last_ground := Vector2(NAN, NAN)
 var _idle_t: float = 0.0             ## the idle clip's own clock
 var _idle_cut: bool = false          ## the idle is held at `IDLE_REFERENCE_FRAME` while a pose layer is up
-const IDLE_REFERENCE_FRAME := 145.0  ## the idle frame every pose layer starts from (24 fps)
+const IDLE_REFERENCE_FRAME := 90.0   ## the idle frame every pose layer starts from (24 fps)
 ## `FREEZE_IDLE` (the light gate, 2026-11-12): the idle clip holds its first frame, so a capture does not depend on how many frames a
 ## view change took.
 var _freeze_idle: bool = DevFlag.on("FREEZE_IDLE")
@@ -719,8 +719,8 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 		if _move_pass > 0.0:
 			t = fposmod(_walked / _move_pass, 1.0) * length
 	else:
-		## The pose layers (aim, draw, throw) all start from the idle's frame 145 (Director 2026-11-13: the frame where the coat is farthest from the
-		## legs, measured on both figures): the moment one is asked for, the idle CUTS to it and holds, no blend, no wait.
+		## The pose layers (aim, draw, throw) all start from the idle's frame 90 (Director 2026-11-13: 145 was farthest from the legs but its stance is crooked
+		## on the female): the moment one is asked for, the idle CUTS to it and holds, no blend, no wait.
 		var layered: bool = _aim_t > 0.0 or _throwing() or String(state["throw"]) != "" \
 			or (String(state["weapon"]) == "pistol" and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing")
 		if layered:

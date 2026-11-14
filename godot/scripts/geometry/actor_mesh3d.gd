@@ -166,6 +166,7 @@ var _stop_side: String = ""
 var _was_stopping: bool = false
 var _coat_keys: Dictionary = {}      ## coat morph name -> blend shape index, for the passage's keys and the run's own RUN_COAT_KEY
 const IDLE_COAT_KEY := "IdleFix"     ## the idle's corrective coat key (one key for the whole idle, MOVEMENT 2026-11-13): on while the figure stands, off as the aim rises or it moves
+const WALK_COAT_KEY := "WalkFix"     ## the walk's corrective coat key (`ACTOR` D103): on while the figure walks (not runs)
 const RUN_COAT_KEY := "RunFix"       ## the run's corrective coat key (`ACTOR` D103), held at 1 while the figure runs so the passage hands over to the same coat
 var _move_pass: float = 0.0          ## world units of ground one pass of the move clip covers
 var _last_ground := Vector2(NAN, NAN)
@@ -353,7 +354,7 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 		var stop_keys: Array = []
 		for side: String in _stops:
 			stop_keys.append_array((_stops[side]["morphs"] as Dictionary).keys())
-		for name: String in _start_morphs.keys() + stop_keys + [RUN_COAT_KEY, IDLE_COAT_KEY]:
+		for name: String in _start_morphs.keys() + stop_keys + [RUN_COAT_KEY, IDLE_COAT_KEY, WALK_COAT_KEY]:
 			var idx: int = coat_mesh.find_blend_shape_by_name(name)
 			if idx >= 0:
 				_coat_keys[name] = idx
@@ -880,6 +881,7 @@ func _plan_stop(length: float, started: bool) -> void:
 				_stop_side = side
 	if _source != null:
 		_source.stop_side = _stop_side
+	print_debug("[RUN-PASSAGE] %s dash of %.0f GU: stop on the %s foot, stride x%.3f" % [_tripo, length, {"l": "left", "r": "right"}.get(_stop_side, "(none)"), _phase_k])
 
 
 func _update_run_coat(dash: bool, walking: bool, stop_t: float = -1.0) -> void:
@@ -899,6 +901,8 @@ func _update_run_coat(dash: bool, walking: bool, stop_t: float = -1.0) -> void:
 			var b: int = mini(a + 1, vals.size() - 1)
 			v = lerpf(vals[a], vals[b], clampf(frame - float(a), 0.0, 1.0))
 		elif name == RUN_COAT_KEY and dash:
+			v = 1.0
+		elif name == WALK_COAT_KEY and walking and not dash:
 			v = 1.0
 		elif name == IDLE_COAT_KEY and not walking:
 			v = 1.0 - _aim_t   ## a throw's timeline takes it over while it plays (`_update_throw`)

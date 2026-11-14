@@ -1200,13 +1200,15 @@ def run_stop_new(base_blend, clip_glb, out_blend, side):
 
     t_flat = int(math.ceil(unwarp(fs)))
     k_heel, k_off, k_air, k_down = [int(round(x * T)) for x in RUN_STOP_CLOSE]
+    k_heel = max(k_heel, t_flat)            # a foot that flattens late (the female's) rolls up after it is flat, never before
+    k_off = max(k_off, k_heel + 1)
     keys = [(t, run(warp(t), side + "ToeBase")[1], run(warp(t), side + "ToeBase")[0], run(warp(t), side + "Foot")[0]) for t in range(0, t_flat)]
     b = run(fs, side + "ToeBase")[1]
     Rt_b, Rf_b = run(fs, side + "ToeBase")[0], run(fs, side + "Foot")[0]
     keys.append((t_flat, b, Rt_b, Rf_b))
     keys.append((k_heel, b, Rt_b, Rf_b))
     Rf_up = lifted(Rf_b, 45.0, offs[side[0]])
-    keys.append((k_off, b + up * 0.01, Rf_up @ Rf_b.transposed() @ Rt_b, Rf_up))
+    keys.append((k_off, b + up * 0.01, Rt_b, Rf_up))   # the toes stay flat on the floor as the heel rolls up over them
     end_s = I[side + "ToeBase"][1]
     keys.append((k_air, b.lerp(end_s, 0.75) + up * RUN_STOP_LIFT, I[side + "ToeBase"][0], I[side + "Foot"][0]))
     keys.append((k_down, end_s, I[side + "ToeBase"][0], I[side + "Foot"][0]))

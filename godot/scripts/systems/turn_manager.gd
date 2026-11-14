@@ -14,6 +14,9 @@ var is_enemy_phase: bool = false
 
 
 func _ready() -> void:
+	var points: int = DevFlag.num("MOVE_POINTS_PER_AP")
+	if points > 0:
+		move_points_per_ap = points
 	current_ap = max_ap
 	ap_changed.emit(current_ap, max_ap)
 

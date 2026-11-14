@@ -870,6 +870,17 @@
           ]
         },
         {
+          "id": "agent_run_long_rail",
+          "keys": [
+            {
+              "frame": "wide",
+              "target": "@run_long_lane",
+              "view": "N",
+              "hold": 600
+            }
+          ]
+        },
+        {
           "id": "agent_aim_rail",
           "keys": [
             {
@@ -1079,7 +1090,10 @@
         {
           "id": "agent_run_long",
           "profile": "engine",
-          "rail": "agent_walk_rail",
+          "rail": "agent_run_long_rail",
+          "env": {
+            "MOVE_POINTS_PER_AP": 7
+          },
           "steps": [
             "turn @agent_run_long_far",
             "wait 0.4",
@@ -1090,7 +1104,7 @@
           "after_hold": 30,
           "length": 540,
           "seed": 1,
-          "note": "MOVEMENT: a longer dash with a corner: the first tap turns, the second starts the run (the authored start: support foot planted, the body projected forward), the run loops, turns the corner and stops"
+          "note": "MOVEMENT: a longer dash with a corner: the first tap turns, the second starts the run (the authored start: support foot planted, the body projected forward), the run loops twice in a straight line (MOVE_POINTS_PER_AP stretches the dash to 12 GU) and stops"
         },
         {
           "id": "agent_dash",
@@ -1545,10 +1559,20 @@
           ]
         },
         {
+          "id": "agent_run_long_mid",
+          "at": [
+            27.5,
+            18.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
           "id": "agent_run_long_far",
           "at": [
-            29.5,
-            13.5
+            27.5,
+            21.5
           ],
           "tags": [
             "event"
@@ -1854,6 +1878,24 @@
         }
       ],
       "regions": [
+        {
+          "id": "run_long_lane",
+          "box": {
+            "min": [
+              23,
+              8,
+              0
+            ],
+            "max": [
+              32,
+              23,
+              1
+            ]
+          },
+          "tags": [
+            "wide"
+          ]
+        },
         {
           "id": "material_row",
           "box": {

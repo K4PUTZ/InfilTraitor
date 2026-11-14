@@ -92,6 +92,7 @@ const FLAGS: Dictionary = {
 	"LIQUID_IGNITE": ["", "\"seconds:x,y,radius;...\" (inner GU): lights the flammable liquids at those real-time seconds"],
 	"LIQUID_WALK": ["", "\"x,y;x,y;...\" (inner GU): walks the agent along that path once the map is up"],
 	"LIQUID_WALK_FROM": ["", "\"x,y\" (inner GU): where LIQUID_WALK starts"],
+	"MOVE_POINTS_PER_AP": ["", "cells one AP moves (default 3): a capture-only stretch for long straight runs (take agent_run_long)"],
 	"MAP": ["", "the map to boot (capture-only: never rewrites the persisted choice)"],
 	"MAX_FPS": ["", "caps the frame rate (0 = uncapped); measure the GPU uncapped"],
 	"MEM_CENSUS": ["", "1: print the memory census once the map is loaded"],

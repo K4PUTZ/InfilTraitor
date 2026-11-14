@@ -1090,6 +1090,275 @@ def run_start_new(base_blend, clip_glb, out_blend):
           f"(clip turned {math.degrees(yaw):.1f} deg), travel {travel_run:.3f} m, end speed {v_end:.4f} m/frame; left foot {feet['L'][1]}, right foot {feet['R'][1]}")
 
 
+# THE RUN'S STOP (MOVEMENT 2026-11-14, Director: "a chegada do RUN pro idle ... uma chegada com cada pé, pra usar conforme o destino"; option A: a FIXED length,
+# the game times the last stretch so the contact always falls the same distance before the cell's centre). Two timelines per figure, one per foot:
+#   - it opens on the bank run's CONTACT of that foot (RUN_STOP_CONTACT) at the run's speed and brakes at a constant deceleration to rest in RUN_STOP_FRAMES;
+#   - a runner cannot stop over the foot that strikes (the hips are ~0.2 figure-m behind it and moving at full speed), so the stop is TWO steps: that foot
+#     plants and brakes, the other swings through and lands one step ahead (the second brake), then the first lifts and closes beside it;
+#   - the hips go forward at a constant deceleration (v t - v t^2 / 2T, the run's own speed at the contact), sideways and in height from the run to the idle;
+#   - the last frame is the idle (frame 90 with the 6 deg arm opening, from `base_blend`'s frame 1) standing where the hips came to rest.
+# The ends carry the game's pose: RunFix 1 -> 0, IdleFix 0 -> 1 (RUN_START_ENDS reversed).
+RUN_STOP_CONTACT = {"Right": 14, "Left": 21}   # the bank run's frames where each foot strikes (its flat stance follows for 2-3 frames)
+RUN_STOP_FRAMES = 12                            # contact -> rest (0.5 s at 24 fps); the run's phase advances half that, braking
+RUN_STOP_BODY = ((0.0, "run"), (0.33, "brake"), (0.66, "settle"), (1.0, "idle"))
+RUN_STOP_SWING = (0.2, 0.42)                    # the other foot: follows the run's swing until, is down on its place at (fractions of the stop)
+RUN_STOP_CLOSE = (0.2, 0.36, 0.6, 0.88)         # the striking foot: heel starts up, toes leave the floor, in the air half way, down beside the other (fractions)
+RUN_STOP_LIFT = 0.06                            # the closing foot's height over the floor three quarters of the way (figure metres)
+
+
+def run_stop_new(base_blend, clip_glb, out_blend, side):
+    """THE RUN -> IDLE STOP of one figure on `side`'s foot (Left | Right; see the block's header). Nothing is written over the base."""
+    bpy.ops.wm.open_mainfile(filepath=base_blend)
+    sc = bpy.context.scene
+    arm, rig = load_rig_from_blend()
+    sc.frame_set(1)
+    bpy.context.view_layer.update()
+    idle = {pb.name[len(PREFIX):]: (pb.matrix.to_3x3().normalized(), pb.head.copy()) for pb in arm.pose.bones}
+    idle_q = {pb.name: pb.rotation_quaternion.copy() for pb in arm.pose.bones}
+    hips_idle = idle["Hips"][1]
+    arm.animation_data_clear()
+    for o in [o for o in bpy.data.objects if o.name.startswith("PROP_") or o.name.startswith("IK_")]:
+        bpy.data.objects.remove(o)
+    for o in bpy.data.objects:
+        if o.type == 'MESH' and o.data.shape_keys:
+            o.data.shape_keys.animation_data_clear()
+            for kb in o.data.shape_keys.key_blocks[1:]:
+                kb.value = 0.0
+    other = "Left" if side == "Right" else "Right"
+    fc = RUN_STOP_CONTACT[side]
+    T = RUN_STOP_FRAMES
+    clip = _clip_frames(arm, clip_glb, list(range(0, 31)))
+    up = Vector((0.0, 0.0, 1.0))
+    fwd = sum(((idle[s + "ToeBase"][1] - idle[s + "Foot"][1]) for s in ("Left", "Right")), Vector())
+    fwd.z = 0.0
+    fwd.normalize()
+    drift = clip[30]["Hips"][1] - clip[0]["Hips"][1]
+    drift.z = 0.0
+    yaw = math.atan2(fwd.y, fwd.x) - math.atan2(drift.y, drift.x)
+    Rz = Matrix.Rotation(yaw, 3, 'Z')
+    c0 = clip[0]["Hips"][1]
+
+    def turned(f, n):
+        a = min(int(math.floor(f)), 29)
+        u = f - a
+        Pa, ha = clip[a][n]
+        Pb, hb = clip[a + 1][n]
+        qa, qb = Pa.to_quaternion(), Pb.to_quaternion()
+        q = qa.slerp(_quat_near(qb, qa), u)
+        return (Rz @ q.to_matrix()).normalized(), c0 + Rz @ (ha.lerp(hb, u) - c0)
+
+    # the planted foot's flat stance: the first frame after the contact whose ball is down
+    ball_z = min(turned(f, side + "ToeBase")[1].z for f in range(fc, fc + 5))
+    fs = next(f for f in range(fc, fc + 5) if turned(f, side + "ToeBase")[1].z < ball_z + 0.004)
+    A = idle[side + "ToeBase"][1] - turned(fs, side + "ToeBase")[1]
+    A.z = 0.0
+
+    def run(f, n):
+        P, h = turned(f, n)
+        return P, h + A
+
+    def along(v):
+        return v.dot(fwd)
+
+    def warp(t):                       # the run's phase, braking from 1 frame per frame to rest
+        return fc + t - t * t / (2.0 * T)
+
+    def unwarp(f):
+        return T * (1.0 - math.sqrt(max(0.0, 1.0 - 2.0 * (f - fc) / T)))
+
+    def blend(t):                      # run -> idle, flat at both ends (no jolt at the contact, none at rest)
+        x = t / T
+        return x * x * (3.0 - 2.0 * x)
+
+    h0 = run(fc, "Hips")[1]
+    v0 = along(run(fc + 1, "Hips")[1] - run(fc - 1, "Hips")[1]) * 0.5
+    D = v0 * T / 2.0
+    shift = h0 + fwd * D - hips_idle                     # the idle, moved to where the hips come to rest
+    shift.z = 0.0
+    I = {n: (R, h + shift) for n, (R, h) in idle.items()}
+
+    def hips_at(t):
+        f, w = warp(t), blend(t)
+        h = run(f, "Hips")[1].lerp(I["Hips"][1], w)
+        return h + fwd * ((along(h0) + v0 * (t - t * t / (2.0 * T))) - along(h))
+
+    def travel(t):
+        return fwd * (along(hips_at(t)) - along(hips_at(0)))
+
+    feet = {}
+    offs = {}
+    for sd in ("Left", "Right"):
+        offs[sd[0]] = idle[sd + "Foot"][0].transposed() @ (idle[sd + "Foot"][1] - idle[sd + "ToeBase"][1])
+    # the striking foot: the run's own until its flat stance, pinned while the other steps through, then it rolls up and closes beside it
+    def lifted(R, deg, v):
+        lat = up.cross(fwd).normalized()
+        for sgn in (1.0, -1.0):
+            Rr = Matrix.Rotation(math.radians(deg) * sgn, 3, lat) @ R
+            if (Rr @ v).z > (R @ v).z:
+                return Rr
+        return R
+
+    t_flat = int(math.ceil(unwarp(fs)))
+    k_heel, k_off, k_air, k_down = [int(round(x * T)) for x in RUN_STOP_CLOSE]
+    keys = [(t, run(warp(t), side + "ToeBase")[1], run(warp(t), side + "ToeBase")[0], run(warp(t), side + "Foot")[0]) for t in range(0, t_flat)]
+    b = run(fs, side + "ToeBase")[1]
+    Rt_b, Rf_b = run(fs, side + "ToeBase")[0], run(fs, side + "Foot")[0]
+    keys.append((t_flat, b, Rt_b, Rf_b))
+    keys.append((k_heel, b, Rt_b, Rf_b))
+    Rf_up = lifted(Rf_b, 45.0, offs[side[0]])
+    keys.append((k_off, b + up * 0.01, Rf_up @ Rf_b.transposed() @ Rt_b, Rf_up))
+    end_s = I[side + "ToeBase"][1]
+    keys.append((k_air, b.lerp(end_s, 0.75) + up * RUN_STOP_LIFT, I[side + "ToeBase"][0], I[side + "Foot"][0]))
+    keys.append((k_down, end_s, I[side + "ToeBase"][0], I[side + "Foot"][0]))
+    keys.append((T, end_s, I[side + "ToeBase"][0], I[side + "Foot"][0]))
+    feet[side[0]] = (keys, {"flat": t_flat, "heel": k_heel, "toe_off": k_off, "down": k_down})
+    # the other foot: the run's swing, then down one step ahead on its idle place, where it stays
+    t_sw, t_land = [int(round(x * T)) for x in RUN_STOP_SWING]
+    keys = [(t, run(warp(t), other + "ToeBase")[1], run(warp(t), other + "ToeBase")[0], run(warp(t), other + "Foot")[0]) for t in range(0, t_sw + 1)]
+    target = I[other + "ToeBase"][1]
+    keys.append((t_land, target, I[other + "ToeBase"][0], I[other + "Foot"][0]))
+    keys.append((T, target, I[other + "ToeBase"][0], I[other + "Foot"][0]))
+    feet[other[0]] = (keys, {"swing_until": t_sw, "down": t_land})
+
+    bpy.context.view_layer.objects.active = arm
+    if arm.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+    for t in range(0, T + 1):
+        arm.location = travel(t)
+        arm.keyframe_insert("location", frame=t + 1)
+    empties = {}
+    for s in ("L", "R"):
+        toe = bpy.data.objects.new(IK_NAME % (s, "toe"), None)
+        foot = bpy.data.objects.new(IK_NAME % (s, "foot"), None)
+        ankle = bpy.data.objects.new(IK_NAME % (s, "ankle"), None)
+        for o, kind, size in ((toe, 'CIRCLE', 0.05), (foot, 'ARROWS', 0.04), (ankle, 'SPHERE', 0.015)):
+            sc.collection.objects.link(o)
+            o.empty_display_type = kind
+            o.empty_display_size = size
+            o.rotation_mode = 'QUATERNION'
+            o.show_in_front = True
+        foot.parent = toe
+        ankle.parent = foot
+        ankle.location = offs[s]
+        empties[s] = (toe, foot, ankle)
+        last_t, last_f = None, None
+        for t, loc, Rt, Rf in feet[s][0]:
+            qt = _quat_near(Rt.to_quaternion(), last_t)
+            qf = _quat_near((Rt.transposed() @ Rf).to_quaternion(), last_f)
+            last_t, last_f = qt, qf
+            toe.location = loc
+            toe.rotation_quaternion = qt
+            foot.rotation_quaternion = qf
+            toe.keyframe_insert("location", frame=t + 1)
+            toe.keyframe_insert("rotation_quaternion", frame=t + 1)
+            foot.keyframe_insert("rotation_quaternion", frame=t + 1)
+    off_hip = {s: rig.R["Hips"].transposed() @ (arm.data.bones[PREFIX + s + "UpLeg"].head_local - arm.data.bones[PREFIX + "Hips"].head_local) for s in ("Left", "Right")}
+    thigh = {s: (idle[s + "Leg"][1] - idle[s + "UpLeg"][1]).length for s in ("Left", "Right")}
+    shin = {s: (idle[s + "Foot"][1] - idle[s + "Leg"][1]).length for s in ("Left", "Right")}
+    last_q = {}
+    body_frames = []
+    for frac, _marker in RUN_STOP_BODY:
+        t = int(round(frac * T))
+        body_frames.append(t + 1)
+        sc.frame_set(t + 1)
+        bpy.context.view_layer.update()
+        f, w = warp(t), blend(t)
+        P = {}
+        for n in rig.names:
+            qr = run(f, n)[0].to_quaternion()
+            P[n] = qr.slerp(_quat_near(I[n][0].to_quaternion(), qr), w).to_matrix()
+        hips_arm = hips_at(t) - travel(t)
+        for sd in ("Left", "Right"):
+            toe, foot, ankle = empties[sd[0]]
+            tgt = ankle.matrix_world.translation - travel(t)
+            hip_j = hips_arm + P["Hips"] @ off_hip[sd]
+            knee, end = _two_bone(hip_j, tgt, thigh[sd], shin[sd], hip_j + fwd * 1.0 - up * 0.3)
+            P[sd + "UpLeg"] = _aim_bone(P[sd + "UpLeg"], hip_j, knee)
+            P[sd + "Leg"] = _aim_bone(P[sd + "Leg"], knee, end)
+            P[sd + "Foot"] = foot.matrix_world.to_3x3().normalized()
+            P[sd + "ToeBase"] = toe.matrix_world.to_3x3().normalized()
+        for n in rig.names:
+            pb = arm.pose.bones[PREFIX + n]
+            pb.rotation_mode = 'QUATERNION'
+            if is_finger(n):
+                q = idle_q[pb.name].copy()
+            else:
+                p = rig.parent[n]
+                rp = rig.R[p] if p else Matrix.Identity(3)
+                pp = P[p] if p else Matrix.Identity(3)
+                q = (rig.R[n].transposed() @ rp @ pp.transposed() @ P[n]).to_quaternion()
+            if t == T:
+                q = idle_q[pb.name].copy()            # the last frame IS the idle, exactly
+            q = _quat_near(q, last_q.get(n))
+            last_q[n] = q
+            pb.rotation_quaternion = q
+            pb.keyframe_insert("rotation_quaternion", frame=t + 1)
+        bpy.context.view_layer.update()
+        h = arm.pose.bones[PREFIX + "Hips"]
+        m = h.matrix.copy()
+        m.translation = hips_arm
+        h.matrix = m
+        h.keyframe_insert("location", frame=t + 1)
+    for sd in ("Left", "Right"):
+        toe, foot, ankle = empties[sd[0]]
+        ik = arm.pose.bones[PREFIX + sd + "Leg"].constraints.new('IK')
+        ik.name = "IK foot"
+        ik.target = ankle
+        ik.chain_count = 2
+        ik.use_tail = True
+        ik.use_stretch = False
+        ik.iterations = 500
+        for bone, src in ((sd + "Foot", foot), (sd + "ToeBase", toe)):
+            c = arm.pose.bones[PREFIX + bone].constraints.new('COPY_ROTATION')
+            c.name = "IK foot rotation"
+            c.target = src
+            c.target_space = 'WORLD'
+            c.owner_space = 'WORLD'
+            c.mix_mode = 'REPLACE'
+    sc.timeline_markers.clear()
+    for (frac, marker), frame in zip(RUN_STOP_BODY, body_frames):
+        sc.timeline_markers.new(marker, frame=frame)
+    sc.frame_start, sc.frame_end = 1, T + 1
+    tag = "StopL" if side == "Left" else "StopR"
+    coat = bpy.data.objects.get(COAT_OBJECT)
+    if coat is None or coat.data.shape_keys is None:
+        print(f"[tripo_pose_lab] WARNING: no {COAT_OBJECT} with shape keys: the coat gets no per-pose keys")
+    else:
+        inner = body_frames[1:-1]
+        for i, frame in enumerate(inner):
+            kb = coat.shape_key_add(name=f"{tag}Fix_f{frame:02d}", from_mix=False)
+            prev = body_frames[i]
+            nxt = body_frames[i + 2]
+            for f2, v in ((prev, 0.0), (frame, 1.0), (nxt, 0.0)):
+                kb.value = v
+                kb.keyframe_insert("value", frame=f2)
+        blocks = coat.data.shape_keys.key_blocks
+        for name, (v_first, v_last) in (("RunFix", (1.0, 0.0)), ("IdleFix", (0.0, 1.0))):
+            if name not in blocks:
+                print(f"[tripo_pose_lab] WARNING: the coat has no {name}: the stop's end is not the game's pose")
+                continue
+            for frame, v in ((body_frames[0], v_first), (body_frames[-1], v_last)):
+                blocks[name].value = v
+                blocks[name].keyframe_insert("value", frame=frame)
+        coat.active_shape_key_index = list(blocks.keys()).index(f"{tag}Fix_f{inner[0]:02d}")
+    stop = D
+    arm["lab_pose"] = "run_stop_" + side[0].lower()
+    arm["lab_props"] = json.dumps([])
+    arm["lab_run_start"] = json.dumps({"clip": os.path.basename(clip_glb), "from_frame": fc, "to_frame": fc, "frames": T, "travel": stop, "side": side,
+                                       "planted": {"flat": feet[side[0]][1]["flat"]}, "pinned_until": k_heel + 1,
+                                       "strike": feet[side[0]][1], "step": feet[other[0]][1]})
+    sc.frame_set(1)
+    bpy.context.view_layer.objects.active = arm
+    for o in bpy.data.objects:
+        o.select_set(False)
+    arm.select_set(True)
+    bpy.ops.object.mode_set(mode='POSE')
+    embed_coat_follow()
+    bpy.ops.wm.save_as_mainfile(filepath=out_blend)
+    print(f"[tripo_pose_lab] wrote {out_blend}: the {arm['lab_figure']} stop on the {side.lower()} foot, frames 1-{T + 1}: the run from its contact "
+          f"{fc} (flat at {fs}) braking to rest, travel {stop:.3f} m at {v0:.4f} m/frame (clip turned {math.degrees(yaw):.1f} deg); {side.lower()} {feet[side[0]][1]}, {other.lower()} {feet[other[0]][1]}")
+
+
 def clip_out(blend, out_json, keys_dir):
     """A FOOTED timeline (the run's start) read back as a CLIP for the game: every frame, the pose as Blender EVALUATES it (the IK legs and the copied foot
     rotations included, which `sequence`'s stops would lose), each bone's Godot local rotation, the Hips in place (armature space), the forward travel (the
@@ -1132,7 +1401,11 @@ def run_start_check(blend):
     sc = bpy.context.scene
     arm = find_arm()
     info = json.loads(arm.get("lab_run_start", "{}"))
-    pinned_until = info.get("left", {}).get("ball", 0) + 1
+    pinned_side = info.get("side", "Left")      # a stop names its planted foot, pinned from its flat stance to the end; the start pins the left until it rolls off
+    if "side" in info:
+        pinned_from, pinned_until = info["planted"]["flat"] + 1, info.get("pinned_until", sc.frame_end)
+    else:
+        pinned_from, pinned_until = 1, info.get("left", {}).get("ball", 0) + 1
     ball0 = None
     worst_slide = worst_reach = 0.0
     lowest = 1e9
@@ -1151,13 +1424,13 @@ def run_start_check(blend):
             worst_reach = max(worst_reach, reach)
             lowest = min(lowest, ball.z, tip.z, ankle.z)
             row.append(f"{s}: ball ({ball.x:+.3f} {ball.y:+.3f} {ball.z:.3f}) tip z {tip.z:.3f} ankle z {ankle.z:.3f} reach {reach * 1000:.1f} mm")
-            if side == "Left" and f <= pinned_until:
+            if side == pinned_side and pinned_from <= f <= pinned_until:
                 ball0 = ball0 or ball.copy()
                 worst_slide = max(worst_slide, (ball - ball0).length)
         hips = M @ arm.pose.bones[PREFIX + "Hips"].head
         row.append(f"hips y {hips.y:+.3f} z {hips.z:.3f}")
         print("[tripo_pose_lab] " + " | ".join(row))
-    print(f"[tripo_pose_lab] CHECK left ball pinned frames 1-{pinned_until}: moved at most {worst_slide * 1000:.1f} mm; shins short of their targets by at most "
+    print(f"[tripo_pose_lab] CHECK {pinned_side.lower()} ball pinned frames {pinned_from}-{pinned_until}: moved at most {worst_slide * 1000:.1f} mm; shins short of their targets by at most "
           f"{worst_reach * 1000:.1f} mm; lowest foot point z {lowest:.4f} (the idle's balls stand at about 0.023)")
 
 
@@ -1361,6 +1634,8 @@ def main():
         throw_new(a[1], a[2], a[3], a[4])
     elif mode == "run_start_new":
         run_start_new(a[1], a[2], a[3])
+    elif mode == "run_stop_new":
+        run_stop_new(a[1], a[2], a[3], a[4])
     elif mode == "rebase_idle":
         rebase_idle(a[1], a[2], a[3], [int(x) for x in a[4].split(",")])
     elif mode == "embed_follow":

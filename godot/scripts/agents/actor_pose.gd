@@ -62,6 +62,13 @@ var _dash: bool = false   ## the walk in progress is a dash (both AP spent on on
 ## it. `dash_rate` = how much faster than authored the start plays (the actor sets it so the start ends at the dash's own speed); 0 = no start this dash.
 var dash_start: Dictionary = {}
 var dash_rate: float = 0.0
+## The run's STOPS (2026-11-14, one per foot; `ActorMesh3D` fills `dash_stop`: {"l"|"r": {"fps", "dist": ground per frame, GU}}). The actor says how long the
+## dash is (`dash_len`, GU); the mesh answers which foot it will strike on (`stop_side`, "" = no stop this dash: too short) and evens the run's stride so
+## that contact falls where the stop must start; the actor's last step then follows the stop and writes how far into it the body is (`stop_t`, clip seconds).
+var dash_stop: Dictionary = {}
+var dash_len: float = 0.0
+var stop_side: String = ""
+var stop_t: float = -1.0
 var _head_grid_deg: float = 0.0
 var _has_head_yaw: bool = false
 var _dev_vision: bool = false
@@ -151,6 +158,9 @@ func stop_walking() -> void:
 	_walk_progress = -1.0
 	_dash = false
 	dash_rate = 0.0
+	dash_len = 0.0
+	stop_side = ""
+	stop_t = -1.0
 
 
 ## A dash is a move that spends both AP: the Tripo figure plays its `run` clip for it instead of the `walk`.
@@ -224,6 +234,8 @@ func mesh_state() -> Dictionary:
 		"walk": _walk_progress if _posture == "standing" else -1.0,
 		"dash": _dash,
 		"dash_rate": dash_rate,
+		"dash_len": dash_len,
+		"stop_t": stop_t,
 		"throw": _throw_seq,
 		"throw_u": throw_u,
 		"throw_reversed": _throw_reversed,

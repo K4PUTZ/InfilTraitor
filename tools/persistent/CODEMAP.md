@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**354 scripts · 101602 lines total** (under `godot/scripts/`)
+**354 scripts · 101758 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `actor_pose.gd`
 
-`class_name ActorPose` · extends `Node` · 260 lines
+`class_name ActorPose` · extends `Node` · 272 lines
 
 `godot/scripts/agents/actor_pose.gd`
 
@@ -45,7 +45,7 @@
 
 ### `agent.gd`
 
-`class_name Agent` · extends `Node2D` · 575 lines
+`class_name Agent` · extends `Node2D` · 616 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -422,7 +422,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 934 lines
+`class_name ActorMesh3D` · extends `Node3D` · 1018 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -468,8 +468,16 @@ extends `ConfirmationDialog` · 64 lines
 - `EJECT_UP_M` = `1.2`
 - `EJECT_BACK_M` = `0.2`
 - `THROW_TURN_RAD_S` = `TAU`
+- `REVEAL_PALETTES` = `{ &"agent": {"stripe_a": Color(0.86, 0.96, 1.0), "stripe_b": Color(0.16, 0.28, 0.38), "outline_color": Color(1.0, 1.0, 1.0)}, &"agency": {"stripe_a": Color(0.46, 0.64, 1.0), "stripe_b": Color(0.08, 0.14, 0.40), "outline_color": Color(0.30, 0.56, 1.0)}, &"militia": {"stripe_a": Color(1.0, 0.52, 0.36), "stripe_b": Color(0.40, 0.10, 0.06), "outline_color": Color(1.0, 0.34, 0.18)}, &"corporation": {"stripe_a": Color(1.0, 0.84, 0.30), "stripe_b": Color(0.38, 0.28, 0.04), "outline_color": Color(1.0, 0.74, 0.12)}, &"network": {"stripe_a": Color(0.46, 0.96, 0.62), "stripe_b": Color(0.06, 0.30, 0.14), "outline_color": Color(0.28, 0.90, 0.46)}, }`
+
+**Public vars**
+- `var silhouette_phase: float = 0.0:`
+- `var reveal_faction: StringName = &"":`
 
 **Public API**
+- `func setup_actor(board: Node3D, source: ActorPose) -> bool:`
+- `func throw_release_global() -> Vector3:`
+- `func fire_kick() -> bool:`
 - `func muzzle_global() -> Vector3:`
 - `func set_status_tint(color: Color, pulse: float) -> void:`
 
@@ -1497,7 +1505,7 @@ extends `Node3D` · 3579 lines
 
 ### `tripo_figure.gd`
 
-`class_name TripoFigure` · extends `RefCounted` · 634 lines
+`class_name TripoFigure` · extends `RefCounted` · 653 lines
 
 `godot/scripts/geometry/tripo_figure.gd`
 

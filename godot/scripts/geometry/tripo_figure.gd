@@ -91,7 +91,14 @@ const TRAVEL_META := &"travel_m"
 ## body covers is its meta `start_travel` (figure metres per frame, along the front), which the actor follows instead of a constant speed; it ends on the
 ## frame `start_handoff` (seconds) of the clip it hands over to (`FOOTED_CLIPS`' value), which carries on from there. `start_morphs`: the coat keys per frame.
 const CLIP_FILE := "res://ASSETS/ANIMATIONS/sequences/%s/%s.json"
-const FOOTED_CLIPS: Dictionary = {"run_start": "run"}
+## THE STOPS (2026-11-14): run -> idle, one per foot (`pose_lab.py`'s `run_stop_new`). A footed clip names the clip it LEAVES too ("prev", at its frame
+## "prev_frame" of 24 fps) when it starts from one: its Hips are matched to that clip at the first frame as to the next at the last, the difference spread
+## across. "next_frame" overrides the JSON's `run_frame` (a stop hands over to the idle's frame 90, the frame every idle passage is authored on).
+const FOOTED_CLIPS: Dictionary = {
+	"run_start": {"next": "run"},
+	"run_stop_l": {"prev": "run", "prev_frame": 21, "next": "idle", "next_frame": 90},
+	"run_stop_r": {"prev": "run", "prev_frame": 14, "next": "idle", "next_frame": 90},
+}
 
 static var _libraries: Dictionary = {}
 
@@ -537,7 +544,14 @@ static func pose_wrists(figure: String, pose: Animation) -> Array[Vector3]:
 ## The footed clip `id` of `figure` from its file (see `CLIP_FILE`), handing over to `next_clip` (the game set's own, already decoded). Its last frame's Hips are
 ## brought onto `next_clip`'s at the handoff, the difference spread over the passage and taken back out of the travel, so the body lands where the next clip
 ## stands with the feet where the timeline put them. Null (loud) when it cannot be built.
-static func footed_clip(figure: String, id: String, next_clip: Animation) -> Animation:
+static func _hips_at(clip: Animation, t: float) -> Variant:
+	for k in range(clip.get_track_count()):
+		if clip.track_get_type(k) == Animation.TYPE_POSITION_3D and String(clip.track_get_path(k)).ends_with(HIPS):
+			return clip.position_track_interpolate(k, t)
+	return null
+
+
+static func footed_clip(figure: String, id: String, next_clip: Animation, prev_clip: Animation = null) -> Animation:
 	var path: String = CLIP_FILE % [figure, id]
 	var errors: Array = []
 	var row: Dictionary = JsonFile.read_object(path, "TripoFigure", errors)
@@ -554,19 +568,22 @@ static func footed_clip(figure: String, id: String, next_clip: Animation) -> Ani
 	var skel_path: String = String(holder.get_path_to(skeleton))
 	var hips_name: String = skeleton.get_bone_name(TripoPoseKitRef.find_bone(skeleton, HIPS))
 	holder.free()
-	var handoff: float = float(row.get("run_frame", 0)) / fps
-	var next_hips: Vector3 = Vector3.ZERO
-	var found: bool = false
-	for t in range(next_clip.get_track_count()):
-		if next_clip.track_get_type(t) == Animation.TYPE_POSITION_3D and String(next_clip.track_get_path(t)).ends_with(HIPS):
-			next_hips = next_clip.position_track_interpolate(t, handoff)
-			found = true
-	if not found:
+	var spec: Dictionary = FOOTED_CLIPS.get(id, {})
+	var handoff: float = float(spec.get("next_frame", row.get("run_frame", 0))) / fps
+	var next_hips: Variant = _hips_at(next_clip, handoff)
+	if next_hips == null:
 		push_error("[TripoFigure] %s: the next clip has no Hips track" % path)
 		return null
 	var n: int = frames.size()
 	var last: Dictionary = frames[n - 1]
-	var delta: Vector3 = next_hips - JsonFile.vector3(last.get("hips_pos"), Vector3.ZERO, "%s hips_pos" % path, errors)
+	var delta: Vector3 = (next_hips as Vector3) - JsonFile.vector3(last.get("hips_pos"), Vector3.ZERO, "%s hips_pos" % path, errors)
+	var delta0 := Vector3.ZERO   ## at the first frame, to the clip it leaves (a stop): spread the other way
+	if prev_clip != null:
+		var prev_hips: Variant = _hips_at(prev_clip, float(spec.get("prev_frame", 0)) / fps)
+		if prev_hips == null:
+			push_error("[TripoFigure] %s: the clip it leaves has no Hips track" % path)
+			return null
+		delta0 = (prev_hips as Vector3) - JsonFile.vector3((frames[0] as Dictionary).get("hips_pos"), Vector3.ZERO, "%s hips_pos" % path, errors)
 	var anim := Animation.new()
 	anim.length = float(n - 1) / fps
 	anim.loop_mode = Animation.LOOP_NONE
@@ -587,10 +604,10 @@ static func footed_clip(figure: String, id: String, next_clip: Animation) -> Ani
 				tracks[bone] = idx
 			var q: Array = bones[bone]
 			anim.rotation_track_insert_key(int(tracks[bone]), t, Quaternion(float(q[0]), float(q[1]), float(q[2]), float(q[3])).normalized())
-		var hips: Vector3 = JsonFile.vector3(fr.get("hips_pos"), Vector3.ZERO, "%s hips_pos" % path, errors) + delta * u
+		var hips: Vector3 = JsonFile.vector3(fr.get("hips_pos"), Vector3.ZERO, "%s hips_pos" % path, errors) + delta * u + delta0 * (1.0 - u)
 		anim.position_track_insert_key(hips_track, t, hips)
 		var moved: Vector3 = JsonFile.vector3(fr.get("travel"), Vector3.ZERO, "%s travel" % path, errors)
-		travel.append(moved.z - delta.z * u)   ## along the front (+Z); what went into the Hips comes out of the ground covered
+		travel.append(moved.z - delta.z * u - delta0.z * (1.0 - u) + delta0.z)   ## along the front (+Z); what went into the Hips comes out of the ground covered
 		var m: Dictionary = fr.get("morphs", {})
 		for name: String in m:
 			var values: PackedFloat32Array = morphs.get(name, PackedFloat32Array())   ## a packed array is a value: append to the copy, store it back
@@ -615,7 +632,9 @@ static func build_library(figure: String, hips_rest: Vector3) -> AnimationLibrar
 		lib.add_animation(id, anim)
 	for id: String in FOOTED_CLIPS:
 		if FileAccess.file_exists(CLIP_FILE % [figure, id]):
-			var footed: Animation = footed_clip(figure, id, lib.get_animation(String(FOOTED_CLIPS[id])))
+			var spec: Dictionary = FOOTED_CLIPS[id]
+			var prev: Animation = lib.get_animation(String(spec["prev"])) if spec.has("prev") else null
+			var footed: Animation = footed_clip(figure, id, lib.get_animation(String(spec["next"])), prev)
 			if footed == null:
 				return null
 			lib.add_animation(id, footed)

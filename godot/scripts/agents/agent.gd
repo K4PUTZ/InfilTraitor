@@ -422,6 +422,9 @@ func move_along_path(path: Array[Vector2i], dash: bool = false) -> void:
 	_dashing = dash
 	if pose != null:
 		pose.set_dash(dash)
+		pose.dash_len = float(path.size() - 1) if dash else 0.0
+		pose.stop_side = ""
+		pose.stop_t = -1.0
 	move_started.emit(path[0], path.back())
 	_path_queue = path.duplicate()
 	_path_queue.pop_front()  ## already at path[0] — skip it
@@ -513,6 +516,37 @@ func _step_next() -> void:
 			_step_next()
 		)
 		return
+	if _dashing and _path_queue.is_empty() and pose != null and pose.dash_stop.has(pose.stop_side):
+		## the dash's last step: linear to where the stop starts, then the authored stop's own pace to rest on the cell's centre (see `_stop_distance`)
+		var stop: Dictionary = pose.dash_stop[pose.stop_side]
+		var sdist: PackedFloat32Array = stop["dist"]
+		var n: int = sdist.size()
+		var reach: float = sdist[n - 1]
+		var v0: float = (sdist[1] - sdist[0]) * float(stop["fps"])   ## GU a second, authored, at the contact
+		if n >= 2 and reach < 1.0 and v0 > 0.0:
+			var rate: float = (1.0 / dash_step_duration) / v0
+			var t_lin: float = (1.0 - reach) * dash_step_duration
+			var clip_s: float = float(n - 1) / float(stop["fps"])
+			var from_s: Vector2 = position
+			var to_s: Vector2 = _cell_to_world(next_cell)
+			_walk_progress = 0.0
+			tween.tween_method(func(t: float) -> void:
+				var s: float
+				if t < t_lin:
+					s = t / dash_step_duration
+				else:
+					var tc: float = minf((t - t_lin) * rate, clip_s)
+					pose.stop_t = tc
+					s = (1.0 - reach) + _stop_distance(sdist, float(stop["fps"]), tc)
+				position = from_s.lerp(to_s, clampf(s, 0.0, 1.0))
+				_walk_progress = clampf(s, 0.0, 0.999), 0.0, t_lin + clip_s / rate, t_lin + clip_s / rate)
+			tween.chain().tween_callback(func() -> void:
+				step_finished.emit(next_cell)
+				queue_redraw()
+				_step_next()
+			)
+			return
+		push_warning("[Agent] the %s stop covers %.2f GU: not used (it must end inside the last GU)" % [pose.stop_side, reach])
 	tween.tween_property(self, "position", _cell_to_world(next_cell), dash_step_duration if _dashing else step_duration)
 	## One walk cycle per GU (p3_walk_export.py derives it from stride vs GU), so
 	## the step's own progress IS the cycle phase, tweened alongside the position
@@ -524,6 +558,13 @@ func _step_next() -> void:
 		queue_redraw()
 		_step_next()
 	)
+
+
+## Ground covered `tc` clip seconds into a stop (GU, from its contact).
+func _stop_distance(dist: PackedFloat32Array, fps: float, tc: float) -> float:
+	var f: float = tc * fps
+	var a: int = clampi(int(floor(f)), 0, dist.size() - 1)
+	return lerpf(dist[a], dist[mini(a + 1, dist.size() - 1)], clampf(f - float(a), 0.0, 1.0))
 
 
 func _cell_to_world(map_cell: Vector2i) -> Vector2:

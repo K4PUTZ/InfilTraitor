@@ -152,6 +152,18 @@ var _start_morphs: Dictionary = {}   ## morph name -> PackedFloat32Array, one va
 var _start_fps: float = 24.0
 var _dash_start: Dictionary = {}     ## handed to the pose once it is known (the actor's first step follows it)
 var _was_walking: bool = false
+## The run's STOPS (2026-11-14, `TripoFigure.FOOTED_CLIPS` run_stop_l / _r): the dash's last stretch is one of two authored stops, one per foot, chosen at
+## the dash's first frame: the foot whose contact in the run falls nearest to where the stop must start (`ActorPose.dash_len` minus the stop's own reach),
+## and the run's stride evened by `_phase_k` (option A, Director 2026-11-14) so the contact falls exactly there. The actor's last step then follows the
+## stop (`ActorPose.stop_t`); the idle that follows starts on its frame 90, where the stop ends.
+const TRIPO_RUN_STOP := "run_stop_"
+const RUN_CONTACTS := [[14.0, "r"], [21.0, "l"], [29.0, "r"], [36.0, "l"]]   ## the bank run's footfalls, 24 fps frames (36 = the next loop's 6)
+const PHASE_K_RANGE := Vector2(0.7, 1.4)   ## how far the stride may be evened; past it the dash has no stop
+var _stops: Dictionary = {}          ## "l" | "r" -> {"len", "fps", "morphs", "reach" (GU)}
+var _dash_stop: Dictionary = {}      ## handed to the pose: "l" | "r" -> {"fps", "dist" (GU per frame)}
+var _phase_k: float = 1.0
+var _stop_side: String = ""
+var _was_stopping: bool = false
 var _coat_keys: Dictionary = {}      ## coat morph name -> blend shape index, for the passage's keys and the run's own RUN_COAT_KEY
 const IDLE_COAT_KEY := "IdleFix"     ## the idle's corrective coat key (one key for the whole idle, MOVEMENT 2026-11-13): on while the figure stands, off as the aim rises or it moves
 const RUN_COAT_KEY := "RunFix"       ## the run's corrective coat key (`ACTOR` D103), held at 1 while the figure runs so the passage hands over to the same coat
@@ -221,6 +233,8 @@ func setup_actor(board: Node3D, source: ActorPose) -> bool:
 	_source = source
 	if not _dash_start.is_empty():
 		source.dash_start = _dash_start
+	if not _dash_stop.is_empty():
+		source.dash_stop = _dash_stop
 	_build_contact_shadow(source.get_parent())
 	name = "Mesh_%s" % (source.get_parent().name if source.get_parent() != null else source.name)
 	process_priority = 100  ## after the actor has moved and the sprite has decided, this frame
@@ -308,6 +322,19 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 		for d: float in travel:
 			dist.append(d * _tripo_units)
 		_dash_start = {"fps": _start_fps, "dist": dist}
+	for side: String in ["l", "r"]:
+		if not lib.has_animation(TRIPO_RUN_STOP + side) or _run_pass <= 0.0:
+			continue
+		var stop: Animation = lib.get_animation(TRIPO_RUN_STOP + side)
+		var stravel: PackedFloat32Array = stop.get_meta(&"start_travel", PackedFloat32Array())
+		var sdist := PackedFloat32Array()
+		for d: float in stravel:
+			sdist.append(d * _tripo_units)
+		if sdist.size() < 2:
+			continue
+		var sfps: float = float(stop.get_meta(&"start_fps", 24.0))
+		_stops[side] = {"len": stop.length, "fps": sfps, "morphs": stop.get_meta(&"start_morphs", {}), "reach": sdist[sdist.size() - 1]}
+		_dash_stop[side] = {"fps": sfps, "dist": sdist}
 	_body.scale = Vector3.ONE * _tripo_units
 	add_child(_body)
 	_apply_board_light(_body)
@@ -323,7 +350,10 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 	TripoFigureRef.dress_coat(_body, _skeleton, true, true)
 	var coat_mesh: MeshInstance3D = TripoFigureRef.coat_of(_body)
 	if coat_mesh != null:
-		for name: String in _start_morphs.keys() + [RUN_COAT_KEY, IDLE_COAT_KEY]:
+		var stop_keys: Array = []
+		for side: String in _stops:
+			stop_keys.append_array((_stops[side]["morphs"] as Dictionary).keys())
+		for name: String in _start_morphs.keys() + stop_keys + [RUN_COAT_KEY, IDLE_COAT_KEY]:
 			var idx: int = coat_mesh.find_blend_shape_by_name(name)
 			if idx >= 0:
 				_coat_keys[name] = idx
@@ -754,15 +784,22 @@ func _show_or_fallback(action: String, u: float, weapon: String) -> void:
 ## on the board, world units), so one pass of the clip takes exactly its `travel_m` of ground; the idle on its own clock otherwise.
 ## The change between the two is a snap (D47's default; the transitions are MOVEMENT's next step).
 func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
-	if walking and not is_nan(_last_ground.x):
-		_walked += ground.distance_to(_last_ground)
-	_last_ground = ground
 	var dash: bool = walking and _run_pass > 0.0 and bool(state.get("dash", false))
+	if walking and not is_nan(_last_ground.x):
+		_walked += ground.distance_to(_last_ground) * (_phase_k if dash and _start_t < 0.0 else 1.0)
+	_last_ground = ground
 	## A dash from standing opens on the authored start; it hands over to the run on the start's last frame, the run's phase set to that frame.
-	if dash and not _was_walking and _start_len > 0.0 and float(state.get("dash_rate", 0.0)) > 0.0:
-		_start_t = 0.0
+	if dash and not _was_walking:
+		_start_t = 0.0 if _start_len > 0.0 and float(state.get("dash_rate", 0.0)) > 0.0 else -1.0
+		_plan_stop(float(state.get("dash_len", 0.0)), _start_t >= 0.0)
 	elif not dash:
 		_start_t = -1.0
+		_phase_k = 1.0
+		_stop_side = ""
+	var stop_t: float = float(state.get("stop_t", -1.0)) if dash and _stop_side != "" else -1.0
+	if _was_stopping and not walking:
+		_idle_t = IDLE_REFERENCE_FRAME / 24.0   ## the stop ends on the idle's frame 90: the idle carries on from there
+	_was_stopping = stop_t >= 0.0
 	_was_walking = walking
 	if _start_t >= 0.0:
 		_start_t += get_process_delta_time() * float(state.get("dash_rate", 1.0))
@@ -770,15 +807,17 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 			_start_t = -1.0
 			var run_len: float = _player.get_animation("%s/%s" % [TripoFigureRef.LIBRARY_NAME, TRIPO_RUN]).length
 			_walked = _start_handoff / run_len * _run_pass if run_len > 0.0 else 0.0
-	_update_run_coat(dash, walking)
-	var move_name: String = TRIPO_RUN_START if _start_t >= 0.0 else (TRIPO_RUN if dash else _tripo_move)
+	_update_run_coat(dash, walking, stop_t)
+	var move_name: String = TRIPO_RUN_STOP + _stop_side if stop_t >= 0.0 else (TRIPO_RUN_START if _start_t >= 0.0 else (TRIPO_RUN if dash else _tripo_move))
 	var clip: String = "%s/%s" % [TripoFigureRef.LIBRARY_NAME, move_name if walking else TRIPO_IDLE]
 	if clip != _action:
 		_action = clip
 		_player.play(clip)
 	var length: float = _player.current_animation_length
 	var t: float = 0.0
-	if walking and _start_t >= 0.0:
+	if walking and stop_t >= 0.0:
+		t = minf(stop_t, length)
+	elif walking and _start_t >= 0.0:
 		t = minf(_start_t, length)
 	elif walking:
 		var pass_m: float = _run_pass if dash else _move_pass
@@ -802,15 +841,60 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 
 
 ## The coat keys of a run: the start's own per frame, then the run's corrective key held (none outside a dash).
-func _update_run_coat(dash: bool, walking: bool) -> void:
+## Which stop this dash ends on, and how much its run stride is evened for it (see `TRIPO_RUN_STOP`). `length`: the dash, GU; `started`: it opens on
+## the authored start (whose ground and handoff phase come before the run's own).
+func _plan_stop(length: float, started: bool) -> void:
+	_phase_k = 1.0
+	_stop_side = ""
+	if _source != null:
+		_source.stop_side = ""
+	if _stops.is_empty() or length <= 0.0:
+		return
+	var run_len: float = _player.get_animation("%s/%s" % [TripoFigureRef.LIBRARY_NAME, TRIPO_RUN]).length
+	if run_len <= 0.0:
+		return
+	var start_ground: float = 0.0
+	var phase0: float = 0.0
+	if started:
+		var sd: PackedFloat32Array = _dash_start.get("dist", PackedFloat32Array())
+		start_ground = sd[sd.size() - 1] if sd.size() > 0 else 0.0
+		phase0 = _start_handoff / run_len
+	var best: float = INF
+	for side: String in _stops:
+		var ground: float = length - float(_stops[side]["reach"]) - start_ground
+		if ground <= 0.0:
+			continue
+		var phase: float = phase0 + ground / _run_pass
+		for loop in range(int(ceil(phase)) + 2):
+			for contact: Array in RUN_CONTACTS:
+				if String(contact[1]) != side:
+					continue
+				var c: float = float(loop) + float(contact[0]) / 24.0 / run_len
+				if c <= phase0:
+					continue
+				var k: float = (c - phase0) / (phase - phase0)
+				if k < PHASE_K_RANGE.x or k > PHASE_K_RANGE.y or absf(k - 1.0) >= best:
+					continue
+				best = absf(k - 1.0)
+				_phase_k = k
+				_stop_side = side
+	if _source != null:
+		_source.stop_side = _stop_side
+
+
+func _update_run_coat(dash: bool, walking: bool, stop_t: float = -1.0) -> void:
 	var coat: MeshInstance3D = TripoFigureRef.coat_of(_body) if not _coat_keys.is_empty() else null
 	if coat == null:
 		return
+	var passage: Dictionary = _start_morphs
 	var frame: float = _start_t * _start_fps
+	if stop_t >= 0.0:
+		passage = _stops[_stop_side]["morphs"]
+		frame = stop_t * float(_stops[_stop_side]["fps"])
 	for name: String in _coat_keys:
 		var v: float = 0.0
-		if _start_t >= 0.0 and _start_morphs.has(name):
-			var vals: PackedFloat32Array = _start_morphs[name]
+		if (_start_t >= 0.0 or stop_t >= 0.0) and passage.has(name):
+			var vals: PackedFloat32Array = passage[name]
 			var a: int = clampi(int(floor(frame)), 0, vals.size() - 1)
 			var b: int = mini(a + 1, vals.size() - 1)
 			v = lerpf(vals[a], vals[b], clampf(frame - float(a), 0.0, 1.0))

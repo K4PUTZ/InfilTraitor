@@ -805,6 +805,13 @@ func scenario_walk_agent(cell: Vector2i) -> bool:
 	return false
 
 
+## The scenario's `turn <x,y>`: the first tap on a destination (select it, the idle agent turns toward it).
+func scenario_turn_agent(cell: Vector2i) -> void:
+	if room._selection_controller != null:
+		room._selection_controller.set_selected_cell(cell)
+		room._selection_controller._turn_toward(cell)
+
+
 ## RETIRE-2D — `canvas_check <name>`: one line saying how many overlays that carry a 3D target (`_ground` / `_world`) exist (`examined`),
 ## how many of those are visible now (`shown`), and which of them are painting the 2D canvas. `examined` and `shown` are the controls:
 ## a check that looked at nothing, or at a state that showed nothing, would print canvas=0 forever.

@@ -92,6 +92,7 @@
 ##   place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed
 ##   walk <x,y>                           MOVEMENT MV-4: the agent walks to a cell the way a tap orders it (`Room.scenario_walk_agent`:
 ##                                        the real path, the AP spent); fails when the cell is unreachable or the AP is short
+##   turn <x,y>                           the FIRST tap on a destination: the idle agent turns toward the cell (no move)
 ##   actor_bench <agent|agent_*> <n>     dev viability test: n live rigs of the shipped agent or a Tripo Agent on
 ##                                        the board, lit its way (`ActorViabilityBench`), draw calls printed after 30 frames
 ##   quit                                end the process (the harness waits on it)
@@ -113,12 +114,12 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "aim_cancel": 0, "canvas_check": 1,
 	"probe_store": 1, "shoot": 1, "weapon": 1, "shot_aim": 1, "shot_cancel": 0, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
-	"container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "walk": 1, "actor_bench": 2, "decal_wall": 2,
+	"container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "walk": 1, "turn": 1, "actor_bench": 2, "decal_wall": 2,
 	"skylight_hit": 0, "roof_gravity": 0, "flood": 1, "struct_audit": 0, "struct_cut": 0, "alert_reset": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1,
 }
 ## CAPTURE_RAILS §7.5 — the cell arguments an `@id` may name, by op and token index (0 = the op). `substitute_anchors()` turns each
 ## into the anchor's raw ground cell BEFORE parsing, so the event and the camera read the same anchor.
-const CELL_TOKENS: Dictionary = {"throw": [2], "aim": [1], "centre": [1], "place_guard": [2], "walk": [1], "decal_wall": [2], "occ_bench": [1, 2]}
+const CELL_TOKENS: Dictionary = {"throw": [2], "aim": [1], "centre": [1], "place_guard": [2], "walk": [1], "turn": [1], "decal_wall": [2], "occ_bench": [1, 2]}
 ## CAPTURE_RAILS (§8.1): framing modes and views of `frame` / `still`.
 const FRAME_MODES: PackedStringArray = ["wide", "detail", "close", "fit"]
 const VIEWS: PackedStringArray = ["N", "E", "S", "W"]
@@ -290,10 +291,10 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 				return "place_guard takes a guard index >= 0 and a cell x,y"
 			step["index"] = int(arg)
 			step["cell"] = Vector2i(int(gxy[0]), int(gxy[1]))
-		"walk":
+		"walk", "turn":
 			var wxy: PackedStringArray = arg.split(",")
 			if wxy.size() != 2 or not wxy[0].is_valid_int() or not wxy[1].is_valid_int():
-				return "walk takes a cell as x,y"
+				return "%s takes a cell as x,y" % op
 			step["cell"] = Vector2i(int(wxy[0]), int(wxy[1]))
 		"actor_bench":
 			if not (arg == "agent" or arg.begins_with("agent_")) or not tokens[2].is_valid_int() or int(tokens[2]) < 1 or int(tokens[2]) > 64:
@@ -570,6 +571,10 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "ScenarioSteps has no scenario_walk_agent()")
 			if not bool(steps.call("scenario_walk_agent", step["cell"])):
 				return _fail(step, "the agent did not start walking (see the error above)")
+		"turn":
+			if not steps.has_method("scenario_turn_agent"):
+				return _fail(step, "ScenarioSteps has no scenario_turn_agent()")
+			steps.call("scenario_turn_agent", step["cell"])
 		"actor_bench":
 			var bench_line: String = ActorViabilityBenchRef.spawn(room, str(step["model"]), int(step["count"]))
 			if bench_line.is_empty():

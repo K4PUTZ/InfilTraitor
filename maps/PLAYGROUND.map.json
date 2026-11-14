@@ -1057,6 +1057,26 @@
           "note": "MOVEMENT MV-4: the agent walks three cells south, stands, then three east (the real tap path); run it with INFILTRAITOR_TRIPO_FIGURE=<female|male> to see a Tripo Agent"
         },
         {
+          "id": "agent_turn",
+          "profile": "engine",
+          "rail": "agent_walk_rail",
+          "steps": [
+            "turn @agent_walk_south",
+            "wait 0.3",
+            "walk @agent_walk_south",
+            "wait 2.5",
+            "turn @agent_walk_east",
+            "wait 0.25",
+            "walk @agent_walk_east",
+            "wait 1.5"
+          ],
+          "at_key": 0,
+          "after_hold": 30,
+          "length": 600,
+          "seed": 1,
+          "note": "MOVEMENT: the first tap turns the idle agent toward the cell, the second starts the move while the turn is still going"
+        },
+        {
           "id": "agent_dash",
           "profile": "engine",
           "rail": "agent_walk_rail",

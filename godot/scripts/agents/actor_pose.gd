@@ -32,6 +32,9 @@ const HEAD_YAW_LIMIT_DEG := 60.0
 ## MOVEMENT 2026-11-12 (the throw's flow, `THROW_STUDY` §5.1): the grid direction the grenade is aimed at (target cell - own cell, BASE grid), set by the grenade's aim
 ## while the raise is held; the mesh turns the whole body to it in place. ZERO = none.
 var throw_aim_dir: Vector2 = Vector2.ZERO
+## The first tap on a destination turns the idle figure toward it (any angle, like the throw's aim); the next `face_step` (the move
+## starting) clears it and the body keeps turning to the step's facing from where it is. ZERO = no turn asked.
+var turn_aim_dir: Vector2 = Vector2.ZERO
 const POSTURES: PackedStringArray = ["standing", "crouch", "prone"]
 ## Grip suffixes the rig has actions for ("" = lowered).
 const GRIPS: PackedStringArray = ["", "_aimed"]
@@ -78,6 +81,7 @@ func face_step(step: Vector2i) -> void:
 	if not STEPS.has(step):
 		return
 	_facing_step = step
+	turn_aim_dir = Vector2.ZERO
 
 
 ## An arbitrary direction, reduced to the nearest of D44's four: the guards snap to eight and a diagonal has no facing
@@ -218,6 +222,7 @@ func mesh_state() -> Dictionary:
 		"throw_u": throw_u,
 		"throw_reversed": _throw_reversed,
 		"throw_dir": throw_aim_dir,
+		"turn_dir": turn_aim_dir,
 		"head": _head_grid_deg if _has_head_yaw else NAN,
 	}
 

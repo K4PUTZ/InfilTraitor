@@ -51,12 +51,20 @@ func handle_tile_click(cell: Vector2i) -> void:
 
 	if selected_cell != cell:
 		set_selected_cell(cell)
+		_turn_toward(cell)
 		return
 
 	if cell != room.agent.cell and try_move_to(cell):
 		return
 
 	room._update_selected_preview()
+
+
+## The first tap turns the idle agent toward the chosen cell (the second tap's move clears it, `ActorPose.face_step`).
+func _turn_toward(cell: Vector2i) -> void:
+	if room.agent.is_moving or cell == room.agent.cell or room.agent.pose == null:
+		return
+	room.agent.pose.turn_aim_dir = Vector2(cell - room.agent.cell)
 
 
 ## Attempt to move agent to target cell.

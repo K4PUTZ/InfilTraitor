@@ -618,9 +618,15 @@ func _sync() -> void:
 	## The throw turns the whole body in place to the aimed cell (Director 2026-11-12) and back to the grid facing after, at `THROW_TURN_RAD_S`.
 	var want_yaw: float = _yaw
 	var aim_dir: Vector2 = state.get("throw_dir", Vector2.ZERO)
-	if aim_dir != Vector2.ZERO and (_throwing() or String(state["throw"]) != ""):
+	var throwing_now: bool = _throwing() or String(state["throw"]) != ""
+	if aim_dir != Vector2.ZERO and throwing_now:
 		want_yaw = yaw_for_direction(aim_dir)
-	var throwing: bool = _throwing() or String(state["throw"]) != ""
+	## The first tap on a destination turns the idle figure toward it; a move that starts mid-turn keeps turning to the step's facing.
+	var turn_dir: Vector2 = state.get("turn_dir", Vector2.ZERO)
+	var tapping: bool = turn_dir != Vector2.ZERO and not (throwing_now or float(state["walk"]) >= 0.0)
+	if tapping:
+		want_yaw = yaw_for_direction(turn_dir)
+	var throwing: bool = throwing_now or tapping
 	if is_nan(_shown_yaw) or not (throwing or _throw_turning_back):   ## outside a throw the facing snaps, as it always did (D47)
 		_shown_yaw = want_yaw
 	var turn: float = wrapf(want_yaw - _shown_yaw, -PI, PI)

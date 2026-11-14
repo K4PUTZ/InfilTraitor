@@ -425,7 +425,40 @@ func move_along_path(path: Array[Vector2i], dash: bool = false) -> void:
 	move_started.emit(path[0], path.back())
 	_path_queue = path.duplicate()
 	_path_queue.pop_front()  ## already at path[0] — skip it
+	_start_profile = _dash_start_profile() if dash else {}
 	_step_next()
+
+
+## The run's START (MOVEMENT 2026-11-14): a dash from standing does not leave at full speed. The figure's authored start (`ActorPose.dash_start`: the
+## ground its body covers, frame by frame, the support foot planted) drives the first step instead of the linear tween; it is played `rate` times
+## faster than authored so it ends at this dash's own speed, then the step goes on linearly. {} = no start (none authored, or longer than one GU).
+var _start_profile: Dictionary = {}
+
+
+func _dash_start_profile() -> Dictionary:
+	if pose == null or pose.dash_start.is_empty():
+		return {}
+	var dist: PackedFloat32Array = pose.dash_start["dist"]
+	var fps: float = float(pose.dash_start["fps"])
+	var n: int = dist.size()
+	if n < 2 or dist[n - 1] >= 1.0:
+		push_warning("[Agent] the run's start covers %.2f GU: not used (it must end inside the first GU)" % (dist[n - 1] if n > 0 else 0.0))
+		return {}
+	var v_end: float = (dist[n - 1] - dist[n - 2]) * fps   ## GU a second, authored
+	var rate: float = (1.0 / dash_step_duration) / v_end if v_end > 0.0 else 1.0
+	pose.dash_rate = rate
+	return {"dist": dist, "fps": fps * rate, "seconds": float(n - 1) / (fps * rate)}
+
+
+## Ground covered `t` seconds into the first step of a started dash (GU).
+func _start_distance(profile: Dictionary, t: float) -> float:
+	var dist: PackedFloat32Array = profile["dist"]
+	var seconds: float = float(profile["seconds"])
+	if t >= seconds:
+		return dist[dist.size() - 1] + (t - seconds) / dash_step_duration
+	var f: float = t * float(profile["fps"])
+	var a: int = int(floor(f))
+	return lerpf(dist[a], dist[mini(a + 1, dist.size() - 1)], f - float(a))
 
 
 func _step_next() -> void:
@@ -462,6 +495,24 @@ func _step_next() -> void:
 	var tween := create_tween()
 	tween.set_trans(Tween.TRANS_LINEAR)
 	tween.set_parallel(true)
+	if not _start_profile.is_empty():
+		## the dash's first step from standing: the authored start's own pace, then linear to the end of the GU (see `_dash_start_profile`)
+		var from: Vector2 = position
+		var to: Vector2 = _cell_to_world(next_cell)
+		var profile: Dictionary = _start_profile
+		var seconds: float = float(profile["seconds"]) + (1.0 - _start_distance(profile, float(profile["seconds"]))) * dash_step_duration
+		_walk_progress = 0.0
+		tween.tween_method(func(t: float) -> void:
+			var s: float = clampf(_start_distance(profile, t), 0.0, 1.0)
+			position = from.lerp(to, s)
+			_walk_progress = s, 0.0, seconds, seconds)
+		_start_profile = {}
+		tween.chain().tween_callback(func() -> void:
+			step_finished.emit(next_cell)
+			queue_redraw()
+			_step_next()
+		)
+		return
 	tween.tween_property(self, "position", _cell_to_world(next_cell), dash_step_duration if _dashing else step_duration)
 	## One walk cycle per GU (p3_walk_export.py derives it from stride vs GU), so
 	## the step's own progress IS the cycle phase, tweened alongside the position

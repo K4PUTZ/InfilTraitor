@@ -794,6 +794,373 @@ def throw_new(base_blend, clip_glb, out_blend, part):
           f"step {THROW_STEP}, travel {THROW_TRAVEL}, dip {THROW_DIP}")
 
 
+# ---- THE RUN'S START (MOVEMENT, 2026-11-14) ----------------------------------------------------------------------------------------------------------------------------
+# The passage idle -> run, one timeline per figure (`SEQ_run_start_<FIG>.blend`). The Director's rules (2026-11-14, on the first draft, which slid the support foot
+# back and through the floor while the body stood still):
+#   - the support (LEFT) foot stays PLANTED where the idle has it, and the body projects forward over it;
+#   - the passage does not come back to a run pose standing on the idle's spot: it ends one step AHEAD, on the bank run's next footfall (the right foot's
+#     contact, RUN_START_TO), and the game carries on with the run from that frame to the end of its cycle, then its frame 0 (no jump cut).
+# THE SCAFFOLD. The bank `run` is turned to the figure's forward and ANCHORED so its left ball, flat at mid-stance (RUN_START_STANCE), sits on the idle's left
+# ball. The passage plays that anchored run from the frame whose hips stand over the left ball as the idle's do (computed) to RUN_START_TO with a constant
+# acceleration from rest: the hips' travel goes as t^2 and ends at the run's own speed, so the handoff has no jolt either. The body (pelvis, spine, arms,
+# head) is the idle blended into that run; the fingers keep the idle. The LEGS are IK, so whatever the Director does to the body, a planted foot stays put:
+# per foot a small reverse foot of three empties, IK_<L|R>_toe at the ball (the toes: flat on the floor while it stands), its child IK_<L|R>_foot (rotate it
+# to lift the heel about the ball), its child IK_<L|R>_ankle (the point the shin reaches: an IK constraint on <side>Leg, chain 2; the foot and the toes copy
+# the empties' rotations). The left foot is pinned until it rolls off its toes where the run does; the right one rolls up, leaves the idle's spot and swings
+# forward into the run's own swing. The forward travel is the ARMATURE OBJECT's location (root motion, keyed every frame: the game moves the actor by it);
+# the pose on the bones is in place.
+RUN_START_TO = 14                 # the bank run's frame of the right foot's contact: the passage's last frame, where the run takes over in play
+RUN_START_STANCE = 9              # the bank run's frame with the left foot flat at mid-stance: the anchor
+RUN_START_BODY = ((0.0, "idle"), (0.23, "lean"), (0.46, "drive"), (0.69, "push"), (1.0, "run"))   # the body's keys, as fractions of the passage, and their markers
+RUN_START_R_EVENTS = (0.08, 0.3, 0.38, 0.6)   # the right foot: heel starts up, heel up (ball still down), toes leave the floor, joins the run's swing
+RUN_START_R_HEEL_DEG = 35.0       # how far the right heel is up when its toes leave the floor
+RUN_START_LIFT = 0.02             # the right ball's first lift off the floor (figure metres)
+IK_NAME = "IK_%s_%s"              # (L|R, toe|foot|ankle)
+# THE ENDS CARRY THE GAME'S POSE (Director, 2026-11-14: "os frames das pontas, no início e no final, venham com a informação completa da pose final no game, mesmo
+# que seja só como referência"): the first frame has the coat key of the clip it leaves on, the last that of the clip it hands over to, fading across the passage.
+RUN_START_ENDS = ("IdleFix", "RunFix")
+
+
+def _quat_near(q, ref):
+    """`q` or `-q`, whichever is on `ref`'s side: keyed quaternions are interpolated by component, so a sign flip between two keys spins the bone."""
+    return q if ref is None or q.dot(ref) >= 0.0 else -q
+
+
+def run_start_new(base_blend, clip_glb, out_blend):
+    """THE STARTING TIMELINE OF THE RUN of one figure (see the block's header): the idle at frame 1 of `base_blend` (the draw timeline, its idle re-based to 90)
+    into the bank's `run`, ending on its frame RUN_START_TO one step ahead, the left foot planted, the legs on IK. Nothing is written over the base."""
+    bpy.ops.wm.open_mainfile(filepath=base_blend)
+    sc = bpy.context.scene
+    arm, rig = load_rig_from_blend()
+    sc.frame_set(1)
+    bpy.context.view_layer.update()
+    idle = {pb.name[len(PREFIX):]: (pb.matrix.to_3x3().normalized(), pb.head.copy()) for pb in arm.pose.bones}
+    idle_q = {pb.name: pb.rotation_quaternion.copy() for pb in arm.pose.bones}
+    hips_idle = idle["Hips"][1]
+    arm.animation_data_clear()
+    for o in [o for o in bpy.data.objects if o.name.startswith("PROP_") or o.name.startswith("IK_")]:
+        bpy.data.objects.remove(o)
+    for o in bpy.data.objects:
+        if o.type == 'MESH' and o.data.shape_keys:
+            o.data.shape_keys.animation_data_clear()
+            for kb in o.data.shape_keys.key_blocks[1:]:
+                kb.value = 0.0
+    clip = _clip_frames(arm, clip_glb, list(range(0, RUN_START_TO + 3)))
+    up = Vector((0.0, 0.0, 1.0))
+    fwd = sum(((idle[s + "ToeBase"][1] - idle[s + "Foot"][1]) for s in ("Left", "Right")), Vector())
+    fwd.z = 0.0
+    fwd.normalize()
+    drift = clip[RUN_START_TO + 2]["Hips"][1] - clip[0]["Hips"][1]
+    drift.z = 0.0
+    yaw = math.atan2(fwd.y, fwd.x) - math.atan2(drift.y, drift.x)
+    Rz = Matrix.Rotation(yaw, 3, 'Z')
+    c0 = clip[0]["Hips"][1]
+
+    def turned(f, n):
+        """the run at (fractional) frame f, turned to the figure's forward: (armature-space rotation, head)"""
+        a = min(int(math.floor(f)), RUN_START_TO + 1)
+        u = f - a
+        Pa, ha = clip[a][n]
+        Pb, hb = clip[a + 1][n]
+        qa, qb = Pa.to_quaternion(), Pb.to_quaternion()
+        q = qa.slerp(_quat_near(qb, qa), u)
+        return (Rz @ q.to_matrix()).normalized(), c0 + Rz @ (ha.lerp(hb, u) - c0)
+
+    A = idle["LeftToeBase"][1] - turned(RUN_START_STANCE, "LeftToeBase")[1]
+    A.z = 0.0
+
+    def run(f, n):
+        P, h = turned(f, n)
+        return P, h + A
+
+    def along(v):
+        return v.dot(fwd)
+
+    # where the passage starts in the run: the frame whose hips stand over the left ball as the idle's do
+    want = along(hips_idle - idle["LeftToeBase"][1])
+    ball = run(RUN_START_STANCE, "LeftToeBase")[1]
+    lo, hi = 2.0, float(RUN_START_STANCE)
+    for _i in range(40):
+        mid = 0.5 * (lo + hi)
+        if along(run(mid, "Hips")[1] - ball) < want:
+            lo = mid
+        else:
+            hi = mid
+    f0 = 0.5 * (lo + hi)
+    travel_run = along(run(RUN_START_TO, "Hips")[1] - run(f0, "Hips")[1])
+    v_end = along(run(RUN_START_TO + 1, "Hips")[1] - run(RUN_START_TO - 1, "Hips")[1]) * 0.5
+    T = max(8, int(round(2.0 * travel_run / v_end)))    # from rest to the run's speed at a constant acceleration
+
+    def warp(t):
+        return f0 + (RUN_START_TO - f0) * (t / T) ** 2
+
+    def unwarp(f):
+        return T * math.sqrt(max(0.0, (f - f0) / (RUN_START_TO - f0)))
+
+    def blend(t):
+        return 1.0 - (1.0 - t / T) ** 2
+
+    corr = along(hips_idle) - along(run(f0, "Hips")[1])
+
+    def hips_at(t):
+        f, w = warp(t), blend(t)
+        h_run = run(f, "Hips")[1]
+        h = hips_idle.lerp(h_run, w)
+        return h + fwd * ((along(h_run) + corr * (1.0 - w)) - along(h))   # forward: the run's own pace (from the idle's spot); sideways and height: blended
+
+    def travel(t):
+        return fwd * (along(hips_at(t)) - along(hips_idle))
+
+    # ---- the feet: (t, toe location, toe rotation, foot rotation), world = armature space at rest of the object (it only translates)
+    def lifted(R, deg, ball_at, v):
+        """`R` rolled about the ball by `deg` so the heel goes UP"""
+        lat = up.cross(fwd).normalized()
+        for sgn in (1.0, -1.0):
+            Rr = Matrix.Rotation(math.radians(deg) * sgn, 3, lat) @ R
+            if (Rr @ v).z > (R @ v).z:
+                return Rr
+        return R
+
+    feet = {}
+    offs = {}
+    for side in ("Left", "Right"):
+        s = side[0]
+        R_foot, R_toe, b = idle[side + "Foot"][0], idle[side + "ToeBase"][0], idle[side + "ToeBase"][1]
+        offs[s] = R_foot.transposed() @ (idle[side + "Foot"][1] - b)      # the ankle from the ball, in the foot's frame (a rigid foot)
+        keys = [(0, b, R_toe, R_foot)]
+        if side == "Left":
+            # the run's own stance: the heel starts up after mid-stance, the ball leaves the floor a little later
+            ank0 = run(RUN_START_STANCE, "LeftFoot")[1].z
+            bal0 = run(RUN_START_STANCE, "LeftToeBase")[1].z
+            f_heel = next(f for f in range(RUN_START_STANCE, RUN_START_TO) if run(f + 1, "LeftFoot")[1].z > ank0 + 0.01)
+            f_ball = next(f for f in range(RUN_START_STANCE, RUN_START_TO) if run(f + 1, "LeftToeBase")[1].z > bal0 + 0.015)
+            t_heel, t_ball = int(round(unwarp(f_heel))), int(round(unwarp(f_ball)))
+            keys.append((t_heel, b, R_toe, R_foot))
+            keys.append((t_ball, b, R_toe, run(warp(t_ball), "LeftFoot")[0]))
+            for t in range(t_ball + 1, T + 1):
+                f = warp(t)
+                keys.append((t, run(f, "LeftToeBase")[1], run(f, "LeftToeBase")[0], run(f, "LeftFoot")[0]))
+            feet[s] = (keys, {"heel": t_heel, "ball": t_ball})
+        else:
+            t1, t2, t3, t4 = [max(1, int(round(x * T))) for x in RUN_START_R_EVENTS]
+            keys.append((t1, b, R_toe, R_foot))
+            keys.append((t2, b, R_toe, lifted(R_foot, RUN_START_R_HEEL_DEG * 0.75, b, offs[s])))
+            Rf = lifted(R_foot, RUN_START_R_HEEL_DEG, b, offs[s])
+            keys.append((t3, b + up * RUN_START_LIFT + fwd * RUN_START_LIFT, Rf @ R_foot.transposed() @ R_toe, Rf))
+            for t in range(t4, T + 1):
+                f = warp(t)
+                keys.append((t, run(f, "RightToeBase")[1], run(f, "RightToeBase")[0], run(f, "RightFoot")[0]))
+            feet[s] = (keys, {"heel": t1, "toe_off": t3, "swing": t4})
+
+    bpy.context.view_layer.objects.active = arm
+    if arm.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+    # the root motion: the armature object, every frame
+    for t in range(0, T + 1):
+        arm.location = travel(t)
+        arm.keyframe_insert("location", frame=t + 1)
+    # the reverse feet
+    empties = {}
+    for s in ("L", "R"):
+        toe = bpy.data.objects.new(IK_NAME % (s, "toe"), None)
+        foot = bpy.data.objects.new(IK_NAME % (s, "foot"), None)
+        ankle = bpy.data.objects.new(IK_NAME % (s, "ankle"), None)
+        for o, kind, size in ((toe, 'CIRCLE', 0.05), (foot, 'ARROWS', 0.04), (ankle, 'SPHERE', 0.015)):
+            sc.collection.objects.link(o)
+            o.empty_display_type = kind
+            o.empty_display_size = size
+            o.rotation_mode = 'QUATERNION'
+            o.show_in_front = True
+        foot.parent = toe
+        ankle.parent = foot
+        ankle.location = offs[s]
+        empties[s] = (toe, foot, ankle)
+        last_t, last_f = None, None
+        for t, loc, Rt, Rf in feet[s][0]:
+            qt = _quat_near(Rt.to_quaternion(), last_t)
+            qf = _quat_near((Rt.transposed() @ Rf).to_quaternion(), last_f)
+            last_t, last_f = qt, qf
+            toe.location = loc
+            toe.rotation_quaternion = qt
+            foot.rotation_quaternion = qf
+            toe.keyframe_insert("location", frame=t + 1)
+            toe.keyframe_insert("rotation_quaternion", frame=t + 1)
+            foot.keyframe_insert("rotation_quaternion", frame=t + 1)
+    # the body's keys: the blended pose, the legs solved to where the empties put the ankles (the FK the IK starts from), the feet as the empties turn them
+    off_hip = {s: rig.R["Hips"].transposed() @ (arm.data.bones[PREFIX + s + "UpLeg"].head_local - arm.data.bones[PREFIX + "Hips"].head_local) for s in ("Left", "Right")}
+    thigh = {s: (idle[s + "Leg"][1] - idle[s + "UpLeg"][1]).length for s in ("Left", "Right")}
+    shin = {s: (idle[s + "Foot"][1] - idle[s + "Leg"][1]).length for s in ("Left", "Right")}
+    last_q = {}
+    body_frames = []
+    for frac, _marker in RUN_START_BODY:
+        t = int(round(frac * T))
+        body_frames.append(t + 1)
+        sc.frame_set(t + 1)
+        bpy.context.view_layer.update()
+        f, w = warp(t), blend(t)
+        P = {}
+        for n in rig.names:
+            qi = idle[n][0].to_quaternion()
+            P[n] = qi.slerp(_quat_near(run(f, n)[0].to_quaternion(), qi), w).to_matrix()
+        hips_arm = hips_at(t) - travel(t)
+        for side in ("Left", "Right"):
+            toe, foot, ankle = empties[side[0]]
+            target = ankle.matrix_world.translation - travel(t)
+            hip_j = hips_arm + P["Hips"] @ off_hip[side]
+            knee, end = _two_bone(hip_j, target, thigh[side], shin[side], hip_j + fwd * 1.0 - up * 0.3)
+            P[side + "UpLeg"] = _aim_bone(P[side + "UpLeg"], hip_j, knee)
+            P[side + "Leg"] = _aim_bone(P[side + "Leg"], knee, end)
+            P[side + "Foot"] = foot.matrix_world.to_3x3().normalized()
+            P[side + "ToeBase"] = toe.matrix_world.to_3x3().normalized()
+        for n in rig.names:
+            pb = arm.pose.bones[PREFIX + n]
+            pb.rotation_mode = 'QUATERNION'
+            if is_finger(n):
+                q = idle_q[pb.name].copy()
+            else:
+                p = rig.parent[n]
+                rp = rig.R[p] if p else Matrix.Identity(3)
+                pp = P[p] if p else Matrix.Identity(3)
+                q = (rig.R[n].transposed() @ rp @ pp.transposed() @ P[n]).to_quaternion()
+            q = _quat_near(q, last_q.get(n))
+            last_q[n] = q
+            pb.rotation_quaternion = q
+            pb.keyframe_insert("rotation_quaternion", frame=t + 1)
+        bpy.context.view_layer.update()
+        h = arm.pose.bones[PREFIX + "Hips"]
+        m = h.matrix.copy()
+        m.translation = hips_arm
+        h.matrix = m
+        h.keyframe_insert("location", frame=t + 1)
+    # the IK and the feet's rotations, last (the keys above are the FK the solver starts from)
+    for side in ("Left", "Right"):
+        toe, foot, ankle = empties[side[0]]
+        ik = arm.pose.bones[PREFIX + side + "Leg"].constraints.new('IK')
+        ik.name = "IK foot"
+        ik.target = ankle
+        ik.chain_count = 2
+        ik.use_tail = True
+        ik.use_stretch = False
+        ik.iterations = 500
+        for bone, src in ((side + "Foot", foot), (side + "ToeBase", toe)):
+            c = arm.pose.bones[PREFIX + bone].constraints.new('COPY_ROTATION')
+            c.name = "IK foot rotation"
+            c.target = src
+            c.target_space = 'WORLD'
+            c.owner_space = 'WORLD'
+            c.mix_mode = 'REPLACE'
+    sc.timeline_markers.clear()
+    for (frac, marker), frame in zip(RUN_START_BODY, body_frames):
+        sc.timeline_markers.new(marker, frame=frame)
+    sc.frame_start, sc.frame_end = 1, T + 1
+    coat = bpy.data.objects.get(COAT_OBJECT)
+    if coat is None or coat.data.shape_keys is None:
+        print(f"[tripo_pose_lab] WARNING: no {COAT_OBJECT} with shape keys: the coat gets no per-pose keys")
+    else:
+        for i, frame in enumerate(body_frames):
+            if i == 0:
+                continue
+            kb = coat.shape_key_add(name=f"StartFix_f{frame:02d}", from_mix=False)
+            nxt = body_frames[i + 1] if i + 1 < len(body_frames) else None
+            for f2, v in ((body_frames[i - 1], 0.0), (frame, 1.0)) + (((nxt, 0.0),) if nxt else ()):
+                kb.value = v
+                kb.keyframe_insert("value", frame=f2)
+        blocks = coat.data.shape_keys.key_blocks
+        for name, (v_first, v_last) in zip(RUN_START_ENDS, ((1.0, 0.0), (0.0, 1.0))):
+            if name not in blocks:
+                print(f"[tripo_pose_lab] WARNING: the coat has no {name}: the passage's end is not the game's pose")
+                continue
+            for frame, v in ((body_frames[0], v_first), (body_frames[-1], v_last)):
+                blocks[name].value = v
+                blocks[name].keyframe_insert("value", frame=frame)
+        coat.active_shape_key_index = list(blocks.keys()).index(next(k.name for k in blocks if k.name.startswith("StartFix")))
+    arm["lab_pose"] = "run_start"
+    arm["lab_props"] = json.dumps([])
+    arm["lab_run_start"] = json.dumps({"clip": os.path.basename(clip_glb), "from_frame": f0, "to_frame": RUN_START_TO, "frames": T, "travel": travel_run,
+                                       "speed_end": v_end, "left": feet["L"][1], "right": feet["R"][1]})
+    sc.frame_set(1)
+    bpy.context.view_layer.objects.active = arm
+    for o in bpy.data.objects:
+        o.select_set(False)
+    arm.select_set(True)
+    bpy.ops.object.mode_set(mode='POSE')
+    embed_coat_follow()
+    bpy.ops.wm.save_as_mainfile(filepath=out_blend)
+    print(f"[tripo_pose_lab] wrote {out_blend}: the {arm['lab_figure']} run start, frames 1-{T + 1}: the run from frame {f0:.2f} to {RUN_START_TO} "
+          f"(clip turned {math.degrees(yaw):.1f} deg), travel {travel_run:.3f} m, end speed {v_end:.4f} m/frame; left foot {feet['L'][1]}, right foot {feet['R'][1]}")
+
+
+def clip_out(blend, out_json, keys_dir):
+    """A FOOTED timeline (the run's start) read back as a CLIP for the game: every frame, the pose as Blender EVALUATES it (the IK legs and the copied foot
+    rotations included, which `sequence`'s stops would lose), each bone's Godot local rotation, the Hips in place (armature space), the forward travel (the
+    armature object's location, glTF space), the coat's animated keys' values; and each coat key the timeline animates, as glb_add_morph.py's JSON in `keys_dir`."""
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    sc = bpy.context.scene
+    arm, rig = load_rig_from_blend()
+    info = json.loads(arm.get("lab_run_start", "{}"))
+    coat = bpy.data.objects.get(COAT_OBJECT)
+    morphs = _animated_keys(coat) if coat is not None else []
+    frames = []
+    for f in range(sc.frame_start, sc.frame_end + 1):
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        P, G, local = {}, {}, {}
+        for n in rig.names:
+            P[n] = arm.pose.bones[PREFIX + n].matrix.to_3x3().normalized()
+            G[n] = to_g(P[n]) @ rig.BB[n].transposed()
+            p = rig.parent[n]
+            local[n] = ((G[p].transposed() if p else Matrix.Identity(3)) @ G[n]).to_quaternion()
+        frames.append({"frame": f, "bones": {n: xyzw(local[n]) for n in rig.names}, "hips_pos": list(CM @ arm.pose.bones[PREFIX + "Hips"].matrix.translation),
+                       "travel": list(CM @ arm.location), "morphs": {k: coat.data.shape_keys.key_blocks[k].value for k in morphs}})
+    out = {"format": "infiltraitor-clip", "v": 1, "figure": arm["lab_figure"], "name": arm.get("lab_pose", ""), "fps": sc.render.fps,
+           "run_frame": info.get("to_frame"), "frames": frames, "morphs": morphs}
+    os.makedirs(os.path.dirname(out_json), exist_ok=True)
+    with open(out_json, "w") as fh:
+        json.dump(out, fh, indent=1)
+    os.makedirs(keys_dir, exist_ok=True)
+    basis = [list(v.co) for v in coat.data.shape_keys.key_blocks[0].data] if coat is not None else []
+    for k in morphs:
+        with open(os.path.join(keys_dir, k + ".json"), "w") as fh:
+            json.dump({"name": k, "basis": basis, "key": [list(v.co) for v in coat.data.shape_keys.key_blocks[k].data]}, fh)
+    print(f"[tripo_pose_lab] wrote {out_json}: {len(frames)} frames at {sc.render.fps} fps, morphs {morphs}, travel {frames[-1]['travel']}")
+
+
+def run_start_check(blend):
+    """The feet of a run-start timeline, frame by frame, as Blender evaluates them (IK included): how far the planted left ball moves, how far each shin
+    falls short of its target, and the lowest point of each foot (nothing may go under the floor)."""
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    sc = bpy.context.scene
+    arm = find_arm()
+    info = json.loads(arm.get("lab_run_start", "{}"))
+    pinned_until = info.get("left", {}).get("ball", 0) + 1
+    ball0 = None
+    worst_slide = worst_reach = 0.0
+    lowest = 1e9
+    for f in range(sc.frame_start, sc.frame_end + 1):
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        M = arm.matrix_world
+        row = [f"f{f:02d}"]
+        for side in ("Left", "Right"):
+            s = side[0]
+            ball = M @ arm.pose.bones[PREFIX + side + "ToeBase"].head
+            tip = M @ arm.pose.bones[PREFIX + side + "ToeBase"].tail
+            ankle = M @ arm.pose.bones[PREFIX + side + "Leg"].tail
+            target = bpy.data.objects[IK_NAME % (s, "ankle")].matrix_world.translation
+            reach = (ankle - target).length
+            worst_reach = max(worst_reach, reach)
+            lowest = min(lowest, ball.z, tip.z, ankle.z)
+            row.append(f"{s}: ball ({ball.x:+.3f} {ball.y:+.3f} {ball.z:.3f}) tip z {tip.z:.3f} ankle z {ankle.z:.3f} reach {reach * 1000:.1f} mm")
+            if side == "Left" and f <= pinned_until:
+                ball0 = ball0 or ball.copy()
+                worst_slide = max(worst_slide, (ball - ball0).length)
+        hips = M @ arm.pose.bones[PREFIX + "Hips"].head
+        row.append(f"hips y {hips.y:+.3f} z {hips.z:.3f}")
+        print("[tripo_pose_lab] " + " | ".join(row))
+    print(f"[tripo_pose_lab] CHECK left ball pinned frames 1-{pinned_until}: moved at most {worst_slide * 1000:.1f} mm; shins short of their targets by at most "
+          f"{worst_reach * 1000:.1f} mm; lowest foot point z {lowest:.4f} (the idle's balls stand at about 0.023)")
+
+
 def rebase_idle(blend, idle_json, out_blend, frames):
     """THE IDLE REFERENCE OF A TIMELINE (MOVEMENT 2026-11-12: frame 145 of the idle is the one whose coat lies farthest from the legs): the body keys of a timeline that ARE the idle
     (`frames`, e.g. 1 for the draw) are put to the idle pose of `idle_json` (`tripo_pose_dump --idle-frame=N`), every bone and the Hips' place; the other keys are the Director's and
@@ -906,11 +1273,10 @@ def refresh_prop(blend, prop):
     bpy.ops.wm.save_mainfile()
 
 
-def render(blend, out_png):
-    bpy.ops.wm.open_mainfile(filepath=blend)
-    scn = bpy.context.scene
+def _render_scene(scn, size):
+    """EEVEE, a grey world, one sun, one camera (returned)"""
     scn.render.engine = 'BLENDER_EEVEE' if 'BLENDER_EEVEE' in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items.keys() else 'BLENDER_EEVEE_NEXT'
-    scn.render.resolution_x, scn.render.resolution_y = 900, 900
+    scn.render.resolution_x, scn.render.resolution_y = size, size
     world = bpy.data.worlds.new("w") if not scn.world else scn.world
     scn.world = world
     world.use_nodes = True
@@ -924,18 +1290,54 @@ def render(blend, out_png):
     cam.data.lens = 85
     scn.collection.objects.link(cam)
     scn.camera = cam
+    return cam
+
+
+def _aim_camera(cam, target, az, el, dist):
+    a = math.radians(az)
+    e = math.radians(el)
+    cam.location = target + Vector((math.sin(a) * math.cos(e), -math.cos(a) * math.cos(e), math.sin(e))) * dist
+    cam.rotation_euler = (target - cam.location).to_track_quat('-Z', 'Y').to_euler()
+
+
+def render(blend, out_png, frame=None):
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    scn = bpy.context.scene
+    if frame is not None:
+        scn.frame_set(frame)
+    cam = _render_scene(scn, 900)
+    cam.data.lens = 85
     target = Vector((0.0, -0.12, 0.5))
-    views = [("front34", 35.0, 12.0, 3.0), ("side", 90.0, 8.0, 3.0)]
     base, ext = os.path.splitext(out_png)
-    for name, az, el, dist in views:
-        a = math.radians(az)
-        e = math.radians(el)
-        cam.location = target + Vector((math.sin(a) * math.cos(e), -math.cos(a) * math.cos(e), math.sin(e))) * dist
-        direction = target - cam.location
-        cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+    for name, az, el, dist in (("front34", 35.0, 12.0, 3.0), ("side", 90.0, 8.0, 3.0)):
+        _aim_camera(cam, target, az, el, dist)
         scn.render.filepath = f"{base}_{name}{ext}"
         bpy.ops.render.render(write_still=True)
         print(f"[tripo_pose_lab] rendered {scn.render.filepath}")
+
+
+def strip(blend, out_prefix, view):
+    """Every frame of a timeline's range from ONE still camera (side or front 3/4), aimed at the middle of the hips' path: a planted foot must not move on
+    screen. Writes <out_prefix>_f<frame>.png; `pose_lab.py strip` lays them out."""
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    scn = bpy.context.scene
+    arm = find_arm()
+    frames = list(range(scn.frame_start, scn.frame_end + 1))
+    pts = []
+    for f in frames:
+        scn.frame_set(f)
+        bpy.context.view_layer.update()
+        pts.append(arm.matrix_world @ arm.pose.bones[PREFIX + "Hips"].head)
+    mid = sum(pts, Vector()) / len(pts)
+    cam = _render_scene(scn, 640)
+    cam.data.lens = 70
+    az, el = {"side": (90.0, 6.0), "front34": (35.0, 10.0)}[view]
+    _aim_camera(cam, Vector((mid.x, mid.y, 0.48)), az, el, 3.0)
+    for f in frames:
+        scn.frame_set(f)
+        scn.render.filepath = f"{out_prefix}_f{f:02d}.png"
+        bpy.ops.render.render(write_still=True)
+    print(f"[tripo_pose_lab] strip: {len(frames)} frames {frames[0]}-{frames[-1]} ({view}) -> {out_prefix}_f*.png")
 
 
 def main():
@@ -957,6 +1359,8 @@ def main():
         sequence_new(a[1], a[2], a[3], a[4], a[5], float(a[6]))
     elif mode == "throw_new":
         throw_new(a[1], a[2], a[3], a[4])
+    elif mode == "run_start_new":
+        run_start_new(a[1], a[2], a[3])
     elif mode == "rebase_idle":
         rebase_idle(a[1], a[2], a[3], [int(x) for x in a[4].split(",")])
     elif mode == "embed_follow":
@@ -966,7 +1370,13 @@ def main():
     elif mode == "sequence":
         sequence(a[1], a[2], a[3], a[4])
     elif mode == "render":
-        render(a[1], a[2])
+        render(a[1], a[2], int(a[3]) if len(a) > 3 else None)
+    elif mode == "strip":
+        strip(a[1], a[2], a[3] if len(a) > 3 else "side")
+    elif mode == "clip_out":
+        clip_out(a[1], a[2], a[3])
+    elif mode == "run_start_check":
+        run_start_check(a[1])
     else:
         fail(f"unknown mode {mode}")
 

@@ -58,6 +58,10 @@ var _posture: String = "standing"
 var _facing_step: Vector2i = START_STEP
 var _walk_progress: float = -1.0
 var _dash: bool = false   ## the walk in progress is a dash (both AP spent on one move): the figure runs
+## The run's authored start, when the figure has one (`ActorMesh3D` fills it: {"fps", "dist": ground covered per frame, GU}); the actor's first step follows
+## it. `dash_rate` = how much faster than authored the start plays (the actor sets it so the start ends at the dash's own speed); 0 = no start this dash.
+var dash_start: Dictionary = {}
+var dash_rate: float = 0.0
 var _head_grid_deg: float = 0.0
 var _has_head_yaw: bool = false
 var _dev_vision: bool = false
@@ -146,6 +150,7 @@ func set_walk_phase(progress01: float) -> void:
 func stop_walking() -> void:
 	_walk_progress = -1.0
 	_dash = false
+	dash_rate = 0.0
 
 
 ## A dash is a move that spends both AP: the Tripo figure plays its `run` clip for it instead of the `walk`.
@@ -218,6 +223,7 @@ func mesh_state() -> Dictionary:
 		"weapon": weapon,
 		"walk": _walk_progress if _posture == "standing" else -1.0,
 		"dash": _dash,
+		"dash_rate": dash_rate,
 		"throw": _throw_seq,
 		"throw_u": throw_u,
 		"throw_reversed": _throw_reversed,

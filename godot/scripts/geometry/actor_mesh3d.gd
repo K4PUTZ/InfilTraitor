@@ -142,6 +142,18 @@ var _lower_s: float = AIM_LOWER_S    ## and back: the sequence's own duration to
 var _raise_s: float = AIM_RAISE_S    ## how long the weight takes to go 0 -> 1 (the sequence's own duration when there is one)
 var _run_pass: float = 0.0           ## the `run` clip's ground per pass (0 = the game set has none: a dash walks)
 var _walked: float = 0.0             ## ground covered while walking, world units: the move clip's phase
+## The run's START (MOVEMENT 2026-11-14, `TripoFigure.FOOTED_CLIPS`): a dash opens on the authored passage, played on its own clock (scaled like the actor's
+## travel: `ActorPose.dash_rate`), then the run carries on from the passage's last frame. -1 = not in a start.
+const TRIPO_RUN_START := "run_start"
+var _start_t: float = -1.0
+var _start_len: float = 0.0
+var _start_handoff: float = 0.0
+var _start_morphs: Dictionary = {}   ## morph name -> PackedFloat32Array, one value per frame
+var _start_fps: float = 24.0
+var _dash_start: Dictionary = {}     ## handed to the pose once it is known (the actor's first step follows it)
+var _was_walking: bool = false
+var _coat_keys: Dictionary = {}      ## coat morph name -> blend shape index, for the passage's keys and the run's own RUN_COAT_KEY
+const RUN_COAT_KEY := "RunFix"       ## the run's corrective coat key (`ACTOR` D103), held at 1 while the figure runs so the passage hands over to the same coat
 var _move_pass: float = 0.0          ## world units of ground one pass of the move clip covers
 var _last_ground := Vector2(NAN, NAN)
 var _idle_t: float = 0.0             ## the idle clip's own clock
@@ -206,6 +218,8 @@ func setup_actor(board: Node3D, source: ActorPose) -> bool:
 		if not _load_rig(board, RIG_DIR + file):
 			return false
 	_source = source
+	if not _dash_start.is_empty():
+		source.dash_start = _dash_start
 	_build_contact_shadow(source.get_parent())
 	name = "Mesh_%s" % (source.get_parent().name if source.get_parent() != null else source.name)
 	process_priority = 100  ## after the actor has moved and the sprite has decided, this frame
@@ -282,6 +296,17 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 		_run_pass = TripoFigureRef.travel_m(lib.get_animation(TRIPO_RUN)) * _tripo_units
 	else:
 		push_warning("[ActorMesh3D] the %s game clips have no '%s': a dash walks" % [figure, TRIPO_RUN])
+	if lib.has_animation(TRIPO_RUN_START) and _run_pass > 0.0:
+		var start: Animation = lib.get_animation(TRIPO_RUN_START)
+		_start_len = start.length
+		_start_handoff = float(start.get_meta(&"start_handoff", 0.0))
+		_start_morphs = start.get_meta(&"start_morphs", {})
+		_start_fps = float(start.get_meta(&"start_fps", 24.0))
+		var travel: PackedFloat32Array = start.get_meta(&"start_travel", PackedFloat32Array())
+		var dist := PackedFloat32Array()
+		for d: float in travel:
+			dist.append(d * _tripo_units)
+		_dash_start = {"fps": _start_fps, "dist": dist}
 	_body.scale = Vector3.ONE * _tripo_units
 	add_child(_body)
 	_apply_board_light(_body)
@@ -295,6 +320,14 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 		_head.set("bone_name", _skeleton.get_bone_name(_head_bone))
 		_skeleton.add_child(_head)
 	TripoFigureRef.dress_coat(_body, _skeleton, true, true)
+	var coat_mesh: MeshInstance3D = TripoFigureRef.coat_of(_body)
+	if coat_mesh != null:
+		for name: String in _start_morphs.keys() + [RUN_COAT_KEY]:
+			var idx: int = coat_mesh.find_blend_shape_by_name(name)
+			if idx >= 0:
+				_coat_keys[name] = idx
+			elif _start_morphs.has(name):
+				push_warning("[ActorMesh3D] the %s coat has no '%s' morph: the run's start plays without it" % [figure, name])
 	_player = players[0] as AnimationPlayer
 	_player.add_animation_library(TripoFigureRef.LIBRARY_NAME, lib)
 	_player.speed_scale = 0.0  ## seeked, never played
@@ -722,14 +755,29 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 		_walked += ground.distance_to(_last_ground)
 	_last_ground = ground
 	var dash: bool = walking and _run_pass > 0.0 and bool(state.get("dash", false))
-	var move_name: String = TRIPO_RUN if dash else _tripo_move
+	## A dash from standing opens on the authored start; it hands over to the run on the start's last frame, the run's phase set to that frame.
+	if dash and not _was_walking and _start_len > 0.0 and float(state.get("dash_rate", 0.0)) > 0.0:
+		_start_t = 0.0
+	elif not dash:
+		_start_t = -1.0
+	_was_walking = walking
+	if _start_t >= 0.0:
+		_start_t += get_process_delta_time() * float(state.get("dash_rate", 1.0))
+		if _start_t >= _start_len:
+			_start_t = -1.0
+			var run_len: float = _player.get_animation("%s/%s" % [TripoFigureRef.LIBRARY_NAME, TRIPO_RUN]).length
+			_walked = _start_handoff / run_len * _run_pass if run_len > 0.0 else 0.0
+	_update_run_coat(dash)
+	var move_name: String = TRIPO_RUN_START if _start_t >= 0.0 else (TRIPO_RUN if dash else _tripo_move)
 	var clip: String = "%s/%s" % [TripoFigureRef.LIBRARY_NAME, move_name if walking else TRIPO_IDLE]
 	if clip != _action:
 		_action = clip
 		_player.play(clip)
 	var length: float = _player.current_animation_length
 	var t: float = 0.0
-	if walking:
+	if walking and _start_t >= 0.0:
+		t = minf(_start_t, length)
+	elif walking:
 		var pass_m: float = _run_pass if dash else _move_pass
 		if pass_m > 0.0:
 			t = fposmod(_walked / pass_m, 1.0) * length
@@ -748,6 +796,24 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 				_idle_t = fposmod(_idle_t + get_process_delta_time(), length)
 		t = _idle_t
 	_player.seek(t, true)
+
+
+## The coat keys of a run: the start's own per frame, then the run's corrective key held (none outside a dash).
+func _update_run_coat(dash: bool) -> void:
+	var coat: MeshInstance3D = TripoFigureRef.coat_of(_body) if not _coat_keys.is_empty() else null
+	if coat == null:
+		return
+	var frame: float = _start_t * _start_fps
+	for name: String in _coat_keys:
+		var v: float = 0.0
+		if _start_t >= 0.0 and _start_morphs.has(name):
+			var vals: PackedFloat32Array = _start_morphs[name]
+			var a: int = clampi(int(floor(frame)), 0, vals.size() - 1)
+			var b: int = mini(a + 1, vals.size() - 1)
+			v = lerpf(vals[a], vals[b], clampf(frame - float(a), 0.0, 1.0))
+		elif name == RUN_COAT_KEY and dash:
+			v = 1.0
+		coat.set_blend_shape_value(int(_coat_keys[name]), v)
 
 
 ## Every surface becomes one board-lit material carrying the model's own albedo colour and texture (one per source

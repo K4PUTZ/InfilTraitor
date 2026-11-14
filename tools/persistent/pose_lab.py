@@ -17,6 +17,12 @@ solver); the Director refines them here, in Blender, on the LIGHT Agent, with th
         Builds the STARTING timeline of the standing overhand throw, `SEQ_throw_overhand_<FIG>.blend` (idle -> cocked -> release -> follow -> idle, one
         `ThrowFix_f<frame>` coat key per pose), from the figure's draw timeline and the bank's `pitch_baseball`
         (`tripo_pose_lab.throw_new`; PROMPTS/THROW_STUDY_2026-11-12.md). An existing file is never overwritten.
+    python3 tools/persistent/pose_lab.py run_start_new [--figure ...]
+        Builds the STARTING timeline of the idle -> run passage, `SEQ_run_start_<FIG>.blend` (idle at frame 1 leaned into the bank's `run` at the first stride, one
+        `StartFix_f<frame>` coat key per pose; `tripo_pose_lab.run_start_new`). An existing file is never overwritten.
+    python3 tools/persistent/pose_lab.py strip run_start [--figure ...] [--view side|front34] [--blend path]
+        Every frame of the timeline `SEQ_<name>_<FIG>.blend` from ONE still camera, laid out in rows, plus an ONION (all frames over each other, darkest
+        wins: what stays sharp did not move), into temp/poses/strip_<name>_<fig>[_onion].png. For timelines with feet on the floor (the run's start).
     python3 tools/persistent/pose_lab.py render aim_pistol [--figure ...]
         Two stills of the saved .blend (front 3/4 and side), into temp/poses/.
     python3 tools/persistent/pose_lab.py reset aim_pistol --figure male
@@ -142,6 +148,44 @@ def cmd_throw_new(a):
             run([BLENDER, "-b", "--python", LAB, "--", "throw_new", base, clip, out, part], f"building {os.path.relpath(out, ROOT)}")
 
 
+def cmd_run_start_new(a):
+    for figure in figures_of(a.figure):
+        out = os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_run_start_{figure.upper()}.blend")
+        if os.path.exists(out):
+            print(f"[pose_lab] {os.path.relpath(out, ROOT)} exists: it holds your work, so it is left as it is")
+            continue
+        base = os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_draw_pistol_{figure.upper()}_idle90.blend")
+        clip = os.path.join(ROOT, "ASSETS", "ANIMATIONS", "bank", figure, "run.glb")
+        run([BLENDER, "-b", "--python", LAB, "--", "run_start_new", base, clip, out], f"building {os.path.relpath(out, ROOT)}")
+
+
+def cmd_strip(a):
+    from PIL import Image, ImageChops, ImageDraw
+    for figure in figures_of(a.figure):
+        blend = a.blend or os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_{a.name}_{figure.upper()}.blend")
+        if not os.path.exists(blend):
+            sys.exit(f"[pose_lab] {os.path.relpath(blend, ROOT)} does not exist")
+        work = os.path.join(TEMP, f"strip_{a.name}_{figure}")
+        shutil.rmtree(work, ignore_errors=True)
+        os.makedirs(work)
+        run([BLENDER, "-b", "--python", LAB, "--", "strip", blend, os.path.join(work, "frame"), a.view], f"rendering every frame of {os.path.relpath(blend, ROOT)} ({a.view})")
+        shots = sorted(f for f in os.listdir(work) if f.endswith(".png"))
+        ims = [Image.open(os.path.join(work, f)).convert("RGB") for f in shots]
+        w, h = ims[0].size
+        cols = min(7, len(ims))
+        rows = (len(ims) + cols - 1) // cols
+        sheet = Image.new("RGB", (w * cols, h * rows), (60, 60, 60))
+        onion = ims[0].copy()
+        for i, (name, im) in enumerate(zip(shots, ims)):
+            ImageDraw.Draw(im).text((12, 10), name[len("frame_"):-len(".png")], fill=(255, 255, 255))
+            sheet.paste(im, ((i % cols) * w, (i // cols) * h))
+            onion = ImageChops.darker(onion, im)
+        out = os.path.join(TEMP, f"strip_{a.name}_{figure}.png")
+        sheet.save(out)
+        onion.save(out[:-4] + "_onion.png")
+        print(f"[pose_lab] {os.path.relpath(out, ROOT)} ({len(ims)} frames) and {os.path.relpath(out[:-4] + '_onion.png', ROOT)}")
+
+
 def cmd_render(a):
     check_pose(a.pose)
     for figure in figures_of(a.figure):
@@ -189,6 +233,15 @@ def main():
         if name in ("save", "sequence"):
             s.add_argument("--take", action="store_true")
         s.set_defaults(fn=fn)
+    s = sub.add_parser("strip")
+    s.add_argument("name")
+    s.add_argument("--figure", default="male", choices=list(FIGURES) + ["both"])
+    s.add_argument("--view", default="side", choices=["side", "front34"])
+    s.add_argument("--blend", default="")
+    s.set_defaults(fn=cmd_strip)
+    s = sub.add_parser("run_start_new")
+    s.add_argument("--figure", default="both")
+    s.set_defaults(fn=cmd_run_start_new)
     s = sub.add_parser("throw_new")
     s.add_argument("--figure", default="both", choices=list(FIGURES) + ["both"])
     s.set_defaults(fn=cmd_throw_new)

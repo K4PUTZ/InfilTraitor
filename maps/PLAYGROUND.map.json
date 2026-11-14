@@ -1077,6 +1077,22 @@
           "note": "MOVEMENT: the first tap turns the idle agent toward the cell, the second starts the move while the turn is still going"
         },
         {
+          "id": "agent_run_long",
+          "profile": "engine",
+          "rail": "agent_walk_rail",
+          "steps": [
+            "turn @agent_run_long_far",
+            "wait 0.4",
+            "walk @agent_run_long_far",
+            "wait 2.5"
+          ],
+          "at_key": 0,
+          "after_hold": 30,
+          "length": 540,
+          "seed": 1,
+          "note": "MOVEMENT: a longer dash with a corner: the first tap turns, the second starts the run (the authored start: support foot planted, the body projected forward), the run loops, turns the corner and stops"
+        },
+        {
           "id": "agent_dash",
           "profile": "engine",
           "rail": "agent_walk_rail",
@@ -1523,6 +1539,16 @@
           "at": [
             27.5,
             12.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
+          "id": "agent_run_long_far",
+          "at": [
+            29.5,
+            13.5
           ],
           "tags": [
             "event"

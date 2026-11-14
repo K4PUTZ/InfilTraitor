@@ -83,10 +83,15 @@ const POSE_FILE := "res://ASSETS/ANIMATIONS/poses/%s/%s.json"
 ## The library's name on an actor's AnimationPlayer: its clips play as `bank/<id>`.
 const LIBRARY_NAME := &"bank"
 const HIPS := "Hips"
-## Per game clip, how far (degrees) both arms are opened away from the body at the shoulders over the WHOLE clip: a layer on the bank's
-## rotations, so the hands clear the coat's skirt (Director, 2026-11-12: the idle's hands went through it). Not in the bank, never baked into it.
-const ARM_OPEN_DEG := {"idle": 6.0}
+## The idle's arms open 6 degrees away from the body (Director 2026-11-12: the hands went through the coat's skirt) are IN THE BANK'S idle clip since
+## 2026-11-14 (`tools/asset_generation/tripo/glb_open_arms.py`; Director: "tirar isso do código, é uma bela armadilha"): no build-time layer.
 const TRAVEL_META := &"travel_m"
+## FOOTED CLIPS (MOVEMENT, 2026-11-14): passages authored on a timeline whose feet stay planted (the run's start: `pose_lab.py run_start_new`), read back
+## frame by frame as Blender evaluates them (`tripo_pose_lab.clip_out`: the IK legs included) into `CLIP_FILE`. The clip plays in place; the ground the
+## body covers is its meta `start_travel` (figure metres per frame, along the front), which the actor follows instead of a constant speed; it ends on the
+## frame `start_handoff` (seconds) of the clip it hands over to (`FOOTED_CLIPS`' value), which carries on from there. `start_morphs`: the coat keys per frame.
+const CLIP_FILE := "res://ASSETS/ANIMATIONS/sequences/%s/%s.json"
+const FOOTED_CLIPS: Dictionary = {"run_start": "run"}
 
 static var _libraries: Dictionary = {}
 
@@ -210,7 +215,6 @@ static func bank_clip(figure: String, id: String, hips_rest: Vector3) -> Animati
 	var src_skeleton := skeletons[0] as Skeleton3D
 	var hips_idx: int = find_bone(src_skeleton, HIPS)
 	var src_rest: Vector3 = src_skeleton.get_bone_rest(hips_idx).origin if hips_idx >= 0 else Vector3.ZERO
-	_open_arms(anim, src_skeleton, float(ARM_OPEN_DEG.get(id, 0.0)))
 	holder.free()
 	anim.loop_mode = Animation.LOOP_LINEAR
 	var hips_track: int = -1
@@ -238,30 +242,6 @@ static func bank_clip(figure: String, id: String, hips_rest: Vector3) -> Animati
 		anim.track_set_key_value(hips_track, k, Vector3(hips_rest.x + off.x - first.x, hips_rest.y + off.y, hips_rest.z + off.z - first.z))
 	anim.set_meta(TRAVEL_META, drift.length())
 	return anim
-
-
-## Opens both arms of `anim` by `degrees` away from the body, at the shoulder, on every key: the rotation about the figure's front axis, expressed in the
-## shoulder's parent frame at REST (the spine's small sway is not followed), put before the key's own rotation. The sign is each arm's own (its forearm lies on
-## the +x or the -x side), so both go outward.
-static func _open_arms(anim: Animation, skeleton: Skeleton3D, degrees: float) -> void:
-	if is_zero_approx(degrees):
-		return
-	for side: String in ["Left", "Right"]:
-		var arm: int = find_bone(skeleton, side + "Arm")
-		var fore: int = find_bone(skeleton, side + "ForeArm")
-		if arm < 0 or fore < 0 or skeleton.get_bone_parent(arm) < 0:
-			push_warning("[TripoFigure] no %s arm to open" % side)
-			continue
-		var out: float = signf(skeleton.get_bone_global_rest(fore).origin.x - skeleton.get_bone_global_rest(arm).origin.x)
-		var parent_rest: Basis = skeleton.get_bone_global_rest(skeleton.get_bone_parent(arm)).basis
-		var axis: Vector3 = (parent_rest.inverse() * Vector3(0, 0, 1)).normalized()
-		var layer := Quaternion(axis, deg_to_rad(degrees) * out)
-		var bone_path: String = String(skeleton.get_bone_name(arm))
-		for t in range(anim.get_track_count()):
-			if anim.track_get_type(t) != Animation.TYPE_ROTATION_3D or not String(anim.track_get_path(t)).ends_with(bone_path):
-				continue
-			for k in range(anim.track_get_key_count(t)):
-				anim.track_set_key_value(t, k, layer * (anim.track_get_key_value(t, k) as Quaternion))
 
 
 ## The raw bank clip `id` of `figure` (no Hips decoding): a clip the figure lacks falls back to the other figure's, loudly (both share the 65 Mixamo
@@ -554,6 +534,77 @@ static func pose_wrists(figure: String, pose: Animation) -> Array[Vector3]:
 	return out
 
 
+## The footed clip `id` of `figure` from its file (see `CLIP_FILE`), handing over to `next_clip` (the game set's own, already decoded). Its last frame's Hips are
+## brought onto `next_clip`'s at the handoff, the difference spread over the passage and taken back out of the travel, so the body lands where the next clip
+## stands with the feet where the timeline put them. Null (loud) when it cannot be built.
+static func footed_clip(figure: String, id: String, next_clip: Animation) -> Animation:
+	var path: String = CLIP_FILE % [figure, id]
+	var errors: Array = []
+	var row: Dictionary = JsonFile.read_object(path, "TripoFigure", errors)
+	var frames: Array = row.get("frames", []) as Array if row.get("frames") is Array else []
+	var fps: float = float(row.get("fps", 24.0))
+	if frames.size() < 2 or next_clip == null:
+		push_error("[TripoFigure] %s: %s" % [path, "no next clip to hand over to" if next_clip == null else "fewer than two frames"])
+		return null
+	var rig := _rig(figure)
+	if rig.is_empty():
+		return null
+	var holder := rig["holder"] as Node
+	var skeleton := rig["skeleton"] as Skeleton3D
+	var skel_path: String = String(holder.get_path_to(skeleton))
+	var hips_name: String = skeleton.get_bone_name(TripoPoseKitRef.find_bone(skeleton, HIPS))
+	holder.free()
+	var handoff: float = float(row.get("run_frame", 0)) / fps
+	var next_hips: Vector3 = Vector3.ZERO
+	var found: bool = false
+	for t in range(next_clip.get_track_count()):
+		if next_clip.track_get_type(t) == Animation.TYPE_POSITION_3D and String(next_clip.track_get_path(t)).ends_with(HIPS):
+			next_hips = next_clip.position_track_interpolate(t, handoff)
+			found = true
+	if not found:
+		push_error("[TripoFigure] %s: the next clip has no Hips track" % path)
+		return null
+	var n: int = frames.size()
+	var last: Dictionary = frames[n - 1]
+	var delta: Vector3 = next_hips - JsonFile.vector3(last.get("hips_pos"), Vector3.ZERO, "%s hips_pos" % path, errors)
+	var anim := Animation.new()
+	anim.length = float(n - 1) / fps
+	anim.loop_mode = Animation.LOOP_NONE
+	var tracks: Dictionary = {}
+	var hips_track: int = anim.add_track(Animation.TYPE_POSITION_3D)
+	anim.track_set_path(hips_track, NodePath("%s:%s" % [skel_path, hips_name]))
+	var travel := PackedFloat32Array()
+	var morphs: Dictionary = {}
+	for k in range(n):
+		var fr: Dictionary = frames[k]
+		var t: float = float(k) / fps
+		var u: float = float(k) / float(n - 1)
+		var bones: Dictionary = fr.get("bones", {})
+		for bone: String in bones:
+			if not tracks.has(bone):
+				var idx: int = anim.add_track(Animation.TYPE_ROTATION_3D)
+				anim.track_set_path(idx, NodePath("%s:%s%s" % [skel_path, hips_name.trim_suffix(HIPS), bone]))
+				tracks[bone] = idx
+			var q: Array = bones[bone]
+			anim.rotation_track_insert_key(int(tracks[bone]), t, Quaternion(float(q[0]), float(q[1]), float(q[2]), float(q[3])).normalized())
+		var hips: Vector3 = JsonFile.vector3(fr.get("hips_pos"), Vector3.ZERO, "%s hips_pos" % path, errors) + delta * u
+		anim.position_track_insert_key(hips_track, t, hips)
+		var moved: Vector3 = JsonFile.vector3(fr.get("travel"), Vector3.ZERO, "%s travel" % path, errors)
+		travel.append(moved.z - delta.z * u)   ## along the front (+Z); what went into the Hips comes out of the ground covered
+		var m: Dictionary = fr.get("morphs", {})
+		for name: String in m:
+			var values: PackedFloat32Array = morphs.get(name, PackedFloat32Array())   ## a packed array is a value: append to the copy, store it back
+			values.append(float(m[name]))
+			morphs[name] = values
+	if not errors.is_empty():
+		return null
+	anim.set_meta(&"start_travel", travel)
+	anim.set_meta(&"start_fps", fps)
+	anim.set_meta(&"start_handoff", handoff)
+	anim.set_meta(&"start_morphs", morphs)
+	return anim
+
+
 ## The game set of `figure` built from the bank, for a skeleton whose Hips rest at `hips_rest` (what the tool writes): the clips, then the poses.
 static func build_library(figure: String, hips_rest: Vector3) -> AnimationLibrary:
 	var lib := AnimationLibrary.new()
@@ -562,6 +613,12 @@ static func build_library(figure: String, hips_rest: Vector3) -> AnimationLibrar
 		if anim == null:
 			return null
 		lib.add_animation(id, anim)
+	for id: String in FOOTED_CLIPS:
+		if FileAccess.file_exists(CLIP_FILE % [figure, id]):
+			var footed: Animation = footed_clip(figure, id, lib.get_animation(String(FOOTED_CLIPS[id])))
+			if footed == null:
+				return null
+			lib.add_animation(id, footed)
 	for id: String in POSES:
 		var pose: Animation = bank_pose(figure, id)
 		if pose == null:

@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.4
 
+> ⏭️ **2026-11-14 — the DASH is built: a move that spends both AP plays the Tripo figure's `run` (0.32 s/GU, phased by the ground); the idle <-> move passage is still a snap (an `AnimationPlayer` crossfade over `seek` failed: the run never showed). NEXT, by the Director: the characters turn, then idle -> run / walk passages. Record: `PROMPTS/RESUMO_SESSAO_2026-11-14_DASH.md`.**
 > ⏭️ **2026-11-13 — the idle's frame 90 is the start of every pose layer (a jump cut in `ActorMesh3D`, `IDLE_REFERENCE_FRAME`); the four timelines (draw / throw, both figures) are rebased to it; the female's throw coat (`ThrowFix_f09-f18`) and poses are in the game; `coat_key_follow.py` makes the active coat key follow the playhead in every new timeline. Record: `PROMPTS/RESUMO_SESSAO_2026-11-13_IDLE_REFERENCE_90.md`.**
 
 > ⏭️ **2026-11-11 — the draw + aim PLAYS in the game from the Director's timeline, on both figures** (`AimSequence`, `sequences/<fig>/draw_pistol.json`; no finger joints in a sequence; the return as fast as the draw; the female's coat has her own `DrawFix`). The traps (edit the shape key, never the Basis; a stale prop in an old file) and the pose-lab commands are in the record: `PROMPTS/RESUMO_SESSAO_2026-11-11_DRAW_SEQUENCE.md`.**

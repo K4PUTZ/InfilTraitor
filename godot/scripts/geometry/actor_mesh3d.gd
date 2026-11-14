@@ -153,6 +153,7 @@ var _start_fps: float = 24.0
 var _dash_start: Dictionary = {}     ## handed to the pose once it is known (the actor's first step follows it)
 var _was_walking: bool = false
 var _coat_keys: Dictionary = {}      ## coat morph name -> blend shape index, for the passage's keys and the run's own RUN_COAT_KEY
+const IDLE_COAT_KEY := "IdleFix"     ## the idle's corrective coat key (one key for the whole idle, MOVEMENT 2026-11-13): on while the figure stands, off as the aim rises or it moves
 const RUN_COAT_KEY := "RunFix"       ## the run's corrective coat key (`ACTOR` D103), held at 1 while the figure runs so the passage hands over to the same coat
 var _move_pass: float = 0.0          ## world units of ground one pass of the move clip covers
 var _last_ground := Vector2(NAN, NAN)
@@ -322,7 +323,7 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 	TripoFigureRef.dress_coat(_body, _skeleton, true, true)
 	var coat_mesh: MeshInstance3D = TripoFigureRef.coat_of(_body)
 	if coat_mesh != null:
-		for name: String in _start_morphs.keys() + [RUN_COAT_KEY]:
+		for name: String in _start_morphs.keys() + [RUN_COAT_KEY, IDLE_COAT_KEY]:
 			var idx: int = coat_mesh.find_blend_shape_by_name(name)
 			if idx >= 0:
 				_coat_keys[name] = idx
@@ -469,6 +470,8 @@ func _update_throw(state: Dictionary) -> void:
 		if _throw_grenade.visible and _throw_grenade_holder.is_inside_tree():
 			_throw_last_hand = _throw_grenade_holder.global_position
 	for name: String in _throw_morphs:
+		if _throw_w <= 0.0 and _coat_keys.has(name):
+			continue   ## outside the throw a shared key (IdleFix) is `_update_run_coat`'s
 		_throw_coat.set_blend_shape_value(int(_throw_morphs[name]), float((here.get("morphs", {}) as Dictionary).get(name, 0.0)))
 
 
@@ -767,7 +770,7 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 			_start_t = -1.0
 			var run_len: float = _player.get_animation("%s/%s" % [TripoFigureRef.LIBRARY_NAME, TRIPO_RUN]).length
 			_walked = _start_handoff / run_len * _run_pass if run_len > 0.0 else 0.0
-	_update_run_coat(dash)
+	_update_run_coat(dash, walking)
 	var move_name: String = TRIPO_RUN_START if _start_t >= 0.0 else (TRIPO_RUN if dash else _tripo_move)
 	var clip: String = "%s/%s" % [TripoFigureRef.LIBRARY_NAME, move_name if walking else TRIPO_IDLE]
 	if clip != _action:
@@ -799,7 +802,7 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 
 
 ## The coat keys of a run: the start's own per frame, then the run's corrective key held (none outside a dash).
-func _update_run_coat(dash: bool) -> void:
+func _update_run_coat(dash: bool, walking: bool) -> void:
 	var coat: MeshInstance3D = TripoFigureRef.coat_of(_body) if not _coat_keys.is_empty() else null
 	if coat == null:
 		return
@@ -813,6 +816,8 @@ func _update_run_coat(dash: bool) -> void:
 			v = lerpf(vals[a], vals[b], clampf(frame - float(a), 0.0, 1.0))
 		elif name == RUN_COAT_KEY and dash:
 			v = 1.0
+		elif name == IDLE_COAT_KEY and not walking:
+			v = 1.0 - _aim_t   ## a throw's timeline takes it over while it plays (`_update_throw`)
 		coat.set_blend_shape_value(int(_coat_keys[name]), v)
 
 

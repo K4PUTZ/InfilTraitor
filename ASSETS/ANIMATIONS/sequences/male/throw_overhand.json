@@ -59,6 +59,7 @@
     "scale": 0.08967527250448863
    },
    "morphs": {
+    "IdleFix": 1.0,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -85,6 +86,7 @@
     "scale": 0.08967527498801549
    },
    "morphs": {
+    "IdleFix": 0.95703125,
     "ThrowFix_f09": 0.04296875,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -111,6 +113,7 @@
     "scale": 0.08967528243859609
    },
    "morphs": {
+    "IdleFix": 0.84375,
     "ThrowFix_f09": 0.15625,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -137,6 +140,7 @@
     "scale": 0.08967527498801549
    },
    "morphs": {
+    "IdleFix": 0.6835936307907104,
     "ThrowFix_f09": 0.3164063096046448,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -163,6 +167,7 @@
     "scale": 0.08967528243859609
    },
    "morphs": {
+    "IdleFix": 0.5,
     "ThrowFix_f09": 0.5,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -189,6 +194,7 @@
     "scale": 0.08967527995506923
    },
    "morphs": {
+    "IdleFix": 0.31640616059303284,
     "ThrowFix_f09": 0.6835938692092896,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -215,6 +221,7 @@
     "scale": 0.08967528988917668
    },
    "morphs": {
+    "IdleFix": 0.15624988079071045,
     "ThrowFix_f09": 0.8437501192092896,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -241,6 +248,7 @@
     "scale": 0.08967528740564983
    },
    "morphs": {
+    "IdleFix": 0.04296863079071045,
     "ThrowFix_f09": 0.9570313692092896,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -267,6 +275,7 @@
     "scale": 0.08967529733975728
    },
    "morphs": {
+    "IdleFix": 0.0,
     "ThrowFix_f09": 1.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -293,6 +302,7 @@
     "scale": 0.08967529733975728
    },
    "morphs": {
+    "IdleFix": 0.0,
     "ThrowFix_f09": 0.7407407164573669,
     "ThrowFix_f12": 0.25925928354263306,
     "ThrowFix_f15": 0.0,
@@ -319,6 +329,7 @@
     "scale": 0.08967526505390803
    },
    "morphs": {
+    "IdleFix": 0.0,
     "ThrowFix_f09": 0.2592591643333435,
     "ThrowFix_f12": 0.7407408356666565,
     "ThrowFix_f15": 0.0,
@@ -345,6 +356,7 @@
     "scale": 0.08967527995506923
    },
    "morphs": {
+    "IdleFix": 0.0,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 1.0,
     "ThrowFix_f15": 0.0,
@@ -371,6 +383,7 @@
     "scale": 0.08967527498801549
    },
    "morphs": {
+    "IdleFix": 0.0,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.7407407164573669,
     "ThrowFix_f15": 0.25925928354263306,
@@ -397,6 +410,7 @@
     "scale": 0.08967527250448863
    },
    "morphs": {
+    "IdleFix": 0.0,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.2592591643333435,
     "ThrowFix_f15": 0.7407408356666565,
@@ -423,6 +437,7 @@
     "scale": 0.08967529733975728
    },
    "morphs": {
+    "IdleFix": 0.0,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 1.0,
@@ -449,6 +464,7 @@
     "scale": 0.08967527250448863
    },
    "morphs": {
+    "IdleFix": 0.0,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.7407407164573669,
@@ -475,6 +491,7 @@
     "scale": 0.08967527250448863
    },
    "morphs": {
+    "IdleFix": 0.0,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.2592591643333435,
@@ -501,6 +518,7 @@
     "scale": 0.08967527250448863
    },
    "morphs": {
+    "IdleFix": 0.0,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -527,6 +545,7 @@
     "scale": 0.08967527250448863
    },
    "morphs": {
+    "IdleFix": 0.042968761175870895,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -553,6 +572,7 @@
     "scale": 0.08967527250448863
    },
    "morphs": {
+    "IdleFix": 0.1562500298023224,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -579,6 +599,7 @@
     "scale": 0.08967527250448863
    },
    "morphs": {
+    "IdleFix": 0.31640625,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -605,6 +626,7 @@
     "scale": 0.08967527250448863
    },
    "morphs": {
+    "IdleFix": 0.5,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -631,6 +653,7 @@
     "scale": 0.08967527250448863
    },
    "morphs": {
+    "IdleFix": 0.68359375,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -657,6 +680,7 @@
     "scale": 0.08967527250448863
    },
    "morphs": {
+    "IdleFix": 0.84375,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -683,6 +707,7 @@
     "scale": 0.08967527250448863
    },
    "morphs": {
+    "IdleFix": 0.95703125,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -709,6 +734,7 @@
     "scale": 0.08967527250448863
    },
    "morphs": {
+    "IdleFix": 1.0,
     "ThrowFix_f09": 0.0,
     "ThrowFix_f12": 0.0,
     "ThrowFix_f15": 0.0,
@@ -725,6 +751,7 @@
   "follow": 18
  },
  "morphs": [
+  "IdleFix",
   "ThrowFix_f09",
   "ThrowFix_f12",
   "ThrowFix_f15",

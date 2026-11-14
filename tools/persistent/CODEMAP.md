@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**354 scripts · 101762 lines total** (under `godot/scripts/`)
+**354 scripts · 101792 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `actor_pose.gd`
 
-`class_name ActorPose` · extends `Node` · 272 lines
+`class_name ActorPose` · extends `Node` · 276 lines
 
 `godot/scripts/agents/actor_pose.gd`
 
@@ -45,7 +45,7 @@
 
 ### `agent.gd`
 
-`class_name Agent` · extends `Node2D` · 616 lines
+`class_name Agent` · extends `Node2D` · 625 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -422,7 +422,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 1022 lines
+`class_name ActorMesh3D` · extends `Node3D` · 1036 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -479,7 +479,6 @@ extends `ConfirmationDialog` · 64 lines
 - `func throw_release_global() -> Vector3:`
 - `func fire_kick() -> bool:`
 - `func muzzle_global() -> Vector3:`
-- `func set_status_tint(color: Color, pulse: float) -> void:`
 
 ---
 
@@ -1505,7 +1504,7 @@ extends `Node3D` · 3579 lines
 
 ### `tripo_figure.gd`
 
-`class_name TripoFigure` · extends `RefCounted` · 653 lines
+`class_name TripoFigure` · extends `RefCounted` · 656 lines
 
 `godot/scripts/geometry/tripo_figure.gd`
 

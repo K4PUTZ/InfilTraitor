@@ -98,6 +98,9 @@ const FOOTED_CLIPS: Dictionary = {
 	"run_start": {"next": "run"},
 	"run_stop_l": {"prev": "run", "prev_frame": 21, "next": "idle", "next_frame": 90},
 	"run_stop_r": {"prev": "run", "prev_frame": 14, "next": "idle", "next_frame": 90},
+	## the walk's passages (2026-11-14): one start and one stop per figure (a walk cycle is exactly one GU, so every walk ends in the same phase)
+	"walk_start": {"next": "walk"},
+	"walk_stop": {"prev": "walk", "prev_frame": 22, "next": "idle", "next_frame": 90},
 }
 
 static var _libraries: Dictionary = {}

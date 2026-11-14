@@ -422,13 +422,13 @@ func move_along_path(path: Array[Vector2i], dash: bool = false) -> void:
 	_dashing = dash
 	if pose != null:
 		pose.set_dash(dash)
-		pose.dash_len = float(path.size() - 1) if dash else 0.0
+		pose.dash_len = float(path.size() - 1)
 		pose.stop_side = ""
 		pose.stop_t = -1.0
 	move_started.emit(path[0], path.back())
 	_path_queue = path.duplicate()
 	_path_queue.pop_front()  ## already at path[0] — skip it
-	_start_profile = _dash_start_profile() if dash else {}
+	_start_profile = _dash_start_profile()
 	_step_next()
 
 
@@ -438,17 +438,19 @@ func move_along_path(path: Array[Vector2i], dash: bool = false) -> void:
 var _start_profile: Dictionary = {}
 
 
+## A walk opens on the walk's own start the same way (`ActorPose.walk_start`), at the walk's step.
 func _dash_start_profile() -> Dictionary:
-	if pose == null or pose.dash_start.is_empty():
+	var start: Dictionary = {} if pose == null else (pose.dash_start if _dashing else pose.walk_start)
+	if start.is_empty():
 		return {}
-	var dist: PackedFloat32Array = pose.dash_start["dist"]
-	var fps: float = float(pose.dash_start["fps"])
+	var dist: PackedFloat32Array = start["dist"]
+	var fps: float = float(start["fps"])
 	var n: int = dist.size()
 	if n < 2 or dist[n - 1] >= 1.0:
 		push_warning("[Agent] the run's start covers %.2f GU: not used (it must end inside the first GU)" % (dist[n - 1] if n > 0 else 0.0))
 		return {}
 	var v_end: float = (dist[n - 1] - dist[n - 2]) * fps   ## GU a second, authored
-	var rate: float = (1.0 / dash_step_duration) / v_end if v_end > 0.0 else 1.0
+	var rate: float = (1.0 / _step_seconds()) / v_end if v_end > 0.0 else 1.0
 	pose.dash_rate = rate
 	return {"dist": dist, "fps": fps * rate, "seconds": float(n - 1) / (fps * rate)}
 
@@ -458,7 +460,7 @@ func _start_distance(profile: Dictionary, t: float) -> float:
 	var dist: PackedFloat32Array = profile["dist"]
 	var seconds: float = float(profile["seconds"])
 	if t >= seconds:
-		return dist[dist.size() - 1] + (t - seconds) / dash_step_duration
+		return dist[dist.size() - 1] + (t - seconds) / _step_seconds()
 	var f: float = t * float(profile["fps"])
 	var a: int = int(floor(f))
 	return lerpf(dist[a], dist[mini(a + 1, dist.size() - 1)], f - float(a))
@@ -503,7 +505,7 @@ func _step_next() -> void:
 		var from: Vector2 = position
 		var to: Vector2 = _cell_to_world(next_cell)
 		var profile: Dictionary = _start_profile
-		var seconds: float = float(profile["seconds"]) + (1.0 - _start_distance(profile, float(profile["seconds"]))) * dash_step_duration
+		var seconds: float = float(profile["seconds"]) + (1.0 - _start_distance(profile, float(profile["seconds"]))) * _step_seconds()
 		_walk_progress = 0.0
 		tween.tween_method(func(t: float) -> void:
 			var s: float = clampf(_start_distance(profile, t), 0.0, 1.0)
@@ -516,16 +518,18 @@ func _step_next() -> void:
 			_step_next()
 		)
 		return
-	if _dashing and _path_queue.is_empty() and pose != null and pose.dash_stop.has(pose.stop_side):
-		## the dash's last step: linear to where the stop starts, then the authored stop's own pace to rest on the cell's centre (see `_stop_distance`)
-		var stop: Dictionary = pose.dash_stop[pose.stop_side]
+	var stops: Dictionary = {} if pose == null else (pose.dash_stop if _dashing else pose.walk_stop)
+	if _path_queue.is_empty() and stops.has(pose.stop_side):
+		## the move's last step: linear to where the stop starts, then the authored stop's own pace to rest on the cell's centre (see `_stop_distance`)
+		var stop: Dictionary = stops[pose.stop_side]
+		var step_s: float = _step_seconds()
 		var sdist: PackedFloat32Array = stop["dist"]
 		var n: int = sdist.size()
 		var reach: float = sdist[n - 1]
 		var v0: float = (sdist[1] - sdist[0]) * float(stop["fps"])   ## GU a second, authored, at the contact
 		if n >= 2 and reach < 1.0 and v0 > 0.0:
-			var rate: float = (1.0 / dash_step_duration) / v0
-			var t_lin: float = (1.0 - reach) * dash_step_duration
+			var rate: float = (1.0 / step_s) / v0
+			var t_lin: float = (1.0 - reach) * step_s
 			var clip_s: float = float(n - 1) / float(stop["fps"])
 			var from_s: Vector2 = position
 			var to_s: Vector2 = _cell_to_world(next_cell)
@@ -533,7 +537,7 @@ func _step_next() -> void:
 			tween.tween_method(func(t: float) -> void:
 				var s: float
 				if t < t_lin:
-					s = t / dash_step_duration
+					s = t / step_s
 				else:
 					var tc: float = minf((t - t_lin) * rate, clip_s)
 					pose.stop_t = tc
@@ -558,6 +562,11 @@ func _step_next() -> void:
 		queue_redraw()
 		_step_next()
 	)
+
+
+## One GU's time at the move's pace: a dash's step or a walk's.
+func _step_seconds() -> float:
+	return dash_step_duration if _dashing else step_duration
 
 
 ## Ground covered `tc` clip seconds into a stop (GU, from its contact).

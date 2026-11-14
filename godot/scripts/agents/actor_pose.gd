@@ -66,6 +66,10 @@ var dash_rate: float = 0.0
 ## dash is (`dash_len`, GU); the mesh answers which foot it will strike on (`stop_side`, "" = no stop this dash: too short) and evens the run's stride so
 ## that contact falls where the stop must start; the actor's last step then follows the stop and writes how far into it the body is (`stop_t`, clip seconds).
 var dash_stop: Dictionary = {}
+## The walk's passages (2026-11-14): the same shapes for a walk (`walk_start`, `walk_stop`: {"l": ...}; a walk cycle is one GU, so one stop). `dash_len`
+## and `dash_rate` serve the move in progress, a dash or a walk (`dash_len` = the move's length, GU).
+var walk_start: Dictionary = {}
+var walk_stop: Dictionary = {}
 var dash_len: float = 0.0
 var stop_side: String = ""
 var stop_t: float = -1.0

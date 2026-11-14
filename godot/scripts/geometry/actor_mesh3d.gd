@@ -62,6 +62,7 @@ const AGENT_FIGURE_DEFAULT := "male"
 const TRIPO_FIGURE_NONE := "none"
 const TRIPO_MOVE_FLAG := "TRIPO_MOVE"
 const TRIPO_MOVE_DEFAULT := "walk"
+const TRIPO_RUN := "run"   ## the dash's clip: both AP spent on one move
 const TRIPO_IDLE := "idle"
 ## THE AIM LAYER (MOVEMENT, 2026-11-08): while the actor holds the pistol AIMED the arms are pulled from whatever clip plays toward the pose
 ## `pose_aim_pistol` (`TripoFigure.POSES`, `ActorAimPose3D`); the pistol is in the right hand only then, and comes out as the fist rises
@@ -139,6 +140,7 @@ var _pistol_stops: Array = []        ## [[weight, placement {bone, pos, quat, sc
 var _sequence: AimSequenceRef = null    ## the Director's timeline of the draw (`AimSequence`), when the figure has one: it replaces `AIM_STOPS`, the coat curve and the gun's blend
 var _lower_s: float = AIM_LOWER_S    ## and back: the sequence's own duration too (Director 2026-11-11: a draw is quick by nature, the way back is as quick as the way there)
 var _raise_s: float = AIM_RAISE_S    ## how long the weight takes to go 0 -> 1 (the sequence's own duration when there is one)
+var _run_pass: float = 0.0           ## the `run` clip's ground per pass (0 = the game set has none: a dash walks)
 var _walked: float = 0.0             ## ground covered while walking, world units: the move clip's phase
 var _move_pass: float = 0.0          ## world units of ground one pass of the move clip covers
 var _last_ground := Vector2(NAN, NAN)
@@ -276,6 +278,10 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 	_move_pass = TripoFigureRef.travel_m(lib.get_animation(move_clip)) * _tripo_units
 	if _move_pass <= 0.0:
 		push_warning("[ActorMesh3D] the %s clip '%s' covers no ground: it will play frozen while the actor walks" % [figure, move_clip])
+	if lib.has_animation(TRIPO_RUN):
+		_run_pass = TripoFigureRef.travel_m(lib.get_animation(TRIPO_RUN)) * _tripo_units
+	else:
+		push_warning("[ActorMesh3D] the %s game clips have no '%s': a dash walks" % [figure, TRIPO_RUN])
 	_body.scale = Vector3.ONE * _tripo_units
 	add_child(_body)
 	_apply_board_light(_body)
@@ -709,15 +715,18 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 	if walking and not is_nan(_last_ground.x):
 		_walked += ground.distance_to(_last_ground)
 	_last_ground = ground
-	var clip: String = "%s/%s" % [TripoFigureRef.LIBRARY_NAME, _tripo_move if walking else TRIPO_IDLE]
+	var dash: bool = walking and _run_pass > 0.0 and bool(state.get("dash", false))
+	var move_name: String = TRIPO_RUN if dash else _tripo_move
+	var clip: String = "%s/%s" % [TripoFigureRef.LIBRARY_NAME, move_name if walking else TRIPO_IDLE]
 	if clip != _action:
 		_action = clip
 		_player.play(clip)
 	var length: float = _player.current_animation_length
 	var t: float = 0.0
 	if walking:
-		if _move_pass > 0.0:
-			t = fposmod(_walked / _move_pass, 1.0) * length
+		var pass_m: float = _run_pass if dash else _move_pass
+		if pass_m > 0.0:
+			t = fposmod(_walked / pass_m, 1.0) * length
 	else:
 		## The pose layers (aim, draw, throw) all start from the idle's frame 90 (Director 2026-11-13: 145 was farthest from the legs but its stance is crooked
 		## on the female): the moment one is asked for, the idle CUTS to it and holds, no blend, no wait.

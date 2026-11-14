@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**354 scripts · 101357 lines total** (under `godot/scripts/`)
+**354 scripts · 101382 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `actor_pose.gd`
 
-`class_name ActorPose` · extends `Node` · 241 lines
+`class_name ActorPose` · extends `Node` · 249 lines
 
 `godot/scripts/agents/actor_pose.gd`
 
@@ -45,7 +45,7 @@
 
 ### `agent.gd`
 
-`class_name Agent` · extends `Node2D` · 517 lines
+`class_name Agent` · extends `Node2D` · 524 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -84,6 +84,7 @@
 - `var cover_state: CoverType = CoverType.NONE`
 - `var cover_direction: Vector2i = Vector2i.ZERO`
 - `var step_duration: float = 0.56`
+- `var dash_step_duration: float = 0.32`
 
 **Public API**
 - `func throw_origin() -> Vector2:`
@@ -104,7 +105,7 @@
 - `func set_dev_vision(enabled: bool) -> void:`
 - `func on_perspective_changed() -> void:`
 - `func update_cover(blocked_cells: Dictionary) -> void:`
-- `func move_along_path(path: Array[Vector2i]) -> void:`
+- `func move_along_path(path: Array[Vector2i], dash: bool = false) -> void:`
 
 ---
 
@@ -421,7 +422,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 848 lines
+`class_name ActorMesh3D` · extends `Node3D` · 857 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -447,6 +448,7 @@ extends `ConfirmationDialog` · 64 lines
 - `TRIPO_FIGURE_NONE` = `"none"`
 - `TRIPO_MOVE_FLAG` = `"TRIPO_MOVE"`
 - `TRIPO_MOVE_DEFAULT` = `"walk"`
+- `TRIPO_RUN` = `"run"`
 - `TRIPO_IDLE` = `"idle"`
 - `ActorAimPoseRef` = `preload("res://godot/scripts/geometry/actor_aim_pose3d.gd")`
 - `AimSequenceRef` = `preload("res://godot/scripts/geometry/aim_sequence.gd")`
@@ -7003,7 +7005,7 @@ extends `Node` · 872 lines
 
 ### `selection_controller.gd`
 
-`class_name SelectionController` · 98 lines
+`class_name SelectionController` · 99 lines
 
 `godot/scripts/world/controllers/selection_controller.gd`
 

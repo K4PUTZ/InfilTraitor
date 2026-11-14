@@ -101,6 +101,9 @@ const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 ## A `var`, not a `const`: architecture rule 1 says stats are vars, and the
 ## bracket sweeps this exact field rather than a parallel test-only path.
 var step_duration: float = 0.56
+## Seconds per GU of a DASH (both AP on one move). ASSUMPTION, not yet ratified: D61 fixes only the walk's 0.56 s; the run gets its own tempo.
+var dash_step_duration: float = 0.32
+var _dashing: bool = false
 
 ## The body/head colours that used to sit here went with the placeholder they
 ## existed for — the "replaced by sprites in M3+" that POSTURE_COLORS' own
@@ -412,10 +415,13 @@ func update_cover(blocked_cells: Dictionary) -> void:
 
 ## Animate the agent along every cell in `path` (must include the start cell).
 ## Emits step_finished(cell) on each arrival; move_finished(cell) at the end.
-func move_along_path(path: Array[Vector2i]) -> void:
+func move_along_path(path: Array[Vector2i], dash: bool = false) -> void:
 	if path.size() < 2:
 		return
 	is_moving = true
+	_dashing = dash
+	if pose != null:
+		pose.set_dash(dash)
 	move_started.emit(path[0], path.back())
 	_path_queue = path.duplicate()
 	_path_queue.pop_front()  ## already at path[0] — skip it
@@ -425,6 +431,7 @@ func move_along_path(path: Array[Vector2i]) -> void:
 func _step_next() -> void:
 	if _path_queue.is_empty():
 		is_moving = false
+		_dashing = false
 		if pose != null:
 			pose.stop_walking()
 		move_finished.emit(cell)
@@ -455,12 +462,12 @@ func _step_next() -> void:
 	var tween := create_tween()
 	tween.set_trans(Tween.TRANS_LINEAR)
 	tween.set_parallel(true)
-	tween.tween_property(self, "position", _cell_to_world(next_cell), step_duration)
+	tween.tween_property(self, "position", _cell_to_world(next_cell), dash_step_duration if _dashing else step_duration)
 	## One walk cycle per GU (p3_walk_export.py derives it from stride vs GU), so
 	## the step's own progress IS the cycle phase, tweened alongside the position
 	## rather than accumulated — nothing to drift over a long path.
 	_walk_progress = 0.0
-	tween.tween_property(self, "_walk_progress", 1.0, step_duration)
+	tween.tween_property(self, "_walk_progress", 1.0, dash_step_duration if _dashing else step_duration)
 	tween.chain().tween_callback(func() -> void:
 		step_finished.emit(next_cell)
 		queue_redraw()

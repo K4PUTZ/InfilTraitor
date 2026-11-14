@@ -1057,6 +1057,20 @@
           "note": "MOVEMENT MV-4: the agent walks three cells south, stands, then three east (the real tap path); run it with INFILTRAITOR_TRIPO_FIGURE=<female|male> to see a Tripo Agent"
         },
         {
+          "id": "agent_dash",
+          "profile": "engine",
+          "rail": "agent_walk_rail",
+          "steps": [
+            "walk @agent_dash_far",
+            "wait 2.5"
+          ],
+          "at_key": 0,
+          "after_hold": 30,
+          "length": 540,
+          "seed": 1,
+          "note": "MOVEMENT: the dash (both AP on one move, the orange zone): the agent runs six cells south and stops; the idle -> run -> idle passage"
+        },
+        {
           "id": "pistol_aim",
           "profile": "engine",
           "rail": "agent_aim_rail",
@@ -1489,6 +1503,16 @@
           "at": [
             27.5,
             12.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
+          "id": "agent_dash_far",
+          "at": [
+            27.5,
+            15.5
           ],
           "tags": [
             "event"

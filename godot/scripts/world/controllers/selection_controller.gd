@@ -81,7 +81,8 @@ func try_move_to(cell: Vector2i) -> bool:
 
 	selected_cell = cell
 	room._pending_auto_end_turn = room._hud_controller.is_auto_end_turn_enabled() and int(room.turn_manager.current_ap) <= 0
-	room.agent.move_along_path(path)
+	## Both AP on one move = the dash (the orange zone): the agent runs it.
+	room.agent.move_along_path(path, room.turn_manager.path_cost_to_ap(path_cost) >= 2)
 	return true
 
 

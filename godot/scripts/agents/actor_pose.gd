@@ -54,6 +54,7 @@ signal throw_released
 var _posture: String = "standing"
 var _facing_step: Vector2i = START_STEP
 var _walk_progress: float = -1.0
+var _dash: bool = false   ## the walk in progress is a dash (both AP spent on one move): the figure runs
 var _head_grid_deg: float = 0.0
 var _has_head_yaw: bool = false
 var _dev_vision: bool = false
@@ -140,6 +141,12 @@ func set_walk_phase(progress01: float) -> void:
 
 func stop_walking() -> void:
 	_walk_progress = -1.0
+	_dash = false
+
+
+## A dash is a move that spends both AP: the Tripo figure plays its `run` clip for it instead of the `walk`.
+func set_dash(on: bool) -> void:
+	_dash = on
 
 
 ## Where the head is looking, as a GRID angle in degrees (0 = North, +90 = East: the guard's `vision_angle` convention).
@@ -206,6 +213,7 @@ func mesh_state() -> Dictionary:
 		"grip": grip,
 		"weapon": weapon,
 		"walk": _walk_progress if _posture == "standing" else -1.0,
+		"dash": _dash,
 		"throw": _throw_seq,
 		"throw_u": throw_u,
 		"throw_reversed": _throw_reversed,

@@ -168,7 +168,8 @@ var _move_pass: float = 0.0          ## world units of ground one pass of the mo
 var _last_ground := Vector2(NAN, NAN)
 var _idle_t: float = 0.0             ## the idle clip's own clock
 ## THE CROUCH (2026-11-15): idle frame 90 -> kneeling (`TripoFigure.FOOTED_CLIPS` "crouch"), played once when the posture becomes "crouch", its
-## last frame held while it stays so. {} = the figure has no crouch clip (it stands through the posture). `_crouch_t`: clip seconds, -1 = not crouched.
+## last frame held while it stays so, and played backwards to stand up. {} = the figure has no crouch clip (it stands through the posture).
+## `_crouch_t`: clip seconds, -1 = neither crouched nor rising.
 var _crouch: Dictionary = {}
 var _crouch_t: float = -1.0
 var _idle_cut: bool = false          ## the idle is held at `IDLE_REFERENCE_FRAME` while a pose layer is up
@@ -832,11 +833,18 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 	var crouched: bool = not walking and not _crouch.is_empty() and String(state["posture"]) == "crouch"
 	if crouched:
 		_crouch_t = minf(maxf(_crouch_t, 0.0) + get_process_delta_time(), float(_crouch["len"]))
+	elif _crouch_t >= 0.0 and not walking:
+		## standing up is the crouch played BACKWARDS (Director, 2026-11-15), coat keys included; it ends on the crouch's first frame,
+		## the idle's frame 90, where the idle carries on
+		_crouch_t -= get_process_delta_time()
+		if _crouch_t <= 0.0:
+			_crouch_t = -1.0
+			_idle_t = IDLE_REFERENCE_FRAME / 24.0
 	elif _crouch_t >= 0.0:
-		_crouch_t = -1.0
-		_idle_t = IDLE_REFERENCE_FRAME / 24.0   ## no stand-up passage yet: the figure cuts back to the idle's frame 90, the crouch's first frame
+		_crouch_t = -1.0   ## a move ordered while crouched or rising cuts to it (no crouch -> walk passage yet)
+		_idle_t = IDLE_REFERENCE_FRAME / 24.0
 	_update_run_coat(dash, walking, stop_t)
-	if crouched:
+	if _crouch_t >= 0.0:
 		var crouch_clip: String = "%s/%s" % [TripoFigureRef.LIBRARY_NAME, CROUCH_CLIP]
 		if crouch_clip != _action:
 			_action = crouch_clip

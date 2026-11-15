@@ -848,6 +848,11 @@ START_GAITS = {
     "walk": {"to": 9, "stance": 3, "body": ((0.0, "idle"), (0.33, "lean"), (0.66, "step"), (1.0, "walk")), "r_events": (0.1, 0.3, 0.4, 0.6),
              "heel_deg": 25.0, "lift": 0.015, "ends": ("IdleFix", "WalkFix"), "key": "WStartFix", "pose": "walk_start", "search_lo": 0.0,
              "heel_rise": 0.002},   # the walk's heel rises slowly: the support heel follows it from its first millimetres or the leg falls short
+    # RISING FROM THE CROUCH INTO THE RUN (2026-11-15): the same builder, the rest pose being the crouch's LAST frame (kneeling on the right knee, the left foot flat
+    # ahead): the left foot is the support, the right knee comes off the floor and swings through into the run's contact. Its two coat ends are borrowed keys.
+    "crouch_run": {"to": RUN_START_TO, "stance": RUN_START_STANCE, "body": ((0.0, "crouch"), (0.23, "rise"), (0.46, "drive"), (0.69, "push"), (1.0, "run")),
+                   "r_events": (0.1, 0.3, 0.42, 0.62), "heel_deg": 0.0, "lift": 0.03, "ends": ("CrouchFix_f16 (inherited)", "RunFix_f14 (next)"), "key": "RiseFix",
+                   "pose": "crouch_run", "search_lo": 2.0, "heel_rise": 0.01, "min_frames": 16},
 }
 
 
@@ -856,18 +861,31 @@ def _quat_near(q, ref):
     return q if ref is None or q.dot(ref) >= 0.0 else -q
 
 
-def run_start_new(base_blend, clip_glb, out_blend, gait="run"):
+def run_start_new(base_blend, clip_glb, out_blend, gait="run", run_blend=None):
     """THE STARTING TIMELINE OF THE RUN of one figure (see the block's header): the idle at frame 1 of `base_blend` (the draw timeline, its idle re-based to 90)
     into the bank's `run`, ending on its frame G["to"] one step ahead, the left foot planted, the legs on IK. Nothing is written over the base. `gait`: a START_GAITS row (the walk's start is the same passage into the bank `walk`)."""
     G = START_GAITS[gait]
+    from_crouch = gait == "crouch_run"
+    borrowed = None
+    if from_crouch:   # the run's coat key, taken from the run's own start timeline: its basis must be the crouch's
+        bpy.ops.wm.open_mainfile(filepath=run_blend)
+        c0 = bpy.data.objects[COAT_OBJECT]
+        kb0 = c0.data.shape_keys.key_blocks
+        rk = next(k for k in kb0 if k.name.startswith("RunFix"))
+        borrowed = ([v.co.copy() for v in rk.data], [v.co.copy() for v in kb0[0].data])
     bpy.ops.wm.open_mainfile(filepath=base_blend)
     sc = bpy.context.scene
     arm, rig = load_rig_from_blend()
-    sc.frame_set(1)
+    sc.frame_set(sc.frame_end if from_crouch else 1)
     bpy.context.view_layer.update()
     idle = {pb.name[len(PREFIX):]: (pb.matrix.to_3x3().normalized(), pb.head.copy()) for pb in arm.pose.bones}
     idle_q = {pb.name: pb.rotation_quaternion.copy() for pb in arm.pose.bones}
     hips_idle = idle["Hips"][1]
+    if from_crouch:   # the crouch's legs are IK: the pose above is the evaluated one, the constraints go (this builder makes its own)
+        for pb in arm.pose.bones:
+            for c in list(pb.constraints):
+                pb.constraints.remove(c)
+        arm.location = Vector()
     arm.animation_data_clear()
     for o in [o for o in bpy.data.objects if o.name.startswith("PROP_") or o.name.startswith("IK_")]:
         bpy.data.objects.remove(o)
@@ -876,6 +894,19 @@ def run_start_new(base_blend, clip_glb, out_blend, gait="run"):
             o.data.shape_keys.animation_data_clear()
             for kb in o.data.shape_keys.key_blocks[1:]:
                 kb.value = 0.0
+    if from_crouch:
+        coat0 = bpy.data.objects[COAT_OBJECT]
+        blocks0 = coat0.data.shape_keys.key_blocks
+        if any((a - b).length > 1e-5 for a, b in zip(borrowed[1], [v.co for v in blocks0[0].data])):
+            sys.exit("[tripo_pose_lab] the crouch's coat Basis differs from the run start's: RunFix cannot be carried over")
+        for k in blocks0:   # the crouch's own key, locked, is the passage's first end
+            if k.name == "CrouchFix_f16":
+                k.name = "CrouchFix_f16 (inherited)"
+        for k in [k for k in blocks0 if k.name != "Basis" and not k.name.startswith("CrouchFix_f16")]:
+            coat0.shape_key_remove(k)
+        rf = coat0.shape_key_add(name="RunFix_f14 (next)", from_mix=False)
+        for v, co in zip(rf.data, borrowed[0]):
+            v.co = co
     clip = _clip_frames(arm, clip_glb, list(range(0, G["to"] + 3)))
     up = Vector((0.0, 0.0, 1.0))
     fwd = sum(((idle[s + "ToeBase"][1] - idle[s + "Foot"][1]) for s in ("Left", "Right")), Vector())
@@ -920,7 +951,7 @@ def run_start_new(base_blend, clip_glb, out_blend, gait="run"):
     f0 = 0.5 * (lo + hi)
     travel_run = along(run(G["to"], "Hips")[1] - run(f0, "Hips")[1])
     v_end = along(run(G["to"] + 1, "Hips")[1] - run(G["to"] - 1, "Hips")[1]) * 0.5
-    T = max(8, int(round(2.0 * travel_run / v_end)))    # from rest to the run's speed at a constant acceleration
+    T = max(G.get("min_frames", 8), int(round(2.0 * travel_run / v_end)))    # from rest to the run's speed at a constant acceleration
 
     def warp(t):
         return f0 + (G["to"] - f0) * (t / T) ** 2
@@ -975,8 +1006,8 @@ def run_start_new(base_blend, clip_glb, out_blend, gait="run"):
         else:
             t1, t2, t3, t4 = [max(1, int(round(x * T))) for x in G["r_events"]]
             keys.append((t1, b, R_toe, R_foot))
-            keys.append((t2, b, R_toe, lifted(R_foot, G["heel_deg"] * 0.75, b, offs[s])))
-            Rf = lifted(R_foot, G["heel_deg"], b, offs[s])
+            keys.append((t2, b, R_toe, R_foot if from_crouch else lifted(R_foot, G["heel_deg"] * 0.75, b, offs[s])))   # the kneeling heel is already up
+            Rf = R_foot if from_crouch else lifted(R_foot, G["heel_deg"], b, offs[s])
             keys.append((t3, b + up * G["lift"] + fwd * G["lift"], Rf @ R_foot.transposed() @ R_toe, Rf))
             for t in range(t4, T + 1):
                 f = warp(t)
@@ -2402,7 +2433,7 @@ def main():
     elif mode == "throw_new":
         throw_new(a[1], a[2], a[3], a[4])
     elif mode == "run_start_new":
-        run_start_new(a[1], a[2], a[3], a[4] if len(a) > 4 else "run")
+        run_start_new(a[1], a[2], a[3], a[4] if len(a) > 4 else "run", a[5] if len(a) > 5 else None)
     elif mode == "draw_crouch_new":
         draw_crouch_new(a[1], a[2], a[3])
     elif mode == "crouch_new":

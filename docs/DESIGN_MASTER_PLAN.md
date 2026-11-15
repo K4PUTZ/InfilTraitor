@@ -1299,6 +1299,11 @@ Dropping to minimal cover is free but you may do nothing else that turn except
 shoot at 50% aim. **Getting up out of prone costs 1 AP and pins you for at
 least a turn** — going prone is a commitment, not a dodge.
 
+**Crouch (Director, 2026-11-14; recorded, not built: AP costs wait for the GAMEPLAY milestone).** Crouching costs 1 AP and gives
+a lot of cover; on the next turn the agent may start to walk or run from the crouch without spending AP to stand. The pose is a
+KNEEL: right knee on the floor, left foot planted ahead, left forearm over the left knee (the right hand stays free for the pistol);
+the crouched shot keeps the kneeling legs under the standing draw / aim's upper body.
+
 ### 8.3 Peek, from full cover
 Shooting from full cover requires momentarily leaving it. During the peek,
 incoming hit chance rises to ~60% while own aim stays 100%. Guards on

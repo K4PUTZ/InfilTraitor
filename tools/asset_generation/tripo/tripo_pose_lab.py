@@ -1633,6 +1633,233 @@ def walk_stop_new(base_blend, clip_glb, out_blend, side="Left"):
           f"{fc} (flat at {fs}) braking to rest, travel {stop:.3f} m at {v0:.4f} m/frame (clip turned {math.degrees(yaw):.1f} deg); {side.lower()} {feet[side[0]][1]}, {other.lower()} {feet[other[0]][1]}")
 
 
+# THE CROUCH (MOVEMENT 2026-11-14, Director: "a pose crouch, partindo do idle"; DESIGN §8.2's crouch): a KNEEL, the right knee on the floor, the left foot
+# planted ahead, the trunk leaning over it, the left forearm meant to rest on the left knee (its arms are a starting point for the Director's hands). One
+# timeline per figure, `SEQ_crouch_<FIG>.blend`: frame 1 the idle (the base's frame 1), then the left foot steps forward while the body goes down, the right
+# heel rolls up over its toes and the right knee lands, and the last frame is the held crouch. The legs are IK on the same reverse feet as the run's passages.
+# The kneel is placed, not taken from a clip: the right knee touches the floor KNEE_BACK behind the idle's right ball, the right thigh near vertical over
+# it carries the hips, the left ankle stands FOOT_AHEAD ahead of the left hip joint; the right foot's heel is up RIGHT_HEEL_DEG over its toes, which bend flat.
+CROUCH_FRAMES = 20
+CROUCH_BODY = ((0.0, "idle"), (0.4, "step"), (0.75, "knee"), (1.0, "crouch"))
+CROUCH_KNEE_BACK = 0.04          # the right knee's place behind the idle's right ball (figure metres)
+CROUCH_KNEE_Z = 0.035            # the knee's centre over the floor (the trousers' thickness)
+CROUCH_FOOT_AHEAD = 0.24         # the left ankle ahead of the left hip joint
+CROUCH_RIGHT_HEEL_DEG = 70.0     # the kneeling foot: the heel this far up over the toes
+CROUCH_LEFT_STEP = (0.05, 0.25, 0.4)   # the left foot: leaves the floor, in the air half way, down on its place (fractions)
+CROUCH_RIGHT = (0.15, 0.75)      # the right foot: heel starts up, at its kneeling place (fractions)
+CROUCH_LEAN_DEG = 22.0           # the trunk's lean forward at the crouch (on the Spine), given back by the neck so the head looks ahead
+CROUCH_ENDS = ("IdleFix", "CrouchFix")
+
+
+def crouch_new(base_blend, out_blend):
+    """THE IDLE -> CROUCH TIMELINE of one figure (see the block's header). Nothing is written over the base."""
+    bpy.ops.wm.open_mainfile(filepath=base_blend)
+    sc = bpy.context.scene
+    arm, rig = load_rig_from_blend()
+    sc.frame_set(1)
+    bpy.context.view_layer.update()
+    idle = {pb.name[len(PREFIX):]: (pb.matrix.to_3x3().normalized(), pb.head.copy()) for pb in arm.pose.bones}
+    idle_q = {pb.name: pb.rotation_quaternion.copy() for pb in arm.pose.bones}
+    arm.animation_data_clear()
+    arm.location = Vector()
+    for o in [o for o in bpy.data.objects if o.name.startswith("PROP_") or o.name.startswith("IK_")]:
+        bpy.data.objects.remove(o)
+    for o in bpy.data.objects:
+        if o.type == 'MESH' and o.data.shape_keys:
+            o.data.shape_keys.animation_data_clear()
+            for kb in o.data.shape_keys.key_blocks[1:]:
+                kb.value = 0.0
+    T = CROUCH_FRAMES
+    up = Vector((0.0, 0.0, 1.0))
+    fwd = sum(((idle[s + "ToeBase"][1] - idle[s + "Foot"][1]) for s in ("Left", "Right")), Vector())
+    fwd.z = 0.0
+    fwd.normalize()
+    lat = up.cross(fwd).normalized()
+    hips_idle = idle["Hips"][1]
+    off_hip = {s: rig.R["Hips"].transposed() @ (arm.data.bones[PREFIX + s + "UpLeg"].head_local - arm.data.bones[PREFIX + "Hips"].head_local) for s in ("Left", "Right")}
+    thigh = {s: (idle[s + "Leg"][1] - idle[s + "UpLeg"][1]).length for s in ("Left", "Right")}
+    shin = {s: (idle[s + "Foot"][1] - idle[s + "Leg"][1]).length for s in ("Left", "Right")}
+    offs = {s[0]: idle[s + "Foot"][0].transposed() @ (idle[s + "Foot"][1] - idle[s + "ToeBase"][1]) for s in ("Left", "Right")}
+
+    def lifted(R, deg, v):
+        for sgn in (1.0, -1.0):
+            Rr = Matrix.Rotation(math.radians(deg) * sgn, 3, lat) @ R
+            if (Rr @ v).z > (R @ v).z:
+                return Rr
+        return R
+
+    # the kneel: the right knee K, the hips over it, the kneeling foot found so the solved knee lands on K
+    P_hips = idle["Hips"][0]
+    bR = idle["RightToeBase"][1]
+    K = bR - fwd * CROUCH_KNEE_BACK
+    K.z = CROUCH_KNEE_Z
+    hipR = K + up * thigh["Right"] * 0.985 - fwd * 0.02
+    hips_end = hipR - P_hips @ off_hip["Right"]
+    Rf_R = lifted(idle["RightFoot"][0], CROUCH_RIGHT_HEEL_DEG, offs["R"])
+    Rt_R = idle["RightToeBase"][0]
+    # the shin runs from the knee back down to the ankle, whose height the tilted foot sets (the toes flat on the floor)
+    ank_z = idle["RightToeBase"][1].z + (Rf_R @ offs["R"]).z
+    dz = ank_z - K.z
+    ankR = K - fwd * math.sqrt(max(shin["Right"] ** 2 - dz * dz, 0.0)) + up * dz
+    bR_end = ankR - Rf_R @ offs["R"]
+    hipL = hips_end + P_hips @ off_hip["Left"]
+    ankL = hipL + fwd * CROUCH_FOOT_AHEAD
+    ankL.z = idle["LeftFoot"][1].z
+    bL_end = ankL - idle["LeftFoot"][0] @ offs["L"]
+    bL_end.z = idle["LeftToeBase"][1].z
+
+    def ease(x):
+        x = min(max(x, 0.0), 1.0)
+        return x * x * (3.0 - 2.0 * x)
+
+    def hips_at(t):
+        return hips_idle.lerp(hips_end, ease(t / T))
+
+    feet = {}
+    bL = idle["LeftToeBase"][1]
+    l0, l1, l2 = [max(1, int(round(x * T))) for x in CROUCH_LEFT_STEP]
+    feet["L"] = [(0, bL, idle["LeftToeBase"][0], idle["LeftFoot"][0]), (l0, bL, idle["LeftToeBase"][0], idle["LeftFoot"][0]),
+                 (l1, bL.lerp(bL_end, 0.6) + up * 0.04, idle["LeftToeBase"][0], idle["LeftFoot"][0]),
+                 (l2, bL_end, idle["LeftToeBase"][0], idle["LeftFoot"][0]), (T, bL_end, idle["LeftToeBase"][0], idle["LeftFoot"][0])]
+    r0, r1 = [max(1, int(round(x * T))) for x in CROUCH_RIGHT]
+    feet["R"] = [(0, bR, Rt_R, idle["RightFoot"][0]), (r0, bR, Rt_R, idle["RightFoot"][0]),
+                 (int(round(0.5 * (r0 + r1))), bR.lerp(bR_end, 0.5), Rt_R, lifted(idle["RightFoot"][0], CROUCH_RIGHT_HEEL_DEG * 0.6, offs["R"])),
+                 (r1, bR_end, Rt_R, Rf_R), (T, bR_end, Rt_R, Rf_R)]
+
+    bpy.context.view_layer.objects.active = arm
+    if arm.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+    empties = {}
+    for s in ("L", "R"):
+        toe = bpy.data.objects.new(IK_NAME % (s, "toe"), None)
+        foot = bpy.data.objects.new(IK_NAME % (s, "foot"), None)
+        ankle = bpy.data.objects.new(IK_NAME % (s, "ankle"), None)
+        for o, kind, size in ((toe, 'CIRCLE', 0.05), (foot, 'ARROWS', 0.04), (ankle, 'SPHERE', 0.015)):
+            sc.collection.objects.link(o)
+            o.empty_display_type = kind
+            o.empty_display_size = size
+            o.rotation_mode = 'QUATERNION'
+            o.show_in_front = True
+        foot.parent = toe
+        ankle.parent = foot
+        ankle.location = offs[s]
+        empties[s] = (toe, foot, ankle)
+        last_t, last_f = None, None
+        for t, loc, Rt, Rf in feet[s]:
+            qt = _quat_near(Rt.to_quaternion(), last_t)
+            qf = _quat_near((Rt.transposed() @ Rf).to_quaternion(), last_f)
+            last_t, last_f = qt, qf
+            toe.location = loc
+            toe.rotation_quaternion = qt
+            foot.rotation_quaternion = qf
+            toe.keyframe_insert("location", frame=t + 1)
+            toe.keyframe_insert("rotation_quaternion", frame=t + 1)
+            foot.keyframe_insert("rotation_quaternion", frame=t + 1)
+    last_q = {}
+    body_frames = []
+    for frac, _marker in CROUCH_BODY:
+        t = int(round(frac * T))
+        body_frames.append(t + 1)
+        sc.frame_set(t + 1)
+        bpy.context.view_layer.update()
+        w = ease(t / T)
+        P = {n: idle[n][0].copy() for n in rig.names}
+        lean = Matrix.Rotation(math.radians(CROUCH_LEAN_DEG) * w, 3, lat)
+        if (lean @ Vector((0.0, 0.0, 1.0))).dot(fwd) < 0.0:
+            lean = Matrix.Rotation(-math.radians(CROUCH_LEAN_DEG) * w, 3, lat)
+        for n in rig.names:     # everything above the Spine leans with it; the neck and head give it back
+            if n in ("Hips",) or n.startswith("Left") and ("Leg" in n or "Foot" in n or "Toe" in n) or n.startswith("Right") and ("Leg" in n or "Foot" in n or "Toe" in n):
+                continue
+            if n in ("Neck", "Head") or n.startswith("HeadTop"):
+                continue
+            P[n] = (lean @ P[n]).normalized()
+        hips_arm = hips_at(t)
+        for side in ("Left", "Right"):
+            toe, foot, ankle = empties[side[0]]
+            target = ankle.matrix_world.translation
+            hip_j = hips_arm + P["Hips"] @ off_hip[side]
+            knee, end = _two_bone(hip_j, target, thigh[side], shin[side], hip_j + fwd * 1.0 + up * 0.2)
+            P[side + "UpLeg"] = _aim_bone(P[side + "UpLeg"], hip_j, knee)
+            P[side + "Leg"] = _aim_bone(P[side + "Leg"], knee, end)
+            P[side + "Foot"] = foot.matrix_world.to_3x3().normalized()
+            P[side + "ToeBase"] = toe.matrix_world.to_3x3().normalized()
+        for n in rig.names:
+            pb = arm.pose.bones[PREFIX + n]
+            pb.rotation_mode = 'QUATERNION'
+            if is_finger(n) or t == 0:
+                q = idle_q[pb.name].copy()
+            else:
+                p = rig.parent[n]
+                rp = rig.R[p] if p else Matrix.Identity(3)
+                pp = P[p] if p else Matrix.Identity(3)
+                q = (rig.R[n].transposed() @ rp @ pp.transposed() @ P[n]).to_quaternion()
+            q = _quat_near(q, last_q.get(n))
+            last_q[n] = q
+            pb.rotation_quaternion = q
+            pb.keyframe_insert("rotation_quaternion", frame=t + 1)
+        bpy.context.view_layer.update()
+        h = arm.pose.bones[PREFIX + "Hips"]
+        m = h.matrix.copy()
+        m.translation = hips_arm
+        h.matrix = m
+        h.keyframe_insert("location", frame=t + 1)
+    for side in ("Left", "Right"):
+        toe, foot, ankle = empties[side[0]]
+        ik = arm.pose.bones[PREFIX + side + "Leg"].constraints.new('IK')
+        ik.name = "IK foot"
+        ik.target = ankle
+        ik.chain_count = 2
+        ik.use_tail = True
+        ik.use_stretch = False
+        ik.iterations = 500
+        for bone, src in ((side + "Foot", foot), (side + "ToeBase", toe)):
+            c = arm.pose.bones[PREFIX + bone].constraints.new('COPY_ROTATION')
+            c.name = "IK foot rotation"
+            c.target = src
+            c.target_space = 'WORLD'
+            c.owner_space = 'WORLD'
+            c.mix_mode = 'REPLACE'
+    sc.timeline_markers.clear()
+    for (frac, marker), frame in zip(CROUCH_BODY, body_frames):
+        sc.timeline_markers.new(marker, frame=frame)
+    sc.frame_start, sc.frame_end = 1, T + 1
+    coat = bpy.data.objects.get(COAT_OBJECT)
+    if coat is None or coat.data.shape_keys is None:
+        print(f"[tripo_pose_lab] WARNING: no {COAT_OBJECT} with shape keys: the coat gets no per-pose keys")
+    else:
+        inner = body_frames[1:-1]
+        for i, frame in enumerate(inner):
+            kb = coat.shape_key_add(name=f"CrouchFix_f{frame:02d}", from_mix=False)
+            for f2, v in ((body_frames[i], 0.0), (frame, 1.0), (body_frames[i + 2], 0.0)):
+                kb.value = v
+                kb.keyframe_insert("value", frame=f2)
+        blocks = coat.data.shape_keys.key_blocks
+        if CROUCH_ENDS[1] not in blocks:
+            coat.shape_key_add(name=CROUCH_ENDS[1], from_mix=False)     # the held crouch's own key (the game holds it while crouched), empty to start
+        for name, (v_first, v_last) in zip(CROUCH_ENDS, ((1.0, 0.0), (0.0, 1.0))):
+            if name not in blocks:
+                print(f"[tripo_pose_lab] WARNING: the coat has no {name}")
+                continue
+            for frame, v in ((body_frames[0], v_first), (body_frames[-1], v_last)):
+                blocks[name].value = v
+                blocks[name].keyframe_insert("value", frame=frame)
+        coat.active_shape_key_index = list(blocks.keys()).index(CROUCH_ENDS[1])
+    arm["lab_pose"] = "crouch"
+    arm["lab_props"] = json.dumps([])
+    arm["lab_run_start"] = json.dumps({"frames": T, "to_frame": T, "side": "Right", "planted": {"flat": r1}, "pinned_until": T + 1,
+                                       "knee": list(K), "left_ball": list(bL_end), "right_ball": list(bR_end)})
+    sc.frame_set(T + 1)
+    bpy.context.view_layer.objects.active = arm
+    for o in bpy.data.objects:
+        o.select_set(False)
+    arm.select_set(True)
+    bpy.ops.object.mode_set(mode='POSE')
+    embed_coat_follow()
+    bpy.ops.wm.save_as_mainfile(filepath=out_blend)
+    print(f"[tripo_pose_lab] wrote {out_blend}: the {arm['lab_figure']} crouch, frames 1-{T + 1}: hips down {hips_idle.z - hips_end.z:.3f} m to z {hips_end.z:.3f}, "
+          f"right knee at ({K.x:+.3f} {K.y:+.3f} {K.z:.3f}), left ball ahead {(bL_end - bL).dot(fwd):.3f} m, right ball back {(bR - bR_end).dot(fwd):.3f} m")
+
+
 def clip_out(blend, out_json, keys_dir):
     """A FOOTED timeline (the run's start) read back as a CLIP for the game: every frame, the pose as Blender EVALUATES it (the IK legs and the copied foot
     rotations included, which `sequence`'s stops would lose), each bone's Godot local rotation, the Hips in place (armature space), the forward travel (the
@@ -1908,6 +2135,8 @@ def main():
         throw_new(a[1], a[2], a[3], a[4])
     elif mode == "run_start_new":
         run_start_new(a[1], a[2], a[3], a[4] if len(a) > 4 else "run")
+    elif mode == "crouch_new":
+        crouch_new(a[1], a[2])
     elif mode == "walk_stop_new":
         walk_stop_new(a[1], a[2], a[3])
     elif mode == "run_stop_new":

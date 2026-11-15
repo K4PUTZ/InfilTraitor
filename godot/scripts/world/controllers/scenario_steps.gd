@@ -812,6 +812,16 @@ func scenario_turn_agent(cell: Vector2i) -> void:
 		room._selection_controller._turn_toward(cell)
 
 
+## MOVEMENT 2026-11-15 — `posture standing|crouch|prone`: the agent takes that posture as the Z / X keys would (its AP spent the same way).
+func scenario_agent_posture(name: String) -> bool:
+	var want: Dictionary = {"standing": Agent.Posture.STANDING, "crouch": Agent.Posture.CROUCHING, "prone": Agent.Posture.PRONE}
+	room._debug_tools_controller.try_change_posture(want[name])
+	if room.agent.posture != want[name]:
+		push_error("[ScenarioSteps] posture %s: the agent stays %s (enemy phase or not enough AP)" % [name, room.agent.posture])
+		return false
+	return true
+
+
 ## RETIRE-2D — `canvas_check <name>`: one line saying how many overlays that carry a 3D target (`_ground` / `_world`) exist (`examined`),
 ## how many of those are visible now (`shown`), and which of them are painting the 2D canvas. `examined` and `shown` are the controls:
 ## a check that looked at nothing, or at a state that showed nothing, would print canvas=0 forever.

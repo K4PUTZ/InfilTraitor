@@ -114,7 +114,7 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "aim_cancel": 0, "canvas_check": 1,
 	"probe_store": 1, "shoot": 1, "weapon": 1, "shot_aim": 1, "shot_cancel": 0, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
-	"container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "walk": 1, "turn": 1, "actor_bench": 2, "decal_wall": 2,
+	"container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "walk": 1, "turn": 1, "posture": 1, "actor_bench": 2, "decal_wall": 2,
 	"skylight_hit": 0, "roof_gravity": 0, "flood": 1, "struct_audit": 0, "struct_cut": 0, "alert_reset": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1,
 }
 ## CAPTURE_RAILS §7.5 — the cell arguments an `@id` may name, by op and token index (0 = the op). `substitute_anchors()` turns each
@@ -296,6 +296,10 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			if wxy.size() != 2 or not wxy[0].is_valid_int() or not wxy[1].is_valid_int():
 				return "%s takes a cell as x,y" % op
 			step["cell"] = Vector2i(int(wxy[0]), int(wxy[1]))
+		"posture":
+			if not ["standing", "crouch", "prone"].has(arg):
+				return "posture takes standing|crouch|prone"
+			step["posture"] = arg
 		"actor_bench":
 			if not (arg == "agent" or arg.begins_with("agent_")) or not tokens[2].is_valid_int() or int(tokens[2]) < 1 or int(tokens[2]) > 64:
 				return "actor_bench takes agent|agent_<light|full|base>_<female|male>[_nocoat|_unmasked][_tint][_f0.._f3][_nokeys][_clip_<id>] and a count 1..64"
@@ -575,6 +579,9 @@ func _execute(room: Node, step: Dictionary) -> bool:
 			if not steps.has_method("scenario_turn_agent"):
 				return _fail(step, "ScenarioSteps has no scenario_turn_agent()")
 			steps.call("scenario_turn_agent", step["cell"])
+		"posture":
+			if not bool(steps.call("scenario_agent_posture", String(step["posture"]))):
+				return _fail(step, "the agent's posture did not change (see the error above)")
 		"actor_bench":
 			var bench_line: String = ActorViabilityBenchRef.spawn(room, str(step["model"]), int(step["count"]))
 			if bench_line.is_empty():

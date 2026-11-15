@@ -101,6 +101,8 @@ const FOOTED_CLIPS: Dictionary = {
 	## the walk's passages (2026-11-14): one start and one stop per figure (a walk cycle is exactly one GU, so every walk ends in the same phase)
 	"walk_start": {"next": "walk"},
 	"walk_stop": {"prev": "walk", "prev_frame": 22, "next": "idle", "next_frame": 90},
+	## the crouch (2026-11-15): idle frame 90 -> kneeling on the right knee; its last frame is HELD (the crouch pose, CrouchFix on)
+	"crouch": {"prev": "idle", "prev_frame": 90, "hold": true},
 }
 
 static var _libraries: Dictionary = {}
@@ -560,7 +562,9 @@ static func footed_clip(figure: String, id: String, next_clip: Animation, prev_c
 	var row: Dictionary = JsonFile.read_object(path, "TripoFigure", errors)
 	var frames: Array = row.get("frames", []) as Array if row.get("frames") is Array else []
 	var fps: float = float(row.get("fps", 24.0))
-	if frames.size() < 2 or next_clip == null:
+	var spec: Dictionary = FOOTED_CLIPS.get(id, {})
+	var held: bool = bool(spec.get("hold", false))   ## a passage INTO a held pose (the crouch): no clip after it, its last frame is the pose
+	if frames.size() < 2 or (next_clip == null and not held):
 		push_error("[TripoFigure] %s: %s" % [path, "no next clip to hand over to" if next_clip == null else "fewer than two frames"])
 		return null
 	var rig := _rig(figure)
@@ -571,15 +575,16 @@ static func footed_clip(figure: String, id: String, next_clip: Animation, prev_c
 	var skel_path: String = String(holder.get_path_to(skeleton))
 	var hips_name: String = skeleton.get_bone_name(TripoPoseKitRef.find_bone(skeleton, HIPS))
 	holder.free()
-	var spec: Dictionary = FOOTED_CLIPS.get(id, {})
 	var handoff: float = float(spec.get("next_frame", row.get("run_frame", 0))) / fps
-	var next_hips: Variant = _hips_at(next_clip, handoff)
-	if next_hips == null:
-		push_error("[TripoFigure] %s: the next clip has no Hips track" % path)
-		return null
 	var n: int = frames.size()
 	var last: Dictionary = frames[n - 1]
-	var delta: Vector3 = (next_hips as Vector3) - JsonFile.vector3(last.get("hips_pos"), Vector3.ZERO, "%s hips_pos" % path, errors)
+	var delta := Vector3.ZERO   ## a held pose ends exactly where the timeline put it
+	if next_clip != null:
+		var next_hips: Variant = _hips_at(next_clip, handoff)
+		if next_hips == null:
+			push_error("[TripoFigure] %s: the next clip has no Hips track" % path)
+			return null
+		delta = (next_hips as Vector3) - JsonFile.vector3(last.get("hips_pos"), Vector3.ZERO, "%s hips_pos" % path, errors)
 	var delta0 := Vector3.ZERO   ## at the first frame, to the clip it leaves (a stop): spread the other way
 	if prev_clip != null:
 		var prev_hips: Variant = _hips_at(prev_clip, float(spec.get("prev_frame", 0)) / fps)
@@ -637,7 +642,8 @@ static func build_library(figure: String, hips_rest: Vector3) -> AnimationLibrar
 		if FileAccess.file_exists(CLIP_FILE % [figure, id]):
 			var spec: Dictionary = FOOTED_CLIPS[id]
 			var prev: Animation = lib.get_animation(String(spec["prev"])) if spec.has("prev") else null
-			var footed: Animation = footed_clip(figure, id, lib.get_animation(String(spec["next"])), prev)
+			var next: Animation = lib.get_animation(String(spec["next"])) if spec.has("next") else null
+			var footed: Animation = footed_clip(figure, id, next, prev)
 			if footed == null:
 				return null
 			lib.add_animation(id, footed)

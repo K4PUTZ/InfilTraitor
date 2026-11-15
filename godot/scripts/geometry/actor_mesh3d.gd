@@ -64,6 +64,7 @@ const TRIPO_MOVE_FLAG := "TRIPO_MOVE"
 const TRIPO_MOVE_DEFAULT := "walk"
 const TRIPO_RUN := "run"   ## the dash's clip: both AP spent on one move
 const TRIPO_IDLE := "idle"
+const CROUCH_CLIP := "crouch"
 ## THE AIM LAYER (MOVEMENT, 2026-11-08): while the actor holds the pistol AIMED the arms are pulled from whatever clip plays toward the pose
 ## `pose_aim_pistol` (`TripoFigure.POSES`, `ActorAimPose3D`); the pistol is in the right hand only then, and comes out as the fist rises
 ## (Director: no holster, it leaves the coat). `AIM_RAISE_S` / `AIM_LOWER_S` are the weight's travel; the gun shows from `PISTOL_SHOWN_FROM` of it.
@@ -166,6 +167,10 @@ const RUN_COAT_KEY := "RunFix"       ## the run's corrective coat key (`ACTOR` D
 var _move_pass: float = 0.0          ## world units of ground one pass of the move clip covers
 var _last_ground := Vector2(NAN, NAN)
 var _idle_t: float = 0.0             ## the idle clip's own clock
+## THE CROUCH (2026-11-15): idle frame 90 -> kneeling (`TripoFigure.FOOTED_CLIPS` "crouch"), played once when the posture becomes "crouch", its
+## last frame held while it stays so. {} = the figure has no crouch clip (it stands through the posture). `_crouch_t`: clip seconds, -1 = not crouched.
+var _crouch: Dictionary = {}
+var _crouch_t: float = -1.0
 var _idle_cut: bool = false          ## the idle is held at `IDLE_REFERENCE_FRAME` while a pose layer is up
 const IDLE_REFERENCE_FRAME := 90.0   ## the idle frame every pose layer starts from (24 fps)
 ## `FREEZE_IDLE` (the light gate, 2026-11-12): the idle clip holds its first frame, so a capture does not depend on how many frames a
@@ -329,6 +334,10 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 	var coat_mesh: MeshInstance3D = TripoFigureRef.coat_of(_body)
 	if coat_mesh != null:
 		var names: Array = [RUN_COAT_KEY, IDLE_COAT_KEY, WALK_COAT_KEY]
+		if lib.has_animation(CROUCH_CLIP):
+			var crouch_anim: Animation = lib.get_animation(CROUCH_CLIP)
+			_crouch = {"len": crouch_anim.length, "fps": float(crouch_anim.get_meta(&"start_fps", 24.0)), "morphs": crouch_anim.get_meta(&"start_morphs", {})}
+			names.append_array((_crouch["morphs"] as Dictionary).keys())
 		for gait: String in _gaits:
 			var row: Dictionary = _gaits[gait]
 			names.append_array((row["start_morphs"] as Dictionary).keys())
@@ -820,7 +829,20 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 			_start_t = -1.0
 			var g_len: float = _player.get_animation("%s/%s" % [TripoFigureRef.LIBRARY_NAME, _gait["clip"]]).length
 			_walked = float(_gait["start_handoff"]) / g_len * float(_gait["pass"]) if g_len > 0.0 else 0.0
+	var crouched: bool = not walking and not _crouch.is_empty() and String(state["posture"]) == "crouch"
+	if crouched:
+		_crouch_t = minf(maxf(_crouch_t, 0.0) + get_process_delta_time(), float(_crouch["len"]))
+	elif _crouch_t >= 0.0:
+		_crouch_t = -1.0
+		_idle_t = IDLE_REFERENCE_FRAME / 24.0   ## no stand-up passage yet: the figure cuts back to the idle's frame 90, the crouch's first frame
 	_update_run_coat(dash, walking, stop_t)
+	if crouched:
+		var crouch_clip: String = "%s/%s" % [TripoFigureRef.LIBRARY_NAME, CROUCH_CLIP]
+		if crouch_clip != _action:
+			_action = crouch_clip
+			_player.play(crouch_clip)
+		_player.seek(_crouch_t, true)
+		return
 	var move_name: String = String(_gait["stop_clips"][_stop_side]) if stop_t >= 0.0 else (String(_gait["start_clip"]) if _start_t >= 0.0 else (TRIPO_RUN if dash else _tripo_move))
 	var clip: String = "%s/%s" % [TripoFigureRef.LIBRARY_NAME, move_name if walking else TRIPO_IDLE]
 	if clip != _action:
@@ -904,12 +926,15 @@ func _update_run_coat(dash: bool, walking: bool, stop_t: float = -1.0) -> void:
 		return
 	var passage: Dictionary = _gait.get("start_morphs", {})
 	var frame: float = _start_t * float(_gait.get("start_fps", 24.0))
-	if stop_t >= 0.0:
+	if _crouch_t >= 0.0:
+		passage = _crouch["morphs"]
+		frame = _crouch_t * float(_crouch["fps"])
+	elif stop_t >= 0.0:
 		passage = _gait["stops"][_stop_side]["morphs"]
 		frame = stop_t * float(_gait["stops"][_stop_side]["fps"])
 	for name: String in _coat_keys:
 		var v: float = 0.0
-		if (_start_t >= 0.0 or stop_t >= 0.0) and passage.has(name):
+		if (_start_t >= 0.0 or stop_t >= 0.0 or _crouch_t >= 0.0) and passage.has(name):
 			var vals: PackedFloat32Array = passage[name]
 			var a: int = clampi(int(floor(frame)), 0, vals.size() - 1)
 			var b: int = mini(a + 1, vals.size() - 1)

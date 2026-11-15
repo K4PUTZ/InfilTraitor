@@ -1210,6 +1210,23 @@
           "note": "A close-up of the agent standing on his start cell (27,9); run with INFILTRAITOR_TRIPO_FIGURE=<female|male> to see a Tripo Agent"
         },
         {
+          "id": "agent_crouch",
+          "profile": "engine",
+          "rail": "agent_close_rail",
+          "steps": [
+            "wait 0.5",
+            "posture crouch",
+            "wait 2.5",
+            "posture standing",
+            "wait 1.0"
+          ],
+          "at_key": 0,
+          "after_hold": 30,
+          "length": 360,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-15: the agent kneels (the Z key), holds, stands (a cut: no stand-up passage yet); two postures spend the turn's 2 AP; run with INFILTRAITOR_TRIPO_FIGURE=male"
+        },
+        {
           "id": "blast_wood",
           "profile": "engine",
           "rail": "wood_rail",

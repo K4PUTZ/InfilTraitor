@@ -29,7 +29,7 @@ everywhere, so they stay locked here. The other clip's frame comes from the idle
 ## Export
 
 `tripo_pose_lab.py` (`clip_out`, `sequence`) sends the GAME's names through `game_key()`: a borrowed key goes out by its base name
-(`IdleFix_f90 (inherited)` -> `IdleFix`), and a clip's single key too (`DrawFix_f12` -> `DrawFix`). Checked 2026-11-15: run_start and
+(`IdleFix_f90 (inherited)` -> `IdleFix`; a borrowed POSE key keeps its frame: `CrouchFix_f16 (inherited)` -> `CrouchFix_f16`), and a clip's single key too (`DrawFix_f12` -> `DrawFix`). Checked 2026-11-15: run_start and
 draw_pistol re-exported identical to the shipped sequences. A crouch key goes out as named (`CrouchFix_f16`).
 
 ## Commands

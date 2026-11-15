@@ -410,7 +410,7 @@ def game_key(name):
     goes out by its base name, as does a clip's single key (`DrawFix_f12` -> `DrawFix`). See coat_key_follow.py."""
     m = BORROWED.match(name)
     if m:
-        return m.group(1)
+        return m.group(1) if m.group(1) in ("IdleFix", "RunFix", "WalkFix") else name.split(" (")[0]   ## a borrowed pose key keeps its frame (`CrouchFix_f16`)
     base = re.sub(r"_f\d+$", "", name)
     return base if base in SINGLE_KEYS else name
 
@@ -1810,6 +1810,94 @@ def _crouch_cone_keys(arm, coat, rows, fwd, first_frame):
         print(f"[tripo_pose_lab] cone key {name} at frame {frame} (share {share}): {moved} vertices moved, largest {max(d.length for d in dw):.3f} m")
 
 
+# THE CROUCHED DRAW (Director, 2026-11-15): "pegar a pose crouched final e fazer o draw da pistola + aim agachado, movimentando só ombros e
+# braços, usando os mesmos parâmetros do draw em pé". Everything but the shoulders, arms and hands holds the crouch's LAST frame (as seen,
+# its legs' IK baked into plain rotations); the arms keep the standing draw's keys from frame 2 on, frame 1 being the crouch's arms.
+DRAW_CROUCH_ARM = ("Shoulder", "Arm", "Hand")   ## LeftShoulder, LeftArm, LeftForeArm, LeftHand and its fingers
+
+
+def draw_crouch_new(draw_blend, crouch_blend, out_blend):
+    """the crouched draw + aim timeline from the figure's standing draw (`SEQ_draw_pistol_<FIG>_arm6`) and its crouch (`SEQ_crouch_<FIG>_fast`)"""
+    bpy.ops.wm.open_mainfile(filepath=crouch_blend)
+    sc = bpy.context.scene
+    sc.frame_set(sc.frame_end)
+    bpy.context.view_layer.update()
+    arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
+    pose = {}
+    for pb in arm.pose.bones:   # the evaluated pose (IK included) back in each bone's local space
+        m = arm.convert_space(pose_bone=pb, matrix=pb.matrix, from_space='POSE', to_space='LOCAL')
+        pose[pb.name] = (m.to_translation(), m.to_quaternion())
+    coat = bpy.data.objects[COAT_OBJECT]
+    end_key = next(k for k in coat.data.shape_keys.key_blocks if k.name.startswith("CrouchFix_f") and int(k.name[11:13]) == sc.frame_end)
+    key_name = end_key.name
+    key_co = [v.co.copy() for v in end_key.data]
+    basis_co = [v.co.copy() for v in coat.data.shape_keys.key_blocks[0].data]
+
+    bpy.ops.wm.open_mainfile(filepath=draw_blend)
+    sc = bpy.context.scene
+    arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
+    act = arm.animation_data.action
+    bags = [cb for l in act.layers for st in l.strips for cb in st.channelbags]
+    is_arm = lambda name: any(t in name for t in DRAW_CROUCH_ARM)
+    for cb in bags:
+        for fc in list(cb.fcurves):
+            if not fc.data_path.startswith("pose.bones["):
+                continue
+            bone = fc.data_path.split('"')[1]
+            if bone not in pose:
+                continue
+            loc, q = pose[bone]
+            if fc.data_path.endswith("rotation_quaternion"):
+                value = q[fc.array_index]
+            elif fc.data_path.endswith("location"):
+                value = loc[fc.array_index]
+            else:
+                continue
+            if is_arm(bone):   # frame 1 = the crouch's arms; the draw's own keys from frame 2 on
+                for kp in fc.keyframe_points:
+                    if int(round(kp.co[0])) == sc.frame_start:
+                        kp.co[1] = value
+                        kp.handle_left[1] = kp.handle_right[1] = value
+            else:              # held: the crouch's last frame all along
+                while len(fc.keyframe_points) > 1:
+                    fc.keyframe_points.remove(fc.keyframe_points[-1])
+                fc.keyframe_points[0].co = (sc.frame_start, value)
+                fc.keyframe_points[0].handle_left = fc.keyframe_points[0].handle_right = (sc.frame_start, value)
+            fc.update()
+    for pb in arm.pose.bones:   # every held bone keyed, even one the draw never keyed (the Hips' drop, the legs)
+        if not is_arm(pb.name) and pb.name in pose:
+            pb.location, pb.rotation_quaternion = pose[pb.name]
+            pb.keyframe_insert("location", frame=sc.frame_start)
+            pb.keyframe_insert("rotation_quaternion", frame=sc.frame_start)
+    for pb in arm.pose.bones:   # quaternion signs: an arm's frame-1 key on the same side as its next key
+        qs = [cb.fcurves.find(f'pose.bones["{pb.name}"].rotation_quaternion', index=i) for cb in bags for i in range(4)]
+        qs = [f for f in qs if f is not None]
+        if len(qs) == 4 and is_arm(pb.name) and len(qs[0].keyframe_points) > 1:
+            a = [f.keyframe_points[0].co[1] for f in qs]
+            b = [f.keyframe_points[1].co[1] for f in qs]
+            if sum(x * y for x, y in zip(a, b)) < 0:
+                for f in qs:
+                    k = f.keyframe_points[0]
+                    k.co[1] = -k.co[1]
+                    k.handle_left[1] = k.handle_right[1] = k.co[1]
+                    f.update()
+    coat = bpy.data.objects[COAT_OBJECT]
+    blocks = coat.data.shape_keys.key_blocks
+    if any((a - b).length > 1e-5 for a, b in zip(basis_co, [v.co for v in blocks[0].data])):
+        sys.exit("[tripo_pose_lab] the crouch's coat Basis differs from the draw's: the crouch key cannot be carried over")
+    held = coat.shape_key_add(name=f"{key_name} (inherited)", from_mix=False)
+    for v, co in zip(held.data, key_co):
+        v.co = co
+    held.value = 1.0
+    held.keyframe_insert("value", frame=sc.frame_start)
+    arm["lab_pose"] = "draw_crouch_pistol"
+    sc.frame_set(sc.frame_start)
+    embed_coat_follow()
+    bpy.ops.wm.save_as_mainfile(filepath=out_blend)
+    print(f"[tripo_pose_lab] wrote {out_blend}: the crouch's last frame held, the arms from the standing draw, {held.name} held at 1")
+
+
+
 def crouch_new(base_blend, out_blend, cone=False):
     """THE IDLE -> CROUCH TIMELINE of one figure (see the block's header). Nothing is written over the base. `cone`: the cone variant (CROUCH_CONE_*)."""
     body_rows = CROUCH_CONE_BODY if cone else CROUCH_BODY
@@ -2315,6 +2403,8 @@ def main():
         throw_new(a[1], a[2], a[3], a[4])
     elif mode == "run_start_new":
         run_start_new(a[1], a[2], a[3], a[4] if len(a) > 4 else "run")
+    elif mode == "draw_crouch_new":
+        draw_crouch_new(a[1], a[2], a[3])
     elif mode == "crouch_new":
         crouch_new(a[1], a[2], len(a) > 3 and a[3] == "cone")
     elif mode == "walk_stop_new":

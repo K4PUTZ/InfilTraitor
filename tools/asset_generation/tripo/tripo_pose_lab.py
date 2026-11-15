@@ -1637,13 +1637,14 @@ def walk_stop_new(base_blend, clip_glb, out_blend, side="Left"):
 # planted ahead, the trunk leaning over it, the left forearm meant to rest on the left knee (its arms are a starting point for the Director's hands). One
 # timeline per figure, `SEQ_crouch_<FIG>.blend`: frame 1 the idle (the base's frame 1), then the left foot steps forward while the body goes down, the right
 # heel rolls up over its toes and the right knee lands, and the last frame is the held crouch. The legs are IK on the same reverse feet as the run's passages.
-# The kneel is placed, not taken from a clip: the right knee touches the floor KNEE_BACK behind the idle's right ball, the right thigh near vertical over
+# The kneel is placed, not taken from a clip: the right knee touches the floor KNEE_FWD ahead of the idle's right ball, the right thigh tilted back from
 # it carries the hips, the left ankle stands FOOT_AHEAD ahead of the left hip joint; the right foot's heel is up RIGHT_HEEL_DEG over its toes, which bend flat.
 CROUCH_FRAMES = 20
 CROUCH_BODY = ((0.0, "idle"), (0.4, "step"), (0.75, "knee"), (1.0, "crouch"))
-CROUCH_KNEE_BACK = 0.04          # the right knee's place behind the idle's right ball (figure metres)
+CROUCH_KNEE_FWD = 0.06           # the right knee's place AHEAD of the idle's right ball (figure metres; Director 2026-11-14: a compact kneel, the feet close)
 CROUCH_KNEE_Z = 0.035            # the knee's centre over the floor (the trousers' thickness)
-CROUCH_FOOT_AHEAD = 0.24         # the left ankle ahead of the left hip joint
+CROUCH_FOOT_AHEAD = 0.13         # the left ankle ahead of the left hip joint (the left knee folds high)
+CROUCH_THIGH_DEG = 35.0          # the right thigh's tilt from vertical, the knee ahead of the hip: the body sits back toward the right heel
 CROUCH_RIGHT_HEEL_DEG = 70.0     # the kneeling foot: the heel this far up over the toes
 CROUCH_LEFT_STEP = (0.05, 0.25, 0.4)   # the left foot: leaves the floor, in the air half way, down on its place (fractions)
 CROUCH_RIGHT = (0.15, 0.75)      # the right foot: heel starts up, at its kneeling place (fractions)
@@ -1691,9 +1692,10 @@ def crouch_new(base_blend, out_blend):
     # the kneel: the right knee K, the hips over it, the kneeling foot found so the solved knee lands on K
     P_hips = idle["Hips"][0]
     bR = idle["RightToeBase"][1]
-    K = bR - fwd * CROUCH_KNEE_BACK
+    K = bR + fwd * CROUCH_KNEE_FWD
     K.z = CROUCH_KNEE_Z
-    hipR = K + up * thigh["Right"] * 0.985 - fwd * 0.02
+    a = math.radians(CROUCH_THIGH_DEG)
+    hipR = K + (up * math.cos(a) - fwd * math.sin(a)) * thigh["Right"] * 0.985
     hips_end = hipR - P_hips @ off_hip["Right"]
     Rf_R = lifted(idle["RightFoot"][0], CROUCH_RIGHT_HEEL_DEG, offs["R"])
     Rt_R = idle["RightToeBase"][0]
@@ -1712,8 +1714,8 @@ def crouch_new(base_blend, out_blend):
         x = min(max(x, 0.0), 1.0)
         return x * x * (3.0 - 2.0 * x)
 
-    def hips_at(t):
-        return hips_idle.lerp(hips_end, ease(t / T))
+    def hips_at(t):                    # down by the time the knee lands (CROUCH_RIGHT's second event), held after
+        return hips_idle.lerp(hips_end, ease(t / (CROUCH_RIGHT[1] * T)))
 
     feet = {}
     bL = idle["LeftToeBase"][1]

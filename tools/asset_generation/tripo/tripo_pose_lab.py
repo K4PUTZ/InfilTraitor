@@ -1662,6 +1662,7 @@ CROUCH_ARM_OUT_DEG = 18.0        # the arms away from the body (about the front 
 CROUCH_SHOULDER_DEG = 7.0        # the shoulders turned up with them
 CROUCH_LEG_CLEAR = {"thigh": 0.085, "shin": 0.065}   # the skirt kept this far from each leg's bone line (the leg's own radius + a gap)
 CROUCH_FLOOR_CLEAR = 0.015
+CROUCH_LEFT_THIGH_CLEAR = 0.13   # the raised left thigh gets a wider gap, at full width up to the waist (Director 2026-11-15: it showed through the front flap)
 CROUCH_SMOOTH_R = 0.06          # the radius the skirt's offsets are smoothed over, in the rest coat (figure metres)
 
 
@@ -1738,7 +1739,7 @@ def _crouch_cone_keys(arm, coat, rows, fwd, first_frame):
         segs = []
         for side in ("Left", "Right"):
             up_leg, leg, foot = (Mw @ arm.pose.bones[PREFIX + side + b].head for b in ("UpLeg", "Leg", "Foot"))
-            segs += [(up_leg, leg, CROUCH_LEG_CLEAR["thigh"]), (leg, foot, CROUCH_LEG_CLEAR["shin"])]
+            segs += [(up_leg, leg, CROUCH_LEFT_THIGH_CLEAR if side == "Left" else CROUCH_LEG_CLEAR["thigh"]), (leg, foot, CROUCH_LEG_CLEAR["shin"])]
         want = []
         for i, p in enumerate(P0):
             s = skirt[i]
@@ -1751,7 +1752,7 @@ def _crouch_cone_keys(arm, coat, rows, fwd, first_frame):
             q = p + (radial * CROUCH_CONE_OUT * s ** 1.3 + up * (CROUCH_CONE_UP + CROUCH_CONE_BACK_UP * back) * s * s) * share
             for _it in range(3):
                 for a, b, r in segs:
-                    q = _seg_push(q, a, b, r * min(1.0, 0.4 + s))
+                    q = _seg_push(q, a, b, (r if r == CROUCH_LEFT_THIGH_CLEAR else r * min(1.0, 0.4 + s)))
             q.z = max(q.z, CROUCH_FLOOR_CLEAR)
             want.append(q)
         dw = [w - p for w, p in zip(want, P0)]
@@ -1761,7 +1762,7 @@ def _crouch_cone_keys(arm, coat, rows, fwd, first_frame):
                 if skirt[i] > 0.0:
                     q = p + dw[i]
                     for a, b, r in segs:
-                        q = _seg_push(q, a, b, r * min(1.0, 0.4 + skirt[i]))
+                        q = _seg_push(q, a, b, (r if r == CROUCH_LEFT_THIGH_CLEAR else r * min(1.0, 0.4 + skirt[i])))
                     q.z = max(q.z, CROUCH_FLOOR_CLEAR)
                     dw[i] = q - p
         dw = [sum((dw[j] * wt for j, wt in near[i]), Vector()) if near[i] else dw[i] for i in range(nv)]

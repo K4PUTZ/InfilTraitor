@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**354 scripts · 101848 lines total** (under `godot/scripts/`)
+**354 scripts · 101890 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -422,7 +422,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 1069 lines
+`class_name ActorMesh3D` · extends `Node3D` · 1110 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -1505,7 +1505,7 @@ extends `Node3D` · 3579 lines
 
 ### `tripo_figure.gd`
 
-`class_name TripoFigure` · extends `RefCounted` · 662 lines
+`class_name TripoFigure` · extends `RefCounted` · 663 lines
 
 `godot/scripts/geometry/tripo_figure.gd`
 

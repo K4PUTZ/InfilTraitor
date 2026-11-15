@@ -1497,6 +1497,24 @@
           "note": "material videos (2026-10-17): blast on glass; a shot takes INFILTRAITOR_SHOT_AGENT_CELL=44,11 INFILTRAITOR_SHOT_GUARD_CELL=44,9 (tools/persistent/material_videos.py sets them)"
         },
         {
+          "id": "pistol_shot_crouch",
+          "profile": "engine",
+          "rail": "agent_shot_rail",
+          "steps": [
+            "posture crouch",
+            "wait 1.0",
+            "weapon pistol",
+            "shot_aim 5",
+            "wait 1.2",
+            "shoot 5"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 260,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-15: the agent kneels, draws the pistol crouched (draw_crouch_pistol), aims at guard 5 and fires (the recoil on the crouched arms)."
+        },
+        {
           "id": "pistol_shot",
           "profile": "engine",
           "rail": "agent_shot_rail",

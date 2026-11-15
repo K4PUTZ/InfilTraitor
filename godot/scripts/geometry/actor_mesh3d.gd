@@ -141,6 +141,12 @@ var _pistol_stops: Array = []        ## [[weight, placement {bone, pos, quat, sc
 var _sequence: AimSequenceRef = null    ## the Director's timeline of the draw (`AimSequence`), when the figure has one: it replaces `AIM_STOPS`, the coat curve and the gun's blend
 var _lower_s: float = AIM_LOWER_S    ## and back: the sequence's own duration too (Director 2026-11-11: a draw is quick by nature, the way back is as quick as the way there)
 var _raise_s: float = AIM_RAISE_S    ## how long the weight takes to go 0 -> 1 (the sequence's own duration when there is one)
+## THE CROUCHED DRAW (Director, 2026-11-15): a second aim layer from the timeline `draw_crouch_pistol` (the crouch's last frame held, the arms of the
+## standing draw). One set per posture, [layer, sequence, raise s, lower s]; the active one is in `_aim` / `_sequence` / `_raise_s` / `_lower_s`
+## and changes only with the pistol away (`_aim_t` 0): a posture change while aimed lowers the gun, then raises it in the new posture.
+const DRAW_CROUCH := "draw_crouch_pistol"
+var _aim_sets: Dictionary = {}
+var _aim_kind: String = "standing"
 var _run_pass: float = 0.0           ## the `run` clip's ground per pass (0 = the game set has none: a dash walks)
 var _walked: float = 0.0             ## ground covered while walking, world units: the move clip's phase
 ## THE PASSAGES (MOVEMENT 2026-11-14): a move from standing opens on its gait's authored START (played on its own clock, scaled like the actor's travel:
@@ -422,6 +428,8 @@ func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 		recoil.queue_free()
 	_raise_s = _sequence.raise_seconds() if _sequence != null else AIM_RAISE_S
 	_lower_s = _raise_s if _sequence != null else AIM_LOWER_S
+	_aim_sets["standing"] = [_aim, _sequence, _raise_s, _lower_s]
+	_build_crouch_aim(lib, figure)
 	_build_pistol(stops)
 	var coat: MeshInstance3D = TripoFigureRef.coat_of(_body)
 	_coat_draw_shape = coat.find_blend_shape_by_name(DRAW_COAT_SHAPE) if coat != null else -1
@@ -429,6 +437,29 @@ func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 		_coat = coat
 	else:
 		push_warning("[ActorMesh3D] the %s coat has no '%s' morph: it stays closed through the draw" % [figure, DRAW_COAT_SHAPE])
+
+
+## The crouched draw's layer, right after the standing one (so the recoil still acts after both). No timeline or a missing pose: the figure
+## simply does not aim while crouched (said once when a pose is missing).
+func _build_crouch_aim(lib: AnimationLibrary, figure: String) -> void:
+	var seq: AimSequenceRef = AimSequenceRef.new()
+	if not seq.load_file(figure, DRAW_CROUCH):
+		return
+	var stops: Array = []
+	for stop: Dictionary in seq.stops:
+		var pose_id: String = TripoFigureRef.POSE_PREFIX + String(stop["id"])
+		if not lib.has_animation(pose_id):
+			push_warning("[ActorMesh3D] the %s game set has no '%s': no crouched draw (run godot/scripts/tools/tripo_game_clips.gd)" % [figure, pose_id])
+			return
+		stops.append([float(stop["weight"]), lib.get_animation(pose_id), bool(stop["passing"])])
+	var layer: ActorAimPoseRef = ActorAimPoseRef.new()
+	_skeleton.add_child(layer)
+	_skeleton.move_child(layer, _aim.get_index() + 1)
+	if not layer.load_stops(_skeleton, stops):
+		layer.queue_free()
+		return
+	layer.weight = 0.0
+	_aim_sets["crouch"] = [layer, seq, seq.raise_seconds(), seq.raise_seconds()]
 
 
 ## The throw's timeline as a path layer and the grenade in its hand. No timeline or a missing pose: said once, the agent throws standing still as before.
@@ -590,8 +621,18 @@ func _update_aim(state: Dictionary) -> void:
 	_shot_hold = maxf(0.0, _shot_hold - dt)
 	if _shot_t != INF:
 		_shot_t += dt
-	var want: bool = (String(state["weapon"]) == "pistol" and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing" and float(state["walk"]) < 0.0) \
-		or (_shot_hold > 0.0 and String(state["posture"]) == "standing" and float(state["walk"]) < 0.0)
+	var kind: String = "crouch" if String(state["posture"]) == "crouch" else "standing"
+	if _aim_t <= 0.0 and kind != _aim_kind and _aim_sets.has(kind):   ## the gun is away: the posture's own layer takes over
+		_aim.weight = 0.0
+		_aim_kind = kind
+		var aim_set: Array = _aim_sets[kind]
+		_aim = aim_set[0]
+		_sequence = aim_set[1]
+		_raise_s = float(aim_set[2])
+		_lower_s = float(aim_set[3])
+	var ready: bool = kind == _aim_kind and float(state["walk"]) < 0.0 and (String(state["posture"]) == "standing" \
+		or (kind == "crouch" and not _crouch.is_empty() and _crouch_t >= float(_crouch["len"])))   ## crouched: once fully down
+	var want: bool = ready and ((String(state["weapon"]) == "pistol" and String(state["grip"]) == "_aimed") or _shot_hold > 0.0)
 	var target: float = 1.0 if want else 0.0
 	_aim_t = move_toward(_aim_t, target, dt / (_raise_s if want else _lower_s))
 	_aim.weight = _aim_t

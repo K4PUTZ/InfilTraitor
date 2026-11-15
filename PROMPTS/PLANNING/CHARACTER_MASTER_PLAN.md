@@ -1691,6 +1691,15 @@ sheen. **The coat is CLOSED** (Director, 2026-11-07): the lining no longer shows
   on an uploaded model.
 - **TX-6 — the coat's final texture** (regions, trims, the store's leather, D96) on the same master -> bake route.
 
+**PROPOSED, not built (Director, 2026-11-15): one wall for the game's coat, the double wall for the shop.** The lining IS seen in the game (the
+open front, the hem, the flaps that part in the run and its stops, the skirt lifted in the crouch), so it cannot simply go. Proposal: the game's
+coat keeps ONE wall and draws its back face as the lining, the way `actor_coat3d.gdshader` already draws a back-facing fragment in the other
+wall's colour (`TripoFigure.apply_sides`); the double wall stays for the shop and the close-ups. Gains: about half the coat's vertices (under the
+5 % rule of 2026-11-10, so not measured for that), and an end to the layers that part (the outer wall's panels against the running lining, the
+coat torn apart by the cone test of 2026-11-15). Cost: every corrective key already shaped (IdleFix, WalkFix, RunFix, DrawFix, ThrowFix, the
+passages' Start/Stop keys, CrouchFix) re-made or transferred on both figures, and `push_lining_gap` / `tripo_coat_sides.py` reviewed. Deferred to
+the coat's final polish (post-Beta, with the coat slivers), where it is decided.
+
 **Open (Director):** cutscenes in the engine (the FULL in Godot, its cost) or pre-rendered (Blender only)? her hair black as the concept
 art, or the brown both share (D87)? who paints TX-3 (Director by hand, or Claude projecting and the Director retouching)?
 

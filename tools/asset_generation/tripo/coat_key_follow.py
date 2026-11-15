@@ -11,7 +11,12 @@ LOCKS every key but the one at home on the current frame, and the first frame's 
 """
 import re
 
-KEY_PATTERN = re.compile(r"^(.+Fix)_f(\d+)$")
+KEY_PATTERN = re.compile(r"^(.+Fix)_f(\d+)( \((?:inherited|next)\))?$")
+## `IdleFix_f90 (inherited)`: frame 90 of the PREVIOUS clip, at home on this one's first frame; `RunFix_f14 (next)`: frame 14 of the NEXT
+## clip, at home on this one's last frame. Both are the other clip's own key in the game, so they are never edited here.
+SHARED = ("IdleFix", "RunFix", "WalkFix")   ## the game's per-clip keys a transition borrows at its ends
+IDLE_FRAME = 90                             ## the idle's reference frame every transition joins (MOVEMENT 2026-11-13)
+LABEL = re.compile(r"(_f\d+)?( \((?:inherited|next)\))?$")
 COAT = "Outfit_Coat"
 FULL = 0.999   ## a key is "at home" on the frame where its value is keyed at 1
 
@@ -43,7 +48,7 @@ def key_frames(coat):
                 frames[blocks.find(m.group(1))] = int(round(min(full)))
     for index, key in enumerate(blocks):
         m = KEY_PATTERN.match(key.name)
-        if m is not None and index not in frames:
+        if m is not None and m.group(3) is None and index not in frames:
             frames[index] = int(m.group(2))
     return frames
 
@@ -62,13 +67,56 @@ def follow(scene, depsgraph=None):
         return
     here = scene.frame_current
     best = min(frames, key=lambda i: (abs(frames[i] - here), frames[i]))
-    editable = best if frames[best] == here and frames[best] != scene.frame_start else None
+    editable = best if frames[best] == here and frames[best] != scene.frame_start and not blocks[best].name.endswith((" (inherited)", " (next)")) else None
     for index in range(len(blocks)):   ## every key, the Basis and other clips' keys too
         lock = index != editable
         if blocks[index].lock_shape != lock:
             blocks[index].lock_shape = lock
     if coat.active_shape_key_index != best:
         coat.active_shape_key_index = best
+
+
+def _other_frame(base, which):
+    """The frame of the other clip a shared key comes from (`which` = "from_frame" for the previous clip, "to_frame" for the next): the idle
+    joins at its reference frame; a walk / run reads the timeline's `lab_run_start` record."""
+    import bpy, json
+    if base == "IdleFix":
+        return IDLE_FRAME
+    for o in bpy.data.objects:
+        if o.type == "ARMATURE" and "lab_run_start" in o.keys():
+            v = json.loads(o["lab_run_start"]).get(which)
+            if v is not None:
+                return int(round(v))
+    return None
+
+
+def unify_names(coat=None):
+    """Every timeline key named by its frame (Director, 2026-11-15): a key of this clip is `<Base>Fix_f<NN>` (NN on this timeline); a shared key
+    at the first frame is `<Base>Fix_f<NN> (inherited)` and at the last `<Base>Fix_f<NN> (next)`, NN being the OTHER clip's frame. Blender renames
+    the animation's paths with the key. Returns ({old: new}, [warnings])."""
+    import bpy
+    coat = coat or bpy.data.objects.get(COAT)
+    blocks = coat.data.shape_keys.key_blocks
+    sc = bpy.context.scene
+    renamed, warnings = {}, []
+    for index, frame in key_frames(coat).items():
+        old = blocks[index].name
+        base = LABEL.sub("", old)
+        if base in SHARED and frame in (sc.frame_start, sc.frame_end):
+            first = frame == sc.frame_start
+            other = _other_frame(base, "from_frame" if first else "to_frame")
+            if other is None:
+                warnings.append(f"{old}: no frame of the {'previous' if first else 'next'} clip on record, _f01 used")
+                other = 1
+            new = f"{base}_f{other:02d} ({'inherited' if first else 'next'})"
+        else:
+            if base in SHARED:
+                warnings.append(f"{old}: a shared key at home on frame {frame}, not an end; named as this clip's")
+            new = f"{base}_f{frame:02d}"
+        if new != old:
+            blocks[index].name = new
+            renamed[old] = new
+    return renamed, warnings
 
 
 def register():

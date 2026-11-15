@@ -19,7 +19,7 @@
 # Run inside Blender:  blender -b --python tripo_pose_lab.py -- build   <figure> <pose id> <dump dir> <out .blend> [--glb LIGHT.glb] [--pistol model.glb]
 #                      blender -b --python tripo_pose_lab.py -- extract <saved .blend> <out .json>
 #                      blender -b --python tripo_pose_lab.py -- render  <saved .blend> <out .png>
-import bpy, sys, json, math, os, struct
+import bpy, sys, json, math, os, re, struct
 import numpy
 from mathutils import Matrix, Quaternion, Vector
 
@@ -400,6 +400,26 @@ def _gun_placement(arm, rig, G, gun, prop="pistol"):
     return {"bone": bone, "pos": [loc.x, loc.y, loc.z], "quat": xyzw(rot), "scale": (scl[0] + scl[1] + scl[2]) / 3.0}
 
 
+BORROWED = re.compile(r"^(.+Fix)_f\d+ \((?:inherited|next)\)$")
+SINGLE_KEYS = ("DrawFix",)   ## one key for a whole clip, named so in the game
+
+
+def game_key(name):
+    """The game's name of a timeline coat key (2026-11-15): every key carries its frame (`CrouchFix_f16`); a key borrowed from the previous /
+    next clip carries THAT clip's frame plus ` (inherited)` / ` (next)` (`IdleFix_f90 (inherited)`) and is that clip's own key in the game, so it
+    goes out by its base name, as does a clip's single key (`DrawFix_f12` -> `DrawFix`). See coat_key_follow.py."""
+    m = BORROWED.match(name)
+    if m:
+        return m.group(1)
+    base = re.sub(r"_f\d+$", "", name)
+    return base if base in SINGLE_KEYS else name
+
+
+def _draw_key():
+    """the clip's DrawFix key, whatever frame its name carries"""
+    return next((k for o in bpy.data.objects if o.type == 'MESH' and o.data.shape_keys for k in o.data.shape_keys.key_blocks if game_key(k.name) == "DrawFix"), None)
+
+
 def _animated_keys(obj):
     """the shape keys of `obj` whose value is animated (the timeline drives them), by name"""
     sk = obj.data.shape_keys if obj.type == 'MESH' else None
@@ -425,9 +445,9 @@ def sequence(blend, name, seq_json, poses_dir):
     gun = bpy.data.objects["PROP_" + prop]
     # the THROW keeps the fingers (Director 2026-11-12: he places them round the grenade on this timeline); the draw leaves them to the clip underneath
     fingers = name.startswith("throw")
-    coat_key = next((o.data.shape_keys.key_blocks["DrawFix"] for o in bpy.data.objects if o.type == 'MESH' and o.data.shape_keys and "DrawFix" in o.data.shape_keys.key_blocks), None)
+    coat_key = _draw_key()
     coat_obj = bpy.data.objects.get("Outfit_Coat")
-    morphs = [k for k in (_animated_keys(coat_obj) if coat_obj is not None else []) if k != "DrawFix"]
+    morphs = [k for k in (_animated_keys(coat_obj) if coat_obj is not None else []) if game_key(k) != "DrawFix"]
     if coat_key is None:
         print("[tripo_pose_lab] no 'DrawFix' morph in this .blend: the coat stays closed through the sequence")
     action = arm.animation_data.action
@@ -442,7 +462,7 @@ def sequence(blend, name, seq_json, poses_dir):
         bpy.context.view_layer.update()
         local, G = rig.read()
         samples.append({"frame": f, "coat": coat_key.value if coat_key is not None else 0.0, "visible": not gun.hide_viewport, "gun": _gun_placement(arm, rig, G, gun, prop),
-                        "morphs": {k: coat_obj.data.shape_keys.key_blocks[k].value for k in morphs}})
+                        "morphs": {game_key(k): coat_obj.data.shape_keys.key_blocks[k].value for k in morphs}})
         if f not in keyed or f == first:
             continue
         pose_id = f"seq_{name}_f{f}"
@@ -458,7 +478,7 @@ def sequence(blend, name, seq_json, poses_dir):
         if not x["visible"] and shown is not None:
             x["gun"] = shown
     seq = {"format": "infiltraitor-sequence", "v": 1, "figure": figure, "name": name, "fps": sc.render.fps, "first": first, "last": last, "stops": stops, "samples": samples,
-           "prop": prop, "markers": {n: f for f, n in sorted(markers.items())}, "morphs": morphs}
+           "prop": prop, "markers": {n: f for f, n in sorted(markers.items())}, "morphs": [game_key(k) for k in morphs]}
     os.makedirs(os.path.dirname(seq_json), exist_ok=True)
     with open(seq_json, "w") as fh:
         json.dump(seq, fh, indent=1)
@@ -501,7 +521,7 @@ def sequence_new(pose_blend, idle_json, draw_json, aim_json, out_blend, mid_at):
               "quat": xyzw(quat_xyzw(pl_draw["quat"]).slerp(quat_xyzw(pl_aim["quat"]), mid_at))}
     gun = bpy.data.objects["PROP_pistol"]
     gun.rotation_mode = 'QUATERNION'
-    coat_key = next((o.data.shape_keys.key_blocks["DrawFix"] for o in bpy.data.objects if o.type == 'MESH' and o.data.shape_keys and "DrawFix" in o.data.shape_keys.key_blocks), None)
+    coat_key = _draw_key()
     node_m = prop_node_matrix("pistol")
     if arm.animation_data:
         arm.animation_data_clear()
@@ -2041,17 +2061,17 @@ def clip_out(blend, out_json, keys_dir):
             p = rig.parent[n]
             local[n] = ((G[p].transposed() if p else Matrix.Identity(3)) @ G[n]).to_quaternion()
         frames.append({"frame": f, "bones": {n: xyzw(local[n]) for n in rig.names}, "hips_pos": list(CM @ arm.pose.bones[PREFIX + "Hips"].matrix.translation),
-                       "travel": list(CM @ arm.location), "morphs": {k: coat.data.shape_keys.key_blocks[k].value for k in morphs}})
+                       "travel": list(CM @ arm.location), "morphs": {game_key(k): coat.data.shape_keys.key_blocks[k].value for k in morphs}})
     out = {"format": "infiltraitor-clip", "v": 1, "figure": arm["lab_figure"], "name": arm.get("lab_pose", ""), "fps": sc.render.fps,
-           "run_frame": info.get("to_frame"), "frames": frames, "morphs": morphs}
+           "run_frame": info.get("to_frame"), "frames": frames, "morphs": [game_key(k) for k in morphs]}
     os.makedirs(os.path.dirname(out_json), exist_ok=True)
     with open(out_json, "w") as fh:
         json.dump(out, fh, indent=1)
     os.makedirs(keys_dir, exist_ok=True)
     basis = [list(v.co) for v in coat.data.shape_keys.key_blocks[0].data] if coat is not None else []
     for k in morphs:
-        with open(os.path.join(keys_dir, k + ".json"), "w") as fh:
-            json.dump({"name": k, "basis": basis, "key": [list(v.co) for v in coat.data.shape_keys.key_blocks[k].data]}, fh)
+        with open(os.path.join(keys_dir, game_key(k) + ".json"), "w") as fh:
+            json.dump({"name": game_key(k), "basis": basis, "key": [list(v.co) for v in coat.data.shape_keys.key_blocks[k].data]}, fh)
     print(f"[tripo_pose_lab] wrote {out_json}: {len(frames)} frames at {sc.render.fps} fps, morphs {morphs}, travel {frames[-1]['travel']}")
 
 

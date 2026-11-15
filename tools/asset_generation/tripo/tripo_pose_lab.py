@@ -1650,10 +1650,148 @@ CROUCH_LEFT_STEP = (0.05, 0.25, 0.4)   # the left foot: leaves the floor, in the
 CROUCH_RIGHT = (0.15, 0.75)      # the right foot: heel starts up, at its kneeling place (fractions)
 CROUCH_LEAN_DEG = 22.0           # the trunk's lean forward at the crouch (on the Spine), given back by the neck so the head looks ahead
 CROUCH_ENDS = ("IdleFix", "CrouchFix")
+# THE CONE VARIANT (Director 2026-11-15, `crouch_new ... cone`): a key right after the idle opens the coat's skirt outward all round into a wide cone (the back
+# lifted too, clear of the kneeling leg) and raises both arms a little, the shoulders turned; then every key keeps the skirt off the legs, hanging to each
+# side of the waist. A DRAFT the Director finishes by hand: the coat keys are made here by measurement, not sculpted.
+CROUCH_CONE_BODY = ((0.0, "idle"), (0.15, "open"), (0.4, "step"), (0.75, "knee"), (1.0, "crouch"))
+CROUCH_CONE_SHARE = {"open": 1.0, "step": 0.8, "knee": 0.55, "crouch": 0.35}   # how much of the cone and of the raised arms each key keeps
+CROUCH_CONE_OUT = 0.11           # the hem's outward push at the full cone (figure metres), less toward the waist
+CROUCH_CONE_UP = 0.03            # the hem lifted all round
+CROUCH_CONE_BACK_UP = 0.07       # the back of the hem lifted further
+CROUCH_ARM_OUT_DEG = 18.0        # the arms away from the body (about the front axis)
+CROUCH_SHOULDER_DEG = 7.0        # the shoulders turned up with them
+CROUCH_LEG_CLEAR = {"thigh": 0.085, "shin": 0.065}   # the skirt kept this far from each leg's bone line (the leg's own radius + a gap)
+CROUCH_FLOOR_CLEAR = 0.015
+CROUCH_SMOOTH_R = 0.06          # the radius the skirt's offsets are smoothed over, in the rest coat (figure metres)
 
 
-def crouch_new(base_blend, out_blend):
-    """THE IDLE -> CROUCH TIMELINE of one figure (see the block's header). Nothing is written over the base."""
+def _is_below(rig, n, root):
+    p = rig.parent[n]
+    while p:
+        if p == root:
+            return True
+        p = rig.parent[p]
+    return False
+
+
+def _coat_world(coat):
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = coat.evaluated_get(dg)
+    M = ev.matrix_world
+    return [M @ v.co for v in ev.data.vertices]
+
+
+def _seg_push(p, a, b, r):
+    ab = b - a
+    t = min(max((p - a).dot(ab) / max(ab.length_squared, 1e-12), 0.0), 1.0)
+    c = a + ab * t
+    d = p - c
+    if d.length >= r:
+        return p
+    if d.length < 1e-6:
+        d = Vector((0.0, 0.0, 1.0))
+    return c + d.normalized() * r
+
+
+def _crouch_cone_keys(arm, coat, rows, fwd, first_frame):
+    """The cone variant's coat keys, by measurement: at each key's frame, the coat as the timeline poses it WITHOUT that key, the skirt pushed into the
+    cone (its share), then out of every leg's capsule and above the floor; the world offsets brought back to the key's rest space through each vertex's
+    measured response (three probe evaluations, so whatever deforms the coat is honoured), smoothed over the mesh."""
+    sc = bpy.context.scene
+    blocks = coat.data.shape_keys.key_blocks
+    basis = [v.co.copy() for v in blocks[0].data]
+    nv = len(basis)
+    arm_groups = {g.index for g in coat.vertex_groups if any(k in g.name for k in ("Arm", "Hand", "Shoulder"))}
+    sleeve = [sum(g.weight for g in v.groups if g.group in arm_groups) for v in coat.data.vertices]
+    sc.frame_set(first_frame)
+    bpy.context.view_layer.update()
+    rest_w = _coat_world(coat)
+    z_belt = (arm.matrix_world @ arm.pose.bones[PREFIX + "Hips"].head).z
+    z_hem = min(p.z for p in rest_w)
+    skirt = [0.0 if sleeve[i] > 0.2 else min(max((z_belt - rest_w[i].z) / max(z_belt - z_hem, 1e-6), 0.0), 1.0) for i in range(nv)]
+    from mathutils.kdtree import KDTree
+    tree = KDTree(nv)
+    for i, p in enumerate(rest_w):
+        tree.insert(p, i)
+    tree.balance()
+    near = []                            # each skirt vertex's neighbours in the rest coat, Gaussian weights summing to 1
+    for i, p in enumerate(rest_w):
+        if skirt[i] <= 0.0:
+            near.append([])
+            continue
+        found = tree.find_range(p, CROUCH_SMOOTH_R)
+        ws = [(j, math.exp(-(d / (0.5 * CROUCH_SMOOTH_R)) ** 2)) for _co, j, d in found]
+        tot = sum(w for _j, w in ws)
+        near.append([(j, w / tot) for j, w in ws])
+    up = Vector((0.0, 0.0, 1.0))
+    for frame, name, share in rows:
+        kb = blocks[name]
+        for v, b0 in zip(kb.data, basis):
+            v.co = b0
+        kb.mute = True
+        sc.frame_set(frame)
+        bpy.context.view_layer.update()
+        P0 = _coat_world(coat)
+        kb.mute = False
+        Mw = arm.matrix_world
+        hips = Mw @ arm.pose.bones[PREFIX + "Hips"].head
+        segs = []
+        for side in ("Left", "Right"):
+            up_leg, leg, foot = (Mw @ arm.pose.bones[PREFIX + side + b].head for b in ("UpLeg", "Leg", "Foot"))
+            segs += [(up_leg, leg, CROUCH_LEG_CLEAR["thigh"]), (leg, foot, CROUCH_LEG_CLEAR["shin"])]
+        want = []
+        for i, p in enumerate(P0):
+            s = skirt[i]
+            if s <= 0.0:
+                want.append(p.copy())
+                continue
+            radial = Vector((p.x - hips.x, p.y - hips.y, 0.0))
+            radial = radial.normalized() if radial.length > 1e-6 else fwd.copy()
+            back = max(0.0, -radial.dot(fwd))
+            q = p + (radial * CROUCH_CONE_OUT * s ** 1.3 + up * (CROUCH_CONE_UP + CROUCH_CONE_BACK_UP * back) * s * s) * share
+            for _it in range(3):
+                for a, b, r in segs:
+                    q = _seg_push(q, a, b, r * min(1.0, 0.4 + s))
+            q.z = max(q.z, CROUCH_FLOOR_CLEAR)
+            want.append(q)
+        dw = [w - p for w, p in zip(want, P0)]
+        for _round in range(4):          # smoothed in SPACE (the coat's layers, outer and lining, share no edges: an edge smoothing tore them apart), then
+            dw = [sum((dw[j] * wt for j, wt in near[i]), Vector()) if near[i] else dw[i] for i in range(nv)]   # what it let back into a leg comes out
+            for i, p in enumerate(P0):
+                if skirt[i] > 0.0:
+                    q = p + dw[i]
+                    for a, b, r in segs:
+                        q = _seg_push(q, a, b, r * min(1.0, 0.4 + skirt[i]))
+                    q.z = max(q.z, CROUCH_FLOOR_CLEAR)
+                    dw[i] = q - p
+        dw = [sum((dw[j] * wt for j, wt in near[i]), Vector()) if near[i] else dw[i] for i in range(nv)]
+        J = []                           # each vertex's world response to a unit rest offset, per axis
+        for axis in range(3):
+            e = Vector((0.0, 0.0, 0.0))
+            e[axis] = 0.01
+            for v, b0 in zip(kb.data, basis):
+                v.co = b0 + e
+            bpy.context.view_layer.update()
+            P1 = _coat_world(coat)
+            J.append([(p1 - p0) / 0.01 for p1, p0 in zip(P1, P0)])
+        moved = 0
+        for i in range(nv):
+            if dw[i].length < 1e-5:
+                kb.data[i].co = basis[i]
+                continue
+            M = Matrix((J[0][i], J[1][i], J[2][i])).transposed()
+            try:
+                kb.data[i].co = basis[i] + M.inverted() @ dw[i]
+                moved += 1
+            except ValueError:
+                kb.data[i].co = basis[i]
+        bpy.context.view_layer.update()
+        print(f"[tripo_pose_lab] cone key {name} at frame {frame} (share {share}): {moved} vertices moved, largest {max(d.length for d in dw):.3f} m")
+
+
+def crouch_new(base_blend, out_blend, cone=False):
+    """THE IDLE -> CROUCH TIMELINE of one figure (see the block's header). Nothing is written over the base. `cone`: the cone variant (CROUCH_CONE_*)."""
+    body_rows = CROUCH_CONE_BODY if cone else CROUCH_BODY
     bpy.ops.wm.open_mainfile(filepath=base_blend)
     sc = bpy.context.scene
     arm, rig = load_rig_from_blend()
@@ -1759,7 +1897,7 @@ def crouch_new(base_blend, out_blend):
             foot.keyframe_insert("rotation_quaternion", frame=t + 1)
     last_q = {}
     body_frames = []
-    for frac, _marker in CROUCH_BODY:
+    for frac, marker in body_rows:
         t = int(round(frac * T))
         body_frames.append(t + 1)
         sc.frame_set(t + 1)
@@ -1775,6 +1913,21 @@ def crouch_new(base_blend, out_blend):
             if n in ("Neck", "Head") or n.startswith("HeadTop"):
                 continue
             P[n] = (lean @ P[n]).normalized()
+        share = CROUCH_CONE_SHARE.get(marker, 0.0) if cone else 0.0
+        if share > 0.0:          # the arms away from the body, the shoulders turned up with them (each subtree turned about its own joint)
+            axis = lean @ fwd
+            for side in ("Left", "Right"):
+                out = (idle[side + "Arm"][1] - hips_idle).dot(lat)
+                d = idle[side + "Hand"][1] - idle[side + "Arm"][1]
+                sgn = 1.0
+                for g in (1.0, -1.0):
+                    if (Matrix.Rotation(math.radians(10.0) * g, 3, axis) @ d).dot(lat) * out > d.dot(lat) * out:
+                        sgn = g
+                for root, deg in ((side + "Shoulder", CROUCH_SHOULDER_DEG), (side + "Arm", CROUCH_ARM_OUT_DEG)):
+                    Rz = Matrix.Rotation(math.radians(deg) * share * sgn, 3, axis)
+                    for n in rig.names:
+                        if n == root or _is_below(rig, n, root):
+                            P[n] = (Rz @ P[n]).normalized()
         hips_arm = hips_at(t)
         for side in ("Left", "Right"):
             toe, foot, ankle = empties[side[0]]
@@ -1822,7 +1975,7 @@ def crouch_new(base_blend, out_blend):
             c.owner_space = 'WORLD'
             c.mix_mode = 'REPLACE'
     sc.timeline_markers.clear()
-    for (frac, marker), frame in zip(CROUCH_BODY, body_frames):
+    for (frac, marker), frame in zip(body_rows, body_frames):
         sc.timeline_markers.new(marker, frame=frame)
     sc.frame_start, sc.frame_end = 1, T + 1
     coat = bpy.data.objects.get(COAT_OBJECT)
@@ -1846,6 +1999,10 @@ def crouch_new(base_blend, out_blend):
                 blocks[name].value = v
                 blocks[name].keyframe_insert("value", frame=frame)
         coat.active_shape_key_index = list(blocks.keys()).index(CROUCH_ENDS[1])
+        if cone:
+            names = [f"CrouchFix_f{f:02d}" for f in inner] + [CROUCH_ENDS[1]]
+            shares = [CROUCH_CONE_SHARE[m] for _f, m in body_rows[1:]]
+            _crouch_cone_keys(arm, coat, list(zip(body_frames[1:], names, shares)), fwd, body_frames[0])
     arm["lab_pose"] = "crouch"
     arm["lab_props"] = json.dumps([])
     arm["lab_run_start"] = json.dumps({"frames": T, "to_frame": T, "side": "Right", "planted": {"flat": r1}, "pinned_until": T + 1,
@@ -2138,7 +2295,7 @@ def main():
     elif mode == "run_start_new":
         run_start_new(a[1], a[2], a[3], a[4] if len(a) > 4 else "run")
     elif mode == "crouch_new":
-        crouch_new(a[1], a[2])
+        crouch_new(a[1], a[2], len(a) > 3 and a[3] == "cone")
     elif mode == "walk_stop_new":
         walk_stop_new(a[1], a[2], a[3])
     elif mode == "run_stop_new":

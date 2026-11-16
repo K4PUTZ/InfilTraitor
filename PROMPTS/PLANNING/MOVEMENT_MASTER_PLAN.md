@@ -1,7 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
-> ⏭️ **v1.5, 2026-11-16 — the BASIC MOVES IN USE are CLOSED on both figures (Director: "a gente fechou os movimentos básicos em uso") and what is left is PLANNED in §11, docs only:** every held item of the canon sorted into eight HOLD families, the body postures still to make (beside cover and at a corner, standing and crouched), the throws left (from the kneel; the bowl, standing only), the fixed interactions (computer, alarms, buttons, levers, valves), the weapon models already on disk, the grenade's size defect measured (3.0× the hand's in flight), and the order of work (§11.6). **PRONE is SUSPENDED** until GAMEPLAY-01 rules whether it is viable. **Step 0 DONE (the grenade is the hand's size everywhere, 0.065 GU); step 1's model sheet rendered, waiting on the Director's picks; then every weapon in the figure's hands (size, grip, muzzle). Nine questions wait on the Director (§11.8).**
+> ⏭️ **v1.5, 2026-11-16 — the BASIC MOVES IN USE are CLOSED on both figures (Director: "a gente fechou os movimentos básicos em uso") and what is left is PLANNED in §11, docs only:** every held item of the canon sorted into eight HOLD families, the body postures still to make (beside cover and at a corner, standing and crouched), the throws left (from the kneel; the bowl, standing only), the fixed interactions (computer, alarms, buttons, levers, valves), the weapon models already on disk, the grenade's size defect measured (3.0× the hand's in flight), and the order of work (§11.6). **PRONE is SUSPENDED** until GAMEPLAY-01 rules whether it is viable. **Step 0 DONE (the grenade is the hand's size everywhere, 0.065 GU); step 1 ruled: ALL 21 pack firearms are used on their families' holds; then every weapon in the figure's hands (size, grip, muzzle). Nine questions wait on the Director (§11.8).**
 > ⏭️ **2026-11-14 — the DASH is built: a move that spends both AP plays the Tripo figure's `run` (0.32 s/GU, phased by the ground); the idle <-> move passage is still a snap (an `AnimationPlayer` crossfade over `seek` failed: the run never showed). NEXT, by the Director: the characters turn, then idle -> run / walk passages. Record: `PROMPTS/RESUMO_SESSAO_2026-11-14_DASH.md`.**
 > ⏭️ **2026-11-15 — the CROUCH is in the game on both figures (16 frames, held; standing up = the crouch backwards), and so are the crouched draw / aim / shot / holster (`draw_crouch_pistol`, a second aim layer chosen by posture; the recoil unchanged). Next: the crouch -> walk / run passage. Record: `PROMPTS/RESUMO_SESSAO_2026-11-15_CROUCH_DRAW_SHOT.md`.**
 
@@ -717,8 +717,12 @@ suppressor) are cheaper MADE by a script than searched.**
 Each step lands on both figures before the next; a step with a look ends in a capture shown in the chat.
 
 0. ✅ **The grenade's size** (§11.5, fixed 2026-11-16).
-1. 🟡 **The model sheet** (rendered 2026-11-16, `tools/asset_generation/weapons/gun_model_sheet.py` -> `temp/model_sheet/`; waiting on
-   the Director's picks). One contact sheet of the pack's 25 models and the grenade, to scale beside the figure. The Director picks one
+1. ✅ **The model sheet** (rendered 2026-11-16, `tools/asset_generation/weapons/gun_model_sheet.py` -> `temp/model_sheet/`).
+   **Director, 2026-11-16: "Vamos usar todas, aproveitando as mesmas empunhaduras"** — ALL 21 firearms of the pack are used (pistols ×4,
+   revolvers ×3, submachine guns ×2, shotguns ×4, assault rifles ×3 + the bullpup, sniper rifles ×4), each on its family's hold
+   (§11.3): one set of poses per family, a model only brings its points (size, grip, muzzle, support, butt, port). Open: whether a
+   model is a cosmetic variant of one weapon or a weapon of its own (§11.8 Q10), and whether the size is set by hand per model or
+   per family (Q11). One contact sheet of the pack's 25 models and the grenade, to scale beside the figure. The Director picks one
    model per weapon (the pistol stays). The list of what to source or make for H5-H7, each source recorded in `props/MODEL_SOURCES.md`.
 2. **Each weapon in the figure's hands** (the 2026-11-09 method, once per weapon): a lab file per weapon, the figure in the family's
    base pose (solved by the kit), the weapon opened at the pistol's factor. The Director sets the size and the grip by hand. Read back
@@ -769,3 +773,10 @@ Steps 0 to 5 are the Director's order. Steps 6 to 9 are in Claude's proposed ord
 8. **Guards** (§4.1's question 7 stands): the same families on the same skeleton. Do they draw as the Agent does, or carry the weapon in
    the hands from the start?
 9. **The order of steps 6 to 9** (§11.6).
+10. **All 21 models (2026-11-16): variants or weapons?** Is each model a weapon of its own (its own row, stats, range, noise), or a LOOK of
+    one of the six weapons (one row per weapon, several models, same stats)? *(Claude: looks of the six, each model its own size / grip
+    / muzzle points; stats stay six rows, so balance and the tree do not grow by fifteen weapons; a model can be promoted to a weapon
+    later.)*
+11. **Sizing 21 models by hand:** each one by hand (21 lab sessions), or the family's reference by hand and its siblings at the pack's
+    own proportion to it, checked by eye on one sheet? *(Claude: by family; the pack is consistent WITHIN a type, its pistol-to-rifle
+    gap is what needs the hand.)*

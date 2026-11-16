@@ -331,3 +331,25 @@ ABSOLUTELY NO TEXT anywhere on the image: no titles, no numbers, no labels, no d
 In the side profiles, the front or pointed end faces right and any handle points down.
 ```
 
+**Result (2026-11-16):** `REFERENCES/ITEMS/Gemini_Generated_Image_uqqbj2uqqbj2uqqb.jpeg`. No text this time. Two drifts: the bracer is
+drawn with the blade OUT (asked retracted; Tripo would fuse the two), and the style turned cel-shaded with dark OUTLINES (sheet 1 had
+none). Cut with `--left side --open 3 --min-area 0.0003` (no text to drop, thin parts and the tiny end views kept; rows grouped by gap)
+into `temp/items_tripo/sheet2/`.
+
+### 7.3 Sheet 3 — explosives (C4 block, breaching charge, gas grenade, EMP charge, tripwire flash)
+
+```
+Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 5 rows, 2 columns. Highest resolution.
+Each row is ONE object: its SIDE PROFILE in the left column, its FRONT (end-on) view in the right column (the same object rotated 90 degrees, same scale, same vertical alignment). All five objects are drawn at the same real-world scale, relative to each other.
+Rows, top to bottom:
+1. Plastic explosive block (C4), 28 cm long, 5 cm wide, 5 cm tall: a rectangular block wrapped in olive film, a blasting cap pushed into one end with two short wires.
+2. Breaching charge, 60 cm long, 5 cm wide, 2 cm thick: a long flat adhesive strip charge, dark grey, with a small black firing box at one end.
+3. Gas grenade, 6 cm diameter, 15 cm tall: a plain cylinder canister with a top fuse, a spoon lever and a pull ring. Grey body, one yellow band.
+4. EMP charge, 15 cm diameter, 6 cm tall: a squat disc device on a flat magnetic base, a ring of vents around its rim, one small status light on top. Dark grey with a cyan light.
+5. Tripwire flash device, 8 cm long, 5 cm wide, 4 cm tall: a small box with a wire spool on its side and a 10 cm ground spike under it. Black box, steel spike.
+Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bold readable silhouette, solid flat colours with clearly separated material regions. No outlines, no ink lines, no cel shading. No textures, no wear, no decals, no logos.
+Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
+ABSOLUTELY NO TEXT anywhere on the image: no titles, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
+In the side profiles, the front or pointed end faces right and any handle points down.
+```
+

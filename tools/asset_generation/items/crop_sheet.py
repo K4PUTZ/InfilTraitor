@@ -20,6 +20,8 @@ ap.add_argument("--size", type=int, default=1024)
 ap.add_argument("--left", choices=("front", "side"), default="front", help="which view the sheet's LEFT column is (as prompted)")
 ap.add_argument("--threshold", type=int, default=18)
 ap.add_argument("--open", type=int, default=7, help="opening kernel: strokes thinner than this are dropped")
+ap.add_argument("--min-area", type=float, default=0.0015, help="a blob smaller than this fraction of the sheet is noise")
+ap.add_argument("--row-gap", type=int, default=40, help="px: blobs closer than this vertically are one row")
 ap.add_argument("--keep", type=int, default=8, help="dilation (px) that brings an object's own thin parts back")
 args = ap.parse_args()
 
@@ -33,16 +35,16 @@ lab, n = ndimage.label(core)
 blobs = []
 for i, sl in enumerate(ndimage.find_objects(lab), start=1):
     area = int((lab[sl] == i).sum())
-    if area < 0.0015 * H * W:
+    if area < args.min_area * H * W:
         continue
     cy, cx = (sl[0].start + sl[0].stop) / 2.0, (sl[1].start + sl[1].stop) / 2.0
     blobs.append({"id": i, "cy": cy, "col": 0 if cx < W / 2.0 else 1, "y0": sl[0].start, "y1": sl[0].stop})
 
-# Rows: blobs whose vertical spans overlap belong to one row.
-blobs.sort(key=lambda b: b["cy"])
+# Rows: blobs whose vertical spans overlap, or sit closer than --row-gap, belong to one row (stacked picks, a bundle of ties).
+blobs.sort(key=lambda b: b["y0"])
 rows = []
 for b in blobs:
-    if rows and b["y0"] < max(x["y1"] for x in rows[-1]):
+    if rows and b["y0"] < max(x["y1"] for x in rows[-1]) + args.row_gap:
         rows[-1].append(b)
     else:
         rows.append([b])

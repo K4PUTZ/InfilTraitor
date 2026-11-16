@@ -22,7 +22,7 @@ solver); the Director refines them here, in Blender, on the LIGHT Agent, with th
         `StartFix_f<frame>` coat key per pose; `tripo_pose_lab.run_start_new`). An existing file is never overwritten.
     python3 tools/persistent/pose_lab.py crouch_run_new [--figure ...]
         Builds the timeline of RISING FROM THE CROUCH INTO THE RUN, `SEQ_crouch_run_<FIG>.blend` (the crouch's last frame -> the bank run's frame 14; the same
-        builder as run_start_new; `RiseFix_f<frame>` coat keys, `CrouchFix_f16 (inherited)` and `RunFix_f14 (next)` locked). Never overwrites.
+        builder as run_start_new; `RiseFix_f<frame>` coat keys, `CrouchFix_f16 (inherited)` and `RunFix_f14 (next)` locked). `--gait walk`: the same into the walk (`SEQ_crouch_walk_<FIG>.blend`, `WRiseFix_f<frame>`, `WalkFix_f09 (next)`). Never overwrites.
     python3 tools/persistent/pose_lab.py strip run_start [--figure ...] [--view side|front34] [--blend path]
         Every frame of the timeline `SEQ_<name>_<FIG>.blend` from ONE still camera, laid out in rows, plus an ONION (all frames over each other, darkest
         wins: what stays sharp did not move), into temp/poses/strip_<name>_<fig>[_onion].png. For timelines with feet on the floor (the run's start).
@@ -163,16 +163,17 @@ def cmd_run_start_new(a):
 
 
 def cmd_crouch_run_new(a):
+    gait = getattr(a, "gait", "run")
     for figure in figures_of(a.figure):
         fit = os.path.join(ROOT, "ASSETS", "MODELS", "fit")
-        out = os.path.join(fit, f"SEQ_crouch_run_{figure.upper()}.blend")
+        out = os.path.join(fit, f"SEQ_crouch_{gait}_{figure.upper()}.blend")
         if os.path.exists(out):
             print(f"[pose_lab] {os.path.relpath(out, ROOT)} exists: it holds your work, so it is left as it is")
             continue
         base = os.path.join(fit, f"SEQ_crouch_{figure.upper()}_fast.blend")
-        run_blend = os.path.join(fit, f"SEQ_run_start_{figure.upper()}_arm6.blend")
-        clip = os.path.join(ROOT, "ASSETS", "ANIMATIONS", "bank", figure, "run.glb")
-        run([BLENDER, "-b", "--python", LAB, "--", "run_start_new", base, clip, out, "crouch_run", run_blend], f"building {os.path.relpath(out, ROOT)}")
+        run_blend = os.path.join(fit, f"SEQ_run_start_{figure.upper()}_arm6.blend" if gait == "run" else f"SEQ_walk_start_{figure.upper()}.blend")
+        clip = os.path.join(ROOT, "ASSETS", "ANIMATIONS", "bank", figure, f"{gait}.glb")
+        run([BLENDER, "-b", "--python", LAB, "--", "run_start_new", base, clip, out, f"crouch_{gait}", run_blend], f"building {os.path.relpath(out, ROOT)}")
 
 
 def cmd_strip(a):
@@ -260,6 +261,7 @@ def main():
     s.set_defaults(fn=cmd_run_start_new)
     s = sub.add_parser("crouch_run_new")
     s.add_argument("--figure", default="both")
+    s.add_argument("--gait", default="run", choices=["run", "walk"])
     s.set_defaults(fn=cmd_crouch_run_new)
     s = sub.add_parser("throw_new")
     s.add_argument("--figure", default="both", choices=list(FIGURES) + ["both"])

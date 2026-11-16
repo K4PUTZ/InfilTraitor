@@ -852,7 +852,11 @@ START_GAITS = {
     # ahead): the left foot is the support, the right knee comes off the floor and swings through into the run's contact. Its two coat ends are borrowed keys.
     "crouch_run": {"to": RUN_START_TO, "stance": RUN_START_STANCE, "body": ((0.0, "crouch"), (0.23, "rise"), (0.46, "drive"), (0.69, "push"), (1.0, "run")),
                    "r_events": (0.1, 0.3, 0.42, 0.62), "heel_deg": 0.0, "lift": 0.03, "ends": ("CrouchFix_f16 (inherited)", "RunFix_f14 (next)"), "key": "RiseFix",
-                   "pose": "crouch_run", "search_lo": 2.0, "heel_rise": 0.01, "min_frames": 16},
+                   "pose": "crouch_run", "search_lo": 2.0, "heel_rise": 0.01, "min_frames": 16, "borrow": "RunFix"},
+    # the same into the WALK (2026-11-15): the walk's anchors (stance 3, contact 9), the walk start's own `WalkFix` borrowed
+    "crouch_walk": {"to": 9, "stance": 3, "body": ((0.0, "crouch"), (0.33, "rise"), (0.66, "step"), (1.0, "walk")), "r_events": (0.1, 0.3, 0.42, 0.62),
+                    "heel_deg": 0.0, "lift": 0.02, "ends": ("CrouchFix_f16 (inherited)", "WalkFix_f09 (next)"), "key": "WRiseFix", "pose": "crouch_walk",
+                    "search_lo": 0.0, "heel_rise": 0.002, "min_frames": 16, "borrow": "WalkFix"},
 }
 
 
@@ -865,13 +869,13 @@ def run_start_new(base_blend, clip_glb, out_blend, gait="run", run_blend=None):
     """THE STARTING TIMELINE OF THE RUN of one figure (see the block's header): the idle at frame 1 of `base_blend` (the draw timeline, its idle re-based to 90)
     into the bank's `run`, ending on its frame G["to"] one step ahead, the left foot planted, the legs on IK. Nothing is written over the base. `gait`: a START_GAITS row (the walk's start is the same passage into the bank `walk`)."""
     G = START_GAITS[gait]
-    from_crouch = gait == "crouch_run"
+    from_crouch = gait.startswith("crouch_")
     borrowed = None
     if from_crouch:   # the run's coat key, taken from the run's own start timeline: its basis must be the crouch's
         bpy.ops.wm.open_mainfile(filepath=run_blend)
         c0 = bpy.data.objects[COAT_OBJECT]
         kb0 = c0.data.shape_keys.key_blocks
-        rk = next(k for k in kb0 if k.name.startswith("RunFix"))
+        rk = next(k for k in kb0 if k.name.startswith(G["borrow"]))
         borrowed = ([v.co.copy() for v in rk.data], [v.co.copy() for v in kb0[0].data])
     bpy.ops.wm.open_mainfile(filepath=base_blend)
     sc = bpy.context.scene
@@ -898,13 +902,13 @@ def run_start_new(base_blend, clip_glb, out_blend, gait="run", run_blend=None):
         coat0 = bpy.data.objects[COAT_OBJECT]
         blocks0 = coat0.data.shape_keys.key_blocks
         if any((a - b).length > 1e-5 for a, b in zip(borrowed[1], [v.co for v in blocks0[0].data])):
-            sys.exit("[tripo_pose_lab] the crouch's coat Basis differs from the run start's: RunFix cannot be carried over")
+            sys.exit("[tripo_pose_lab] the crouch's coat Basis differs from the start's: %s cannot be carried over" % G["borrow"])
         for k in blocks0:   # the crouch's own key, locked, is the passage's first end
             if k.name == "CrouchFix_f16":
                 k.name = "CrouchFix_f16 (inherited)"
         for k in [k for k in blocks0 if k.name != "Basis" and not k.name.startswith("CrouchFix_f16")]:
             coat0.shape_key_remove(k)
-        rf = coat0.shape_key_add(name="RunFix_f14 (next)", from_mix=False)
+        rf = coat0.shape_key_add(name=G["ends"][1], from_mix=False)
         for v, co in zip(rf.data, borrowed[0]):
             v.co = co
     clip = _clip_frames(arm, clip_glb, list(range(0, G["to"] + 3)))

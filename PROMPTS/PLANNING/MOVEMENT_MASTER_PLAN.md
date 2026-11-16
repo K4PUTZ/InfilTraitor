@@ -774,7 +774,9 @@ Steps 0 to 5 are the Director's order. Steps 6 to 9 are in Claude's proposed ord
 6. **The EMP:** thrown (H4) or placed (H5)? `WEAPON` §5.2 lists a bomb, the tree a "charge".
 7. **The throws not on today's list:** the study's underhand toss and sidearm (§7): dropped, or later? *(Claude: the sidearm with the
    cover; the underhand only if the solver needs a short toss under a low ceiling.)*
-8. **Guards** (§4.1's question 7 stands): the same families on the same skeleton. Do they draw as the Agent does, or carry the weapon in
+8. ✅ **RULED 2026-11-16 (Director): "Todos podem carregar todas as armas, vamos usar as mesmas animações pros inimigos e agentes, mudando
+   somente os modelos."** One set of animations for the Agent and every enemy; any of them may carry any weapon. Whether a guard DRAWS or
+   starts with the weapon in hand is now a gameplay state, not a second animation set. Was: **Guards** (§4.1's question 7 stands): the same families on the same skeleton. Do they draw as the Agent does, or carry the weapon in
    the hands from the start?
 9. **The order of steps 6 to 9** (§11.6).
 10. ✅ **RULED 2026-11-16 — each model is a WEAPON of its own:** *"specs diferentes individuais por modelo (a definir na milestone de

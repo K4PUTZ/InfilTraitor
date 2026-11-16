@@ -902,6 +902,9 @@ detecção, etc."* (Director, 2026-08-14)
 - **The grenade in 3D** (HERITAGE T2 W5): its flight, hop and roll as world state, out of the 2D parabola. A future round.
 
 **⏳ Owed here (Director, 2026-11-16, MOVEMENT):**
+- **Everyone carries everything (Director, 2026-11-16):** *"Todos podem carregar todas as armas, vamos usar as mesmas animações pros
+  inimigos e agentes, mudando somente os modelos."* Who carries what in a mission is a loadout / faction rule decided here, not a limit of
+  the animation. **The first-aid kit** joins the items (`ITEMS_MASTER_PLAN` §2.10): what it heals and how often is decided here.
 - **The specs of 21 firearms, one per model.** *"As armas de cada família vão ter specs diferentes individuais por modelo (a definir na
   milestone de GAMEPLAY), mas são essencialmente a mesma arma em termos de animação e manuseio, mudando apenas a aparência, e o resultado
   dos tiros (dano, accuracy, etc)."* Every model of Quaternius's guns pack is a weapon of its own (pistols ×4, revolvers ×3, submachine

@@ -105,3 +105,5 @@ model's own Poly Pizza page by `tools/asset_generation/items/pp_get.py`.
 | `swords` | `Sword-ajOJ2NLz5m.glb` | Sword | Quaternius | https://poly.pizza/m/ajOJ2NLz5m |
 | `swords` | `Sword-Ds2bJiNI5w.glb` | Sword | Quaternius | https://poly.pizza/m/Ds2bJiNI5w |
 | `swords` | `Cutlass-tzwQ8g5dBy.glb` | Cutlass | Quaternius | https://poly.pizza/m/tzwQ8g5dBy |
+| `medkits` | `First_Aid_Kit-Hp80p6148W.glb` | First Aid Kit | Quaternius | https://poly.pizza/m/Hp80p6148W |
+| `medkits` | `First_Aid_Kit-wP00rePSRD.glb` | First Aid Kit | Quaternius | https://poly.pizza/m/wP00rePSRD |

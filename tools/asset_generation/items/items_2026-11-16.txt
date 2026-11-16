@@ -94,3 +94,6 @@ distractions IqXSdKUMnY  # soda can
 distractions 4MUaQTcDdc  # rock
 distractions Z6M4GNkgWt  # rock
 distractions 34W5ymEePk  # rock
+# first-aid kits (Director, 2026-11-16)
+medkits Hp80p6148W
+medkits wP00rePSRD

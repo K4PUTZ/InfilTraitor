@@ -1,0 +1,96 @@
+# ITEMS_MASTER_PLAN §3: the Poly Pizza models downloaded 2026-11-16 (group id). Run: python3 -I pp_get.py <dest> items_2026-11-16.txt
+# M1 knives / daggers
+knives N9bfPFP1hr
+knives NNzzvlGXzO
+knives YnC9RcBOWs
+knives 0g8M6yYtE4
+knives H7APRTmSqM
+knives bAaO335d6A   # Kabar
+knives XVLkcKZxiY   # pocket knife
+knives a2avVUVeYD   # hunters knife
+knives 3MPaN7WAMw   # battle knife
+knives g9CmWftE5e   # butcher knife
+daggers kSMpR711Y2
+daggers NDdZB7zIGW
+daggers qZqOhRWBTe
+daggers zDziDFMftn  # tanto
+# M2 swords
+swords 15A7InejC7   # katana
+swords 9CCcEXCUZH   # katana
+swords 9lLmH8Et4K
+swords ajOJ2NLz5m
+swords Ds2bJiNI5w
+swords tzwQ8g5dBy   # cutlass
+# batons and clubs
+clubs 8KQCnj6CCM    # baton
+clubs z7hlUxZHuK    # police baton
+clubs i2JCd3w8gh    # baseball bat
+clubs K24oYy6R7c    # baseball bat
+clubs POXTjdMP2c    # baseball bat
+clubs dFBLs83Ncn    # basebat
+clubs HSM4KnggSz    # wooden bat barbed
+clubs PIRZIV4aVN    # wooden bat saw
+clubs 03iCPYXZpJ    # pipe
+clubs 26nMm9C7Bw    # golf club
+# crossbow + darts (to adapt into a hand crossbow)
+crossbow kHb0kA11oD
+crossbow Rt48KEPDGt  # arrow
+crossbow dZVjrxZdaB  # arrow
+# H9 shoulder launchers (+ grenade launchers, H3)
+launchers GCqUvqleqN  # rocket launcher
+launchers eJNzLpBsEt  # bazooka
+launchers ZKvWhvu4tV  # grenade launcher
+launchers phmPZCnGOA  # grenade launcher
+launchers r10Gkf9yDs  # scifi grenade launcher
+# late guns (sci-fi)
+scifi MJmAjTeT9h   # scifi AR
+scifi 46615JyFm7   # scifi sniper
+scifi Nl8qWErOw2   # lightning gun
+# flare gun (firework lure)
+flare 44H9OBUqTC
+# grenades / throwables
+grenades XUmfh7lPiP  # fire grenade
+grenades VMHR7IUEKj  # flashbang east
+grenades fiJvXydZUg  # flashbang west
+grenades YWhHlmKOtx  # hand grenade
+grenades 0oNZ1y6ghg  # bomb
+scifi DIcib0mihf   # ray gun
+scifi JqdHbURERk   # scifi assault rifle
+scifi RGtBoJNn3N   # scifi assault rifle
+scifi NHYaHnTNIM   # scifi smg
+scifi TuHM3CURcC   # scifi pistol
+scifi U0Q1BrKL1y   # scifi pistol
+scifi uw4B33Mm0d   # scifi pistol
+scifi VU7QiZYae0   # scifi sniper
+suppressors QWfBIqy0VW
+suppressors VLiLj3j1tS
+grenades C4ZrgKsmLq  # frag east
+grenades 1aIZys4mhg  # frag west
+grenades FDnt6wcF2X  # smoke
+grenades cxEdXVya7s  # incendiary east
+grenades B7hY93Zqqk  # incendiary west
+grenades uooNRUiCa9  # scifi grenade (EMP?)
+grenades jsmWZYqVlM  # molotov
+grenades ew5DpDJJja  # gasoline bomb
+placed PtqkseZo9O    # landmine
+placed qGUAks6IHQ    # bomb
+placed eXlaWiNM7z    # bomb
+placed zal0xmobqX    # bomb
+placed wZOaCBBiJ9    # timer
+devices TPqvwkyWdV   # radio
+devices k2kgBepoMU   # phone
+devices 4DRZmTs3jq   # smartphone
+devices EDvCEBvs8k   # key card
+devices MUl40QpEvv   # key
+devices PLmfHOiB08   # binoculars
+devices M9mVmRXHif   # envelope
+devices emdPCRNhTX   # folder
+devices BJS8VvgPkQ   # letter
+devices l1zv4LaA4I   # glove (wrist blade base?)
+distractions FAHsHFXfTf  # bottle
+distractions Pc8dM9Ja4V  # bottle
+distractions KpxDpidn1Z  # water bottle
+distractions IqXSdKUMnY  # soda can
+distractions 4MUaQTcDdc  # rock
+distractions Z6M4GNkgWt  # rock
+distractions 34W5ymEePk  # rock

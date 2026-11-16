@@ -585,6 +585,13 @@ neither blocking.
 
 ---
 
+### 🟢 ITEMS-01 — The items: every carried, wielded, thrown and placed thing — OPENED 2026-11-16 *(Director direct)*
+Plan: [`ITEMS_MASTER_PLAN`](../../PROMPTS/PLANNING/ITEMS_MASTER_PLAN.md). Phase 1 gathers the models (CC0 only: downloaded, adapted or
+built) of every item the Agent or a guard handles, before MOVEMENT sizes them family by family in the Agent's hands
+(`MOVEMENT_MASTER_PLAN` §11.6). Phase 2, the world's ordinary objects, belongs to the scenarios milestone.
+
+---
+
 ### ⏸️ ART-01 — Materials & Objects Pipeline — SCHEDULED (Alpha → Beta window)
 > **⏭️ 2026-09-30 — largely superseded in practice by R3D-PROPS** (`RENDER3D_MASTER_PLAN`): the voxel-objects dictionary is the crate's `PropDef` path (shipped), the open-source `.vox` import became `PROP_PIPELINE_PLAN` (a slot-based model pipeline with `.vox` containers, first content a dormitory scene), and the materials dictionary grows families and fallbacks (`PROPS_TIER4_PLAN` §2b). The horizontal-surface art (slab tops, stepped roofs) is still ART-01's / `R3D-SURFACES`. The window rule below is unchanged for that part.
 **Objective:** Dedicated art for horizontal surfaces (slab tops + roof tiles,

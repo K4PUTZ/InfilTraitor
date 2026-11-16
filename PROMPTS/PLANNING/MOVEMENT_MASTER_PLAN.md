@@ -624,6 +624,11 @@ USED (the EMP, the shadow generator, the camera-loop rig, the sound and firework
 here): an interactive slot names its INTERACTION ANCHOR, which is the point the hand reaches, the type (I1-I7), and the cell and facing
 the actor stands on. The pose is solved to the anchor; no pose is authored per object.
 
+**Added 2026-11-16 (Director, through `ITEMS_MASTER_PLAN` §2.9):** **H9 shoulder launcher** (the bazooka), **M1 one-hand melee** (knives,
+daggers, batons, coshes), **M2 two-hand melee** (the katana, a bat), **W worn on the forearm** (the wrist blade: lethal, tranquiliser or a
+berserk poison; maybe the grapple). The hand crossbow for tranquiliser darts is H1 (the pistol's grip); brass knuckles are the FIST (the
+punch, a mesh on the hand); the grapple also PULLS guards and objects and triggers things at a distance (its hold is open there, §5 Q3).
+
 ### 11.4 The body postures, and what lies on each
 
 | # | Body | Status | To make |
@@ -778,6 +783,11 @@ Steps 0 to 5 are the Director's order. Steps 6 to 9 are in Claude's proposed ord
     one of the six weapons (one row per weapon, several models, same stats)? *(Claude: looks of the six, each model its own size / grip
     / muzzle points; stats stay six rows, so balance and the tree do not grow by fifteen weapons; a model can be promoted to a weapon
     later.)*
-11. **Sizing 21 models by hand:** each one by hand (21 lab sessions), or the family's reference by hand and its siblings at the pack's
+11. ✅ **RULED 2026-11-16 — one by one, family by family, in the AIM pose:** *"todos os modelos da mesma família lado a lado, próximos
+    do agente, e vamos conferir o tamanho e a posição uma por uma, usando a mesma pose (aim). Mais tarde, terminando todas as famílias
+    fazemos DRAW e HOLDING de cada uma e testamos com as armas individuais."* So step 2 is one lab file PER FAMILY: the figure in the
+    family's aim, every model of the family laid out beside him, the Director sets each one's size and grip in that aim; DRAW and HOLDING
+    per family come after ALL families are sized (steps 3-4), then each weapon is tested on its own. **Before the lab files: the ITEMS
+    milestone (`ITEMS_MASTER_PLAN`) gathers every model first.** Was: **Sizing 21 models by hand:** each one by hand (21 lab sessions), or the family's reference by hand and its siblings at the pack's
     own proportion to it, checked by eye on one sheet? *(Claude: by family; the pack is consistent WITHIN a type, its pistol-to-rifle
     gap is what needs the hand.)*

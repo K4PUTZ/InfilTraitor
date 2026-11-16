@@ -22,7 +22,7 @@ ap.add_argument("--threshold", type=int, default=18)
 ap.add_argument("--open", type=int, default=7, help="opening kernel: strokes thinner than this are dropped")
 ap.add_argument("--min-area", type=float, default=0.0015, help="a blob smaller than this fraction of the sheet is noise")
 ap.add_argument("--row-gap", type=int, default=40, help="px: blobs closer than this vertically are one row")
-ap.add_argument("--keep", type=int, default=8, help="dilation (px) that brings an object's own thin parts back")
+ap.add_argument("--keep", type=int, default=8, help="dilation (px) that brings an object's own thin parts back; -1 = everything connected to the object (a long spike, wires), safe when no dimension line touches it")
 args = ap.parse_args()
 
 img = np.asarray(Image.open(args.sheet).convert("RGB")).astype(np.int16)
@@ -64,7 +64,7 @@ for name, row in zip(names, rows):
         if not ids:
             print("[crop] %s: nothing in the %s column" % (name, view)); continue
         seed = np.isin(lab, ids)
-        region = ndimage.binary_dilation(seed, iterations=args.keep) & mask
+        region = (ndimage.binary_dilation(seed, iterations=args.keep) & mask) if args.keep >= 0 else mask
         parts, _ = ndimage.label(region)   # a stroke the dilation reached but that does not touch the object goes
         region = np.isin(parts, np.unique(parts[seed & region])) & (parts > 0)
         ys, xs = np.nonzero(region)

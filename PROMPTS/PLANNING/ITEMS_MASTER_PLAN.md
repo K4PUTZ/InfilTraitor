@@ -353,3 +353,28 @@ ABSOLUTELY NO TEXT anywhere on the image: no titles, no numbers, no labels, no d
 In the side profiles, the front or pointed end faces right and any handle points down.
 ```
 
+**Result (2026-11-16):** `REFERENCES/ITEMS/Gemini_Generated_Image_nkpviunkpviunkpv.jpeg`. Dimension lines again; the gas grenade's and
+the EMP's second view is a TOP view, not a side one (for Tripo's front + side, use their profile alone, or the top as a top). Cut with
+`--left side --keep -1` (everything CONNECTED to the object is kept: the tripwire's spike, the C4's wires, the grenade's lever; no
+dimension line touches an object here) into `temp/items_tripo/sheet3/`. The Director (2026-11-16): the bracer's blade is fixed later
+in the model, and Tripo should read outlines as drawing, not matter.
+
+### 7.4 Sheet 4 — distractions (firework lure, baseball, glass tumbler, drink can, chloroform bottle, folded rag)
+
+Round objects: the second view must be a SIDE (turned about the vertical axis), never a top.
+
+```
+Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 6 rows, 2 columns. Highest resolution.
+Each row is ONE object: its SIDE view in the left column and its FRONT view in the right column, both seen horizontally at eye level (the object turned 90 degrees about its vertical axis; never a top view). Same scale, same vertical alignment. All six objects are drawn at the same real-world scale, relative to each other.
+Rows, top to bottom:
+1. Firework lure, 5 cm diameter, 15 cm tall: a cardboard firework tube with a twisted fuse on top, standing on a small square base. Red tube, white band, brown fuse.
+2. Baseball, 7.4 cm diameter: a white ball with red curved stitching.
+3. Glass drinking tumbler, 8 cm diameter, 10 cm tall: a plain clear glass, slightly tapered, thick base.
+4. Drink can, 6.6 cm diameter, 12.2 cm tall: a plain aluminium soda can with a ring pull, one solid colour, no brand.
+5. Chloroform bottle, 5 cm diameter, 12 cm tall: an amber glass pharmacy bottle with a black screw cap.
+6. Folded rag, 15 cm by 15 cm, 2 cm thick: a square of off-white cloth folded twice.
+Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bold readable silhouette, solid flat colours with clearly separated material regions. No outlines, no ink lines, no cel shading. No textures, no wear, no decals, no logos.
+Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
+ABSOLUTELY NO TEXT anywhere on the image: no titles, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
+```
+

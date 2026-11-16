@@ -501,5 +501,7 @@ folded rag (by hand) and the hand crossbow (cut down from the downloaded one).
 object's FRONT, one with every object's SIDE (or every object's TOP; never mixed on a page). `cut_sheets.py` lays them out from the
 per-object cuts into `temp/items_tripo/pages/PAGE_<n>_FRONT.png` + `PAGE_<n>_SIDE.png` / `_TOP.png`: nine pages, four objects a page
 (six front + side, three front + top), each slot filled by its object at one scale for its two views. The scrambler (one view) is not
-on a page. The pages are listed in the script's `PAGES`.
+on a page. The pages are listed in the script's `PAGES`. **One background on every page (Director, 2026-11-16):** the sheets' greys and white differed and the pale objects' cuts carried
+squares of their own grey; each view's background, flooded from its border, becomes one grey (222, 222, 220), a clear glass with a
+tighter tolerance, and a speck under 1 % of the object is dropped.
 

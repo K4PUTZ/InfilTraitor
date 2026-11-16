@@ -22,7 +22,7 @@ SHEETS = {
                ["--left", "side", "--keep", "-1"], []),
     "sheet4": ("Gemini_Generated_Image_gavaq2gavaq2gava.jpeg", "firework_lure,baseball,drink_can,chloroform_bottle,folded_rag",
                ["--views", "front,top", "--row-gap", "5"],
-               [(240, 405, "baseball", ["--views", "front,top", "--min-area", "0.01", "--raw"]),
+               [(240, 405, "baseball", ["--views", "front,top", "--min-area", "0.01", "--raw", "--raw-pad", "20"]),
                 (415, 600, "glass_tumbler", ["--views", "front,top", "--threshold", "8", "--open", "3", "--min-area", "0.01", "--raw"])]),
     "sheet5": ("Gemini_Generated_Image_vyxq89vyxq89vyxq.jpeg", "alarm_clock,radio_clock,drone_controller,radio_scrambler,phone_cloner",
                ["--views", "front,side", "--keep", "-1", "--row-gap", "10"], []),
@@ -125,16 +125,45 @@ PAGES = [
     ("top", ["scout_drone", "universal_remote", "lockpicks", "zip_ties"]),
 ]
 SLOT, MARGIN = 512, 64
+PAGE_BG = (222, 222, 220)   # ONE background for every page (Director, 2026-11-16: the sheets' greys and white differed)
+BG_TOLERANCE = 14
+
+
+# A clear object is nearly the background: a tighter tolerance keeps the flood out of it.
+BG_TOLERANCE_OF = {"glass_tumbler": 4}
+
+
+def unify_background(im, tolerance=BG_TOLERANCE):
+    """The background as seen from the image's border (flood: every near-background pixel connected to the border, so a light
+    object's own inside, a white ball, a clear glass, is not touched) becomes PAGE_BG; a cut's square of another grey goes with it."""
+    import numpy as np
+    from scipy import ndimage
+    a = np.asarray(im.convert("RGB")).astype(np.int16)
+    edge = np.concatenate([a[0], a[-1], a[:, 0], a[:, -1]])
+    bg = np.median(edge, axis=0)
+    near = np.abs(a - bg).max(axis=2) <= tolerance
+    lab, _ = ndimage.label(near)
+    border = np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
+    outside = np.isin(lab, border[border > 0])
+    a[outside] = PAGE_BG
+    # A speck the sheet left (the tick of a measure line) is a tiny island of non-background: it goes too.
+    objects, n = ndimage.label(~outside)
+    if n > 1:
+        sizes = ndimage.sum(np.ones_like(objects), objects, range(1, n + 1))
+        for k, size in enumerate(sizes, start=1):
+            if size < 0.01 * sizes.max():   # tiny next to the object itself (a lone small object, the blade's end, is its own largest)
+                a[objects == k] = PAGE_BG
+    return Image.fromarray(a.astype(np.uint8))
+
 pages = os.path.join(OUT, "pages")
 shutil.rmtree(pages, ignore_errors=True)
 os.makedirs(pages)
 for n, (second, objs) in enumerate(PAGES, start=1):
     for view in ("front", second):
-        first = Image.open(os.path.join(by, objs[0], "front.png"))
-        bg = first.getpixel((2, 2))
-        page = Image.new("RGB", (SLOT + 2 * MARGIN, len(objs) * SLOT + (len(objs) + 1) * MARGIN), bg)
+        page = Image.new("RGB", (SLOT + 2 * MARGIN, len(objs) * SLOT + (len(objs) + 1) * MARGIN), PAGE_BG)
         for i, obj in enumerate(objs):
-            im = Image.open(os.path.join(by, obj, view + ".png")).resize((SLOT, SLOT), Image.LANCZOS)
+            im = unify_background(Image.open(os.path.join(by, obj, view + ".png")).resize((SLOT, SLOT), Image.LANCZOS),
+                                  BG_TOLERANCE_OF.get(obj, BG_TOLERANCE))
             page.paste(im, (MARGIN, MARGIN + i * (SLOT + MARGIN)))
         page.save(os.path.join(pages, "PAGE_%d_%s.png" % (n, view.upper())))
 print("[cut_sheets] %d pages (front + side / top) -> %s" % (len(PAGES), pages))

@@ -1,6 +1,8 @@
 """ITEMS_MASTER_PLAN §2.11 / §7 — re-cut every Nano Banana reference sheet (kept in REFERENCES/ITEMS/) and gather each object's
 views for Tripo into temp/items_tripo/by_object/<object>/{front,side,top}.png. temp/ may be wiped at any time: this rebuilds it.
 Each sheet's flags are the ones that cut it clean (2026-11-16, checked by eye); a pale or thin object gets a row run of its own.
+Then it lays them out as PAGES for Tripo (Director, 2026-11-16): two images per page, the same objects in the same slots, one with every
+object's FRONT and one with every object's SIDE (or every object's TOP): temp/items_tripo/pages/PAGE_<n>_FRONT.png + _SIDE / _TOP.png.
 Run: python3 tools/asset_generation/items/cut_sheets.py"""
 import os, shutil, subprocess, sys, tempfile
 from PIL import Image
@@ -108,3 +110,32 @@ for obj, views in OBJECTS.items():
         shutil.copy(os.path.join(OUT, stem + ".png"), os.path.join(by, obj, view + ".png"))
         count += 1
 print("[cut_sheets] %d objects, %d views -> %s" % (len(OBJECTS), count, by))
+
+# Pages: objects of a similar size, four to a page, one slot each (top to bottom). An object's two views come from its own squared cut,
+# so they share one scale; each slot is filled by its object. The scrambler has no second view and is left out (one image is enough).
+PAGES = [
+    ("side", ["taser", "detonator", "spray_can", "phone_cloner"]),
+    ("side", ["brass_knuckles", "motion_detector", "noise_detector", "police_badge"]),
+    ("side", ["wrist_bracer", "wrist_blade", "grapple_launcher", "grappling_hook_rope"]),
+    ("side", ["c4_block", "breaching_charge", "tripwire_flash", "camera_loop_rig"]),
+    ("side", ["alarm_clock", "radio_clock", "drone_controller", "tablet"]),
+    ("side", ["shadow_generator", "sample_case"]),
+    ("top", ["gas_grenade", "emp_charge", "firework_lure", "chloroform_bottle"]),
+    ("top", ["baseball", "glass_tumbler", "drink_can", "wedding_ring"]),
+    ("top", ["scout_drone", "universal_remote", "lockpicks", "zip_ties"]),
+]
+SLOT, MARGIN = 512, 64
+pages = os.path.join(OUT, "pages")
+shutil.rmtree(pages, ignore_errors=True)
+os.makedirs(pages)
+for n, (second, objs) in enumerate(PAGES, start=1):
+    for view in ("front", second):
+        first = Image.open(os.path.join(by, objs[0], "front.png"))
+        bg = first.getpixel((2, 2))
+        page = Image.new("RGB", (SLOT + 2 * MARGIN, len(objs) * SLOT + (len(objs) + 1) * MARGIN), bg)
+        for i, obj in enumerate(objs):
+            im = Image.open(os.path.join(by, obj, view + ".png")).resize((SLOT, SLOT), Image.LANCZOS)
+            page.paste(im, (MARGIN, MARGIN + i * (SLOT + MARGIN)))
+        page.save(os.path.join(pages, "PAGE_%d_%s.png" % (n, view.upper())))
+print("[cut_sheets] %d pages (front + side / top) -> %s" % (len(PAGES), pages))
+

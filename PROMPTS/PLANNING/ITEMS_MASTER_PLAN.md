@@ -497,3 +497,9 @@ script files it under the view it really is. Convention note: on sheet 1 a long 
 FRONT is the end view and the profile is SIDE (Tripo is told which is which; the model is turned to +X later anyway). Not cut: the
 folded rag (by hand) and the hand crossbow (cut down from the downloaded one).
 
+**Pages for Tripo (Director, 2026-11-16):** Tripo is given TWO images per page, the same objects in the same slots: one with every
+object's FRONT, one with every object's SIDE (or every object's TOP; never mixed on a page). `cut_sheets.py` lays them out from the
+per-object cuts into `temp/items_tripo/pages/PAGE_<n>_FRONT.png` + `PAGE_<n>_SIDE.png` / `_TOP.png`: nine pages, four objects a page
+(six front + side, three front + top), each slot filled by its object at one scale for its two views. The scrambler (one view) is not
+on a page. The pages are listed in the script's `PAGES`.
+

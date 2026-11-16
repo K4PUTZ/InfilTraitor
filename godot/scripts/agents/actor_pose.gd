@@ -160,7 +160,7 @@ func set_walk_phase_quantise(_n: int) -> void:
 
 ## `progress01` is how far through the CURRENT GU the agent is: one cycle is one GU exactly, so it is also the phase.
 func set_walk_phase(progress01: float) -> void:
-	if _posture != "standing":
+	if _posture == "prone":
 		return
 	_walk_progress = fposmod(progress01, 1.0)
 
@@ -242,7 +242,7 @@ func mesh_state() -> Dictionary:
 		"posture": _posture,
 		"grip": grip,
 		"weapon": weapon,
-		"walk": _walk_progress if _posture == "standing" else -1.0,
+		"walk": _walk_progress if _posture != "prone" else -1.0,
 		"dash": _dash,
 		"dash_rate": dash_rate,
 		"dash_len": dash_len,

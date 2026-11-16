@@ -305,3 +305,29 @@ No text, no labels, no numbers, no arrows, no measurements, no hands, no people.
 In the side views, the pointed or front end faces right and any handle points down.
 ```
 
+**Result (2026-11-16):** `REFERENCES/ITEMS/Gemini_Generated_Image_jzebf0jzebf0jzeb.jpeg`, 768 × 1376. Nano Banana drew labels and
+dimension lines anyway; the left column came out as the PROFILE (the taser's muzzle to the left) and the right as the END view; the
+remote's second view is a three-quarter top. Cut with `tools/asset_generation/items/crop_sheet.py` (text, arrows and lines dropped, each
+view squared at 1024 px) into `temp/items_tripo/sheet1/<name>_a.png` (profile) / `_b.png` (end). On the sheet each object is only
+130-310 px: ask for the largest output size the tool allows.
+
+### 7.2 Sheet 2 — wrist and rope (wrist-blade bracer, wrist blade, grapple launcher, grappling hook + coiled rope, lockpicks, zip ties)
+
+Six rows (the blade and the lockpicks are thin). The text ban is repeated, since sheet 1 ignored it.
+
+```
+Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 6 rows, 2 columns. Highest resolution.
+Each row is ONE object: its SIDE PROFILE in the left column, its FRONT (end-on) view in the right column (the same object rotated 90 degrees, same scale, same vertical alignment). All six objects are drawn at the same real-world scale, relative to each other.
+Rows, top to bottom:
+1. Wrist-blade bracer, 20 cm long, 9 cm wide, 7 cm tall: a leather and steel forearm bracer that straps around a forearm, a slot along its underside where a blade slides out, a small dart port beside it. Dark brown leather, dark steel plates, two buckled straps. The blade is retracted (not visible).
+2. The wrist blade alone, 15 cm long, 2 cm wide, 0.4 cm thick: a narrow straight double-edged blade with a flat rectangular tang at the back. Bright steel.
+3. Grapple launcher, 25 cm long, 15 cm tall, 5 cm wide: a compact pistol-grip launcher with a short wide barrel, a three-pronged hook seated in the muzzle, a rope drum under the barrel. Black body, steel hook.
+4. Grappling hook with a coiled rope, hook 15 cm long, rope coil 25 cm across: three curved prongs on a shaft, a ring at the top, a neat coil of thick rope tied to the ring. Steel hook, tan rope.
+5. Lockpick set, 12 cm long: three slim picks with different tips and one L-shaped tension wrench, fanned out side by side, flat. Steel picks with black handles.
+6. Zip ties, 30 cm long, 0.5 cm wide: three black nylon cable ties, two straight and one closed into a loop.
+Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bold readable silhouette, solid flat colours with clearly separated material regions (metal, leather, rope, plastic). No textures, no wear, no decals, no logos.
+Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
+ABSOLUTELY NO TEXT anywhere on the image: no titles, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
+In the side profiles, the front or pointed end faces right and any handle points down.
+```
+

@@ -403,3 +403,66 @@ Rendering: flat even studio lighting, no cast shadows, no reflections, plain lig
 ABSOLUTELY NO TEXT anywhere on the image: no titles, no headers, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
 ```
 
+### 7.6 Sheet 6 — devices, FRONT + SIDE (tablet, camera-loop rig, shadow generator, motion detector, noise detector)
+
+From here each row may use its OWN scale (the objects' sizes differ by 10×; a shared scale left the small ones a few dozen pixels). The
+real sizes still go in the prompt for the proportions; the size in the game is set by hand anyway (rule 4).
+
+```
+Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 5 rows, 2 columns. Highest resolution.
+Each row is ONE object: its FRONT view in the left column and its SIDE view in the right column, both seen horizontally at eye level (the object turned 90 degrees about its vertical axis; never a top view). Within a row both views share one scale and one vertical alignment; each row may use its own scale so every object fills its row.
+Rows, top to bottom:
+1. Rugged tablet, 24 cm wide, 17 cm tall, 0.8 cm thick: a tablet in a thick rubber bumper case, a dark screen showing a simple map grid. Black bumper, dark blue screen.
+2. Camera-loop rig, 12 cm wide, 8 cm tall, 5 cm deep: a small box with a spring clamp on its back and a short cable ending in a connector, a small antenna. Grey box, black clamp.
+3. Shadow generator, 15 cm wide, 10 cm tall, 15 cm deep: a squat sci-fi emitter on four short legs, a dark lens dome on top, a ring of purple light. Dark grey body.
+4. Motion detector, 8 cm wide, 6 cm tall, 3 cm deep: a clip-on sensor with a round lens on the front and a belt clip on the back. Black body, red lens.
+5. Noise detector, 8 cm wide, 6 cm tall, 3 cm deep: a clip-on sensor with a round microphone grille on the front, a small level meter of five lights, a belt clip on the back. Black body, green lights.
+Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bold readable silhouette, solid flat colours with clearly separated material regions. No outlines, no ink lines, no cel shading. No textures, no wear, no decals, no logos.
+Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
+ABSOLUTELY NO TEXT anywhere on the image: no titles, no headers, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
+```
+
+### 7.7 Sheet 7 — the story, FRONT + SIDE (sample case, police badge)
+
+```
+Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 2 rows, 2 columns. Highest resolution.
+Each row is ONE object: its FRONT view in the left column and its SIDE view in the right column, both seen horizontally at eye level (the object turned 90 degrees about its vertical axis; never a top view). Within a row both views share one scale and one vertical alignment; each row may use its own scale so every object fills its row.
+Rows, top to bottom:
+1. Aluminium sample case, 45 cm wide, 33 cm tall, 12 cm deep: a hard-shell briefcase with a handle on top, two latches, ribbed metal sides. Brushed silver, black handle.
+2. Police badge, 8 cm wide, 6 cm tall, 0.5 cm thick: a shield-shaped metal badge with a star in its centre, on a black leather backing, no text.
+Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bold readable silhouette, solid flat colours with clearly separated material regions. No outlines, no ink lines, no cel shading. No textures, no wear, no decals, no logos.
+Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
+ABSOLUTELY NO TEXT anywhere on the image: no titles, no headers, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
+```
+
+### 7.8 Sheet 8 — flat and long things, FRONT + TOP (scout drone, C4 block, breaching charge, universal remote, zip ties)
+
+The drone needs its top; the others were drawn front + side in sheets 1-3 and gain the view that shows their shape.
+
+```
+Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 5 rows, 2 columns. Highest resolution.
+Each row is ONE object: its FRONT view in the left column (seen horizontally, at eye level) and its TOP view in the right column (seen from directly above, looking straight down). Within a row both views share one scale; each row may use its own scale so every object fills its row.
+Rows, top to bottom:
+1. Scout drone, 30 cm across, 8 cm tall: a small quadcopter, four arms with propellers in round guards, a camera ball under the body. Dark grey body, black propellers.
+2. Plastic explosive block (C4), 28 cm long, 5 cm wide, 5 cm tall: a block wrapped in olive film, a blasting cap in one end with two short wires.
+3. Breaching charge, 60 cm long, 5 cm wide, 2 cm thick: a long flat adhesive strip charge, dark grey, a small black firing box at one end.
+4. Universal TV remote control, 18 cm long, 5 cm wide, 2 cm thick: rows of round buttons, an infrared window at the tip. Dark grey body, light grey buttons.
+5. Zip ties, 30 cm long: three black nylon cable ties, two straight and one closed into a loop, lying flat.
+Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bold readable silhouette, solid flat colours with clearly separated material regions. No outlines, no ink lines, no cel shading. No textures, no wear, no decals, no logos.
+Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
+ABSOLUTELY NO TEXT anywhere on the image: no titles, no headers, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
+```
+
+### 7.9 Sheet 9 — small flat things, FRONT + TOP (brass knuckles, lockpicks, wedding ring)
+
+```
+Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 3 rows, 2 columns. Highest resolution.
+Each row is ONE object: its FRONT view in the left column (seen horizontally, at eye level) and its TOP view in the right column (seen from directly above, looking straight down). Within a row both views share one scale; each row may use its own scale so every object fills its row.
+Rows, top to bottom:
+1. Brass knuckles, 10 cm wide, 7 cm tall, 1.2 cm thick: four finger rings in a row and a curved palm bar below. Plain steel.
+2. Lockpick set, 12 cm long: three slim picks with different tips and one L-shaped tension wrench, lying flat side by side. Steel picks, black handles.
+3. Wedding ring, 2.1 cm across, 0.5 cm wide: a plain gold band.
+Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bold readable silhouette, solid flat colours with clearly separated material regions. No outlines, no ink lines, no cel shading. No textures, no wear, no decals, no logos.
+Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
+ABSOLUTELY NO TEXT anywhere on the image: no titles, no headers, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
+```

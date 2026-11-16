@@ -359,13 +359,16 @@ the EMP's second view is a TOP view, not a side one (for Tripo's front + side, u
 dimension line touches an object here) into `temp/items_tripo/sheet3/`. The Director (2026-11-16): the bracer's blade is fixed later
 in the model, and Tripo should read outlines as drawing, not matter.
 
-### 7.4 Sheet 4 — distractions (firework lure, baseball, glass tumbler, drink can, chloroform bottle, folded rag)
+### 7.4 Sheet 4 — distractions, FRONT + TOP (firework lure, baseball, glass tumbler, drink can, chloroform bottle, folded rag)
 
-Round objects: the second view must be a SIDE (turned about the vertical axis), never a top.
+**The Director (2026-11-16): Tripo takes three views (front, side, top), but a TOP view cannot share a sheet with side views of stacked
+objects; so a sheet is either FRONT + SIDE or FRONT + TOP.** Round objects get FRONT + TOP (their side is their front: the first
+attempt at sheet 4, front + side, came out as two identical columns and was discarded). Flat objects (the knuckles, the remote, the
+lockpicks, the zip ties, the C4, the breaching charge) may get a FRONT + TOP sheet of their own later. Cut with `--views front,top`.
 
 ```
 Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 6 rows, 2 columns. Highest resolution.
-Each row is ONE object: its SIDE view in the left column and its FRONT view in the right column, both seen horizontally at eye level (the object turned 90 degrees about its vertical axis; never a top view). Same scale, same vertical alignment. All six objects are drawn at the same real-world scale, relative to each other.
+Each row is ONE object: its FRONT view in the left column (seen horizontally, at eye level) and its TOP view in the right column (seen from directly above, looking straight down). Same scale in both columns. All six objects are drawn at the same real-world scale, relative to each other.
 Rows, top to bottom:
 1. Firework lure, 5 cm diameter, 15 cm tall: a cardboard firework tube with a twisted fuse on top, standing on a small square base. Red tube, white band, brown fuse.
 2. Baseball, 7.4 cm diameter: a white ball with red curved stitching.
@@ -377,4 +380,3 @@ Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bo
 Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
 ABSOLUTELY NO TEXT anywhere on the image: no titles, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
 ```
-

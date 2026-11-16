@@ -7,7 +7,7 @@ is cut back out of the original with a small dilation (its own thin parts surviv
 the same row and the same column are one view (the spray can and its cap). Both views of an object share ONE scale and the row's
 vertical span (Director, 2026-11-16: the front and the side must keep their relative size), squared on the sheet's background.
 Run: python3 tools/asset_generation/items/crop_sheet.py <sheet.jpg> <out_dir> --names taser,brass_knuckles,... [--size 1024]
-Writes <out_dir>/<name>_front.png and <name>_side.png (--left says which column is which) and <out_dir>/_check.png."""
+Writes <out_dir>/<name>_<view>.png per column (--left, or --views front,top) and <out_dir>/_check.png."""
 import argparse, os
 import numpy as np
 from PIL import Image
@@ -18,6 +18,7 @@ ap.add_argument("sheet"); ap.add_argument("out")
 ap.add_argument("--names", required=True)
 ap.add_argument("--size", type=int, default=1024)
 ap.add_argument("--left", choices=("front", "side"), default="front", help="which view the sheet's LEFT column is (as prompted)")
+ap.add_argument("--views", default="", help="the two columns' names, left,right (e.g. front,top for a front + top sheet); overrides --left")
 ap.add_argument("--threshold", type=int, default=18)
 ap.add_argument("--open", type=int, default=7, help="opening kernel: strokes thinner than this are dropped")
 ap.add_argument("--min-area", type=float, default=0.0015, help="a blob smaller than this fraction of the sheet is noise")
@@ -54,7 +55,7 @@ if len(rows) != len(names):
 
 os.makedirs(args.out, exist_ok=True)
 cuts = []
-views = (("front", "side") if args.left == "front" else ("side", "front"))
+views = tuple(args.views.split(",")) if args.views else (("front", "side") if args.left == "front" else ("side", "front"))
 for name, row in zip(names, rows):
     # ONE scale per object: both views are cut from the row's common vertical span and squared on the same side, so the
     # front and the side keep the sheet's relative size and height (Tripo reads the two as one object).

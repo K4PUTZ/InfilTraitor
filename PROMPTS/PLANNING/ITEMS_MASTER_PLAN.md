@@ -508,8 +508,12 @@ tighter tolerance, and a speck under 1 % of the object is dropped.
 **Tripo's multi-view takes Front, Left, Right, Back (no top slot; screenshot 2026-11-16).** The Director proposed giving the TOP image
 as the side and turning the model afterwards; Claude's objection, recorded for his call: a top is not a rotated side (the can is
 12.2 cm tall from the front and 6.6 cm from above: no object has both silhouettes, so the geometry, not only the orientation, comes out
-wrong). So pages 7-9 also exist as FRONT + SIDE: `PAGE_<n>_FRONT_FOR_SIDE.png` + `PAGE_<n>_SIDE.png` (a round object's side is its
-front; the remote, the lockpicks and the zip ties take the front + side pair cut together on sheets 1 / 2). The TOP versions stay.
+wrong). **Resolved the same day by the Director's reading: LAY THE OBJECT DOWN.** "Top" and "side" are names: a round object laid on its side
+(axis left-right) has, as its FRONT, its front turned 90 degrees, and as its LEFT side, its top view; both are the diameter tall, so
+the two silhouettes are one object, and the top's detail (the can's tab, the drone's arms) reaches Tripo; the model is stood up by
+hand afterwards. Pages 7-9 exist as `PAGE_<n>_FRONT_LAID.png` + `PAGE_<n>_SIDE_LAID.png` (each top rescaled so its diameter equals
+the laid front's height: the image model had drawn some tops at another scale, the gas grenade's ~1.6x; the remote, the lockpicks
+and the zip ties, not round, take the front + side pair cut together on sheets 1 / 2). The TOP versions stay.
 Tripo settings reviewed: Smart Mesh, TRIANGLES (Tripo's split refuses quads), the side in the LEFT slot; ~5 000 faces a page (8 000
 for page 5 and the drone's); generate page 1 first and check that the four objects come out apart and the split separates them.
 

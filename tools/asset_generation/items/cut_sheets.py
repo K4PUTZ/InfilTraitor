@@ -114,15 +114,38 @@ print("[cut_sheets] %d objects, %d views -> %s" % (len(OBJECTS), count, by))
 # Pages: objects of a similar size, four to a page, one slot each (top to bottom). An object's two views come from its own squared cut,
 # so they share one scale; each slot is filled by its object. The scrambler has no second view and is left out (one image is enough).
 # A FRONT + TOP page also gets a FRONT + SIDE version (a top cannot stand in for a side: the can is 12.2 cm tall from the front and
-# 6.6 cm from above, and no object is both). For an object round about its vertical axis the side IS the front; the three flat ones
-# take a front + side pair cut together on sheets 1 / 2 (one scale), filed as front_fs / side_fs.
+# 6.6 cm from above, and no object is both, standing). A round object is LAID DOWN (below); the three flat ones take a front + side
+# pair cut together on sheets 1 / 2 (one scale). Both are filed as front_fs / side_fs.
 ROUND = ["gas_grenade", "emp_charge", "firework_lure", "chloroform_bottle", "baseball", "glass_tumbler", "drink_can", "wedding_ring",
          "scout_drone"]
 FRONT_SIDE_PAIR = {"universal_remote": ("sheet1/universal_remote_front", "sheet1/universal_remote_side"),
                    "lockpicks": ("sheet2/lockpicks_side", "sheet2/lockpicks_front"),
                    "zip_ties": ("sheet2/zip_ties_side", "sheet2/zip_ties_front")}
+# LAID DOWN (the Director, 2026-11-16): a round object is laid on its side, its axis left-right. Its FRONT is then its front turned
+# 90 degrees (its top to the left) and its LEFT side is its TOP view, both as tall as its diameter: one object, consistent, and the
+# top's detail (a can's tab, the drone's arms) reaches Tripo. The model is stood back up by hand.
+def object_box(im):
+    """The object's box (x0, y0, x1, y1) in a cut: the pixels that differ from the cut's own corner background."""
+    import numpy as np
+    a = np.asarray(im.convert("RGB")).astype(np.int16)
+    bg = np.median(np.concatenate([a[:6, :6].reshape(-1, 3), a[-6:, -6:].reshape(-1, 3)]), axis=0)
+    ys, xs = np.nonzero(np.abs(a - bg).max(axis=2) > 18)
+    return xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
+
+
 for obj in ROUND:
-    shutil.copy(os.path.join(by, obj, "front.png"), os.path.join(by, obj, "side.png"))
+    front = Image.open(os.path.join(by, obj, "front.png")).rotate(90, expand=True)
+    front.save(os.path.join(by, obj, "front_fs.png"))
+    # The image model drew some tops at another scale than their front (the gas grenade's circle ~1.6x its body): the top is scaled
+    # so its height matches the laid front's height (both are the diameter), and centred where the front is.
+    top = Image.open(os.path.join(by, obj, "top.png"))
+    fx0, fy0, fx1, fy1 = object_box(front)
+    tx0, ty0, tx1, ty1 = object_box(top)
+    k = (fy1 - fy0) / float(ty1 - ty0)
+    part = top.crop((tx0, ty0, tx1, ty1)).resize((max(1, round((tx1 - tx0) * k)), fy1 - fy0), Image.LANCZOS)
+    canvas = Image.new("RGB", top.size, top.getpixel((2, 2)))
+    canvas.paste(part, ((top.width - part.width) // 2, fy0))
+    canvas.save(os.path.join(by, obj, "side_fs.png"))
 for obj, (f, sd) in FRONT_SIDE_PAIR.items():
     shutil.copy(os.path.join(OUT, f + ".png"), os.path.join(by, obj, "front_fs.png"))
     shutil.copy(os.path.join(OUT, sd + ".png"), os.path.join(by, obj, "side_fs.png"))
@@ -175,13 +198,12 @@ os.makedirs(pages)
 for n, (second, objs) in enumerate(PAGES, start=1):
     sets = [("front", "front"), (second, second)]
     if second == "top":   # the SIDE version of a top page
-        sets += [("front_fs", "front_for_side"), ("side_fs", "side")]
+        sets += [("front_fs", "front_laid"), ("side_fs", "side_laid")]
     for view, label in sets:
         page = Image.new("RGB", (SLOT + 2 * MARGIN, len(objs) * SLOT + (len(objs) + 1) * MARGIN), PAGE_BG)
         for i, obj in enumerate(objs):
             name = view
-            if view.endswith("_fs") and not os.path.exists(os.path.join(by, obj, view + ".png")):
-                name = view[:-3]   # a round object: its plain front / side
+
             im = unify_background(Image.open(os.path.join(by, obj, name + ".png")).resize((SLOT, SLOT), Image.LANCZOS),
                                   BG_TOLERANCE_OF.get(obj, BG_TOLERANCE))
             page.paste(im, (MARGIN, MARGIN + i * (SLOT + MARGIN)))

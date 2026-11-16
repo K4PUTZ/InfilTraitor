@@ -113,6 +113,20 @@ print("[cut_sheets] %d objects, %d views -> %s" % (len(OBJECTS), count, by))
 
 # Pages: objects of a similar size, four to a page, one slot each (top to bottom). An object's two views come from its own squared cut,
 # so they share one scale; each slot is filled by its object. The scrambler has no second view and is left out (one image is enough).
+# A FRONT + TOP page also gets a FRONT + SIDE version (a top cannot stand in for a side: the can is 12.2 cm tall from the front and
+# 6.6 cm from above, and no object is both). For an object round about its vertical axis the side IS the front; the three flat ones
+# take a front + side pair cut together on sheets 1 / 2 (one scale), filed as front_fs / side_fs.
+ROUND = ["gas_grenade", "emp_charge", "firework_lure", "chloroform_bottle", "baseball", "glass_tumbler", "drink_can", "wedding_ring",
+         "scout_drone"]
+FRONT_SIDE_PAIR = {"universal_remote": ("sheet1/universal_remote_front", "sheet1/universal_remote_side"),
+                   "lockpicks": ("sheet2/lockpicks_side", "sheet2/lockpicks_front"),
+                   "zip_ties": ("sheet2/zip_ties_side", "sheet2/zip_ties_front")}
+for obj in ROUND:
+    shutil.copy(os.path.join(by, obj, "front.png"), os.path.join(by, obj, "side.png"))
+for obj, (f, sd) in FRONT_SIDE_PAIR.items():
+    shutil.copy(os.path.join(OUT, f + ".png"), os.path.join(by, obj, "front_fs.png"))
+    shutil.copy(os.path.join(OUT, sd + ".png"), os.path.join(by, obj, "side_fs.png"))
+
 PAGES = [
     ("side", ["taser", "detonator", "spray_can", "phone_cloner"]),
     ("side", ["brass_knuckles", "motion_detector", "noise_detector", "police_badge"]),
@@ -159,12 +173,18 @@ pages = os.path.join(OUT, "pages")
 shutil.rmtree(pages, ignore_errors=True)
 os.makedirs(pages)
 for n, (second, objs) in enumerate(PAGES, start=1):
-    for view in ("front", second):
+    sets = [("front", "front"), (second, second)]
+    if second == "top":   # the SIDE version of a top page
+        sets += [("front_fs", "front_for_side"), ("side_fs", "side")]
+    for view, label in sets:
         page = Image.new("RGB", (SLOT + 2 * MARGIN, len(objs) * SLOT + (len(objs) + 1) * MARGIN), PAGE_BG)
         for i, obj in enumerate(objs):
-            im = unify_background(Image.open(os.path.join(by, obj, view + ".png")).resize((SLOT, SLOT), Image.LANCZOS),
+            name = view
+            if view.endswith("_fs") and not os.path.exists(os.path.join(by, obj, view + ".png")):
+                name = view[:-3]   # a round object: its plain front / side
+            im = unify_background(Image.open(os.path.join(by, obj, name + ".png")).resize((SLOT, SLOT), Image.LANCZOS),
                                   BG_TOLERANCE_OF.get(obj, BG_TOLERANCE))
             page.paste(im, (MARGIN, MARGIN + i * (SLOT + MARGIN)))
-        page.save(os.path.join(pages, "PAGE_%d_%s.png" % (n, view.upper())))
+        page.save(os.path.join(pages, "PAGE_%d_%s.png" % (n, label.upper())))
 print("[cut_sheets] %d pages (front + side / top) -> %s" % (len(PAGES), pages))
 

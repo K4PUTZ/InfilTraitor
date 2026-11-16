@@ -505,3 +505,11 @@ on a page. The pages are listed in the script's `PAGES`. **One background on eve
 squares of their own grey; each view's background, flooded from its border, becomes one grey (222, 222, 220), a clear glass with a
 tighter tolerance, and a speck under 1 % of the object is dropped.
 
+**Tripo's multi-view takes Front, Left, Right, Back (no top slot; screenshot 2026-11-16).** The Director proposed giving the TOP image
+as the side and turning the model afterwards; Claude's objection, recorded for his call: a top is not a rotated side (the can is
+12.2 cm tall from the front and 6.6 cm from above: no object has both silhouettes, so the geometry, not only the orientation, comes out
+wrong). So pages 7-9 also exist as FRONT + SIDE: `PAGE_<n>_FRONT_FOR_SIDE.png` + `PAGE_<n>_SIDE.png` (a round object's side is its
+front; the remote, the lockpicks and the zip ties take the front + side pair cut together on sheets 1 / 2). The TOP versions stay.
+Tripo settings reviewed: Smart Mesh, TRIANGLES (Tripo's split refuses quads), the side in the LEFT slot; ~5 000 faces a page (8 000
+for page 5 and the drone's); generate page 1 first and check that the four objects come out apart and the split separates them.
+

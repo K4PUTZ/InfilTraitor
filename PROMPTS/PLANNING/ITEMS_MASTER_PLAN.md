@@ -259,7 +259,8 @@ source) · baseball 🛠 (a sphere) · alarm clock ❓ (the timer may serve) · 
    13 groups, 7.1 MB, 2026-11-16.**
 2. 🟡 The review sheet (`tools/asset_generation/items/items_review_sheet.py` -> `temp/items_sheet/items_review.png`: every model fitted to
    one cell, NOT to scale, by group): the Director keeps or rejects each model. The to-scale check is MOVEMENT's family lab files.
-3. What nothing covers: adapt (scripts) or build (scripts).
+3. 🟡 What nothing covers: the Director's Tripo route (§2.11, §7): nine reference sheets drawn and cut 2026-11-16 (35 objects, 72
+   views, §7.10); the Tripo generations are next.
 4. Then MOVEMENT §11.6 step 2: the family lab files (all of a family's models beside the Agent, in the aim pose, sized one by one).
 5. Phase 2 (the scenarios milestone): the ordinary objects of the world.
 
@@ -482,3 +483,17 @@ Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bo
 Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
 ABSOLUTELY NO TEXT anywhere on the image: no titles, no headers, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
 ```
+
+**Result (2026-11-16):** `REFERENCES/ITEMS/Gemini_Generated_Image_chtytchtytchtytc.jpeg`. Measures again; the lockpicks row is cut
+on its own (`--open 3`) so the thin tension wrench survives.
+
+### 7.10 All sheets cut: the views per object, for Tripo
+
+**`python3 tools/asset_generation/items/cut_sheets.py`** re-cuts the nine sheets in `REFERENCES/ITEMS/` with the flags that cut each
+one clean and gathers **35 objects, 72 views** into `temp/items_tripo/by_object/<object>/{front,side,top}.png` (temp/ may be wiped:
+the script rebuilds it). The mapping lives in the script: where a sheet's column is not the view its name says (sheet 3's gas
+grenade / EMP right column is a TOP; sheet 8's C4 / remote "front" is a second top; the scrambler's "side" a second front), the
+script files it under the view it really is. Convention note: on sheet 1 a long object's FRONT is its profile; from sheet 2 on, its
+FRONT is the end view and the profile is SIDE (Tripo is told which is which; the model is turned to +X later anyway). Not cut: the
+folded rag (by hand) and the hand crossbow (cut down from the downloaded one).
+

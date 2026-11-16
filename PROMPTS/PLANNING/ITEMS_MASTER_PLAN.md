@@ -464,6 +464,11 @@ Rendering: flat even studio lighting, no cast shadows, no reflections, plain lig
 ABSOLUTELY NO TEXT anywhere on the image: no titles, no headers, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
 ```
 
+**Result (2026-11-16):** `REFERENCES/ITEMS/Gemini_Generated_Image_my1ryfmy1ryfmy1r.jpeg`. A caption under every view: cut with
+`--views front,top --row-gap 10 --keep -1 --open 5 --min-area 0.0005` into `temp/items_tripo/sheet8/`. The C4's and the remote's
+"front" here is a second top: **their three views for Tripo are sheet 3 / 1 (side and end) + this sheet's TOP**; the breaching charge
+likewise (sheet 3's side and end + this top); the drone and the zip ties take this sheet's two.
+
 ### 7.9 Sheet 9 — small flat things, FRONT + TOP (brass knuckles, lockpicks, wedding ring)
 
 ```

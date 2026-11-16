@@ -308,7 +308,7 @@ In the side views, the pointed or front end faces right and any handle points do
 **Result (2026-11-16):** `REFERENCES/ITEMS/Gemini_Generated_Image_jzebf0jzebf0jzeb.jpeg`, 768 × 1376. Nano Banana drew labels and
 dimension lines anyway; the left column came out as the PROFILE (the taser's muzzle to the left) and the right as the END view; the
 remote's second view is a three-quarter top. Cut with `tools/asset_generation/items/crop_sheet.py` (text, arrows and lines dropped, each
-view squared at 1024 px) into `temp/items_tripo/sheet1/<name>_a.png` (profile) / `_b.png` (end). On the sheet each object is only
+view squared at 1024 px; both views of an object at ONE scale and the same height, Director 2026-11-16) into `temp/items_tripo/sheet1/<name>_front.png` (the left column) / `_side.png` (the right). Sheet 2 is cut with `--left side`. On the sheet each object is only
 130-310 px: ask for the largest output size the tool allows.
 
 ### 7.2 Sheet 2 — wrist and rope (wrist-blade bracer, wrist blade, grapple launcher, grappling hook + coiled rope, lockpicks, zip ties)

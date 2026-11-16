@@ -720,9 +720,8 @@ Each step lands on both figures before the next; a step with a look ends in a ca
 1. ✅ **The model sheet** (rendered 2026-11-16, `tools/asset_generation/weapons/gun_model_sheet.py` -> `temp/model_sheet/`).
    **Director, 2026-11-16: "Vamos usar todas, aproveitando as mesmas empunhaduras"** — ALL 21 firearms of the pack are used (pistols ×4,
    revolvers ×3, submachine guns ×2, shotguns ×4, assault rifles ×3 + the bullpup, sniper rifles ×4), each on its family's hold
-   (§11.3): one set of poses per family, a model only brings its points (size, grip, muzzle, support, butt, port). Open: whether a
-   model is a cosmetic variant of one weapon or a weapon of its own (§11.8 Q10), and whether the size is set by hand per model or
-   per family (Q11). One contact sheet of the pack's 25 models and the grenade, to scale beside the figure. The Director picks one
+   (§11.3): one set of poses per family, a model only brings its points (size, grip, muzzle, support, butt, port). Each model is a
+   WEAPON of its own (Q10, ruled: its shot results are GAMEPLAY-01's). Open: whether the size is set by hand per model or per family (Q11). One contact sheet of the pack's 25 models and the grenade, to scale beside the figure. The Director picks one
    model per weapon (the pistol stays). The list of what to source or make for H5-H7, each source recorded in `props/MODEL_SOURCES.md`.
 2. **Each weapon in the figure's hands** (the 2026-11-09 method, once per weapon): a lab file per weapon, the figure in the family's
    base pose (solved by the kit), the weapon opened at the pistol's factor. The Director sets the size and the grip by hand. Read back
@@ -773,7 +772,9 @@ Steps 0 to 5 are the Director's order. Steps 6 to 9 are in Claude's proposed ord
 8. **Guards** (§4.1's question 7 stands): the same families on the same skeleton. Do they draw as the Agent does, or carry the weapon in
    the hands from the start?
 9. **The order of steps 6 to 9** (§11.6).
-10. **All 21 models (2026-11-16): variants or weapons?** Is each model a weapon of its own (its own row, stats, range, noise), or a LOOK of
+10. ✅ **RULED 2026-11-16 — each model is a WEAPON of its own:** *"specs diferentes individuais por modelo (a definir na milestone de
+    GAMEPLAY), mas são essencialmente a mesma arma em termos de animação e manuseio, mudando apenas a aparência, e o resultado dos tiros"*.
+    One row per model (its own damage, accuracy…, set in GAMEPLAY-01); the family's poses and handling are shared. Was: **variants or weapons?** Is each model a weapon of its own (its own row, stats, range, noise), or a LOOK of
     one of the six weapons (one row per weapon, several models, same stats)? *(Claude: looks of the six, each model its own size / grip
     / muzzle points; stats stay six rows, so balance and the tree do not grow by fifteen weapons; a model can be promoted to a weapon
     later.)*

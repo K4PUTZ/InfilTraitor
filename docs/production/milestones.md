@@ -895,6 +895,11 @@ detecção, etc."* (Director, 2026-08-14)
 - **The grenade in 3D** (HERITAGE T2 W5): its flight, hop and roll as world state, out of the 2D parabola. A future round.
 
 **⏳ Owed here (Director, 2026-11-16, MOVEMENT):**
+- **The specs of 21 firearms, one per model.** *"As armas de cada família vão ter specs diferentes individuais por modelo (a definir na
+  milestone de GAMEPLAY), mas são essencialmente a mesma arma em termos de animação e manuseio, mudando apenas a aparência, e o resultado
+  dos tiros (dano, accuracy, etc)."* Every model of Quaternius's guns pack is a weapon of its own (pistols ×4, revolvers ×3, submachine
+  guns ×2, shotguns ×4, assault rifles ×3 + a bullpup, sniper rifles ×4): its damage, accuracy and the rest are set HERE. MOVEMENT gives
+  each its look, its size and its points on its family's hold (`MOVEMENT_MASTER_PLAN` §11.3, §11.6). Today `weapons/` has six rows.
 - **Is PRONE viable in play?** *"Ainda temos o modo deitado, atingido a partir do agachado, mas precisamos ver se isso vai ser viável no
   gameplay."* Prone is `DESIGN_MASTER_PLAN` §8.2's minimal cover, reached from the crouch (`Agent.Posture.PRONE` and its multipliers
   exist; the Z key lowers standing → crouch → prone). Whether it earns its place is decided here. **Until then it is SUSPENDED in

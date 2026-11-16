@@ -894,6 +894,13 @@ detecção, etc."* (Director, 2026-08-14)
   at the shooter's GU at a fixed height. A future round.
 - **The grenade in 3D** (HERITAGE T2 W5): its flight, hop and roll as world state, out of the 2D parabola. A future round.
 
+**⏳ Owed here (Director, 2026-11-16, MOVEMENT):**
+- **Is PRONE viable in play?** *"Ainda temos o modo deitado, atingido a partir do agachado, mas precisamos ver se isso vai ser viável no
+  gameplay."* Prone is `DESIGN_MASTER_PLAN` §8.2's minimal cover, reached from the crouch (`Agent.Posture.PRONE` and its multipliers
+  exist; the Z key lowers standing → crouch → prone). Whether it earns its place is decided here. **Until then it is SUSPENDED in
+  MOVEMENT:** nothing prone is animated on the new figures (no way down from the kneel, no crawl, no prone aim or throw;
+  `MOVEMENT_MASTER_PLAN` §11.1).
+
 **Dependencies:** none hard. **Parallel to or prior to GAME-01** — the Director's
 own framing, and the reason this milestone sits above it in this file.
 

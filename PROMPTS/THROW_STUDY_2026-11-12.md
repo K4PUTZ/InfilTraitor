@@ -198,6 +198,10 @@ grenade went ~45° off the facing, seen by the Director in Blender).
    its grid facing after; the four facings stay for movement.
 4. ✅ **RULED (Director, 2026-11-12: "Lance baixo e rola"): the bowl is a LOW toss that lands short and rolls** the rest of the way
    (the existing hop-and-roll, lengthened), not a grenade on the floor from the hand.
+5. ✅ **RULED (Director, 2026-11-16: "jogar a granada agachado, jogar granada boliche (somente em pé)"): next are the throw from the
+   kneel and the bowl, and the bowl is thrown STANDING ONLY.** §4's table offered the bowl kneeling and prone too: those cells are
+   withdrawn. Prone is suspended as a whole (`MOVEMENT_MASTER_PLAN` §11.1); the underhand toss and the sidearm are not scheduled
+   (the same plan's §11.8, question 7).
 
 ---
 

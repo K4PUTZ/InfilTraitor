@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
-## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.4
+## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
+> ⏭️ **v1.5, 2026-11-16 — the BASIC MOVES IN USE are CLOSED on both figures (Director: "a gente fechou os movimentos básicos em uso") and what is left is PLANNED in §11, docs only:** every held item of the canon sorted into eight HOLD families, the body postures still to make (beside cover and at a corner, standing and crouched), the throws left (from the kneel; the bowl, standing only), the fixed interactions (computer, alarms, buttons, levers, valves), the weapon models already on disk, the grenade's size defect measured (3.0× the hand's in flight), and the order of work (§11.6). **PRONE is SUSPENDED** until GAMEPLAY-01 rules whether it is viable. **NEXT: §11.6 step 0 (the grenade's size), then the model sheet and every weapon in the figure's hands (size, grip, muzzle). Nine questions wait on the Director (§11.8).**
 > ⏭️ **2026-11-14 — the DASH is built: a move that spends both AP plays the Tripo figure's `run` (0.32 s/GU, phased by the ground); the idle <-> move passage is still a snap (an `AnimationPlayer` crossfade over `seek` failed: the run never showed). NEXT, by the Director: the characters turn, then idle -> run / walk passages. Record: `PROMPTS/RESUMO_SESSAO_2026-11-14_DASH.md`.**
 > ⏭️ **2026-11-15 — the CROUCH is in the game on both figures (16 frames, held; standing up = the crouch backwards), and so are the crouched draw / aim / shot / holster (`draw_crouch_pistol`, a second aim layer chosen by posture; the recoil unchanged). Next: the crouch -> walk / run passage. Record: `PROMPTS/RESUMO_SESSAO_2026-11-15_CROUCH_DRAW_SHOT.md`.**
 
@@ -213,6 +214,8 @@ built. Each row:
   missing too.
 
 ### 4.1 The map (v1.1, 2026-10-28) — BY NAME, to confirm on the bank's sheets (MV-1)
+
+> **2026-11-16:** this map is the survey of 2026-10-28, made from the clips' names. What has been built since (§11.0) and the plan for what is left (§11: hold families, body postures, interactions, the order of work) are the later word: where a row here and §11 disagree, §11 wins. The rows §11 does not touch (reactions, the world, cast gestures, the guards' idles) stand.
 
 **Every "Have" below was matched on the clip's NAME only; no motion was looked at.** A row moves from BY NAME to HAVE when its
 sheet (§3; `ASSETS/ANIMATIONS/bank/sheets/`, since 2026-11-04) shows the motion fits. Sources: `MaleCharacterNoCoat.glb` (66 clips, plain names), `MaleCharacterHatAndCoat.glb` (three
@@ -469,6 +472,9 @@ throw_overhand`; rulings (right hand, automatic style, whole body turns, bowl = 
 NEXT: the female's skirt fix, then underhand, bowl, kneeling. The study: [`PROMPTS/THROW_STUDY_2026-11-12.md`](../THROW_STUDY_2026-11-12.md): styles
 (overhand, underhand, bowl, sidearm) x postures, the trajectory picks the animation, the grenade leaves the posed hand, `pitch_baseball`
 cut to frames 36-48, fingers never keyed, four open questions.
+**2026-11-16 (Director):** the female's throw is in the game (2026-11-13). The throws to make next are **the throw from the kneel** and
+**the bowl, STANDING ONLY** ("jogar granada boliche (somente em pé)": this narrows the study's §4 table, where the bowl was also kneeling
+and prone). The underhand toss and the sidearm are not scheduled (§11.8, question 7); the prone throw is suspended with prone (§11.1).
 
 **For a clip we have to make (credits or none):** key poses first, in-betweens second (the brief's method, §2.2), now meaning: the
 pose stills are agreed before a generation is spent.
@@ -506,6 +512,8 @@ pose stills are agreed before a generation is spent.
    `PROMPTS/RESUMO_SESSAO_2026-11-09_POSE_FIXES_MOTO_ROUND.md`): the shotgun, the rifle, the grenade and every later import are each
    certified the same way, by hand, once, with the figure holding it, and its MUZZLE measured off the model at the same time (`weapons/<id>.json` `model.muzzle`, HERITAGE T2 W4). Until then a weapon is drawn at its model's own size and the
    engine WARNS that its hand size is not certified (built with HERITAGE T2 W2). Lands with each weapon's pose on the Tripo figure.
+   **2026-11-16: the grenade is measured (in flight 3.0× its size in the hand, §11.5) and the certification round is planned: §11.6
+   steps 0 to 2 (the models already on disk and where the lab opens each: §11.5).**
 
 ---
 
@@ -517,4 +525,238 @@ pose stills are agreed before a generation is spent.
 | **MV-2** | The map (§4.1): need / have / combine / missing / priority; the credits list | 🟡 **v1.1 (2026-10-28): §4.1 written, BY NAME (clips not yet seen); waits on the Director's ranking and §4.1's open questions** — done when the Director ranks it |
 | **MV-3** | The processing (§5) on the first situations' clips | each processed clip judged on a sheet |
 | **MV-4** | The engine plays the bank (§6), the Moto measured first | 🟡 **2026-11-05: first slice built and measured** (D105: an actor walks the grid on the Mixamo rig, `TRIPO_FIGURE`); open: the tempo, weapons / postures / throw, the AnimationTree, the LIGHT with the corrective keys |
-| **MV-5+** | The situations in the map's order (§7) | each ratified on the board and on a handset video |
+| **MV-5+** | The situations in the map's order (§7) | 🟡 **2026-11-16: the basic moves in use are CLOSED on both figures (§11.0)**; each further one ratified on the board and on a handset video |
+| **MV-6** | What is left (§11): every weapon in the hand (size, grip, muzzle), the poses and the shot per hold family, the cover bodies, the throws left, the devices and the fixed interactions | 🟡 **planned 2026-11-16, nothing built**; done step by step in §11.6's order, each on both figures and ratified on the board. Prone is suspended (GAMEPLAY-01) |
+
+---
+
+## 11. What is left after the basic moves: the arsenal's postures, cover, throws, interactions (planned 2026-11-16)
+
+> **Director, 2026-11-16:** *"agora a gente fechou os movimentos básicos em uso"*; *"Vamos dar uma organizada no que ainda falta"*; *"antes
+> vamos fazer o planejamento e registrar os próximos passos no MOVEMENT MASTER PLAN"*. **Docs only: nothing in this section is built.** What
+> is the Director's is quoted or marked; the rest is Claude's proposal until he rules (§11.8).
+
+### 11.0 Closed: the basic moves in use (both figures, in the game)
+
+| Move | What is in the game | Record |
+|---|---|---|
+| Idle | the loop; its frame 90 is where every pose layer starts and ends | 2026-11-13 |
+| Walk | 0.56 s / GU, phased by the ground; an authored start and stop | 2026-11-05, 2026-11-14 |
+| Run (the dash) | 0.32 s / GU; an authored start, two stops (one per foot), the stride evened so the stop lands on the cell | 2026-11-14 |
+| Turn | on the first tap, toward the destination; standing and kneeling | 2026-11-14, 2026-11-16 |
+| Crouch | the kneel (16 frames, held); standing up is the crouch backwards | 2026-11-15 |
+| Crouch → walk, crouch → run | the rise, chosen by the gait | 2026-11-15, 2026-11-16 |
+| Pistol | draw, aim, shot (recoil, spent case), holster; standing and kneeling | 2026-11-12, 2026-11-15 |
+| Throw | overhand, standing (the grenade); the cancel is the raise backwards | 2026-11-12, 2026-11-13 |
+
+Their small tails (coat keys left empty, the re-kneel at the end of a move begun from the crouch, takes never filmed) are in the session
+records and wait for the polish or for GAMEPLAY; none blocks what follows.
+
+### 11.1 The Director's list (2026-11-16)
+
+1. **PRONE is SUSPENDED.** *"Ainda temos o modo deitado, atingido a partir do agachado, mas precisamos ver se isso vai ser viável no
+   gameplay. [...] podemos deixar suspenso por enquanto, com uma nota na milestone de gameplay."* Nothing prone is made (M5, §4.1's prone
+   rows, the throw study's prone row) until GAMEPLAY-01 rules it (`docs/production/milestones.md`; `DESIGN` §8.2). The code keeps the
+   state (`Agent.Posture.PRONE` with its multipliers; the Z key lowers standing → crouch → prone); the Tripo figure has no prone motion.
+2. **Body postures to make:** standing beside cover; crouched beside cover; standing at a corner; crouched at a corner.
+3. **Throws to make:** the grenade thrown from the crouch; the bowl, **standing only**.
+4. **The other weapons:** draw, holding and aim for each ("as posturas aim/holding/draw com as outras armas"), then the shot.
+5. **Interactions:** operating a computer, switching off alarms, pressing buttons, operating levers and valves.
+6. **A defect:** the grenade leaves the hand giant (§11.5).
+7. **The order:** survey the canon's items, weapons, gadgets and each faction's technology for the postures they need (this section)
+   → one public model per weapon → each mounted in the figure's hand for its size, and its muzzle marked → the postures and the shot
+   animation of each.
+
+### 11.2 How a posture is counted: HOLD × BODY × STOP
+
+The canon names about 45 held items (`MODEL_INVENTORY` §3). They are not 45 sets of poses:
+
+- **HOLD** = what the hands do with the object: a two-handed pistol grip, a shouldered long gun, a thrown object. Eight families cover
+  every item, and a ninth row lists what needs no hold (§11.3).
+- **BODY** = what the legs and the trunk do: standing, the kneel, at a wall, at a corner. Made once each, whatever is in the hands (§11.4).
+- **STOP** = where in the flow: **draw → hold → aim → fire / use → stow**.
+
+The pistol is already built this way: the aim is a layer over the body, and the crouched draw is the kneel's legs under the standing
+draw's arms (2026-11-15). The plan makes it the rule: **a body posture is paid once and every hold lies on it; a hold is paid once per
+family and every item of the family reuses it.**
+
+**What differs between two items of one family is DATA in the item's row, never a pose:**
+- the model and its certified size (§9 item 7);
+- up to five POINTS OF THE MODEL: the **grip** (the right hand's placement, today's `model.hand`), the **support** (where the left hand
+  holds), the **butt** (where a stock meets the shoulder), the **muzzle** (`model.muzzle`, built with HERITAGE T2 W4) and the **port**
+  (where a spent case leaves);
+- the **recoil**: how far it kicks, how many times, whether a case flies.
+
+With those points the pose kit (`TripoPoseKit`: the hands go to targets) SOLVES the family's poses for any member; the Director's
+timeline on the family's reference weapon stays the truth the others inherit.
+
+### 11.3 The hold families, and every item of the canon in one
+
+Sources: `DESIGN` §5.4 (distractions), §10.0 (the start kit), §10.2-§10.4 (weapons, visors, gadgets), §11.6-§11.7 (specialists, stores,
+counter units), §15 (the tree); `WEAPON` §5 (the engine's catalogue); `MODEL_INVENTORY` §3. Where the canon has not said how an item is
+USED (the EMP, the shadow generator, the camera-loop rig, the sound and firework lures, the sonic weapon), its family is Claude's reading.
+
+| # | Family: the hold | Items | Status |
+|---|---|---|---|
+| **H1** | **Handgun, two hands:** cup and grip, arms out, the sights at the eyes | common pistol (start kit) ✅ · suppressed pistol = the pistol + the suppressor (FID L2: an attachment, so the muzzle moves forward) · revolver (`WEAPON`: more kick, no case) · taser (FID L1) · the dart launcher if it is a pistol (§11.8 Q5) | ✅ the pistol, standing and kneeling. The others are rows of data |
+| **H2** | **Compact automatic, two hands close** (the "uzi"): the right hand on the grip, the left under the magazine well or on a fore-grip, the gun at the chest line | `smg` (`WEAPON`) | to make: H1's body with other hand targets; the shot is a BURST |
+| **H3** | **Long gun, shouldered:** the butt in the right shoulder, the left hand on the fore-end, the cheek on the stock, the body bladed | shotgun (`CONE`; a pump after the shot, optional) · assault rifle (burst) · sniper rifle (the eye goes to the scope; the kneel is its natural stance) · suppressed rifle (Calm Waters L1) · pulse carbine (L2) · laser (L3) · plasma (Corporation L3) · sonic weapon (FID L3, shape undefined) · the pack's bullpup · the guards' anti-drone gun | to make, the largest block. The bank's `fire` IS this hold (measured 2026-11-08: hands 30 cm apart, the torso twisted, the pelvis yawed 25°, no recoil in it); `shoot` ends in a kneel |
+| **H4** | **Thrown object:** one hand, the right | frag grenade ✅ · smoke, flashbang, gas, incendiary · the EMP if thrown (Q6) · sound lure, firework lure · **stone**, baseball, glass or bottle, can (`DESIGN` §5.4: "the bread and butter") · the rope's hook | ✅ overhand, standing. To make: from the kneel; the bowl (standing only). The item is a prop and its size; the throw is shared |
+| **H5** | **Placed object:** on the FLOOR (kneel and place) or on a WALL (stuck at chest height) | C4 (`WEAPON` §5.2: "placed rather than thrown") · breaching charge (Bunsen Burners L3) · the EMP if placed (Q6) · tripwire flash (L1) · alarm clock, radio-clock (start kit) · shadow generator, camera-loop rig (Corporation L1) · a bug (`DESIGN` §14.2: "planting bugs") | to make. From the kneel the floor reach is the arms alone. Bank `dig`, BY NAME |
+| **H6** | **Hand device, one hand,** three ways: POINT AND PRESS (the arm out at a target), PRESS AT THE CHEST, TO THE EAR OR MOUTH | point: universal remote (`DESIGN` §5.4), spray can (start kit: at a camera, the arm raised) · chest: the **detonator** (Director, 2026-11-16; not yet an item of the canon, Q4), phone cloner, radio scrambler · ear or mouth: radio (the spoof, FID L1), phone · shown or handed over: keycards and forged credentials (the swipe itself is I1), the cash envelope (a bribe) | to make. The point is H1's right arm alone. Bank `make_a_call_01/02`, BY NAME |
+| **H7** | **Two-hand device:** both hands at the belly, the head down | the scout drone's controller (Calm Waters L1; `DESIGN` §10.4's recon drone) · the guards' tablets (forensic tech, feed monitor) | to make. Bank `play_mobile_game`, BY NAME |
+| **H8** | **Contact, PAIRED with the victim** | chokehold, neck snap, chloroform (start kit) · shock weapon, knife, fist (`DESIGN` §10.2) · zip ties, searching and interrogating a downed guard · the perch drop (later) | not on today's list. Whole-body motion for two: credits (§4.1's ranking, item 2) |
+| — | **No hold** | goggle modes, motion and noise detectors (passive) · the LED coat (cloak, wardrobe), the turning tie, the reversible coat (`DESIGN` §10.5-§10.6) · silent boots, armour, the exoskeleton | at most a small gesture (§4.1's stealth rows stand) |
+
+**The world's objects (fixed interactions).** The Director's four (computer, alarms, buttons, levers and valves) and what the canon adds:
+
+| # | Interaction | Objects | How |
+|---|---|---|---|
+| **I1** | **PRESS / FLIP:** one hand to a point | button · light switch · **alarm panel** · electrical panel (`DESIGN` §4.4) · keypad · card reader (the swipe) · fire alarm · a door's handle | ONE pose solved to the object's point, at any height from the knee to overhead; never one per object |
+| **I2** | **TYPE:** two hands at desk height, a loop | **terminal / computer** (`DESIGN` §14.2: "reach a terminal") · control panel · server console | a short loop, with its way in and out |
+| **I3** | **LEVER:** grab, then pull or push | wall lever (shoulder height) · floor lever (hip height, two hands) · a breaker's handle | one or two takes, by height |
+| **I4** | **WHEEL:** two hands turning, a loop | **valve** (`DESIGN` §5.4: steam, water) · the sluice gate's wheel (§14.2) | a loop, with its way in and out |
+| **I5** | **KNEEL AND WORK:** both hands low, a loop | lockpick (FID L2) · tying or searching a body (with H8) · a floor hatch | the kneel's legs + the arms |
+| **I6** | **PICK UP** | from the floor (a stone pile, a dropped item, the alarm clock taken back) · from a table (a glass, a weapon lying as scenery) | two reaches |
+| **I7** | **MOUNT / RIDE** | the getaway bike (Bunsen Burners L2; an extraction at marked points, `DESIGN` §15) | later, with the bike's model |
+
+**What the interactions need from the props** (owner: `PROP_PIPELINE_PLAN`, PP7's stateful props; a note for that plan, not designed
+here): an interactive slot names its INTERACTION ANCHOR, which is the point the hand reaches, the type (I1-I7), and the cell and facing
+the actor stands on. The pose is solved to the anchor; no pose is authored per object.
+
+### 11.4 The body postures, and what lies on each
+
+| # | Body | Status | To make |
+|---|---|---|---|
+| **B1** | Standing (the idle's frame 90) | ✅ | — |
+| **B2** | The kneel | ✅ with its rises | — |
+| **B3** | Standing beside cover (M2: pressed to the wall; `DESIGN` §8.2's full cover) | to make | in, hold, out; the LEAN OUT and back (§8.3's peek) |
+| **B4** | Crouched beside cover (`DESIGN` §8.2's half cover, behind a low object) | to make | from the kneel: in, hold, out; the RISE OVER the top and back |
+| **B5** | Standing at a corner (M3) | to make | in, hold, out; the lean around the corner |
+| **B6** | Crouched at a corner | to make | the same, from the kneel |
+| **B7** | Moving with the weapon out (M1: "weapon pointing down but ready") | open (§11.8 Q1) | the hold stop as a layer over the walk and the run |
+| **B8** | Prone | **SUSPENDED** (§11.1) | — |
+
+What lies where:
+
+| | B1 standing | B2 the kneel | B3-B6 cover | B7 moving |
+|---|---|---|---|---|
+| **H1** pistol family | ✅ | ✅ | the lean out, under B1's / B2's arms | Q1 |
+| **H2** compact | to make | to make | as H1 | Q1 |
+| **H3** long gun | to make | to make (the kneel already has the left forearm over the left knee: one move from the braced rifle kneel, the elbow on the knee) | as H1 | Q1 |
+| **H4** throw | ✅ overhand; the bowl to make | overhand to make | later, with the cover (the study's step-out and sidearm) | — |
+| **H5** placed | to make | to make | — | — |
+| **H6** hand device | to make | to make | free (one hand) | — |
+| **H7** two-hand device | to make | to make | — | — |
+| **I1-I6** | to make | I5 | — | — |
+
+- **The other side of a cover posture** is the BODY mirrored by the joint names (§5.4). The hold is NOT mirrored: the right hand stays the
+  gun hand (the throw's ruling, 2026-11-12) and the kit solves the arms on the mirrored trunk. Whether a right-handed lean around a LEFT
+  corner reads right is judged on the first one built. (`ACTOR` D45 rejected mirroring baked FRAMES, which flipped the figure's own
+  asymmetries; a mirrored pose leaves the mesh as it is.)
+- **Coat keys:** a new timeline gets its keys by `docs/pipelines/timeline_coat_keys.md`, created EMPTY, and they are edited only where the
+  Director asks (the coat's polish is deferred, 2026-11-12). A mirrored pose has no key of its own.
+- **The size of the work (Claude's estimate, to scope it, not a count):** about 25 to 30 authored timelines per figure: the four cover
+  bodies with their lean-outs, H2 and H3 standing and kneeling, two throws, the small ones of H5-H7, I2-I6. Plus one solver (I1) and the
+  shots, which are data. H8 is apart (credits).
+
+### 11.5 The models on disk, their sizes, and the grenade's defect
+
+**The firearms are already on disk.** The pistol in the game is one of 25 CC0 models of Quaternius's Ultimate Guns Pack
+(`ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/`; local only, like all of `ASSETS/`):
+pistols ×4, revolvers ×3, submachine guns ×2, shotguns ×4 (two full, a short stock, a sawed-off), assault rifles ×3, a bullpup, sniper
+rifles ×4, and four attachments (scope, bipod, tripod, bayonet); the guns are 746 to 2 778 triangles each. **For the rifle, the shotgun, the sniper
+and the "uzi" nothing needs downloading unless the Director rejects a look** (whether either submachine gun reads as an Uzi is for his
+eye, on the sheet of step 1).
+
+Measured 2026-11-16 from the files (each model's box through its node transforms). The certified pistol is the pack's
+`Pistol-52kQzphmeF` at ×0.0600: 0.180 GU long in the hand. The same factor on the others is where the lab OPENS them, not their size:
+
+| Model (the pack's plain one of each) | Native length | Triangles | At the pistol's factor |
+|---|---|---|---|
+| Pistol (certified 2026-11-09) | 2.45 | 1 878 | 0.180 GU / 0.29 m ✅ |
+| Revolver | 1.98 | 1 046 | 0.146 GU / 0.23 m |
+| Submachine Gun | 4.04 | 1 374 | 0.297 GU / 0.48 m |
+| Shotgun Sawed Off | 3.69 | 956 | 0.271 GU / 0.43 m |
+| Shotgun | 5.78 | 746 | 0.425 GU / 0.68 m |
+| Assault Rifle | 5.42 | 1 304 | 0.398 GU / 0.64 m |
+| Bullpup | 5.25 | 2 778 | 0.386 GU / 0.62 m |
+| Sniper Rifle (two of the four are longer: 7.29) | 6.34 | 1 344 | 0.466 GU / 0.75 m (0.536 GU / 0.86 m) |
+
+The Agent stands 1.225 GU (1.96 m). **The pack is not to one real scale: its pistol is large for its long guns** (a 0.29 m pistol beside
+a 0.64 m rifle), so a long gun will probably grow in the Director's hands. That is what the by-hand rule is for (§9 item 7).
+
+**To source or to make (nothing on disk):** the suppressor; the taser; the dart launcher; the late guns (pulse carbine, laser, plasma,
+sonic: L2-L3, they reuse H3 and can wait); the other grenades' bodies; C4 and its detonator; the universal remote, the spray can, the
+chloroform bottle, the alarm clock, the radio, the phone, the drone's controller, lockpicks, zip ties, cards; the stone, the baseball,
+the bottle, the can; the rope and hook. CC0 only (`ACTOR` D57); the sources already used and recorded in `props/MODEL_SOURCES.md` are
+Quaternius (through Poly Pizza) and Poly Haven. **The simple ones (a stone, a can, a card, the remote, the detonator, the C4 block, a
+suppressor) are cheaper MADE by a script than searched.**
+
+**The grenade leaves the hand giant: measured 2026-11-16.**
+- In the hand it is the size the Director gave it in the throw timeline: 0.066 GU tall on the male, 0.064 on the female
+  (`sequences/<fig>/throw_overhand.json`, the prop's scale 0.0897 / 0.0868, on a model 0.605 tall in its own units).
+- In flight and on the floor `GrenadeProp.FIT_SIZE` fits it into a 0.2 GU box (its own comment: "a handheld at twice its real size
+  reads"): **3.0× the hand's** on the male, 3.1× on the female.
+- The ruling already exists (`HERITAGE_AND_LOOSE_ENDS_PLAN` §5 item 2: a weapon is always the size it has in the Agent's hands, with no
+  readability factor). The grenade simply has no certified row yet: `TripoFigure.HELD_PROPS` carries only its path.
+- **The fix:** the grenade gets a row with ONE certified size (the two timelines' 3 % difference becomes one number); the hand and
+  `GrenadeProp` both read it and `FIT_SIZE` goes; its shadow and its fuse point follow the size. It changes a look: the `grenade_throw`
+  take before and after.
+
+### 11.6 The order of work (the Director's order, detailed)
+
+Each step lands on both figures before the next; a step with a look ends in a capture shown in the chat.
+
+0. **The grenade's size** (§11.5): small, and every later throw capture depends on it.
+1. **The model sheet.** One contact sheet of the pack's 25 models and the grenade, to scale beside the figure. The Director picks one
+   model per weapon (the pistol stays). The list of what to source or make for H5-H7, each source recorded in `props/MODEL_SOURCES.md`.
+2. **Each weapon in the figure's hands** (the 2026-11-09 method, once per weapon): a lab file per weapon, the figure in the family's
+   base pose (solved by the kit), the weapon opened at the pistol's factor. The Director sets the size and the grip by hand. Read back
+   into the weapon's row: `model.hand` and `size_certified`; `model.muzzle`, proposed by a script (the centre of the foremost vertices
+   along the barrel) and confirmed on a render with a marker; and the points its family needs (`support`, `butt`, `port`). The table
+   copy and the pickup take the same size by themselves (HERITAGE T2 W2).
+3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
+   submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
+4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).
+5. **The shot per weapon,** as data over the procedural recoil (`ActorRecoil3D`): the kick, the burst (count and interval), the hold
+   after it, the case from the `port` (none for the revolver, the taser, the darts). The flash and the tracer already leave
+   `model.muzzle`. A pump or a bolt cycle is a small timeline of its own, only if the Director wants it.
+6. **The cover bodies B3-B6,** then the pistol's lean-out on each, then the other families on them.
+7. **The throws left:** from the kneel; the bowl (standing).
+8. **The devices and the interactions:** I1's solved reach first (it serves the most objects), then H6, H5, I2-I6, H7.
+9. **H8, the paired takedowns** (credits; §4.1's ranking).
+
+Steps 0 to 5 are the Director's order. Steps 6 to 9 are in Claude's proposed order: he listed them without one (§11.8 Q9).
+
+### 11.7 Notes for other plans (recorded here, built there)
+
+- **GAMEPLAY-01** (`docs/production/milestones.md`) and `DESIGN` §8.2: is PRONE viable; until then nothing prone is made.
+- **`DESIGN` §10.2 and `WEAPON` §5.1 (Q3): two lists of firearms.** The engine's catalogue is pistol, revolver, submachine gun, assault
+  rifle, shotgun, sniper rifle. The tree's weapons are the pistol, the suppressor, the taser, the suppressed rifle, the pulse carbine,
+  the laser, the dart launcher, the plasma and the sonic weapon. The shotgun, the submachine gun, the assault rifle and the revolver
+  are in no node of the tree, and the tree's late guns have no row in the catalogue. The families cover both, so MOVEMENT does not
+  wait; who carries what is those plans' to say.
+- **`WEAPON` §5.2 and `DESIGN` §10.4 (Q4):** the detonator is new today; whether a charge goes off by a remote or a timer is open there.
+- **`PROP_PIPELINE_PLAN` (PP7):** the interaction anchor (§11.3).
+- **`ACTOR` D70 / D100 (Q2):** "the gun comes out of the coat" (2026-11-08) presumes the coat is on; the stealth dress stows the coat in
+  the pack.
+
+### 11.8 Open questions for the Director
+
+1. **"Holding":** is it a REST with the weapon out (low, ready), kept while he stands and moves (M1), until he puts it away? Today the
+   pistol has no such stop: it comes out for the aim and goes back, and walking lowers it. *(Claude: yes for the long guns, and then
+   the pistol gets one too, so every family has the same five stops. It costs one pose per family and its layer over the walk and the run.)*
+2. **Where a long gun comes from and goes back to:** out of the coat like the pistol (no stowed model; a sniper rifle out of a coat is
+   a stylisation), slung on the back (always visible: a carried model that crosses the coat, the pack and the hand-made coat keys), or
+   the pack. And with the coat stowed (the stealth dress)? *(Claude: out of the coat for all of them; a slung gun reopens the coat.)*
+3. **Which firearms are the game's** (§11.7), and so which are certified first. *(Claude: the catalogue's six now, since their models
+   are on disk; the tree's late guns when their models exist.)*
+4. **The detonator:** a remote for C4 and the breaching charge, or a timer?
+5. **The dart launcher:** a pistol (H1, it reuses the closed cycle) or a long gun (H3)? *(Claude: a pistol; `DESIGN` §10.2 gives it 6 tiles.)*
+6. **The EMP:** thrown (H4) or placed (H5)? `WEAPON` §5.2 lists a bomb, the tree a "charge".
+7. **The throws not on today's list:** the study's underhand toss and sidearm (§7): dropped, or later? *(Claude: the sidearm with the
+   cover; the underhand only if the solver needs a short toss under a low ceiling.)*
+8. **Guards** (§4.1's question 7 stands): the same families on the same skeleton. Do they draw as the Agent does, or carry the weapon in
+   the hands from the start?
+9. **The order of steps 6 to 9** (§11.6).

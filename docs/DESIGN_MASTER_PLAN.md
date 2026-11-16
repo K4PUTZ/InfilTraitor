@@ -1304,6 +1304,10 @@ a lot of cover; on the next turn the agent may start to walk or run from the cro
 KNEEL: right knee on the floor, left foot planted ahead, left forearm over the left knee (the right hand stays free for the pistol);
 the crouched shot keeps the kneeling legs under the standing draw / aim's upper body.
 
+**Prone (Director, 2026-11-16): SUSPENDED until the GAMEPLAY milestone judges whether it is viable** (`docs/production/milestones.md`,
+GAMEPLAY-01). It is reached from the crouch. The minimal-cover row and its rules above stand as designed and unbuilt; nothing prone is
+animated on the new figures meanwhile (`MOVEMENT_MASTER_PLAN` §11.1).
+
 ### 8.3 Peek, from full cover
 Shooting from full cover requires momentarily leaving it. During the peek,
 incoming hit chance rises to ~60% while own aim stays 100%. Guards on

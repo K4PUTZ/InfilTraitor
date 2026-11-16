@@ -1210,6 +1210,42 @@
           "note": "A close-up of the agent standing on his start cell (27,9); run with INFILTRAITOR_TRIPO_FIGURE=<female|male> to see a Tripo Agent"
         },
         {
+          "id": "agent_crouch_quick_walk",
+          "profile": "engine",
+          "rail": "agent_close_rail",
+          "steps": [
+            "posture crouch",
+            "wait 1.5",
+            "turn 32,16",
+            "wait 0.15",
+            "walk 32,16",
+            "wait 2.5"
+          ],
+          "at_key": 0,
+          "after_hold": 30,
+          "length": 420,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-16: two quick taps (or a right click): the kneeling agent rises and walks at once, the turn carrying on through the rise; run with INFILTRAITOR_TRIPO_FIGURE=male|female"
+        },
+        {
+          "id": "agent_crouch_turn_walk",
+          "profile": "engine",
+          "rail": "agent_close_rail",
+          "steps": [
+            "posture crouch",
+            "wait 1.5",
+            "turn 32,16",
+            "wait 1.2",
+            "walk 32,16",
+            "wait 2.5"
+          ],
+          "at_key": 0,
+          "after_hold": 30,
+          "length": 480,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-16: the first tap turns the KNEELING agent toward the cell, the second makes him rise and walk; run with INFILTRAITOR_TRIPO_FIGURE=male|female"
+        },
+        {
           "id": "agent_crouch_walk",
           "profile": "engine",
           "rail": "agent_close_rail",

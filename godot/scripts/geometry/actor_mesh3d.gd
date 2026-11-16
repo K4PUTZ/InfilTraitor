@@ -145,7 +145,7 @@ var _raise_s: float = AIM_RAISE_S    ## how long the weight takes to go 0 -> 1 (
 ## standing draw). One set per posture, [layer, sequence, raise s, lower s]; the active one is in `_aim` / `_sequence` / `_raise_s` / `_lower_s`
 ## and changes only with the pistol away (`_aim_t` 0): a posture change while aimed lowers the gun, then raises it in the new posture.
 const DRAW_CROUCH := "draw_crouch_pistol"
-const RISE_CLIP := "crouch_run"   ## rising from the crouch into the run (Director, 2026-11-15): a run ordered while fully crouched opens on it, not on `run_start`
+const RISE_CLIPS := {"run": "crouch_run", "walk": "crouch_walk"}   ## rising from the crouch into the gait (Director, 2026-11-15): a move ordered while fully crouched opens on it, not on the gait's start
 var _aim_sets: Dictionary = {}
 var _aim_kind: String = "standing"
 var _run_pass: float = 0.0           ## the `run` clip's ground per pass (0 = the game set has none: a dash walks)
@@ -245,7 +245,7 @@ func setup_actor(board: Node3D, source: ActorPose) -> bool:
 		if not (row["start_dist"] as Dictionary).is_empty():
 			source.set("dash_start" if gait == "run" else "walk_start", row["start_dist"])
 		if not (row["rise"] as Dictionary).is_empty():
-			source.set("dash_rise", (row["rise"] as Dictionary)["start_dist"])
+			source.set("dash_rise" if gait == "run" else "walk_rise", (row["rise"] as Dictionary)["start_dist"])
 		if not (row["pose_stops"] as Dictionary).is_empty():
 			source.set("dash_stop" if gait == "run" else "walk_stop", row["pose_stops"])
 	_build_contact_shadow(source.get_parent())
@@ -370,13 +370,13 @@ func _load_gait(lib: AnimationLibrary, gait: String, g_pass: float) -> Dictionar
 	var spec: Dictionary = GAIT_PASSAGES[gait]
 	var row: Dictionary = {"clip": spec["clip"], "pass": g_pass, "contacts": spec["contacts"], "start_clip": spec["start"], "stop_clips": spec["stops"],
 		"start_len": 0.0, "start_handoff": 0.0, "start_morphs": {}, "start_fps": 24.0, "start_dist": {}, "stops": {}, "pose_stops": {}, "rise": {}}
-	if gait == "run" and lib.has_animation(RISE_CLIP):   ## rising from the crouch into the run: the start's fields, from its own timeline
-		var rise: Animation = lib.get_animation(RISE_CLIP)
+	if lib.has_animation(String(RISE_CLIPS[gait])):   ## rising from the crouch into the gait: the start's fields, from its own timeline
+		var rise: Animation = lib.get_animation(String(RISE_CLIPS[gait]))
 		var rdist := PackedFloat32Array()
 		for d: float in rise.get_meta(&"start_travel", PackedFloat32Array()):
 			rdist.append(d * _tripo_units)
 		var rfps: float = float(rise.get_meta(&"start_fps", 24.0))
-		row["rise"] = {"start_clip": RISE_CLIP, "start_len": rise.length, "start_handoff": float(rise.get_meta(&"start_handoff", 0.0)),
+		row["rise"] = {"start_clip": RISE_CLIPS[gait], "start_len": rise.length, "start_handoff": float(rise.get_meta(&"start_handoff", 0.0)),
 			"start_morphs": rise.get_meta(&"start_morphs", {}), "start_fps": rfps, "start_dist": {"fps": rfps, "dist": rdist}}
 	if lib.has_animation(String(spec["start"])):
 		var start: Animation = lib.get_animation(String(spec["start"]))
@@ -865,7 +865,7 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 	## A move from standing opens on its gait's authored start; it hands over to the gait's clip on the start's last frame, its phase set to that frame.
 	if walking and not _was_walking:
 		_gait = _gaits.get("run" if dash else "walk", {})
-		if dash and not _gait.is_empty() and not (_gait["rise"] as Dictionary).is_empty() and not _crouch.is_empty() \
+		if not _gait.is_empty() and not (_gait["rise"] as Dictionary).is_empty() and not _crouch.is_empty() \
 				and _crouch_t >= float(_crouch["len"]) - 0.001 and float(state.get("dash_rate", 0.0)) > 0.0:
 			_gait = _gait.duplicate()   ## fully crouched: the start is the rise (the row's own start fields replaced by it)
 			_gait.merge(_gait["rise"], true)

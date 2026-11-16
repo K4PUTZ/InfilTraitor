@@ -63,6 +63,7 @@ var _dash: bool = false   ## the walk in progress is a dash (both AP spent on on
 var dash_start: Dictionary = {}
 ## The same for a dash ordered while CROUCHED (rising into the run, `crouch_run`): `ActorMesh3D` fills it, the actor's first step follows it.
 var dash_rise: Dictionary = {}
+var walk_rise: Dictionary = {}   ## and for a plain walk (`crouch_walk`)
 var dash_rate: float = 0.0
 ## The run's STOPS (2026-11-14, one per foot; `ActorMesh3D` fills `dash_stop`: {"l"|"r": {"fps", "dist": ground per frame, GU}}). The actor says how long the
 ## dash is (`dash_len`, GU); the mesh answers which foot it will strike on (`stop_side`, "" = no stop this dash: too short) and evens the run's stride so

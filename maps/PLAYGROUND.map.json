@@ -1210,6 +1210,22 @@
           "note": "A close-up of the agent standing on his start cell (27,9); run with INFILTRAITOR_TRIPO_FIGURE=<female|male> to see a Tripo Agent"
         },
         {
+          "id": "agent_crouch_walk",
+          "profile": "engine",
+          "rail": "agent_close_rail",
+          "steps": [
+            "posture crouch",
+            "wait 1.5",
+            "walk 32,16",
+            "wait 2.5"
+          ],
+          "at_key": 0,
+          "after_hold": 30,
+          "length": 420,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-15: the agent kneels (1 AP), then walks 2 cells with the other AP: it opens on the rise (crouch_walk) into the walk; run with INFILTRAITOR_TRIPO_FIGURE=male|female"
+        },
+        {
           "id": "agent_crouch_run",
           "profile": "engine",
           "rail": "agent_close_rail",

@@ -175,6 +175,53 @@ universal remote · spray can · chloroform bottle + rag · radio scrambler · p
 crossbow if cutting the big one down fails). **Not counted:** what is WORN (goggles, balaclava, mask, pack, armour tiers) is
 `CHARACTER` / `COSMETICS`'s.
 
+### 2.11 The Tripo list: real sizes and the reference sheets (2026-11-16)
+
+**The route (Director, 2026-11-16):** Nano Banana 2 draws an orthographic reference sheet (one row per object: FRONT | SIDE), Claude
+crops each view into its own image, the Director generates the model in Tripo from those views. 4-5 objects of a similar size per
+sheet; the prompts are §7. Sizes are REAL ones (cm; length × width × height, Ø = diameter), from the real-world object or its closest
+real kin, so the sheet's proportions hold; the final in-hand size is still set by hand (rule 4). Ask Tripo for a low-poly mesh near the
+guns pack's budget (~500-3 000 triangles).
+
+| Sheet | Object | Real size (cm) | Reference look |
+|---|---|---|---|
+| 1 | Taser | 15 × 3.5 × 9 | a pistol-shaped stun gun, a cartridge at the front |
+| 1 | Brass knuckles | 10 × 1.2 × 7 | four finger rings, a palm bar |
+| 1 | Detonator | 11 × 3 × 6, antenna 8 | a handheld remote detonator: a flip-up safety cover over a red button, a stub antenna |
+| 1 | Universal remote | 18 × 5 × 2 | a TV remote, rows of buttons |
+| 1 | Spray can | Ø 6.5 × 20 | an aerosol paint can with a cap |
+| 2 | Wrist-blade bracer | 20 × 9 × 7 | a forearm bracer with a slot for the blade and a dart port |
+| 2 | Wrist blade | 15 × 2 × 0.4 | the blade alone (it extends in play: a separate part) |
+| 2 | Grapple launcher | 25 × 5 × 15 | a pistol-grip launcher, a hook loaded at the muzzle |
+| 2 | Grappling hook + coiled rope | hook 15, coil Ø 25 | three folding prongs, a coil of rope (the start kit) |
+| 2 | Lockpicks | 12 × 3 × 0.5 | three picks and a tension wrench, fanned |
+| 2 | Zip ties | 30 × 0.5 × 0.2 | three black cable ties, one looped |
+| 3 | C4 block | 28 × 5 × 5 | a wrapped block, a detonator cap and two wires |
+| 3 | Breaching charge | 60 × 5 × 2 | a long adhesive strip charge with a small firing box |
+| 3 | Gas grenade | Ø 6 × 15 | a cylinder grenade, spoon and pin |
+| 3 | EMP charge | Ø 15 × 6 | a disc on a magnetic base, a status light |
+| 3 | Tripwire flash | 8 × 5 × 4, spike 10 | a small box, a wire spool, a ground spike |
+| 4 | Firework lure | Ø 5 × 15 | a firework tube with a fuse, on a small base |
+| 4 | Baseball | Ø 7.4 | red stitching |
+| 4 | Glass tumbler | Ø 8 × 10 | a plain drinking glass |
+| 4 | Drink can | Ø 6.6 × 12.2 | a plain soda can, no brand |
+| 4 | Chloroform bottle | Ø 5 × 12 | an amber glass bottle, a screw cap |
+| 4 | Rag | 30 × 30, folded 15 × 15 × 2 | a folded cloth |
+| 5 | Wind-up alarm clock | 11 × 6 × 15 | twin bells, a hammer, two feet |
+| 5 | Radio-clock | 20 × 8 × 11 | a battery clock radio, a speaker grille, an antenna |
+| 6 | Scout drone | 30 × 30 × 8 | a small quadcopter, a camera under it |
+| 6 | Drone controller | 18 × 12 × 6 | two sticks, a phone clamp |
+| 6 | Tablet | 24 × 0.8 × 17 | a rugged tablet |
+| 6 | Radio scrambler | 15 × 10 × 4, antennas 15 | a box with four antennas |
+| 6 | Phone cloner | 9 × 6 × 2 | a small box with a cable and a plug |
+| 7 | Camera-loop rig | 12 × 8 × 5 | a box with a clamp and a cable |
+| 7 | Shadow generator | 15 × 15 × 10 | a squat sci-fi emitter |
+| 7 | Motion detector | 8 × 3 × 6 | a clip-on sensor, a lens |
+| 7 | Noise detector | 8 × 3 × 6 | a clip-on sensor, a microphone grille |
+| 8 | Wedding ring | Ø 2.1 × 0.5 | a plain gold band |
+| 8 | Police badge | 8 × 0.5 × 6 | a shield-shaped badge, no text |
+| 8 | Sample case | 45 × 12 × 33 | an aluminium briefcase |
+
 ## 3. Sources found (2026-11-16)
 
 **Searched:** Poly Pizza, 52 terms, every result's licence read on its own page (`"Licence":"CC0 1.0"`); CC-BY results dropped, Kenney
@@ -234,3 +281,27 @@ Nothing below is canon; each is one line for a yes or no.
 - **Throwing knives / shuriken:** silent ranged lethal (H4), between the knife and the darts.
 - **The guards' kit:** riot shield, handcuffs, the radio on the belt (the counter units, `DESIGN` §11.7).
 - **A body bag / carry:** carrying a body is an action, not an item; listed only so it is not forgotten.
+
+## 7. The reference-sheet prompts (Nano Banana 2)
+
+The STYLE block is the same on every sheet, so the sheets agree with each other and with the guns pack (Quaternius: flat-shaded facets,
+flat colour regions). Each colour region is one material: our registry recolours by surface (`ACTOR` D66), so a clean split matters
+more than the colour itself.
+
+### 7.1 Sheet 1 — handheld devices (taser, brass knuckles, detonator, universal remote, spray can)
+
+```
+Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 5 rows, 2 columns.
+Each row is ONE object: its FRONT view in the left column, its SIDE view in the right column (the same object rotated 90 degrees, same scale, same vertical alignment). All five objects are drawn at the same real-world scale, relative to each other.
+Rows, top to bottom:
+1. Taser stun gun, 15 cm long, 9 cm tall: pistol-shaped, a boxy cartridge at the front with two contact points, a grip with a trigger. Black body, yellow cartridge.
+2. Brass knuckles, 10 cm wide, 7 cm tall, 1.2 cm thick: four finger rings in a row and a curved palm bar below. Plain steel.
+3. Handheld remote detonator, 11 cm long, 6 cm tall, 3 cm thick: a rugged box, a flip-up safety cover over one red push button, a short stub antenna 8 cm long. Olive green body, red button.
+4. Universal TV remote control, 18 cm long, 5 cm wide, 2 cm thick: rows of round buttons, a small infrared window at the tip. Dark grey body, light grey buttons.
+5. Aerosol spray paint can, 6.5 cm diameter, 20 cm tall: cylinder with a domed top, a nozzle and a separate cap. Plain metal can with one solid colour band, no label text.
+Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bold readable silhouette, solid flat colours with clearly separated material regions (metal, black rubber, plastic). No textures, no wear, no decals, no logos.
+Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
+No text, no labels, no numbers, no arrows, no measurements, no hands, no people.
+In the side views, the pointed or front end faces right and any handle points down.
+```
+

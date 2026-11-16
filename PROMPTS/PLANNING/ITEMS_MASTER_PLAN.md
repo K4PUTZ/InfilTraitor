@@ -426,6 +426,10 @@ Rendering: flat even studio lighting, no cast shadows, no reflections, plain lig
 ABSOLUTELY NO TEXT anywhere on the image: no titles, no headers, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
 ```
 
+**Result (2026-11-16):** `REFERENCES/ITEMS/Gemini_Generated_Image_xdsru2xdsru2xdsr.jpeg`. Headers and measure lines, none touching:
+cut with `--views front,side --keep -1 --row-gap 10` into `temp/items_tripo/sheet6/`. The cel style with outlines came back; the
+detectors' sides are drawn deeper than 3 cm (fixed by hand at the model, if it matters).
+
 ### 7.7 Sheet 7 — the story, FRONT + SIDE (sample case, police badge)
 
 ```

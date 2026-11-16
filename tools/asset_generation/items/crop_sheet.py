@@ -22,6 +22,9 @@ ap.add_argument("--views", default="", help="the two columns' names, left,right 
 ap.add_argument("--threshold", type=int, default=18)
 ap.add_argument("--open", type=int, default=7, help="opening kernel: strokes thinner than this are dropped")
 ap.add_argument("--min-area", type=float, default=0.0015, help="a blob smaller than this fraction of the sheet is noise")
+ap.add_argument("--fill", type=int, default=0, help="close the object's outline by this many px and fill it (light objects)")
+ap.add_argument("--raw", action="store_true", help="copy each object's whole bounding box unmasked (pale objects; no text inside the box)")
+ap.add_argument("--raw-pad", type=int, default=8, help="--raw: px added around the found box (its outline may be incomplete)")
 ap.add_argument("--row-gap", type=int, default=40, help="px: blobs closer than this vertically are one row")
 ap.add_argument("--keep", type=int, default=8, help="dilation (px) that brings an object's own thin parts back; -1 = everything connected to the object (a long spike, wires), safe when no dimension line touches it")
 args = ap.parse_args()
@@ -68,7 +71,14 @@ for name, row in zip(names, rows):
         region = (ndimage.binary_dilation(seed, iterations=args.keep) & mask) if args.keep >= 0 else mask
         parts, _ = ndimage.label(region)   # a stroke the dilation reached but that does not touch the object goes
         region = np.isin(parts, np.unique(parts[seed & region])) & (parts > 0)
+        if args.fill > 0:   # a light object (a white ball, clear glass) is mostly background-coloured: close its outline, fill it
+            region = ndimage.binary_fill_holes(ndimage.binary_closing(region, iterations=args.fill))
         ys, xs = np.nonzero(region)
+        if args.raw:   # copy the object's whole box as drawn (a pale object whose outline has gaps); only where no text is inside it
+            pad = args.raw_pad
+            region = np.zeros_like(region)
+            region[max(ys.min() - pad, 0):min(ys.max() + 1 + pad, H), max(xs.min() - pad, 0):min(xs.max() + 1 + pad, W)] = True
+            ys, xs = np.nonzero(region)
         found.append((view, region, ys.min(), ys.max() + 1, xs.min(), xs.max() + 1))
     if not found:
         continue

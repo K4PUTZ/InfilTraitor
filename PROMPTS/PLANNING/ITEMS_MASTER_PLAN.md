@@ -380,3 +380,26 @@ Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bo
 Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
 ABSOLUTELY NO TEXT anywhere on the image: no titles, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
 ```
+
+**Result (2026-11-16):** `REFERENCES/ITEMS/Gemini_Generated_Image_gavaq2gavaq2gava.jpeg`. Labels and headers again (dropped by the cut).
+The pale objects need their own runs: the ball (white on light grey, its outline broken) and the glass (clear) are cut row by row with
+`--raw` (the whole box as drawn, `--raw-pad 8`), the glass also with `--threshold 8 --open 3`; the rest with `--views front,top
+--row-gap 5`. **The folded rag is dropped:** drawn from above at an angle and nearly the background's colour; the Director models it by
+hand. Cuts in `temp/items_tripo/sheet4/` (front + top).
+
+### 7.5 Sheet 5 — clocks and small electronics, FRONT + SIDE (alarm clock, radio-clock, drone controller, radio scrambler, phone cloner)
+
+```
+Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 5 rows, 2 columns. Highest resolution.
+Each row is ONE object: its FRONT view in the left column and its SIDE view in the right column, both seen horizontally at eye level (the object turned 90 degrees about its vertical axis; never a top view). Same scale, same vertical alignment. All five objects are drawn at the same real-world scale, relative to each other.
+Rows, top to bottom:
+1. Wind-up twin-bell alarm clock, 11 cm wide, 6 cm deep, 15 cm tall: a round clock face, two bells on top with a hammer between them, two short feet. Red body, white face, steel bells.
+2. Battery radio-clock, 20 cm wide, 8 cm deep, 11 cm tall: a boxy clock radio, a speaker grille on the left of the front, a small digital display on the right, a telescopic antenna. Black body, grey grille, green display.
+3. Drone remote controller, 18 cm wide, 6 cm deep, 12 cm tall: a handheld controller with two joysticks, two short antennas, a phone clamp on top. Dark grey body.
+4. Radio scrambler, 15 cm wide, 4 cm deep, 10 cm tall: a flat rugged box with four upright antennas 15 cm long on top, a row of small lights on the front. Olive body, black antennas.
+5. Phone cloner, 9 cm wide, 2 cm deep, 6 cm tall: a small black box with a tiny screen, a short coiled cable ending in a plug.
+Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bold readable silhouette, solid flat colours with clearly separated material regions. No outlines, no ink lines, no cel shading. No textures, no wear, no decals, no logos.
+Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
+ABSOLUTELY NO TEXT anywhere on the image: no titles, no headers, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
+```
+

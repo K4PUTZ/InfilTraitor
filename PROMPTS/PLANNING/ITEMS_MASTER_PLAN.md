@@ -403,6 +403,10 @@ Rendering: flat even studio lighting, no cast shadows, no reflections, plain lig
 ABSOLUTELY NO TEXT anywhere on the image: no titles, no headers, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
 ```
 
+**Result (2026-11-16):** `REFERENCES/ITEMS/Gemini_Generated_Image_vyxq89vyxq89vyxq.jpeg`. Dimension lines again, none touching an
+object: cut with `--views front,side --keep -1 --row-gap 10` (antennas and the coiled cable kept whole) into `temp/items_tripo/sheet5/`.
+⚠️ The scrambler's SIDE is drawn ~13 cm deep instead of 4 (a second front, not a side): give Tripo its front alone.
+
 ### 7.6 Sheet 6 — devices, FRONT + SIDE (tablet, camera-loop rig, shadow generator, motion detector, noise detector)
 
 From here each row may use its OWN scale (the objects' sizes differ by 10×; a shared scale left the small ones a few dozen pixels). The

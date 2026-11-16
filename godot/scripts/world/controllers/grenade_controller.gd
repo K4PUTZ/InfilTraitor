@@ -176,7 +176,7 @@ const MENU_GAP_ABOVE_PX: float = 30.0
 ## DESTRUCTION_MASTER_PLAN Part 3: every TEST-ZONE grenade is this one bomb
 ## type for now — BombRegistry/BombDef exist so a future prop/inventory
 ## system can vary this per grenade instance instead of hardcoding it here.
-const BOMB_ID: String = "frag_grenade"
+const BOMB_ID: String = GrenadePropClass.BOMB_ID   ## the one place the grenade names its row
 
 ## E-FLASH-01 (Director, 2026-08-08): "uma breve camera shake no período entre o
 ## flash frame e o fim da fumaça." It starts on the flash and decays across the

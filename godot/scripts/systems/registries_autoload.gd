@@ -84,8 +84,7 @@ func ensure_bomb_registry() -> BombRegistryClass:
 	var reg = _bomb_registry
 
 	if reg == null:
-		reg = BombRegistryClass.new()
-		reg.load_from_disk()
+		reg = BombRegistryClass.shared()   ## the process's one registry (`BombRegistry.shared()`)
 		_bomb_registry = reg
 		print("[Registries] Bomb registry initialized from disk")
 

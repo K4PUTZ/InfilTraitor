@@ -383,16 +383,30 @@ static func prop_default(prop: String) -> Dictionary:
 	return {"bone": w.hand_bone, "pos": w.hand_pos, "quat": basis.get_rotation_quaternion(), "scale": w.hand_scale}
 
 
-## Props held in a pose that are not weapons (MOVEMENT 2026-11-12: the grenade of the throw timeline).
-const HELD_PROPS: Dictionary = {"grenade": "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_grenade/Grenade.glb"}
+## Props held in a pose that are not weapons, by the bomb row that draws them (MOVEMENT 2026-11-12: the grenade of the throw
+## timeline; its model and its one size are the row's since 2026-11-16, §11.6 step 0).
+const HELD_PROPS: Dictionary = {"grenade": "frag_grenade"}
 
 
 ## The model of the prop `prop` (a weapon, or one of `HELD_PROPS`), "" when it has none.
 static func prop_model(prop: String) -> String:
 	if HELD_PROPS.has(prop):
-		return String(HELD_PROPS[prop])
+		var b: BombDef = BombRegistry.shared().get_bomb(String(HELD_PROPS[prop]))
+		return b.model_path if b != null else ""
 	var w: WeaponDef = WeaponRegistry.shared().get_weapon(prop)
 	return w.model_path if w != null else ""
+
+
+## The scale, in the hand bone's frame, that draws the held prop `prop` at its row's certified size (the size it keeps in flight
+## and on the floor), or 0.0 when it has none (a weapon: its proportion is baked into its model, `WeaponDef.hand_scale`).
+static func held_prop_scale(prop: String) -> float:
+	if not HELD_PROPS.has(prop):
+		return 0.0
+	var b: BombDef = BombRegistry.shared().get_bomb(String(HELD_PROPS[prop]))
+	if b == null or b.model_path == "" or b.height_gu <= 0.0:
+		return 0.0
+	var native: Vector3 = PropModelFit.native_size(b.model_path, Vector3.ZERO)
+	return b.height_gu / (native.y * WORLD_SCALE) if native.y > 0.0 else 0.0
 
 
 ## A pose read from the Director's JSON (see `POSE_FILE`). Every bone is checked against the rig and a bad row is said loudly with its path; null when nothing usable is in it.

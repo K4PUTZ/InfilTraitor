@@ -38,8 +38,9 @@ func set_board3d(board: Node3D) -> void:
 	board.add_child(self)
 	_ghost = ObjectMesh3D.new()
 	add_child(_ghost)
-	if not _ghost.setup_object(board, GrenadeProp.MODEL_PATH, Vector3.ZERO, GrenadeProp.FIT_SIZE,
-			GrenadeProp.SURFACE_MATERIALS, "metal", 0.0):
+	var grenade: BombDef = GrenadeProp.row()
+	if grenade == null or not _ghost.setup_object(board, grenade.model_path, Vector3.ZERO, GrenadeProp.fit_size(),
+			grenade.surface_materials, "metal", 0.0):
 		_ghost.queue_free()
 		_ghost = null
 		return

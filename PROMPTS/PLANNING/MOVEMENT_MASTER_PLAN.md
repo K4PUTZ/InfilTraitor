@@ -1,7 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
-> ⏭️ **v1.5, 2026-11-16 — the BASIC MOVES IN USE are CLOSED on both figures (Director: "a gente fechou os movimentos básicos em uso") and what is left is PLANNED in §11, docs only:** every held item of the canon sorted into eight HOLD families, the body postures still to make (beside cover and at a corner, standing and crouched), the throws left (from the kneel; the bowl, standing only), the fixed interactions (computer, alarms, buttons, levers, valves), the weapon models already on disk, the grenade's size defect measured (3.0× the hand's in flight), and the order of work (§11.6). **PRONE is SUSPENDED** until GAMEPLAY-01 rules whether it is viable. **NEXT: §11.6 step 0 (the grenade's size), then the model sheet and every weapon in the figure's hands (size, grip, muzzle). Nine questions wait on the Director (§11.8).**
+> ⏭️ **v1.5, 2026-11-16 — the BASIC MOVES IN USE are CLOSED on both figures (Director: "a gente fechou os movimentos básicos em uso") and what is left is PLANNED in §11, docs only:** every held item of the canon sorted into eight HOLD families, the body postures still to make (beside cover and at a corner, standing and crouched), the throws left (from the kneel; the bowl, standing only), the fixed interactions (computer, alarms, buttons, levers, valves), the weapon models already on disk, the grenade's size defect measured (3.0× the hand's in flight), and the order of work (§11.6). **PRONE is SUSPENDED** until GAMEPLAY-01 rules whether it is viable. **Step 0 DONE (the grenade is the hand's size everywhere, 0.065 GU); step 1's model sheet rendered, waiting on the Director's picks; then every weapon in the figure's hands (size, grip, muzzle). Nine questions wait on the Director (§11.8).**
 > ⏭️ **2026-11-14 — the DASH is built: a move that spends both AP plays the Tripo figure's `run` (0.32 s/GU, phased by the ground); the idle <-> move passage is still a snap (an `AnimationPlayer` crossfade over `seek` failed: the run never showed). NEXT, by the Director: the characters turn, then idle -> run / walk passages. Record: `PROMPTS/RESUMO_SESSAO_2026-11-14_DASH.md`.**
 > ⏭️ **2026-11-15 — the CROUCH is in the game on both figures (16 frames, held; standing up = the crouch backwards), and so are the crouched draw / aim / shot / holster (`draw_crouch_pistol`, a second aim layer chosen by posture; the recoil unchanged). Next: the crouch -> walk / run passage. Record: `PROMPTS/RESUMO_SESSAO_2026-11-15_CROUCH_DRAW_SHOT.md`.**
 
@@ -683,7 +683,9 @@ Measured 2026-11-16 from the files (each model's box through its node transforms
 | Bullpup | 5.25 | 2 778 | 0.386 GU / 0.62 m |
 | Sniper Rifle (two of the four are longer: 7.29) | 6.34 | 1 344 | 0.466 GU / 0.75 m (0.536 GU / 0.86 m) |
 
-The Agent stands 1.225 GU (1.96 m). **The pack is not to one real scale: its pistol is large for its long guns** (a 0.29 m pistol beside
+The Agent stands 1.225 GU (1.96 m). ⚠️ The sheet of step 1 measures the male LIGHT Agent at **1.08 GU with the hat** (0.882 GLB
+units × `WORLD_SCALE` 1.225), not 1.225: the gun-to-body PROPORTION is the game's either way (both hang off the same bones), but a
+length in metres derived from 1.225 GU = 1.96 m reads ~12 % short. Which height is canon is not settled here. **The pack is not to one real scale: its pistol is large for its long guns** (a 0.29 m pistol beside
 a 0.64 m rifle), so a long gun will probably grow in the Director's hands. That is what the by-hand rule is for (§9 item 7).
 
 **To source or to make (nothing on disk):** the suppressor; the taser; the dart launcher; the late guns (pulse carbine, laser, plasma,
@@ -703,13 +705,20 @@ suppressor) are cheaper MADE by a script than searched.**
 - **The fix:** the grenade gets a row with ONE certified size (the two timelines' 3 % difference becomes one number); the hand and
   `GrenadeProp` both read it and `FIT_SIZE` goes; its shadow and its fuse point follow the size. It changes a look: the `grenade_throw`
   take before and after.
+- ✅ **FIXED 2026-11-16 (step 0).** `bombs/frag_grenade.json` has a `model` block (path, materials, `height_gu` **0.065**, the two
+  timelines' 0.066 / 0.064 made one, `size_certified` 2026-11-12, the day the Director sized it in the throw timeline). `BombDef`
+  reads it; `BombRegistry.shared()` is the process's one registry (the weapons' W1 pattern). `GrenadeProp` (flight, floor), the aim's
+  ghost (`TargetCursorOverlay`) and the hand (`TripoFigure.held_prop_scale`, applied by `ActorMesh3D` over the timeline's per-figure
+  scale) all draw that one height; `FIT_SIZE` is gone, the shadow is 0.7 × the height, the fuse point follows the fitted box. Before /
+  after: the `grenade_throw` take on PLAYGROUND (male), frames 160-172 (`temp/grenade_size/`). The hand changes by ~2 % on each figure.
 
 ### 11.6 The order of work (the Director's order, detailed)
 
 Each step lands on both figures before the next; a step with a look ends in a capture shown in the chat.
 
-0. **The grenade's size** (§11.5): small, and every later throw capture depends on it.
-1. **The model sheet.** One contact sheet of the pack's 25 models and the grenade, to scale beside the figure. The Director picks one
+0. ✅ **The grenade's size** (§11.5, fixed 2026-11-16).
+1. 🟡 **The model sheet** (rendered 2026-11-16, `tools/asset_generation/weapons/gun_model_sheet.py` -> `temp/model_sheet/`; waiting on
+   the Director's picks). One contact sheet of the pack's 25 models and the grenade, to scale beside the figure. The Director picks one
    model per weapon (the pistol stays). The list of what to source or make for H5-H7, each source recorded in `props/MODEL_SOURCES.md`.
 2. **Each weapon in the figure's hands** (the 2026-11-09 method, once per weapon): a lab file per weapon, the figure in the family's
    base pose (solved by the kit), the weapon opened at the pistol's factor. The Director sets the size and the grip by hand. Read back

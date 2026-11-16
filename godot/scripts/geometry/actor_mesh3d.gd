@@ -130,6 +130,7 @@ var _throw_w: float = 0.0            ## where along the throw's timeline the bod
 var _throw_phase: String = ""        ## "", "raise", "cancel", "release", "recover"
 var _throw_grenade: Node3D = null    ## the grenade in the right hand (a BoneAttachment3D) and its placement holder
 var _throw_grenade_holder: Node3D = null
+var _throw_grenade_scale: float = 0.0   ## its certified size in the hand bone's frame (`TripoFigure.held_prop_scale`); 0 = the timeline's
 var _throw_last_hand: Vector3 = Vector3.INF   ## where the grenade last was in the hand, global: the flight starts there
 var _throw_coat: MeshInstance3D = null
 var _throw_morphs: Dictionary = {}   ## morph name -> blend shape index on the coat
@@ -511,6 +512,7 @@ func _build_throw_layer(lib: AnimationLibrary, figure: String) -> void:
 		attach.visible = false
 		_throw_grenade = attach
 		_throw_grenade_holder = holder
+		_throw_grenade_scale = TripoFigureRef.held_prop_scale(seq.prop)
 	_throw_coat = TripoFigureRef.coat_of(_body)
 	if _throw_coat != null:
 		for name: String in seq.at(0.5)["morphs"]:
@@ -560,7 +562,10 @@ func _update_throw(state: Dictionary) -> void:
 	if _throw_grenade != null:
 		_throw_grenade.visible = _throw_w > 0.0 and bool(here["visible"])
 		if _throw_w > 0.0:
-			_throw_grenade_holder.transform = here["gun"] as Transform3D
+			var xf: Transform3D = here["gun"] as Transform3D
+			if _throw_grenade_scale > 0.0:   ## the row's one size (hand = flight = floor), not the timeline's per-figure scale
+				xf.basis = xf.basis.orthonormalized().scaled(Vector3.ONE * _throw_grenade_scale)
+			_throw_grenade_holder.transform = xf
 		if _throw_grenade.visible and _throw_grenade_holder.is_inside_tree():
 			_throw_last_hand = _throw_grenade_holder.global_position
 	for name: String in _throw_morphs:

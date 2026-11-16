@@ -7,5 +7,11 @@
   "soot_ring_tones": [0, 1, 2, 3],
   "smoke_ring_weights": [1.0, 0.5, 0.2, 0.1],
   "gameplay": { "blast_type": "fragmentation" },
-  "tags": ["grenade", "explosive", "hit_stop"]
+  "tags": ["grenade", "explosive", "hit_stop"],
+  "model": {
+    "path": "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_grenade/Grenade.glb",
+    "surface_materials": {"Green": "painted_metal@olive_drab", "DarkGreen": "painted_metal@olive_drab", "DarkGrey": "steel_dark"},
+    "height_gu": 0.065,
+    "size_certified": "2026-11-12"
+  }
 }

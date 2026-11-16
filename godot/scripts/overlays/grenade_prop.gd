@@ -21,12 +21,12 @@
 class_name GrenadeProp
 extends ObjectMesh3D
 
-const MODEL_PATH := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_grenade/Grenade.glb"
-## The model fitted into this box (world units, uniform): a handheld at twice its real size reads (0.1 GU of grenade).
-const FIT_SIZE := Vector3(0.2, 0.2, 0.2)
-## Surface (as authored in the model) -> OUR registry material.
-const SURFACE_MATERIALS := {"Green": "painted_metal@olive_drab", "DarkGreen": "painted_metal@olive_drab", "DarkGrey": "steel_dark"}
-const SHADOW_HALF_GU := 0.14
+## The bomb row this grenade is (`bombs/frag_grenade.json`): its model, its materials and its ONE size, the size it has in the
+## Agent's hand (MOVEMENT_MASTER_PLAN §11.6 step 0, 2026-11-16: the old fixed 0.2 GU box, "a handheld at twice its real size
+## reads", drew it three times the hand's size the moment it left the hand).
+const BOMB_ID := "frag_grenade"
+## The ground shadow's half-size as a fraction of the grenade's height (0.14 GU on the old 0.2 GU box), so it follows the size.
+const SHADOW_HALF_OF_HEIGHT := 0.7
 ## The board's light ladder reads flat on a small rounded body; > 1 deepens its shaded faces (Director, 2026-10-03: "um
 ## pouquinho mais contraste na iluminação").
 const CONTRAST := 1.8
@@ -52,20 +52,48 @@ func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i, board: Node
 	if board == null:
 		push_error("[GrenadeProp] no 3D board to draw the grenade on")
 		return false
-	if not setup_object(board, MODEL_PATH, Vector3.ZERO, FIT_SIZE, SURFACE_MATERIALS, "metal", SHADOW_HALF_GU):
+	var def: BombDef = row()
+	if def == null:
+		push_error("[GrenadeProp] no bomb row '%s' with a model: the grenade is not drawn" % BOMB_ID)
+		return false
+	if not setup_object(board, def.model_path, Vector3.ZERO, fit_size(), def.surface_materials, "metal",
+			def.height_gu * SHADOW_HALF_OF_HEIGHT):
 		return false
 	set_contrast(CONTRAST)
 	_sync_shadow()
 	return true
 
 
-## Where the fuse burns, in the fitted model (feet on Y = 0, FIT_SIZE 0.2): the lever / pin at the top of the body. A fraction of the model's
+## Where the fuse burns, in the fitted model (feet on Y = 0): the lever / pin at the top of the body. A fraction of the model's
 ## height and of its half-width, so a refit moves it with the model. Tuned on a close-up capture, not by reasoning.
 const FUSE_LOCAL_FRACTION := Vector3(0.0, 1.0, 0.0)
 
 ## The fuse tip in the world, following the flight and the roll.
 func fuse_point_world() -> Vector3:
-	return model_point_world(Vector3(FUSE_LOCAL_FRACTION.x * FIT_SIZE.x * 0.5, FUSE_LOCAL_FRACTION.y * model_height(), FUSE_LOCAL_FRACTION.z * FIT_SIZE.z * 0.5))
+	var size: Vector3 = model_size()
+	return model_point_world(Vector3(FUSE_LOCAL_FRACTION.x * size.x * 0.5, FUSE_LOCAL_FRACTION.y * size.y, FUSE_LOCAL_FRACTION.z * size.z * 0.5))
+
+
+## The grenade's bomb row, or null (said loudly) when it is missing or has no model.
+static func row() -> BombDef:
+	var def: BombDef = BombRegistry.shared().get_bomb(BOMB_ID)
+	if def == null or def.model_path == "" or def.height_gu <= 0.0:
+		push_error("[GrenadeProp] bomb '%s' is missing or has no model / height_gu" % BOMB_ID)
+		return null
+	return def
+
+
+## The box the model is fitted into: its own proportions scaled so its height is the row's `height_gu` (the one size: hand,
+## flight, floor, the aim's ghost). Vector3.ZERO when the row or the model is missing.
+static func fit_size() -> Vector3:
+	var def: BombDef = row()
+	if def == null:
+		return Vector3.ZERO
+	var native: Vector3 = PropModelFit.native_size(def.model_path, Vector3.ZERO)
+	if native.y <= 0.0:
+		push_error("[GrenadeProp] %s has no measurable height" % def.model_path)
+		return Vector3.ZERO
+	return native * (def.height_gu / native.y)
 
 
 func set_roll_direction(screen_dir: Vector2) -> void:

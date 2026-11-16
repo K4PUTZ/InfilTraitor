@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**354 scripts · 101927 lines total** (under `godot/scripts/`)
+**354 scripts · 102014 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -422,7 +422,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 1127 lines
+`class_name ActorMesh3D` · extends `Node3D` · 1132 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -1088,7 +1088,7 @@ extends `Node3D` · 3579 lines
 
 ### `object_mesh3d.gd`
 
-`class_name ObjectMesh3D` · extends `Node3D` · 205 lines
+`class_name ObjectMesh3D` · extends `Node3D` · 210 lines
 
 `godot/scripts/geometry/object_mesh3d.gd`
 
@@ -1505,7 +1505,7 @@ extends `Node3D` · 3579 lines
 
 ### `tripo_figure.gd`
 
-`class_name TripoFigure` · extends `RefCounted` · 666 lines
+`class_name TripoFigure` · extends `RefCounted` · 680 lines
 
 `godot/scripts/geometry/tripo_figure.gd`
 
@@ -2063,17 +2063,15 @@ extends `Node2D` · 164 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `ObjectMesh3D` · 93 lines
+`class_name GrenadeProp` · extends `ObjectMesh3D` · 121 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
 > The grenade on the ground and in flight, as a real mesh (RETIRE-2 of R3D-RETIRE-2D; `ACTOR` D65). It was a `Sprite2D` showing one of four baked frames (`grenade_frames`, a colour + a normal map per compass direction), relit by a per-pixel shader and mirrored into the 3D board by `PropBillboard3D`. Now it IS a node of the 3D board: the Quaternius `Grenade.glb`, coloured by OUR material registry (D66) and lit by the board's cell planes like every prop, so a perspective change needs no frame swap (the camera turns over one world) and the light and soot come from the world, not from a per-prop light search. What the flight code (`GrenadeController`) still drives is unchanged in meaning: `screen_position` and `flight_px` (`ObjectMesh3D`), the roll (`roll()`, about the axis perpendicular to the travel `set_roll_direction()` was given — a roll across the screen shows the whole turn and one toward the camera shows none, now by geometry instead of by a `roll_dir.x` factor) and `visible`, which the throw code uses as logic (a detonated grenade is hidden). GROUND SHADOW (Director, 2026-08-10: *"durante o vôo da granada, a sombra precisa acompanhar no chão, aumentando e diminuindo a opacidade e a difusão, de acordo com a distância vertical. Quando a granada encosta no chão a sombra é muito bem definida e bem menor, por baixo do asset."*). One height drives size, strength and softness, so they cannot disagree about how high the grenade is. `SHADOW_HEIGHT_REF_PX` is where the flight look is fully reached: `ThrowArcOverlay.arc_height_for()` floors every apex at `launch_px * 1.4`, 89.6 px for a standing throw, so even the shortest throw reaches the full effect at its apex and longer ones hold it. The strengths are `FloatingCollectible`'s ratified ground alpha (0.55) and the flight alpha MEASURED on the old shadow (0.35: the softer one read too faint under a body that flies past 90 px).
 
 **Constants / tuning**
-- `MODEL_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_grenade/Grenade.glb"`
-- `FIT_SIZE` = `Vector3(0.2, 0.2, 0.2)`
-- `SURFACE_MATERIALS` = `{"Green": "painted_metal@olive_drab", "DarkGreen": "painted_metal@olive_drab", "DarkGrey": "steel_dark"}`
-- `SHADOW_HALF_GU` = `0.14`
+- `BOMB_ID` = `"frag_grenade"`
+- `SHADOW_HALF_OF_HEIGHT` = `0.7`
 - `CONTRAST` = `1.8`
 - `SHADOW_HEIGHT_REF_PX` = `90.0`
 - `SHADOW_STRENGTH_AT_GROUND` = `0.55`
@@ -2390,7 +2388,7 @@ extends `Node2D` · 115 lines
 
 ### `target_cursor_overlay.gd`
 
-`class_name TargetCursorOverlay` · extends `Node3D` · 65 lines
+`class_name TargetCursorOverlay` · extends `Node3D` · 66 lines
 
 `godot/scripts/overlays/target_cursor_overlay.gd`
 
@@ -2680,7 +2678,7 @@ extends `RefCounted` · 37 lines
 
 ### `bomb_def.gd`
 
-`class_name BombDef` · 101 lines
+`class_name BombDef` · 125 lines
 
 `godot/scripts/systems/destruction/bomb_def.gd`
 
@@ -2696,12 +2694,16 @@ extends `RefCounted` · 37 lines
 - `var smoke_ring_weights: Array[float] = []`
 - `var gameplay: Dictionary = {}`
 - `var tags: Array[String] = []`
+- `var model_path: String = ""`
+- `var surface_materials: Dictionary = {}`
+- `var height_gu: float = 0.0`
+- `var size_certified: String = ""`
 
 ---
 
 ### `bomb_registry.gd`
 
-`class_name BombRegistry` · 77 lines
+`class_name BombRegistry` · 88 lines
 
 `godot/scripts/systems/destruction/bomb_registry.gd`
 
@@ -2715,12 +2717,6 @@ extends `RefCounted` · 37 lines
 **Public vars**
 - `var registry: Dictionary = {}`
 - `var load_errors: Array[String] = []`
-
-**Public API**
-- `func register(bomb_def) -> void:`
-- `func get_bomb(p_id: String):`
-- `func count() -> int:`
-- `func load_from_disk() -> void:`
 
 ---
 
@@ -4138,7 +4134,7 @@ extends `Node` · 217 lines
 
 ### `registries_autoload.gd`
 
-extends `Node` · 145 lines
+extends `Node` · 144 lines
 
 `godot/scripts/systems/registries_autoload.gd`
 

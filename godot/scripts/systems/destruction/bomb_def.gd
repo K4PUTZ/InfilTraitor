@@ -44,6 +44,16 @@ var smoke_ring_weights: Array[float] = []
 var gameplay: Dictionary = {}
 var tags: Array[String] = []
 
+## What the bomb LOOKS like, one row for every copy of it (`"model"` in `bombs/<id>.json`; MOVEMENT_MASTER_PLAN §11.6 step 0,
+## 2026-11-16). The weapons' ruling (HERITAGE T2 W2) holds here too: a bomb is ALWAYS the size it has in the Agent's hand, in
+## the hand, in flight, on the floor and as the aim's ghost. `height_gu` is that size (the model's height in world units, the
+## model scaled uniformly to it); `size_certified` is the day it was set by hand with the figure holding it ("" = not yet,
+## and such a row WARNS when it loads).
+var model_path: String = ""
+var surface_materials: Dictionary = {}
+var height_gu: float = 0.0
+var size_certified: String = ""
+
 
 ## Factory: parse BombDef from a JSON dict (file format) — same contract as
 ## PropDef.from_json().
@@ -87,6 +97,20 @@ static func from_json(data: Dictionary, errors: Array = []) -> BombDef:
 	def.tags = []
 	for tag in data.get("tags", []):
 		def.tags.append(String(tag))
+
+	var model: Variant = data.get("model", null)
+	if model is Dictionary:
+		var m: Dictionary = model
+		def.model_path = String(m.get("path", ""))
+		def.surface_materials = m.get("surface_materials", {})
+		def.height_gu = float(m.get("height_gu", 0.0))
+		def.size_certified = String(m.get("size_certified", ""))
+		if def.model_path != "" and def.height_gu <= 0.0:
+			var message := "[BombDef] bomb '%s' has a model and no height_gu: it cannot be drawn at its size" % def.id
+			push_error(message)
+			errors.append(message)
+		elif def.model_path != "" and def.size_certified == "":
+			push_warning("[BombDef] '%s': its size in the Agent's hand is not certified yet (MOVEMENT_MASTER_PLAN §11.6 step 0)" % def.id)
 
 	for key: String in ["ring_multipliers", "destroy_ring_weights", "dent_ring_weights", "crack_ring_weights",
 			"soot_ring_tones", "smoke_ring_weights"]:

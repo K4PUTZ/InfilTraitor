@@ -12,6 +12,17 @@ var registry: Dictionary = {}  # id → BombDef
 ## Every row that could not be read, loudly (`JsonFile`, AUDIT 2026-10-07).
 var load_errors: Array[String] = []
 
+static var _shared: BombRegistry = null
+
+
+## ONE registry for the whole process, loaded on first use (the weapons' HERITAGE T2 W1 pattern): the `Registries` autoload
+## hands out this one, and code with no scene tree (`TripoFigure`'s held grenade, `GrenadeProp`, a selftest) reads the same rows.
+static func shared() -> BombRegistry:
+	if _shared == null:
+		_shared = BombRegistry.new()
+		_shared.load_from_disk()
+	return _shared
+
 
 ## Register a bomb definition
 func register(bomb_def) -> void:

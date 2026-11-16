@@ -155,6 +155,11 @@ func model_height() -> float:
 	return _model_size.y
 
 
+## The object's fitted box in world units.
+func model_size() -> Vector3:
+	return _model_size
+
+
 ## The top-centre of the object in 2D world pixels (where the fireball blooms from, where a context menu hangs): `screen_position`
 ## raised by the model's height, vertical units carrying the camera's cos 30.
 func top_world_2d() -> Vector2:

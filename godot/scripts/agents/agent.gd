@@ -441,6 +441,8 @@ var _start_profile: Dictionary = {}
 ## A walk opens on the walk's own start the same way (`ActorPose.walk_start`), at the walk's step.
 func _dash_start_profile() -> Dictionary:
 	var start: Dictionary = {} if pose == null else (pose.dash_start if _dashing else pose.walk_start)
+	if pose != null and _dashing and pose.is_crouched() and not pose.dash_rise.is_empty():
+		start = pose.dash_rise   ## a dash from the crouch rises into the run (`ActorMesh3D` makes the same choice)
 	if start.is_empty():
 		return {}
 	var dist: PackedFloat32Array = start["dist"]

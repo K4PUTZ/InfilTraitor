@@ -822,6 +822,12 @@ func scenario_agent_posture(name: String) -> bool:
 	return true
 
 
+## `new_turn` — the player's turn starts again with full AP (a take that crouches in one turn and runs in the next: a crouch costs 1 of the 2 AP a dash needs).
+func scenario_new_turn() -> bool:
+	room.turn_manager.reset_player_turn()
+	return true
+
+
 ## RETIRE-2D — `canvas_check <name>`: one line saying how many overlays that carry a 3D target (`_ground` / `_world`) exist (`examined`),
 ## how many of those are visible now (`shown`), and which of them are painting the 2D canvas. `examined` and `shown` are the controls:
 ## a check that looked at nothing, or at a state that showed nothing, would print canvas=0 forever.

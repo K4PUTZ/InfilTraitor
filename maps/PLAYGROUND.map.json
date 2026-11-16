@@ -1210,6 +1210,26 @@
           "note": "A close-up of the agent standing on his start cell (27,9); run with INFILTRAITOR_TRIPO_FIGURE=<female|male> to see a Tripo Agent"
         },
         {
+          "id": "agent_crouch_run",
+          "profile": "engine",
+          "rail": "agent_close_rail",
+          "env": {
+            "MOVE_POINTS_PER_AP": 5
+          },
+          "steps": [
+            "posture crouch",
+            "wait 1.5",
+            "new_turn",
+            "walk @agent_run_long_mid",
+            "wait 2.5"
+          ],
+          "at_key": 0,
+          "after_hold": 30,
+          "length": 540,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-15: the agent kneels, then a run is ordered while crouched: it opens on the rise (crouch_run) into the run; run with INFILTRAITOR_TRIPO_FIGURE=male|female"
+        },
+        {
           "id": "agent_crouch",
           "profile": "engine",
           "rail": "agent_close_rail",

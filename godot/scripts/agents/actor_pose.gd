@@ -61,6 +61,8 @@ var _dash: bool = false   ## the walk in progress is a dash (both AP spent on on
 ## The run's authored start, when the figure has one (`ActorMesh3D` fills it: {"fps", "dist": ground covered per frame, GU}); the actor's first step follows
 ## it. `dash_rate` = how much faster than authored the start plays (the actor sets it so the start ends at the dash's own speed); 0 = no start this dash.
 var dash_start: Dictionary = {}
+## The same for a dash ordered while CROUCHED (rising into the run, `crouch_run`): `ActorMesh3D` fills it, the actor's first step follows it.
+var dash_rise: Dictionary = {}
 var dash_rate: float = 0.0
 ## The run's STOPS (2026-11-14, one per foot; `ActorMesh3D` fills `dash_stop`: {"l"|"r": {"fps", "dist": ground per frame, GU}}). The actor says how long the
 ## dash is (`dash_len`, GU); the mesh answers which foot it will strike on (`stop_side`, "" = no stop this dash: too short) and evens the run's stride so
@@ -108,6 +110,10 @@ func face_direction(dir: Vector2i) -> void:
 		face_step(Vector2i(signi(dir.x), 0))
 	else:
 		face_step(Vector2i(0, signi(dir.y)))
+
+
+func is_crouched() -> bool:
+	return _posture == "crouch"
 
 
 func set_posture_name(name: String) -> void:

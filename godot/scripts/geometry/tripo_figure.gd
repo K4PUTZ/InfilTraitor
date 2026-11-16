@@ -103,6 +103,8 @@ const FOOTED_CLIPS: Dictionary = {
 	"walk_stop": {"prev": "walk", "prev_frame": 22, "next": "idle", "next_frame": 90},
 	## the crouch (2026-11-15): idle frame 90 -> kneeling on the right knee; its last frame is HELD (the crouch pose, CrouchFix on)
 	"crouch": {"prev": "idle", "prev_frame": 90, "hold": true},
+	## rising from the crouch into the run (2026-11-15): the crouch's last frame (index 15 of 24 fps) -> the run's contact; must come AFTER "crouch" (its prev)
+	"crouch_run": {"prev": "crouch", "prev_frame": 15, "next": "run"},
 }
 
 static var _libraries: Dictionary = {}

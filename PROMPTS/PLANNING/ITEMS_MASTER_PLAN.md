@@ -522,3 +522,14 @@ cannot be repeated, so there is nothing to re-cut (they stay in git history, `99
 `REFERENCES/ITEMS/tripo_pages/` (24 images, local like all of `REFERENCES/`), are the hand-off to Tripo; the smallest objects (ring, lockpicks, zip ties, the blade's end...) may be modelled by hand instead. The
 Director tests the Tripo generation next; the evaluation follows.
 
+### 7.11 The first Tripo page (2026-11-16): it works
+
+`ASSETS/MODELS/sources/tripo_Props1.glb` (page 1: Smart Mesh, triangles, 5 000 faces, front + left): ONE mesh, 4 927 triangles,
+33 loose parts, **no material, no UVs, no texture** (geometry only), the stack normalised to 1.0 tall. The four objects sit in height
+bands with clear gaps, so `tools/asset_generation/items/tripo_split.py` cuts them apart (bands of overlapping loose parts, top to
+bottom), puts each base centre at the origin and writes `ASSETS/MODELS/sources/tripo_props1_split/<name>.glb` + `_review.png`:
+taser 924 tris, detonator 868, spray can 829 (its cap a separate part), phone cloner 2 306 (most of it the coiled cable). Read on the
+review: the taser and the can are clean; the detonator's lid hinge is lumpy and its button merged; the cloner's cable is the cost.
+**Open:** colour. Tripo's texture step costs credits; without it the colours come from OUR registry (`ACTOR` D66), which needs surface
+regions: the loose parts give some (the can and its cap, the cable), the rest is painted per face in Blender.
+

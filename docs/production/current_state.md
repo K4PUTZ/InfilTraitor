@@ -44,6 +44,7 @@ Older sections (2026-11-09 back to 2026-08-30) and the summer status blocks (dom
 - RESUMO_SESSAO_2026-11-13_IDLE_REFERENCE_90.md
 - RESUMO_SESSAO_2026-11-14_DASH.md
 - RESUMO_SESSAO_2026-11-15_CROUCH_DRAW_SHOT.md
+- RESUMO_SESSAO_2026-11-15_CROUCH_RUN.md
 - THROW_STUDY_2026-11-12.md
 <!-- AUTO:END pending_prompts -->
 

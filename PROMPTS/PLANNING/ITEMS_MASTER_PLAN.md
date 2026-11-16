@@ -517,3 +517,8 @@ and the zip ties, not round, take the front + side pair cut together on sheets 1
 Tripo settings reviewed: Smart Mesh, TRIANGLES (Tripo's split refuses quads), the side in the LEFT slot; ~5 000 faces a page (8 000
 for page 5 and the drone's); generate page 1 first and check that the four objects come out apart and the split separates them.
 
+**2026-11-16 (end), the Director:** the cutting scripts (`crop_sheet.py`, `cut_sheets.py`) are NOT kept: the drawings are one-off and
+cannot be repeated, so there is nothing to re-cut (they stay in git history, `99aeac3f`). The pages in `temp/items_tripo/pages/` are
+the hand-off to Tripo; the smallest objects (ring, lockpicks, zip ties, the blade's end...) may be modelled by hand instead. The
+Director tests the Tripo generation next; the evaluation follows.
+

@@ -443,6 +443,9 @@ Rendering: flat even studio lighting, no cast shadows, no reflections, plain lig
 ABSOLUTELY NO TEXT anywhere on the image: no titles, no headers, no numbers, no labels, no dimension lines, no arrows, no measurements. No hands, no people.
 ```
 
+**Result (2026-11-16):** `REFERENCES/ITEMS/Gemini_Generated_Image_gizydngizydngizy.jpeg`. A title, row captions, separators and
+measures: cut with `--views front,side --row-gap 10 --keep -1` (the case's thin handle in its side view) into `temp/items_tripo/sheet7/`.
+
 ### 7.8 Sheet 8 — flat and long things, FRONT + TOP (scout drone, C4 block, breaching charge, universal remote, zip ties)
 
 The drone needs its top; the others were drawn front + side in sheets 1-3 and gain the view that shows their shape.

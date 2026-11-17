@@ -760,6 +760,10 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    the script's v1 kept as `hand_crossbow_v1_script.glb`; re-running `hand_crossbow.py` would overwrite his), put into both lab files
    by `family_lab.py swap` (old source fitted to the placed mesh, the new one given the same transform). Both figures filmed firing
    all 15 (`h1_family_shot`, `INFILTRAITOR_TRIPO_FIGURE`): every shot leaves from the model's muzzle.
+   **Grips EXPLICIT per figure (Director, 2026-11-17):** the grip stays RELATIVE TO THE REFERENCE (the timeline places the pistol at
+   every stop; an absolute hand place would only fit the aim), but each row names `held_like.figures.male` AND `.female`, none
+   inherited (*"eu conferi nos dois na realidade, mas por acaso às vezes estava certo"*): a figure a row leaves out is warned at load.
+   The Director's grapple is swapped in too (`grapple_launcher_v1_tripo.glb` keeps Tripo's).
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).

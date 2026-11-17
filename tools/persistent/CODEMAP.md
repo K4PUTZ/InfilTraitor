@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**354 scripts · 102111 lines total** (under `godot/scripts/`)
+**354 scripts · 102113 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3042,7 +3042,7 @@ extends `RefCounted` · 63 lines
 
 ### `weapon_def.gd`
 
-`class_name WeaponDef` · 200 lines
+`class_name WeaponDef` · 202 lines
 
 `godot/scripts/systems/destruction/weapon_def.gd`
 
@@ -3068,6 +3068,8 @@ extends `RefCounted` · 63 lines
 - `var size_certified: String = ""`
 - `var muzzle: Vector3 = Vector3.INF`
 - `var held_as: String = "shotgun"`
+- `var held_like: String = ""`
+- `var held_rel_figures: Dictionary = {}`
 
 ---
 

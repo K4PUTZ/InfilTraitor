@@ -103,13 +103,12 @@ var muzzle: Vector3 = Vector3.INF
 ## what it holds (`ActorPose.set_weapon`).
 var held_as: String = "shotgun"
 ## MOVEMENT §11.6 step 2 (Director, 2026-11-17): a model of a hold FAMILY is held like the family's reference weapon. `held_like`
-## names it ("" = this row is held by its own placement); `held_rel` is this model's own frame in the reference model's frame
-## (scale, turn, offset read off the Director's lab file by `family_lab.py readback`), so the reference's placement at every stop
-## of the family's timeline places this model by one product. IDENTITY when the row is its family's reference.
+## names it ("" = this row is held by its own placement). Its grip is EXPLICIT PER FIGURE (Director, 2026-11-17: "explícitos"):
+## `held_like.figures.<figure>` = {scale, pos, quat}, this model's own frame in the reference model's frame, read off that
+## figure's lab file by `family_lab.py readback`, so the reference's placement at every stop of the family's timeline places this
+## model by one product. No figure inherits another's: a figure the row does not name is said at load (not certified on that body).
 var held_like: String = ""
-var held_rel: Transform3D = Transform3D.IDENTITY
-## Per figure, where the Director set a model's grip apart on that figure's lab file (`held_like.figures.<figure>`, same fields).
-var held_rel_figures: Dictionary = {}
+var held_rel_figures: Dictionary = {}   ## figure -> Transform3D
 
 
 ## Factory: parse WeaponDef from a JSON dict — same contract as
@@ -159,11 +158,13 @@ static func from_json(data: Dictionary) -> WeaponDef:
 		if like is Dictionary:
 			var l: Dictionary = like
 			def.held_like = String(l.get("weapon", ""))
-			def.held_rel = _rel_of(l, def.id)
 			var figs: Variant = l.get("figures", {})
 			if figs is Dictionary:
 				for fig: String in (figs as Dictionary):
 					def.held_rel_figures[fig] = _rel_of((figs as Dictionary)[fig], def.id)
+			for fig: String in TripoFigure.FIGURES:
+				if not def.held_rel_figures.has(fig):
+					push_warning("[WeaponDef] '%s': no grip on the %s (model.held_like.figures.%s): not certified on that body, it is drawn at the reference's place" % [def.id, fig, fig])
 		if def.model_path != "" and def.size_certified == "":
 			push_warning("[WeaponDef] '%s': its size in the Agent's hands is not certified yet (MOVEMENT_MASTER_PLAN §9 item 7): it is drawn at its model's own size" % def.id)
 
@@ -171,8 +172,9 @@ static func from_json(data: Dictionary) -> WeaponDef:
 
 
 ## The model's frame in its family reference's frame, on the figure `figure` (its own when the row has one, else the shared one).
+## IDENTITY (the reference's own place) when the row names no grip for that figure, which its load already said.
 func held_rel_for(figure: String) -> Transform3D:
-	return held_rel_figures.get(figure, held_rel)
+	return held_rel_figures.get(figure, Transform3D.IDENTITY)
 
 
 static func _rel_of(l: Dictionary, id: String) -> Transform3D:

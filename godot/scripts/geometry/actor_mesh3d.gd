@@ -126,7 +126,7 @@ var _pistol: Node3D = null           ## the pistol in the right hand (hidden unt
 var _pistol_holder: Node3D = null    ## carries the placement (the pose's, blended between the stops)
 var _figure: String = ""            ## the Tripo figure ("male" / "female"): a family model's grip may be its own per figure
 var _held_id: String = ""            ## the weapon row whose model is in `_pistol_holder` (the family's reference until another is chosen)
-var _held_def: WeaponDef = null      ## its row: its model's place in the reference's frame (`held_rel`) and its muzzle
+var _held_def: WeaponDef = null      ## its row: its model's place in the reference's frame (`held_rel_for`) and its muzzle
 var _throw: ActorAimPoseRef = null   ## the throw's path layer (null: the figure has no throw timeline)
 var _throw_seq: AimSequenceRef = null
 var _throw_w: float = 0.0            ## where along the throw's timeline the body is, 0..1
@@ -618,7 +618,7 @@ func _build_pistol(stops: Array) -> void:
 
 
 ## MOVEMENT §11.6 step 2 — the model of the weapon row `id` in the hand, held like the family's reference: the timeline places the
-## reference, the model sits in the reference's frame by its row's `held_rel`. Said loudly and left as it was when the row or its
+## reference, the model sits in the reference's frame by its row's `held_rel_for(figure)`. Said loudly and left as it was when the row or its
 ## model is missing.
 func _hold_model(id: String) -> void:
 	if _pistol_holder == null or id == _held_id:
@@ -639,7 +639,7 @@ func _hold_model(id: String) -> void:
 	_held_def = w
 
 
-## Where the held model's round leaves, in the holder's frame (the reference's placement): the row's muzzle carried by `held_rel`.
+## Where the held model's round leaves, in the holder's frame (the reference's placement): the row's muzzle carried by `held_rel_for(figure)`.
 ## INF when the row has no measured muzzle.
 func _held_muzzle() -> Vector3:
 	if _held_def == null or _held_def.muzzle == Vector3.INF:

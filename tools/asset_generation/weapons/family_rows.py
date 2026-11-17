@@ -14,8 +14,8 @@ copied into `ASSETS/props/<id>/<id>.glb` (the game's import tree; the sources ma
 
   python3 tools/asset_generation/weapons/family_rows.py <male readback .json> [--female <female readback .json>] [--dry]
 
-With the female's read-back, a model whose grip she has apart (more than 0.1 mm or 0.01 of a degree in the reference's units)
-gets `held_like.figures.female` (the same fields); the male's is the shared one.
+`held_like.figures` names each figure's grip explicitly (Director, 2026-11-17): the male's read-back, and the female's with
+`--female`; a figure left out is warned at load (`WeaponDef`), never filled from the other.
 """
 import json, os, shutil, sys, datetime
 
@@ -51,14 +51,13 @@ NO_DAMAGE = ("stun", "dart", "flare", "device")    # these leave no bullet in a 
 
 
 def held_like(family_ref, r, f):
-    out = {"weapon": family_ref, "scale": r["rel_scale"], "pos": r["rel_pos"], "quat": r["rel_quat"]}
+    """Both figures EXPLICIT (Director, 2026-11-17): each its own read-back, none inherited."""
+    def grip(x):
+        return {"scale": x["rel_scale"], "pos": x["rel_pos"], "quat": x["rel_quat"]}
+    figs = {"male": grip(r)}
     if f is not None:
-        apart = abs(f["rel_scale"] / r["rel_scale"] - 1.0) > 1e-3 \
-            or max(abs(x - y) for x, y in zip(f["rel_pos"], r["rel_pos"])) > 1e-4 \
-            or max(min(abs(x - y), abs(x + y)) for x, y in zip(f["rel_quat"], r["rel_quat"])) > 1e-4
-        if apart:
-            out["figures"] = {"female": {"scale": f["rel_scale"], "pos": f["rel_pos"], "quat": f["rel_quat"]}}
-    return out
+        figs["female"] = grip(f)
+    return {"weapon": family_ref, "figures": figs}
 
 
 def main():
@@ -103,7 +102,7 @@ def main():
             "muzzle": r["muzzle_proposed"],
         }
         print(f"[family_rows] {wid:16s} <- {lab:30s} x{r['rel_scale']:.4f} turn {r['rel_turn_deg']:.2f}  muzzle {r['muzzle_proposed']}"
-              f"{'  + its own female grip' if 'figures' in row['model']['held_like'] else ''}")
+              f"  figures {sorted(row['model']['held_like']['figures'])}")
         if dry:
             continue
         os.makedirs(os.path.dirname(os.path.join(ROOT, dst_rel)), exist_ok=True)

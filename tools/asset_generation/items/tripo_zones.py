@@ -67,6 +67,16 @@ SPEC = {
                          "zones": {"Body": "rubber", "Drum": "fabric@sand", "Hook": "metal"}},
     "grappling_hook_rope": {"default": "Rope", "parts": {}, "where": [("Hook", lambda c: c.y < 0.03)],
                             "zones": {"Rope": "fabric@sand", "Hook": "metal"}},
+    # page 4
+    "c4_block": {"default": "Block", "parts": {0: "WireRed", 1: "WireBlack", 6: "WireBlack", 2: "Cap", 4: "Tape", 5: "Tape"},
+                 "zones": {"Block": "plastic@olive_drab", "Tape": "fabric@olive_drab", "Cap": "metal",
+                           "WireRed": "plastic@signal_red", "WireBlack": "rubber"}},
+    "breaching_charge": {"default": "Strip", "parts": {1: "Box", 2: "Box"}, "where": [("Box", lambda c: c.y < -0.085)],
+                         "zones": {"Strip": "steel_dark", "Box": "rubber"}},
+    "tripwire_flash": {"default": "Box", "parts": {1: "Spool", 2: "Spool", 3: "Spike"},
+                       "zones": {"Box": "rubber", "Spool": "metal", "Spike": "metal"}},
+    "camera_loop_rig": {"default": "Black", "parts": dict([(8, "Box")] + [(r, "Metal") for r in (3, 10, 12, 13, 14, 17, 19, 20)]),
+                        "zones": {"Box": "metal", "Black": "rubber", "Metal": "steel_dark"}},
 }
 
 

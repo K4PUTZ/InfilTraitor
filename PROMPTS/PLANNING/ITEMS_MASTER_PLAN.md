@@ -558,6 +558,13 @@ front). Page 1 done, `ASSETS/MODELS/sources/tripo_props1_zoned/` + `_preview.png
 | Grapple launcher | Body `rubber`, Drum `fabric@sand`, Hook `metal` (everything forward of the barrel) |
 | Grappling hook + rope | Rope `fabric@sand`, Hook `metal` |
 
+| C4 block (page 4) | Block `plastic@olive_drab`, Tape `fabric@olive_drab`, Cap `metal`, WireRed `plastic@signal_red`, WireBlack `rubber` |
+| Breaching charge | Strip `steel_dark`, Box `rubber` (the -Y end) |
+| Tripwire flash | Box `rubber`, Spool `metal`, Spike `metal` |
+| Camera-loop rig | Box `metal`, Black `rubber` (clamp, antenna, cable), Metal `steel_dark` (connectors, pivot) |
+
+Page 4 (`tripo_Props4.glb`): C4 695, breaching charge 246, tripwire 543, rig 3 105 (the clamp is the cost). Each slot filled its
+page, so the breaching charge came out as long as the C4: its 60 cm is set by hand (rule 4).
 Page 3 (`tripo_Props3.glb`): bracer 1 439, blade 110, launcher 1 385, hook and rope 3 518 (the coil is the cost); a page with many
 small parts is zoned by part ranks AND position rules (`"where"`, on the face centre). Preview fix: the glTF importer leaves
 QUATERNION rotation, so the three-quarter view needs `rotation_mode = "XYZ"`.

@@ -1224,10 +1224,30 @@ artifact in the project.**
 
 ---
 
+### ⏳ POLISH-01 — Polishing: skins, variants, cosmetic effects, sound *(Director-assigned 2026-11-17)*
+**Objective:** the finishing pass on what already WORKS, run **before M7.0's optimization** so the review of cost measures the
+finished look, not a placeholder.
+
+**Placement:** after the content milestones and before M7.0. It overlaps M6.0 (sound) and M6.05 (visual polish); whether those two
+fold into it is the Director's call (open).
+
+**Deliverables:**
+- **Weapon skins**: each item's surface detail and finish (the taser's skin is the first one owed, ITEMS §3), its materials checked on
+  both figures in the hand.
+- **Secondary variants of the same objects**: colours, prints, wear, small shape variants of a model that already has its slot (the
+  weapons, the suppressors, the props), never a new mechanism.
+- **Cosmetic effects**: the small visual touches around an action (muzzle, impact, casing, smoke, sparks) reviewed weapon by weapon.
+- **Sound**: each weapon's and each effect's sound, reviewed with the effects above.
+- **The coat's slivers** (deferred 2026-11-12) and the other items recorded as "for the final polish" in the plans.
+
+**Rule:** a polish item changes how something looks or sounds, never what it does; a gameplay attribute is GAMEPLAY-01's.
+
+---
+
 ### ⏳ M7.0 — Release Prep: QA & Optimization
 **Objective:** Bug fixing, performance optimization, and platform preparation.
 
-**Dependencies:** M6.05
+**Dependencies:** M6.05, POLISH-01
 
 **Estimated Duration:** 2–3 weeks
 

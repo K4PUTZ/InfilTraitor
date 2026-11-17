@@ -941,6 +941,16 @@ already computed. Nothing about the hit roll, the impact point or the
 determinism story changes. If a future change lets the drawn projectile decide
 where it lands, that is a different decision and D21 should be re-opened for it.
 
+### ⚠️ Second amendment (Director, 2026-11-17): the projectiles that STAY
+
+The dart (hand crossbow), the taser's two probes and the grapple's hook are drawn as their own models flying the whole way to the
+impact the shot already resolved, and they BITE there. Darts and probes stay on the map and in the destruction save (Director:
+*"Vamos manter os dardos no mapa e no save de destruição. Porém esse tipo de coisa poderia ser desabilitado em aparelhos fracos"*):
+the record is always kept; only DRAWING them follows the device (`CosmeticDensity`), so one save means the same world on every
+handset. Still decoration in D21's sense: the resolved impact decides where they land, the drawn flight decides nothing. The flare
+burns with its own glow only (no light on the board); the sci-fi pistols and the ray gun fire an energy bolt (no case, no powder
+smoke).
+
 ### The parts, in dependency order
 
 **Part A — the shot leaves an ACTOR.** Give the shot an origin that is the

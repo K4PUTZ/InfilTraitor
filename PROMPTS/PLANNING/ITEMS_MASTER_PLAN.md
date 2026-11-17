@@ -88,6 +88,14 @@ the wrist (W): open (§5 Q3). Model: see §3.
 worn on the LEFT forearm, the grapple taking the wrist blade's place on that bracer (W, left arm). Owed: the animation of the hook
 firing with its line, and the reel turning. (The second half of Q3, pull / distant trigger vs the start rope, stays open.)
 
+**The grapple's KINDS (Director, 2026-11-17), each a GAMEPLAY behaviour after one common shot (the hook flies on its line and bites):**
+the hook bites a guard and PULLS HIM to the Agent (the "Scorpion" pull); bites a guard and pulls the AGENT to him; bites an object and
+pulls the object; bites the scenery and MOVES the Agent across the map (at points made to take it); bites the scenery and pulls it
+down, breaking the wall. Claude's further candidates, NOT ratified: disarm (bite the guard's weapon and tear it from his hand),
+the distant trigger already above (a lever, a switch, a handle), bring something down on a guard or as a noise, fetch an item, rappel
+/ zip line between two anchors. Until GAMEPLAY builds a kind, the shot shows the common part only: the hook flies, bites, holds,
+and the reel winds it back (MOVEMENT §11.6 step 5, 2026-11-17).
+
 ### 2.6 Throwables (H4)
 
 Frag grenade ✅ (certified 2026-11-16) · smoke, flashbang, gas, EMP, incendiary grenades (`DESIGN` §10.4) · stone · baseball · glass /

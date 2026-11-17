@@ -563,6 +563,18 @@ front). Page 1 done, `ASSETS/MODELS/sources/tripo_props1_zoned/` + `_preview.png
 | Tripwire flash | Box `rubber`, Spool `metal`, Spike `metal` |
 | Camera-loop rig | Box `metal`, Black `rubber` (clamp, antenna, cable), Metal `steel_dark` (connectors, pivot) |
 
+| Alarm clock (page 5) | Body `painted_metal@signal_red`, Face `plastic@bone_white`, Hands `rubber`, Metal `metal` (bells, hammer, feet, keys) |
+| Radio-clock | Body `rubber`, Grille `metal`, Display `glass_screen_green`, Knob `steel_dark`, Antenna `metal` |
+| Drone controller | Body `rubber`, Buttons `plastic`, Clamp `steel_dark` |
+| Tablet | Bumper `rubber`, Screen `plastic@navy`, Buttons `metal` |
+| Radio scrambler | Body `painted_metal@olive_drab`, Antennas `rubber` |
+| Shadow generator | Body `steel_dark`, Dome `plastic@navy` |
+| Gas grenade (LAID: stand it up) | Body `metal`, Fuse `metal`; the yellow band has no faces of its own (a loop cut or a decal later); one end came out open |
+
+Page 5 (`tripo_Props5.glb`, the Director's credit-saving page: SEVEN objects and more faces): alarm clock 2 324, radio-clock 904,
+controller 1 494, tablet 434, scrambler 1 012, shadow generator 940, gas grenade 1 108. **The drone gets a pass of its own** (it must
+be more sophisticated). **Next month (credits):** the EMP charge, the firework lure, the chloroform bottle, the baseball, the glass,
+the can, the ring, the remote, the lockpicks, the zip ties, the sample case; the rag and the hand crossbow stay by hand / adapted.
 Page 4 (`tripo_Props4.glb`): C4 695, breaching charge 246, tripwire 543, rig 3 105 (the clamp is the cost). Each slot filled its
 page, so the breaching charge came out as long as the C4: its 60 cm is set by hand (rule 4).
 Page 3 (`tripo_Props3.glb`): bracer 1 439, blade 110, launcher 1 385, hook and rope 3 518 (the coil is the cost); a page with many

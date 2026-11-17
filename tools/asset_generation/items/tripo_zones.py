@@ -17,7 +17,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")
 os.makedirs(OUT, exist_ok=True)
 
 # The preview's paints: `PaintPalette.PAINTS` (godot/scripts/systems/paint_palette.gd), copied for the render only.
-PAINTS = {"sand": (0.62, 0.55, 0.38), "olive_drab": (0.30, 0.34, 0.17), "signal_red": (0.62, 0.12, 0.10), "safety_yellow": (0.85, 0.68, 0.10)}
+PAINTS = {"navy": (0.14, 0.18, 0.30), "bone_white": (0.78, 0.76, 0.70), "sand": (0.62, 0.55, 0.38), "olive_drab": (0.30, 0.34, 0.17), "signal_red": (0.62, 0.12, 0.10), "safety_yellow": (0.85, 0.68, 0.10)}
 
 
 def rule_front_fraction(axis, frac):
@@ -77,6 +77,25 @@ SPEC = {
                        "zones": {"Box": "rubber", "Spool": "metal", "Spike": "metal"}},
     "camera_loop_rig": {"default": "Black", "parts": dict([(8, "Box")] + [(r, "Metal") for r in (3, 10, 12, 13, 14, 17, 19, 20)]),
                         "zones": {"Box": "metal", "Black": "rubber", "Metal": "steel_dark"}},
+    # page 5 (seven objects; the front is -Y)
+    "alarm_clock": {"default": "Metal", "parts": {2: "Body", 9: "Face", 14: "Hands", 19: "Hands", 20: "Hands"},
+                    "zones": {"Body": "painted_metal@signal_red", "Face": "plastic@bone_white", "Hands": "rubber", "Metal": "metal"}},
+    "radio_clock": {"default": "Body", "parts": {1: "Antenna", 3: "Antenna", 2: "Knob"},
+                    "where": [("Grille", lambda c: c.y < -0.02 and c.x < -0.002),
+                              ("Display", lambda c: c.y < -0.012 and 0.008 < c.x < 0.052 and c.z > 0.038)],
+                    "zones": {"Body": "rubber", "Grille": "metal", "Display": "glass_screen_green", "Knob": "steel_dark", "Antenna": "metal"}},
+    "drone_controller": {"default": "Body", "parts": {1: "Buttons", 4: "Buttons", 10: "Buttons", 2: "Clamp"},
+                         "zones": {"Body": "rubber", "Buttons": "plastic", "Clamp": "steel_dark"}},
+    "tablet": {"default": "Bumper", "parts": {1: "Screen", 2: "Buttons", 3: "Buttons", 4: "Buttons"},
+               "where": [("Screen", lambda c: c.y < -0.001 and abs(c.x) < 0.05 and 0.009 < c.z < 0.069)],
+               "zones": {"Bumper": "rubber", "Screen": "plastic@navy", "Buttons": "metal"}},
+    "radio_scrambler": {"default": "Antennas", "parts": {0: "Body"},
+                        "zones": {"Body": "painted_metal@olive_drab", "Antennas": "rubber"}},
+    "shadow_generator": {"default": "Body", "parts": {1: "Dome"},
+                         "zones": {"Body": "steel_dark", "Dome": "plastic@navy"}},
+    # laid down (the page's trick): its axis is Y, the fuse at -Y. The prompt's yellow band has no faces of its own (the body's
+    # side faces run its whole length): it stays grey until the model is edited (a loop cut, or a decal).
+    "gas_grenade": {"default": "Fuse", "parts": {0: "Body"}, "zones": {"Body": "metal", "Fuse": "metal"}},
 }
 
 

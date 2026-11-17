@@ -17,7 +17,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")
 os.makedirs(OUT, exist_ok=True)
 
 # The preview's paints: `PaintPalette.PAINTS` (godot/scripts/systems/paint_palette.gd), copied for the render only.
-PAINTS = {"olive_drab": (0.30, 0.34, 0.17), "signal_red": (0.62, 0.12, 0.10), "safety_yellow": (0.85, 0.68, 0.10)}
+PAINTS = {"sand": (0.62, 0.55, 0.38), "olive_drab": (0.30, 0.34, 0.17), "signal_red": (0.62, 0.12, 0.10), "safety_yellow": (0.85, 0.68, 0.10)}
 
 
 def rule_front_fraction(axis, frac):
@@ -56,6 +56,17 @@ SPEC = {
                        "zones": {"Body": "rubber", "Grille": "steel_dark", "Lights": "glass_screen_green"}},
     "police_badge": {"default": "Backing", "parts": {0: "Shield", 2: "Star"},
                      "zones": {"Backing": "leather", "Shield": "metal", "Star": "metal"}},
+    # page 3 (front + side page: the long axis is Y, the front end at -Y). "where" = (zone, test on the face centre), applied to the
+    # faces still in the default zone after "parts".
+    "wrist_bracer": {"default": "Shell", "parts": dict([(1, "Blade"), (0, "Plate"), (17, "Plate")]
+                                                       + [(r, "Buckles") for r in (3, 4, 5, 6, 13, 14, 15, 16, 18, 19, 20, 21)]
+                                                       + [(r, "Port") for r in (2, 7, 12, 22, 23, 24, 25)]),
+                     "zones": {"Shell": "leather", "Plate": "steel_dark", "Buckles": "metal", "Blade": "metal", "Port": "steel_dark"}},
+    "wrist_blade": {"default": "Blade", "parts": {}, "zones": {"Blade": "metal"}},
+    "grapple_launcher": {"default": "Body", "parts": {0: "Drum"}, "where": [("Hook", lambda c: c.y < -0.07)],
+                         "zones": {"Body": "rubber", "Drum": "fabric@sand", "Hook": "metal"}},
+    "grappling_hook_rope": {"default": "Rope", "parts": {}, "where": [("Hook", lambda c: c.y < 0.03)],
+                            "zones": {"Rope": "fabric@sand", "Hook": "metal"}},
 }
 
 
@@ -119,6 +130,11 @@ for name, spec in SPEC.items():
                 hit = rule(f.center, box[0], box[1])
             if hit:
                 zone = split[1]
+        if zone == spec["default"]:
+            for wzone, test in spec.get("where", []):
+                if test(f.center):
+                    zone = wzone
+                    break
         f.material_index = zone_names.index(zone)
         counts[zone] = counts.get(zone, 0) + 1
     print("[tripo_zones] %-14s %s" % (name, ", ".join("%s %d" % (z, counts.get(z, 0)) for z in zone_names)))
@@ -126,9 +142,13 @@ for name, spec in SPEC.items():
     bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, name + ".glb"), use_selection=True, export_format="GLB")
     # Preview: front and three-quarters.
     s = 0.8 / max(ob.dimensions)
+    ob.rotation_mode = "XYZ"   # the glTF importer leaves QUATERNION, which ignores rotation_euler
+    # The long axis across the view: an object whose length runs along Y (a front + side page's end-on front) is turned to X.
+    if ob.dimensions.y > ob.dimensions.x:
+        ob.rotation_euler = (0, 0, math.radians(90))
     ob.scale = (s, s, s); ob.location = (0, 0, -row_i * 1.2)
     cp = ob.copy(); scene.collection.objects.link(cp)
-    cp.rotation_euler = (math.radians(-20), 0, math.radians(35)); cp.location = (1.2, 0, -row_i * 1.2)
+    cp.rotation_euler = (math.radians(-20), 0, ob.rotation_euler.z + math.radians(35)); cp.location = (1.2, 0, -row_i * 1.2)
     row_i += 1
 
 cam_d = bpy.data.cameras.new("c"); cam_d.type = "ORTHO"; cam = bpy.data.objects.new("c", cam_d); scene.collection.objects.link(cam)

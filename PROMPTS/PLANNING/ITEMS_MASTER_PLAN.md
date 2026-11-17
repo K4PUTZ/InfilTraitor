@@ -553,6 +553,14 @@ front). Page 1 done, `ASSETS/MODELS/sources/tripo_props1_zoned/` + `_preview.png
 | Noise detector | Body `rubber`, Grille `steel_dark`, Lights `glass_screen_green` |
 | Police badge | Backing `leather` (brown: the prompt's black has no paint yet), Shield `metal`, Star `metal` |
 
+| Wrist bracer (page 3) | Shell `leather`, Plate `steel_dark`, Buckles `metal`, Port `steel_dark`, Blade `metal` (drawn OUT, fused as its own part: edited by hand) |
+| Wrist blade | Blade `metal` |
+| Grapple launcher | Body `rubber`, Drum `fabric@sand`, Hook `metal` (everything forward of the barrel) |
+| Grappling hook + rope | Rope `fabric@sand`, Hook `metal` |
+
+Page 3 (`tripo_Props3.glb`): bracer 1 439, blade 110, launcher 1 385, hook and rope 3 518 (the coil is the cost); a page with many
+small parts is zoned by part ranks AND position rules (`"where"`, on the face centre). Preview fix: the glTF importer leaves
+QUATERNION rotation, so the three-quarter view needs `rotation_mode = "XYZ"`.
 Page 2 (`tripo_Props2.glb`): 4 753 triangles, split clean (knuckles 902, motion 1 497, noise 1 270, badge 1 284), zoned into
 `tripo_props2_zoned/`. New paint `safety_yellow` in `PaintPalette`. The mapping moves into each item's row when the item gets one; the next pages add their
 objects to the script's `SPEC` (a part rank is read off a parts render first: ranks are by face count, stable for one file).

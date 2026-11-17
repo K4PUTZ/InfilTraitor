@@ -1,0 +1,58 @@
+{
+  "id": "revolver_long",
+  "delivery": "LINE",
+  "step_multipliers": [
+    1.0,
+    0.9,
+    0.8,
+    0.65,
+    0.45
+  ],
+  "destroy_multiplier": 0.35,
+  "punch": 0.35,
+  "gameplay": {
+    "class": "firearm",
+    "range_band": "short"
+  },
+  "tags": [
+    "firearm",
+    "sidearm",
+    "revolver"
+  ],
+  "soot_radius": 2,
+  "held_as": "pistol",
+  "model": {
+    "path": "res://ASSETS/props/revolver_long/revolver_long.glb",
+    "surface_materials": {
+      "Metal": "steel_dark",
+      "Black": "rubber",
+      "Black2": "rubber",
+      "LightMetal": "metal",
+      "DarkMetal": "steel_dark",
+      "Wood": "wood",
+      "DarkWood": "wood",
+      "Grey": "painted_metal"
+    },
+    "held_like": {
+      "weapon": "pistol",
+      "scale": 0.07643,
+      "pos": [
+        -0.01357,
+        0.00047,
+        0.0009
+      ],
+      "quat": [
+        -0.0,
+        -0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "size_certified": "2026-11-17",
+    "muzzle": [
+      1.709,
+      0.6081,
+      0.0003
+    ]
+  }
+}

@@ -242,6 +242,7 @@ func mesh_state() -> Dictionary:
 		"posture": _posture,
 		"grip": grip,
 		"weapon": weapon,
+		"weapon_id": weapon_id,
 		"walk": _walk_progress if _posture != "prone" else -1.0,
 		"dash": _dash,
 		"dash_rate": dash_rate,

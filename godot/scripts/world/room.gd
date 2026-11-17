@@ -10383,7 +10383,7 @@ func _on_weapon_select_requested(weapon_id: String) -> void:
 	if is_resolving_action():
 		return
 	if _agent_shot_controller != null:
-		_agent_shot_controller.set_weapon(weapon_id)
+		_agent_shot_controller.select_or_cycle(weapon_id)
 
 
 func _on_grenade_mode_requested() -> void:

@@ -20,5 +20,39 @@
     "sidearm"
   ],
   "soot_radius": 2,
-  "held_as": "shotgun"
+  "held_as": "pistol",
+  "model": {
+    "path": "res://ASSETS/props/revolver/revolver.glb",
+    "surface_materials": {
+      "Metal": "steel_dark",
+      "Black": "rubber",
+      "Black2": "rubber",
+      "LightMetal": "metal",
+      "DarkMetal": "steel_dark",
+      "Wood": "wood",
+      "DarkWood": "wood",
+      "Grey": "painted_metal"
+    },
+    "held_like": {
+      "weapon": "pistol",
+      "scale": 0.07581,
+      "pos": [
+        -0.00579,
+        0.01244,
+        0.00254
+      ],
+      "quat": [
+        -0.0,
+        -0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "size_certified": "2026-11-17",
+    "muzzle": [
+      1.7278,
+      0.4638,
+      -0.0002
+    ]
+  }
 }

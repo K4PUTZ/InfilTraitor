@@ -38,6 +38,18 @@ func get_weapon(p_id: String):
 	return registry.get(p_id, null)
 
 
+## The weapons of a hold FAMILY (MOVEMENT §11.6 step 2): every row held as `held_as`, the family's reference (the row no other
+## is `held_like`) first, then the others by id.
+func family(held_as: String) -> PackedStringArray:
+	var ids: Array = []
+	for id: String in registry:
+		if String(registry[id].held_as) == held_as:
+			ids.append(id)
+	ids.sort()
+	ids.sort_custom(func(a: String, b: String) -> bool: return String(registry[a].held_like) == "" and String(registry[b].held_like) != "")
+	return PackedStringArray(ids)
+
+
 ## Get weapon count
 func count() -> int:
 	return registry.size()

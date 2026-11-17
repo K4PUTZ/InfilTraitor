@@ -1,0 +1,56 @@
+{
+  "id": "scifi_pistol_a",
+  "delivery": "LINE",
+  "step_multipliers": [
+    1.0,
+    0.7,
+    0.75,
+    0.55
+  ],
+  "destroy_multiplier": 0.25,
+  "punch": 0.28,
+  "projectile_count": 1,
+  "gameplay": {
+    "class": "firearm",
+    "range_band": "short"
+  },
+  "tags": [
+    "firearm",
+    "sidearm",
+    "pistol",
+    "scifi"
+  ],
+  "blowout": 0.0,
+  "soot_radius": 2,
+  "held_as": "pistol",
+  "model": {
+    "path": "res://ASSETS/props/scifi_pistol_a/scifi_pistol_a.glb",
+    "surface_materials": {
+      "White": "plastic",
+      "Black": "rubber",
+      "Grey": "painted_metal",
+      "Main": "painted_metal"
+    },
+    "held_like": {
+      "weapon": "pistol",
+      "scale": 0.14637,
+      "pos": [
+        0.00399,
+        -0.00474,
+        0.00101
+      ],
+      "quat": [
+        7e-05,
+        -0.01949,
+        -0.0047,
+        0.9998
+      ]
+    },
+    "size_certified": "2026-11-17",
+    "muzzle": [
+      0.8058,
+      0.332,
+      0.0001
+    ]
+  }
+}

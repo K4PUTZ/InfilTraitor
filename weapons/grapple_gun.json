@@ -1,0 +1,56 @@
+{
+  "id": "grapple_gun",
+  "delivery": "LINE",
+  "step_multipliers": [
+    1.0,
+    0.7,
+    0.75,
+    0.55
+  ],
+  "destroy_multiplier": 0.0,
+  "punch": 0.0,
+  "projectile_count": 1,
+  "gameplay": {
+    "class": "device",
+    "range_band": "short",
+    "projectile": "hook"
+  },
+  "tags": [
+    "sidearm",
+    "pistol",
+    "device",
+    "grapple"
+  ],
+  "blowout": 0.0,
+  "soot_radius": 0,
+  "held_as": "pistol",
+  "model": {
+    "path": "res://ASSETS/props/grapple_gun/grapple_gun.glb",
+    "surface_materials": {
+      "Body": "rubber",
+      "Drum": "fabric",
+      "Hook": "metal"
+    },
+    "held_like": {
+      "weapon": "pistol",
+      "scale": 0.77436,
+      "pos": [
+        0.0646,
+        -0.02651,
+        0.00202
+      ],
+      "quat": [
+        0.0,
+        0.70711,
+        0.0,
+        0.70711
+      ]
+    },
+    "size_certified": "2026-11-17",
+    "muzzle": [
+      -0.0002,
+      0.0794,
+      0.1099
+    ]
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "id": "ray_gun",
+  "delivery": "LINE",
+  "step_multipliers": [
+    1.0,
+    0.7,
+    0.75,
+    0.55
+  ],
+  "destroy_multiplier": 0.25,
+  "punch": 0.28,
+  "projectile_count": 1,
+  "gameplay": {
+    "class": "firearm",
+    "range_band": "short"
+  },
+  "tags": [
+    "firearm",
+    "sidearm",
+    "pistol",
+    "scifi"
+  ],
+  "blowout": 0.0,
+  "soot_radius": 2,
+  "held_as": "pistol",
+  "model": {
+    "path": "res://ASSETS/props/ray_gun/ray_gun.glb",
+    "surface_materials": {
+      "Main2": "painted_metal",
+      "Muzzle": "metal",
+      "Main": "painted_metal",
+      "Detail": "plastic"
+    },
+    "held_like": {
+      "weapon": "pistol",
+      "scale": 0.04367,
+      "pos": [
+        -0.01138,
+        -0.00201,
+        0.00023
+      ],
+      "quat": [
+        0.00846,
+        -0.71133,
+        0.00904,
+        0.70274
+      ]
+    },
+    "size_certified": "2026-11-17",
+    "muzzle": [
+      0.0025,
+      0.8637,
+      -2.9382
+    ]
+  }
+}

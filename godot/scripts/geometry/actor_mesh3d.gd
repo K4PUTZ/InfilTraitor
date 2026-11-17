@@ -124,6 +124,8 @@ var _shot_hold: float = 0.0          ## the aim is held this long more after a s
 var _aim_t: float = 0.0              ## how far the aim has travelled, 0 (down) to 1 (held)
 var _pistol: Node3D = null           ## the pistol in the right hand (hidden until the fists reach the sternum)
 var _pistol_holder: Node3D = null    ## carries the placement (the pose's, blended between the stops)
+var _held_id: String = ""            ## the weapon row whose model is in `_pistol_holder` (the family's reference until another is chosen)
+var _held_def: WeaponDef = null      ## its row: its model's place in the reference's frame (`held_rel`) and its muzzle
 var _throw: ActorAimPoseRef = null   ## the throw's path layer (null: the figure has no throw timeline)
 var _throw_seq: AimSequenceRef = null
 var _throw_w: float = 0.0            ## where along the throw's timeline the body is, 0..1
@@ -596,7 +598,7 @@ func _build_pistol(stops: Array) -> void:
 	var bone_name: String = _sequence.gun_bone() if _sequence != null else String((_pistol_stops[_pistol_stops.size() - 1][1] as Dictionary)["bone"])
 	var hand: int = TripoFigureRef.find_bone(_skeleton, bone_name)
 	var model_path: String = TripoFigureRef.prop_model("pistol")
-	var scene := load(model_path) as PackedScene
+	var scene := load(model_path) as PackedScene if model_path != "" else null
 	if hand < 0 or scene == null:
 		push_error("[ActorMesh3D] no bone '%s' or no pistol model (%s): the agent aims empty-handed" % [bone_name, model_path])
 		_pistol_stops.clear()
@@ -607,11 +609,40 @@ func _build_pistol(stops: Array) -> void:
 	_skeleton.add_child(attach)
 	var holder := Node3D.new()   ## its transform is the pose's placement of the model's scene root
 	attach.add_child(holder)
-	holder.add_child(scene.instantiate() as Node3D)
-	_apply_board_light(attach)
 	attach.visible = false
 	_pistol = attach
 	_pistol_holder = holder
+	_hold_model("pistol")
+
+
+## MOVEMENT §11.6 step 2 — the model of the weapon row `id` in the hand, held like the family's reference: the timeline places the
+## reference, the model sits in the reference's frame by its row's `held_rel`. Said loudly and left as it was when the row or its
+## model is missing.
+func _hold_model(id: String) -> void:
+	if _pistol_holder == null or id == _held_id:
+		return
+	var w: WeaponDef = WeaponRegistry.shared().get_weapon(id)
+	var scene := load(w.model_path) as PackedScene if w != null and w.model_path != "" else null
+	if scene == null:
+		push_error("[ActorMesh3D] weapon '%s' has no row or no model: the hand keeps '%s'" % [id, _held_id])
+		_held_id = id   ## once, not every frame
+		return
+	for child in _pistol_holder.get_children():
+		child.queue_free()
+	var model := scene.instantiate() as Node3D
+	model.transform = w.held_rel
+	_pistol_holder.add_child(model)
+	_apply_board_light(_pistol)
+	_held_id = id
+	_held_def = w
+
+
+## Where the held model's round leaves, in the holder's frame (the reference's placement): the row's muzzle carried by `held_rel`.
+## INF when the row has no measured muzzle.
+func _held_muzzle() -> Vector3:
+	if _held_def == null or _held_def.muzzle == Vector3.INF:
+		return Vector3.INF
+	return _held_def.held_rel * _held_def.muzzle
 
 
 ## The pistol's placement at `weight` of the aim path: the stops' placements blended with the same easing the arms use (`ActorAimPose3D`): position and scale lerped,
@@ -650,6 +681,8 @@ func _update_aim(state: Dictionary) -> void:
 		_lower_s = float(aim_set[3])
 	var ready: bool = kind == _aim_kind and float(state["walk"]) < 0.0 and (String(state["posture"]) == "standing" \
 		or (kind == "crouch" and not _crouch.is_empty() and _crouch_t >= float(_crouch["len"])))   ## crouched: once fully down
+	if String(state["weapon"]) == "pistol" and String(state.get("weapon_id", "")) != "" and _pistol != null and not _pistol.visible:
+		_hold_model(String(state["weapon_id"]))   ## swapped only while the gun is out of sight (in the coat)
 	var want: bool = ready and ((String(state["weapon"]) == "pistol" and String(state["grip"]) == "_aimed") or _shot_hold > 0.0)
 	var target: float = 1.0 if want else 0.0
 	_aim_t = move_toward(_aim_t, target, dt / (_raise_s if want else _lower_s))
@@ -697,8 +730,8 @@ func _eject_case(gt: Transform3D) -> void:
 	var to_board: Basis = _board.global_basis.inverse()
 	var local_basis: Basis = to_board * gt.basis
 	var units_per_m: float = local_basis.x.length()
-	var w: WeaponDef = WeaponRegistry.shared().get_weapon("pistol")
-	var tip: Vector3 = w.muzzle if w != null and w.muzzle != Vector3.INF else Vector3(1.0, 0.0, 0.0)
+	var held: Vector3 = _held_muzzle()
+	var tip: Vector3 = held if held != Vector3.INF else Vector3(1.0, 0.0, 0.0)
 	var barrel: Vector3 = (to_board * (gt.basis * tip)).normalized()   ## grip -> muzzle, as the round leaves
 	var right: Vector3 = barrel.cross(Vector3.UP).normalized()
 	var vel: Vector3 = right * EJECT_RIGHT_M * randf_range(0.8, 1.2) + Vector3.UP * EJECT_UP_M * randf_range(0.85, 1.15) - barrel * EJECT_BACK_M
@@ -711,10 +744,10 @@ func _eject_case(gt: Transform3D) -> void:
 func muzzle_global() -> Vector3:
 	if _pistol == null or _pistol_holder == null or not _pistol.visible or not _pistol_holder.is_inside_tree():
 		return Vector3.INF
-	var w: WeaponDef = WeaponRegistry.shared().get_weapon("pistol")
-	if w == null or w.muzzle == Vector3.INF:
+	var tip: Vector3 = _held_muzzle()
+	if tip == Vector3.INF:
 		return Vector3.INF
-	return _pistol_holder.global_transform * w.muzzle
+	return _pistol_holder.global_transform * tip
 
 
 ## A dev flag (`DevFlag`: the environment, then the APK's overrides file, then `fallback`).

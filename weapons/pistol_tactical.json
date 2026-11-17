@@ -1,0 +1,59 @@
+{
+  "id": "pistol_tactical",
+  "delivery": "LINE",
+  "step_multipliers": [
+    1.0,
+    0.7,
+    0.75,
+    0.55
+  ],
+  "destroy_multiplier": 0.25,
+  "punch": 0.28,
+  "projectile_count": 1,
+  "gameplay": {
+    "class": "firearm",
+    "range_band": "short"
+  },
+  "tags": [
+    "firearm",
+    "sidearm",
+    "pistol"
+  ],
+  "blowout": 0.0,
+  "soot_radius": 2,
+  "held_as": "pistol",
+  "model": {
+    "path": "res://ASSETS/props/pistol_tactical/pistol_tactical.glb",
+    "surface_materials": {
+      "Metal": "steel_dark",
+      "Black": "rubber",
+      "Black2": "rubber",
+      "LightMetal": "metal",
+      "DarkMetal": "steel_dark",
+      "Wood": "wood",
+      "DarkWood": "wood",
+      "Grey": "painted_metal"
+    },
+    "held_like": {
+      "weapon": "pistol",
+      "scale": 0.06,
+      "pos": [
+        0.0007,
+        -0.00022,
+        0.00055
+      ],
+      "quat": [
+        0.0001,
+        -0.02778,
+        -0.00671,
+        0.99959
+      ]
+    },
+    "size_certified": "2026-11-17",
+    "muzzle": [
+      1.4888,
+      0.6259,
+      -0.0
+    ]
+  }
+}

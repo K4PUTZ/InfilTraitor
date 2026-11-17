@@ -740,6 +740,19 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    (ITEMS Q3 open), 2 suppressors on a copy of the pistol's muzzle. Next: the Director sizes them; the READ-BACK (fit each source
    model's vertices to their final place in hand space: size + grip offset vs the reference) is written then; the female's file is
    built from the male's sizes, for the grip check.
+   **2026-11-17 (later): H1 SIZED by the Director, read back and ON THE BOARD.** Ruling: *"vamos ter a família que usa a mesma
+   postura [...] e dentro dela variações de modelo que são armas individuais. Todas vão usar o mesmo mecanismo da pistola normal,
+   com algumas variações de stats [...] acompanhar cada uma em uma ficha, inclusive porque algumas não disparam bullets"*. So each
+   model is a ROW (`weapons/<id>.json`, `held_as: "pistol"`): pistol_compact, pistol_service, pistol_tactical, revolver (the existing
+   row, now with a model), revolver_snub, revolver_long, taser, hand_crossbow, flare_gun, scifi_pistol_a/b/c, ray_gun, grapple_gun.
+   `family_lab.py readback` fits each source to its place in the hand (Umeyama; every residual ~1e-7: no reshaping) relative to the
+   reference; `family_rows.py` writes `model.held_like` {weapon, scale, pos, quat} (the model's glTF frame in the pistol model's),
+   `muzzle` (the foremost vertices' centre, shown as beads on the lab render) and `size_certified`; new rows copy the template's shot
+   numbers (GAMEPLAY-01 sets each one's), the taser / crossbow / flare / grapple with no wall damage and `gameplay.projectile`.
+   Engine: `ActorMesh3D._hold_model` swaps the model in the pistol's holder (the timeline places the reference, the model rides by
+   `held_rel`) while the gun is in the coat; the muzzle and the case follow. Dev key 2 pressed again walks the family. Take
+   `h1_family` (PLAYGROUND) draws all 15. Not done: the suppressors (attachments, no row yet), a shot fired from each muzzle on the
+   board, the female's file.
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).

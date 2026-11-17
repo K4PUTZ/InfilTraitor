@@ -493,7 +493,8 @@ def readback(blend, out_json):
         to_frame = frame.inverted()
         dp = [to_frame @ (ob.matrix_world @ v.co) for v in ob.data.vertices]
         s, R, t, rms = umeyama(sp, dp)
-        m = _sim(s, R, t)
+        # the fit maps the TURNED source; the board loads the glb as it is: fold the build's turn in, so `m` maps the glb's own frame
+        m = _sim(s, R, t) @ (Matrix.Rotation(math.radians(float(ob.get("lab_turn_deg", 0.0))), 4, "Z") if role != "reference" else Matrix.Identity(4))
         lo, hi = box(sp)
         tip_x = hi.x - 0.03 * (hi.x - lo.x)
         tip = [p for p in sp if p.x >= tip_x]

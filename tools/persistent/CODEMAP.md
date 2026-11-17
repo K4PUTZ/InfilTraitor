@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**354 scripts · 102015 lines total** (under `godot/scripts/`)
+**354 scripts · 102093 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `actor_pose.gd`
 
-`class_name ActorPose` · extends `Node` · 283 lines
+`class_name ActorPose` · extends `Node` · 284 lines
 
 `godot/scripts/agents/actor_pose.gd`
 
@@ -422,7 +422,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 1132 lines
+`class_name ActorMesh3D` · extends `Node3D` · 1165 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -469,16 +469,9 @@ extends `ConfirmationDialog` · 64 lines
 - `EJECT_UP_M` = `1.2`
 - `EJECT_BACK_M` = `0.2`
 - `THROW_TURN_RAD_S` = `TAU`
-- `REVEAL_PALETTES` = `{ &"agent": {"stripe_a": Color(0.86, 0.96, 1.0), "stripe_b": Color(0.16, 0.28, 0.38), "outline_color": Color(1.0, 1.0, 1.0)}, &"agency": {"stripe_a": Color(0.46, 0.64, 1.0), "stripe_b": Color(0.08, 0.14, 0.40), "outline_color": Color(0.30, 0.56, 1.0)}, &"militia": {"stripe_a": Color(1.0, 0.52, 0.36), "stripe_b": Color(0.40, 0.10, 0.06), "outline_color": Color(1.0, 0.34, 0.18)}, &"corporation": {"stripe_a": Color(1.0, 0.84, 0.30), "stripe_b": Color(0.38, 0.28, 0.04), "outline_color": Color(1.0, 0.74, 0.12)}, &"network": {"stripe_a": Color(0.46, 0.96, 0.62), "stripe_b": Color(0.06, 0.30, 0.14), "outline_color": Color(0.28, 0.90, 0.46)}, }`
-
-**Public vars**
-- `var silhouette_phase: float = 0.0:`
-- `var reveal_faction: StringName = &"":`
 
 **Public API**
-- `func setup_actor(board: Node3D, source: ActorPose) -> bool:`
 - `func throw_release_global() -> Vector3:`
-- `func fire_kick() -> bool:`
 - `func muzzle_global() -> Vector3:`
 
 ---
@@ -3049,7 +3042,7 @@ extends `RefCounted` · 63 lines
 
 ### `weapon_def.gd`
 
-`class_name WeaponDef` · 168 lines
+`class_name WeaponDef` · 184 lines
 
 `godot/scripts/systems/destruction/weapon_def.gd`
 
@@ -3076,15 +3069,11 @@ extends `RefCounted` · 63 lines
 - `var muzzle: Vector3 = Vector3.INF`
 - `var held_as: String = "shotgun"`
 
-**Public API**
-- `func world_scale() -> float:`
-- `func world_size(rotation_deg: Vector3 = Vector3.ZERO) -> Vector3:`
-
 ---
 
 ### `weapon_registry.gd`
 
-`class_name WeaponRegistry` · 67 lines
+`class_name WeaponRegistry` · 79 lines
 
 `godot/scripts/systems/destruction/weapon_registry.gd`
 
@@ -3102,6 +3091,7 @@ extends `RefCounted` · 63 lines
 **Public API**
 - `func register(weapon_def) -> void:`
 - `func get_weapon(p_id: String):`
+- `func family(held_as: String) -> PackedStringArray:`
 - `func count() -> int:`
 - `func load_from_disk() -> void:`
 
@@ -6797,7 +6787,7 @@ extends `Node2D` · 63 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1297 lines
+`class_name AgentShotController` · 1313 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -6807,10 +6797,6 @@ extends `Node2D` · 63 lines
 - `RubblePresetsRef` = `preload("res://godot/scripts/systems/destruction/rubble_presets.gd")`
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `WEAPON_ID` = `"shotgun"`
-
-**Public API**
-- `func cancel_active() -> void:`
-- `func fire_at_active() -> void:`
 
 ---
 

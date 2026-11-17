@@ -102,6 +102,12 @@ var muzzle: Vector3 = Vector3.INF
 ## The grip the old r3d_live rig holds this weapon with ("shotgun" / "pistol"); "" = it has none, and the figure keeps
 ## what it holds (`ActorPose.set_weapon`).
 var held_as: String = "shotgun"
+## MOVEMENT §11.6 step 2 (Director, 2026-11-17): a model of a hold FAMILY is held like the family's reference weapon. `held_like`
+## names it ("" = this row is held by its own placement); `held_rel` is this model's own frame in the reference model's frame
+## (scale, turn, offset read off the Director's lab file by `family_lab.py readback`), so the reference's placement at every stop
+## of the family's timeline places this model by one product. IDENTITY when the row is its family's reference.
+var held_like: String = ""
+var held_rel: Transform3D = Transform3D.IDENTITY
 
 
 ## Factory: parse WeaponDef from a JSON dict — same contract as
@@ -147,6 +153,16 @@ static func from_json(data: Dictionary) -> WeaponDef:
 			def.hand_bone = String(h.get("bone", "RightHand"))
 			def.hand_pos = JsonFileRef.vector3(h.get("pos", [0.0, 0.0, 0.0]), Vector3.ZERO, "weapon '%s' hand pos" % def.id, [])
 			def.hand_scale = float(h.get("scale", 1.0))
+		var like: Variant = m.get("held_like", null)
+		if like is Dictionary:
+			var l: Dictionary = like
+			def.held_like = String(l.get("weapon", ""))
+			var q: Array = l.get("quat", [0.0, 0.0, 0.0, 1.0])
+			var quat := Quaternion(float(q[0]), float(q[1]), float(q[2]), float(q[3])) if q.size() == 4 else Quaternion.IDENTITY
+			if q.size() != 4:
+				push_error("[WeaponDef] '%s': model.held_like.quat wants four numbers (x, y, z, w), got %s" % [def.id, str(q)])
+			var pos: Vector3 = JsonFileRef.vector3(l.get("pos", [0.0, 0.0, 0.0]), Vector3.ZERO, "weapon '%s' held_like pos" % def.id, [])
+			def.held_rel = Transform3D(Basis(quat.normalized()).scaled(Vector3.ONE * float(l.get("scale", 1.0))), pos)
 		if def.model_path != "" and def.size_certified == "":
 			push_warning("[WeaponDef] '%s': its size in the Agent's hands is not certified yet (MOVEMENT_MASTER_PLAN §9 item 7): it is drawn at its model's own size" % def.id)
 

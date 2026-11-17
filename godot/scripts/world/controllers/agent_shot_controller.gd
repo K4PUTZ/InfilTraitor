@@ -133,6 +133,22 @@ func _init(room_ref) -> void:
 		print("[AGENT-SHOT] weapon overridden to '%s' by INFILTRAITOR_SHOT_WEAPON" % env)
 
 
+## The dev key of a hold family (Director, 2026-11-17: the pistol's family is many weapons on one hold): asking for a weapon of the
+## family already held steps to the family's NEXT row instead (2, 2, 2... walks pistol, pistol_compact, ...); any other id is
+## `set_weapon`.
+func select_or_cycle(weapon_id: String) -> void:
+	var reg = Registries.get_weapon_registry()
+	var cur = reg.get_weapon(_weapon_id)
+	var want = reg.get_weapon(weapon_id)
+	if cur != null and want != null and String(cur.held_as) == String(want.held_as):
+		var ids: PackedStringArray = reg.family(String(want.held_as))
+		var i: int = ids.find(_weapon_id)
+		if ids.size() > 1 and i >= 0:
+			set_weapon(ids[(i + 1) % ids.size()])
+			return
+	set_weapon(weapon_id)
+
+
 ## Switch the firearm. Loud on an unknown id and a no-op on the current one.
 ##
 ## RE-KEYS AN OPEN AIM, which is the whole reason this is not a one-line setter:

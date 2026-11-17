@@ -1,0 +1,57 @@
+{
+  "id": "taser",
+  "delivery": "LINE",
+  "step_multipliers": [
+    1.0,
+    0.7,
+    0.75,
+    0.55
+  ],
+  "destroy_multiplier": 0.0,
+  "punch": 0.0,
+  "projectile_count": 1,
+  "gameplay": {
+    "class": "stun",
+    "range_band": "short",
+    "projectile": "probe"
+  },
+  "tags": [
+    "sidearm",
+    "pistol",
+    "stun",
+    "nonlethal"
+  ],
+  "blowout": 0.0,
+  "soot_radius": 0,
+  "held_as": "pistol",
+  "model": {
+    "path": "res://ASSETS/props/taser/taser.glb",
+    "surface_materials": {
+      "Body": "rubber",
+      "Cartridge": "plastic",
+      "Muzzle": "rubber",
+      "Contacts": "metal"
+    },
+    "held_like": {
+      "weapon": "pistol",
+      "scale": 0.58213,
+      "pos": [
+        0.04139,
+        -0.03314,
+        0.00106
+      ],
+      "quat": [
+        0.0231,
+        0.99644,
+        0.04676,
+        0.06624
+      ]
+    },
+    "size_certified": "2026-11-17",
+    "muzzle": [
+      -0.1088,
+      0.086,
+      0.0105
+    ]
+  }
+}

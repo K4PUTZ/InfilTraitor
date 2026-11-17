@@ -71,7 +71,7 @@ func _test_refusals() -> void:
 	var s := _sprite()
 	_check(not s.set_weapon("assault_rifle") and s.weapon == "shotgun", "the rifle (no grip in the rig) is refused, the shotgun kept")
 	_check(s.set_weapon("pistol") and s.weapon == "pistol" and s.weapon_id == "pistol", "the pistol is held")
-	_check(s.set_weapon("revolver") and s.weapon == "shotgun", "a weapon whose row says held_as shotgun is held as the shotgun")
+	_check(s.set_weapon("revolver") and s.weapon == "pistol" and s.weapon_id == "revolver", "a model of the pistol's family (held_as pistol, 2026-11-17) is held as the pistol, its own id kept")
 	s.set_grip("_ready")
 	_check(s.grip == "", "a grip the rig has no action for is refused")
 	s.set_grip("_aimed")

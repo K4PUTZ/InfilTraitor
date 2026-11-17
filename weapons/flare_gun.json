@@ -1,0 +1,54 @@
+{
+  "id": "flare_gun",
+  "delivery": "LINE",
+  "step_multipliers": [
+    1.0,
+    0.7,
+    0.75,
+    0.55
+  ],
+  "destroy_multiplier": 0.0,
+  "punch": 0.0,
+  "projectile_count": 1,
+  "gameplay": {
+    "class": "flare",
+    "range_band": "short",
+    "projectile": "flare"
+  },
+  "tags": [
+    "sidearm",
+    "pistol",
+    "flare"
+  ],
+  "blowout": 0.0,
+  "soot_radius": 0,
+  "held_as": "pistol",
+  "model": {
+    "path": "res://ASSETS/props/flare_gun/flare_gun.glb",
+    "surface_materials": {
+      "Red": "plastic",
+      "Black": "rubber"
+    },
+    "held_like": {
+      "weapon": "pistol",
+      "scale": 0.04137,
+      "pos": [
+        -0.00515,
+        0.00928,
+        -0.00063
+      ],
+      "quat": [
+        0.0,
+        -0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "size_certified": "2026-11-17",
+    "muzzle": [
+      2.0866,
+      0.7035,
+      -0.0021
+    ]
+  }
+}

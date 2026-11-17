@@ -945,10 +945,30 @@
         {
           "id": "agent_idle_rail",
           "keys": [
-            {"frame": "close", "target": "@agent_close", "view": "S", "hold": 240},
-            {"frame": "close", "target": "@agent_close", "view": "E", "hold": 240},
-            {"frame": "close", "target": "@agent_close", "view": "N", "hold": 240},
-            {"frame": "close", "target": "@agent_close", "view": "W", "hold": 240}
+            {
+              "frame": "close",
+              "target": "@agent_close",
+              "view": "S",
+              "hold": 240
+            },
+            {
+              "frame": "close",
+              "target": "@agent_close",
+              "view": "E",
+              "hold": 240
+            },
+            {
+              "frame": "close",
+              "target": "@agent_close",
+              "view": "N",
+              "hold": 240
+            },
+            {
+              "frame": "close",
+              "target": "@agent_close",
+              "view": "W",
+              "hold": 240
+            }
           ]
         },
         {
@@ -1047,6 +1067,17 @@
               "target": "@glass_wall",
               "view": "N",
               "hold": 300
+            }
+          ]
+        },
+        {
+          "id": "h1_family_rail",
+          "keys": [
+            {
+              "frame": "close",
+              "target": "@agent_close",
+              "view": "E",
+              "hold": 1700
             }
           ]
         }
@@ -1601,6 +1632,93 @@
           "length": 200,
           "seed": 1,
           "note": "HERITAGE T2 W4: the agent draws the pistol, aims at guard 5 and fires; the flash and the tracer start at the gun's muzzle."
+        },
+        {
+          "id": "h1_family",
+          "profile": "engine",
+          "rail": "h1_family_rail",
+          "steps": [
+            "weapon pistol",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon pistol_compact",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon pistol_service",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon pistol_tactical",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon revolver",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon revolver_snub",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon revolver_long",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon taser",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon hand_crossbow",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon flare_gun",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon scifi_pistol_a",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon scifi_pistol_b",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon scifi_pistol_c",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon ray_gun",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8",
+            "weapon grapple_gun",
+            "shot_aim 5",
+            "wait 1.0",
+            "shot_cancel",
+            "wait 0.8"
+          ],
+          "at_key": 0,
+          "after_hold": 0,
+          "length": 1700,
+          "seed": 1,
+          "note": "The H1 hold family (MOVEMENT §11.6 step 2): the agent draws each of the 15 weapons of the pistol's family in turn (1.8 s each: aim 1.0, away 0.8), its model held like the pistol (`model.held_like`)."
         }
       ]
     },

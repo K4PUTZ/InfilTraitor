@@ -1,0 +1,61 @@
+{
+  "id": "hand_crossbow",
+  "delivery": "LINE",
+  "step_multipliers": [
+    1.0,
+    0.7,
+    0.75,
+    0.55
+  ],
+  "destroy_multiplier": 0.0,
+  "punch": 0.0,
+  "projectile_count": 1,
+  "gameplay": {
+    "class": "dart",
+    "range_band": "short",
+    "projectile": "dart"
+  },
+  "tags": [
+    "sidearm",
+    "pistol",
+    "dart",
+    "silent"
+  ],
+  "blowout": 0.0,
+  "soot_radius": 0,
+  "held_as": "pistol",
+  "model": {
+    "path": "res://ASSETS/props/hand_crossbow/hand_crossbow.glb",
+    "surface_materials": {
+      "Body": "rubber",
+      "Limbs": "steel_dark",
+      "Cams": "steel_dark",
+      "String": "fabric",
+      "Trigger": "metal",
+      "DartShaft": "metal",
+      "DartTail": "plastic",
+      "DartNock": "plastic"
+    },
+    "held_like": {
+      "weapon": "pistol",
+      "scale": 0.22426,
+      "pos": [
+        0.07323,
+        0.03504,
+        0.00492
+      ],
+      "quat": [
+        0.03278,
+        -0.01278,
+        -0.00403,
+        0.99937
+      ]
+    },
+    "size_certified": "2026-11-17",
+    "muzzle": [
+      0.4462,
+      -0.0074,
+      -0.0
+    ]
+  }
+}

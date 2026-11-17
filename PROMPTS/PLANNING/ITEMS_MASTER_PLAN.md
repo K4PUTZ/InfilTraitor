@@ -571,6 +571,12 @@ front). Page 1 done, `ASSETS/MODELS/sources/tripo_props1_zoned/` + `_preview.png
 | Shadow generator | Body `steel_dark`, Dome `plastic@navy` |
 | Gas grenade (LAID: stand it up) | Body `metal`, Fuse `metal`; the yellow band has no faces of its own (a loop cut or a decal later); one end came out open |
 
+| Scout drone (its own pass) | Body `steel_dark`, Rotors `rubber`, Camera `rubber`, Lens `glass`, Cables `rubber`, Claw `metal`, Top `rubber` |
+
+**The drone (`tripo_Drone.glb`, 2026-11-16):** more sophisticated than the sheet's (a camera ball under the body and a CLAW hanging on
+four cables), 9 532 triangles in 81 loose parts: three times the per-item budget (a hero gadget; decimate if the Moto says so).
+Generated LAID, stood up with `tripo_stand_up.py ... -90` (the rotors to +Z), zoned by each part's BOX (`"part_where"` in
+`tripo_zones.py`: a whole part's zone from its bounds, for a model with too many parts to rank).
 Page 5 (`tripo_Props5.glb`, the Director's credit-saving page: SEVEN objects and more faces): alarm clock 2 324, radio-clock 904,
 controller 1 494, tablet 434, scrambler 1 012, shadow generator 940, gas grenade 1 108. **The drone gets a pass of its own** (it must
 be more sophisticated). **Next month (credits):** the EMP charge, the firework lure, the chloroform bottle, the baseball, the glass,

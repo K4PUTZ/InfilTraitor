@@ -96,6 +96,16 @@ SPEC = {
     # laid down (the page's trick): its axis is Y, the fuse at -Y. The prompt's yellow band has no faces of its own (the body's
     # side faces run its whole length): it stays grey until the model is edited (a loop cut, or a decal).
     "gas_grenade": {"default": "Fuse", "parts": {0: "Body"}, "zones": {"Body": "metal", "Fuse": "metal"}},
+    # the drone (its own pass, stood up from the laid page): 81 loose parts, zoned by each PART's box ("part_where", first match)
+    "scout_drone": {"default": "Body", "parts": {},
+                    "part_where": [("Claw", lambda lo, hi: hi.z < 0.2),
+                                   ("Lens", lambda lo, hi: lo.x > 0.2 and hi.x < 0.24 and lo.z > 0.35 and hi.z < 0.42),
+                                   ("Camera", lambda lo, hi: lo.z > 0.32 and hi.z < 0.46 and hi.y - lo.y < 0.14 and hi.x < 0.24 and lo.x > 0.05),
+                                   ("Cables", lambda lo, hi: lo.z > 0.15 and hi.z < 0.42 and hi.y - lo.y > 0.2),
+                                   ("Rotors", lambda lo, hi: hi.y - lo.y > 0.35),
+                                   ("Top", lambda lo, hi: lo.z > 0.57)],
+                    "zones": {"Body": "steel_dark", "Claw": "metal", "Lens": "glass", "Camera": "rubber", "Cables": "rubber",
+                              "Rotors": "rubber", "Top": "rubber"}},
 }
 
 
@@ -147,10 +157,19 @@ for name, spec in SPEC.items():
         vs = [v.co for fi in parts[order[split[0]]] for v in bm.faces[fi].verts]
         box = (Vector((min(v.x for v in vs), min(v.y for v in vs), min(v.z for v in vs))),
                Vector((max(v.x for v in vs), max(v.y for v in vs), max(v.z for v in vs))))
+    part_zone = {}
+    for k, comp in enumerate(parts):   # "part_where": a zone for a whole part, by its box
+        vs = [v.co for fi in comp for v in bm.faces[fi].verts]
+        lo = Vector((min(v.x for v in vs), min(v.y for v in vs), min(v.z for v in vs)))
+        hi = Vector((max(v.x for v in vs), max(v.y for v in vs), max(v.z for v in vs)))
+        for pz, test in spec.get("part_where", []):
+            if test(lo, hi):
+                part_zone[k] = pz
+                break
     counts = {}
     for f in me.polygons:
         r = rank[part_of[f.index]]
-        zone = spec["parts"].get(r, spec["default"])
+        zone = spec["parts"].get(r, part_zone.get(part_of[f.index], spec["default"]))
         if split and r == split[0]:
             rule = split[2]
             try:
@@ -181,8 +200,8 @@ for name, spec in SPEC.items():
     row_i += 1
 
 cam_d = bpy.data.cameras.new("c"); cam_d.type = "ORTHO"; cam = bpy.data.objects.new("c", cam_d); scene.collection.objects.link(cam)
-cam.location = (0.6, -10, -row_i * 1.2 / 2 + 0.6); cam.rotation_euler = (math.radians(90), 0, 0)
-cam_d.ortho_scale = row_i * 1.2; scene.camera = cam
+cam.location = (0.6, -10, -(row_i - 1) * 1.2 / 2.0 + 0.4); cam.rotation_euler = (math.radians(90), 0, 0)
+cam_d.ortho_scale = max(2.4, row_i * 1.2); scene.camera = cam
 scene.render.resolution_x = 600; scene.render.resolution_y = int(600 * row_i / 2.0)
 scene.render.engine = "BLENDER_EEVEE"
 scene.world = bpy.data.worlds.new("w"); scene.world.use_nodes = True

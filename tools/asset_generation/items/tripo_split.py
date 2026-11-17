@@ -88,7 +88,7 @@ for r, (ob, size) in enumerate(objs):
 cam_d = bpy.data.cameras.new("cam"); cam_d.type = "ORTHO"
 cam = bpy.data.objects.new("cam", cam_d); scene.collection.objects.link(cam)
 w, h = 3 * CELL * 1.2, len(objs) * CELL * 1.2
-cam.location = (w / 2 - 0.6 * CELL, -10, -h / 2 + 0.2 * CELL); cam.rotation_euler = (math.radians(90), 0, 0)
+cam.location = (w / 2 - 0.6 * CELL, -10, -(len(objs) - 1) * CELL * 1.2 / 2.0); cam.rotation_euler = (math.radians(90), 0, 0)
 cam_d.ortho_scale = max(w, h) * 1.02; scene.camera = cam
 scene.render.resolution_x = 900; scene.render.resolution_y = int(900 * h / w)
 scene.render.engine = "BLENDER_EEVEE"

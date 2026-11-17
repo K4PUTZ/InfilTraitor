@@ -149,6 +149,31 @@ func select_or_cycle(weapon_id: String) -> void:
 	set_weapon(weapon_id)
 
 
+## The attachment on the muzzle (Director, 2026-11-17: the suppressor is a mountable accessory, on the bullet pistols only).
+## "" takes it off; one that does not fit the held weapon is refused loudly.
+var _attachment_id: String = ""
+
+
+func set_attachment(attachment_id: String) -> void:
+	if attachment_id != "" and not AttachmentRegistry.shared().fitting(_weapon_id).has(attachment_id):
+		push_error("[AgentShotController] attachment '%s' does not fit '%s' (attachments/%s.json \"fits\")" % [attachment_id, _weapon_id, attachment_id])
+		return
+	_attachment_id = attachment_id
+	print_debug("[AGENT-SHOT] attachment -> %s" % (attachment_id if attachment_id != "" else "none"))
+	if room.agent != null and is_instance_valid(room.agent) and room.agent.pose != null:
+		room.agent.pose.muzzle_attachment = attachment_id
+
+
+## The dev key of the attachments: none, then each one that fits the held weapon, then none again.
+func cycle_attachment() -> void:
+	var ids: PackedStringArray = AttachmentRegistry.shared().fitting(_weapon_id)
+	if ids.is_empty():
+		print_debug("[AGENT-SHOT] nothing mounts on '%s'" % _weapon_id)
+		return
+	var i: int = ids.find(_attachment_id)
+	set_attachment("" if i == ids.size() - 1 else ids[i + 1])
+
+
 ## Switch the firearm. Loud on an unknown id and a no-op on the current one.
 ##
 ## RE-KEYS AN OPEN AIM, which is the whole reason this is not a one-line setter:
@@ -165,6 +190,8 @@ func set_weapon(weapon_id: String) -> void:
 		return
 	_weapon_id = weapon_id
 	print_debug("[AGENT-SHOT] weapon -> %s" % weapon_id)
+	if _attachment_id != "" and not AttachmentRegistry.shared().fitting(weapon_id).has(_attachment_id):
+		set_attachment("")   ## it does not fit the new weapon: it comes off
 	## The FIGURE follows the choice, or says why it cannot. Unknown ids fall back
 	## to the shotgun suffix rather than to a guess: a weapon nobody has baked and
 	## a weapon nobody has named should look the same, which is "the one that

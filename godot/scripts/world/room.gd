@@ -2878,6 +2878,7 @@ func _ready() -> void:
 	_input_controller.pause_requested.connect(_on_pause_requested)
 	_input_controller.grenade_mode_requested.connect(_on_grenade_mode_requested)
 	_input_controller.weapon_select_requested.connect(_on_weapon_select_requested)
+	_input_controller.attachment_cycle_requested.connect(_on_attachment_cycle_requested)
 	_input_controller.grenade_throw_requested.connect(_on_grenade_throw_requested)
 	_input_controller.grenade_cancel_requested.connect(_on_grenade_cancel_requested)
 
@@ -10384,6 +10385,13 @@ func _on_weapon_select_requested(weapon_id: String) -> void:
 		return
 	if _agent_shot_controller != null:
 		_agent_shot_controller.select_or_cycle(weapon_id)
+
+
+func _on_attachment_cycle_requested() -> void:
+	if is_resolving_action():
+		return
+	if _agent_shot_controller != null:
+		_agent_shot_controller.cycle_attachment()
 
 
 func _on_grenade_mode_requested() -> void:

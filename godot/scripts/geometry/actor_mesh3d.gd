@@ -127,6 +127,9 @@ var _pistol_holder: Node3D = null    ## carries the placement (the pose's, blend
 var _figure: String = ""            ## the Tripo figure ("male" / "female"): a family model's grip may be its own per figure
 var _held_id: String = ""            ## the weapon row whose model is in `_pistol_holder` (the family's reference until another is chosen)
 var _held_def: WeaponDef = null      ## its row: its model's place in the reference's frame (`held_rel_for`) and its muzzle
+var _attach_id: String = ""          ## the attachment on its muzzle ("" = none)
+var _attach_def: AttachmentDef = null
+var _attach_node: Node3D = null      ## its model, a child of the holder beside the weapon's
 var _throw: ActorAimPoseRef = null   ## the throw's path layer (null: the figure has no throw timeline)
 var _throw_seq: AimSequenceRef = null
 var _throw_w: float = 0.0            ## where along the throw's timeline the body is, 0..1
@@ -631,12 +634,39 @@ func _hold_model(id: String) -> void:
 		return
 	for child in _pistol_holder.get_children():
 		child.queue_free()
+	_attach_node = null
+	_attach_id = ""
+	_attach_def = null
 	var model := scene.instantiate() as Node3D
 	model.transform = w.held_rel_for(_figure)
 	_pistol_holder.add_child(model)
-	_apply_board_light(_pistol)
+	_apply_board_light(model)
 	_held_id = id
 	_held_def = w
+
+
+## The attachment `id` on the held weapon's muzzle ("" takes it off): its model in the holder, placed on that weapon's own muzzle.
+func _hold_attachment(id: String) -> void:
+	if _pistol_holder == null or _held_def == null or id == _attach_id:
+		return
+	if _attach_node != null:
+		_attach_node.queue_free()
+		_attach_node = null
+	_attach_id = id
+	_attach_def = null
+	if id == "":
+		return
+	var a: AttachmentDef = AttachmentRegistry.shared().get_attachment(id)
+	var scene := load(a.model_path) as PackedScene if a != null and a.model_path != "" else null
+	if scene == null or _held_def.muzzle == Vector3.INF:
+		push_error("[ActorMesh3D] attachment '%s' has no row, no model, or '%s' has no muzzle: none mounted" % [id, _held_id])
+		return
+	var rel: Transform3D = _held_def.held_rel_for(_figure)
+	_attach_node = scene.instantiate() as Node3D
+	_attach_node.transform = rel * a.mount_in(_held_def, rel.basis.get_scale().x)
+	_pistol_holder.add_child(_attach_node)
+	_apply_board_light(_attach_node)   ## only the new model: a second pass over a lit one reads its ShaderMaterial as "no colour" (white)
+	_attach_def = a
 
 
 ## Where the held model's round leaves, in the holder's frame (the reference's placement): the row's muzzle carried by `held_rel_for(figure)`.
@@ -644,6 +674,8 @@ func _hold_model(id: String) -> void:
 func _held_muzzle() -> Vector3:
 	if _held_def == null or _held_def.muzzle == Vector3.INF:
 		return Vector3.INF
+	if _attach_node != null and _attach_def != null and _attach_def.muzzle != Vector3.INF:
+		return _attach_node.transform * _attach_def.muzzle   ## the round leaves the attachment's end
 	return _held_def.held_rel_for(_figure) * _held_def.muzzle
 
 
@@ -685,6 +717,7 @@ func _update_aim(state: Dictionary) -> void:
 		or (kind == "crouch" and not _crouch.is_empty() and _crouch_t >= float(_crouch["len"])))   ## crouched: once fully down
 	if String(state["weapon"]) == "pistol" and String(state.get("weapon_id", "")) != "" and _pistol != null and not _pistol.visible:
 		_hold_model(String(state["weapon_id"]))   ## swapped only while the gun is out of sight (in the coat)
+		_hold_attachment(String(state.get("attachment", "")))
 	var want: bool = ready and ((String(state["weapon"]) == "pistol" and String(state["grip"]) == "_aimed") or _shot_hold > 0.0)
 	var target: float = 1.0 if want else 0.0
 	_aim_t = move_toward(_aim_t, target, dt / (_raise_s if want else _lower_s))

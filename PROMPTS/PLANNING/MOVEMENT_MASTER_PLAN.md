@@ -764,6 +764,16 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    every stop; an absolute hand place would only fit the aim), but each row names `held_like.figures.male` AND `.female`, none
    inherited (*"eu conferi nos dois na realidade, mas por acaso às vezes estava certo"*): a figure a row leaves out is warned at load.
    The Director's grapple is swapped in too (`grapple_launcher_v1_tripo.glb` keeps Tripo's).
+   **The SUPPRESSOR (Director, 2026-11-17): a mountable ACCESSORY, on the bullet pistols only** (pistol, pistol_compact,
+   pistol_service, pistol_tactical; not the revolvers, the taser, the crossbow, the flare, the sci-fi or the grapple). Rows
+   `attachments/<id>.json` (`AttachmentDef` / `AttachmentRegistry`: `kind` muzzle, `fits`, `gameplay`, `model.mount` = the model
+   in the reference pistol's frame relative to its muzzle, read off the lab; on another pistol it sits on THAT pistol's muzzle in
+   its units; `model.muzzle` = where the round now leaves). Two from the lab (suppressor_a / _b) and six by script
+   (`tools/asset_generation/items/suppressor_variants.py`: round short / long, square, square long, triangle, hex, in suppressor
+   A's frame and mount). In game: `ActorMesh3D._hold_attachment`; dev key 5 cycles what fits the held weapon; take step
+   `attach <id|none>`; takes `suppressed_shot`, `suppressor_variants`. Filmed on both figures: the round leaves the suppressor's
+   end. Each suppressor will have its own attributes (silences more or less, takes more or less damage, hurts accuracy):
+   **the attribute sheet of every weapon and attachment is the GAMEPLAY milestone's** (Director, same day).
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).

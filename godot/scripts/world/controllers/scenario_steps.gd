@@ -372,6 +372,15 @@ func scenario_weapon(weapon_id: String) -> bool:
 	return true
 
 
+## Scenario step `attach <id|none>`: the attachment on the held weapon's muzzle (`AgentShotController.set_attachment`).
+func scenario_attach(attachment_id: String) -> bool:
+	if room._agent_shot_controller == null:
+		push_error("[Room] scenario_attach: no shot controller")
+		return false
+	room._agent_shot_controller.set_attachment("" if attachment_id == "none" else attachment_id)
+	return true
+
+
 ## Scenario step `shot_aim <guard>`: the aim of `scenario_shoot` WITHOUT the trigger: the agent turns toward the guard and raises his
 ## weapon (the menu opens on the target). `shot_cancel` puts it down again.
 func scenario_shot_aim(index: int) -> bool:

@@ -13,6 +13,7 @@ weapon's own), with the entry's tags and `gameplay`; a row that exists keeps eve
 copied into `ASSETS/props/<id>/<id>.glb` (the game's import tree; the sources may sit under a `.gdignore`).
 
   python3 tools/asset_generation/weapons/family_rows.py <male readback .json> [--female <female readback .json>] [--dry]
+  python3 tools/asset_generation/weapons/family_rows.py <male readback .json> --attachments [--dry]     -> attachments/<id>.json
 
 `held_like.figures` names each figure's grip explicitly (Director, 2026-11-17): the male's read-back, and the female's with
 `--female`; a figure left out is warned at load (`WeaponDef`), never filled from the other.
@@ -112,5 +113,54 @@ def main():
             f.write("\n")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and "--attachments" not in sys.argv:
     main()
+
+
+# ---- attachments (Director, 2026-11-17: the suppressor is a mountable accessory, on the bullet pistols only) ----------------------------------
+BULLET_PISTOLS = ["pistol", "pistol_compact", "pistol_service", "pistol_tactical"]
+SUPPRESSOR_MATS = {"M_PCL_Flat_Black_Lighter": "rubber", "M_PCL_Flat_Black": "steel_dark", "M_PCL_Flat_Grey_Dark": "steel_dark"}
+ATTACHMENTS = {
+    "16 Suppressor-QWfBIqy0VW": "suppressor_a",
+    "17 Suppressor-VLiLj3j1tS": "suppressor_b",
+}
+
+
+def attachment_row(aid, r, ref_muzzle, source, surface_materials, today):
+    """The row of a muzzle attachment read off the lab (`r`: its read-back, held by the carrier pistol): its mount relative to the
+    reference's muzzle (so it sits on any family pistol's own muzzle), its own front as the new muzzle."""
+    return {
+        "id": aid, "kind": "muzzle", "fits": BULLET_PISTOLS,
+        "gameplay": {"stealth": "suppressed"},
+        "model": {
+            "path": f"res://ASSETS/props/{aid}/{aid}.glb",
+            "surface_materials": surface_materials,
+            "mount": {"on": "pistol", "scale": r["rel_scale"], "quat": r["rel_quat"],
+                      "pos": [round(a - b, 5) for a, b in zip(r["rel_pos"], ref_muzzle)]},
+            "muzzle": r["muzzle_proposed"],
+            "size_certified": today,
+        },
+    }
+
+
+def write_attachments(rb, dry):
+    ref_muzzle = json.load(open(os.path.join(WEAPONS, "pistol.json")))["model"]["muzzle"]
+    today = datetime.date.today().isoformat()
+    out = os.path.join(ROOT, "attachments")
+    os.makedirs(out, exist_ok=True)
+    for lab, aid in ATTACHMENTS.items():
+        r = rb["models"][lab]
+        row = attachment_row(aid, r, ref_muzzle, r["source"], SUPPRESSOR_MATS, today)
+        print(f"[family_rows] {aid:16s} <- {lab:30s} x{r['rel_scale']:.4f} mount {row['model']['mount']['pos']} muzzle {r['muzzle_proposed']}")
+        if dry:
+            continue
+        dst = os.path.join(ROOT, f"ASSETS/props/{aid}/{aid}.glb")
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.copyfile(os.path.join(ROOT, r["source"]), dst)
+        with open(os.path.join(out, aid + ".json"), "w") as f:
+            json.dump(row, f, indent=2)
+            f.write("\n")
+
+
+if __name__ == "__main__" and "--attachments" in sys.argv:
+    write_attachments(json.load(open([x for x in sys.argv[1:] if not x.startswith("--")][0])), "--dry" in sys.argv)

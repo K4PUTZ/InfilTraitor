@@ -21,6 +21,7 @@ signal grenade_cancel_requested
 ## business and the id is the game's, and D31 will re-map which key holds what
 ## without this signal changing shape.
 signal weapon_select_requested(weapon_id: String)
+signal attachment_cycle_requested   ## key 5: the next muzzle attachment that fits the held weapon (dev, 2026-11-17)
 var room: Node
 var _camera_controller: Node = null
 
@@ -148,6 +149,10 @@ func _handle_key_action(key: InputEventKey) -> void:
 			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_weapon_pistol"):
 		weapon_select_requested.emit("pistol")
+		if viewport:
+			viewport.set_input_as_handled()
+	elif key.is_action_pressed("ui_weapon_attachment"):
+		attachment_cycle_requested.emit()
 		if viewport:
 			viewport.set_input_as_handled()
 	elif key.is_action_pressed("ui_weapon_shotgun"):

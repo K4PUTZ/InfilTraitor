@@ -1,0 +1,42 @@
+{
+  "id": "suppressor_b",
+  "kind": "muzzle",
+  "fits": [
+    "pistol",
+    "pistol_compact",
+    "pistol_service",
+    "pistol_tactical"
+  ],
+  "gameplay": {
+    "stealth": "suppressed"
+  },
+  "model": {
+    "path": "res://ASSETS/props/suppressor_b/suppressor_b.glb",
+    "surface_materials": {
+      "M_PCL_Flat_Black_Lighter": "rubber",
+      "M_PCL_Flat_Black": "steel_dark",
+      "M_PCL_Flat_Grey_Dark": "steel_dark"
+    },
+    "mount": {
+      "on": "pistol",
+      "scale": 0.61428,
+      "quat": [
+        0.0,
+        -0.70711,
+        -0.0,
+        0.70711
+      ],
+      "pos": [
+        0.0022,
+        0.0,
+        0.0
+      ]
+    },
+    "muzzle": [
+      0.0009,
+      -0.001,
+      -0.1398
+    ],
+    "size_certified": "2026-11-17"
+  }
+}

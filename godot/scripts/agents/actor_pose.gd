@@ -50,6 +50,8 @@ var grip: String = ""
 ## The grip the figure holds its weapon with ("shotgun" by default) and the weapon's id ("" = the default).
 var weapon: String = "shotgun"
 var weapon_id: String = ""
+## The attachment on the held weapon's muzzle (`attachments/<id>.json`, "" = none; Director 2026-11-17: the suppressor).
+var muzzle_attachment: String = ""
 var room: Node = null
 
 signal throw_released
@@ -243,6 +245,7 @@ func mesh_state() -> Dictionary:
 		"grip": grip,
 		"weapon": weapon,
 		"weapon_id": weapon_id,
+		"attachment": muzzle_attachment,
 		"walk": _walk_progress if _posture != "prone" else -1.0,
 		"dash": _dash,
 		"dash_rate": dash_rate,

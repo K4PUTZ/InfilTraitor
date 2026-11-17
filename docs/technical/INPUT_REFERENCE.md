@@ -21,6 +21,11 @@ The input system is centralized in the Godot **Input Map** (`project.godot` `[in
 | `ui_move_down` | Down Arrow | gameplay | Nudge or peek downward |
 | `ui_move_left` | Left Arrow | gameplay | Nudge or peek leftward |
 | `ui_move_right` | Right Arrow | gameplay | Nudge or peek rightward |
+| `ui_weapon_rifle` | 1 | gameplay | Select the rifle slot (`WEAPON` D31) |
+| `ui_weapon_pistol` | 2 | gameplay | Select the pistol slot; pressing it again with a pistol in hand cycles the H1 family (every row `held_as: pistol`: compact, service, tactical, revolvers, taser, crossbow, flare, sci-fi, ray gun, grapple) |
+| `ui_weapon_shotgun` | 3 | gameplay | Select the shotgun slot |
+| `ui_grenade_mode` | G / 4 | gameplay | Enter grenade mode |
+| `ui_weapon_attachment` | 5 | gameplay | Cycle the muzzle attachments that fit the weapon in hand (`AttachmentRegistry.fitting`: the suppressors, only on the four bullet pistols), then back to none. A weapon change drops an attachment that no longer fits; the shot leaves from the attachment's front (`model.muzzle`). Added 2026-11-17 (MV-6) |
 | `debug_toggle_map_loader` | F2 | debug | Toggle map loader panel |
 | `debug_toggle_voxel_ruler` | F3 | debug | Toggle voxel grid overlay (ruler) |
 | `debug_toggle_nudge_mode` | F4 | debug | Toggle nudge mode for fine camera/room positioning |

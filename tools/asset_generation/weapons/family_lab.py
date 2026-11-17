@@ -20,8 +20,18 @@ work (`pose_lab.py family` opens it as it is).
 
 Run inside Blender:
   blender -b --python family_lab.py -- build  <family> <figure> <out .blend>
-  blender -b --python family_lab.py -- render <saved .blend> <out prefix>      -> <prefix>_line.png (the whole line, three-quarters)
+  blender -b --python family_lab.py -- render <saved .blend> <out prefix> [readback .json] -> <prefix>_line.png (the whole line, three-quarters)
                                                                                   <prefix>_tile_<nn>.png (each gun hand from the side, one scale)
+  blender -b --python family_lab.py -- readback <saved .blend> <out .json>       -> each model's placement read off the saved file
+
+THE READ-BACK. Each model's SOURCE vertices (the glb, imported and turned as the build did) are fitted to where they now are in the
+frame of what holds them (the RightHand bone; a muzzle attachment: its carrier pistol), a similarity transform (Umeyama): scale,
+rotation, offset, and the residual (above a tenth of a millimetre at the reference's size the model was RESHAPED, not just placed:
+reported, never hidden). The reference is read the same way, and each model is then given RELATIVE TO IT: `rel_scale` (the model's
+native units to the reference model's), `rel_quat` and `rel_pos` (the model's frame in the reference model's glTF frame), so the
+family's timeline, which places the reference at every stop, places the model by one product. Also: its length relative to the
+reference, how far the Director moved it from the build's start, and a proposed muzzle (the centre of the foremost vertices along the
+barrel, glTF space of the source).
 """
 import bpy, bmesh, sys, os, math, json
 from mathutils import Matrix, Vector
@@ -377,9 +387,30 @@ def _setup_render(scene, w, h):
     return cam
 
 
-def render(blend, prefix):
+def render(blend, prefix, readback_json=None):
     bpy.ops.wm.open_mainfile(filepath=blend)
     scene = bpy.context.scene
+    if readback_json:     # a red bead on each proposed muzzle, in the Agent's collection (so its tile shows it)
+        with open(readback_json) as f:
+            rb = json.load(f)["models"]
+        mat = bpy.data.materials.new("lab_muzzle")
+        mat.use_nodes = True
+        mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1.0, 0.02, 0.02, 1)
+        mat.node_tree.nodes["Principled BSDF"].inputs["Emission Color"].default_value = (1.0, 0.0, 0.0, 1)
+        mat.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"].default_value = 2.0
+        for key, r in rb.items():
+            ob = bpy.data.objects.get("GUN_" + key)
+            if ob is None or r["role"] == "muzzle":
+                continue
+            me = bpy.data.meshes.new("bead")
+            bm = bmesh.new()
+            bmesh.ops.create_uvsphere(bm, u_segments=12, v_segments=8, radius=0.004)
+            bm.to_mesh(me)
+            bm.free()
+            me.materials.append(mat)
+            bead = bpy.data.objects.new("MUZZLE_" + key, me)
+            ob.users_collection[0].objects.link(bead)
+            bead.location = Vector(r["muzzle_world"])
     guns = sorted([o for o in bpy.data.objects if o.name.startswith("GUN_") and o.get("lab_role") != "carrier"], key=lambda o: o.name)
     cam = _setup_render(scene, 2400, 1000)
     # the whole line, from the front three-quarters, above the hands
@@ -414,14 +445,113 @@ def render(blend, prefix):
     print(f"[family_lab] rendered {len(tiles)} hand tiles ({prefix}_tiles.json lists them)")
 
 
+# ---- the read-back --------------------------------------------------------------------------------------------------------------------------
+def umeyama(src, dst):
+    """(s, R, t, rms): dst ~ s R src + t, least squares (Umeyama 1991), R a proper rotation."""
+    import numpy as np
+    A = np.array([tuple(v) for v in src]); B = np.array([tuple(v) for v in dst])
+    ma, mb = A.mean(0), B.mean(0)
+    a, b = A - ma, B - mb
+    U, D, Vt = np.linalg.svd(b.T @ a / len(A))
+    S = np.eye(3)
+    if np.linalg.det(U) * np.linalg.det(Vt) < 0:
+        S[2, 2] = -1
+    R = U @ S @ Vt
+    s = float(np.trace(np.diag(D) @ S) / (a ** 2).sum(1).mean())
+    t = mb - s * R @ ma
+    rms = float(np.sqrt((((s * (R @ a.T)).T + mb - B) ** 2).sum(1).mean()))
+    return s, Matrix(R.tolist()), Vector(t.tolist()), rms
+
+
+def _sim(s, R, t):
+    m = R.to_4x4() @ Matrix.Scale(s, 4)
+    m.translation = t
+    return m
+
+
+def readback(blend, out_json):
+    import numpy as np
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    bpy.context.view_layer.update()
+    guns = sorted([o for o in bpy.data.objects if o.name.startswith("GUN_") and o.get("lab_role") != "carrier"], key=lambda o: o.name)
+    rows = {}
+    ref_m = None
+    for ob in guns:
+        role = ob.get("lab_role")
+        src = import_model(os.path.join(ROOT, ob["lab_source"]), "_src")
+        if role != "reference":
+            src.data.transform(Matrix.Rotation(math.radians(float(ob.get("lab_turn_deg", 0.0))), 4, "Z"))
+        sp = verts(src)
+        if len(sp) != len(ob.data.vertices):
+            fail(f"{ob.name}: {len(ob.data.vertices)} vertices in the file, {len(sp)} in its source: the mesh was edited beyond a placement")
+        holder = ob.parent
+        if ob.parent_type == "BONE":
+            pb = holder.pose.bones[ob.parent_bone]
+            frame = holder.matrix_world @ pb.matrix
+        else:
+            frame = holder.matrix_world
+        to_frame = frame.inverted()
+        dp = [to_frame @ (ob.matrix_world @ v.co) for v in ob.data.vertices]
+        s, R, t, rms = umeyama(sp, dp)
+        m = _sim(s, R, t)
+        lo, hi = box(sp)
+        tip_x = hi.x - 0.03 * (hi.x - lo.x)
+        tip = [p for p in sp if p.x >= tip_x]
+        muzzle = sum(tip, Vector()) / len(tip)
+        tip_ids = [i for i, p in enumerate(sp) if p.x >= tip_x]
+        muzzle_world = ob.matrix_world @ (sum((ob.data.vertices[i].co for i in tip_ids), Vector()) / len(tip_ids))
+        muzzle = Matrix.Rotation(math.radians(-float(ob.get("lab_turn_deg", 0.0))), 4, "Z") @ muzzle if role != "reference" else muzzle
+        muzzle_gltf = CM @ muzzle
+        start = float(ob.get("lab_start_factor", 0.0))
+        rows[ob.name[4:]] = {"role": role, "source": ob["lab_source"], "holder": ob.parent_bone or holder.name,
+                             "scale_in_holder": s, "rms_in_holder": rms, "length_native": hi.x - lo.x,
+                             "start_factor": start, "_m": m, "muzzle_proposed": [round(c, 4) for c in muzzle_gltf],
+                             "muzzle_world": [round(c, 5) for c in muzzle_world]}
+        if role == "reference":
+            ref_m = m
+            ref_len = hi.x - lo.x
+            ref_scale = s
+        bpy.data.objects.remove(src)
+    if ref_m is None:
+        fail("no reference model in the file")
+    out = {"blend": os.path.relpath(blend, ROOT), "reference": [k for k, r in rows.items() if r["role"] == "reference"][0], "models": {}}
+    for k, r in rows.items():
+        m = r.pop("_m")
+        if r["role"] == "muzzle":     # held by the carrier pistol, already in the reference model's frame
+            rel = m
+        else:
+            rel = ref_m.inverted() @ m
+        loc, q, sc = rel.decompose()
+        # Blender frame of an imported glb -> glTF frame: the relative transform conjugated by CM
+        g = CM @ rel @ CM.inverted()
+        gl, gq, gs = g.decompose()
+        r["rel_scale"] = round(sc.x, 5)
+        r["rel_pos"] = [round(c, 5) for c in gl]
+        r["rel_quat"] = [round(gq.x, 5), round(gq.y, 5), round(gq.z, 5), round(gq.w, 5)]
+        r["rel_turn_deg"] = round(math.degrees(gq.angle), 2)
+        r["length_vs_reference"] = round(r["length_native"] * r["scale_in_holder"] / (ref_len * ref_scale), 4) if r["role"] != "muzzle" else None
+        r["changed_from_start"] = None if r["role"] == "reference" else round(r["scale_in_holder"] / ref_scale / r["start_factor"] if r["start_factor"] else 0.0, 4)
+        r["reshaped"] = r["rms_in_holder"] / r["scale_in_holder"] * ref_scale > 1e-4
+        r["scale_in_holder"] = round(r["scale_in_holder"], 6); r["rms_in_holder"] = round(r["rms_in_holder"], 7)
+        out["models"][k] = r
+        print(f"[family_lab] {k:40s} x{r['rel_scale']:.4f} of the ref units, length {r['length_vs_reference'] if r['length_vs_reference'] is not None else '-':>6} x ref, "
+              f"turn {r['rel_turn_deg']:6.2f} deg, pos {r['rel_pos']}, size vs start {r['changed_from_start']}, rms {r['rms_in_holder']:.2e}{' RESHAPED' if r['reshaped'] else ''}")
+    os.makedirs(os.path.dirname(out_json), exist_ok=True)
+    with open(out_json, "w") as f:
+        json.dump(out, f, indent=1)
+    print(f"[family_lab] wrote {out_json}")
+
+
 def main():
     a = args_after_dashes()
     if not a:
-        fail("usage: -- build <family> <figure> <out .blend> | render <blend> <out prefix>")
+        fail("usage: -- build <family> <figure> <out .blend> | render <blend> <out prefix> | readback <blend> <out .json>")
     if a[0] == "build":
         build(a[1], a[2], a[3])
+    elif a[0] == "readback":
+        readback(a[1], a[2])
     elif a[0] == "render":
-        render(a[1], a[2])
+        render(a[1], a[2], a[3] if len(a) > 3 else None)
     else:
         fail(f"unknown mode {a[0]}")
 

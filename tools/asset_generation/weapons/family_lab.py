@@ -554,11 +554,20 @@ def readback(blend, out_json):
         s, R, t, rms = umeyama(sp, dp)
         # the fit maps the TURNED source; the board loads the glb as it is: fold the build's turn in, so `m` maps the glb's own frame
         m = _sim(s, R, t) @ (Matrix.Rotation(math.radians(float(ob.get("lab_turn_deg", 0.0))), 4, "Z") if role != "reference" else Matrix.Identity(4))
-        lo, hi = box(sp)
+        # the muzzle and the length are read in the GUN frame (barrel +X), whatever frame the file holds the mesh in: a file built
+        # from a read-back keeps the glb's own frame (`lab_turn_deg` 0), so the frame's turn is found again as the build finds it
+        if role != "reference":
+            probe = import_model(os.path.join(ROOT, ob["lab_source"]), "_probe")
+            frame_turn = to_gun_frame(probe)
+            bpy.data.objects.remove(probe)
+        else:
+            frame_turn = 0.0
+        to_gun = Matrix.Rotation(math.radians(frame_turn - (float(ob.get("lab_turn_deg", 0.0)) if role != "reference" else 0.0)), 4, "Z")
+        sg = [to_gun @ p for p in sp]
+        lo, hi = box(sg)
         tip_x = hi.x - 0.03 * (hi.x - lo.x)
-        tip = [p for p in sp if p.x >= tip_x]
-        muzzle = sum(tip, Vector()) / len(tip)
-        tip_ids = [i for i, p in enumerate(sp) if p.x >= tip_x]
+        tip_ids = [i for i, p in enumerate(sg) if p.x >= tip_x]
+        muzzle = sum((sp[i] for i in tip_ids), Vector()) / len(tip_ids)
         muzzle_world = ob.matrix_world @ (sum((ob.data.vertices[i].co for i in tip_ids), Vector()) / len(tip_ids))
         muzzle = Matrix.Rotation(math.radians(-float(ob.get("lab_turn_deg", 0.0))), 4, "Z") @ muzzle if role != "reference" else muzzle
         muzzle_gltf = CM @ muzzle

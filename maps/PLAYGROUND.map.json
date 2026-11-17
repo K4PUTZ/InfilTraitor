@@ -1836,6 +1836,25 @@
           "length": 2700,
           "seed": 1,
           "note": "The H1 hold family firing (MOVEMENT §11.6 step 2): each of the 15 weapons drawn, fired at guard 5, put away (3.0 s each)."
+        },
+        {
+          "id": "grapple_shot",
+          "profile": "engine",
+          "rail": "h1_family_rail",
+          "steps": [
+            "weapon grapple_gun",
+            "shot_aim 5",
+            "wait 1.0",
+            "shoot 5",
+            "wait 1.2",
+            "shot_cancel",
+            "wait 0.8"
+          ],
+          "at_key": 0,
+          "after_hold": 0,
+          "length": 240,
+          "seed": 1,
+          "note": "The grapple gun (H1) drawn and fired once."
         }
       ]
     },

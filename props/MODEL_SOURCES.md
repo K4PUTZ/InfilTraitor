@@ -107,3 +107,5 @@ model's own Poly Pizza page by `tools/asset_generation/items/pp_get.py`.
 | `swords` | `Cutlass-tzwQ8g5dBy.glb` | Cutlass | Quaternius | https://poly.pizza/m/tzwQ8g5dBy |
 | `medkits` | `First_Aid_Kit-Hp80p6148W.glb` | First Aid Kit | Quaternius | https://poly.pizza/m/Hp80p6148W |
 | `medkits` | `First_Aid_Kit-wP00rePSRD.glb` | First Aid Kit | Quaternius | https://poly.pizza/m/wP00rePSRD |
+
+**Adapted (2026-11-17):** `ASSETS/MODELS/sources/hand_crossbow/` = CreativeTrio's Crossbow + Arrow (CC0, above), cut down by `tools/asset_generation/items/hand_crossbow.py`.

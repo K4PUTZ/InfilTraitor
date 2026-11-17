@@ -127,7 +127,7 @@ anyone may carry anything, with the same animations (Director, 2026-11-16).
 | Late guns (pulse carbine, laser, plasma, sonic) | H3 / H1 | sci-fi set: ray gun, lightning gun, 3 rifles, 3 pistols (`scifi`) | which is which: the Director's look |
 | Suppressor | on a gun | 2 (`suppressors`) | |
 | Scope, bipod, tripod, bayonet | on a gun | 4 (guns pack) | |
-| Hand crossbow + tranquiliser darts | H1 | a full crossbow + 2 arrows (`crossbow`), to cut down | ✳️ a true HAND crossbow, if the cut-down one fails |
+| Hand crossbow + tranquiliser darts | H1 | ✅ v1 2026-11-17: cut down by `tools/asset_generation/items/hand_crossbow.py` (no stock / scope / stirrup / fore-grip, barrel x0.6, prod x0.65, the arrow shortened into the loaded dart; zones Body, Limbs, Cams, String, Trigger, Dart*) -> `ASSETS/MODELS/sources/hand_crossbow/` | ✳️ a true HAND crossbow, if the cut-down one fails |
 | Taser | H1 | | ✳️ taser |
 | Bazooka / rocket launcher | H9 | 2 (`launchers`) | |
 | Grenade launchers | H3 | 3 (`launchers`) | |

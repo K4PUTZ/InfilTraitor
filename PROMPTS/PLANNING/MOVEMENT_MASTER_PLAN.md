@@ -733,6 +733,13 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    into the weapon's row: `model.hand` and `size_certified`; `model.muzzle`, proposed by a script (the centre of the foremost vertices
    along the barrel) and confirmed on a render with a marker; and the points its family needs (`support`, `butt`, `port`). The table
    copy and the pickup take the same size by themselves (HERITAGE T2 W2).
+   **2026-11-17: H1's lab file BUILT** (`tools/asset_generation/weapons/family_lab.py`, `ASSETS/MODELS/fit/FAMILY_H1_aim_MALE.blend`):
+   a line of 17 Agents frozen in the game's aim (`SEQ_draw_pistol_MALE_arm6.blend` @ `aim` = 23), one model each on the RightHand,
+   opened at the pack factor 0.0600 or a length relative to the certified pistol, its origin at its GRIP ANCHOR (top-back of the grip)
+   placed on the reference's: 4 pistols, 3 revolvers, taser, hand crossbow, flare gun, 3 sci-fi pistols, ray gun, grapple launcher
+   (ITEMS Q3 open), 2 suppressors on a copy of the pistol's muzzle. Next: the Director sizes them; the READ-BACK (fit each source
+   model's vertices to their final place in hand space: size + grip offset vs the reference) is written then; the female's file is
+   built from the male's sizes, for the grip check.
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).

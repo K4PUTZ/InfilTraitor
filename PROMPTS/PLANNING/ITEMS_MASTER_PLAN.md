@@ -84,6 +84,10 @@ rope and hook is "TRAVERSAL only", and the better grapple there brings perches. 
 traversal; the GRAPPLE (the better one) adds the pull and the distant trigger. Family: a held launcher (H1-like, one hand) or worn on
 the wrist (W): open (§5 Q3). Model: see §3.
 
+**Ruled 2026-11-17 (Director): BOTH mechanisms.** A held grapple PISTOL (H1, the Tripo `grapple_launcher`) AND a wrist launcher
+worn on the LEFT forearm, the grapple taking the wrist blade's place on that bracer (W, left arm). Owed: the animation of the hook
+firing with its line, and the reel turning. (The second half of Q3, pull / distant trigger vs the start rope, stays open.)
+
 ### 2.6 Throwables (H4)
 
 Frag grenade ✅ (certified 2026-11-16) · smoke, flashbang, gas, EMP, incendiary grenades (`DESIGN` §10.4) · stone · baseball · glass /
@@ -127,8 +131,8 @@ anyone may carry anything, with the same animations (Director, 2026-11-16).
 | Late guns (pulse carbine, laser, plasma, sonic) | H3 / H1 | sci-fi set: ray gun, lightning gun, 3 rifles, 3 pistols (`scifi`) | which is which: the Director's look |
 | Suppressor | on a gun | 2 (`suppressors`) | |
 | Scope, bipod, tripod, bayonet | on a gun | 4 (guns pack) | |
-| Hand crossbow + tranquiliser darts | H1 | ✅ v1 2026-11-17: cut down by `tools/asset_generation/items/hand_crossbow.py` (no stock / scope / stirrup / fore-grip, barrel x0.6, prod x0.65, the arrow shortened into the loaded dart; zones Body, Limbs, Cams, String, Trigger, Dart*) -> `ASSETS/MODELS/sources/hand_crossbow/` | ✳️ a true HAND crossbow, if the cut-down one fails |
-| Taser | H1 | | ✳️ taser |
+| Hand crossbow + tranquiliser darts | H1 | ✅ v1 2026-11-17: cut down by `tools/asset_generation/items/hand_crossbow.py` (no stock / scope / stirrup / fore-grip, barrel x0.6, prod x0.65, the arrow shortened into the loaded dart; zones Body, Limbs, Cams, String, Trigger, Dart*) -> `ASSETS/MODELS/sources/hand_crossbow/`; checked by the Director 2026-11-17: ok; owed: the string's animation and the dart in flight | ✳️ a true HAND crossbow, if the cut-down one fails |
+| Taser | H1 | ✅ checked 2026-11-17 (Tripo, Director: ok; the skin wants more detail later) | ✳️ taser |
 | Bazooka / rocket launcher | H9 | 2 (`launchers`) | |
 | Grenade launchers | H3 | 3 (`launchers`) | |
 | Flare gun (the firework lure?) | H1 | 1 (`flare`) | |
@@ -268,7 +272,7 @@ source) · baseball 🛠 (a sphere) · alarm clock ❓ (the timer may serve) · 
 
 1. **Is the hand crossbow the canon's dart launcher** (one item), or a second tranquiliser weapon beside it?
 2. ✅ **The bazooka:** everyone's (2026-11-16: every weapon may be carried by anyone, enemies and Agents, same animations).
-3. **The grapple:** held (a launcher in the hand) or worn on the wrist? And is the PULL / distant trigger the better grapple's, with
+3. ✅ (first half, 2026-11-17: BOTH, held H1 + left-wrist launcher in the blade's place, §2.5) **The grapple:** held (a launcher in the hand) or worn on the wrist? And is the PULL / distant trigger the better grapple's, with
    the start rope still traversal only (§2.5)?
 4. **What might be missing** (Claude's list, §6): which of them enter?
 

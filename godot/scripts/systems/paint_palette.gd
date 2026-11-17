@@ -16,6 +16,7 @@ const PAINTS := {
 	"navy": Color(0.14, 0.18, 0.30),
 	"signal_red": Color(0.62, 0.12, 0.10),
 	"bone_white": Color(0.78, 0.76, 0.70),
+	"safety_yellow": Color(0.85, 0.68, 0.10),   ## the taser's cartridge (ITEMS_MASTER_PLAN §7.12)
 }
 const SEPARATOR := "@"
 

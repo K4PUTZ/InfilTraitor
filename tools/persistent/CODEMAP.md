@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**354 scripts · 102014 lines total** (under `godot/scripts/`)
+**354 scripts · 102015 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3905,14 +3905,14 @@ extends `Node` · 217 lines
 
 ### `paint_palette.gd`
 
-`class_name PaintPalette` · 36 lines
+`class_name PaintPalette` · 37 lines
 
 `godot/scripts/systems/paint_palette.gd`
 
 > PaintPalette — the named paints a painted surface can wear (`painted_metal@olive_drab`). A paint is ONE COLOUR. A surface that takes paint keeps its material (its detail, its family, its soot and light behaviour) and only its `albedo` changes, so repainting is a single shader parameter write: no texture, no material copy, no disk row. The grayscale facade of a material that has one stays the detail the paint is multiplied by (B2), and is the natural mask for wear later (chips that show the metal under the paint). It lives in code, not in `ASSETS/materials/` (git-ignored there) nor in a JSON the export filter would have to list: the palette is a short table that ships with the scripts.
 
 **Constants / tuning**
-- `PAINTS` = `{ "olive_drab": Color(0.30, 0.34, 0.17), "sand": Color(0.62, 0.55, 0.38), "navy": Color(0.14, 0.18, 0.30), "signal_red": Color(0.62, 0.12, 0.10), "bone_white": Color(0.78, 0.76, 0.70), }`
+- `PAINTS` = `{ "olive_drab": Color(0.30, 0.34, 0.17), "sand": Color(0.62, 0.55, 0.38), "navy": Color(0.14, 0.18, 0.30), "signal_red": Color(0.62, 0.12, 0.10), "bone_white": Color(0.78, 0.76, 0.70), "safety_yellow": Color(0.85, 0.68, 0.10),   ## the taser's cartridge (ITEMS_MASTER_PLAN §7.12) }`
 - `SEPARATOR` = `"@"`
 
 ---

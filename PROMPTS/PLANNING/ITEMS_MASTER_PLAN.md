@@ -533,3 +533,21 @@ review: the taser and the can are clean; the detonator's lid hinge is lumpy and 
 **Open:** colour. Tripo's texture step costs credits; without it the colours come from OUR registry (`ACTOR` D66), which needs surface
 regions: the loose parts give some (the can and its cap, the cable), the rest is painted per face in Blender.
 
+### 7.12 Colour = OUR materials (Director, 2026-11-16)
+
+**Ruled:** a Tripo item takes no Tripo texture; its colours come from our registry (`ACTOR` D66), by ZONE.
+`tools/asset_generation/items/tripo_zones.py` names each face's zone (a material per zone in the GLB, the same contract as a
+downloaded model's authored surfaces): by LOOSE PART (Tripo already separates lids, buttons, contacts, cables), and where a part holds
+two zones, by a geometric rule (the taser's cartridge: the front 30 % of its body; the cloner's screen: the faces recessed into its
+front). Page 1 done, `ASSETS/MODELS/sources/tripo_props1_zoned/` + `_preview.png`; the zones and their materials (the prompt's colours):
+
+| Object | Zones -> material |
+|---|---|
+| Taser | Body `rubber`, Cartridge `plastic@safety_yellow`, Muzzle `rubber`, Contacts `metal` |
+| Detonator | Body `painted_metal@olive_drab`, Handle `rubber`, Button `plastic@signal_red`, ButtonBase `rubber` |
+| Spray can | Can `metal`, Cap `plastic`, Nozzle `plastic` |
+| Phone cloner | Body `rubber`, Screen `steel_dark`, Buttons `plastic`, Cable `rubber`, Plug `rubber`, PlugTip `metal` |
+
+New paint `safety_yellow` in `PaintPalette`. The mapping moves into each item's row when the item gets one; the next pages add their
+objects to the script's `SPEC` (a part rank is read off a parts render first: ranks are by face count, stable for one file).
+

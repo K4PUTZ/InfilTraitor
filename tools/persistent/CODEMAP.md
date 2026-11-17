@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**354 scripts · 102093 lines total** (under `godot/scripts/`)
+**354 scripts · 102111 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -422,7 +422,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 1165 lines
+`class_name ActorMesh3D` · extends `Node3D` · 1167 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -3042,7 +3042,7 @@ extends `RefCounted` · 63 lines
 
 ### `weapon_def.gd`
 
-`class_name WeaponDef` · 184 lines
+`class_name WeaponDef` · 200 lines
 
 `godot/scripts/systems/destruction/weapon_def.gd`
 

@@ -124,6 +124,7 @@ var _shot_hold: float = 0.0          ## the aim is held this long more after a s
 var _aim_t: float = 0.0              ## how far the aim has travelled, 0 (down) to 1 (held)
 var _pistol: Node3D = null           ## the pistol in the right hand (hidden until the fists reach the sternum)
 var _pistol_holder: Node3D = null    ## carries the placement (the pose's, blended between the stops)
+var _figure: String = ""            ## the Tripo figure ("male" / "female"): a family model's grip may be its own per figure
 var _held_id: String = ""            ## the weapon row whose model is in `_pistol_holder` (the family's reference until another is chosen)
 var _held_def: WeaponDef = null      ## its row: its model's place in the reference's frame (`held_rel`) and its muzzle
 var _throw: ActorAimPoseRef = null   ## the throw's path layer (null: the figure has no throw timeline)
@@ -303,6 +304,7 @@ func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
 	var lib: AnimationLibrary = TripoFigureRef.library(figure)
 	if lib == null:
 		return false
+	_figure = figure
 	for clip: String in [TRIPO_IDLE, move_clip]:
 		if not lib.has_animation(clip):
 			push_error("[ActorMesh3D] the %s game clips have no '%s' (have %s)" % [figure, clip, lib.get_animation_list()])
@@ -630,7 +632,7 @@ func _hold_model(id: String) -> void:
 	for child in _pistol_holder.get_children():
 		child.queue_free()
 	var model := scene.instantiate() as Node3D
-	model.transform = w.held_rel
+	model.transform = w.held_rel_for(_figure)
 	_pistol_holder.add_child(model)
 	_apply_board_light(_pistol)
 	_held_id = id
@@ -642,7 +644,7 @@ func _hold_model(id: String) -> void:
 func _held_muzzle() -> Vector3:
 	if _held_def == null or _held_def.muzzle == Vector3.INF:
 		return Vector3.INF
-	return _held_def.held_rel * _held_def.muzzle
+	return _held_def.held_rel_for(_figure) * _held_def.muzzle
 
 
 ## The pistol's placement at `weight` of the aim path: the stops' placements blended with the same easing the arms use (`ActorAimPose3D`): position and scale lerped,

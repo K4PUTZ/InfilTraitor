@@ -1,4 +1,7 @@
-"""ITEMS_MASTER_PLAN §2.2 / §3 — the HAND CROSSBOW (the canon's dart launcher, hold H1), cut down by script from the CC0 crossbow.
+"""⚠️ SUPERSEDED 2026-11-17: the Director edited the result by hand; his version is `sources/hand_crossbow/hand_crossbow.glb`
+(this script's own output is kept as `hand_crossbow_v1_script.glb`). It now writes `hand_crossbow_v1_script.glb`, never his file.
+
+ITEMS_MASTER_PLAN §2.2 / §3 — the HAND CROSSBOW (the canon's dart launcher, hold H1), cut down by script from the CC0 crossbow.
 
 The source is CreativeTrio's "Crossbow" (CC0, `items_polypizza/crossbow/Crossbow-kHb0kA11oD.glb`, original untouched): a rifle-style
 compound crossbow with a pistol grip, a butt stock, a scope, a fore-grip and a foot stirrup. It is a triangle soup (every face loose);
@@ -326,7 +329,7 @@ def main():
     lo, hi = box([xbow, dart])
     tris = sum(len(p.vertices) - 2 for o in (xbow, dart) for p in o.data.polygons)
     print("[hand_crossbow] hand crossbow + dart: %.3f long x %.3f wide x %.3f tall (the original's units), %d triangles" % (hi.x - lo.x, hi.y - lo.y, hi.z - lo.z, tris))
-    export([xbow, dart], os.path.join(OUT, "hand_crossbow.glb"))
+    export([xbow, dart], os.path.join(OUT, "hand_crossbow_v1_script.glb"))   # never over the Director's edited hand_crossbow.glb
     export([dart], os.path.join(OUT, "crossbow_dart.glb"))
     print("[hand_crossbow] wrote", os.path.relpath(os.path.join(OUT, "hand_crossbow.glb"), ROOT), "and crossbow_dart.glb")
     preview(xbow, dart, os.path.join(OUT, "_preview.png"))

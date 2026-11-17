@@ -24,6 +24,7 @@ Run inside Blender:
       male's sizes; her own aim, the same pistol, so only the figures' difference is left to adjust)
   blender -b --python family_lab.py -- render <saved .blend> <out prefix> [readback .json] -> <prefix>_line.png (the whole line, three-quarters)
                                                                                   <prefix>_tile_<nn>.png (each gun hand from the side, one scale)
+  blender -b --python family_lab.py -- swap <saved .blend> "<nn name>" <old glb> <new glb>   -> a model replaced by its edited version, in place
   blender -b --python family_lab.py -- readback <saved .blend> <out .json>       -> each model's placement read off the saved file
 
 THE READ-BACK. Each model's SOURCE vertices (the glb, imported and turned as the build did) are fitted to where they now are in the
@@ -106,6 +107,8 @@ def import_model(path, name):
     for o in meshes:
         o.data = o.data.copy() if o.data.users > 1 else o.data
         o.data.transform(o.matrix_world)
+        o.parent = None
+        o.matrix_world = Matrix.Identity(4)     # the transform is in the vertices now: a join must not apply it a second time
         if "custom_normal" in o.data.attributes:
             o.data.attributes.remove(o.data.attributes["custom_normal"])
     if len(meshes) > 1:
@@ -599,12 +602,42 @@ def readback(blend, out_json):
     print(f"[family_lab] wrote {out_json}")
 
 
+def swap(blend, key, old_glb, new_glb):
+    """A model of a SAVED lab file replaced by a new version of its source (the Director's own edit of the model): the old source is
+    fitted to the mesh as it sits in the file (its size and grip, untouched) and the new source gets the same transform. The new
+    version must keep the old one's frame (the same model, edited); the object, its place and its properties stay, `lab_source`
+    then names the new file. The file is saved in place: back it up first."""
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    ob = bpy.data.objects.get("GUN_" + key)
+    if ob is None:
+        fail(f"no GUN_{key} in {os.path.basename(blend)}")
+    turn = Matrix.Rotation(math.radians(float(ob.get("lab_turn_deg", 0.0))), 4, "Z")
+    old = import_model(old_glb, "_old")
+    old.data.transform(turn)
+    sp = verts(old)
+    if len(sp) != len(ob.data.vertices):
+        fail(f"GUN_{key} has {len(ob.data.vertices)} vertices, the old source {len(sp)}: not the model it holds")
+    s_, R, t, rms = umeyama(sp, [v.co.copy() for v in ob.data.vertices])
+    bpy.data.objects.remove(old)
+    new = import_model(new_glb, "_new")
+    new.data.transform(_sim(s_, R, t) @ turn)
+    mesh_old = ob.data
+    ob.data = new.data
+    bpy.data.objects.remove(new)
+    bpy.data.meshes.remove(mesh_old)
+    ob["lab_source"] = os.path.relpath(new_glb, ROOT)
+    bpy.ops.wm.save_mainfile()
+    print(f"[family_lab] GUN_{key} in {os.path.basename(blend)}: {os.path.basename(new_glb)} in the place of the old source (x{s_:.5f}, rms {rms:.1e})")
+
+
 def main():
     a = args_after_dashes()
     if not a:
         fail("usage: -- build <family> <figure> <out .blend> | render <blend> <out prefix> | readback <blend> <out .json>")
     if a[0] == "build":
         build(a[1], a[2], a[3], a[4] if len(a) > 4 else None)
+    elif a[0] == "swap":
+        swap(a[1], a[2], a[3], a[4])
     elif a[0] == "readback":
         readback(a[1], a[2])
     elif a[0] == "render":

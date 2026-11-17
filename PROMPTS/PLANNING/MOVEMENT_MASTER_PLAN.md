@@ -753,6 +753,13 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    `held_rel`) while the gun is in the coat; the muzzle and the case follow. Dev key 2 pressed again walks the family. Take
    `h1_family` (PLAYGROUND) draws all 15. Not done: the suppressors (attachments, no row yet), a shot fired from each muzzle on the
    board, the female's file.
+   **2026-11-17 (end): the female's file built FROM the male's sizes** (`family_lab.py build ... <male readback>`), sized by the
+   Director and read back: 9 models sit 1 to 5 mm apart in her hand (pistol_compact, the revolvers, taser, flare, two sci-fi, ray,
+   grapple), so a row may carry `held_like.figures.female` (`WeaponDef.held_rel_for(figure)`; `family_rows.py --female`). The
+   crossbow is the DIRECTOR'S edited one (`temp/inspect/hand_crossbow.blend` exported into `sources/hand_crossbow/hand_crossbow.glb`;
+   the script's v1 kept as `hand_crossbow_v1_script.glb`; re-running `hand_crossbow.py` would overwrite his), put into both lab files
+   by `family_lab.py swap` (old source fitted to the placed mesh, the new one given the same transform). Both figures filmed firing
+   all 15 (`h1_family_shot`, `INFILTRAITOR_TRIPO_FIGURE`): every shot leaves from the model's muzzle.
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).

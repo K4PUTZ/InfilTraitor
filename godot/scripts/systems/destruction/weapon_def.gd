@@ -108,6 +108,8 @@ var held_as: String = "shotgun"
 ## of the family's timeline places this model by one product. IDENTITY when the row is its family's reference.
 var held_like: String = ""
 var held_rel: Transform3D = Transform3D.IDENTITY
+## Per figure, where the Director set a model's grip apart on that figure's lab file (`held_like.figures.<figure>`, same fields).
+var held_rel_figures: Dictionary = {}
 
 
 ## Factory: parse WeaponDef from a JSON dict — same contract as
@@ -157,16 +159,30 @@ static func from_json(data: Dictionary) -> WeaponDef:
 		if like is Dictionary:
 			var l: Dictionary = like
 			def.held_like = String(l.get("weapon", ""))
-			var q: Array = l.get("quat", [0.0, 0.0, 0.0, 1.0])
-			var quat := Quaternion(float(q[0]), float(q[1]), float(q[2]), float(q[3])) if q.size() == 4 else Quaternion.IDENTITY
-			if q.size() != 4:
-				push_error("[WeaponDef] '%s': model.held_like.quat wants four numbers (x, y, z, w), got %s" % [def.id, str(q)])
-			var pos: Vector3 = JsonFileRef.vector3(l.get("pos", [0.0, 0.0, 0.0]), Vector3.ZERO, "weapon '%s' held_like pos" % def.id, [])
-			def.held_rel = Transform3D(Basis(quat.normalized()).scaled(Vector3.ONE * float(l.get("scale", 1.0))), pos)
+			def.held_rel = _rel_of(l, def.id)
+			var figs: Variant = l.get("figures", {})
+			if figs is Dictionary:
+				for fig: String in (figs as Dictionary):
+					def.held_rel_figures[fig] = _rel_of((figs as Dictionary)[fig], def.id)
 		if def.model_path != "" and def.size_certified == "":
 			push_warning("[WeaponDef] '%s': its size in the Agent's hands is not certified yet (MOVEMENT_MASTER_PLAN §9 item 7): it is drawn at its model's own size" % def.id)
 
 	return def
+
+
+## The model's frame in its family reference's frame, on the figure `figure` (its own when the row has one, else the shared one).
+func held_rel_for(figure: String) -> Transform3D:
+	return held_rel_figures.get(figure, held_rel)
+
+
+static func _rel_of(l: Dictionary, id: String) -> Transform3D:
+	var q: Array = l.get("quat", [0.0, 0.0, 0.0, 1.0])
+	if q.size() != 4:
+		push_error("[WeaponDef] '%s': model.held_like.quat wants four numbers (x, y, z, w), got %s" % [id, str(q)])
+		return Transform3D.IDENTITY
+	var quat := Quaternion(float(q[0]), float(q[1]), float(q[2]), float(q[3])).normalized()
+	var pos: Vector3 = JsonFileRef.vector3(l.get("pos", [0.0, 0.0, 0.0]), Vector3.ZERO, "weapon '%s' held_like pos" % id, [])
+	return Transform3D(Basis(quat).scaled(Vector3.ONE * float(l.get("scale", 1.0))), pos)
 
 
 ## World units per model unit, everywhere this weapon is drawn: the Tripo figure's own scale (the model is held in the

@@ -12,7 +12,10 @@ A row that does not exist yet is CREATED from the template its entry names (the 
 weapon's own), with the entry's tags and `gameplay`; a row that exists keeps every field but `held_as` and `model`. The model is
 copied into `ASSETS/props/<id>/<id>.glb` (the game's import tree; the sources may sit under a `.gdignore`).
 
-  python3 tools/asset_generation/weapons/family_rows.py <readback .json> [--dry]
+  python3 tools/asset_generation/weapons/family_rows.py <male readback .json> [--female <female readback .json>] [--dry]
+
+With the female's read-back, a model whose grip she has apart (more than 0.1 mm or 0.01 of a degree in the reference's units)
+gets `held_like.figures.female` (the same fields); the male's is the shared one.
 """
 import json, os, shutil, sys, datetime
 
@@ -47,9 +50,25 @@ H1 = {
 NO_DAMAGE = ("stun", "dart", "flare", "device")    # these leave no bullet in a wall: their effect is GAMEPLAY-01's
 
 
+def held_like(family_ref, r, f):
+    out = {"weapon": family_ref, "scale": r["rel_scale"], "pos": r["rel_pos"], "quat": r["rel_quat"]}
+    if f is not None:
+        apart = abs(f["rel_scale"] / r["rel_scale"] - 1.0) > 1e-3 \
+            or max(abs(x - y) for x, y in zip(f["rel_pos"], r["rel_pos"])) > 1e-4 \
+            or max(min(abs(x - y), abs(x + y)) for x, y in zip(f["rel_quat"], r["rel_quat"])) > 1e-4
+        if apart:
+            out["figures"] = {"female": {"scale": f["rel_scale"], "pos": f["rel_pos"], "quat": f["rel_quat"]}}
+    return out
+
+
 def main():
-    a = [x for x in sys.argv[1:] if not x.startswith("--")]
-    dry = "--dry" in sys.argv
+    argv = sys.argv[1:]
+    dry = "--dry" in argv
+    fem = None
+    if "--female" in argv:
+        fem = json.load(open(argv[argv.index("--female") + 1]))["models"]
+        argv = argv[:argv.index("--female")] + argv[argv.index("--female") + 2:]
+    a = [x for x in argv if not x.startswith("--")]
     rb = json.load(open(a[0]))
     ref = rb["models"][rb["reference"]]
     family_ref = "pistol"
@@ -79,11 +98,12 @@ def main():
         row["model"] = {
             "path": "res://" + dst_rel,
             "surface_materials": surf,
-            "held_like": {"weapon": family_ref, "scale": r["rel_scale"], "pos": r["rel_pos"], "quat": r["rel_quat"]},
+            "held_like": held_like(family_ref, r, fem.get(lab) if fem else None),
             "size_certified": today,
             "muzzle": r["muzzle_proposed"],
         }
-        print(f"[family_rows] {wid:16s} <- {lab:30s} x{r['rel_scale']:.4f} turn {r['rel_turn_deg']:.2f}  muzzle {r['muzzle_proposed']}")
+        print(f"[family_rows] {wid:16s} <- {lab:30s} x{r['rel_scale']:.4f} turn {r['rel_turn_deg']:.2f}  muzzle {r['muzzle_proposed']}"
+              f"{'  + its own female grip' if 'figures' in row['model']['held_like'] else ''}")
         if dry:
             continue
         os.makedirs(os.path.dirname(os.path.join(ROOT, dst_rel)), exist_ok=True)

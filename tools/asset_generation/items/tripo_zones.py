@@ -48,6 +48,14 @@ SPEC = {
     "phone_cloner": {"default": "Body", "parts": {1: "Cable", 2: "Cable", 3: "Cable", 4: "Buttons", 5: "Buttons", 8: "Plug", 9: "PlugTip"},
                      "split": (0, "Screen", rule_recessed("y", 0.003)),
                      "zones": {"Body": "rubber", "Screen": "steel_dark", "Buttons": "plastic", "Cable": "rubber", "Plug": "rubber", "PlugTip": "metal"}},
+    # page 2
+    "brass_knuckles": {"default": "Body", "parts": {}, "zones": {"Body": "metal"}},   # finger holes came out filled: reshaped by hand
+    "motion_detector": {"default": "Body", "parts": {2: "Lens", 3: "LensRing"},
+                        "zones": {"Body": "rubber", "Lens": "plastic@signal_red", "LensRing": "rubber"}},
+    "noise_detector": {"default": "Body", "parts": {3: "Grille", 5: "Lights", 6: "Lights", 7: "Lights"},
+                       "zones": {"Body": "rubber", "Grille": "steel_dark", "Lights": "glass_screen_green"}},
+    "police_badge": {"default": "Backing", "parts": {0: "Shield", 2: "Star"},
+                     "zones": {"Backing": "leather", "Shield": "metal", "Star": "metal"}},
 }
 
 
@@ -63,6 +71,8 @@ bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
 row_i = 0
 for name, spec in SPEC.items():
+    if not os.path.exists(os.path.join(SRC, name + ".glb")):
+        continue   # another page's object
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=os.path.join(SRC, name + ".glb"))
     ob = [o for o in bpy.data.objects if o not in before and o.type == "MESH"][0]

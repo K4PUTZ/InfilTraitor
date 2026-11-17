@@ -19,7 +19,9 @@ The pose is the family's, shared by every model (§11.2): it is not edited here.
 work (`pose_lab.py family` opens it as it is).
 
 Run inside Blender:
-  blender -b --python family_lab.py -- build  <family> <figure> <out .blend>
+  blender -b --python family_lab.py -- build  <family> <figure> <out .blend> [readback .json]
+      with a read-back: every model opens where that read-back placed it relative to the reference (the female's file from the
+      male's sizes; her own aim, the same pistol, so only the figures' difference is left to adjust)
   blender -b --python family_lab.py -- render <saved .blend> <out prefix> [readback .json] -> <prefix>_line.png (the whole line, three-quarters)
                                                                                   <prefix>_tile_<nn>.png (each gun hand from the side, one scale)
   blender -b --python family_lab.py -- readback <saved .blend> <out .json>       -> each model's placement read off the saved file
@@ -244,12 +246,16 @@ def label(text, loc, coll, size=0.028):
     return ob
 
 
-def build(family, figure, out_blend):
+def build(family, figure, out_blend, from_json=None):
     if family not in FAMILIES:
         fail(f"unknown family {family} (have {', '.join(FAMILIES)})")
     if os.path.exists(out_blend):
         fail(f"{os.path.relpath(out_blend, ROOT)} exists: it holds the Director's work and is never rebuilt")
     fam = FAMILIES[family]
+    placed = None
+    if from_json:    # every model at the place another figure's read-back gave it, relative to the reference (the female from the male's sizes)
+        with open(from_json) as f:
+            placed = json.load(f)["models"]
     timeline = os.path.join(FIT, f"SEQ_{fam['timeline']}_{figure.upper()}_arm6.blend")
     bpy.ops.wm.open_mainfile(filepath=timeline)
     scene = bpy.context.scene
@@ -312,6 +318,56 @@ def build(family, figure, out_blend):
         pts = verts(gun)
         lo, hi = box(pts)
         length = hi.x - lo.x
+        if placed is not None:
+            key = f"{i:02d} {name}"
+            if key not in placed:
+                fail(f"{os.path.basename(from_json)} has no '{key}'")
+            r = placed[key]
+            if kind == "held":
+                anchor_t, grip_h = grip_anchor(pts)
+            else:
+                anchor_t, grip_h = Vector((lo.x, (lo.y + hi.y) / 2.0, (lo.z + hi.z) / 2.0)), 0.0
+            # back to the glb's own frame (the read-back's `rel` maps it), the origin kept on the grip anchor
+            to_raw = Matrix.Rotation(math.radians(-turn), 4, "Z") @ Matrix.Translation((0.0, (lo.y + hi.y) / 2.0, 0.0))
+            gun.data.transform(to_raw)
+            anchor = to_raw @ anchor_t
+            gun.data.transform(Matrix.Translation(-anchor))
+            q = r["rel_quat"]
+            from mathutils import Quaternion
+            g = Matrix.Translation(Vector(r["rel_pos"])) @ Quaternion((q[3], q[0], q[1], q[2])).to_matrix().to_4x4() @ Matrix.Scale(r["rel_scale"], 4)
+            rel = CM.inverted() @ g @ CM
+            if kind == "held":
+                parent, holder_bone = a2, PREFIX + "RightHand"
+                carrier_world = Matrix.Translation(offset) @ ref_world
+            else:
+                pistol = ref.copy()
+                pistol.name = f"GUN_{i:02d} {fam['reference_label'].split(' ')[0]} (carrier)"
+                pistol["lab_role"] = "carrier"
+                coll.objects.link(pistol)
+                pistol.parent = a2
+                pistol.parent_type = "BONE"
+                pistol.parent_bone = PREFIX + "RightHand"
+                bpy.context.view_layer.update()
+                pistol.matrix_world = Matrix.Translation(offset) @ ref_world
+                bpy.context.view_layer.update()
+                parent, holder_bone = pistol, None
+                carrier_world = pistol.matrix_world.copy()
+            gun.parent = parent
+            if holder_bone:
+                gun.parent_type = "BONE"
+                gun.parent_bone = holder_bone
+            bpy.context.view_layer.update()
+            gun.matrix_world = carrier_world @ rel @ Matrix.Translation(anchor)
+            gun["lab_role"] = kind
+            gun["lab_source"] = os.path.relpath(path, ROOT)
+            gun["lab_start_factor"] = r["rel_scale"]
+            gun["lab_turn_deg"] = 0.0
+            gun["lab_anchor"] = list(anchor)
+            gun["lab_from"] = os.path.basename(from_json)
+            label(f"{i:02d}\n{name}", offset + Vector((0.0, -0.42, 0.012)), coll)
+            print(f"[family_lab]   {i:02d} {name:28s} {kind:6s} placed from {os.path.basename(from_json)}: x{r['rel_scale']:.4f} of the reference's units")
+            rows.append(name)
+            continue
         factor = PACK_FACTOR if start == "pack" else float(start) * ref_len / length
         gun.data.transform(Matrix.Scale(factor, 4))
         pts = verts(gun)
@@ -548,7 +604,7 @@ def main():
     if not a:
         fail("usage: -- build <family> <figure> <out .blend> | render <blend> <out prefix> | readback <blend> <out .json>")
     if a[0] == "build":
-        build(a[1], a[2], a[3])
+        build(a[1], a[2], a[3], a[4] if len(a) > 4 else None)
     elif a[0] == "readback":
         readback(a[1], a[2])
     elif a[0] == "render":

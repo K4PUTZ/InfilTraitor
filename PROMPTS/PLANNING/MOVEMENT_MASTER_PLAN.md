@@ -800,8 +800,15 @@ Each step lands on both figures before the next; a step with a look ends in a ca
      the pull, the centre, the hip and the aim place the gun and SOLVE both arms to it, the hands holding it as the bank `fire` frame
      holds a long gun (the left hand turned round the barrel for the draw), the trunk turned right at the hip (30 degrees) and the aim
      (35), the head looking down the barrel at the aim. `PROP_shotgun` (the pack's `Shotgun`) rides the LEFT hand and shows from frame
-     13, its place on the hand NOT keyed: it stays as it comes out at 13, by the barrel (*"tira os keyframes da arma. Deixa só grudada
-     na mão esquerda pelo cano, como no frame 13"*; only its visibility is keyed); it opens at x0.085 of the pack's units, about 1 m long (at the pistol's 0.0600 its stock stops short of the shoulder): its
+     13, held by the tip of the barrel through the centre; then (Director, same day) *"A mão esquerda, que está segurando a arma pela
+     ponta do cano, vai girar toda a arma 90º para frente [...] Ao mesmo tempo em que faz o giro, a mão esquerda também desliza para
+     trás pelo cano. Nesse meio tempo a mão direita encontra o apoio em baixo + o gatilho e puxa todo o conjunto pra cima, de forma
+     que está pronta para atirar pela cintura"*: in the turn (centre -> hip) the muzzle goes from the zenith to the front while the left
+     hand slides back to the fore-end, and the right hand takes the grip and the trigger below and lifts the gun to the waist; its place
+     on the hand is keyed at every stop. The AIM, a turn later for one AP more: *"a shotgun tem que ficar apoiada no ombro, uma mão em
+     baixo, e outra no gatilho, a pose clássica de mira"* (not the pistol's two hands at the eyes). At the build's ~1 m the left hand
+     cannot stay at the tip for the hip or the aim (measured: the waist is out of reach, the aim would need 111 % of the arm): the
+     slide is what makes both reachable; it opens at x0.085 of the pack's units, about 1 m long (at the pistol's 0.0600 its stock stops short of the shoulder): its
      size is the Director's. The coat has one EMPTY key per pose, `LongDrawFix_f12` ... `_f31`: opening the right flap is his. Not
      read back yet: the game has no long gun's draw until he has posed it (then `pose_lab.py sequence draw_shotgun`).
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).

@@ -1136,12 +1136,14 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
             hb = arm.pose.bones[PREFIX + "Hips"]
             hb.location = st["hips"]
             hb.keyframe_insert("location", frame=f)
-    # the gun keeps the place it comes out of the coat with, on the left hand by the barrel, the whole timeline (Director, 2026-11-18: "tira os keyframes da
-    # arma. Deixa só grudada na mão esquerda pelo cano, como no frame 13"): its place is not keyed, only its visibility
-    gun.location, gun.rotation_quaternion, gun.scale = first_gun
+    # the gun on the left hand (Director, 2026-11-18): held by the tip of the barrel from where it comes out of the coat to the centre; in the turn the hand
+    # SLIDES BACK along the barrel to the fore-end while it swings the muzzle from the zenith to the front, and the right hand takes the grip and the trigger
+    # below and lifts the whole gun to the waist (the hip shot); the aim keeps the hand under the fore-end. So its place on the hand is keyed at every stop.
     for f in sorted({1, at["lapel"], LONG_GUN_SHOWN_FROM, at["centre"], at["hip"], at["aim"]}):
+        loc, rot, scl = settled[f]["gun"] if "gun" in settled.get(f, {}) else first_gun
+        gun.location, gun.rotation_quaternion, gun.scale = loc, rot, scl
         gun.hide_viewport = gun.hide_render = f < LONG_GUN_SHOWN_FROM
-        for path in ("hide_viewport", "hide_render"):
+        for path in ("location", "rotation_quaternion", "scale", "hide_viewport", "hide_render"):
             gun.keyframe_insert(path, frame=f)
     coat = bpy.data.objects.get(COAT_OBJECT)
     if coat is None or coat.data.shape_keys is None:

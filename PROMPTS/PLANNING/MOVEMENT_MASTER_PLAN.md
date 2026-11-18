@@ -784,11 +784,25 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    - **The four models** (§11.5): `Shotgun` and `Shotgun-ZmPTnh7njL` have a shoulder stock: AIMED = the butt in the shoulder.
      `Shotgun Sawed Off` and `Shotgun Short Stock` have only a pistol grip: AIMED = both arms forward, two hands, at the eyes (H2's
      way; Director, same day); their hip shot is the others'.
-   - **The draw is a new one, not the pistol's (Director, same day):** *"A shotgun vai sair da outra aba do casaco e ser pega pelo
-     topo do cano, pela mão esquerda; ao passo que a mão direita já vai direito para a empunhadura e o dedo no gatilho. Em seguida as
-     duas mãos já montam a posição de mira."* Out of the coat's OTHER flap (not the pistol's); the LEFT hand takes it by the top of
-     the barrel while the right goes straight to the grip, the finger on the trigger; then both hands set the aim. The Director is
-     sending more of it: nothing of the draw is built before.
+   - **The draw is a new one, not the pistol's (Director, 2026-11-17/18):** *"as armas grandes, tanto shotgun quanto rifles e sniper,
+     vão ficar escondidas verticalmente atras da aba direita do casaco (a pistola sai da aba esquerda). O cano fica pra cima e o
+     gatilho pra baixo."* Every LONG gun hides upright behind the coat's RIGHT flap, the barrel up, the trigger down. The draw, from the
+     idle: the LEFT hand goes into the right lapel while the RIGHT hand lifts it, the pistol's draw mirrored; the left hand takes the
+     barrel, from its middle to its tip, behind the flap, and pulls it out; the gun comes to the centre, in front of the tie, held by
+     the tip, and the right hand lets the lapel go; last, the left hand turns it from vertical to horizontal, the barrel forward, while
+     the right hand finds the trigger below. **The draw ends in the HIP shot's stance.** *"Um segundo momento seria o tiro mirando.
+     Precisa de mais 1 AP, por isso é um custo extra, recompensado com mais precisão."* The aimed shot goes on from the hip to the
+     shoulder and costs ONE AP more (GAMEPLAY-01: shots spend no AP yet).
+   - **The starting timeline, BUILT 2026-11-18 for the Director to pose by hand:** `python3 tools/persistent/pose_lab.py
+     draw_long_new [--gun shotgun] [--figure ...] [--render]` -> `ASSETS/MODELS/fit/SEQ_draw_shotgun_<FIG>.blend`, both figures
+     (`tripo_pose_lab.draw_long_new`). Frames 1-35 at 24 fps, markers idle 1, lapel 12, pull 16, centre 20, hip 27, aim 35 (pull and
+     centre are passing stops). The lapel is the figure's pistol draw stop MIRRORED (its change from the idle; the legs stay the idle's);
+     the pull, the centre, the hip and the aim place the gun and SOLVE both arms to it, the hands holding it as the bank `fire` frame
+     holds a long gun (the left hand turned round the barrel for the draw), the trunk turned right at the hip (30 degrees) and the aim
+     (35), the head looking down the barrel at the aim. `PROP_shotgun` (the pack's `Shotgun`) rides the LEFT hand and shows from frame
+     13; it opens at x0.085 of the pack's units, about 1 m long (at the pistol's 0.0600 its stock stops short of the shoulder): its
+     size is the Director's. The coat has one EMPTY key per pose, `LongDrawFix_f12` ... `_f35`: opening the right flap is his. Not
+     read back yet: the game has no long gun's draw until he has posed it (then `pose_lab.py sequence draw_shotgun`).
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).
 5. **The shot per weapon,** as data over the procedural recoil (`ActorRecoil3D`): the kick, the burst (count and interval), the hold
    after it, the case from the `port` (none for the revolver, the taser, the darts). The flash and the tracer already leave
@@ -859,8 +873,8 @@ is the Director's, with no place in the order yet.
 2. **Where a long gun comes from and goes back to:** out of the coat like the pistol (no stowed model; a sniper rifle out of a coat is
    a stylisation), slung on the back (always visible: a carried model that crosses the coat, the pack and the hand-made coat keys), or
    the pack. And with the coat stowed (the stealth dress)? *(Claude: out of the coat for all of them; a slung gun reopens the coat.)*
-   **RULED for the shotguns (Director, 2026-11-17):** out of the coat's other flap, taken by the barrel with the left hand (§11.6
-   step 3). The rifles, the snipers and the stealth dress are still open.
+   **RULED (Director, 2026-11-17/18):** every long gun, the shotgun, the rifles and the sniper, hides upright behind the coat's
+   RIGHT flap (the pistol is behind the left one) and comes out in the left hand (§11.6 step 3). The stealth dress is still open.
 3. **Which firearms are the game's** (§11.7), and so which are certified first. *(Claude: the catalogue's six now, since their models
    are on disk; the tree's late guns when their models exist.)*
 4. **The detonator:** a remote for C4 and the breaching charge, or a timer?

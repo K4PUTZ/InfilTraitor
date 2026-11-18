@@ -26,7 +26,8 @@ from mathutils import Matrix, Quaternion, Vector
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 LIGHT_GLB = os.path.join(ROOT, "ASSETS", "MODELS", "official", "AGENT_%s_LIGHT.glb")
 PROP_GLB = {"pistol": os.path.join(ROOT, "ASSETS", "props", "pistol_quaternius", "pistol.glb"),
-            "grenade": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_grenade", "Grenade.glb")}
+            "grenade": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_grenade", "Grenade.glb"),
+            "shotgun": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_ultimate_guns_pack", "extracted", "Shotgun.glb")}
 PREFIX = "mixamorig:"                       # the Blender importer keeps Tripo's colon; Godot turns it into an underscore
 HIDE = ("Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere")   # the pieces the game's DRESSED set hides (`TripoFigure.UNDRESSED_PIECES`)
 EPS_CHANGED = 1e-3                          # a bone the Director moved: its local rotation differs from the base by more than this (quaternion distance)
@@ -382,7 +383,7 @@ def extract(blend, out_json):
     print(f"[tripo_pose_lab] wrote {out_json}: {len(bones)} bones ({len(moved)} added by the Director: {moved}), props {sorted(props)}")
 
 
-PASSING_MARKERS = ("in-between", "release", "follow")   # the throw flows through its release and follow-through (2026-11-12)
+PASSING_MARKERS = ("in-between", "release", "follow", "pull", "centre")   # the throw flows through its release and follow-through (2026-11-12); the long gun's draw through its pull and centre (2026-11-18)
 FINGER_NAMES = ("Index", "Middle", "Pinky", "Ring", "Thumb")
 
 
@@ -812,6 +813,379 @@ def throw_new(base_blend, clip_glb, out_blend, part):
     bpy.ops.wm.save_as_mainfile(filepath=out_blend)
     print(f"[tripo_pose_lab] wrote {out_blend}: the {arm['lab_figure']} overhand {part}, frames 1-{last}, clip turned {math.degrees(yaw):.1f} deg, "
           f"step {THROW_STEP}, travel {THROW_TRAVEL}, dip {THROW_DIP}")
+
+
+# ---- THE LONG GUNS' DRAW (MOVEMENT §11.6 step 3, Director 2026-11-18) ------------------------------------------------------------------------------------------------
+# The shotgun, the rifles and the sniper hide VERTICALLY behind the coat's RIGHT flap (the pistol behind the left one), the barrel up and the trigger down. The draw,
+# from the idle: the left hand goes into the right lapel while the right hand lifts it (the pistol's draw mirrored); the left hand takes the barrel, from its middle
+# to its tip, behind the flap, and pulls it out; the gun comes to the centre, in front of the tie, held by the tip, and the right hand lets the lapel go; the left
+# hand turns it from vertical to horizontal, the barrel forward, while the right hand finds the grip and the trigger below: the HIP shot's stance. The AIMED shot
+# (one AP more, GAMEPLAY-01) goes on from there to the shoulder.
+# THE STARTING TIMELINE built here, for the Director to pose by hand: the lapel stop is the figure's pistol draw stop MIRRORED (its change from the idle, the legs
+# and the hips' place kept); the pull, the centre, the hip and the aim PLACE the gun and SOLVE both arms to it (two-bone IK), each hand holding it the way the bank
+# `fire` frame holds a long gun (its rotation and offset against the line between the palms, and its fingers); the trunk turns right for the hip and the aim (the
+# left shoulder forward), the head back toward the front. The gun (`PROP_<gun>`) rides the LEFT hand, the one that takes it out and turns it; it shows from
+# `LONG_GUN_SHOWN_FROM`. The coat gets one EMPTY key per pose, `LongDrawFix_f<frame>` (the throw's way): opening the right flap is the Director's.
+LONG_DRAW_PLAN = ((1, "idle"), (12, "lapel"), (16, "pull"), (20, "centre"), (27, "hip"), (35, "aim"))
+LONG_GUN_SHOWN_FROM = 13
+LONG_GUN_FACTOR = 0.085        # the pack's native units -> the figure's: the shotgun ~1 m long. At the pistol's 0.0600 its stock stops short of the shoulder
+LONG_GRIP_FRAME = 12           # the bank `fire` frame (0.5 s) whose hands hold a long gun
+LONG_HOLD_AT = 0.82            # where the left hand takes the barrel for the draw, as a fraction of the length from the butt ("do meio pra ponta")
+LONG_PUMP_AT = 0.2             # where along the fore-end the left hand holds at the hip and the aim, from its rear
+LONG_TWIST_DEG = {"hip": -30.0, "aim": -35.0}   # the trunk's turn, about +Z (negative: the facing, -Y, turns toward the figure's right, -X)
+LONG_HEAD_BACK = {"hip": 0.75, "aim": 0.85}     # how much of that turn the neck gives back, so the head keeps looking ahead
+LONG_AIM_HEAD_PITCH_DEG = 10.0                  # the head down toward the stock at the aim
+LONG_COAT_KEY = "LongDrawFix"
+
+
+def _gun_frame_points(obj, factor):
+    """A long gun's GUN FRAME (barrel +X, its top +Z, centred on y = 0) from the model as imported, and its points in that frame at `factor`: the butt, the grip
+    (the stock's wrist), the pump (`LONG_PUMP_AT` along the fore-end), the hold (`LONG_HOLD_AT` of the length, on the barrel), the muzzle. The pieces are the pack's
+    materials (Wood = the stock, DarkWood = the fore-end, DarkMetal = the barrel); a model without them falls back on fractions of its length.
+    Returns (F: the import's world -> the gun frame at the factor, 4x4; {point name: Vector}; length)."""
+    W0 = obj.matrix_world.copy()
+    world = [W0 @ v.co for v in obj.data.vertices]
+
+    def bounds(ps):
+        return Vector([min(p[i] for p in ps) for i in range(3)]), Vector([max(p[i] for p in ps) for i in range(3)])
+
+    def members(name):
+        idx = {i for i, s in enumerate(obj.material_slots) if s.material is not None and s.material.name.split(".")[0] == name}
+        return sorted({v for p in obj.data.polygons if p.material_index in idx for v in p.vertices})
+
+    A = Matrix.Identity(4)
+    lo, hi = bounds(world)
+    if hi.y - lo.y > hi.x - lo.x:
+        A = Matrix.Rotation(math.radians(90.0), 4, "Z") @ A
+    turned = [A @ p for p in world]
+    lo, hi = bounds(turned)
+    stock = members("Wood")
+    if stock:   # the stock is the rear
+        rear_is_low = sum(turned[i].x for i in stock) / len(stock) < (lo.x + hi.x) / 2.0
+    else:       # the handgun rule (`family_lab.to_gun_frame`): the low part is the rear
+        low = [p for p in turned if p.z < lo.z + 0.35 * (hi.z - lo.z)]
+        rear_is_low = not low or sum(p.x for p in low) / len(low) <= (lo.x + hi.x) / 2.0
+    if not rear_is_low:
+        A = Matrix.Rotation(math.radians(180.0), 4, "Z") @ A
+        turned = [A @ p for p in world]
+        lo, hi = bounds(turned)
+    A = Matrix.Translation((0.0, -(lo.y + hi.y) / 2.0, 0.0)) @ A
+    F = Matrix.Scale(factor, 4) @ A
+    q = [F @ p for p in world]
+    lo, hi = bounds(q)
+    L = hi.x - lo.x
+
+    def z_mid(ps, x, half):
+        near = [p.z for p in ps if abs(p.x - x) <= half]
+        return (min(near) + max(near)) / 2.0 if near else (lo.z + hi.z) / 2.0
+
+    pts = {"butt": Vector((lo.x, 0.0, z_mid(q, lo.x, 0.02 * L))), "muzzle": Vector((hi.x, 0.0, z_mid(q, hi.x, 0.01 * L)))}
+    s = [q[i] for i in stock]
+    if s:
+        s_lo, s_hi = min(p.x for p in s), max(p.x for p in s)
+        x = s_hi - 0.08 * (s_hi - s_lo)
+        pts["grip"] = Vector((x, 0.0, z_mid(s, x, 0.03 * L)))
+    else:
+        x = lo.x + 0.3 * L
+        pts["grip"] = Vector((x, 0.0, z_mid(q, x, 0.03 * L)))
+    fore = [q[i] for i in members("DarkWood")]
+    if fore:
+        f_lo, f_hi = min(p.x for p in fore), max(p.x for p in fore)
+        x = f_lo + LONG_PUMP_AT * (f_hi - f_lo)
+        pts["pump"] = Vector((x, 0.0, z_mid(fore, x, 0.03 * L)))
+    else:
+        x = lo.x + 0.5 * L
+        pts["pump"] = Vector((x, 0.0, z_mid(q, x, 0.03 * L)))
+    barrel = [q[i] for i in members("DarkMetal")] or q
+    x = lo.x + LONG_HOLD_AT * L
+    pts["hold"] = Vector((x, 0.0, z_mid(barrel, x, 0.02 * L)))
+    return F, pts, L
+
+
+def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
+    """THE STARTING TIMELINE OF A LONG GUN'S DRAW of one figure (see the block above), built from its pistol draw timeline (`SEQ_draw_pistol_<FIG>_arm6.blend`: the
+    LIGHT Agent, the lab data, frame 1 = the game's idle, the draw stop at its `draw` marker) and the bank's `fire`. Nothing is written over the base file."""
+    bpy.ops.wm.open_mainfile(filepath=base_blend)
+    sc = bpy.context.scene
+    arm, rig = load_rig_from_blend()
+    bpy.context.view_layer.objects.active = arm
+    if arm.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+    markers = {m.name: m.frame for m in sc.timeline_markers}
+    draw_frame = markers.get("draw", 12)
+
+    def snap(frame):
+        sc.frame_set(frame)
+        bpy.context.view_layer.update()
+        return ({pb.name[len(PREFIX):]: pb.matrix.to_3x3().normalized() for pb in arm.pose.bones},
+                {pb.name[len(PREFIX):]: pb.head.copy() for pb in arm.pose.bones})
+
+    P_idle, H_idle = snap(1)
+    P_draw, H_draw = snap(draw_frame)
+    hips_idle = H_idle["Hips"].copy()
+    rest_head = {n: arm.data.bones[PREFIX + n].head_local.copy() for n in rig.names}
+    children = {n: [c for c in rig.names if rig.parent[c] == n] for n in rig.names}
+
+    def subtree(n):
+        out = [n]
+        for c in children[n]:
+            out += subtree(c)
+        return out
+
+    def fk(P, hips_pos):
+        pos = {}
+        for n in rig.names:
+            p = rig.parent[n]
+            pos[n] = hips_pos.copy() if not p else pos[p] + P[p] @ rig.R[p].transposed() @ (rest_head[n] - rest_head[p])
+        return pos
+
+    def turn(P, root, R):
+        for n in subtree(root):
+            P[n] = (R @ P[n]).normalized()
+
+    def palm(pos, side):
+        return (pos[side + "Hand"] + pos[side + "HandMiddle1"]) * 0.5
+
+    # THE LAPEL: the pistol's draw stop mirrored (the change from the idle of each bone's mirror, mirrored; the legs and the hips' place stay the idle's)
+    Mx = Matrix.Diagonal((-1.0, 1.0, 1.0))
+
+    def mirror_name(n):
+        return "Right" + n[4:] if n.startswith("Left") else ("Left" + n[5:] if n.startswith("Right") else n)
+
+    legs = {n for s in ("Left", "Right") for n in subtree(s + "UpLeg")}
+    P_lapel = {}
+    for n in rig.names:
+        if n in legs:
+            P_lapel[n] = P_idle[n].copy()
+            continue
+        m = mirror_name(n)
+        change = P_draw[m] @ P_idle[m].transposed()
+        P_lapel[n] = ((Mx @ change @ Mx) @ P_idle[n]).normalized()
+
+    # THE GRIPS: each hand against the line between the palms in the bank `fire` frame (its rotation, the hand's head from the palm), and its fingers against the hand
+    clip = _clip_frames(arm, fire_glb, [LONG_GRIP_FRAME])[LONG_GRIP_FRAME]
+    cP = {n: v[0] for n, v in clip.items()}
+    cH = {n: v[1] for n, v in clip.items()}
+    c_palm = {s: (cH[s + "Hand"] + cH[s + "HandMiddle1"]) * 0.5 for s in ("Left", "Right")}
+    gx = (c_palm["Left"] - c_palm["Right"]).normalized()
+    gz = (Vector((0.0, 0.0, 1.0)) - gx * gx.z).normalized()
+    Fc = Matrix((gx, gz.cross(gx), gz)).transposed()
+    grip = {s: {"rot": Fc.transposed() @ cP[s + "Hand"], "head": Fc.transposed() @ (cH[s + "Hand"] - c_palm[s]),
+                "fingers": {n: cP[s + "Hand"].transposed() @ cP[n] for n in rig.names if n.startswith(s + "Hand") and n != s + "Hand"}}
+            for s in ("Left", "Right")}
+    print(f"[tripo_pose_lab] the fire frame {LONG_GRIP_FRAME}: palms {(c_palm['Left'] - c_palm['Right']).length:.3f} apart, the gun's line {tuple(round(v, 2) for v in gx)}")
+    # THE BARREL HOLD of the draw: the support hand's palm on the barrel as at the fore-end, but turned about the palm's normal (the gun's Z) so the fingers go ROUND
+    # the barrel, toward the gun's right, not along it; the fingers closed as the right hand's on the stock (its change from the idle, mirrored to the left)
+    fd = grip["Left"]["rot"] @ Vector((0.0, 1.0, 0.0))
+    wrap = Matrix.Rotation(math.atan2(-1.0, 0.0) - math.atan2(fd.y, fd.x), 3, "Z")
+    left_hand_m = (Mx @ (cP["RightHand"] @ P_idle["RightHand"].transposed()) @ Mx) @ P_idle["LeftHand"]
+    fist = {}
+    for n in grip["Left"]["fingers"]:
+        m = mirror_name(n)
+        fist[n] = left_hand_m.transposed() @ ((Mx @ (cP[m] @ P_idle[m].transposed()) @ Mx) @ P_idle[n])
+    grip["Barrel"] = {"rot": wrap @ grip["Left"]["rot"], "head": wrap @ grip["Left"]["head"], "fingers": fist}
+
+    def seg(a, b):
+        return (rest_head[b] - rest_head[a]).length
+
+    def hold(P, pos, side, G, point, pole_dir, how=None):
+        """`side`'s hand on the gun (gun frame G, 3x3) with its palm at `point`: the hand turned as the grip `how` says (default: the side's own), the arm solved to it,
+        the forearm taking most of the twist; the fingers as the grip's. Returns how far the arm reaches (1 = straight)."""
+        g = grip[how or side]
+        R_hand = (G @ g["rot"]).normalized()
+        head = point + G @ g["head"]
+        J = pos[side + "Arm"]
+        a, b = seg(side + "Arm", side + "ForeArm"), seg(side + "ForeArm", side + "Hand")
+        elbow, wrist = _two_bone(J, head, a, b, J + pole_dir)
+        P[side + "Arm"] = _aim_bone(P[side + "Arm"], J, elbow)
+        fore = _aim_bone(P[side + "ForeArm"], elbow, wrist)
+        y = fore.col[1].normalized()
+        hx = R_hand.col[0] - y * R_hand.col[0].dot(y)
+        if hx.length > 1e-6:
+            fx = fore.col[0]
+            ang = math.atan2(fx.cross(hx.normalized()).dot(y), fx.dot(hx.normalized()))
+            fore = (Matrix.Rotation(0.7 * ang, 3, y) @ fore).normalized()
+        P[side + "ForeArm"] = fore
+        P[side + "Hand"] = R_hand
+        for n, rel in g["fingers"].items():
+            P[n] = (R_hand @ rel).normalized()
+        return (head - J).length / (a + b)
+
+    # THE GUN: imported as the game reads it (the glb's node transform on the object), its gun frame and points
+    gun, node_scale = import_prop(gun_id, {})
+    gun["lab_node_scale"] = node_scale
+    gun["lab_bone"] = "LeftHand"
+    bpy.context.view_layer.update()
+    W0 = gun.matrix_world.copy()
+    F, pts, length = _gun_frame_points(gun, LONG_GUN_FACTOR)
+    print(f"[tripo_pose_lab] {gun_id}: {length:.3f} long at x{LONG_GUN_FACTOR} (the pack's units), points " + ", ".join(f"{k} {tuple(round(v, 3) for v in p)}" for k, p in pts.items()))
+    G_hip = Matrix(((0.0, 1.0, 0.0), (-1.0, 0.0, 0.0), (0.0, 0.0, 1.0)))          # columns: the barrel forward (-Y), its left side (+X), its top up
+    G_vert = Matrix.Rotation(math.radians(-90.0), 3, "X") @ G_hip                  # the barrel up, its top toward the body, its bottom (the trigger) away
+
+    def gun_world(G, anchor, at):
+        """The gun object's world matrix with the gun-frame point `anchor` at `at`, the gun frame turned to G."""
+        return Matrix.Translation(at) @ G.to_4x4() @ Matrix.Translation(-anchor) @ F @ W0
+
+    S2 = H_idle["Spine2"]
+    poses = {}            # frame -> (P, hips position, gun world matrix or None)
+    reach = {}
+
+    # 12 the lapel; 13 the gun appears in the left hand, upright, its hold point at the palm
+    pos12 = fk(P_lapel, hips_idle)
+    poses[12] = (P_lapel, hips_idle, None)
+    gun13 = gun_world(G_vert, pts["hold"] + Vector((0.0, 0.0, -0.015)), palm(pos12, "Left"))
+
+    # 16 the pull: upright at the right chest, out of the flap; the right hand still lifts the lapel
+    P16 = {n: m.copy() for n, m in P_lapel.items()}
+    pos16 = fk(P16, hips_idle)
+    hold16 = Vector((S2.x - 0.06, S2.y - 0.155, S2.z + 0.045))
+    reach["pull L"] = hold(P16, pos16, "Left", G_vert, hold16 + G_vert @ Vector((0.0, 0.0, -0.015)), Vector((0.14, 0.02, -0.2)), "Barrel")
+    poses[16] = (P16, hips_idle, gun_world(G_vert, pts["hold"], hold16))
+
+    # 27 the hip: the trunk turned right, the gun level and forward at the right hip, the right hand on the grip, the left under the fore-end
+    def trunk(P, key):
+        t = LONG_TWIST_DEG[key]
+        for root in ("Spine", "Spine1", "Spine2"):
+            turn(P, root, Matrix.Rotation(math.radians(t / 3.0), 3, "Z"))
+        turn(P, "Neck", Matrix.Rotation(math.radians(-t * LONG_HEAD_BACK[key]), 3, "Z"))
+
+    P27 = {n: m.copy() for n, m in P_idle.items()}
+    trunk(P27, "hip")
+    pos27 = fk(P27, hips_idle)
+    grip27 = Vector((H_idle["RightUpLeg"].x - 0.02, hips_idle.y - 0.04, hips_idle.z + 0.06))
+    reach["hip R"] = hold(P27, pos27, "Right", G_hip, grip27 + G_hip @ Vector((0.0, -0.012, 0.0)), Vector((-0.1, 0.12, -0.15)))
+    pump27 = grip27 + G_hip @ (pts["pump"] - pts["grip"])
+    reach["hip L"] = hold(P27, pos27, "Left", G_hip, pump27 + G_hip @ Vector((0.0, 0.0, -0.015)), Vector((0.12, -0.05, -0.2)))
+    poses[27] = (P27, hips_idle, gun_world(G_hip, pts["grip"], grip27))
+
+    # 35 the aim: turned further, the butt in the right shoulder's pocket, the head down toward the stock
+    P35 = {n: m.copy() for n, m in P_idle.items()}
+    trunk(P35, "aim")
+    pos35 = fk(P35, hips_idle)
+    head_pivot = Matrix.Rotation(math.radians(LONG_AIM_HEAD_PITCH_DEG), 3, "X")
+    turn(P35, "Neck", head_pivot)
+    pos35 = fk(P35, hips_idle)
+    pocket = pos35["RightArm"] + Vector((0.025, -0.03, -0.01))
+    butt35 = pocket
+    grip35 = butt35 + G_hip @ (pts["grip"] - pts["butt"])
+    pump35 = butt35 + G_hip @ (pts["pump"] - pts["butt"])
+    reach["aim R"] = hold(P35, pos35, "Right", G_hip, grip35 + G_hip @ Vector((0.0, -0.012, 0.0)), Vector((-0.18, 0.04, -0.06)))
+    reach["aim L"] = hold(P35, pos35, "Left", G_hip, pump35 + G_hip @ Vector((0.0, 0.0, -0.015)), Vector((0.06, -0.06, -0.22)))
+    poses[35] = (P35, hips_idle, gun_world(G_hip, pts["butt"], butt35))
+
+    # 20 the centre: upright in front of the tie, held by the tip; the right hand has let the lapel go, half way to the grip
+    P20 = {n: m.copy() for n, m in P_lapel.items()}
+    for n in subtree("RightShoulder"):
+        P20[n] = Quaternion(P_lapel[n].to_quaternion()).slerp(P27[n].to_quaternion(), 0.5).to_matrix()
+    pos20 = fk(P20, hips_idle)
+    hold20 = Vector((S2.x, S2.y - 0.19, S2.z + 0.06))
+    reach["centre L"] = hold(P20, pos20, "Left", G_vert, hold20 + G_vert @ Vector((0.0, 0.0, -0.015)), Vector((0.14, -0.02, -0.2)), "Barrel")
+    poses[20] = (P20, hips_idle, gun_world(G_vert, pts["hold"], hold20))
+    print("[tripo_pose_lab] the arms reach " + ", ".join(f"{k} {v:.2f}" for k, v in reach.items()) + " of their length (1 = straight)")
+
+    # ---- the keys: every pose SETTLED first (its bones, the hips, the gun's place against the left hand), then keyed (a key re-reads the animation over a set pose)
+    arm.animation_data_clear()
+    for o in [o for o in bpy.data.objects if o.name.startswith("PROP_") and o is not gun]:
+        bpy.data.objects.remove(o)
+    for o in bpy.data.objects:
+        if o.type == 'MESH' and o.data.shape_keys:
+            o.data.shape_keys.animation_data_clear()
+            for kb in o.data.shape_keys.key_blocks[1:]:
+                kb.value = 0.0
+    gun.parent = arm
+    gun.parent_type = 'BONE'
+    gun.parent_bone = PREFIX + "LeftHand"
+    gun.rotation_mode = 'QUATERNION'
+
+    def apply(P, hips_pos):
+        for n in rig.names:
+            pb = arm.pose.bones[PREFIX + n]
+            pb.rotation_mode = 'QUATERNION'
+            p = rig.parent[n]
+            rp = rig.R[p] if p else Matrix.Identity(3)
+            pp = P[p] if p else Matrix.Identity(3)
+            pb.rotation_quaternion = (rig.R[n].transposed() @ rp @ pp.transposed() @ P[n]).to_quaternion()
+            pb.location = (0.0, 0.0, 0.0)
+        bpy.context.view_layer.update()
+        h = arm.pose.bones[PREFIX + "Hips"]
+        m = h.matrix.copy()
+        m.translation = hips_pos
+        h.matrix = m
+        bpy.context.view_layer.update()
+
+    settled = {}
+    plan = {f: m for f, m in LONG_DRAW_PLAN}
+    body = {1: (P_idle, hips_idle)}
+    body.update({f: (P, h) for f, (P, h, _g) in poses.items()})
+    gun_at = {f: g for f, (_P, _h, g) in poses.items() if g is not None}
+    gun_at[13] = gun13
+    for f in sorted(set(body) | {13}):
+        P, h = body[f] if f in body else body[12]
+        apply(P, h)
+        state = {"bones": {pb.name: pb.rotation_quaternion.copy() for pb in arm.pose.bones}, "hips": arm.pose.bones[PREFIX + "Hips"].location.copy()}
+        if f in gun_at:
+            gun.matrix_world = gun_at[f]
+            bpy.context.view_layer.update()
+            state["gun"] = (gun.location.copy(), gun.rotation_quaternion.copy(), gun.scale.copy())
+        if f in poses or f == 13:
+            pl = palm({pb.name[len(PREFIX):]: pb.head.copy() for pb in arm.pose.bones}, "Left")
+            state["palm"] = pl
+        settled[f] = state
+    first_gun = settled[13]["gun"]
+    for f, st in sorted(settled.items()):
+        sc.frame_set(f)
+        if f in body:
+            for pb in arm.pose.bones:
+                pb.rotation_quaternion = st["bones"][pb.name]
+                pb.keyframe_insert("rotation_quaternion", frame=f)
+            hb = arm.pose.bones[PREFIX + "Hips"]
+            hb.location = st["hips"]
+            hb.keyframe_insert("location", frame=f)
+    for f in (1, 12, 13, 16, 20, 27, 35):
+        loc, rot, scl = settled[f]["gun"] if "gun" in settled.get(f, {}) else first_gun
+        gun.location, gun.rotation_quaternion, gun.scale = loc, rot, scl
+        shown = f >= LONG_GUN_SHOWN_FROM
+        gun.hide_viewport = gun.hide_render = not shown
+        for path in ("location", "rotation_quaternion", "scale", "hide_viewport", "hide_render"):
+            gun.keyframe_insert(path, frame=f)
+    coat = bpy.data.objects.get(COAT_OBJECT)
+    if coat is None or coat.data.shape_keys is None:
+        print(f"[tripo_pose_lab] WARNING: no {COAT_OBJECT} with shape keys: the coat gets no per-pose keys")
+    else:
+        frames = [f for f, _m in LONG_DRAW_PLAN]
+        for i, (frame, _m) in enumerate(LONG_DRAW_PLAN):
+            if i == 0:
+                continue
+            kb = coat.shape_key_add(name=f"{LONG_COAT_KEY}_f{frame:02d}", from_mix=False)
+            for f2, v in ((frames[i - 1], 0.0), (frame, 1.0)) + (((frames[i + 1], 0.0),) if i + 1 < len(frames) else ()):
+                kb.value = v
+                kb.keyframe_insert("value", frame=f2)
+        coat.active_shape_key_index = list(coat.data.shape_keys.key_blocks.keys()).index(f"{LONG_COAT_KEY}_f12")
+    sc.timeline_markers.clear()
+    for frame, marker in LONG_DRAW_PLAN:
+        sc.timeline_markers.new(marker, frame=frame)
+    sc.frame_start, sc.frame_end = LONG_DRAW_PLAN[0][0], LONG_DRAW_PLAN[-1][0]
+    arm["lab_pose"] = "draw_" + gun_id
+    arm["lab_props"] = json.dumps([gun_id])
+    # how far each solved palm lands from where the gun wants it (the FK above against Blender's own evaluation)
+    sc.frame_set(16)
+    bpy.context.view_layer.update()
+    worst = 0.0
+    for f, target in ((16, hold16), (20, hold20)):
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        pl = palm({pb.name[len(PREFIX):]: pb.head.copy() for pb in arm.pose.bones}, "Left")
+        worst = max(worst, (pl - (target + G_vert @ Vector((0.0, 0.0, -0.015)))).length)
+    sc.frame_set(1)
+    bpy.context.view_layer.objects.active = arm
+    for o in bpy.data.objects:
+        o.select_set(False)
+    arm.select_set(True)
+    bpy.ops.object.mode_set(mode='POSE')
+    embed_coat_follow()
+    bpy.ops.wm.save_as_mainfile(filepath=out_blend)
+    print(f"[tripo_pose_lab] wrote {out_blend}: the {arm['lab_figure']} {gun_id} draw, frames 1-{LONG_DRAW_PLAN[-1][0]}, markers {[m for _f, m in LONG_DRAW_PLAN]}; "
+          f"the left palm lands {worst * 1000:.1f} mm from the barrel's hold (Blender vs the solver)")
 
 
 # ---- THE RUN'S START (MOVEMENT, 2026-11-14) ----------------------------------------------------------------------------------------------------------------------------
@@ -2393,6 +2767,22 @@ def render(blend, out_png, frame=None):
         print(f"[tripo_pose_lab] rendered {scn.render.filepath}")
 
 
+def render_frames(blend, out_prefix, frames):
+    """Chosen frames of a timeline from the front three-quarters and the side, one open of the file: <out_prefix>_f<frame>_<view>.png."""
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    scn = bpy.context.scene
+    cam = _render_scene(scn, 700)
+    cam.data.lens = 85
+    target = Vector((0.0, -0.1, 0.56))
+    for f in frames:
+        scn.frame_set(f)
+        for name, az, el, dist in (("front34", 35.0, 12.0, 2.3), ("side", 90.0, 8.0, 2.3)):
+            _aim_camera(cam, target, az, el, dist)
+            scn.render.filepath = f"{out_prefix}_f{f:02d}_{name}.png"
+            bpy.ops.render.render(write_still=True)
+    print(f"[tripo_pose_lab] rendered frames {frames} -> {out_prefix}_f*_<view>.png")
+
+
 def strip(blend, out_prefix, view):
     """Every frame of a timeline's range from ONE still camera (side or front 3/4), aimed at the middle of the hips' path: a planted foot must not move on
     screen. Writes <out_prefix>_f<frame>.png; `pose_lab.py strip` lays them out."""
@@ -2436,6 +2826,10 @@ def main():
         sequence_new(a[1], a[2], a[3], a[4], a[5], float(a[6]))
     elif mode == "throw_new":
         throw_new(a[1], a[2], a[3], a[4])
+    elif mode == "draw_long_new":
+        draw_long_new(a[1], a[2], a[3], a[4] if len(a) > 4 else "shotgun")
+    elif mode == "render_frames":
+        render_frames(a[1], a[2], [int(x) for x in a[3].split(",")])
     elif mode == "run_start_new":
         run_start_new(a[1], a[2], a[3], a[4] if len(a) > 4 else "run", a[5] if len(a) > 5 else None)
     elif mode == "draw_crouch_new":

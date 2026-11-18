@@ -917,7 +917,9 @@ detecção, etc."* (Director, 2026-08-14)
   `MOVEMENT_MASTER_PLAN` §11.1).
 - **The shotgun's two shots (Director, 2026-11-17):** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra mais,
   tiro mirando demora mais e acerta mais. Agachado só tem o tiro mirando."* MOVEMENT makes both postures and the choice between them;
-  what "fast" and "misses more" cost and give (AP or time, the hit chance, the cone's spread) is set here, per weapon row.
+  what "fast" and "misses more" cost and give (AP or time, the hit chance, the cone's spread) is set here, per weapon row. Already
+  ruled (2026-11-18): the aimed shot costs **one AP more** than the hip shot (*"Precisa de mais 1 AP, por isso é um custo extra,
+  recompensado com mais precisão"*); the draw ends at the hip, the aim is a second step from there. Shots spend no AP yet.
 
 **Dependencies:** none hard. **Parallel to or prior to GAME-01** — the Director's
 own framing, and the reason this milestone sits above it in this file.

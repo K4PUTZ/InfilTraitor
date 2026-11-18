@@ -17,6 +17,10 @@ solver); the Director refines them here, in Blender, on the LIGHT Agent, with th
         Builds the STARTING timeline of the standing overhand throw, `SEQ_throw_overhand_<FIG>.blend` (idle -> cocked -> release -> follow -> idle, one
         `ThrowFix_f<frame>` coat key per pose), from the figure's draw timeline and the bank's `pitch_baseball`
         (`tripo_pose_lab.throw_new`; PROMPTS/THROW_STUDY_2026-11-12.md). An existing file is never overwritten.
+    python3 tools/persistent/pose_lab.py draw_long_new [--gun shotgun] [--figure ...] [--render]
+        Builds the STARTING timeline of a LONG GUN's draw, `SEQ_draw_<gun>_<FIG>.blend` (idle -> lapel -> pull -> centre -> hip -> aim; the gun upright behind the
+        coat's right flap, taken by the left hand, turned level at the hip; one empty `LongDrawFix_f<frame>` coat key per pose; `tripo_pose_lab.draw_long_new`,
+        MOVEMENT §11.6 step 3), from the figure's pistol draw and the bank's `fire`. --render: the stops from two views into temp/poses/. Never overwrites.
     python3 tools/persistent/pose_lab.py run_start_new [--figure ...]
         Builds the STARTING timeline of the idle -> run passage, `SEQ_run_start_<FIG>.blend` (idle at frame 1 leaned into the bank's `run` at the first stride, one
         `StartFix_f<frame>` coat key per pose; `tripo_pose_lab.run_start_new`). An existing file is never overwritten.
@@ -151,6 +155,25 @@ def cmd_throw_new(a):
             run([BLENDER, "-b", "--python", LAB, "--", "throw_new", base, clip, out, part], f"building {os.path.relpath(out, ROOT)}")
 
 
+LONG_DRAW_STOPS = "1,12,16,20,27,35"   # `tripo_pose_lab.LONG_DRAW_PLAN`'s frames
+
+
+def cmd_draw_long_new(a):
+    for figure in figures_of(a.figure):
+        fit = os.path.join(ROOT, "ASSETS", "MODELS", "fit")
+        out = os.path.join(fit, f"SEQ_draw_{a.gun}_{figure.upper()}.blend")
+        if os.path.exists(out):
+            print(f"[pose_lab] {os.path.relpath(out, ROOT)} exists: it holds your work, so it is left as it is")
+        else:
+            base = os.path.join(fit, f"SEQ_draw_pistol_{figure.upper()}_arm6.blend")
+            clip = os.path.join(ROOT, "ASSETS", "ANIMATIONS", "bank", figure, "fire.glb")
+            run([BLENDER, "-b", "--python", LAB, "--", "draw_long_new", base, clip, out, a.gun], f"building {os.path.relpath(out, ROOT)}")
+        if a.render:
+            os.makedirs(TEMP, exist_ok=True)
+            run([BLENDER, "-b", "--python", LAB, "--", "render_frames", out, os.path.join(TEMP, f"draw_{a.gun}_{figure}"), LONG_DRAW_STOPS],
+                f"rendering the stops of {os.path.relpath(out, ROOT)}")
+
+
 def cmd_run_start_new(a):
     for figure in figures_of(a.figure):
         out = os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_run_start_{figure.upper()}.blend")
@@ -266,6 +289,11 @@ def main():
     s = sub.add_parser("throw_new")
     s.add_argument("--figure", default="both", choices=list(FIGURES) + ["both"])
     s.set_defaults(fn=cmd_throw_new)
+    s = sub.add_parser("draw_long_new")
+    s.add_argument("--gun", default="shotgun")
+    s.add_argument("--figure", default="both", choices=list(FIGURES) + ["both"])
+    s.add_argument("--render", action="store_true")
+    s.set_defaults(fn=cmd_draw_long_new)
     s = sub.add_parser("status")
     s.set_defaults(fn=cmd_status)
     a = p.parse_args()

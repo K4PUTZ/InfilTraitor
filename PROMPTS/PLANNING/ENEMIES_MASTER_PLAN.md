@@ -161,7 +161,26 @@ silhouette (build, headgear, gear), by the colour of his clothes inside the fami
 bodies go a long way once the headgear and the palette vary, and the segment bounds what is on screen at once (rule 12: 6 guards in a
 typical segment, 10 of 2 types in the heaviest).
 
-**How many bodies:** rule 5 says ~10, shared by the four factions. §6 sets that against ~4 per faction in the faction's own base set.
+**How many bodies:** rule 5 says ~10, shared by the four factions; confirmed 2026-11-18 (§6), and read with §12 (one body per sex).
+
+### 4.1 The Standard's outfit per faction, "the piano mover" (Claude's proposal, approved by the Director 2026-11-18: "Tudo ok")
+
+The most common thug is §11.2's Standard rank. Each must read by SILHOUETTE at ~190 px without relying on colour (colour-blind
+players); none wears a long coat, which is the officers'. The weapons below are the look; their numbers stay GAMEPLAY-01's.
+
+| | FID: an Agent (the rank) | Calm Waters: an Operator | Bunsen Burners: a Prospect | Corporation: an Operative |
+|---|---|---|---|---|
+| **Silhouette** | the law's uniform: cap and duty belt | hard and square: helmet, vest, knee pads | loose and wide: an open leather vest, a bandana | narrow and clean: a dark suit, sunglasses |
+| **Head** | a navy peaked cap with a white band | a matte grey helmet, goggles pushed up | a brown bandana or a shaved head, a beard | short hair, sunglasses, a coiled earpiece |
+| **Torso** | a blue uniform shirt (long sleeves since §12) | a grey tactical top under a red-wine plate vest | a green or aqua tee under the brown leather vest with the Prospect's bottom rocker only (the full patch is not earned yet) | a black jacket, a dark purple shirt, no tie |
+| **Legs** | navy trousers with a white side stripe | grey cargo trousers, knee pads | worn jeans | black dress trousers |
+| **Feet** | black combat boots | tactical boots | biker boots | black dress shoes |
+| **Waist** | a duty belt: radio, handcuffs, baton, holstered pistol | a belt with pouches, a grenade hanging | a wallet chain, a knife | discreet: a pistol hidden under the jacket |
+| **Main weapon** | a shotgun | an assault rifle, slung | a sawed-off shotgun or a submachine gun | a compact submachine gun |
+| **Casual pose** (§5a) | the shotgun on the shoulder, a hand on the belt | the rifle slung, arms crossed over it | the sawed-off as a cane, leaning | the gun dangling from one hand, on the phone |
+
+**Cost:** rigid pieces (cap, helmet, goggles, earpiece, plates, belts and pouches, chain) are cheap; the cloth that must fit the body is
+the expense, the open biker vest and the corporate jacket most of all (they stand off the body).
 
 ## 5. Machines and the dog
 
@@ -296,3 +315,60 @@ clips, so a coat generated on them needs keys for those alone.
 | Rank pieces | `COSMETICS` §8.3's, rigid wherever they can be | none |
 | Counter-unit gear | ~22-26 pieces, 3 of them suits | none |
 | Machines | 16: 15 meshes + the K9 | none |
+
+## 12. The model pipeline and the first prompt (Director, 2026-11-18)
+
+*"Vamos pensar em como vai ser o pipeline: primeiro vamos fazer a arte no Nano Banana 2 e depois gerar o modelo no Tripo. O estilo TF2
+já garante nossa estética low poly. Inimigos vão ter varias cabeças e acessórios diferentes, mas o corpo vai ser compartilhado entre
+todos, de forma que as animações são universais (male e female)."*
+
+- **The art: Nano Banana 2, by EDITING the Agent's own Tripo inputs** (`REFERENCES/Personagem/Referencia/MaleNoCoatFront.png` and
+  `MaleNoCoatSide.jpeg`; for a woman `femaleNoCoatFront.png` and `femaleNoCoatSide.png`): the edit keeps his body, pose, camera,
+  framing and look, and changes only the clothes and the head. So the shared body already holds in the drawing, and the enemies come
+  out in the Agent's own style. **The style is anchored on his image, not on the name of the game** (Claude): the prompt leaves "Team
+  Fortress 2" out so the drawing does not drift toward Valve's characters; add it if the look needs a push.
+- **Two images per model, as the Agents had:** the FRONT, then the SIDE (made from the Agent's side AND the new front, so the views
+  agree). Ask for the largest output the tool allows (`ITEMS` §7.1's lesson).
+- **BARE first** (rule 3; the Agent's own lesson, `ACTOR` D86: his generated belt fused into the trousers and was removed by hand): the
+  model is generated in the faction's basic dress with a bare head; the headgear and the belt with its gear come after, as an item
+  sheet (`ITEMS` §7's way), and are fitted to the body. That is also what lets the heads and the accessories vary.
+- **The model: Tripo, as the Agents were made** (D85): multi-view, the front plus the side in the LEFT slot (the Agent's side image
+  shows his left side), triangles, the parts split, the Mixamo rig.
+- **What is kept, decided on the first result (Claude, to see):** (a) the whole generation, whose body follows the Agent's proportions
+  on the same 65 joints; or (b) its head and boots moved onto the Agent's own body (`tripo_dress.py`'s way) with the uniform painted on
+  his shirt and trousers (D98: texture only), which shares the body exactly. (b) is why the shirt has LONG sleeves: the Agent's sleeves
+  have no arms under them.
+- **The variety (Claude's reading of the ruling, to confirm):** one body per sex; rule 13's "10 humans" are its heads; headgear, gear
+  and palette go on top.
+
+### 12.1 The first model: the FID's Agent (the rank), male, BARE — the FRONT
+
+Attach `MaleNoCoatFront.png`.
+
+```
+Edit this image. Keep EXACTLY the same body, proportions, height, pose (the same A-pose: arms slightly away from the body, hands open and relaxed), camera angle, framing, lighting, white background and art style (stylized low-poly game character: bold simple shapes, flat-shaded facets, clean solid colours). Change ONLY the clothes and the head, as described below.
+
+The new man: a rank-and-file patrol officer of a fictional federal police force. Early thirties, a broad face, short black hair cut close at the sides and a little longer on top, clean-shaven, medium-brown skin, a serious, alert expression with the mouth closed. Bare head: no cap, no hat.
+
+His basic uniform, and nothing else:
+- Shirt: a medium-blue uniform shirt with LONG sleeves buttoned at the wrists, a pointed collar open at the neck, two buttoned chest pockets, shoulder straps, neatly tucked into the trousers.
+- Trousers: navy-blue uniform trousers, straight cut, a thin white stripe down the outer side of each leg, a plain smooth waistband with no belt and no belt loops showing.
+- Boots: black lace-up ankle boots, the trousers falling over them.
+
+No belt, no holster, no radio, no pouches, no tie, no jacket, no coat, no gloves, no backpack, no weapon. Hands empty.
+Each material a clearly separated solid colour region (blue cloth, navy cloth, black leather, skin, hair). No writing, no badges, no patches, no logos, no dirt, no fabric pattern.
+Full body from head to toes, centred, nothing cropped. No text, no labels, no arrows, no other people, no props, no shadow on the floor.
+```
+
+### 12.2 The same man — the SIDE
+
+Attach `MaleNoCoatSide.jpeg` FIRST, then the front just made.
+
+```
+Edit the first image (a side view). Keep EXACTLY its body, proportions, pose, camera angle, framing, lighting, white background and art style. Replace the clothes and the head with those of the man in the second image (the same man seen from the front): the same face, short black hair and skin, bare head, the same blue long-sleeved uniform shirt tucked in, the same navy trousers with the white side stripe and a plain waistband with no belt, the same black lace-up boots, in the same colours, now seen from the side.
+No belt, no holster, no pouches, no tie, no jacket, no backpack, no weapon. Hands empty.
+Full body from head to toes, nothing cropped. No text, no labels, no other people, no shadow on the floor.
+```
+
+**Next, once he is in:** the FID's accessory sheet (the cap, the duty belt with its holster, radio, handcuff case and baton), then
+the same two prompts for the female and for the other three factions' Standards (§4.1).

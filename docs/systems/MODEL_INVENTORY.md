@@ -6,8 +6,8 @@ them: characters and slots `COSMETICS_MASTER_PLAN` §8-§9, places and props `PR
 §10.0, §11.6-§11.7, §15. When an owner changes, this file follows.
 
 **2026-11-18: the enemy side is tracked in [`ENEMIES_MASTER_PLAN`](../../PROMPTS/PLANNING/ENEMIES_MASTER_PLAN.md)** (milestone ENEMIES-01):
-it expands §1's heavy base, §4, §5's faction cast and §7.1's rulings 7-9 faction by faction. The rulings below stand until the Director
-rules on that plan's §9.
+it expands §1's heavy base, §4, §5's faction cast and §7.1's rulings 7-9 faction by faction. The same day's rulings are §7.2 below; the
+pool's route (rule 8 against that plan's route B) is still the Director's call.
 
 **Director's rule (2026-10-24): architecture and LARGE objects are built in VOXELS** (generator scripts into `VoxelStore` containers, like
 `gen_dorm_vox.py`: shots, blasts, fire and soot for free). So this inventory has two halves: **models to sculpt** (characters, pieces worn or
@@ -153,6 +153,13 @@ umbrellas, chairs, cones, Pryce's **campaign posters** (in-world text via `tr()`
 | ALARM (raises the others) | siren box | motion sensor + flare | air horn on a battery | laser grid + alarm panel |
 
 Each is one mesh (PP7 when it moves); a machine's gameplay (sight cone, noise, hacking) is `AI_MASTER_PLAN`'s, not this list's.
+
+### 7.2 Rulings (Director, 2026-11-18): the officers, the enemies' weapons
+
+11. **Every field officer has the Agent's body structure (male / female) and the coat; every other slot is his own** (shoes, hat, hair,
+    trousers, shirt, belt...): the same class as the Agent, an essentially different look (`ENEMIES_MASTER_PLAN` §6).
+12. **Each enemy has one main weapon type plus a few secondary ones, carried in sight:** in the hand, slung, or held casually
+    (`ENEMIES_MASTER_PLAN` §5a; the poses are `MOVEMENT` §11.6 step 11, the sling `ITEMS` §2.1).
 
 ## 8. Counts (proposal)
 

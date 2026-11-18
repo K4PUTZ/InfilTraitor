@@ -52,6 +52,7 @@ Hold family = `MOVEMENT_MASTER_PLAN` §11.3 (H1-H8, I1-I7), plus the new ones of
 | Sniper rifles ×4 | H3 | ✅ same pack |
 | Scope, bipod, tripod, bayonet (attachments) | on a gun | ✅ same pack |
 | Suppressor (attachment) | on a gun | 🛠 a cylinder on the muzzle point |
+| Sling (attachment) | on a long gun | 🛠 the enemies carry their main weapon slung, among other ways (Director, 2026-11-18; `ENEMIES_MASTER_PLAN` §5a) |
 | Late guns: pulse carbine, laser, plasma, sonic (`DESIGN` §10.2) | H3 | see §3 |
 
 ### 2.2 Special ranged (Director, 2026-11-16)

@@ -866,8 +866,18 @@ Each step lands on both figures before the next; a step with a look ends in a ca
       waited for the pistol (2026-11-12). The cost: a move ordered right after a shot leaves once the holster has played (the draw
       timeline backwards: up to 0.92 s, its 22 frames at 24 fps, the same on both figures standing and crouched). Takes `holster_walk`, `holster_run`, `holster_crouch` (PLAYGROUND), both figures.
 
-Steps 0 to 5 are the Director's order. Steps 6 to 9 are in Claude's proposed order: he listed them without one (§11.8 Q9). Step 10
-is the Director's, with no place in the order yet.
+11. **The enemies' carry, PLANNED (Director, 2026-11-18, opening `ENEMIES_MASTER_PLAN`).** *"Os inimigos em geral vão ter um tipo de
+    arma principal (mais algumas secundárias) e ela vai estar sendo carregada na mão, a tiracolo ou seguradas casualmente de umas 3
+    maneira diferentes."* One set of animations still serves everyone (§11.8 Q8); these are poses the Agent has not needed.
+    - **What it needs:** per hold family (H1, H2, H3; H9's launcher), the main weapon carried in the hand, slung across the body, and
+      held casually (Claude's reading: three casual holds besides the hand and the sling, chosen on renders); the passage from each carry
+      to the aim and back; walking and running with them, with step 10's gaits.
+    - **What exists:** the bank's pistol carries only (S2, S3), no long-gun carry. The field officers wear the Agent's body and coat
+      (`ENEMIES_MASTER_PLAN` §6, ruled the same day), so the Agent's draws from the coat work on them as built.
+    - **The models it asks for:** a sling on the long guns (`ITEMS` §2.1); where the secondaries ride is open (`ENEMIES` §5a).
+
+Steps 0 to 5 are the Director's order. Steps 6 to 9 are in Claude's proposed order: he listed them without one (§11.8 Q9). Steps 10
+and 11 are the Director's, with no place in the order yet.
 
 ### 11.7 Notes for other plans (recorded here, built there)
 

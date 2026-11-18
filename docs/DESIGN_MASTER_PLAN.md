@@ -1654,6 +1654,12 @@ as at a checkpoint, the Agent is recognised whatever coat he wears (Director, 20
 Below them the factions vary freely: henchmen, super-henchmen and sub-henchmen of any look, as long as they stay complementary and of
 equivalent power across the four factions.
 
+**The officers' body, the enemies' weapons (Director, 2026-11-18, opening `ENEMIES_MASTER_PLAN`):** every field officer has the Agent's
+body (male / female) and the coat, and every other piece of his own, so the Agent and his colleagues are one class with essentially
+different looks (`ENEMIES` §6). **Each enemy has ONE main weapon type plus a few secondary ones,** and carries the main one in sight: in
+the hand, slung, or held casually (about three ways). Which weapon per faction, rank and unit is GAMEPLAY-01's; the models are `ENEMIES`
+§5a's and `ITEMS_MASTER_PLAN`'s, the poses `MOVEMENT_MASTER_PLAN` §11.6 step 11.
+
 ### 11.3 The five point/counterpoint techniques
 Every agent power gets an enemy mirror (the Phoenix Point lesson). *(2026-10-22: the "Introduced by" column names the older roster and its fixed
 chapter order; with four routes a counter is introduced by lap POSITION, not by faction, and §11.4's telegraph rule counts positions too.)*

@@ -595,8 +595,10 @@ built) of every item the Agent or a guard handles, before MOVEMENT sizes them fa
 ### 🟢 ENEMIES-01 — The enemies: every model of the four factions — OPENED 2026-11-18 *(Director direct)*
 Plan: [`ENEMIES_MASTER_PLAN`](../../PROMPTS/PLANNING/ENEMIES_MASTER_PLAN.md). Opened before the weapons continue. Step E-0, the survey,
 is done: per faction the leader, the sub-leader, the rival bosses, the specialists, the store keeper, the member abroad, the field
-officers, the common pool, the counter units and the machines (30 named characters, 16 machines). Next: the Director's call on how the
-pool and the officers are built (the plan's §9), then the first slice, the opening every route shares (`COSMETICS_MASTER_PLAN` §8.5).
+officers, the common pool, the counter units and the machines (30 named characters, 16 machines). Ruled the same day: an officer is the
+Agent's body and the coat with every other piece his own; each enemy carries one main weapon in sight (in the hand, slung, held
+casually) plus a few secondary ones. Next: the Director's call on how the pool is built (the plan's §9), then the first slice, the
+opening every route shares (`COSMETICS_MASTER_PLAN` §8.5).
 
 ---
 

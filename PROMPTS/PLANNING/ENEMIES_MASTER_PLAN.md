@@ -6,7 +6,13 @@
 > This version is the SURVEY: every model the four factions need, from the leaders down to the common pool and the machines, where each
 > one is canon, where it appears (the board or a staged scene), and how it could be made. **Nothing is built, and this file ratifies
 > nothing:** the cast is canon from its owners (§1); the build routes of §6 and the counts that depend on them are Claude's proposal, and
-> §9 holds the two questions that decide them.
+> §9 holds what is still open.
+>
+> 🟢 **v0.2, 2026-11-18 (later): the Director ruled the officers and the enemies' weapons.** *"todo oficial vai ter uma estrutura
+> corporal parecida com o agente (male e female) + o casaco. Fim. Todo o resto vai ser diferente. Sapato, chapeu, cabelo, calça, camisa,
+> cinto, etc. Então, sim agente e oficiais são membros da mesma classe. Mas vão ser essencialmente bem diferentes."* (§6) *"Os inimigos
+> em geral vão ter um tipo de arma principal (mais algumas secundárias) e ela vai estar sendo carregada na mão, a tiracolo ou seguradas
+> casualmente de umas 3 maneira diferentes."* (§5a) The pool's route is still open (§9).
 
 ## 0. What this plan owns, and what it does not
 
@@ -52,7 +58,7 @@ Per faction, from the top. The four are built to the same shape (`DESIGN` §2.1:
 | Store keeper (L2) | 1 | unique, named | the board, at the store (`DESIGN` §11.7) |
 | Member abroad (the trips) | 1, proposed | unique | a trip's map (`DESIGN` §2.6; open in §18) |
 | Freelance prototype captain (L3) | 1 | an officer + the L3 item, not named | the board (`DESIGN` §11.7) |
-| Field officers: Lieutenant, Captain | 2 ranks | the officer: overcoat + armband | the board |
+| Field officers: Lieutenant, Captain | 2 ranks | the Agent's body + the coat, every other slot his own (ruled 2026-11-18, §6) | the board |
 | Rank-and-file: Recruit, Standard, Veteran | 3 ranks | the common pool | the board |
 | Counter units: EYE, HAND, WALL | 3 units × 3 gear stages | pieces on the pool | the board (`DESIGN` §11.7) |
 | Machines | 4 | one mesh each (PP7 when it moves) | the board |
@@ -73,7 +79,7 @@ Figure: M / F; "heavy" where the canon says so. The specialists' build (standard
 | Keeper | **Urn**, the evidence clerk | M | the evidence room |
 | Abroad | the money man who launders Graves's protection money | open | a private bank in a tax haven |
 | L3 captain | a Chief Inspector | officer | the FID's L3 prototype |
-| Officers | Inspector (Lt), Chief Inspector (Cpt) | officer | **the Agent's own coat AND colour** (he is an Inspector): his fedora, tie and shoes set him apart (`DESIGN` §2.1) |
+| Officers | Inspector (Lt), Chief Inspector (Cpt) | officer | **the Agent's own coat AND colour** (he is an Inspector); every other slot is their own (§6), so his fedora, tie and shoes set him apart (`DESIGN` §2.1) |
 | Pool | Cadet, Agent, Senior Agent | pool | uniform shirt, trousers, boots, cap, duty belt; rank: radio (Lt up), tactical vest, a commander's jacket (`COSMETICS` §8.3). The opening's station officers |
 | Counter units | forensic tech · riot officer · radio sergeant | pieces | scent-decoy kit, tablet, jammer case · insulated vest, detector wand, ear defenders · analogue handset, runner's satchel |
 | Machines | street CCTV dome · **K9 dog** · taser sentry on a tripod · siren box | | |
@@ -164,6 +170,23 @@ drone, the RC car, the wheeled robot, the turrets, the cameras' pan) and the K9 
 alert, bark, down). What they do (sight cone, noise, hacking) is `AI_MASTER_PLAN`'s. **Assumed here (Claude):** their models are made
 with the AI that drives them (E-5), not with the human pools. **Not tried:** whether Tripo rigs a quadruped.
 
+## 5a. The enemies' weapons (Director, 2026-11-18)
+
+*"Os inimigos em geral vão ter um tipo de arma principal (mais algumas secundárias) e ela vai estar sendo carregada na mão, a tiracolo
+ou seguradas casualmente de umas 3 maneira diferentes."*
+
+- **Each enemy has ONE main weapon type, plus a few secondary ones.** Which weapon per faction, rank and unit is GAMEPLAY-01's (with
+  `DESIGN` §10.2 and §11); the two firearm lists that do not match yet are noted in `MOVEMENT` §11.7.
+- **The main weapon is carried in sight:** in the hand, slung across the body, or held casually. Claude reads "about three ways" as
+  three casual holds besides the hand and the sling, to be chosen on renders (to confirm then).
+- **What it asks of the models:** the weapons are `ITEMS`' (anyone carries any weapon, at one size everywhere); new is a SLING on the
+  long guns (`ITEMS` §2.1). Where the secondaries ride while the main weapon is out (a holster, the back) is not said yet.
+- **What it asks of the poses:** `MOVEMENT` §11.6 step 11 (recorded there): the carries per hold family, the passage from each to the
+  aim and back, and walking and running with them (step 10's gaits). The bank holds pistol carries only (S2, S3): no long-gun carry
+  exists yet.
+- **It answers §8's first finding:** a guard does not draw from a coat he does not wear. The officers wear the Agent's body and coat
+  (§6), so his draws from the coat, with their keys, work on them as built.
+
 ## 6. How each tier could be built (Claude's reading, PROPOSED: the Director's call)
 
 **What the Agent taught, measured in this repo:**
@@ -180,20 +203,34 @@ with the AI that drives them (E-5), not with the human pools. **Not tried:** whe
 - **Colour is free** (D87's palette). **A face is not,** and the police form already needs several on the Agent's body: one per
   ethnicity, both sexes (`DESIGN` §2.2, revised 2026-10-25: a choice of race is a whole face).
 
-**Two routes for the pool and the officers:**
+**The field officers: RULED (Director, 2026-11-18).** *"todo oficial vai ter uma estrutura corporal parecida com o agente (male e
+female) + o casaco. Fim. Todo o resto vai ser diferente. Sapato, chapeu, cabelo, calça, camisa, cinto, etc. Então, sim agente e
+oficiais são membros da mesma classe. Mas vão ser essencialmente bem diferentes."* An officer is the Agent's body (male or female)
+wearing the coat in his faction's colours and emblem (D90); every other slot is his own. What follows (Claude's reading):
+- **The coat comes with everything already done for it:** the legs' push (D94), the light build's masks and every hand-made coat key
+  belong to that coat on that body, so they carry over. The Freelance captains are officers, and Hedge in the LED coat (a shader on the
+  same coat) rides the same body.
+- **The swappable slots are new meshes, each fitted once per body:** hair, hat, shoes, belt, tie (`ACTOR` D98's REPLACED pieces). A
+  piece fitted to the two bodies serves every officer who wears it, in any faction.
+- **The shirt and the trousers are the body's own shell** on the Agent's base (D98 KEPT them, texture only, and deleted the faces they
+  hide): an officer's differ by colour, print and material for free. A different CUT is a new mesh made to cover that same body, one
+  fitting per cut, wherever a render shows the texture is not enough.
+- **Same class, different people:** the Agent and his colleagues share the slots, never the pieces; the fedora, the tie and the dress
+  shoes stay his.
+
+**Two routes for the pool** (the Director's call, §9):
 
 | | Route A: the canon as written (rules 3, 5) | Route B: Claude's recommendation |
 |---|---|---|
 | **The pool** | ~10 bare bodies shared by the four factions; each faction's base set (4-5 cloth pieces) fitted to every body | **~4 generations per faction, already IN the faction's base set** (rule 3 read as D89 reads it for the Agent: what a guard always wears is his basic dress); at least one woman; heavy bodies where the faction has bruisers. Rank and counter gear as rigid socket pieces; the three suits as generations of their own |
 | **Cloth fittings** | up to ~10 bodies × 4 sets × 4-5 pieces (a scripted transfer of tight pieces, which have no skirt between the legs, is untried) | none for the pool |
-| **The field officers** | the coat fitted to each roster body that is promoted, its hand keys redone per body | **the Agent's two coated bodies, re-dressed:** the faction's coat colour and emblem (D90), a head of their own (hair, face, skin), no fedora: the same head swap the police form needs on the Agent's body, with faces of their own. They inherit the push and every coat key. The canon already gives every faction's officers the Agent's coat silhouette (rule 8), and the FID's officers his very coat; the Freelance captains are officers too |
 | **Pool bodies to generate** | ~10 | ~16 |
-| **What it breaks or risks** | the fitting cost grows with bodies × sets | replaces rule 5's "interchangeable across factions"; every officer has the Agent's build (a heavy officer needs a coat of his own); the Militia's and the bikers' under-dress (the Agent's shirt and tie under the coat) must be re-coloured or hidden: a render decides |
+| **What it breaks or risks** | the fitting cost grows with bodies × sets | replaces rule 5's "interchangeable across factions"; a faction's base set is baked into its bodies, so a new outfit is a new generation |
 
 **The named characters, in either route:** one generation each (rule 4, and `MODEL_INVENTORY` §5 lists every named one), made chapter
 by chapter, never on the pools' critical path. A named character who wears the long coat AND plays on the board (Hedge, in the LED
-coat) rides the Agent's coated body with a head of his own, for the officers' reason. The scene-only cast (the four sub-leaders, Vane:
-rule 13) needs only its scene clips, so a coat generated on them needs keys for those alone.
+coat) rides the Agent's coated body, as the officers do. The scene-only cast (the four sub-leaders, Vane: rule 13) needs only its scene
+clips, so a coat generated on them needs keys for those alone.
 
 ## 7. What exists, and the engine gap
 
@@ -211,10 +248,11 @@ rule 13) needs only its scene clips, so a coat generated on them needs keys for 
 ## 8. Findings for the owner plans (not acted on)
 
 1. **`MOVEMENT`: the draw comes out of the coat.** The pistol leaves the coat's left flap and the long guns its right one (§11.6); with
-   one set of animations (rule 2), an uncoated guard reaches into nothing. Either the pool carries its weapon out (Q8 makes that a
-   gameplay state) or a holster draw joins the bank.
+   one set of animations (rule 2), an uncoated guard reaches into nothing. **Answered 2026-11-18 (§5a):** the enemies carry their main
+   weapon in sight, and the officers share the Agent's body and coat.
 2. **`COSMETICS` C3: the FID's officers wear the Agent's coat and colour.** From afar the non-cosmetic cue that marks the Agent carries
-   the whole difference, and the hat is the one that shows; a render is owed once the officers exist.
+   much of the difference. **Eased 2026-11-18 (§6):** every other slot of an officer differs, the hat first; a render is still owed
+   once the officers exist.
 3. **`MODEL_INVENTORY` §5 still lists "Pith & Peel's front man, standard M"**, while `COSMETICS` §8.4 and `DESIGN` §2.8 make him the dead
    colleague, a photograph only.
 4. **`DESIGN`: the specialists' rank is not written,** and whether they wear the officer's coat changes how they are built (§6).
@@ -224,14 +262,14 @@ rule 13) needs only its scene clips, so a coat generated on them needs keys for 
 
 1. **The pool: route A or route B (§6)?** And how many bodies per faction (Claude: 4, at least one woman, heavy ones where the faction
    has bruisers).
-2. **The officers: the Agent's two coated bodies re-dressed (Claude), or generations of their own?**
+2. ✅ **The officers** (ruled 2026-11-18, §6): the Agent's body (male / female) and the coat; every other slot their own.
 
 ## 10. Order of work (proposed; the first slice is ruled, rule 14)
 
 | Step | What |
 |---|---|
 | **E-0** ✅ | This survey (2026-11-18) |
-| E-1 | The answers to §9; the reference sheets for the first slice (prompts as in `ITEMS` §7, for Tripo): the FID pool and officers, Graves, the four sub-leaders at the station door, with Marlow and a few civilians (§3.5) |
+| E-1 | The answer to §9; the reference sheets for the first slice (prompts as in `ITEMS` §7, for Tripo): the FID pool, the FID officers' own pieces (hair, hats, shoes, belts, ties; shirts and trousers by texture, §6), Graves, the four sub-leaders at the station door, with Marlow and a few civilians (§3.5) |
 | E-2 | The engine (§7): guards on the Tripo rig by map data, the clothes' palette per actor, socket pieces, the old rigs retired; the Moto |
 | E-3 | The first slice through `build_agents.sh` (the light build), judged in the four real facings |
 | E-4 | The other three factions' pools and officers, one per territory, each measured on the Moto before the next |
@@ -244,7 +282,8 @@ rule 13) needs only its scene clips, so a coat generated on them needs keys for 
 | Named, enemy side | **30**: FID 7, Calm Waters 7, Bunsen Burners 8, Corporation 8 (4 of them the proposed members abroad) | none |
 | ... of them women | 11 (+ the members abroad, open) | |
 | ... of them heavy | 3: Kessler, Hardcastle, "Deacon" | |
-| Field officer looks | 4 faction coats × 2 ranks, both figures; the 4 Freelance captains among them | the old Agent, a placeholder |
+| Field officers | the Agent's two bodies + the coat in 4 faction colours (2 ranks; the 4 Freelance captains among them); per faction their own hair, hats, shoes, belts and ties (meshes) and shirts and trousers (textures), §6 | the old Agent, a placeholder |
+| Enemy weapons | `ITEMS`' models + a sling for the long guns; the carry poses are `MOVEMENT` §11.6 step 11 (§5a) | the pistol cycle only |
 | Pool bodies | route A ~10 shared, route B ~16 (4 per faction) | the white blazer, a placeholder |
 | Rank pieces | `COSMETICS` §8.3's, rigid wherever they can be | none |
 | Counter-unit gear | ~22-26 pieces, 3 of them suits | none |

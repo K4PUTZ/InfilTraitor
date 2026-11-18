@@ -115,6 +115,11 @@ def run_godot(map_id, scenario, window, shape, extra=(), seed=1, timeout=600, en
     finally:
         OVERRIDE.unlink(missing_ok=True)
     log = "".join(lines)
+    try:   ## the whole run's log, unfiltered (warnings included), for whoever has to read why a take looks wrong
+        (ROOT / "temp").mkdir(exist_ok=True)
+        (ROOT / "temp" / "capture_last.log").write_text(log)
+    except OSError:
+        pass
     if why:
         for line in log.splitlines():
             if "ERROR" in line or "[SCENARIO]" in line:
@@ -122,7 +127,7 @@ def run_godot(map_id, scenario, window, shape, extra=(), seed=1, timeout=600, en
         sys.exit("[CAPTURE] killed: %s" % why)
     after_script_error = False
     for line in log.splitlines():
-        if any(t in line for t in ("[TAKE]", "[RAIL]", "[CAPTURE]", "[FRAME-CHECK]", "[GLASS-COLLAPSE]", "[GLASS-SHATTER]", "[GLASS-OPENING]", "[BLAST-RUBBLE]", "-PASSAGE]", "[SHOT-RUBBLE]", "[ROOF-BLAST]", "[ROOF-FIRE]", "[SOFT-SHEET]", "[STRUCT]", "ABORT", "SCRIPT ERROR", "ERROR:")) \
+        if any(t in line for t in ("[TAKE]", "[RAIL]", "[CAPTURE]", "[FRAME-CHECK]", "[GLASS-COLLAPSE]", "[GLASS-SHATTER]", "[GLASS-OPENING]", "[BLAST-RUBBLE]", "-PASSAGE]", "[SHOT-RUBBLE]", "[SHOT-PROJECTILE]", "[ROOF-BLAST]", "[ROOF-FIRE]", "[SOFT-SHEET]", "[STRUCT]", "ABORT", "SCRIPT ERROR", "ERROR:")) \
                 or (after_script_error and line.strip().startswith("at: ")):   ## where a script error happened
             print("  " + line.strip())
         after_script_error = "SCRIPT ERROR" in line

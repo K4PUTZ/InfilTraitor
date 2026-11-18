@@ -68,5 +68,15 @@
       0.7035,
       -0.0021
     ]
+  },
+  "fx": {
+    "flash": "powder",
+    "case": false,
+    "projectile": "flare",
+    "color": [
+      1.0,
+      0.25,
+      0.12
+    ]
   }
 }

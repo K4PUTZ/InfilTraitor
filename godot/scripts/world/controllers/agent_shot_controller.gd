@@ -517,9 +517,14 @@ func fire_at_active() -> void:
 	_muzzle_floor = muzzle["floor"]
 	var aim_world: Vector2 = _gu_centre_world(target_gu) - muzzle_world
 	print("[MUZZLE] origin %s floor %s (%s)" % [muzzle_world, _muzzle_floor, "the gun's muzzle" if agent.muzzle_origin() != muzzle_world else "the old anchor"])
+	## MOVEMENT §11.6 step 5: the row says what flashes (`fx.flash`): the powder's fire and smoke, a flash of the bolt's colour, nothing.
 	if aim_world != Vector2.ZERO:
-		room.spawn_muzzle_flash(muzzle_world, aim_world.normalized(), _muzzle_floor)
-	agent.play_shot_kick()   ## the recoil and the spent case, on the flash's frame
+		match weapon_def.fx_flash:
+			"powder":
+				room.spawn_muzzle_flash(muzzle_world, aim_world.normalized(), _muzzle_floor)
+			"energy":
+				room.spawn_energy_flash(muzzle_world, aim_world.normalized(), weapon_def.fx_color, _muzzle_floor)
+	agent.play_shot_kick()   ## the recoil and the spent case (when the row throws one), on the flash's frame
 
 	var prof_t0: int = Time.get_ticks_usec()
 	var pellet_picks: Array = []
@@ -581,6 +586,7 @@ func fire_at_active() -> void:
 	var impact_gus: Dictionary = {}
 	var resolved_picks: Array = []
 	var prop_index: Dictionary = BlastCalculatorClass.prop_shot_index(room._voxel_board.prop_blocks())
+	var body_thrown: bool = false   ## a row whose shot is a body throws ONE, at the first round that stopped
 	for i in range(pellet_picks.size()):
 		var resolved := BlastCalculatorClass.resolve_pellet_voxel(
 			pellet_picks[i], room._edge_registry, "%s:%d" % [salt, i])
@@ -590,7 +596,15 @@ func fire_at_active() -> void:
 			if resolved.is_empty():
 				continue
 		resolved_picks.append({"index": i, "resolved": resolved})
-		_draw_tracer(muzzle_world, pellet_picks[i], resolved, origin_gu)
+		if weapon_def.fx_projectile == "tracer" or weapon_def.fx_projectile == "bolt":
+			_draw_tracer(muzzle_world, pellet_picks[i], resolved, origin_gu,
+				weapon_def.fx_color if weapon_def.fx_projectile == "bolt" else Color(0.0, 0.0, 0.0, 0.0))
+		elif not body_thrown:
+			body_thrown = true
+			_throw_body(agent, pellet_picks[i], resolved, origin_gu)
+	## A void round (D15: nothing behind the target) still throws its body: it flies to where the line ends and falls there.
+	if not body_thrown and not pellet_picks.is_empty() and weapon_def.fx_projectile != "tracer" and weapon_def.fx_projectile != "bolt":
+		_throw_body(agent, pellet_picks[0], {}, origin_gu)
 
 	## NOTE THE NAME. This is RESOLVE only — the apply loop runs after the flight
 	## and was silently outside every earlier measurement, which is how ~250 ms of
@@ -866,7 +880,8 @@ func _nearest_axis(aim: Vector2) -> Vector2i:
 ## endpoint is the pick's own resolved GU, so the streak can never point
 ## somewhere the shot did not go — including after a perspective rotation, since
 ## the GU→world conversion is what supplies the point.
-func _draw_tracer(muzzle_world: Vector2, pick: Dictionary, resolved: Dictionary = {}, shooter_gu: Vector2i = Vector2i.ZERO) -> void:
+func _draw_tracer(muzzle_world: Vector2, pick: Dictionary, resolved: Dictionary = {}, shooter_gu: Vector2i = Vector2i.ZERO,
+		energy: Color = Color(0.0, 0.0, 0.0, 0.0)) -> void:
 	if room._tracer_overlay == null:
 		return
 	## GLASS G7 — a pass-through crossing is not where the round stopped; the
@@ -877,40 +892,69 @@ func _draw_tracer(muzzle_world: Vector2, pick: Dictionary, resolved: Dictionary 
 	## dent decal use, `Board3DLive.voxel_face_point()`), not the centre of the GU it stopped in at muzzle height.
 	var face_end: Array[Vector2] = _impact_face_pair(resolved, shooter_gu)
 	if face_end.size() == 2:
-		room._tracer_overlay.add_tracer(muzzle_world, face_end[0], _muzzle_floor, face_end[1])
+		room._tracer_overlay.add_tracer(muzzle_world, face_end[0], _muzzle_floor, face_end[1], energy)
 		return
 	var impact_world: Vector2 = _gu_centre_world(pick["gu"])
 	if impact_world == Vector2.ZERO:
 		push_warning("[AgentShotController] tracer skipped — GU %s has no world position" % pick["gu"])
 		return
-	room._tracer_overlay.add_tracer(muzzle_world, impact_world, _muzzle_floor, _gu_centre_world(pick["gu"], 0))
+	room._tracer_overlay.add_tracer(muzzle_world, impact_world, _muzzle_floor, _gu_centre_world(pick["gu"], 0), energy)
+
+
+## MOVEMENT §11.6 step 5 — the shot's own body (`fx.projectile` dart / probes / hook / flare) thrown by the figure at the point the
+## round resolved to: the struck face's centre with its normal and voxel, or (a prop, glass) the centre of the GU it stopped in.
+func _throw_body(agent, pick: Dictionary, resolved: Dictionary, shooter_gu: Vector2i) -> void:
+	var board: Node = room.board3d()
+	if board == null or pick.has("pane_id"):
+		return
+	var face: Array = _impact_face_3d(resolved, shooter_gu)
+	if face.is_empty():
+		var at: Vector2 = _gu_centre_world(pick["gu"])
+		if at == Vector2.ZERO:
+			return
+		face = [board.call("particle_origin", at, _gu_centre_world(pick["gu"], 0)), Vector3.ZERO, Vector3i.MAX]
+	if not agent.fire_projectile(face[0], face[1], face[2]):
+		push_warning("[AgentShotController] '%s' throws a body and none left the gun (no figure, or the hook still out)" % _weapon_id)
+
+
+## The struck face of a wall round in the board's space: [point, outward normal, voxel (x, y, level)], or [] (a prop, glass, no 3D board).
+func _impact_face_3d(resolved: Dictionary, shooter_gu: Vector2i) -> Array:
+	var board: Node = room.board3d()
+	if board == null or resolved.is_empty() or resolved.has("block") or not resolved.has("slice"):
+		return []
+	var hit_slice: Slice = resolved["slice"]
+	var hv: Voxel = hit_slice.voxel_at(int(resolved["voxel_index"]))
+	if hv == null:
+		return []
+	var normal: Vector3 = _face_normal(hv, shooter_gu)
+	if normal == Vector3.ZERO:
+		return []
+	return [board.call("voxel_face_point", hv.grid_pos, hv.level, normal), normal, Vector3i(hv.grid_pos.x, hv.grid_pos.y, hv.level)]
+
+
+## The outward normal of the face of `hv` a round from `shooter_gu` strikes (base coordinates), ZERO for none.
+func _face_normal(hv: Voxel, shooter_gu: Vector2i) -> Vector3:
+	var side: int = BlastCalculatorClass.carved_side_for(hv.grid_pos, false, shooter_gu * GeometryCoords.VOXELS_PER_UNIT_AXIS \
+		+ Vector2i.ONE * (GeometryCoords.VOXELS_PER_UNIT_AXIS >> 1))
+	match side:
+		Voxel.CarvedSide.LEFT:
+			return Vector3(0.0, 0.0, 1.0)
+		Voxel.CarvedSide.RIGHT:
+			return Vector3(1.0, 0.0, 0.0)
+		Voxel.CarvedSide.FACE_NW:
+			return Vector3(-1.0, 0.0, 0.0)
+		Voxel.CarvedSide.FACE_NE:
+			return Vector3(0.0, 0.0, -1.0)
+	return Vector3.ZERO
 
 
 ## The 2D particle pair (position, floor) of the centre of the face a wall round struck, or [] (a prop, glass, no 3D board, an unknown face).
 func _impact_face_pair(resolved: Dictionary, shooter_gu: Vector2i) -> Array[Vector2]:
-	var none: Array[Vector2] = []
-	var board: Node = room.board3d()
-	if board == null or resolved.is_empty() or resolved.has("block") or not resolved.has("slice"):
+	var face: Array = _impact_face_3d(resolved, shooter_gu)
+	if face.is_empty():
+		var none: Array[Vector2] = []
 		return none
-	var hit_slice: Slice = resolved["slice"]
-	var hv: Voxel = hit_slice.voxel_at(int(resolved["voxel_index"]))
-	if hv == null:
-		return none
-	var side: int = BlastCalculatorClass.carved_side_for(hv.grid_pos, false, shooter_gu * GeometryCoords.VOXELS_PER_UNIT_AXIS \
-		+ Vector2i.ONE * (GeometryCoords.VOXELS_PER_UNIT_AXIS >> 1))
-	var normal := Vector3.ZERO
-	match side:
-		Voxel.CarvedSide.LEFT:
-			normal = Vector3(0.0, 0.0, 1.0)
-		Voxel.CarvedSide.RIGHT:
-			normal = Vector3(1.0, 0.0, 0.0)
-		Voxel.CarvedSide.FACE_NW:
-			normal = Vector3(-1.0, 0.0, 0.0)
-		Voxel.CarvedSide.FACE_NE:
-			normal = Vector3(0.0, 0.0, -1.0)
-		_:
-			return none
-	return board.call("particle_pair", board.call("voxel_face_point", hv.grid_pos, hv.level, normal))
+	return room.board3d().call("particle_pair", face[0])
 
 
 ## Screen position above the guard, for the menu anchor. Uses the guard's own GU

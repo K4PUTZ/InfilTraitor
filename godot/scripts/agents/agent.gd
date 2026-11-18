@@ -235,6 +235,15 @@ func play_shot_kick() -> bool:
 	return false
 
 
+## MOVEMENT §11.6 step 5 — the shot's own body (a dart, the taser's probes, the grapple's hook, a flare) thrown by the figure at `to`
+## (board-local), `normal` / `host` the struck face and voxel (`ActorMesh3D.fire_projectile`). False when nothing flew (a tracer row, no figure).
+func fire_projectile(to: Vector3, normal: Vector3, host: Vector3i) -> bool:
+	var figure: Variant = pose.get_meta("figure3d") if pose != null and pose.has_meta("figure3d") else null
+	if figure != null and is_instance_valid(figure) and (figure as Object).has_method("fire_projectile"):
+		return bool((figure as Object).call("fire_projectile", to, normal, host))
+	return false
+
+
 func muzzle_origin() -> Vector2:
 	var head: Vector2 = _head_anchor()
 	return position + head - Vector2(0.0, head.y * MUZZLE_DROP_FRACTION)

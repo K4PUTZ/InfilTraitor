@@ -85,6 +85,7 @@ const DRAW_COAT_CLOSED_AT: float = 0.75
 ## top of the slide). The aim is HELD `SHOT_HOLD_S` after the shot, so the arms come back to it before the controller's lowering takes them down.
 const ActorRecoilRef = preload("res://godot/scripts/geometry/actor_recoil3d.gd")
 const ShellCasingsRef = preload("res://godot/scripts/geometry/shell_casings3d.gd")
+const ShotProjectilesRef = preload("res://godot/scripts/geometry/shot_projectiles3d.gd")
 const GUN_KICK_DEG: float = 6.0
 const GUN_KICK_BACK: float = 0.012
 const SHOT_HOLD_S: float = 0.6
@@ -129,6 +130,19 @@ var _held_id: String = ""            ## the weapon row whose model is in `_pisto
 var _held_def: WeaponDef = null      ## its row: its model's place in the reference's frame (`held_rel_for`) and its muzzle
 var _attach_id: String = ""          ## the attachment on its muzzle ("" = none)
 var _attach_def: AttachmentDef = null
+## MOVEMENT §11.6 step 5 — the held model's pieces a shot moves (`WeaponDef.fx_*`): the piece that flies (hidden from the shot until the
+## weapon is put away, or until a hook is wound back), the bow string (its drawn and fired meshes), the drum that turns while a line winds.
+var _fx_part: Node3D = null
+var _fx_string: MeshInstance3D = null
+var _fx_string_drawn: Mesh = null
+var _fx_string_fired: Mesh = null
+var _fx_spin: Node3D = null
+var _fx_spin_axis: Vector3 = Vector3.FORWARD
+var _fx_spin_centre: Vector3 = Vector3.ZERO
+var _fx_spin_base: Transform3D = Transform3D.IDENTITY
+var _fx_spent: bool = false            ## the piece has left (the gun is "unloaded" until it is put away)
+var _hook_handle: Dictionary = {}
+var drum_turns_per_s: float = 4.0
 var _attach_node: Node3D = null      ## its model, a child of the holder beside the weapon's
 var _throw: ActorAimPoseRef = null   ## the throw's path layer (null: the figure has no throw timeline)
 var _throw_seq: AimSequenceRef = null
@@ -639,10 +653,110 @@ func _hold_model(id: String) -> void:
 	_attach_def = null
 	var model := scene.instantiate() as Node3D
 	model.transform = w.held_rel_for(_figure)
+	_split_fx_pieces(model, w)   ## before the light: the split keeps the source materials the light converts
 	_pistol_holder.add_child(model)
 	_apply_board_light(model)
 	_held_id = id
 	_held_def = w
+
+
+## The row's moving pieces split off the model it just loaded (`ShotProjectiles3D.split_part`); a named piece the model lacks is said once.
+func _split_fx_pieces(model: Node3D, w: WeaponDef) -> void:
+	_fx_part = null
+	_fx_string = null
+	_fx_spin = null
+	_fx_spent = false
+	_hook_handle = {}
+	_fx_part = ShotProjectilesRef.split_part(model, w.fx_part)
+	_fx_string = ShotProjectilesRef.split_part(model, w.fx_string) as MeshInstance3D
+	_fx_spin = ShotProjectilesRef.split_part(model, w.fx_spin)
+	for pair in [[w.fx_part, _fx_part], [w.fx_string, _fx_string], [w.fx_spin, _fx_spin]]:
+		if String(pair[0]) != "" and pair[1] == null:
+			push_error("[ActorMesh3D] weapon '%s' names the piece '%s' (fx) and its model has none: it does not move" % [w.id, pair[0]])
+	if _fx_string != null:
+		_fx_string_drawn = _fx_string.mesh
+		_fx_string_fired = ShotProjectilesRef.fired_string_mesh(_fx_string)
+	if _fx_spin != null and _fx_spin is MeshInstance3D:
+		## The drum turns about the axis its box is longest or shortest along, the one unlike the other two (its round section is the pair).
+		var box: AABB = (_fx_spin as MeshInstance3D).mesh.get_aabb()
+		var e: Vector3 = box.size
+		var odd: int = 0
+		var best: float = -1.0
+		for k in range(3):
+			var others: Array = [e[(k + 1) % 3], e[(k + 2) % 3]]
+			var diff: float = absf(e[k] - (float(others[0]) + float(others[1])) * 0.5)
+			if diff > best:
+				best = diff
+				odd = k
+		_fx_spin_axis = Vector3.ZERO
+		_fx_spin_axis[odd] = 1.0
+		_fx_spin_centre = box.get_center()
+		_fx_spin_base = _fx_spin.transform
+
+
+## A shot's own body leaves the gun (`WeaponDef.fx_projectile`): dart, probes, hook or flare, thrown at `to` (board-local; `normal`, `host`:
+## the struck face and voxel, Vector3i.MAX none) by the board's `ShotProjectiles3D`. False when nothing could fly (no gun drawn, a tracer row).
+func fire_projectile(to: Vector3, normal: Vector3, host: Vector3i) -> bool:
+	if _held_def == null or _pistol == null or not _pistol.visible:
+		return false
+	var g: Vector3 = muzzle_global()
+	if g == Vector3.INF:
+		return false
+	var from: Vector3 = _board.to_local(g)
+	var upm: float = (_board.global_basis.inverse() * _pistol_holder.global_basis).x.length()
+	var shots := ShotProjectilesRef.of(_board)
+	var muzzle_now := func() -> Vector3:
+		var m: Vector3 = muzzle_global()
+		return Vector3.INF if m == Vector3.INF else _board.to_local(m)
+	if _fx_spent:   ## fired again before it was put away: it reloads at once
+		_fx_reload()
+	var ok: bool = false
+	match _held_def.fx_projectile:
+		"dart":
+			ok = shots.launch_dart(_held_def, _fx_part, from, to, normal, host)
+		"hook":
+			if not _hook_handle.is_empty() and not bool(_hook_handle.get("done", true)):
+				return false   ## the hook is still out
+			_hook_handle = shots.launch_hook(_held_def, _fx_part, from, to, muzzle_now, upm)
+			ok = not _hook_handle.is_empty()
+		"probes":
+			ok = shots.launch_probes(_held_def, from, to, normal, host, muzzle_now, upm)
+		"flare":
+			ok = shots.launch_flare(_held_def, from, to, upm)
+	if ok:
+		_fx_spent = true
+		if _fx_part != null:
+			_fx_part.visible = false
+		if _fx_string != null and _fx_string_fired != null:
+			_fx_string.mesh = _fx_string_fired
+	return ok
+
+
+## The gun loaded again: the piece back on it, the string drawn, the drum at rest.
+func _fx_reload() -> void:
+	_fx_spent = false
+	if _fx_part != null:
+		_fx_part.visible = true
+	if _fx_string != null and _fx_string_drawn != null:
+		_fx_string.mesh = _fx_string_drawn
+	if _fx_spin != null:
+		_fx_spin.transform = _fx_spin_base
+
+
+## Each frame: a gun put away comes back loaded; a hook wound back is on the gun again; the drum turns while its line winds.
+func _update_fx(dt: float) -> void:
+	if _pistol == null:
+		return
+	if not _hook_handle.is_empty():
+		if bool(_hook_handle.get("winding", false)) and _fx_spin != null:
+			var turn := Transform3D(Basis(_fx_spin_axis, -TAU * drum_turns_per_s * dt), Vector3.ZERO)
+			var about := Transform3D(Basis.IDENTITY, _fx_spin_centre) * turn * Transform3D(Basis.IDENTITY, -_fx_spin_centre)
+			_fx_spin.transform = _fx_spin.transform * about
+		if bool(_hook_handle.get("done", false)):
+			_hook_handle = {}
+			_fx_reload()
+	if _fx_spent and not _pistol.visible and _hook_handle.is_empty():
+		_fx_reload()
 
 
 ## The attachment `id` on the held weapon's muzzle ("" takes it off): its model in the holder, placed on that weapon's own muzzle.
@@ -701,6 +815,7 @@ func _update_aim(state: Dictionary) -> void:
 		return
 	## Standing still only: the aim is a whole-body stance (the idle sways and must not show through), so a walking figure keeps its legs and lowers the gun.
 	var dt: float = get_process_delta_time()
+	_update_fx(dt)
 	_shot_hold = maxf(0.0, _shot_hold - dt)
 	if _shot_t != INF:
 		_shot_t += dt
@@ -756,7 +871,8 @@ func fire_kick() -> bool:
 	_recoil.kick(gt.basis.z)
 	_shot_t = 0.0
 	_shot_hold = SHOT_HOLD_S
-	_eject_case(gt)
+	if _held_def == null or _held_def.fx_case:
+		_eject_case(gt)
 	return true
 
 

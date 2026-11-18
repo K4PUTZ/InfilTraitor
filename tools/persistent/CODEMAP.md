@@ -8,18 +8,18 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**356 scripts · 102317 lines total** (under `godot/scripts/`)
+**358 scripts · 103259 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — actor_pose.gd, agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — actor_viability_bench.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_aim_pose3d.gd, actor_head_turn3d.gd, actor_mesh3d.gd, actor_recoil3d.gd, aim_sequence.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, coat_emblem.gd, coat_push3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, footprint_marks3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, liquid_falls3d.gd, liquid_flame_tongues.gd, liquid_flames.gd, liquid_sheet3d.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, shell_casings3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_rest_cache.gd, soft_sheet_sim.gd, tripo_figure.gd, tripo_pose_kit.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
+- **geometry/** — actor_aim_pose3d.gd, actor_head_turn3d.gd, actor_mesh3d.gd, actor_recoil3d.gd, aim_sequence.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, cloth_flaps3d.gd, coat_emblem.gd, coat_push3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, footprint_marks3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, glass_voxel_fall3d.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, liquid_falls3d.gd, liquid_flame_tongues.gd, liquid_flames.gd, liquid_sheet3d.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, shell_casings3d.gd, shot_projectiles3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, soft_sheet3d.gd, soft_sheet_group.gd, soft_sheet_rest_cache.gd, soft_sheet_sim.gd, tripo_figure.gd, tripo_pose_kit.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, layout_overlay3d.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
 - **systems/** — board_probe.gd, capture_framer.gd, capture_profiles.gd, cell_plane_store.gd, cosmetic_density.gd, attachment_def.gd, attachment_registry.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, glass_support.gd, material_resistance_table.gd, pane_frame.gd, rubble_presets.gd, shot_hit_roll.gd, shot_punch_table.gd, soft_sheet_presets.gd, structural_support.gd, voxel_weakness.gd, weapon_def.gd, weapon_registry.gd, dev_flag.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, fluid_container.gd, fluid_plane.gd, frame_rate.gd, frame_split.gd, gfx_census.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, liquid_agent_status.gd, liquid_corrosion.gd, liquid_exposure.gd, liquid_field.gd, liquid_fire.gd, liquid_fire_lights.gd, liquid_glow.gd, liquid_registry.gd, liquid_surface_state.gd, localization_manager.gd, material_registry.gd, material_rows.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, secondary_tables.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_fire.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, capture_framer_selftest.gd, circle_field_octagon_selftest.gd, cloth_flaps_selftest.gd, coat_push_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, fluid_container_selftest.gd, fluid_plane_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, liquid_fire_selftest.gd, liquid_guards_selftest.gd, liquid_registry_selftest.gd, liquid_rules_selftest.gd, liquid_status_selftest.gd, liquid_test_world.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_rows_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, pane_frame_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_light_selftest.gd, roof_occlusion_selftest.gd, roof_sheet_release_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soft_sheet_sim_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, stealth_core_selftest.gd, structural_support_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tripo_figure_selftest.gd, tripo_game_clips.gd, tripo_pose_dump.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_fire_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
+- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, capture_framer_selftest.gd, circle_field_octagon_selftest.gd, cloth_flaps_selftest.gd, coat_push_selftest.gd, cosmetic_density_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, fluid_container_selftest.gd, fluid_plane_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, liquid_fire_selftest.gd, liquid_guards_selftest.gd, liquid_registry_selftest.gd, liquid_rules_selftest.gd, liquid_status_selftest.gd, liquid_test_world.gd, map_layout_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_rows_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, pane_frame_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_light_selftest.gd, roof_occlusion_selftest.gd, roof_sheet_release_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, shot_projectiles_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soft_sheet_sim_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, stealth_core_selftest.gd, structural_support_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tripo_figure_selftest.gd, tripo_game_clips.gd, tripo_pose_dump.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_fire_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, options_panel.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, capture_controller.gd, debug_tools_controller.gd, grenade_controller.gd, input_controller.gd, liquid_rules_controller.gd, scenario_steps.gd, selection_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compass.gd, map_compiler.gd, map_envelope.gd, map_geometry.gd, map_layout.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, roof_sheet_release.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -45,7 +45,7 @@
 
 ### `agent.gd`
 
-`class_name Agent` · extends `Node2D` · 629 lines
+`class_name Agent` · extends `Node2D` · 638 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -91,6 +91,7 @@
 - `func muzzle_points() -> Dictionary:`
 - `func grenade_release_points() -> Dictionary:`
 - `func play_shot_kick() -> bool:`
+- `func fire_projectile(to: Vector3, normal: Vector3, host: Vector3i) -> bool:`
 - `func muzzle_origin() -> Vector2:`
 - `func play_throw_raise() -> bool:`
 - `func play_throw_cancel() -> bool:`
@@ -422,7 +423,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 1200 lines
+`class_name ActorMesh3D` · extends `Node3D` · 1316 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -461,6 +462,7 @@ extends `ConfirmationDialog` · 64 lines
 - `DRAW_COAT_CLOSED_AT` = `0.75`
 - `ActorRecoilRef` = `preload("res://godot/scripts/geometry/actor_recoil3d.gd")`
 - `ShellCasingsRef` = `preload("res://godot/scripts/geometry/shell_casings3d.gd")`
+- `ShotProjectilesRef` = `preload("res://godot/scripts/geometry/shot_projectiles3d.gd")`
 - `GUN_KICK_DEG` = `6.0`
 - `GUN_KICK_BACK` = `0.012`
 - `SHOT_HOLD_S` = `0.6`
@@ -469,9 +471,17 @@ extends `ConfirmationDialog` · 64 lines
 - `EJECT_UP_M` = `1.2`
 - `EJECT_BACK_M` = `0.2`
 - `THROW_TURN_RAD_S` = `TAU`
+- `REVEAL_PALETTES` = `{ &"agent": {"stripe_a": Color(0.86, 0.96, 1.0), "stripe_b": Color(0.16, 0.28, 0.38), "outline_color": Color(1.0, 1.0, 1.0)}, &"agency": {"stripe_a": Color(0.46, 0.64, 1.0), "stripe_b": Color(0.08, 0.14, 0.40), "outline_color": Color(0.30, 0.56, 1.0)}, &"militia": {"stripe_a": Color(1.0, 0.52, 0.36), "stripe_b": Color(0.40, 0.10, 0.06), "outline_color": Color(1.0, 0.34, 0.18)}, &"corporation": {"stripe_a": Color(1.0, 0.84, 0.30), "stripe_b": Color(0.38, 0.28, 0.04), "outline_color": Color(1.0, 0.74, 0.12)}, &"network": {"stripe_a": Color(0.46, 0.96, 0.62), "stripe_b": Color(0.06, 0.30, 0.14), "outline_color": Color(0.28, 0.90, 0.46)}, }`
+
+**Public vars**
+- `var silhouette_phase: float = 0.0:`
+- `var reveal_faction: StringName = &"":`
 
 **Public API**
+- `func setup_actor(board: Node3D, source: ActorPose) -> bool:`
 - `func throw_release_global() -> Vector3:`
+- `func fire_projectile(to: Vector3, normal: Vector3, host: Vector3i) -> bool:`
+- `func fire_kick() -> bool:`
 - `func muzzle_global() -> Vector3:`
 
 ---
@@ -1321,6 +1331,50 @@ extends `Node3D` · 3579 lines
 
 **Public API**
 - `func eject(pos: Vector3, vel_m: Vector3, units_per_m: float) -> void:`
+
+---
+
+### `shot_projectiles3d.gd`
+
+`class_name ShotProjectiles3D` · extends `Node3D` · 616 lines
+
+`godot/scripts/geometry/shot_projectiles3d.gd`
+
+> ShotProjectiles3D — the bodies a shot throws that are not a round's streak (MOVEMENT §11.6 step 5, Director 2026-11-17). One per board, a child of it (board-local space, which is the base space since rotation is camera-only), made on the first use (`of()`), like `ShellCasings3D`. Four kinds, chosen by the weapon row's `fx.projectile` (`WeaponDef`): · `dart`   — the model's own dart (`fx.part`) flies the whole way to the impact the shot resolved and BITES there, tip first. · `probes` — the taser's two probes fly on two wires, spark where they bite; the wires go, the probes stay. · `hook`   — the grapple's hook (`fx.part`) flies on its line, bites, holds, and is wound back to the muzzle; the caller's handle reads `winding` (the drum turns) and `done` (the hook is back on the gun). · `flare`  — a burning flare flies to the wall, drops to the floor at its foot, burns with its own glow and goes out (no light on the board: the Director's ruling). WEAPON D21's second amendment: decoration that STAYS. The impact was resolved before anything flies; nothing here decides it. The darts and probes are RECORDED (`records_for_save()` / `restore()`): the record is kept on every device and only drawing them follows `CosmeticDensity` (below `persist_min_factor` they go once their bite has been seen), so one save is one world on every handset. A dart whose wall voxel is destroyed falls to the floor and lies there (`on_voxel_destroyed`).
+
+**Constants / tuning**
+- `NODE_NAME` = `"ShotProjectiles"`
+- `SHADER_PATH` = `"res://godot/shaders/actor_mesh3d.gdshader"`
+- `WeaponRegistryRef` = `preload("res://godot/scripts/systems/destruction/weapon_registry.gd")`
+
+**Public vars**
+- `var dart_speed: float = 22.0`
+- `var probe_speed: float = 20.0`
+- `var hook_speed: float = 16.0`
+- `var hook_hold_s: float = 0.45`
+- `var hook_wind_speed: float = 9.0`
+- `var flare_speed: float = 18.0`
+- `var flare_burn_s: float = 6.0`
+- `var bite_m: float = 0.02`
+- `var gravity_m: float = 9.8`
+- `var wire_life_s: float = 1.4`
+- `var spark_life_s: float = 0.35`
+- `var probe_spread_m: float = 0.05`
+- `var line_radius_m: float = 0.006`
+- `var wire_radius_m: float = 0.0035`
+- `var flare_glow_m: float = 0.035`
+- `var persist_min_factor: float = 0.7`
+- `var persist_show_s: float = 2.0`
+
+**Public API**
+- `func launch_dart(def: WeaponDef, part: Node3D, from: Vector3, to: Vector3, normal: Vector3, host: Vector3i) -> bool:`
+- `func launch_hook(def: WeaponDef, part: Node3D, from: Vector3, to: Vector3, muzzle: Callable, units_per_m: float) -> Dictionary:`
+- `func launch_probes(def: WeaponDef, from: Vector3, to: Vector3, normal: Vector3, host: Vector3i, muzzle: Callable, units_per_m: float) -> bool:`
+- `func launch_flare(def: WeaponDef, from: Vector3, to: Vector3, units_per_m: float) -> bool:`
+- `func on_voxel_destroyed(grid_pos: Vector2i, level: int) -> void:`
+- `func records_for_save() -> Array:`
+- `func restore(records: Array) -> void:`
+- `func stuck_count() -> int:`
 
 ---
 
@@ -2528,7 +2582,7 @@ extends `Node2D` · 135 lines
 
 ### `tracer_overlay.gd`
 
-`class_name TracerOverlay` · extends `Node2D` · 160 lines
+`class_name TracerOverlay` · extends `Node2D` · 180 lines
 
 `godot/scripts/overlays/tracer_overlay.gd`
 
@@ -2537,6 +2591,12 @@ extends `Node2D` · 135 lines
 - `TAIL_COLOR` = `Color(1.0, 0.62, 0.22, 0.55)`
 - `CORE_WIDTH_PX` = `2.0`
 - `TAIL_WIDTH_PX` = `4.0`
+- `BOLT_FRACTION` = `0.3`
+- `BOLT_TAIL_WIDTH_PX` = `6.0`
+- `BOLT_CORE_WIDTH_PX` = `2.5`
+- `BOLT_HEAD_RADIUS_PX` = `3.6`
+- `BOLT_FLASH_RADIUS_PX` = `9.0`
+- `WorldCanvas3DRef` = `preload("res://godot/scripts/geometry/world_canvas3d.gd")`
 
 ---
 
@@ -3089,7 +3149,7 @@ extends `RefCounted` · 63 lines
 
 ### `weapon_def.gd`
 
-`class_name WeaponDef` · 202 lines
+`class_name WeaponDef` · 241 lines
 
 `godot/scripts/systems/destruction/weapon_def.gd`
 
@@ -4204,12 +4264,13 @@ extends `Node` · 144 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 363 lines
+`class_name SaveState` · extends `RefCounted` · 380 lines
 
 `godot/scripts/systems/save_state.gd`
 
 **Constants / tuning**
 - `VoxelWeaknessRef` = `preload("res://godot/scripts/systems/destruction/voxel_weakness.gd")`
+- `ShotProjectilesRef` = `preload("res://godot/scripts/geometry/shot_projectiles3d.gd")`
 - `FORMAT_VERSION` = `3`
 - `OLDEST_READABLE_VERSION` = `1`
 - `DEFAULT_SAVE_PATH` = `"user://save_01.json"`
@@ -6180,6 +6241,19 @@ extends `Node` · 165 lines
 
 ---
 
+### `shot_projectiles_selftest.gd`
+
+extends `SceneTree` · 62 lines
+
+`godot/scripts/tools/shot_projectiles_selftest.gd`
+
+> MOVEMENT §11.6 step 5 (2026-11-17) — ShotProjectiles3D's record: a stuck body round-trips through the save, a body whose voxel is destroyed falls to the floor and lies level (its record follows, its host is gone), another voxel's destruction leaves it alone, and below the device's density the record is kept while nothing is drawn. WHY a selftest: on PLAYGROUND no blast or shot in reach takes the dart's own voxel (measured 2026-11-17: the signal arrives with the same key form, the voxels it named were 1 to 6 apart), so the fall is pinned here.
+
+**Constants / tuning**
+- `ShotProjectilesRef` = `preload("res://godot/scripts/geometry/shot_projectiles3d.gd")`
+
+---
+
 ### `slab_geometry_selftest.gd`
 
 extends `SceneTree` · 244 lines
@@ -6836,7 +6910,7 @@ extends `Node2D` · 63 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1340 lines
+`class_name AgentShotController` · 1384 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -7333,7 +7407,7 @@ extends `Node` · 904 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10474 lines
+extends `Node2D` · 10493 lines
 
 `godot/scripts/world/room.gd`
 

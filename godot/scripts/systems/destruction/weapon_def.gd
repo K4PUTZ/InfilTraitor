@@ -110,6 +110,23 @@ var held_as: String = "shotgun"
 var held_like: String = ""
 var held_rel_figures: Dictionary = {}   ## figure -> Transform3D
 
+## MOVEMENT §11.6 step 5 (Director, 2026-11-17): how the shot LOOKS, per row (`fx`): what flashes at the muzzle (`powder` the
+## pistol's fire and smoke, `energy` a flash of `fx_color`, `none`), whether a spent case is thrown, and what leaves the muzzle:
+## `tracer` (the round's streak, D21's first amendment), `bolt` (an energy streak of `fx_color`), or a body of its own that flies
+## the whole way and BITES (D21's second amendment): `dart` and `probes` stay on the map and in the save, `hook` winds back on its
+## line, `flare` falls burning. `fx_part` names the piece of the MODEL that flies (a node, or a surface by its material's name),
+## hidden on the gun from the shot until the weapon is put away; `fx_string` the bow string that snaps forward; `fx_spin` the
+## surface that turns while a line winds back. Decoration only: none of it decides where a shot lands.
+const FX_FLASHES: Array[String] = ["powder", "energy", "none"]
+const FX_PROJECTILES: Array[String] = ["tracer", "bolt", "dart", "probes", "hook", "flare"]
+var fx_flash: String = "powder"
+var fx_case: bool = true
+var fx_projectile: String = "tracer"
+var fx_color: Color = Color(1.0, 0.93, 0.72)
+var fx_part: String = ""
+var fx_string: String = ""
+var fx_spin: String = ""
+
 
 ## Factory: parse WeaponDef from a JSON dict — same contract as
 ## BombDef.from_json()/PropDef.from_json().
@@ -140,6 +157,28 @@ static func from_json(data: Dictionary) -> WeaponDef:
 		def.tags.append(String(tag))
 
 	def.held_as = String(data.get("held_as", "shotgun"))
+	var fx: Variant = data.get("fx", {})
+	if fx is Dictionary:
+		var f: Dictionary = fx
+		def.fx_flash = String(f.get("flash", "powder"))
+		def.fx_case = bool(f.get("case", true))
+		def.fx_projectile = String(f.get("projectile", "tracer"))
+		def.fx_part = String(f.get("part", ""))
+		def.fx_string = String(f.get("string", ""))
+		def.fx_spin = String(f.get("spin", ""))
+		var c: Array = f.get("color", [])
+		if c.size() == 3:
+			def.fx_color = Color(float(c[0]), float(c[1]), float(c[2]))
+		elif not c.is_empty():
+			push_error("[WeaponDef] '%s': fx.color wants three numbers (r, g, b), got %s: the default is kept" % [def.id, str(c)])
+		if not FX_FLASHES.has(def.fx_flash):
+			push_error("[WeaponDef] '%s': fx.flash '%s' is not one of %s: 'powder' is used" % [def.id, def.fx_flash, FX_FLASHES])
+			def.fx_flash = "powder"
+		if not FX_PROJECTILES.has(def.fx_projectile):
+			push_error("[WeaponDef] '%s': fx.projectile '%s' is not one of %s: 'tracer' is used" % [def.id, def.fx_projectile, FX_PROJECTILES])
+			def.fx_projectile = "tracer"
+	else:
+		push_error("[WeaponDef] '%s': fx must be an object, got %s: the defaults are used" % [def.id, str(fx)])
 	var model: Variant = data.get("model", null)
 	if model is Dictionary:
 		var m: Dictionary = model

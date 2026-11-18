@@ -48,6 +48,7 @@ Older sections (2026-11-09 back to 2026-08-30) and the summer status blocks (dom
 - RESUMO_SESSAO_2026-11-16_CROUCH_WALK.md
 - RESUMO_SESSAO_2026-11-16_MOVEMENT_PLAN_ITEMS.md
 - RESUMO_SESSAO_2026-11-17_H1_FAMILY_SUPPRESSORS.md
+- RESUMO_SESSAO_2026-11-17_PROJECTILES.md
 - THROW_STUDY_2026-11-12.md
 <!-- AUTO:END pending_prompts -->
 
@@ -56,8 +57,8 @@ Older sections (2026-11-09 back to 2026-08-30) and the summer status blocks (dom
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 255
-- Test scripts: 95
+- GDScript modules: 256
+- Test scripts: 96
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 216

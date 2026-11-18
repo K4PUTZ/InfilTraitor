@@ -780,6 +780,18 @@ Each step lands on both figures before the next; a step with a look ends in a ca
 5. **The shot per weapon,** as data over the procedural recoil (`ActorRecoil3D`): the kick, the burst (count and interval), the hold
    after it, the case from the `port` (none for the revolver, the taser, the darts). The flash and the tracer already leave
    `model.muzzle`. A pump or a bolt cycle is a small timeline of its own, only if the Director wants it.
+   **Built 2026-11-17 (the projectiles, D21's second amendment):** each row says how its shot LOOKS in an `fx` section
+   (`WeaponDef.fx_*`: `flash` powder / energy / none, `case`, `projectile` tracer / bolt / dart / probes / hook / flare, `part`,
+   `string`, `spin`, `color`). `ShotProjectiles3D` (one per board, like the cases) flies the bodies: the crossbow's own dart (the
+   model's `crossbow_dart`, hidden on the gun and the string snapped straight until the weapon is put away) bites the wall; the
+   taser's two probes on two wires; the grapple's hook (split off the model's `Hook` surface) on its line, bites, holds 0.45 s and
+   winds back while the `Drum` turns; the flare to the wall, down to its foot, burning 6 s with its own glow (no board light). The
+   sci-fi pistols and the ray gun fire a coloured bolt (TracerOverlay) with sparks of their colour, no case; the revolvers throw no
+   case. Darts and probes are in the save (`stuck_projectiles`) and fall when their voxel is destroyed (`shot_projectiles_selftest`;
+   not seen on the map: no blast in reach took the dart's own voxel). Drawn only from `CosmeticDensity` mid up, the record kept on
+   every device. Takes `crossbow_shot`, `projectile_shots`, `dart_persist` (PLAYGROUND, the brick bench), both figures. Colours,
+   sizes and the flare's glow are first passes: their finish is POLISH-01.
+
 6. **The cover bodies B3-B6,** then the pistol's lean-out on each, then the other families on them.
 7. **The throws left:** from the kneel; the bowl (standing).
 8. **The devices and the interactions:** I1's solved reach first (it serves the most objects), then H6, H5, I2-I6, H7.

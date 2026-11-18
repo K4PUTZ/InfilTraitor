@@ -70,5 +70,12 @@
       0.0794,
       0.1099
     ]
+  },
+  "fx": {
+    "flash": "none",
+    "case": false,
+    "projectile": "hook",
+    "part": "Hook",
+    "spin": "Drum"
   }
 }

@@ -75,5 +75,12 @@
       0.0461,
       0.0005
     ]
+  },
+  "fx": {
+    "flash": "none",
+    "case": false,
+    "projectile": "dart",
+    "part": "crossbow_dart",
+    "string": "String"
   }
 }

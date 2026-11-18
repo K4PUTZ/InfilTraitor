@@ -70,5 +70,15 @@
       0.332,
       0.0001
     ]
+  },
+  "fx": {
+    "flash": "energy",
+    "case": false,
+    "projectile": "bolt",
+    "color": [
+      0.3,
+      0.9,
+      1.0
+    ]
   }
 }

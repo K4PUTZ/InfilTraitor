@@ -1249,6 +1249,7 @@ static var GLASS_COLLAPSE_BLAST_DELAY_S: float = 1.0 / 3.0
 static var GLASS_COLLAPSE_SHOT_DELAY_S: float = 1.0 / 3.0
 const GLASS_COLLAPSE_INDEX_BUDGET_US: int = 12000   ## main-thread time per frame the landing index may take (4 ms spread it over ~50 Moto frames: the swap came ~3 s after the blast)
 const GlassSupportRef = preload("res://godot/scripts/systems/destruction/glass_support.gd")
+const ShotProjectilesRef = preload("res://godot/scripts/geometry/shot_projectiles3d.gd")
 const GlassVoxelFall3DClass = preload("res://godot/scripts/geometry/glass_voxel_fall3d.gd")
 
 
@@ -5490,6 +5491,9 @@ func _on_voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String) ->
 	_vfx_destroy_count += 1
 	_dispatch_destruction_vfx(grid_pos, level, material_id)
 	_clear_orphaned_soot(grid_pos, level)
+	var b3: Node = board3d()   ## MOVEMENT §11.6 step 5: a dart / probe that bit this voxel falls
+	if b3 != null and b3.get_node_or_null(ShotProjectilesRef.NODE_NAME) != null:
+		ShotProjectilesRef.of(b3).on_voxel_destroyed(grid_pos, level)
 
 
 ## SOOT-ORPHAN-01 (Director ruling, 2026-09-27): scorch dies with the material — a destroyed
@@ -5825,6 +5829,21 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2, muzzle_floor: V
 				muzzle_smoke_duration_scale, 0, muzzle_smoke_drift_scale,
 				muzzle_flash_life * muzzle_smoke_delay_factor,
 				floor_under)
+
+
+## MOVEMENT §11.6 step 5 — the muzzle of an energy weapon (`WeaponDef.fx_flash` `energy`): no fire, no powder smoke, a spray of sparks of
+## the weapon's colour along the barrel (the bolt's own flash on the muzzle is the tracer's).
+var energy_spark_count: int = 10
+func spawn_energy_flash(muzzle_pos: Vector2, direction: Vector2, color: Color, muzzle_floor: Vector2 = Vector2.INF) -> void:
+	if _smoke_spark_overlay == null:
+		return
+	var floor_under: Vector2 = muzzle_floor if muzzle_floor != Vector2.INF else muzzle_pos + Vector2(0.0, muzzle_floor_drop_px)
+	var dir: Vector2 = direction.normalized() if direction.length() > 0.001 else Vector2.RIGHT
+	var spark_color := color.lerp(Color.WHITE, 0.3)
+	for i in range(energy_spark_count):
+		var spread: Vector2 = dir.rotated(deg_to_rad(randf_range(-muzzle_spark_cone_deg, muzzle_spark_cone_deg)))
+		var spark_at: Vector2 = muzzle_pos + spread * randf_range(2.0, muzzle_flash_forward_px * 1.6)
+		_smoke_spark_overlay.add_sparks(spark_at, 1, spark_color, 1.0, 1.0, spark_at + (floor_under - muzzle_pos))
 
 
 ## E-SPARK-01 — VFX for a voxel that was HIT but survived (DENTED/CRACKED).

@@ -71,5 +71,15 @@
       0.086,
       0.0105
     ]
+  },
+  "fx": {
+    "flash": "energy",
+    "case": false,
+    "projectile": "probes",
+    "color": [
+      0.62,
+      0.8,
+      1.0
+    ]
   }
 }

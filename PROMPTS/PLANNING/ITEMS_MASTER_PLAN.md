@@ -94,7 +94,7 @@ pulls the object; bites the scenery and MOVES the Agent across the map (at point
 down, breaking the wall. Claude's further candidates, NOT ratified: disarm (bite the guard's weapon and tear it from his hand),
 the distant trigger already above (a lever, a switch, a handle), bring something down on a guard or as a noise, fetch an item, rappel
 / zip line between two anchors. Until GAMEPLAY builds a kind, the shot shows the common part only: the hook flies, bites, holds,
-and the reel winds it back (MOVEMENT §11.6 step 5, 2026-11-17).
+and the reel winds it back (MOVEMENT §11.6 step 5, BUILT 2026-11-17).
 
 ### 2.6 Throwables (H4)
 

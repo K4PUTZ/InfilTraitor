@@ -82,6 +82,14 @@ const STREAK_FRACTION: float = 0.16
 const HEAD_RADIUS_PX: float = 2.6
 const HEAD_COLOR := Color(1.0, 0.97, 0.86, 1.0)
 
+## The energy bolt's look (a first pass for the Director, like the round's): a longer, wider streak than a round, a fat head, a
+## muzzle flash of the bolt's colour while it leaves.
+const BOLT_FRACTION: float = 0.3
+const BOLT_TAIL_WIDTH_PX: float = 6.0
+const BOLT_CORE_WIDTH_PX: float = 2.5
+const BOLT_HEAD_RADIUS_PX: float = 3.6
+const BOLT_FLASH_RADIUS_PX: float = 9.0
+
 ## Each entry: {"from": Vector2, "to": Vector2, "frames": int}. World space, the
 ## same space the overlay's own transform is in.
 var _streaks: Array = []
@@ -100,10 +108,13 @@ func _ready() -> void:
 ## because the caller is the only scope that knows the muzzle AND the impact.
 ## `from_floor` / `to_floor` are the 2D points of the floor under each end (the agent's feet under the muzzle); omitted,
 ## the end is on the floor itself.
-func add_tracer(from: Vector2, to: Vector2, from_floor: Vector2 = Vector2.INF, to_floor: Vector2 = Vector2.INF) -> void:
+## `energy`: a bolt of that colour instead of a round (`WeaponDef.fx_projectile` `bolt`, MOVEMENT §11.6 step 5): its core whitened, its
+## tail the colour, a flash of it on the muzzle for the hold. Color(0, 0, 0, 0) = a round.
+func add_tracer(from: Vector2, to: Vector2, from_floor: Vector2 = Vector2.INF, to_floor: Vector2 = Vector2.INF,
+		energy: Color = Color(0.0, 0.0, 0.0, 0.0)) -> void:
 	if from == to:
 		return
-	_streaks.append({"from": from, "to": to, "frames": 0,
+	_streaks.append({"from": from, "to": to, "frames": 0, "energy": energy,
 		"from_floor": from if from_floor == Vector2.INF else from_floor,
 		"to_floor": to if to_floor == Vector2.INF else to_floor})
 	set_process(true)
@@ -153,6 +164,15 @@ func _draw_world() -> void:
 		var head: Vector3 = from3.lerp(to3, travel)
 		var tail: Vector3 = from3.lerp(to3, maxf(travel - STREAK_FRACTION, 0.0))
 		if head.is_equal_approx(tail):
+			continue
+		var energy: Color = s.get("energy", Color(0.0, 0.0, 0.0, 0.0))
+		if energy.a > 0.0:
+			var core := energy.lerp(Color.WHITE, 0.6)
+			_world.line(from3.lerp(to3, maxf(travel - BOLT_FRACTION, 0.0)), head, Color(energy, 0.8 * alpha), BOLT_TAIL_WIDTH_PX)
+			_world.line(tail, head, Color(core, alpha), BOLT_CORE_WIDTH_PX)
+			_world.disc(head, BOLT_HEAD_RADIUS_PX * maxf(alpha, 0.35), Color(core, alpha))
+			if frames <= HOLD_FRAMES:
+				_world.disc(from3, BOLT_FLASH_RADIUS_PX * (1.0 - float(frames) / float(HOLD_FRAMES + 1)), Color(core, 0.9))
 			continue
 		_world.line(tail, head, Color(TAIL_COLOR, TAIL_COLOR.a * alpha), TAIL_WIDTH_PX)
 		_world.line(tail, head, Color(CORE_COLOR, CORE_COLOR.a * alpha), CORE_WIDTH_PX)

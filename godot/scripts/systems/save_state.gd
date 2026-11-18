@@ -2,6 +2,7 @@ extends RefCounted
 class_name SaveState
 
 const VoxelWeaknessRef = preload("res://godot/scripts/systems/destruction/voxel_weakness.gd")
+const ShotProjectilesRef = preload("res://godot/scripts/geometry/shot_projectiles3d.gd")
 
 ## SAVE-01 — the persistence seam for what a mission does to the map.
 ##
@@ -131,6 +132,9 @@ static func capture(room) -> Dictionary:
 		"rubble_piles": rubble_piles,
 		## ROOF_MASTER_PLAN v0.46 — the cloths this mission let go (`Room._base_cloths`: plain records), laid down again on a restore. An old save has no key: no cloth.
 		"cloths": room.cloths_for_save(),
+		## MOVEMENT §11.6 step 5 (D21's second amendment) — the darts and taser probes that bit the map, board-local transforms (`ShotProjectiles3D`).
+		## An old save has no key: nothing stuck. Kept on every device; drawing them is the device's (`CosmeticDensity`).
+		"stuck_projectiles": _stuck_projectiles_of(room),
 		"debris": debris,
 		## G6 — `[base_x, base_y, level, count]` per pile. ⚠️ The COUNT travels, not
 		## a flag: it is what decides how heavy the pile reads, and a save that
@@ -277,9 +281,22 @@ static func restore(room, data: Dictionary) -> bool:
 		room._base_debris[String(dd[0])] = {"base": Vector2(float(dd[1]), float(dd[2])), "level": int(dd[3]),
 			"material": String(dd[4]), "variant": int(dd[5]),
 			"tint": Color(float(dd[6]), float(dd[7]), float(dd[8]), float(dd[9])), "rot": float(dd[10])}
+	var stuck: Array = data.get("stuck_projectiles", [])
+	var b3: Node = room.board3d() if room.has_method("board3d") else null
+	if b3 != null:
+		ShotProjectilesRef.of(b3).restore(stuck)
+	elif not stuck.is_empty():
+		push_warning("[SaveState] %d stuck projectile(s) saved and no 3D board to lay them on" % stuck.size())
 	## The cache is NOT restored — it is rebuilt. See the class note.
 	room.project_soot_store()
 	return true
+
+
+static func _stuck_projectiles_of(room) -> Array:
+	var b3: Node = room.board3d() if room.has_method("board3d") else null
+	if b3 == null or b3.get_node_or_null(ShotProjectilesRef.NODE_NAME) == null:
+		return []
+	return ShotProjectilesRef.of(b3).records_for_save()
 
 
 ## Convenience: the whole thing to disk and back. `user://` rather than `res://`

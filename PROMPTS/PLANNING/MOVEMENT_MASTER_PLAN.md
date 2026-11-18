@@ -875,6 +875,12 @@ Each step lands on both figures before the next; a step with a look ends in a ca
     - **What exists:** the bank's pistol carries only (S2, S3), no long-gun carry. The field officers wear the Agent's body and coat
       (`ENEMIES_MASTER_PLAN` §6, ruled the same day), so the Agent's draws from the coat work on them as built.
     - **The models it asks for:** a sling on the long guns (`ITEMS` §2.1); where the secondaries ride is open (`ENEMIES` §5a).
+    - **Detailed (Director, 2026-11-18, later):** *"Deixa planejado na milestone de movement, poses carregando armas longas para todos os
+      atores."* Long-gun carry poses for EVERY actor (Agent included). **The casual poses are silly ways to carry a rifle:** resting it on
+      the ground, leaning on it like a cane, and the like; an enemy takes them when CONFIDENT AND UNAWARE (so they read as a state: the
+      passage out of them on alert is part of the work). **Secondaries** are hidden (out of sight) or hung at the waist (a pistol, a
+      grenade, other items). **Stronger bosses** hold one weapon in the hand and carry another (a bazooka, a rifle) on the BACK, strapped
+      across the chest, and switch between them in play as it suits: a back-to-hand swap per hold family.
 
 Steps 0 to 5 are the Director's order. Steps 6 to 9 are in Claude's proposed order: he listed them without one (§11.8 Q9). Steps 10
 and 11 are the Director's, with no place in the order yet.

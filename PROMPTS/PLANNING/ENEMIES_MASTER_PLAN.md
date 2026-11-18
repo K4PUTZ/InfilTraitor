@@ -184,6 +184,10 @@ ou seguradas casualmente de umas 3 maneira diferentes."*
 - **What it asks of the poses:** `MOVEMENT` §11.6 step 11 (recorded there): the carries per hold family, the passage from each to the
   aim and back, and walking and running with them (step 10's gaits). The bank holds pistol carries only (S2, S3): no long-gun carry
   exists yet.
+- **Detailed (Director, 2026-11-18, later):** the casual holds are silly ways to carry a rifle (resting it on the ground, leaning on it
+  like a cane), taken when an enemy is confident and unaware; the secondaries are hidden or hung at the WAIST (a pistol, a grenade,
+  other items: belt-hung meshes); stronger bosses add a second weapon (a bazooka, a rifle) on the BACK, a strap across the chest, and
+  switch weapons in play. Long-gun carry poses are for every actor (`MOVEMENT` §11.6 step 11).
 - **It answers §8's first finding:** a guard does not draw from a coat he does not wear. The officers wear the Agent's body and coat
   (§6), so his draws from the coat, with their keys, work on them as built.
 
@@ -215,6 +219,8 @@ wearing the coat in his faction's colours and emblem (D90); every other slot is 
 - **The shirt and the trousers are the body's own shell** on the Agent's base (D98 KEPT them, texture only, and deleted the faces they
   hide): an officer's differ by colour, print and material for free. A different CUT is a new mesh made to cover that same body, one
   fitting per cut, wherever a render shows the texture is not enough.
+- **In practice, modified versions of the male and female Agents (Director, 2026-11-18, later), and EQUALLY POWERFUL:** each officer
+  has specific abilities, which other abilities, items and powers can overcome (their rules are GAMEPLAY-01's).
 - **Same class, different people:** the Agent and his colleagues share the slots, never the pieces; the fedora, the tie and the dress
   shoes stay his.
 

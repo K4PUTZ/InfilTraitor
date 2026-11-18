@@ -903,6 +903,35 @@ def _gun_frame_points(obj, factor):
     return F, pts, L
 
 
+def _bake_slide(sc, arm, gun, f0, f1, c0, c1):
+    """The gun's place on the left hand keyed at every frame strictly between f0 and f1 (both already keyed), so the hand SLIDES along the gun: the point of the gun
+    in the palm runs from c0 to c1 (the gun object's own coordinates) while the gun turns in the hand from its f0 rotation to its f1 one. Blender's own interpolation
+    of the two places (location and rotation separately, in the bone's frame) swings the gun on an arc away from the hand (2026-11-18, frames 14-15)."""
+    def hand():
+        return arm.matrix_world @ arm.pose.bones[PREFIX + "LeftHand"].matrix
+
+    def held(f):
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        return hand().inverted() @ gun.matrix_world
+
+    A0, A1 = held(f0), held(f1)
+    _l0, q0, s0 = A0.decompose()
+    _l1, q1, s1 = A1.decompose()
+    p0, p1 = A0 @ c0, A1 @ c1
+    for f in range(f0 + 1, f1):
+        t = (f - f0) / float(f1 - f0)
+        s = s0.lerp(s1, t)
+        c = c0.lerp(c1, t)
+        A = Matrix.Translation(p0.lerp(p1, t)) @ q0.slerp(q1, t).to_matrix().to_4x4() @ Matrix.Diagonal((s.x, s.y, s.z, 1.0)) @ Matrix.Translation(-c)
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        gun.matrix_world = hand() @ A
+        bpy.context.view_layer.update()
+        for path in ("location", "rotation_quaternion", "scale"):
+            gun.keyframe_insert(path, frame=f)
+
+
 def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
     """THE STARTING TIMELINE OF A LONG GUN'S DRAW of one figure (see the block above), built from its pistol draw timeline (`SEQ_draw_pistol_<FIG>_arm6.blend`: the
     LIGHT Agent, the lab data, frame 1 = the game's idle, the draw stop at its `draw` marker) and the bank's `fire`. Nothing is written over the base file."""
@@ -975,26 +1004,17 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
                 "fingers": {n: cP[s + "Hand"].transposed() @ cP[n] for n in rig.names if n.startswith(s + "Hand") and n != s + "Hand"}}
             for s in ("Left", "Right")}
     print(f"[tripo_pose_lab] the fire frame {LONG_GRIP_FRAME}: palms {(c_palm['Left'] - c_palm['Right']).length:.3f} apart, the gun's line {tuple(round(v, 2) for v in gx)}")
-    # THE BARREL HOLD of the draw: the support hand's palm on the barrel as at the fore-end, but turned about the palm's normal (the gun's Z) so the fingers go ROUND
-    # the barrel, toward the gun's right, not along it; the fingers closed as the right hand's on the stock (its change from the idle, mirrored to the left)
-    fd = grip["Left"]["rot"] @ Vector((0.0, 1.0, 0.0))
-    wrap = Matrix.Rotation(math.atan2(-1.0, 0.0) - math.atan2(fd.y, fd.x), 3, "Z")
-    left_hand_m = (Mx @ (cP["RightHand"] @ P_idle["RightHand"].transposed()) @ Mx) @ P_idle["LeftHand"]
-    fist = {}
-    for n in grip["Left"]["fingers"]:
-        m = mirror_name(n)
-        fist[n] = left_hand_m.transposed() @ ((Mx @ (cP[m] @ P_idle[m].transposed()) @ Mx) @ P_idle[n])
-    grip["Barrel"] = {"rot": wrap @ grip["Left"]["rot"], "head": wrap @ grip["Left"]["head"], "fingers": fist}
-
     def seg(a, b):
         return (rest_head[b] - rest_head[a]).length
 
-    def hold(P, pos, side, G, point, pole_dir, how=None):
-        """`side`'s hand on the gun (gun frame G, 3x3) with its palm at `point`: the hand turned as the grip `how` says (default: the side's own), the arm solved to it,
-        the forearm taking most of the twist; the fingers as the grip's. Returns how far the arm reaches (1 = straight)."""
-        g = grip[how or side]
-        R_hand = (G @ g["rot"]).normalized()
-        head = point + G @ g["head"]
+    def hold(P, pos, side, G, point, pole_dir):
+        """`side`'s hand on the gun (gun frame G, 3x3) with its palm at `point`, turned as its grip says, the fingers as the grip's (`place`)."""
+        g = grip[side]
+        return place(P, pos, side, (G @ g["rot"]).normalized(), point + G @ g["head"], pole_dir, g["fingers"])
+
+    def place(P, pos, side, R_hand, head, pole_dir, fingers=None):
+        """`side`'s hand turned to R_hand with its head at `head`: the arm solved to it (two-bone IK, the elbow toward `pole_dir`), the forearm taking most of the
+        twist; the fingers relative to the hand when given. Returns how far the arm reaches (1 = straight)."""
         J = pos[side + "Arm"]
         a, b = seg(side + "Arm", side + "ForeArm"), seg(side + "ForeArm", side + "Hand")
         elbow, wrist = _two_bone(J, head, a, b, J + pole_dir)
@@ -1008,7 +1028,7 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
             fore = (Matrix.Rotation(0.7 * ang, 3, y) @ fore).normalized()
         P[side + "ForeArm"] = fore
         P[side + "Hand"] = R_hand
-        for n, rel in g["fingers"].items():
+        for n, rel in (fingers or {}).items():
             P[n] = (R_hand @ rel).normalized()
         return (head - J).length / (a + b)
 
@@ -1068,14 +1088,17 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
     reach["aim L"] = hold(P35, pos35, "Left", G_hip, pump35 + G_hip @ Vector((0.0, 0.0, -0.015)), Vector((0.06, -0.06, -0.22)))
     poses[at["aim"]] = (P35, hips_idle, gun_world(G_hip, pts["butt"], butt35))
 
-    # 20 the centre: upright in front of the tie, held by the tip; the right hand has let the lapel go, half way to the grip
+    # the centre: the gun upright in front of the tie, held by the tip EXACTLY as it came out at 13 (Director, 2026-11-18: "depois que o agente pega a arma, ela
+    # deveria continuar sendo segurada pelo cano, sem mudar"): the left hand of 13 carried there, turned the same; the right hand has let the lapel go, half way
+    # to the grip
     P20 = {n: m.copy() for n, m in P_lapel.items()}
     for n in subtree("RightShoulder"):
         P20[n] = Quaternion(P_lapel[n].to_quaternion()).slerp(P27[n].to_quaternion(), 0.5).to_matrix()
     pos20 = fk(P20, hips_idle)
     hold20 = Vector((S2.x, S2.y - 0.19, S2.z + 0.06))
-    reach["centre L"] = hold(P20, pos20, "Left", G_vert, hold20 + G_vert @ Vector((0.0, 0.0, -0.015)), Vector((0.14, -0.02, -0.2)), "Barrel")
-    poses[at["centre"]] = (P20, hips_idle, gun_world(G_vert, pts["hold"], hold20))
+    centre_shift = hold20 - (palm(pos12, "Left") + G_vert @ Vector((0.0, 0.0, 0.015)))
+    reach["centre L"] = place(P20, pos20, "Left", P_lapel["LeftHand"], pos12["LeftHand"] + centre_shift, Vector((0.14, -0.02, -0.2)))
+    poses[at["centre"]] = (P20, hips_idle, Matrix.Translation(centre_shift) @ gun13)
     print("[tripo_pose_lab] the arms reach " + ", ".join(f"{k} {v:.2f}" for k, v in reach.items()) + " of their length (1 = straight)")
 
     # ---- the keys: every pose SETTLED first (its bones, the hips, the gun's place against the left hand), then keyed (a key re-reads the animation over a set pose)
@@ -1145,6 +1168,8 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
         gun.hide_viewport = gun.hide_render = f < LONG_GUN_SHOWN_FROM
         for path in ("location", "rotation_quaternion", "scale", "hide_viewport", "hide_render"):
             gun.keyframe_insert(path, frame=f)
+    FW = (F @ W0).inverted()
+    _bake_slide(sc, arm, gun, at["centre"], at["hip"], FW @ pts["hold"], FW @ pts["pump"])
     coat = bpy.data.objects.get(COAT_OBJECT)
     if coat is None or coat.data.shape_keys is None:
         print(f"[tripo_pose_lab] WARNING: no {COAT_OBJECT} with shape keys: the coat gets no per-pose keys")
@@ -1166,11 +1191,11 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
     arm["lab_props"] = json.dumps([gun_id])
     # how far each solved palm lands from where the gun wants it (the FK above against Blender's own evaluation)
     worst = 0.0
-    for f, target in ((at["centre"], hold20),):
+    for f, target in ((at["centre"], palm(pos12, "Left") + centre_shift),):
         sc.frame_set(f)
         bpy.context.view_layer.update()
         pl = palm({pb.name[len(PREFIX):]: pb.head.copy() for pb in arm.pose.bones}, "Left")
-        worst = max(worst, (pl - (target + G_vert @ Vector((0.0, 0.0, -0.015)))).length)
+        worst = max(worst, (pl - target).length)
     sc.frame_set(1)
     bpy.context.view_layer.objects.active = arm
     for o in bpy.data.objects:

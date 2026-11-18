@@ -1184,23 +1184,26 @@ artifact in the project.**
 
 ---
 
-### ⏳ M6.0 — Audio Design
-**Objective:** Complete sound design and music.
+### ⏳ M6.0 — Audio: sound as a gameplay mechanic *(scope set by the Director, 2026-11-17)*
+**Objective:** what sound DOES in play: noise made and heard (steps by surface and posture, shots, suppressors, breaking things,
+distractions), how far it carries and through what, how guards react to it (`AI_MASTER_PLAN`, the noise pipeline `DESIGN` §5.4
+needs). Not the sounds themselves (POLISH-01's foley) and not the music (SOUNDTRACK).
 
 **Dependencies:** M4.10
 
-**Estimated Duration:** 2–3 weeks
-
 **Deliverables:**
-- SFX library (footsteps, detection, alarms, etc.)
-- Music composition (adaptive soundtrack)
-- Ambiance and environmental audio
-- Localization (multiple languages)
+- The noise pipeline in play (sources, carry, occlusion, the guards' hearing)
+- Localization of the spoken text (the voices are a babble with the words on screen, `DESIGN` §2.3)
 
 **Acceptance Criteria:**
-- Audio design supports stealth atmosphere
-- Music is adaptive and responsive
-- Localization is complete
+- Every noise a player makes has a rule the player can learn
+- Sound serves the stealth loop
+
+---
+
+### 🟡 SOUNDTRACK — The music *(Director, 2026-11-17; IN PROGRESS on the PC, branch `feat/music-composition`)*
+**Objective:** the main theme and the rest of the score, adaptive where the game needs it. Made with Claude on the PC, apart from
+the engine work on the Mac: this repo only receives it.
 
 ---
 
@@ -1224,12 +1227,13 @@ artifact in the project.**
 
 ---
 
-### ⏳ POLISH-01 — Polishing: skins, variants, cosmetic effects, sound *(Director-assigned 2026-11-17)*
+### ⏳ POLISH-01 — Polishing: skins, variants, cosmetic effects, foley *(Director-assigned 2026-11-17)*
 **Objective:** the finishing pass on what already WORKS, run **before M7.0's optimization** so the review of cost measures the
 finished look, not a placeholder.
 
-**Placement:** after the content milestones and before M7.0. It overlaps M6.0 (sound) and M6.05 (visual polish); whether those two
-fold into it is the Director's call (open).
+**Placement:** after the content milestones and before M7.0. Its sound is the FOLEY (Director, 2026-11-17): the game's sounds
+themselves; what sound does in play is M6.0, the music is SOUNDTRACK. It overlaps M6.05 (visual polish); whether that one folds
+into it is open.
 
 **Deliverables:**
 - **Weapon skins**: each item's surface detail and finish (the taser's skin is the first one owed, ITEMS §3), its materials checked on
@@ -1237,7 +1241,7 @@ fold into it is the Director's call (open).
 - **Secondary variants of the same objects**: colours, prints, wear, small shape variants of a model that already has its slot (the
   weapons, the suppressors, the props), never a new mechanism.
 - **Cosmetic effects**: the small visual touches around an action (muzzle, impact, casing, smoke, sparks) reviewed weapon by weapon.
-- **Sound**: each weapon's and each effect's sound, reviewed with the effects above.
+- **Foley**: the game's sounds made and placed: each weapon, each effect, steps, cloth, objects, reviewed with the effects above.
 - **The coat's slivers** (deferred 2026-11-12) and the other items recorded as "for the final polish" in the plans.
 
 **Rule:** a polish item changes how something looks or sounds, never what it does; a gameplay attribute is GAMEPLAY-01's.

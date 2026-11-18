@@ -5,10 +5,12 @@ Picks up the owed list of `RESUMO_SESSAO_2026-11-17_H1_FAMILY_SUPPRESSORS.md`.
 ## Rulings of the day (Director)
 
 - **POLISH-01**, a milestone before M7.0's optimization: weapon skins, secondary variants of the same objects, cosmetic effects,
-  sound (`docs/production/milestones.md`). Whether M6.0 / M6.05 fold into it is open.
+  FOLEY (`docs/production/milestones.md`). Audio is split three ways: POLISH-01's foley (the sounds), M6.0 (sound as a gameplay
+  mechanic), SOUNDTRACK (the music, in progress on the PC). Whether M6.05 folds into POLISH-01 is open.
 - **The grapple's kinds** (ITEMS §2.5): pull the guard to the Agent, pull the Agent to the guard, pull an object, move the Agent
-  across the map, pull a wall down. Claude's further candidates (disarm, distant trigger, drop something on a guard, fetch, rappel /
-  zip line) are NOT ratified. Until GAMEPLAY: the hook bites, holds and is wound back.
+  across the map, pull a wall down; Claude's extras ratified too (disarm, distant trigger, drop something on a guard, fetch, rappel /
+  zip line). The grapple PISTOL is early game and takes the pistol slot (no firearm, no dart); late game the hook moves to the left
+  wrist device, freeing the right hand and the pistol slot. Until GAMEPLAY: the hook bites, holds and is wound back.
 - **Darts and probes stay** on the map and in the destruction save; weak devices may stop drawing them (WEAPON D21's second
   amendment). The flare: its own glow only. The sci-fi pistols and the ray gun: energy bolts.
 
@@ -22,7 +24,7 @@ the record.
 
 ## Open
 
-- The fall of a dart whose voxel goes is pinned by the selftest only (no blast in reach on PLAYGROUND took the dart's own voxel).
+- The fall of a dart whose voxel goes is pinned by the selftest only; the Director: not important (2026-11-17).
 - A dart still leaves a CRACKED mark (the bullet pipeline marks one voxel at punch 0; it was so before today) and that mark is not
   brought back by a save/restore (damage replay, not the dart).
 - The bolt colours, the flare's size, the probes' look: first passes, POLISH-01.

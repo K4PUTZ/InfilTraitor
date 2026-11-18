@@ -86,14 +86,18 @@ the wrist (W): open (§5 Q3). Model: see §3.
 
 **Ruled 2026-11-17 (Director): BOTH mechanisms.** A held grapple PISTOL (H1, the Tripo `grapple_launcher`) AND a wrist launcher
 worn on the LEFT forearm, the grapple taking the wrist blade's place on that bracer (W, left arm). Owed: the animation of the hook
-firing with its line, and the reel turning. (The second half of Q3, pull / distant trigger vs the start rope, stays open.)
+firing with its line, and the reel turning. (The second half of Q3 is answered by the kinds and the early / late split below; how the start kit's rope and hook relates to the grapple pistol is GAMEPLAY's.)
 
 **The grapple's KINDS (Director, 2026-11-17), each a GAMEPLAY behaviour after one common shot (the hook flies on its line and bites):**
 the hook bites a guard and PULLS HIM to the Agent (the "Scorpion" pull); bites a guard and pulls the AGENT to him; bites an object and
 pulls the object; bites the scenery and MOVES the Agent across the map (at points made to take it); bites the scenery and pulls it
-down, breaking the wall. Claude's further candidates, NOT ratified: disarm (bite the guard's weapon and tear it from his hand),
-the distant trigger already above (a lever, a switch, a handle), bring something down on a guard or as a noise, fetch an item, rappel
-/ zip line between two anchors. Until GAMEPLAY builds a kind, the shot shows the common part only: the hook flies, bites, holds,
+down, breaking the wall. **Also ratified (same day):** disarm (bite the guard's weapon and tear it from his hand), the distant
+trigger above (a lever, a switch, a handle), bring something down on a guard or as a noise, fetch an item, rappel / zip line between
+two anchors.
+
+**Early and late (Director, 2026-11-17):** the grapple PISTOL is the EARLY game and takes the PISTOL's slot, a hard choice: carrying
+it means no firearm and no tranquiliser dart. LATE game the same hook mechanism moves to the WRIST device on the left forearm, so the
+right hand is free to carry a weapon and the pistol slot holds something else. Until GAMEPLAY builds a kind, the shot shows the common part only: the hook flies, bites, holds,
 and the reel winds it back (MOVEMENT §11.6 step 5, BUILT 2026-11-17).
 
 ### 2.6 Throwables (H4)

@@ -52,6 +52,9 @@ var weapon: String = "shotgun"
 var weapon_id: String = ""
 ## The attachment on the held weapon's muzzle (`attachments/<id>.json`, "" = none; Director 2026-11-17: the suppressor).
 var muzzle_attachment: String = ""
+## MOVEMENT 2026-11-17 (Director): the weapon is out only to aim and fire; the actor sets this while it does something else (a move), and the
+## figure puts the weapon away at once (no hold after a shot) and keeps it away (`ActorMesh3D.weapon_out()` says when it is gone).
+var stow_weapon: bool = false
 var room: Node = null
 
 signal throw_released
@@ -246,6 +249,7 @@ func mesh_state() -> Dictionary:
 		"weapon": weapon,
 		"weapon_id": weapon_id,
 		"attachment": muzzle_attachment,
+		"stow": stow_weapon,
 		"walk": _walk_progress if _posture != "prone" else -1.0,
 		"dash": _dash,
 		"dash_rate": dash_rate,

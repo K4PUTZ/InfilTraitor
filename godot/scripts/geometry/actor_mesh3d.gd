@@ -833,7 +833,10 @@ func _update_aim(state: Dictionary) -> void:
 	if String(state["weapon"]) == "pistol" and String(state.get("weapon_id", "")) != "" and _pistol != null and not _pistol.visible:
 		_hold_model(String(state["weapon_id"]))   ## swapped only while the gun is out of sight (in the coat)
 		_hold_attachment(String(state.get("attachment", "")))
-	var want: bool = ready and ((String(state["weapon"]) == "pistol" and String(state["grip"]) == "_aimed") or _shot_hold > 0.0)
+	var stow: bool = bool(state.get("stow", false))   ## the actor is about to do something else: the gun goes away now (`ActorPose.stow_weapon`)
+	if stow:
+		_shot_hold = 0.0
+	var want: bool = not stow and ready and ((String(state["weapon"]) == "pistol" and String(state["grip"]) == "_aimed") or _shot_hold > 0.0)
 	var target: float = 1.0 if want else 0.0
 	_aim_t = move_toward(_aim_t, target, dt / (_raise_s if want else _lower_s))
 	_aim.weight = _aim_t
@@ -851,6 +854,12 @@ func _update_aim(state: Dictionary) -> void:
 	if _pistol != null:
 		_pistol.visible = _aim_t > PISTOL_SHOWN_FROM
 		_pistol_holder.transform = _pistol_placement(_aim_t) * _gun_kick()
+
+
+## MOVEMENT 2026-11-17 (Director: *"o agente saca, atira e guarda automaticamente antes de andar/correr/fazer outra coisa"*): whether the
+## held weapon is still out: raised, held after a shot, or on its way back into the coat. The agent's move waits for false (`Agent._weapon_away`).
+func weapon_out() -> bool:
+	return _aim != null and (_aim_t > 0.0 or _shot_hold > 0.0)
 
 
 ## The gun's own kick in its model space (barrel +X, up +Y): back along the barrel and up about the grip, on the arms' envelope.
@@ -1078,7 +1087,12 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 			var g_len: float = _player.get_animation("%s/%s" % [TripoFigureRef.LIBRARY_NAME, _gait["clip"]]).length
 			_walked = float(_gait["start_handoff"]) / g_len * float(_gait["pass"]) if g_len > 0.0 else 0.0
 	var crouched: bool = not walking and not _crouch.is_empty() and String(state["posture"]) == "crouch"
-	if crouched:
+	## The gun goes back into the coat BEFORE the kneel or the rise (Director, 2026-11-17): while the other posture's aim is still up, the body waits
+	## (`_update_aim` lowers it the moment the posture changes, then the new posture's own aim takes over, raised again if the aim is still held).
+	var gun_first: bool = _aim_t > 0.0 and _aim_kind != ("crouch" if String(state["posture"]) == "crouch" else "standing")
+	if gun_first and (crouched or (_crouch_t >= 0.0 and not walking)):
+		pass   ## the kneel (or the rise) holds where it is
+	elif crouched:
 		_crouch_t = minf(maxf(_crouch_t, 0.0) + get_process_delta_time(), float(_crouch["len"]))
 	elif _crouch_t >= 0.0 and not walking:
 		## standing up is the crouch played BACKWARDS (Director, 2026-11-15), coat keys included; it ends on the crouch's first frame,

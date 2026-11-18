@@ -1080,6 +1080,28 @@
               "hold": 2700
             }
           ]
+        },
+        {
+          "id": "walk_lane_rail",
+          "keys": [
+            {
+              "frame": "close",
+              "target": "@agent_walk_lane",
+              "view": "E",
+              "hold": 600
+            }
+          ]
+        },
+        {
+          "id": "run_lane_rail",
+          "keys": [
+            {
+              "frame": "close",
+              "target": "@agent_run_lane",
+              "view": "E",
+              "hold": 600
+            }
+          ]
         }
       ],
       "takes": [
@@ -2122,6 +2144,63 @@
             "SHOT_AGENT_CELL": "28,11",
             "SHOT_GUARD_CELL": "28,9"
           }
+        },
+        {
+          "id": "holster_walk",
+          "profile": "engine",
+          "rail": "walk_lane_rail",
+          "steps": [
+            "weapon pistol",
+            "shot_aim 5",
+            "wait 1.2",
+            "shoot 5",
+            "walk @agent_walk_south",
+            "wait 2.6"
+          ],
+          "at_key": 0,
+          "after_hold": 30,
+          "length": 420,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-17 (Director): the agent draws, fires and puts the weapon away BEFORE he walks, runs or does anything else; run with INFILTRAITOR_TRIPO_FIGURE=male|female: a walk ordered the moment the shot is done leaves once the gun is back in the coat"
+        },
+        {
+          "id": "holster_run",
+          "profile": "engine",
+          "rail": "run_lane_rail",
+          "steps": [
+            "weapon pistol",
+            "shot_aim 5",
+            "wait 1.2",
+            "shoot 5",
+            "walk @agent_dash_far",
+            "wait 3.0"
+          ],
+          "at_key": 0,
+          "after_hold": 30,
+          "length": 440,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-17 (Director): the agent draws, fires and puts the weapon away BEFORE he walks, runs or does anything else; run with INFILTRAITOR_TRIPO_FIGURE=male|female: a dash ordered the moment the shot is done leaves once the gun is back in the coat"
+        },
+        {
+          "id": "holster_crouch",
+          "profile": "engine",
+          "rail": "h1_family_rail",
+          "steps": [
+            "weapon pistol",
+            "shot_aim 5",
+            "wait 1.2",
+            "posture crouch",
+            "wait 2.4",
+            "posture standing",
+            "wait 2.4",
+            "shot_cancel",
+            "wait 1.0"
+          ],
+          "at_key": 0,
+          "after_hold": 30,
+          "length": 540,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-17 (Director): the agent draws, fires and puts the weapon away BEFORE he walks, runs or does anything else; run with INFILTRAITOR_TRIPO_FIGURE=male|female: aimed, he kneels (the gun goes back first, then the kneel, then the crouched aim), then stands (the crouched gun goes back, the rise, the standing aim)"
         }
       ]
     },
@@ -2502,6 +2581,38 @@
           "tags": [
             "detail",
             "weapon"
+          ]
+        },
+        {
+          "id": "agent_walk_lane",
+          "at": [
+            27.5,
+            11.0,
+            0.625
+          ],
+          "extent": [
+            1.0,
+            2.0,
+            0.75
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "agent_run_lane",
+          "at": [
+            27.5,
+            12.5,
+            0.625
+          ],
+          "extent": [
+            1.0,
+            3.5,
+            0.75
+          ],
+          "tags": [
+            "detail"
           ]
         }
       ],

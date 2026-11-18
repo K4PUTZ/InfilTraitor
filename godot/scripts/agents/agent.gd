@@ -428,6 +428,9 @@ func move_along_path(path: Array[Vector2i], dash: bool = false) -> void:
 	if path.size() < 2:
 		return
 	is_moving = true
+	if pose != null:
+		pose.stow_weapon = true
+	await _weapon_away()
 	_dashing = dash
 	if pose != null:
 		pose.set_dash(dash)
@@ -439,6 +442,27 @@ func move_along_path(path: Array[Vector2i], dash: bool = false) -> void:
 	_path_queue.pop_front()  ## already at path[0] — skip it
 	_start_profile = _dash_start_profile()
 	_step_next()
+
+
+## MOVEMENT 2026-11-17 (Director: *"o agente saca, atira e guarda automaticamente antes de andar/correr/fazer outra coisa"*): there is no
+## walking or running with a weapon in the hand yet (it needs gaits of its own, `MOVEMENT` §11.4 B7), so a move ordered while the figure
+## still shows one (held after a shot, or on its way back into the coat) waits until it is put away. No figure, or nothing out: no wait.
+const STOW_WAIT_MAX_S: float = 2.0   ## a figure that never reports the weapon away does not hold the move longer than this (said loudly)
+
+
+func _weapon_away() -> void:
+	var figure: Variant = pose.get_meta("figure3d") if pose != null and pose.has_meta("figure3d") else null
+	if figure == null or not is_instance_valid(figure) or not (figure as Object).has_method("weapon_out"):
+		return
+	var waited: float = 0.0
+	while bool((figure as Object).call("weapon_out")):
+		if waited >= STOW_WAIT_MAX_S:
+			push_warning("[Agent] the weapon was still out after %.1f s: the move leaves anyway" % STOW_WAIT_MAX_S)
+			return
+		await get_tree().process_frame
+		waited += get_process_delta_time()
+		if not is_instance_valid(figure):
+			return
 
 
 ## The run's START (MOVEMENT 2026-11-14): a dash from standing does not leave at full speed. The figure's authored start (`ActorPose.dash_start`: the
@@ -485,6 +509,7 @@ func _step_next() -> void:
 		_dashing = false
 		if pose != null:
 			pose.stop_walking()
+			pose.stow_weapon = false
 		move_finished.emit(cell)
 		queue_redraw()
 		return

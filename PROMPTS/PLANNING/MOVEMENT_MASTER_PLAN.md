@@ -639,16 +639,16 @@ punch, a mesh on the hand); the grapple also PULLS guards and objects and trigge
 | **B4** | Crouched beside cover (`DESIGN` §8.2's half cover, behind a low object) | to make | from the kneel: in, hold, out; the RISE OVER the top and back |
 | **B5** | Standing at a corner (M3) | to make | in, hold, out; the lean around the corner |
 | **B6** | Crouched at a corner | to make | the same, from the kneel |
-| **B7** | Moving with the weapon out (M1: "weapon pointing down but ready") | open (§11.8 Q1) | the hold stop as a layer over the walk and the run |
+| **B7** | Moving with the weapon out (M1: "weapon pointing down but ready") | **PLANNED, later** (Director, 2026-11-17: §11.6 step 10) | gaits of its own, at least a stealth run with the weapon; NOT the gun fixed in the hand of today's walk and run (tried and rejected the same day). Until then the convention of §11.6 step 10: the weapon goes away before any move |
 | **B8** | Prone | **SUSPENDED** (§11.1) | — |
 
 What lies where:
 
 | | B1 standing | B2 the kneel | B3-B6 cover | B7 moving |
 |---|---|---|---|---|
-| **H1** pistol family | ✅ | ✅ | the lean out, under B1's / B2's arms | Q1 |
-| **H2** compact | to make | to make | as H1 | Q1 |
-| **H3** long gun | to make | to make (the kneel already has the left forearm over the left knee: one move from the braced rifle kneel, the elbow on the knee) | as H1 | Q1 |
+| **H1** pistol family | ✅ | ✅ | the lean out, under B1's / B2's arms | later (step 10) |
+| **H2** compact | to make | to make | as H1 | later (step 10) |
+| **H3** long gun | to make | to make (the kneel already has the left forearm over the left knee: one move from the braced rifle kneel, the elbow on the knee) | as H1 | later (step 10) |
 | **H4** throw | ✅ overhand; the bowl to make | overhand to make | later, with the cover (the study's step-out and sidearm) | — |
 | **H5** placed | to make | to make | — | — |
 | **H6** hand device | to make | to make | free (one hand) | — |
@@ -801,8 +801,27 @@ Each step lands on both figures before the next; a step with a look ends in a ca
 7. **The throws left:** from the kneel; the bowl (standing).
 8. **The devices and the interactions:** I1's solved reach first (it serves the most objects), then H6, H5, I2-I6, H7.
 9. **H8, the paired takedowns** (credits; §4.1's ranking).
+10. **Moving with a weapon in the hands (B7), PLANNED (Director, 2026-11-17).** *"vamos precisar de uma animação específica pra correr
+    com a arma em modo stealth. Claramente não vale a pena tentar só atachar a arma. Vamos deixar planejado em MOVEMENT pra fazer
+    movimentação segurando armas."*
+    - **What was tried (2026-11-17):** the pistol fixed in the right hand at the aim's placement while today's walk and run played as they
+      are (a throwaway probe, never committed). It does not hold: the walk swings an open hand and the run pumps the arms, so the gun
+      points wherever the hand goes, and the left hand is free. The Director judged it on the first takes.
+    - **What it needs:** a gait of its own per hold family, at least a STEALTH RUN with the weapon (and its walk), with their starts
+      and stops like today's gaits (§11.0), processed like every gait (root motion out, the tempo of the grid's step, D61). The bank already
+      has candidates on both figures, both hands together at the chest: S3 `walking_briskly_and_stealthily_holding_a_pistol` (walk) and
+      S2 `correr_furtivamente_segurando_uma_pistola_aponta` (a hunched run), §4.1's stealth rows; their sheets are in
+      `ASSETS/ANIMATIONS/bank/sheets/clips/`. With them come the draw on the move and the aim from a gait, which do not exist today.
+    - **The convention until then (Director, 2026-11-17):** *"o agente saca, atira e guarda automaticamente antes de
+      andar/correr/fazer outra coisa"*. The weapon is out only to aim and to fire. **BUILT the same day:** a move ordered while the
+      figure still shows a weapon (held after a shot, or on its way back into the coat) waits until it is put away, the hold after
+      the shot cut short (`Agent._weapon_away`, `ActorPose.stow_weapon`, `ActorMesh3D.weapon_out`); a kneel or a rise ordered with the
+      other posture's gun still up waits for it too, and the new posture draws again if the aim is still held. The throw already
+      waited for the pistol (2026-11-12). The cost: a move ordered right after a shot leaves once the holster has played (the draw
+      timeline backwards: up to 0.92 s, its 22 frames at 24 fps, the same on both figures standing and crouched). Takes `holster_walk`, `holster_run`, `holster_crouch` (PLAYGROUND), both figures.
 
-Steps 0 to 5 are the Director's order. Steps 6 to 9 are in Claude's proposed order: he listed them without one (§11.8 Q9).
+Steps 0 to 5 are the Director's order. Steps 6 to 9 are in Claude's proposed order: he listed them without one (§11.8 Q9). Step 10
+is the Director's, with no place in the order yet.
 
 ### 11.7 Notes for other plans (recorded here, built there)
 
@@ -822,6 +841,8 @@ Steps 0 to 5 are the Director's order. Steps 6 to 9 are in Claude's proposed ord
 1. **"Holding":** is it a REST with the weapon out (low, ready), kept while he stands and moves (M1), until he puts it away? Today the
    pistol has no such stop: it comes out for the aim and goes back, and walking lowers it. *(Claude: yes for the long guns, and then
    the pistol gets one too, so every family has the same five stops. It costs one pose per family and its layer over the walk and the run.)*
+   **RULED for now (Director, 2026-11-17):** no. The agent draws, fires and puts the weapon away before he walks, runs or does
+   anything else; moving with a weapon out waits for gaits of its own (§11.6 step 10).
 2. **Where a long gun comes from and goes back to:** out of the coat like the pistol (no stowed model; a sniper rifle out of a coat is
    a stylisation), slung on the back (always visible: a carried model that crosses the coat, the pack and the hand-made coat keys), or
    the pack. And with the coat stowed (the stealth dress)? *(Claude: out of the coat for all of them; a slung gun reopens the coat.)*

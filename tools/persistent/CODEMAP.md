@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**358 scripts · 103275 lines total** (under `godot/scripts/`)
+**358 scripts · 103318 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `actor_pose.gd`
 
-`class_name ActorPose` · extends `Node` · 287 lines
+`class_name ActorPose` · extends `Node` · 291 lines
 
 `godot/scripts/agents/actor_pose.gd`
 
@@ -45,7 +45,7 @@
 
 ### `agent.gd`
 
-`class_name Agent` · extends `Node2D` · 638 lines
+`class_name Agent` · extends `Node2D` · 663 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -70,6 +70,7 @@
 - `THROW_RAISE_SECONDS` = `0.18`
 - `THROW_RELEASE_SECONDS` = `0.40`
 - `THROW_CANCEL_SECONDS` = `0.12`
+- `STOW_WAIT_MAX_S` = `2.0`
 - `COVER_RING_RADIUS_PX` = `30.0`
 - `COVER_RING_SEGMENTS` = `32`
 
@@ -423,7 +424,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 1316 lines
+`class_name ActorMesh3D` · extends `Node3D` · 1330 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -481,6 +482,7 @@ extends `ConfirmationDialog` · 64 lines
 - `func setup_actor(board: Node3D, source: ActorPose) -> bool:`
 - `func throw_release_global() -> Vector3:`
 - `func fire_projectile(to: Vector3, normal: Vector3, host: Vector3i) -> bool:`
+- `func weapon_out() -> bool:`
 - `func fire_kick() -> bool:`
 - `func muzzle_global() -> Vector3:`
 

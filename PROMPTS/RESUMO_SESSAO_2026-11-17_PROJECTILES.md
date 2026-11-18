@@ -29,3 +29,16 @@ the record.
   brought back by a save/restore (damage replay, not the dart).
 - The bolt colours, the flare's size, the probes' look: first passes, POLISH-01.
 - The wrist grapple (W) has no model or hold yet.
+
+## Later the same day: moving with a weapon; the holster convention
+
+- **Tried:** the pistol fixed in the right hand (the aim's placement) while today's walk and run played unchanged, a throwaway
+  probe, never committed. **Director:** *"vamos precisar de uma animação específica pra correr com a arma em modo stealth.
+  Claramente não vale a pena tentar só atachar a arma"*. Moving with a weapon (B7) is PLANNED as MOVEMENT §11.6 step 10 (its own
+  gaits; the bank's S2 / S3 stealth clips with the pistol are the candidates).
+- **Ruled:** *"o agente saca, atira e guarda automaticamente antes de andar/correr/fazer outra coisa"* (MOVEMENT §11.8 Q1).
+  Built: a move waits for the weapon to be away, the hold after a shot cut short (`Agent._weapon_away`, `ActorPose.stow_weapon`,
+  `ActorMesh3D.weapon_out`); a kneel or a rise waits for the other posture's gun. Before the change, a walk ordered right after a
+  shot turned and stepped with the arm still up and the gun in it; a kneel ran together with the holster. A move ordered right
+  after a shot now leaves up to 0.92 s later (the holster: the draw timeline backwards). Takes `holster_walk`, `holster_run`,
+  `holster_crouch`, both figures.

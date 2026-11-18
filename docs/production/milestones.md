@@ -915,6 +915,9 @@ detecção, etc."* (Director, 2026-08-14)
   exist; the Z key lowers standing → crouch → prone). Whether it earns its place is decided here. **Until then it is SUSPENDED in
   MOVEMENT:** nothing prone is animated on the new figures (no way down from the kneel, no crawl, no prone aim or throw;
   `MOVEMENT_MASTER_PLAN` §11.1).
+- **The shotgun's two shots (Director, 2026-11-17):** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra mais,
+  tiro mirando demora mais e acerta mais. Agachado só tem o tiro mirando."* MOVEMENT makes both postures and the choice between them;
+  what "fast" and "misses more" cost and give (AP or time, the hit chance, the cone's spread) is set here, per weapon row.
 
 **Dependencies:** none hard. **Parallel to or prior to GAME-01** — the Director's
 own framing, and the reason this milestone sits above it in this file.

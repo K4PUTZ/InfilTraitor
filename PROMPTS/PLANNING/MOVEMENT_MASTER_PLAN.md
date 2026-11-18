@@ -776,6 +776,19 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    **the attribute sheet of every weapon and attachment is the GAMEPLAY milestone's** (Director, same day).
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
+   **H3 opens with the SHOTGUNS (Director, 2026-11-17).** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra
+   mais, tiro mirando demora mais e acerta mais. Agachado só tem o tiro mirando."*
+   - **Two shots:** from the HIP (standing only) and AIMED (standing and kneeling; the kneel has only this one). Their numbers
+     (time or AP, the hit chance, the spread) are GAMEPLAY-01's (`docs/production/milestones.md`); MOVEMENT makes both postures and the
+     choice between them.
+   - **The four models** (§11.5): `Shotgun` and `Shotgun-ZmPTnh7njL` have a shoulder stock: AIMED = the butt in the shoulder.
+     `Shotgun Sawed Off` and `Shotgun Short Stock` have only a pistol grip: AIMED = both arms forward, two hands, at the eyes (H2's
+     way; Director, same day); their hip shot is the others'.
+   - **The draw is a new one, not the pistol's (Director, same day):** *"A shotgun vai sair da outra aba do casaco e ser pega pelo
+     topo do cano, pela mão esquerda; ao passo que a mão direita já vai direito para a empunhadura e o dedo no gatilho. Em seguida as
+     duas mãos já montam a posição de mira."* Out of the coat's OTHER flap (not the pistol's); the LEFT hand takes it by the top of
+     the barrel while the right goes straight to the grip, the finger on the trigger; then both hands set the aim. The Director is
+     sending more of it: nothing of the draw is built before.
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).
 5. **The shot per weapon,** as data over the procedural recoil (`ActorRecoil3D`): the kick, the burst (count and interval), the hold
    after it, the case from the `port` (none for the revolver, the taser, the darts). The flash and the tracer already leave
@@ -846,6 +859,8 @@ is the Director's, with no place in the order yet.
 2. **Where a long gun comes from and goes back to:** out of the coat like the pistol (no stowed model; a sniper rifle out of a coat is
    a stylisation), slung on the back (always visible: a carried model that crosses the coat, the pack and the hand-made coat keys), or
    the pack. And with the coat stowed (the stealth dress)? *(Claude: out of the coat for all of them; a slung gun reopens the coat.)*
+   **RULED for the shotguns (Director, 2026-11-17):** out of the coat's other flap, taken by the barrel with the left hand (§11.6
+   step 3). The rifles, the snipers and the stealth dress are still open.
 3. **Which firearms are the game's** (§11.7), and so which are certified first. *(Claude: the catalogue's six now, since their models
    are on disk; the tree's late guns when their models exist.)*
 4. **The detonator:** a remote for C4 and the breaching charge, or a timer?

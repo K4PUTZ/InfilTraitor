@@ -444,8 +444,9 @@ def sequence(blend, name, seq_json, poses_dir):
     named = set(json.loads(arm["lab_bones"]))
     prop = (json.loads(arm.get("lab_props", "[]")) or ["pistol"])[0]
     gun = bpy.data.objects["PROP_" + prop]
-    # the THROW keeps the fingers (Director 2026-11-12: he places them round the grenade on this timeline); the draw leaves them to the clip underneath
-    fingers = name.startswith("throw")
+    # the THROW keeps the fingers (Director 2026-11-12: he places them round the grenade on this timeline), and so does a LONG GUN's draw (2026-11-18: the left
+    # hand's fingers round the fore-end); the pistol's draw leaves them to the clip underneath
+    fingers = name.startswith("throw") or name in LONG_GUN_SEQUENCES
     coat_key = _draw_key()
     coat_obj = bpy.data.objects.get("Outfit_Coat")
     morphs = [k for k in (_animated_keys(coat_obj) if coat_obj is not None else []) if game_key(k) != "DrawFix"]
@@ -837,6 +838,13 @@ LONG_TWIST_DEG = {"hip": -30.0, "aim": -35.0}   # the trunk's turn, about +Z (ne
 LONG_HEAD_BACK = {"hip": 0.75, "aim": 0.85}     # how much of that turn the neck gives back, so the head keeps looking ahead
 LONG_AIM_HEAD_PITCH_DEG = 10.0                  # the head down toward the stock at the aim
 LONG_COAT_KEY = "LongDrawFix"
+# THE SUPPORT HAND at the hip and the aim (Director, 2026-11-18: "A mão esquerda precisa girar, pra palma apontar pra cima, e os dedos abraçarem o cano"): the palm
+# UP under the fore-end, the fingers across it toward the gun's right (turned this much toward the muzzle) and closed round it, the thumb along its left side. The
+# left hand bone, measured: +Y runs to the fingers, +X to the index and thumb side, the palm faces -Z.
+LONG_SUPPORT_FWD_DEG = 20.0
+LONG_SUPPORT_CURL_DEG = (45.0, 80.0, 50.0)    # each finger's three joints (knuckle, middle, tip)
+LONG_PALM_DEPTH = 0.008                       # from the hand's bone line to the palm's skin
+LONG_GUN_SEQUENCES = ("draw_shotgun",)         # the long guns' draw timelines: their read-back keeps the fingers (`sequence`)
 
 
 def _gun_frame_points(obj, factor):
@@ -894,13 +902,69 @@ def _gun_frame_points(obj, factor):
         f_lo, f_hi = min(p.x for p in fore), max(p.x for p in fore)
         x = f_lo + LONG_PUMP_AT * (f_hi - f_lo)
         pts["pump"] = Vector((x, 0.0, z_mid(fore, x, 0.03 * L)))
+        near = [p.z for p in fore if abs(p.x - x) <= 0.03 * L]
+        pts["pump_under"] = Vector((x, 0.0, min(near) if near else pts["pump"].z))
     else:
         x = lo.x + 0.5 * L
         pts["pump"] = Vector((x, 0.0, z_mid(q, x, 0.03 * L)))
+        pts["pump_under"] = Vector((x, 0.0, min((p.z for p in q if abs(p.x - x) <= 0.03 * L), default=pts["pump"].z)))
     barrel = [q[i] for i in members("DarkMetal")] or q
     x = lo.x + LONG_HOLD_AT * L
     pts["hold"] = Vector((x, 0.0, z_mid(barrel, x, 0.02 * L)))
     return F, pts, L
+
+
+def _support_hand(G):
+    """The left hand's rotation under a long gun whose gun frame is G (3x3: the barrel, its left, its top): the palm (-Z) up into the gun, the fingers (+Y) across
+    it toward its right, turned `LONG_SUPPORT_FWD_DEG` toward the muzzle; the thumb side (+X) then runs along the barrel to the muzzle."""
+    a = math.radians(LONG_SUPPORT_FWD_DEG)
+    y = (-G.col[1] * math.cos(a) + G.col[0] * math.sin(a)).normalized()
+    z = (-G.col[2] - y * (-G.col[2]).dot(y)).normalized()
+    return Matrix((y.cross(z), y, z)).transposed()
+
+
+def _place_arm(P, pos, rest_head, side, R_hand, head, pole_dir):
+    """`side`'s hand turned to R_hand with its head at `head`: the upper arm and the forearm turned the least so the wrist lands there (two-bone IK, the elbow
+    toward `pole_dir` from the shoulder), the forearm taking most of the twist toward the hand. Armature-space rotations in P; returns the reach (1 = straight)."""
+    J = pos[side + "Arm"]
+    a = (rest_head[side + "ForeArm"] - rest_head[side + "Arm"]).length
+    b = (rest_head[side + "Hand"] - rest_head[side + "ForeArm"]).length
+    elbow, wrist = _two_bone(J, head, a, b, J + pole_dir)
+    P[side + "Arm"] = _aim_bone(P[side + "Arm"], J, elbow)
+    fore = _aim_bone(P[side + "ForeArm"], elbow, wrist)
+    y = fore.col[1].normalized()
+    hx = R_hand.col[0] - y * R_hand.col[0].dot(y)
+    if hx.length > 1e-6:
+        fx = fore.col[0]
+        ang = math.atan2(fx.cross(hx.normalized()).dot(y), fx.dot(hx.normalized()))
+        fore = (Matrix.Rotation(0.7 * ang, 3, y) @ fore).normalized()
+    P[side + "ForeArm"] = fore
+    P[side + "Hand"] = R_hand
+    return (head - J).length / (a + b)
+
+
+def _close_fingers(P, P_ref, names, children, side, curl):
+    """`side`'s fingers on its (new) hand: each as it lies on the hand in P_ref (the idle), then the four long fingers closed toward the palm (-Z) about the hand's
+    +X, joint by joint (`curl`, degrees); the thumb as it lies."""
+    def subtree(n):
+        out = [n]
+        for c in children[n]:
+            out += subtree(c)
+        return out
+    hand = side + "Hand"
+    rel = P_ref[hand].transposed()
+    for n in names:
+        if n.startswith(hand) and n != hand:
+            P[n] = (P[hand] @ (rel @ P_ref[n])).normalized()
+    ax = P[hand].col[0].normalized()
+    for finger in ("Index", "Middle", "Ring", "Pinky"):
+        for i, ang in enumerate(curl, start=1):
+            n = f"{hand}{finger}{i}"
+            if n not in P:
+                continue
+            R = Matrix.Rotation(math.radians(-ang), 3, ax)
+            for m in subtree(n):
+                P[m] = (R @ P[m]).normalized()
 
 
 def _bake_slide(sc, arm, gun, f0, f1, c0, c1):
@@ -1013,24 +1077,21 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
         return place(P, pos, side, (G @ g["rot"]).normalized(), point + G @ g["head"], pole_dir, g["fingers"])
 
     def place(P, pos, side, R_hand, head, pole_dir, fingers=None):
-        """`side`'s hand turned to R_hand with its head at `head`: the arm solved to it (two-bone IK, the elbow toward `pole_dir`), the forearm taking most of the
-        twist; the fingers relative to the hand when given. Returns how far the arm reaches (1 = straight)."""
-        J = pos[side + "Arm"]
-        a, b = seg(side + "Arm", side + "ForeArm"), seg(side + "ForeArm", side + "Hand")
-        elbow, wrist = _two_bone(J, head, a, b, J + pole_dir)
-        P[side + "Arm"] = _aim_bone(P[side + "Arm"], J, elbow)
-        fore = _aim_bone(P[side + "ForeArm"], elbow, wrist)
-        y = fore.col[1].normalized()
-        hx = R_hand.col[0] - y * R_hand.col[0].dot(y)
-        if hx.length > 1e-6:
-            fx = fore.col[0]
-            ang = math.atan2(fx.cross(hx.normalized()).dot(y), fx.dot(hx.normalized()))
-            fore = (Matrix.Rotation(0.7 * ang, 3, y) @ fore).normalized()
-        P[side + "ForeArm"] = fore
-        P[side + "Hand"] = R_hand
+        """`_place_arm`, and the fingers relative to the hand when given."""
+        r = _place_arm(P, pos, rest_head, side, R_hand, head, pole_dir)
         for n, rel in (fingers or {}).items():
             P[n] = (R_hand @ rel).normalized()
-        return (head - J).length / (a + b)
+        return r
+
+    palm_local = rig.R["LeftHand"].transposed() @ ((rest_head["LeftHandMiddle1"] - rest_head["LeftHand"]) * 0.5)
+
+    def support(P, pos, G, under, pole_dir):
+        """The left hand under the fore-end: the palm's skin on the gun's underside point `under`, the palm up, the fingers round it (`_support_hand`)."""
+        R_hand = _support_hand(G)
+        head = under - G.col[2] * LONG_PALM_DEPTH - R_hand @ palm_local
+        r = _place_arm(P, pos, rest_head, "Left", R_hand, head, pole_dir)
+        _close_fingers(P, P_idle, rig.names, children, "Left", LONG_SUPPORT_CURL_DEG)
+        return r
 
     # THE GUN: imported as the game reads it (the glb's node transform on the object), its gun frame and points
     gun, node_scale = import_prop(gun_id, {})
@@ -1069,8 +1130,7 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
     pos27 = fk(P27, hips_idle)
     grip27 = Vector((H_idle["RightUpLeg"].x - 0.02, hips_idle.y - 0.04, hips_idle.z + 0.06))
     reach["hip R"] = hold(P27, pos27, "Right", G_hip, grip27 + G_hip @ Vector((0.0, -0.012, 0.0)), Vector((-0.1, 0.12, -0.15)))
-    pump27 = grip27 + G_hip @ (pts["pump"] - pts["grip"])
-    reach["hip L"] = hold(P27, pos27, "Left", G_hip, pump27 + G_hip @ Vector((0.0, 0.0, -0.015)), Vector((0.12, -0.05, -0.2)))
+    reach["hip L"] = support(P27, pos27, G_hip, grip27 + G_hip @ (pts["pump_under"] - pts["grip"]), Vector((0.12, -0.05, -0.2)))
     poses[at["hip"]] = (P27, hips_idle, gun_world(G_hip, pts["grip"], grip27))
 
     # 35 the aim: turned further, the butt in the right shoulder's pocket, the head down toward the stock
@@ -1083,9 +1143,8 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
     pocket = pos35["RightArm"] + Vector((0.025, -0.03, -0.01))
     butt35 = pocket
     grip35 = butt35 + G_hip @ (pts["grip"] - pts["butt"])
-    pump35 = butt35 + G_hip @ (pts["pump"] - pts["butt"])
     reach["aim R"] = hold(P35, pos35, "Right", G_hip, grip35 + G_hip @ Vector((0.0, -0.012, 0.0)), Vector((-0.18, 0.04, -0.06)))
-    reach["aim L"] = hold(P35, pos35, "Left", G_hip, pump35 + G_hip @ Vector((0.0, 0.0, -0.015)), Vector((0.06, -0.06, -0.22)))
+    reach["aim L"] = support(P35, pos35, G_hip, butt35 + G_hip @ (pts["pump_under"] - pts["butt"]), Vector((0.06, -0.06, -0.22)))
     poses[at["aim"]] = (P35, hips_idle, gun_world(G_hip, pts["butt"], butt35))
 
     # the centre: the gun upright in front of the tie, held by the tip EXACTLY as it came out at 13 (Director, 2026-11-18: "depois que o agente pega a arma, ela
@@ -1169,7 +1228,7 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
         for path in ("location", "rotation_quaternion", "scale", "hide_viewport", "hide_render"):
             gun.keyframe_insert(path, frame=f)
     FW = (F @ W0).inverted()
-    _bake_slide(sc, arm, gun, at["centre"], at["hip"], FW @ pts["hold"], FW @ pts["pump"])
+    _bake_slide(sc, arm, gun, at["centre"], at["hip"], FW @ pts["hold"], FW @ pts["pump_under"])
     coat = bpy.data.objects.get(COAT_OBJECT)
     if coat is None or coat.data.shape_keys is None:
         print(f"[tripo_pose_lab] WARNING: no {COAT_OBJECT} with shape keys: the coat gets no per-pose keys")

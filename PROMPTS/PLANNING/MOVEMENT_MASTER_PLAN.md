@@ -811,7 +811,10 @@ Each step lands on both figures before the next; a step with a look ends in a ca
      slide is what makes both reachable. From 13 to the centre the hold does not change (Director: *"depois que o agente pega a arma,
      ela deveria continuar sendo segurada pelo cano, sem mudar"*): the left hand of 13 is carried to the centre turned the same, and
      the slide (centre -> hip) is keyed on every frame (`_bake_slide`: the point of the barrel in the palm runs back to the fore-end
-     while the gun turns in the hand), since Blender's own interpolation of two different holds swung the gun out and through the body; it opens at x0.085 of the pack's units, about 1 m long (at the pistol's 0.0600 its stock stops short of the shoulder): its
+     while the gun turns in the hand), since Blender's own interpolation of two different holds swung the gun out and through the body.
+     At the hip and the aim the left hand is the SUPPORT hand (*"A mão esquerda precisa girar, pra palma apontar pra cima, e os dedos
+     abraçarem o cano"*): the palm up under the fore-end, the fingers across it and closed round it, the thumb along its left side
+     (`_support_hand`, `_close_fingers`); the read-back of a long gun's draw keeps the fingers (`LONG_GUN_SEQUENCES`), as the throw's does; it opens at x0.085 of the pack's units, about 1 m long (at the pistol's 0.0600 its stock stops short of the shoulder): its
      size is the Director's. The coat has one EMPTY key per pose, `LongDrawFix_f12` ... `_f31`: opening the right flap is his. Not
      read back yet: the game has no long gun's draw until he has posed it (then `pose_lab.py sequence draw_shotgun`).
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).

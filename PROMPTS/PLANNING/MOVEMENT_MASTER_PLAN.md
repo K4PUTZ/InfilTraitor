@@ -814,7 +814,12 @@ Each step lands on both figures before the next; a step with a look ends in a ca
      while the gun turns in the hand), since Blender's own interpolation of two different holds swung the gun out and through the body.
      At the hip and the aim the left hand is the SUPPORT hand (*"A mão esquerda precisa girar, pra palma apontar pra cima, e os dedos
      abraçarem o cano"*): the palm up under the fore-end, the fingers across it and closed round it, the thumb along its left side
-     (`_support_hand`, `_close_fingers`); the read-back of a long gun's draw keeps the fingers (`LONG_GUN_SEQUENCES`), as the throw's does; it opens at x0.085 of the pack's units, about 1 m long (at the pistol's 0.0600 its stock stops short of the shoulder): its
+     (`_support_hand`, `_close_fingers`); the read-back of a long gun's draw keeps the fingers (`LONG_GUN_SEQUENCES`), as the throw's does.
+     **The aim at the EYE (Director, 2026-11-18):** *"a pose do aim ainda está muito baixa. Precisa ficar na altura dos olhos. E servir
+     pra shotguns, rifles e snipers. Rifles também atiram na cintura. Snipers não."* The gun's sight line (the top of its receiver)
+     runs just under the right eye, the head down on the stock and leaning right onto it, the butt high in the shoulder
+     (`LONG_AIM_*`; the eye found from the nose's tip on the head mesh). ONE aim for the shotguns, the rifles and the snipers; the
+     HIP shot is the shotguns' and the rifles', never the snipers' (a sniper draws straight to the aim); it opens at x0.085 of the pack's units, about 1 m long (at the pistol's 0.0600 its stock stops short of the shoulder): its
      size is the Director's. The coat has one EMPTY key per pose, `LongDrawFix_f12` ... `_f31`: opening the right flap is his. Not
      read back yet: the game has no long gun's draw until he has posed it (then `pose_lab.py sequence draw_shotgun`).
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).

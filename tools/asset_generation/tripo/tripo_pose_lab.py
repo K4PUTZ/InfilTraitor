@@ -836,7 +836,13 @@ LONG_HOLD_AT = 0.82            # where the left hand takes the barrel for the dr
 LONG_PUMP_AT = 0.2             # where along the fore-end the left hand holds at the hip and the aim, from its rear
 LONG_TWIST_DEG = {"hip": -30.0, "aim": -35.0}   # the trunk's turn, about +Z (negative: the facing, -Y, turns toward the figure's right, -X)
 LONG_HEAD_BACK = {"hip": 0.75, "aim": 0.85}     # how much of that turn the neck gives back, so the head keeps looking ahead
-LONG_AIM_HEAD_PITCH_DEG = 10.0                  # the head down toward the stock at the aim
+LONG_AIM_HEAD_PITCH_DEG = 15.0                  # the head down onto the stock at the aim
+# THE AIM AT THE EYE (Director, 2026-11-18: "a pose do aim ainda está muito baixa. Precisa ficar na altura dos olhos"): the gun's sight line (the top of its receiver)
+# runs just under the RIGHT eye, the head down on the stock and leaning right onto it (the cheek on the comb); the butt goes where that puts it, high in the shoulder.
+# One aim for the shotguns, the rifles and the snipers (the hip shot is the shotguns' and the rifles', never the snipers').
+LONG_AIM_HEAD_ROLL_DEG = 10.0                   # the head leaning to its right, onto the stock
+LONG_AIM_EYE_ABOVE = 0.012                      # the eye this far above the sight line
+LONG_EYE_FROM_NOSE = (-0.016, 0.012, 0.02)      # the right eye against the nose's tip (the head mesh's frontmost point), the figure's units at the idle
 LONG_COAT_KEY = "LongDrawFix"
 # THE SUPPORT HAND at the hip and the aim (Director, 2026-11-18: "A mão esquerda precisa girar, pra palma apontar pra cima, e os dedos abraçarem o cano"): the palm
 # UP under the fore-end, the fingers across it toward the gun's right (turned this much toward the muzzle) and closed round it, the thumb along its left side. The
@@ -911,6 +917,8 @@ def _gun_frame_points(obj, factor):
     barrel = [q[i] for i in members("DarkMetal")] or q
     x = lo.x + LONG_HOLD_AT * L
     pts["hold"] = Vector((x, 0.0, z_mid(barrel, x, 0.02 * L)))
+    top = [p.z for p in q if pts["grip"].x <= p.x <= pts["pump"].x]
+    pts["sight"] = Vector((pts["grip"].x, 0.0, max(top) if top else hi.z))   # the line the eye looks along: the top of the receiver, above the grip
     return F, pts, L
 
 
@@ -1015,6 +1023,14 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
                 {pb.name[len(PREFIX):]: pb.head.copy() for pb in arm.pose.bones})
 
     P_idle, H_idle = snap(1)
+    head_mesh = bpy.data.objects.get("Body_Head")
+    if head_mesh is None:
+        fail("no Body_Head: the aim needs the eye (the nose's tip on the head mesh)")
+    ev_head = head_mesh.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    me = ev_head.to_mesh()
+    nose = min((ev_head.matrix_world @ v.co for v in me.vertices), key=lambda v: v.y)
+    ev_head.to_mesh_clear()
+    eye_local = P_idle["Head"].transposed() @ (nose + Vector(LONG_EYE_FROM_NOSE) - H_idle["Head"])
     P_draw, H_draw = snap(draw_frame)
     hips_idle = H_idle["Hips"].copy()
     rest_head = {n: arm.data.bones[PREFIX + n].head_local.copy() for n in rig.names}
@@ -1133,19 +1149,21 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
     reach["hip L"] = support(P27, pos27, G_hip, grip27 + G_hip @ (pts["pump_under"] - pts["grip"]), Vector((0.12, -0.05, -0.2)))
     poses[at["hip"]] = (P27, hips_idle, gun_world(G_hip, pts["grip"], grip27))
 
-    # 35 the aim: turned further, the butt in the right shoulder's pocket, the head down toward the stock
+    # the aim: turned further, the head down on the stock and leaning right, the gun's sight line just under the right eye (`LONG_AIM_*`)
     P35 = {n: m.copy() for n, m in P_idle.items()}
     trunk(P35, "aim")
+    turn(P35, "Neck", Matrix.Rotation(math.radians(LONG_AIM_HEAD_PITCH_DEG), 3, "X"))
+    turn(P35, "Neck", Matrix.Rotation(math.radians(-LONG_AIM_HEAD_ROLL_DEG), 3, "Y"))
     pos35 = fk(P35, hips_idle)
-    head_pivot = Matrix.Rotation(math.radians(LONG_AIM_HEAD_PITCH_DEG), 3, "X")
-    turn(P35, "Neck", head_pivot)
-    pos35 = fk(P35, hips_idle)
-    pocket = pos35["RightArm"] + Vector((0.025, -0.03, -0.01))
-    butt35 = pocket
-    grip35 = butt35 + G_hip @ (pts["grip"] - pts["butt"])
+    eye35 = pos35["Head"] + P35["Head"] @ eye_local
+    sight35 = eye35 - Vector((0.0, 0.0, LONG_AIM_EYE_ABOVE))
+    butt35 = sight35 + G_hip @ (pts["butt"] - pts["sight"])
+    grip35 = sight35 + G_hip @ (pts["grip"] - pts["sight"])
     reach["aim R"] = hold(P35, pos35, "Right", G_hip, grip35 + G_hip @ Vector((0.0, -0.012, 0.0)), Vector((-0.18, 0.04, -0.06)))
-    reach["aim L"] = support(P35, pos35, G_hip, butt35 + G_hip @ (pts["pump_under"] - pts["butt"]), Vector((0.06, -0.06, -0.22)))
-    poses[at["aim"]] = (P35, hips_idle, gun_world(G_hip, pts["butt"], butt35))
+    reach["aim L"] = support(P35, pos35, G_hip, sight35 + G_hip @ (pts["pump_under"] - pts["sight"]), Vector((0.06, -0.06, -0.22)))
+    poses[at["aim"]] = (P35, hips_idle, gun_world(G_hip, pts["sight"], sight35))
+    print(f"[tripo_pose_lab] the aim: the right eye at {tuple(round(v, 3) for v in eye35)}, the butt {tuple(round(v, 3) for v in butt35)} "
+          f"(the right shoulder joint {tuple(round(v, 3) for v in pos35['RightArm'])})")
 
     # the centre: the gun upright in front of the tie, held by the tip EXACTLY as it came out at 13 (Director, 2026-11-18: "depois que o agente pega a arma, ela
     # deveria continuar sendo segurada pelo cano, sem mudar"): the left hand of 13 carried there, turned the same; the right hand has let the lapel go, half way

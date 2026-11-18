@@ -1207,23 +1207,8 @@ the engine work on the Mac: this repo only receives it.
 
 ---
 
-### ⏳ M6.05 — Visual Polish
-**Objective:** Animation, particles, and visual refinement.
-
-**Dependencies:** M4.10
-
-**Estimated Duration:** 2–3 weeks
-
-**Deliverables:**
-- Guard animations (movement, detection, investigation)
-- Agent animations (various poses, states)
-- Particle effects (noise, detection, alerts)
-- UI animation and polish
-
-**Acceptance Criteria:**
-- Animations feel weighty and responsive
-- Particles enhance readability
-- UI feels native and polished
+### ⛔ M6.05 — Visual Polish — MERGED INTO POLISH-01 (Director, 2026-11-17: visual and sound polish are one milestone, before the
+optimization). Its deliverables (guard and Agent animation finish, particles, UI animation) are listed there.
 
 ---
 
@@ -1232,8 +1217,8 @@ the engine work on the Mac: this repo only receives it.
 finished look, not a placeholder.
 
 **Placement:** after the content milestones and before M7.0. Its sound is the FOLEY (Director, 2026-11-17): the game's sounds
-themselves; what sound does in play is M6.0, the music is SOUNDTRACK. It overlaps M6.05 (visual polish); whether that one folds
-into it is open.
+themselves; what sound does in play is M6.0, the music is SOUNDTRACK. Visual and sound polish are ONE milestone (Director,
+2026-11-17): M6.05 (visual polish) is merged here.
 
 **Deliverables:**
 - **Weapon skins**: each item's surface detail and finish (the taser's skin is the first one owed, ITEMS §3), its materials checked on
@@ -1242,6 +1227,8 @@ into it is open.
   weapons, the suppressors, the props), never a new mechanism.
 - **Cosmetic effects**: the small visual touches around an action (muzzle, impact, casing, smoke, sparks) reviewed weapon by weapon.
 - **Foley**: the game's sounds made and placed: each weapon, each effect, steps, cloth, objects, reviewed with the effects above.
+- **From M6.05 (merged):** the finish of the guard and Agent animations, the particles (noise, detection, alerts), the UI's animation
+  and polish.
 - **The coat's slivers** (deferred 2026-11-12) and the other items recorded as "for the final polish" in the plans.
 
 **Rule:** a polish item changes how something looks or sounds, never what it does; a gameplay attribute is GAMEPLAY-01's.
@@ -1251,7 +1238,7 @@ into it is open.
 ### ⏳ M7.0 — Release Prep: QA & Optimization
 **Objective:** Bug fixing, performance optimization, and platform preparation.
 
-**Dependencies:** M6.05, POLISH-01
+**Dependencies:** POLISH-01
 
 **Estimated Duration:** 2–3 weeks
 

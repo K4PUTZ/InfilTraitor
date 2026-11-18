@@ -6,7 +6,7 @@ Picks up the owed list of `RESUMO_SESSAO_2026-11-17_H1_FAMILY_SUPPRESSORS.md`.
 
 - **POLISH-01**, a milestone before M7.0's optimization: weapon skins, secondary variants of the same objects, cosmetic effects,
   FOLEY (`docs/production/milestones.md`). Audio is split three ways: POLISH-01's foley (the sounds), M6.0 (sound as a gameplay
-  mechanic), SOUNDTRACK (the music, in progress on the PC). Whether M6.05 folds into POLISH-01 is open.
+  mechanic), SOUNDTRACK (the music, in progress on the PC). M6.05 (visual polish) is merged into POLISH-01: visual and sound polish are one milestone, before the optimization.
 - **The grapple's kinds** (ITEMS §2.5): pull the guard to the Agent, pull the Agent to the guard, pull an object, move the Agent
   across the map, pull a wall down; Claude's extras ratified too (disarm, distant trigger, drop something on a guard, fetch, rappel /
   zip line). The grapple PISTOL is early game and takes the pistol slot (no firearm, no dart); late game the hook moves to the left

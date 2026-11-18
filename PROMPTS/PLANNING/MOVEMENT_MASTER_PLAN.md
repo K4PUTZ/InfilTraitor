@@ -791,6 +791,11 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    not seen on the map: no blast in reach took the dart's own voxel). Drawn only from `CosmeticDensity` mid up, the record kept on
    every device. Takes `crossbow_shot`, `projectile_shots`, `dart_persist` (PLAYGROUND, the brick bench), both figures. Colours,
    sizes and the flare's glow are first passes: their finish is POLISH-01.
+   **H1 closed 2026-11-17 (Director), skins aside.** The KICK per weapon is cosmetic (gameplay may at most read it into the hit
+   chance, or, at the extreme, the Agent hurt by it): a stronger or weaker recoil per row is a visual variation, built with the next
+   family's recoil data. The family firing CROUCHED is expected to work unchanged (the skeletons were left alone so every weapon fits
+   standing and crouched) and is checked later. The suppressors are 12 % thicker (`model.mount.girth` 1.12 on every row:
+   `AttachmentDef` widens the model across its bore, its length and muzzle unchanged).
 
 6. **The cover bodies B3-B6,** then the pistol's lean-out on each, then the other families on them.
 7. **The throws left:** from the kneel; the bowl (standing).

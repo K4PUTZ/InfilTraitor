@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**358 scripts · 103259 lines total** (under `godot/scripts/`)
+**358 scripts · 103275 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2714,7 +2714,7 @@ extends `RefCounted` · 37 lines
 
 ### `attachment_def.gd`
 
-`class_name AttachmentDef` · 60 lines
+`class_name AttachmentDef` · 76 lines
 
 `godot/scripts/systems/destruction/attachment_def.gd`
 
@@ -2733,6 +2733,7 @@ extends `RefCounted` · 37 lines
 - `var mount_on: String = ""`
 - `var mount: Transform3D = Transform3D.IDENTITY`
 - `var muzzle: Vector3 = Vector3.INF`
+- `var girth: float = 1.0`
 
 ---
 

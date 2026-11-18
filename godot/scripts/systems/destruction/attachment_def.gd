@@ -19,6 +19,9 @@ var surface_materials: Dictionary = {}
 var mount_on: String = ""
 var mount: Transform3D = Transform3D.IDENTITY   ## the model in the reference weapon's frame, relative to its muzzle
 var muzzle: Vector3 = Vector3.INF
+## The model widened about its bore by this much (Director, 2026-11-17: "aumenta só um pouquinho a grossura"): a scale across
+## the axis from the model's origin (its back face) to its `muzzle`, so its length and the point the round leaves stay as they are.
+var girth: float = 1.0
 
 
 static func from_json(data: Dictionary) -> AttachmentDef:
@@ -48,6 +51,19 @@ static func from_json(data: Dictionary) -> AttachmentDef:
 		var quat := Quaternion(float(q[0]), float(q[1]), float(q[2]), float(q[3])).normalized()
 		var pos: Vector3 = JsonFileRef.vector3(t.get("pos", [0.0, 0.0, 0.0]), Vector3.ZERO, "attachment '%s' mount pos" % a.id, [])
 		a.mount = Transform3D(Basis(quat).scaled(Vector3.ONE * float(t.get("scale", 1.0))), pos)
+		a.girth = float(t.get("girth", 1.0))
+		if is_equal_approx(a.girth, 1.0):
+			pass
+		elif a.muzzle == Vector3.INF or a.muzzle.length() < 0.000001:
+			push_error("[AttachmentDef] '%s': model.mount.girth needs a measured muzzle (the bore's axis): not applied" % a.id)
+		else:
+			var bore: Vector3 = a.muzzle.normalized()
+			var across := Basis.IDENTITY
+			for k in range(3):   ## I + (g - 1)(I - b b^T), column by column
+				var e := Vector3.ZERO
+				e[k] = 1.0
+				across[k] = e + (e - bore * bore.dot(e)) * (a.girth - 1.0)
+			a.mount = a.mount * Transform3D(across, Vector3.ZERO)
 	else:
 		push_error("[AttachmentDef] '%s': no model.mount" % a.id)
 	return a

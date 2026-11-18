@@ -224,7 +224,9 @@ wearing the coat in his faction's colours and emblem (D90); every other slot is 
 - **Same class, different people:** the Agent and his colleagues share the slots, never the pieces; the fedora, the tie and the dress
   shoes stay his.
 
-**Two routes for the pool** (the Director's call, §9):
+**The pool: RULED (Director, 2026-11-18): route A, the ~10 shared humans.** *"Sim, vamos manter os 10 humanos, que vão ser mais uma camada de variabilidade. Usando todo tipo de artifício para criar mais NPCs e inimigos: facções, logos, skins, cabelos, roupas, calçados, etc."* The ten bodies are one layer of variety, multiplied by every other: faction sets, logos, skins, hair, clothes, shoes. They serve NPCs as well as enemies. Route B below is kept as the record of the choice.
+
+**Two routes for the pool** (decided above):
 
 | | Route A: the canon as written (rules 3, 5) | Route B: Claude's recommendation |
 |---|---|---|
@@ -266,7 +268,7 @@ clips, so a coat generated on them needs keys for those alone.
 
 ## 9. Open questions for the Director
 
-1. **The pool: route A or route B (§6)?** And how many bodies per faction (Claude: 4, at least one woman, heavy ones where the faction
+1. ✅ **The pool** (ruled 2026-11-18: route A, the ~10 shared humans, §6). Was: **route A or route B?** And how many bodies per faction (Claude: 4, at least one woman, heavy ones where the faction
    has bruisers).
 2. ✅ **The officers** (ruled 2026-11-18, §6): the Agent's body (male / female) and the coat; every other slot their own.
 

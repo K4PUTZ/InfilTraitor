@@ -1,0 +1,251 @@
+# ENEMIES_MASTER_PLAN
+
+> 🟢 **v0.1, OPENED 2026-11-18 (Director): *"Antes de continuar com as armas, vamos abrir a milestone ENEMIES, e fazer um levantamento
+> de todos os tipos de modelos que vão ser necessários, incluindo todos os personagens principais, subchefes, oficiais, e pool de thugs
+> comuns pra cada facção."***
+> This version is the SURVEY: every model the four factions need, from the leaders down to the common pool and the machines, where each
+> one is canon, where it appears (the board or a staged scene), and how it could be made. **Nothing is built, and this file ratifies
+> nothing:** the cast is canon from its owners (§1); the build routes of §6 and the counts that depend on them are Claude's proposal, and
+> §9 holds the two questions that decide them.
+
+## 0. What this plan owns, and what it does not
+
+- **Owns:** the list of the enemy side's MODELS (who needs one, on which body, made how), their status, the order in which they are
+  made, and the engine step that puts them on the board (the guards on the Tripo rig, §7).
+- **Does not own:** who they are and what they do in the story (`DESIGN_MASTER_PLAN` §2, §11), how they behave (`AI_MASTER_PLAN`,
+  `DESIGN` §11-§13), the slots and the palette (`COSMETICS_MASTER_PLAN` §8-§9), how they move (`MOVEMENT_MASTER_PLAN`), what they carry
+  (`ITEMS_MASTER_PLAN`), what a segment may hold (`PERFORMANCE_BUDGET_MASTER_PLAN` PB-1).
+- **The ratified source is [`MODEL_INVENTORY`](../../docs/systems/MODEL_INVENTORY.md)** (§1 bases, §4 factions, §5 named characters,
+  §7.1 rulings 6-10 of 2026-10-29). This plan expands its enemy rows and tracks them from now on; where the two disagree, the inventory's
+  rulings stand until the Director rules otherwise.
+
+## 1. Rules already in force
+
+| # | Rule | Source |
+|---|---|---|
+| 1 | Every character is a Tripo generation (paid plan: the outputs are ours), rigged by Tripo on the 65-joint Mixamo skeleton, ~1 m; our code adapts to it | `ACTOR` D85 |
+| 2 | **One set of animations for the Agent and every enemy;** any of them may carry any weapon; only the models change | `MOVEMENT` §11.8 Q8 (Director, 2026-11-16) |
+| 3 | A model is generated bare and its swappable pieces are generated afterwards and fitted; for the Agent "bare" is the BASIC DRESS (shirt, trousers, shoes), not a nude body | `MODEL_INVENTORY` §7.1 #6, `ACTOR` D86, D89 |
+| 4 | Bosses and sub-leaders are unique models | §7.1 #7 |
+| 5 | The rank-and-file is a shared roster of ~10 varied humans (both figures, ages, builds), interchangeable across factions: a soldier = a roster body + the faction's pieces | §7.1 #8 |
+| 6 | Some women in every faction's rank-and-file, not on every model; two women among each faction's four named (three specialists + the keeper) | §7 #4-#5, `DESIGN` §11.7 |
+| 7 | A heavy build for the bruisers of Calm Waters and the Bunsen Burners, and for Kessler, Hardcastle and "Deacon" | `MODEL_INVENTORY` §1, §5; `COSMETICS` §8.1 |
+| 8 | Field officers (Lieutenant up) wear an overcoat in the faction's colours with its emblem: ONE coat silhouette, four colour rows; the sub-leaders are the most senior of them, with distinctions | `DESIGN` §2.1, §11.2; `COSMETICS` §8.3 |
+| 9 | A piece's colour is a palette entry times a grayscale detail, with hand-painted pieces where needed; the four palette families | `ACTOR` D87; `COSMETICS` §9.4 |
+| 10 | One game LOD of ~5 k triangles per figure, made offline (`build_agents.sh`) | `ACTOR` D73, D91 |
+| 11 | Machines complement the humans: four per faction, one per role (fixed eye, mobile, armed, alarm); the K9 is the police's mobile one, on its own quadruped skeleton | §7.1 #9, §7 #2 |
+| 12 | A segment holds 4 / 6 / 10 guards (LOW / TYPICAL / HEAVY; HEAVY with 2 types) and 0 / 2 / 4 cameras or drones | `PERFORMANCE_BUDGET` PB-1 |
+| 13 | The sub-leaders (and the reporter, the spouse) are never reachable actors on a playable board: a scene, behind glass, a comm-link | `DESIGN` §2.8 |
+| 14 | The first slice is the opening every route shares (ruled); then, proposed, the other three faction sets, one per territory, each measured on the Moto before the next | `COSMETICS` §8.5 (the first slice ruled by the Director, 2026-10-23) |
+| 15 | Traps on the path wait for the scenarios milestone | §7.1 #10 |
+
+## 2. The cast in one picture
+
+Per faction, from the top. The four are built to the same shape (`DESIGN` §2.1: equivalent as a whole, different in everything else).
+
+| Tier | Per faction | Kind of model | Appears on |
+|---|---|---|---|
+| Leader (boss of lap 2) | 1 | unique | the board: a mortal confrontation (`DESIGN` §2.2) |
+| Sub-leader (handler, successor) | 1, + Prudence Vane for the Corporation | unique | scenes only (rule 13) |
+| Rival boss (§11.2's Rival Agent tier) | the Confessor (club), Hedge (Corporation) | unique | the board (`DESIGN` §2.2, §2.8) |
+| Specialists: EYE, HAND, WALL | 3 | unique, named | the board: each fields the tech he authors (`DESIGN` §11.6) |
+| Store keeper (L2) | 1 | unique, named | the board, at the store (`DESIGN` §11.7) |
+| Member abroad (the trips) | 1, proposed | unique | a trip's map (`DESIGN` §2.6; open in §18) |
+| Freelance prototype captain (L3) | 1 | an officer + the L3 item, not named | the board (`DESIGN` §11.7) |
+| Field officers: Lieutenant, Captain | 2 ranks | the officer: overcoat + armband | the board |
+| Rank-and-file: Recruit, Standard, Veteran | 3 ranks | the common pool | the board |
+| Counter units: EYE, HAND, WALL | 3 units × 3 gear stages | pieces on the pool | the board (`DESIGN` §11.7) |
+| Machines | 4 | one mesh each (PP7 when it moves) | the board |
+
+## 3. The survey, faction by faction
+
+Figure: M / F; "heavy" where the canon says so. The specialists' build (standard or heavy) is not assigned (`MODEL_INVENTORY` §5).
+
+### 3.1 The FID, Federal Inquiry Directorate (blue / white / yellow; the investigators' mustard coat)
+
+| Tier | Who | Figure | Notes |
+|---|---|---|---|
+| Leader | **Commissioner Martin Graves** | M | takes the badge; runs the Agent off the books (`DESIGN` §2.2) |
+| Sub-leader | **Deputy Commissioner Irene Barrow** | F | the policeman route's handler and the official investigator (§2.8); the overcoat with distinctions |
+| EYE | **Cairn**, the K9 handler | M | + the dog (§5) |
+| HAND | **Pyre**, the taser officer | F | the taser (`ITEMS` §2.2) |
+| WALL | **Vault**, the dispatcher | F | radio check-ins, roadblocks |
+| Keeper | **Urn**, the evidence clerk | M | the evidence room |
+| Abroad | the money man who launders Graves's protection money | open | a private bank in a tax haven |
+| L3 captain | a Chief Inspector | officer | the FID's L3 prototype |
+| Officers | Inspector (Lt), Chief Inspector (Cpt) | officer | **the Agent's own coat AND colour** (he is an Inspector): his fedora, tie and shoes set him apart (`DESIGN` §2.1) |
+| Pool | Cadet, Agent, Senior Agent | pool | uniform shirt, trousers, boots, cap, duty belt; rank: radio (Lt up), tactical vest, a commander's jacket (`COSMETICS` §8.3). The opening's station officers |
+| Counter units | forensic tech · riot officer · radio sergeant | pieces | scent-decoy kit, tablet, jammer case · insulated vest, detector wand, ear defenders · analogue handset, runner's satchel |
+| Machines | street CCTV dome · **K9 dog** · taser sentry on a tripod · siren box | | |
+
+### 3.2 Calm Waters Security, the Militia (red / wine / grey / white)
+
+| Tier | Who | Figure | Notes |
+|---|---|---|---|
+| Leader | **Commander Dale Kessler** | heavy M | |
+| Sub-leader | **Duke Hardcastle**, head of operations | heavy M | the overcoat with distinctions |
+| EYE | **Ace Skyler**, the drone pilot | F | the scout drone and its controller |
+| HAND | **Rex Hawke**, the marksman | M | the suppressed rifle |
+| WALL | **Chip Voltz**, sensors and laser tripwires | M | the EMP charge |
+| Keeper | **Tank Mercer**, the quartermaster | F | the armoury |
+| Abroad | the parent holding's finance director | open | the PMC's offshore headquarters |
+| L3 captain | a Site Commander | officer | |
+| Officers | Team Leader (Lt), Site Commander (Cpt) | officer | a grey tactical coat with red and wine bands (proposed, `COSMETICS` §8.3) |
+| Pool | Contractor, Operator, Senior Operator | pool | tactical top, armour vest, helmet or cap, boots, gloves; rank: goggles / visor, drone controller, a heavier armour; heavy bodies for the bruisers; patrols in pairs (`DESIGN` §11.1) |
+| Counter units | counter-drone crew · spotter + heavy · hardened tech | pieces | anti-drone gun, insulation suit · spotting scope, insulated armour, reflective plating · shielded case, pressure plates (a floor prop) |
+| Machines | watchtower camera on a mast · quad scout drone · auto-turret · motion sensor + flare | | |
+
+### 3.3 Bunsen Burners MC, the Traffickers (orange / brown / green / aqua)
+
+| Tier | Who | Figure | Notes |
+|---|---|---|---|
+| Leader | **President "Deacon"** (Wade Cutler) | heavy M | |
+| Sub-leader | **Vice President "Choirboy"** | M | the overcoat with distinctions |
+| Rival boss | **"the Confessor"**, Deacon's hired assassin | M | a hired man, not a patched member; wears the hat-mask, NO goggles (`ACTOR` D83); a boss (`DESIGN` §2.2); the rest of his look is not written |
+| EYE | **Vespers**, the lookout with fireworks | M | the firework lure |
+| HAND | **Censer**, the chemist | F | gas and sedatives; the dart launcher |
+| WALL | **Sexton**, booby traps on the routes | M | the tripwire flash |
+| Keeper | **Tithe**, the chop-shop mechanic | F | |
+| Abroad | the overseas supplier of the banned precursors | open | a port and a warehouse |
+| L3 captain | a Sergeant-at-Arms | officer | |
+| Officers | Road Captain (Lt), Sergeant-at-Arms (Cpt) | officer | a BROWN leather duster with orange trim, never an orange coat (it merges with the mustard for colour-blind players, `COSMETICS` §9.4) |
+| Pool | Hang-around, Prospect, Patch | pool | a patched vest over a shirt or tee, jeans, boots; rank: bandana or balaclava, chains, a president's colours; heavy bodies for the bruisers; the labs' cooks |
+| Counter units | sentry · gas-mask cook · road crew | pieces | none (behaviour only) · antidote injector, respirator, foam extinguisher · sweeping torch, spike strip + roadblock |
+| Machines | phone on a pole · RC scout car · jury-rigged shotgun turret · air horn on a battery | | |
+
+The club's bikes are vehicles (mesh, `PROP_PIPELINE_PLAN` §9.5), listed so the club's look is complete.
+
+### 3.4 The Corporation, GRUB DRILL INC (black / purple / navy)
+
+| Tier | Who | Figure | Notes |
+|---|---|---|---|
+| Leader | **CEO Gordon Pryce** | M | the Senate candidate |
+| Sub-leader | **Evelyn Marsh**, the board's bloc leader | F | the overcoat with distinctions |
+| Counsel | **Prudence Vane** | F | sells the guard rotations (Marsh's sub-mission, `DESIGN` §2.7); scenes |
+| Rival boss + HAND | **Hedge**, the envoy in the LED prototype | M | the shadow generator (seen); the LED coat in lap 2 = the coat silhouette with the LED shader (`DESIGN` §10.5, `MODEL_INVENTORY` §2) |
+| EYE | **Ledger**, the hacker of cameras and phones | F | camera loops |
+| WALL | **Escrow**, the fixer | F | |
+| Keeper | **Margin**, head of the R&D floor | M | |
+| Abroad | Carrion Capital's partner, Marsh's buyer | open | the fund's tower |
+| L3 captain | a Head of Security | officer | |
+| Officers | Case Manager (Lt), Head of Security (Cpt) | officer | a black coat with purple and navy (proposed); the black may vanish on the dark board, so the accents and the emblem carry it (`COSMETICS` §9.4, to measure) |
+| Pool | Staffer, Operative, Senior Operative | pool | a suit of their own cut and palette, earpiece; rank: sunglasses, briefcase, the leaders' tailoring; never the Agent's fedora (`DESIGN` §2.1) |
+| Counter units | feed monitor · floodlight team · compliance officer | pieces | tablet, multi-spectrum camo suit · flare + portable floodlight, heavy plating · credential reader, keypad (a wall prop) |
+| Machines | face-recognition camera · wheeled security robot · ceiling laser turret · laser grid + alarm panel | | |
+
+### 3.5 Outside the factions (listed, not this plan's)
+
+The Agent, Thomas Marlow, the spouse (Claire / Clement), Zest, the civilians and the crowd sets (press, mourners, medical staff, looters):
+the same pipeline, owned by `MODEL_INVENTORY` §5 and `COSMETICS` §8.4. The looters are hostile but nobody's faction. **The opening's
+slice needs Marlow and a few civilians beside its enemies** (rule 14), so they are made with it. The named rivals of `DESIGN` §11.5 wait
+for an IP opinion.
+
+## 4. The common pool (the rank-and-file)
+
+What a faction's thug is made of, from the canon:
+- **the faction's base set**, the cloth he always wears (the "Pool" rows of §3);
+- **rank pieces**, most of them rigid (cap, helmet, bandana, balaclava, radio, visor, chains, sunglasses, briefcase);
+- **the counter units' gear**, three units × three stages per faction: ~22-26 pieces in all (`MODEL_INVENTORY` §8 counts ~22); the
+  "(behaviour)", "(zone)" and "(architecture)" stages need no model. Three are whole SUITS (the insulation suit, the insulated armour,
+  the multi-spectrum camo suit), which are cloth, not rigid;
+- **colour from the faction's palette family**, never a PNG (rule 9).
+
+**What reads at the game camera.** A figure is ~190 px tall and a face ~10 px (`ACTOR` D73, D108): in play a thug is told apart by
+silhouette (build, headgear, gear), by the colour of his clothes inside the family, and by skin tone. A face is a portrait's. So a few
+bodies go a long way once the headgear and the palette vary, and the segment bounds what is on screen at once (rule 12: 6 guards in a
+typical segment, 10 of 2 types in the heaviest).
+
+**How many bodies:** rule 5 says ~10, shared by the four factions. §6 sets that against ~4 per faction in the faction's own base set.
+
+## 5. Machines and the dog
+
+The ratified roster (`MODEL_INVENTORY` §7.1) is in each faction's "Machines" row: **16 models**, 15 meshes (PP7 where they move: the
+drone, the RC car, the wheeled robot, the turrets, the cameras' pan) and the K9 on its own quadruped skeleton and clips (walk, sniff,
+alert, bark, down). What they do (sight cone, noise, hacking) is `AI_MASTER_PLAN`'s. **Assumed here (Claude):** their models are made
+with the AI that drives them (E-5), not with the human pools. **Not tried:** whether Tripo rigs a quadruped.
+
+## 6. How each tier could be built (Claude's reading, PROPOSED: the Director's call)
+
+**What the Agent taught, measured in this repo:**
+- **A whole Tripo generation brings its clothes already skinned to its rig** (D85), and two generations share every clip (the female and
+  the male share the 65 joints, `MOVEMENT` §1 items 2-3).
+- **Fitting a CLOTH piece to a body is the dominant cost.** The overcoat on the two Agents has needed work since `ACTOR` D86
+  (2026-10-27): its weights, the legs' push (D94), the T pose (D97), the light build's masks and armpit panel (D91-D93, D106-D107), and
+  corrective shape keys made BY HAND per clip and per figure (`IdleFix`, `WalkFix`, `RunFix`, `CrouchFix_f*`, `DrawFix`, `ThrowFix_f*`,
+  `RiseFix`, `LongDrawFix_f*`: `docs/pipelines/timeline_coat_keys.md`). Every new clip still adds its own. A shape key belongs to one
+  mesh: a long coat on a new body starts that work over.
+- **A RIGID piece on a bone socket fits a body with one offset per socket and no cloth refitting** (`COSMETICS` §9.8 says it of the
+  small accessories; helmets, caps, visors, radios, masks, respirators, chains and a vest of plates on the chest bone are rigid the same
+  way).
+- **Colour is free** (D87's palette). **A face is not,** and the police form already needs several on the Agent's body: one per
+  ethnicity, both sexes (`DESIGN` §2.2, revised 2026-10-25: a choice of race is a whole face).
+
+**Two routes for the pool and the officers:**
+
+| | Route A: the canon as written (rules 3, 5) | Route B: Claude's recommendation |
+|---|---|---|
+| **The pool** | ~10 bare bodies shared by the four factions; each faction's base set (4-5 cloth pieces) fitted to every body | **~4 generations per faction, already IN the faction's base set** (rule 3 read as D89 reads it for the Agent: what a guard always wears is his basic dress); at least one woman; heavy bodies where the faction has bruisers. Rank and counter gear as rigid socket pieces; the three suits as generations of their own |
+| **Cloth fittings** | up to ~10 bodies × 4 sets × 4-5 pieces (a scripted transfer of tight pieces, which have no skirt between the legs, is untried) | none for the pool |
+| **The field officers** | the coat fitted to each roster body that is promoted, its hand keys redone per body | **the Agent's two coated bodies, re-dressed:** the faction's coat colour and emblem (D90), a head of their own (hair, face, skin), no fedora: the same head swap the police form needs on the Agent's body, with faces of their own. They inherit the push and every coat key. The canon already gives every faction's officers the Agent's coat silhouette (rule 8), and the FID's officers his very coat; the Freelance captains are officers too |
+| **Pool bodies to generate** | ~10 | ~16 |
+| **What it breaks or risks** | the fitting cost grows with bodies × sets | replaces rule 5's "interchangeable across factions"; every officer has the Agent's build (a heavy officer needs a coat of his own); the Militia's and the bikers' under-dress (the Agent's shirt and tie under the coat) must be re-coloured or hidden: a render decides |
+
+**The named characters, in either route:** one generation each (rule 4, and `MODEL_INVENTORY` §5 lists every named one), made chapter
+by chapter, never on the pools' critical path. A named character who wears the long coat AND plays on the board (Hedge, in the LED
+coat) rides the Agent's coated body with a head of his own, for the officers' reason. The scene-only cast (the four sub-leaders, Vane:
+rule 13) needs only its scene clips, so a coat generated on them needs keys for those alone.
+
+## 7. What exists, and the engine gap
+
+- **On the board today:** the guards wear `agent_live_enemy_white.glb` (the pre-Tripo rig, 20 joints, a white blazer) and the field
+  officers `agent_live.glb` (the old Agent, promoted on 2026-11-08: `guard_enemy.gd`'s `officer`, the map's `actors.officers`), through
+  `ActorMesh3D.RIG_BY_FAMILY`. Rank has no rules yet (GAMEPLAY). Per faction, the actor shader knows only the reveal silhouette's colours
+  (`REVEAL_PALETTES`), not the clothes'.
+- **The path exists:** the `TRIPO_FIGURE` flag already puts the Tripo Agent on every actor of a room. Measured on the Moto (`ACTOR`
+  D105): a room's 10 actors on the Tripo idle 20.8-20.9 ms against 20.5-20.7 on the old rig; 9 LIGHT figures walking +5.0 ms (about
+  0.55 ms each); PSS +10 to +20 MB.
+- **The engine step (E-2):** a guard's model chosen by map data (faction, rank, body), the clothes' palette per actor, rigid pieces on
+  sockets, the two old rigs retired; then the cost of N DISTINCT models in one segment on the Moto (the memory per model is unmeasured).
+  This answers the mesh half of `PERFORMANCE_BUDGET` Q4; rule 2 already settled its rig half.
+
+## 8. Findings for the owner plans (not acted on)
+
+1. **`MOVEMENT`: the draw comes out of the coat.** The pistol leaves the coat's left flap and the long guns its right one (§11.6); with
+   one set of animations (rule 2), an uncoated guard reaches into nothing. Either the pool carries its weapon out (Q8 makes that a
+   gameplay state) or a holster draw joins the bank.
+2. **`COSMETICS` C3: the FID's officers wear the Agent's coat and colour.** From afar the non-cosmetic cue that marks the Agent carries
+   the whole difference, and the hat is the one that shows; a render is owed once the officers exist.
+3. **`MODEL_INVENTORY` §5 still lists "Pith & Peel's front man, standard M"**, while `COSMETICS` §8.4 and `DESIGN` §2.8 make him the dead
+   colleague, a photograph only.
+4. **`DESIGN`: the specialists' rank is not written,** and whether they wear the officer's coat changes how they are built (§6).
+5. **`DESIGN` §18: the members abroad are still a proposal** ("three or four trips", one member per faction proposed): 3-4 models.
+
+## 9. Open questions for the Director
+
+1. **The pool: route A or route B (§6)?** And how many bodies per faction (Claude: 4, at least one woman, heavy ones where the faction
+   has bruisers).
+2. **The officers: the Agent's two coated bodies re-dressed (Claude), or generations of their own?**
+
+## 10. Order of work (proposed; the first slice is ruled, rule 14)
+
+| Step | What |
+|---|---|
+| **E-0** ✅ | This survey (2026-11-18) |
+| E-1 | The answers to §9; the reference sheets for the first slice (prompts as in `ITEMS` §7, for Tripo): the FID pool and officers, Graves, the four sub-leaders at the station door, with Marlow and a few civilians (§3.5) |
+| E-2 | The engine (§7): guards on the Tripo rig by map data, the clothes' palette per actor, socket pieces, the old rigs retired; the Moto |
+| E-3 | The first slice through `build_agents.sh` (the light build), judged in the four real facings |
+| E-4 | The other three factions' pools and officers, one per territory, each measured on the Moto before the next |
+| E-5 | The named characters chapter by chapter; the counter units' gear with the counters' AI; the machines with theirs |
+
+## 11. Totals
+
+| Kind | Count | Exists |
+|---|---|---|
+| Named, enemy side | **30**: FID 7, Calm Waters 7, Bunsen Burners 8, Corporation 8 (4 of them the proposed members abroad) | none |
+| ... of them women | 11 (+ the members abroad, open) | |
+| ... of them heavy | 3: Kessler, Hardcastle, "Deacon" | |
+| Field officer looks | 4 faction coats × 2 ranks, both figures; the 4 Freelance captains among them | the old Agent, a placeholder |
+| Pool bodies | route A ~10 shared, route B ~16 (4 per faction) | the white blazer, a placeholder |
+| Rank pieces | `COSMETICS` §8.3's, rigid wherever they can be | none |
+| Counter-unit gear | ~22-26 pieces, 3 of them suits | none |
+| Machines | 16: 15 meshes + the K9 | none |

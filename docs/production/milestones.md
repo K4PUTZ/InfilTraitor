@@ -592,6 +592,14 @@ built) of every item the Agent or a guard handles, before MOVEMENT sizes them fa
 
 ---
 
+### 🟢 ENEMIES-01 — The enemies: every model of the four factions — OPENED 2026-11-18 *(Director direct)*
+Plan: [`ENEMIES_MASTER_PLAN`](../../PROMPTS/PLANNING/ENEMIES_MASTER_PLAN.md). Opened before the weapons continue. Step E-0, the survey,
+is done: per faction the leader, the sub-leader, the rival bosses, the specialists, the store keeper, the member abroad, the field
+officers, the common pool, the counter units and the machines (30 named characters, 16 machines). Next: the Director's call on how the
+pool and the officers are built (the plan's §9), then the first slice, the opening every route shares (`COSMETICS_MASTER_PLAN` §8.5).
+
+---
+
 ### ⏸️ ART-01 — Materials & Objects Pipeline — SCHEDULED (Alpha → Beta window)
 > **⏭️ 2026-09-30 — largely superseded in practice by R3D-PROPS** (`RENDER3D_MASTER_PLAN`): the voxel-objects dictionary is the crate's `PropDef` path (shipped), the open-source `.vox` import became `PROP_PIPELINE_PLAN` (a slot-based model pipeline with `.vox` containers, first content a dormitory scene), and the materials dictionary grows families and fallbacks (`PROPS_TIER4_PLAN` §2b). The horizontal-surface art (slab tops, stepped roofs) is still ART-01's / `R3D-SURFACES`. The window rule below is unchanged for that part.
 **Objective:** Dedicated art for horizontal surfaces (slab tops + roof tiles,

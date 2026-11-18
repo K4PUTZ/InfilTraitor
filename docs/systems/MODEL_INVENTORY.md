@@ -5,6 +5,10 @@ associados com a história"*). Nothing below is built except the hero's v5.1 pie
 them: characters and slots `COSMETICS_MASTER_PLAN` §8-§9, places and props `PROP_PIPELINE_PLAN` §9, cast and tree `DESIGN_MASTER_PLAN` §2.7,
 §10.0, §11.6-§11.7, §15. When an owner changes, this file follows.
 
+**2026-11-18: the enemy side is tracked in [`ENEMIES_MASTER_PLAN`](../../PROMPTS/PLANNING/ENEMIES_MASTER_PLAN.md)** (milestone ENEMIES-01):
+it expands §1's heavy base, §4, §5's faction cast and §7.1's rulings 7-9 faction by faction. The rulings below stand until the Director
+rules on that plan's §9.
+
 **Director's rule (2026-10-24): architecture and LARGE objects are built in VOXELS** (generator scripts into `VoxelStore` containers, like
 `gen_dorm_vox.py`: shots, blasts, fire and soot for free). So this inventory has two halves: **models to sculpt** (characters, pieces worn or
 held, small or organic props: meshes) and **voxel generators** (rooms, furniture, machines, big story objects).

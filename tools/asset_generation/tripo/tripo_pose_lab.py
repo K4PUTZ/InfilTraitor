@@ -383,7 +383,7 @@ def extract(blend, out_json):
     print(f"[tripo_pose_lab] wrote {out_json}: {len(bones)} bones ({len(moved)} added by the Director: {moved}), props {sorted(props)}")
 
 
-PASSING_MARKERS = ("in-between", "release", "follow", "pull", "centre")   # the throw flows through its release and follow-through (2026-11-12); the long gun's draw through its pull and centre (2026-11-18)
+PASSING_MARKERS = ("in-between", "release", "follow", "centre")   # the throw flows through its release and follow-through (2026-11-12); the long gun's draw through its centre (2026-11-18)
 FINGER_NAMES = ("Index", "Middle", "Pinky", "Ring", "Thumb")
 
 
@@ -826,7 +826,8 @@ def throw_new(base_blend, clip_glb, out_blend, part):
 # `fire` frame holds a long gun (its rotation and offset against the line between the palms, and its fingers); the trunk turns right for the hip and the aim (the
 # left shoulder forward), the head back toward the front. The gun (`PROP_<gun>`) rides the LEFT hand, the one that takes it out and turns it; it shows from
 # `LONG_GUN_SHOWN_FROM`. The coat gets one EMPTY key per pose, `LongDrawFix_f<frame>` (the throw's way): opening the right flap is the Director's.
-LONG_DRAW_PLAN = ((1, "idle"), (12, "lapel"), (16, "pull"), (20, "centre"), (27, "hip"), (35, "aim"))
+# One stop between the lapel and the hip (Director, 2026-11-18: "o pull e o center são a mesma coisa"): the gun comes out and to the centre in one move.
+LONG_DRAW_PLAN = ((1, "idle"), (12, "lapel"), (16, "centre"), (23, "hip"), (31, "aim"))
 LONG_GUN_SHOWN_FROM = 13
 LONG_GUN_FACTOR = 0.085        # the pack's native units -> the figure's: the shotgun ~1 m long. At the pistol's 0.0600 its stock stops short of the shoulder
 LONG_GRIP_FRAME = 12           # the bank `fire` frame (0.5 s) whose hands hold a long gun
@@ -1027,6 +1028,7 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
         return Matrix.Translation(at) @ G.to_4x4() @ Matrix.Translation(-anchor) @ F @ W0
 
     S2 = H_idle["Spine2"]
+    at = {m: f for f, m in LONG_DRAW_PLAN}
     poses = {}            # frame -> (P, hips position, gun world matrix or None)
     reach = {}
 
@@ -1034,13 +1036,6 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
     pos12 = fk(P_lapel, hips_idle)
     poses[12] = (P_lapel, hips_idle, None)
     gun13 = gun_world(G_vert, pts["hold"] + Vector((0.0, 0.0, -0.015)), palm(pos12, "Left"))
-
-    # 16 the pull: upright at the right chest, out of the flap; the right hand still lifts the lapel
-    P16 = {n: m.copy() for n, m in P_lapel.items()}
-    pos16 = fk(P16, hips_idle)
-    hold16 = Vector((S2.x - 0.06, S2.y - 0.155, S2.z + 0.045))
-    reach["pull L"] = hold(P16, pos16, "Left", G_vert, hold16 + G_vert @ Vector((0.0, 0.0, -0.015)), Vector((0.14, 0.02, -0.2)), "Barrel")
-    poses[16] = (P16, hips_idle, gun_world(G_vert, pts["hold"], hold16))
 
     # 27 the hip: the trunk turned right, the gun level and forward at the right hip, the right hand on the grip, the left under the fore-end
     def trunk(P, key):
@@ -1056,7 +1051,7 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
     reach["hip R"] = hold(P27, pos27, "Right", G_hip, grip27 + G_hip @ Vector((0.0, -0.012, 0.0)), Vector((-0.1, 0.12, -0.15)))
     pump27 = grip27 + G_hip @ (pts["pump"] - pts["grip"])
     reach["hip L"] = hold(P27, pos27, "Left", G_hip, pump27 + G_hip @ Vector((0.0, 0.0, -0.015)), Vector((0.12, -0.05, -0.2)))
-    poses[27] = (P27, hips_idle, gun_world(G_hip, pts["grip"], grip27))
+    poses[at["hip"]] = (P27, hips_idle, gun_world(G_hip, pts["grip"], grip27))
 
     # 35 the aim: turned further, the butt in the right shoulder's pocket, the head down toward the stock
     P35 = {n: m.copy() for n, m in P_idle.items()}
@@ -1071,7 +1066,7 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
     pump35 = butt35 + G_hip @ (pts["pump"] - pts["butt"])
     reach["aim R"] = hold(P35, pos35, "Right", G_hip, grip35 + G_hip @ Vector((0.0, -0.012, 0.0)), Vector((-0.18, 0.04, -0.06)))
     reach["aim L"] = hold(P35, pos35, "Left", G_hip, pump35 + G_hip @ Vector((0.0, 0.0, -0.015)), Vector((0.06, -0.06, -0.22)))
-    poses[35] = (P35, hips_idle, gun_world(G_hip, pts["butt"], butt35))
+    poses[at["aim"]] = (P35, hips_idle, gun_world(G_hip, pts["butt"], butt35))
 
     # 20 the centre: upright in front of the tie, held by the tip; the right hand has let the lapel go, half way to the grip
     P20 = {n: m.copy() for n, m in P_lapel.items()}
@@ -1080,7 +1075,7 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
     pos20 = fk(P20, hips_idle)
     hold20 = Vector((S2.x, S2.y - 0.19, S2.z + 0.06))
     reach["centre L"] = hold(P20, pos20, "Left", G_vert, hold20 + G_vert @ Vector((0.0, 0.0, -0.015)), Vector((0.14, -0.02, -0.2)), "Barrel")
-    poses[20] = (P20, hips_idle, gun_world(G_vert, pts["hold"], hold20))
+    poses[at["centre"]] = (P20, hips_idle, gun_world(G_vert, pts["hold"], hold20))
     print("[tripo_pose_lab] the arms reach " + ", ".join(f"{k} {v:.2f}" for k, v in reach.items()) + " of their length (1 = straight)")
 
     # ---- the keys: every pose SETTLED first (its bones, the hips, the gun's place against the left hand), then keyed (a key re-reads the animation over a set pose)
@@ -1141,12 +1136,12 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
             hb = arm.pose.bones[PREFIX + "Hips"]
             hb.location = st["hips"]
             hb.keyframe_insert("location", frame=f)
-    for f in (1, 12, 13, 16, 20, 27, 35):
-        loc, rot, scl = settled[f]["gun"] if "gun" in settled.get(f, {}) else first_gun
-        gun.location, gun.rotation_quaternion, gun.scale = loc, rot, scl
-        shown = f >= LONG_GUN_SHOWN_FROM
-        gun.hide_viewport = gun.hide_render = not shown
-        for path in ("location", "rotation_quaternion", "scale", "hide_viewport", "hide_render"):
+    # the gun keeps the place it comes out of the coat with, on the left hand by the barrel, the whole timeline (Director, 2026-11-18: "tira os keyframes da
+    # arma. Deixa só grudada na mão esquerda pelo cano, como no frame 13"): its place is not keyed, only its visibility
+    gun.location, gun.rotation_quaternion, gun.scale = first_gun
+    for f in sorted({1, at["lapel"], LONG_GUN_SHOWN_FROM, at["centre"], at["hip"], at["aim"]}):
+        gun.hide_viewport = gun.hide_render = f < LONG_GUN_SHOWN_FROM
+        for path in ("hide_viewport", "hide_render"):
             gun.keyframe_insert(path, frame=f)
     coat = bpy.data.objects.get(COAT_OBJECT)
     if coat is None or coat.data.shape_keys is None:
@@ -1168,10 +1163,8 @@ def draw_long_new(base_blend, fire_glb, out_blend, gun_id="shotgun"):
     arm["lab_pose"] = "draw_" + gun_id
     arm["lab_props"] = json.dumps([gun_id])
     # how far each solved palm lands from where the gun wants it (the FK above against Blender's own evaluation)
-    sc.frame_set(16)
-    bpy.context.view_layer.update()
     worst = 0.0
-    for f, target in ((16, hold16), (20, hold20)):
+    for f, target in ((at["centre"], hold20),):
         sc.frame_set(f)
         bpy.context.view_layer.update()
         pl = palm({pb.name[len(PREFIX):]: pb.head.copy() for pb in arm.pose.bones}, "Left")

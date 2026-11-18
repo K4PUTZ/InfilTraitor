@@ -795,13 +795,14 @@ Each step lands on both figures before the next; a step with a look ends in a ca
      shoulder and costs ONE AP more (GAMEPLAY-01: shots spend no AP yet).
    - **The starting timeline, BUILT 2026-11-18 for the Director to pose by hand:** `python3 tools/persistent/pose_lab.py
      draw_long_new [--gun shotgun] [--figure ...] [--render]` -> `ASSETS/MODELS/fit/SEQ_draw_shotgun_<FIG>.blend`, both figures
-     (`tripo_pose_lab.draw_long_new`). Frames 1-35 at 24 fps, markers idle 1, lapel 12, pull 16, centre 20, hip 27, aim 35 (pull and
-     centre are passing stops). The lapel is the figure's pistol draw stop MIRRORED (its change from the idle; the legs stay the idle's);
+     (`tripo_pose_lab.draw_long_new`). Frames 1-31 at 24 fps, markers idle 1, lapel 12, centre 16, hip 23, aim 31 (the centre is a
+     passing stop; the Director merged a separate pull into it the same day: *"o pull e o center são a mesma coisa"*). The lapel is the figure's pistol draw stop MIRRORED (its change from the idle; the legs stay the idle's);
      the pull, the centre, the hip and the aim place the gun and SOLVE both arms to it, the hands holding it as the bank `fire` frame
      holds a long gun (the left hand turned round the barrel for the draw), the trunk turned right at the hip (30 degrees) and the aim
      (35), the head looking down the barrel at the aim. `PROP_shotgun` (the pack's `Shotgun`) rides the LEFT hand and shows from frame
-     13; it opens at x0.085 of the pack's units, about 1 m long (at the pistol's 0.0600 its stock stops short of the shoulder): its
-     size is the Director's. The coat has one EMPTY key per pose, `LongDrawFix_f12` ... `_f35`: opening the right flap is his. Not
+     13, its place on the hand NOT keyed: it stays as it comes out at 13, by the barrel (*"tira os keyframes da arma. Deixa só grudada
+     na mão esquerda pelo cano, como no frame 13"*; only its visibility is keyed); it opens at x0.085 of the pack's units, about 1 m long (at the pistol's 0.0600 its stock stops short of the shoulder): its
+     size is the Director's. The coat has one EMPTY key per pose, `LongDrawFix_f12` ... `_f31`: opening the right flap is his. Not
      read back yet: the game has no long gun's draw until he has posed it (then `pose_lab.py sequence draw_shotgun`).
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).
 5. **The shot per weapon,** as data over the procedural recoil (`ActorRecoil3D`): the kick, the burst (count and interval), the hold

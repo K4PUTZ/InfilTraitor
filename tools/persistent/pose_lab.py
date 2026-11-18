@@ -155,7 +155,7 @@ def cmd_throw_new(a):
             run([BLENDER, "-b", "--python", LAB, "--", "throw_new", base, clip, out, part], f"building {os.path.relpath(out, ROOT)}")
 
 
-LONG_DRAW_STOPS = "1,12,16,20,27,35"   # `tripo_pose_lab.LONG_DRAW_PLAN`'s frames
+LONG_DRAW_STOPS = "1,12,13,16,23,31"   # `tripo_pose_lab.LONG_DRAW_PLAN`'s frames and the gun's first
 
 
 def cmd_draw_long_new(a):

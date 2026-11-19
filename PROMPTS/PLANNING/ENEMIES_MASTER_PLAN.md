@@ -505,3 +505,27 @@ light skin instead of dark-brown skin. Her side faces right (RIGHT slot), his sh
 **The four factions' bare Standards are done, both sexes (2026-11-18): 9 heads so far** (the older Operator woman kept as one more).
 **Next (Director: "As pranchas de acessórios montamos amanhã"):** the accessory sheets per faction (§12.2-§12.6's "accessories,
 later" lines), then Tripo.
+
+**Licence note (2026-11-19, the Tripo terms read again):** a gallery model may be used only if its author generated it on a FREE
+account (§5.2.1 waives the rights); a paid author's public model stays his (§5.2.3 licenses Tripo alone), and the page does not show
+which plan made it. **Ruled by the Director: we generate our own.**
+
+### 12.7 The FID's accessory sheet (Nano Banana 2, `ITEMS` §7's way)
+
+Front + side per object, one real scale, then Tripo by pages (`ITEMS` §7.10). Sizes are for an adult; each piece is fitted to the
+shared body afterwards.
+
+```
+Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 6 rows, 2 columns.
+Each row is ONE object: its FRONT view in the left column, its SIDE view in the right column (the same object rotated 90 degrees, same scale, same vertical alignment). All six objects are drawn at the same real-world scale, relative to each other.
+Rows, top to bottom:
+1. Police peaked patrol cap, 21 cm across, 12 cm tall: a navy-blue soft crown, a white band all around it, a short stiff black visor. Shown on its own, empty, no head inside.
+2. Police duty belt laid out as a closed ring seen as worn, 34 cm wide (waist size), 5 cm tall: thick black leather, a plain silver buckle, a row of black keepers. Nothing attached to it.
+3. Black leather pistol holster for the right hip, 22 cm tall: a closed flap, a pistol grip showing at the top, a belt loop at the back.
+4. Black radio pouch with a handheld police radio in it, 18 cm tall: a short stub antenna, a belt loop at the back.
+5. Black handcuff case, 10 cm tall: a closed flap with a snap, a belt loop at the back.
+6. Short black police baton, 50 cm long, 3 cm thick: a side handle near one end; in the side view it hangs downward.
+Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bold readable silhouette, solid flat colours with clearly separated material regions (navy cloth, white cloth, black leather, metal). No textures, no wear, no badges, no logos, no writing.
+Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
+No text, no labels, no numbers, no arrows, no measurements, no hands, no people.
+```

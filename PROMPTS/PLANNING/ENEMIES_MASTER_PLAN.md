@@ -370,5 +370,49 @@ No belt, no holster, no pouches, no tie, no jacket, no backpack, no weapon. Hand
 Full body from head to toes, nothing cropped. No text, no labels, no other people, no shadow on the floor.
 ```
 
-**Next, once he is in:** the FID's accessory sheet (the cap, the duty belt with its holster, radio, handcuff case and baton), then
-the same two prompts for the female and for the other three factions' Standards (§4.1).
+### 12.3 The FID's result (2026-11-18): APPROVED ("Parece tudo ok")
+
+The Director ran §12.1-§12.2 for a man and a woman (her prompt the same, with the woman's references): both bare, long sleeves, the
+striped trousers, no belt. Accepted as they came: the boots read as low lace-up shoes, the man shows a white undershirt at the collar.
+**The two side views face opposite ways:** his shows his LEFT side (Tripo's LEFT slot), hers faces right, so it shows her RIGHT side
+(Tripo's RIGHT slot, or mirror it into the LEFT one). The images are on the Director's disk.
+
+**The order the Director took:** every faction's bare Standard first, both sexes; the accessory sheets after (the FID's: the cap,
+the duty belt with its holster, radio, handcuff case and baton).
+
+### 12.4 The second model: Calm Waters' Operator (§4.1), BARE
+
+Next in the circle of favours. The hair is kept flat on top, since a helmet goes on later. The FRONT, with `MaleNoCoatFront.png`:
+
+```
+Edit this image. Keep EXACTLY the same body, proportions, height, pose (the same A-pose: arms slightly away from the body, hands open and relaxed), camera angle, framing, lighting, white background and art style (stylized low-poly game character: bold simple shapes, flat-shaded facets, clean solid colours). Change ONLY the clothes and the head, as described below.
+
+The new man: a rank-and-file operator of a fictional private military security company. Mid-forties, a weathered square face, fair skin, a greying buzz cut kept very short and flat on top, a short trimmed beard, a serious, watchful expression with the mouth closed. Bare head: no helmet, no cap.
+
+His basic outfit, and nothing else:
+- Top: a fitted mid-grey long-sleeved tactical combat shirt, a short stand-up collar with a zip at the neck, darker charcoal panels on the shoulders and the upper sleeves, a small zipped pocket on each upper sleeve, tucked into the trousers.
+- Trousers: charcoal-grey cargo trousers, a large flat cargo pocket on the side of each thigh, reinforced panels over the knees, a plain smooth waistband with no belt and no belt loops showing.
+- Boots: black high lace-up tactical boots, the trousers tucked into them.
+
+No armour vest, no helmet, no goggles, no knee pads, no gloves, no belt, no pouches, no holster, no grenade, no backpack, no weapon. Hands empty.
+Each material a clearly separated solid colour region (mid-grey cloth, charcoal cloth, black leather, skin, hair). No writing, no badges, no patches, no logos, no dirt, no camouflage, no fabric pattern.
+Full body from head to toes, centred, nothing cropped. No text, no labels, no arrows, no other people, no props, no shadow on the floor.
+```
+
+For the woman, with `femaleNoCoatFront.png`, the second paragraph becomes the one below, and "His basic outfit" becomes "Her basic
+outfit":
+
+```
+The new woman: a rank-and-file operator of a fictional private military security company. Late twenties, a lean face with high cheekbones, light-olive skin, dark hair pulled back tight into a low bun at the nape, flat on top, a serious, watchful expression with the mouth closed. Bare head: no helmet, no cap.
+```
+
+The SIDE, with the side reference FIRST and the new front second (for the woman: "woman", "her"):
+
+```
+Edit the first image (a side view). Keep EXACTLY its body, proportions, pose, camera angle, framing, lighting, white background and art style. Replace the clothes and the head with those of the man in the second image (the same man seen from the front): the same face, buzz cut, beard and skin, bare head, the same grey long-sleeved tactical shirt with the zipped collar and the sleeve pockets, the same charcoal cargo trousers with the thigh pockets and a plain waistband with no belt, tucked into the same black tactical boots, in the same colours, now seen from the side.
+No armour vest, no helmet, no knee pads, no belt, no pouches, no backpack, no weapon. Hands empty.
+Full body from head to toes, nothing cropped. No text, no labels, no other people, no shadow on the floor.
+```
+
+Its accessories, later: the helmet with the goggles pushed up, the red-wine plate vest, the knee pads, the belt with its pouches and
+the grenade.

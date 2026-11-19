@@ -563,3 +563,20 @@ Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bo
 Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
 No text, no labels, no numbers, no arrows, no measurements, no hands, no people.
 ```
+
+### 12.10 The Corporation's accessory sheet
+
+```
+Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 6 rows, 2 columns.
+Each row is ONE object: its FRONT view in the left column, its SIDE view in the right column (the same object rotated 90 degrees, same scale, same vertical alignment). All six objects are drawn at the same real-world scale, relative to each other.
+Rows, top to bottom:
+1. Black single-breasted suit jacket, 46 cm wide, 75 cm tall, seen as worn but empty: slim cut, notch lapels, two buttons closed, long sleeves, a flap pocket on each side, hem at the hips. Front view buttoned, side view its profile.
+2. Black wraparound sunglasses, 15 cm wide: thin black frame, dark lenses, straight arms.
+3. Security earpiece with a coiled clear tube, 25 cm long: a small black ear bud, the transparent coiled tube hanging down from it.
+4. Black leather shoulder holster harness laid out as worn, 40 cm wide: two straps crossing at the back, a holster under the left arm with a pistol grip showing.
+5. Plain black leather dress belt laid out as a closed ring seen as worn, 34 cm wide, 3.5 cm tall: a small silver buckle. Nothing attached to it.
+6. Black aluminium briefcase, 45 cm wide, 33 cm tall, 10 cm thick: a top handle, two silver latches.
+Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bold readable silhouette, solid flat colours with clearly separated material regions (black cloth, black leather, dark glass, clear plastic, silver metal). No textures, no wear, no badges, no logos, no writing.
+Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
+No text, no labels, no numbers, no arrows, no measurements, no hands, no people.
+```

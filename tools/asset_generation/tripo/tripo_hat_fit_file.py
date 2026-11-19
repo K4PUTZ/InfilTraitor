@@ -1,20 +1,23 @@
 # tripo_hat_fit_file.py — a working file where the Director seats the hat on the D99 base by hand (2026-11-05).
-# Opens ASSETS/MODELS/base/AGENT_<FIG>_A.blend (never saved over), imports the hat of the dressed FULL Agent (official/AGENT_<FIG>.glb, `Outfit_Hat`)
+# Opens ASSETS/MODELS/actors/agent/<fig>/base/AGENT_<FIG>_A.blend (never saved over), imports the hat of the dressed FULL Agent (official/AGENT_<FIG>.glb, `Outfit_Hat`)
 # as a FREE mesh (no armature, no parent, its world transform kept) so it can be moved, and saves the result as HF_OUT
-# (default ASSETS/MODELS/fit/HAT_FIT_<FIG>.blend). The hat's skin to the head is redone by script after the Director's edit.
+# (default ASSETS/MODELS/actors/agent/<fig>/work/HAT_FIT_<FIG>.blend). The hat's skin to the head is redone by script after the Director's edit.
 # Env: HF_FIG (female | male), HF_OUT. Usage: blender -b --python-exit-code 1 -P tools/asset_generation/tripo/tripo_hat_fit_file.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import os, sys
 import bpy
 FIG = os.environ.get("HF_FIG", "")
 if FIG not in ("female", "male"):
     sys.exit("[tripo_hat_fit_file] HF_FIG must be female or male")
-OUT = os.path.abspath(os.environ.get("HF_OUT", f"ASSETS/MODELS/fit/HAT_FIT_{FIG.upper()}.blend"))
-bpy.ops.wm.open_mainfile(filepath=os.path.abspath(f"ASSETS/MODELS/base/AGENT_{FIG.upper()}_A.blend"))
+OUT = os.path.abspath(os.environ.get("HF_OUT", mp.agent(FIG, "work", f"HAT_FIT_{FIG.upper()}.blend")))
+bpy.ops.wm.open_mainfile(filepath=os.path.abspath(mp.agent(FIG, "base", f"AGENT_{FIG.upper()}_A.blend")))
 if bpy.context.object is not None and bpy.context.object.mode != 'OBJECT':
     bpy.ops.object.mode_set(mode='OBJECT')
 bpy.context.view_layer.objects.active = None
 before = set(bpy.data.objects)
-bpy.ops.import_scene.gltf(filepath=os.path.abspath(f"ASSETS/MODELS/official/AGENT_{FIG.upper()}.glb"))
+bpy.ops.import_scene.gltf(filepath=os.path.abspath(mp.agent(FIG, "game", f"AGENT_{FIG.upper()}.glb")))
 new = [o for o in bpy.data.objects if o not in before]
 hat = next(o for o in new if o.type == 'MESH' and o.name.startswith("Outfit_Hat"))
 mw = hat.matrix_world.copy()

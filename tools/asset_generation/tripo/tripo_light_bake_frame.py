@@ -1,10 +1,13 @@
 # tripo_light_bake_frame.py — one frame of a bank clip of the LIGHT baked into a FIX FILE for hand editing (ACTOR D107, 2026-11-06).
-# Reads a LIGHT .blend (the LOD's output, kept in ASSETS/MODELS/fit/LIGHT_<FIG>.blend; or the same file after earlier keys, so a new edit stacks on them),
+# Reads a LIGHT .blend (the LOD's output, kept in ASSETS/MODELS/actors/agent/<fig>/work/LIGHT_<FIG>.blend; or the same file after earlier keys, so a new edit stacks on them),
 # poses it on BK_FRAME of the bank's BK_CLIP with the corrective key BK_KEY held at 1, and writes the dressed set as plain posed meshes (modifiers applied,
 # vertex order kept, centred on the hips, flat colours: coat black, shirt white, trousers blue) in the layout tripo_pose_fix_back.py reads. Edit vertices only
 # (never add or delete one); then: PF_A=<the same LIGHT .blend> PF_FIX=<this out> PF_KEY=<BK_KEY> PF_FIG=<fig> tripo_pose_fix_back.py.
 # Env: BK_FIG (female | male), BK_CLIP, BK_FRAME, BK_KEY (IdleFix | WalkFix | RunFix), BK_IN, BK_OUT.
 # Usage (repo root): BK_FIG=female BK_CLIP=walk BK_FRAME=48 BK_KEY=WalkFix BK_IN=... BK_OUT=... blender -b --python-exit-code 1 -P tools/asset_generation/tripo/tripo_light_bake_frame.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import os, sys
 import bpy
 import numpy as np
@@ -15,7 +18,7 @@ FIG, CLIP, KEY = os.environ.get("BK_FIG", ""), os.environ.get("BK_CLIP", ""), os
 if FIG not in ("female", "male") or not CLIP or KEY not in ("IdleFix", "WalkFix", "RunFix") or "BK_FRAME" not in os.environ or "BK_OUT" not in os.environ:
     sys.exit(f"[{TAG}] needs BK_FIG (female|male), BK_CLIP, BK_FRAME, BK_KEY (IdleFix|WalkFix|RunFix), BK_OUT")
 FRAME = int(os.environ["BK_FRAME"])
-SRC = os.path.abspath(os.environ.get("BK_IN", f"ASSETS/MODELS/fit/LIGHT_{FIG.upper()}.blend"))
+SRC = os.path.abspath(os.environ.get("BK_IN", mp.agent(FIG, "work", f"LIGHT_{FIG.upper()}.blend")))
 OUT = os.path.abspath(os.environ["BK_OUT"])
 SHOW = {"Outfit_Coat": (0.03, 0.03, 0.03), "Outfit_Shirt_Coated": (1, 1, 1), "Outfit_Trousers_Coated": (0.1, 0.2, 0.9), "Outfit_Belt_Coated": (1, 0.8, 0.1),
         "Outfit_Buckle": (1, 0.5, 0), "Outfit_Tie": (0.9, 0.05, 0.05), "Body_Head": (0.9, 0.7, 0.55), "Body_Hands": (0.9, 0.7, 0.55), "Outfit_Hat": (0.15, 0.15, 0.17),

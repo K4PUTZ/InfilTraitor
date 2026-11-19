@@ -19,12 +19,15 @@
 # Run inside Blender:  blender -b --python tripo_pose_lab.py -- build   <figure> <pose id> <dump dir> <out .blend> [--glb LIGHT.glb] [--pistol model.glb]
 #                      blender -b --python tripo_pose_lab.py -- extract <saved .blend> <out .json>
 #                      blender -b --python tripo_pose_lab.py -- render  <saved .blend> <out .png>
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import bpy, sys, json, math, os, re, struct
 import numpy
 from mathutils import Matrix, Quaternion, Vector
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-LIGHT_GLB = os.path.join(ROOT, "ASSETS", "MODELS", "official", "AGENT_%s_LIGHT.glb")
+LIGHT_GLB = None   # mp.agent(figure, "game", ...)
 PROP_GLB = {"pistol": os.path.join(ROOT, "ASSETS", "props", "pistol_quaternius", "pistol.glb"),
             "grenade": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_grenade", "Grenade.glb"),
             "shotgun": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_ultimate_guns_pack", "extracted", "Shotgun.glb")}
@@ -2911,7 +2914,7 @@ def main():
     mode = a[0]
     if mode == "build":
         figure, pose_id, dump_dir, out = a[1:5]
-        glb = LIGHT_GLB % figure.upper()
+        glb = os.path.join(ROOT, mp.agent(figure, "game", "AGENT_%s_LIGHT.glb" % figure.upper()))
         build(figure, pose_id, dump_dir, out, glb, PROP_GLB)
     elif mode == "extract":
         extract(a[1], a[2])

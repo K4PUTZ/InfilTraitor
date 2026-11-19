@@ -21,11 +21,14 @@ Colour = OUR materials (`ACTOR` D66): the palette texture is dropped and each fa
 contract of `tripo_zones.py`); the zone -> material mapping moves into the item's row when it gets one. Preview colours: `ZONES`.
 Output (the convention of the guns pack once its node transform is applied: barrel along +X, up +Y in glTF, the original's own units;
 the size in the hand is set by the Director in the H1 lab file, MOVEMENT §11.6 step 2):
-  ASSETS/MODELS/sources/hand_crossbow/hand_crossbow.glb   the crossbow with the dart loaded (its own zones: hidden after the shot)
-  ASSETS/MODELS/sources/hand_crossbow/crossbow_dart.glb   the dart alone (in flight, stuck, on the floor)
-  ASSETS/MODELS/sources/hand_crossbow/_preview.png        the original and the hand crossbow, side + top + three-quarters, to scale
+  ASSETS/MODELS/props/hand_crossbow/hand_crossbow.glb   the crossbow with the dart loaded (its own zones: hidden after the shot)
+  ASSETS/MODELS/props/hand_crossbow/crossbow_dart.glb   the dart alone (in flight, stuck, on the floor)
+  ASSETS/MODELS/props/hand_crossbow/_preview.png        the original and the hand crossbow, side + top + three-quarters, to scale
 Run: /Applications/Blender.app/Contents/MacOS/Blender -b -P tools/asset_generation/items/hand_crossbow.py
 """
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import bpy, bmesh, os, math, json
 from mathutils import Vector, Matrix
 
@@ -33,7 +36,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")
 SRC = os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "items_polypizza", "crossbow")
 CROSSBOW = os.path.join(SRC, "Crossbow-kHb0kA11oD.glb")
 ARROW = os.path.join(SRC, "Arrow-dZVjrxZdaB.glb")
-OUT = os.path.join(ROOT, "ASSETS", "MODELS", "sources", "hand_crossbow")
+OUT = os.path.join(ROOT, mp.props("hand_crossbow"))
 
 # The warp (original frame, units of the original: it is 1.876 long, the grip 0.28 tall).
 Y_GRIP_FRONT = -0.086   # the grip body's front: nothing behind it moves

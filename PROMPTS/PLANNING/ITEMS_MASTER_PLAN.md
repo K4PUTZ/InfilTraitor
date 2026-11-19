@@ -144,7 +144,7 @@ anyone may carry anything, with the same animations (Director, 2026-11-16).
 | Late guns (pulse carbine, laser, plasma, sonic) | H3 / H1 | sci-fi set: ray gun, lightning gun, 3 rifles, 3 pistols (`scifi`) | which is which: the Director's look |
 | Suppressor | on a gun | 2 (`suppressors`) | |
 | Scope, bipod, tripod, bayonet | on a gun | 4 (guns pack) | |
-| Hand crossbow + tranquiliser darts | H1 | ✅ v1 2026-11-17: cut down by `tools/asset_generation/items/hand_crossbow.py` (no stock / scope / stirrup / fore-grip, barrel x0.6, prod x0.65, the arrow shortened into the loaded dart; zones Body, Limbs, Cams, String, Trigger, Dart*) -> `ASSETS/MODELS/sources/hand_crossbow/`; checked by the Director 2026-11-17: ok; owed: the string's animation and the dart in flight | ✳️ a true HAND crossbow, if the cut-down one fails |
+| Hand crossbow + tranquiliser darts | H1 | ✅ v1 2026-11-17: cut down by `tools/asset_generation/items/hand_crossbow.py` (no stock / scope / stirrup / fore-grip, barrel x0.6, prod x0.65, the arrow shortened into the loaded dart; zones Body, Limbs, Cams, String, Trigger, Dart*) -> `ASSETS/MODELS/props/hand_crossbow/`; checked by the Director 2026-11-17: ok; owed: the string's animation and the dart in flight | ✳️ a true HAND crossbow, if the cut-down one fails |
 | Taser | H1 | ✅ checked 2026-11-17 (Tripo, Director: ok; the skin wants more detail later) | ✳️ taser |
 | Bazooka / rocket launcher | H9 | 2 (`launchers`) | |
 | Grenade launchers | H3 | 3 (`launchers`) | |
@@ -541,10 +541,10 @@ Director tests the Tripo generation next; the evaluation follows.
 
 ### 7.11 The first Tripo page (2026-11-16): it works
 
-`ASSETS/MODELS/sources/tripo_Props1.glb` (page 1: Smart Mesh, triangles, 5 000 faces, front + left): ONE mesh, 4 927 triangles,
+`ASSETS/MODELS/props/tripo_Props1.glb` (page 1: Smart Mesh, triangles, 5 000 faces, front + left): ONE mesh, 4 927 triangles,
 33 loose parts, **no material, no UVs, no texture** (geometry only), the stack normalised to 1.0 tall. The four objects sit in height
 bands with clear gaps, so `tools/asset_generation/items/tripo_split.py` cuts them apart (bands of overlapping loose parts, top to
-bottom), puts each base centre at the origin and writes `ASSETS/MODELS/sources/tripo_props1_split/<name>.glb` + `_review.png`:
+bottom), puts each base centre at the origin and writes `ASSETS/MODELS/props/tripo_props1_split/<name>.glb` + `_review.png`:
 taser 924 tris, detonator 868, spray can 829 (its cap a separate part), phone cloner 2 306 (most of it the coiled cable). Read on the
 review: the taser and the can are clean; the detonator's lid hinge is lumpy and its button merged; the cloner's cable is the cost.
 **Open:** colour. Tripo's texture step costs credits; without it the colours come from OUR registry (`ACTOR` D66), which needs surface
@@ -556,7 +556,7 @@ regions: the loose parts give some (the can and its cap, the cable), the rest is
 `tools/asset_generation/items/tripo_zones.py` names each face's zone (a material per zone in the GLB, the same contract as a
 downloaded model's authored surfaces): by LOOSE PART (Tripo already separates lids, buttons, contacts, cables), and where a part holds
 two zones, by a geometric rule (the taser's cartridge: the front 30 % of its body; the cloner's screen: the faces recessed into its
-front). Page 1 done, `ASSETS/MODELS/sources/tripo_props1_zoned/` + `_preview.png`; the zones and their materials (the prompt's colours):
+front). Page 1 done, `ASSETS/MODELS/props/tripo_props1_zoned/` + `_preview.png`; the zones and their materials (the prompt's colours):
 
 | Object | Zones -> material |
 |---|---|

@@ -5,6 +5,9 @@
 # The bank keeps the Hips' translation divided by the source's hip height: it is multiplied back by this figure's own hip height here.
 # Env: SHEET_ONLY (comma list of clip ids), SHEET_BANK (default ASSETS/ANIMATIONS/bank).
 # Usage (from the repo root): blender -b --python-exit-code 1 -P tools/asset_generation/tripo/tripo_bank_sheets.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import json
 import math
 import os
@@ -101,7 +104,7 @@ def main():
         clips = sorted(c for c, r in doc["clips"].items() if fig in r and (not ONLY or c in ONLY))
         if not clips:
             continue
-        arm, P, _B, _m = tc.load(TAG, os.path.join(ROOT, f"ASSETS/MODELS/official/AGENT_{fig.upper()}_LIGHT.glb"))
+        arm, P, _B, _m = tc.load(TAG, os.path.join(ROOT, mp.agent(fig, "game", f"AGENT_{fig.upper()}_LIGHT.glb")))
         if arm.animation_data:
             arm.animation_data.action = None
         co, disc, height, hip_h, low = stage(arm, P)

@@ -18,6 +18,9 @@ Director's, drawn from the Agent's `male_face_master.png`); without it a `<maste
 palette.json: the region colours of enemy_light.py plus "stripe", "undershirt", "buttons" (optional, with defaults).
 paint.blend: a file for hand painting, the mesh at rest wearing the master by path (Image > Save writes the master).
 """
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import json
 import math
 import os
@@ -69,7 +72,7 @@ region_of_mat = [m.name.replace("Enemy_", "") for m in mesh.data.materials]
 # face master is the layout an enemy's face is drawn on (the Director, 2026-11-19), at half scale in the left square.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import face_uv_map as fm
-FACEUV = json.load(open(os.environ.get("ENEMY_FACEUV", "ASSETS/MODELS/official/painted/male_faceuv.json")))
+FACEUV = json.load(open(os.environ.get("ENEMY_FACEUV", mp.agent("male", "textures", "male_faceuv.json"))))
 # The enemy's head is not where the Agent's is (the FID guard's: 2.0 cm higher, 1.3 cm forward): FaceUV moves by the offset between
 # the two nose tips, so the face's features land on the enemy's. The Agent's tip, measured on AGENT_MALE_LIGHT.glb at rest
 # (2026-11-19): the head's most forward point above 0.84 m within 5 cm of the middle.

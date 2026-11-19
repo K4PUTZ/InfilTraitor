@@ -1,6 +1,6 @@
 # Timeline coat keys — names, locks, export (`coat_key_follow.py`)
 
-Every `ASSETS/MODELS/fit/SEQ_*.blend` timeline corrects the coat with shape keys on `Outfit_Coat`, one key per pose, each keyed to
+Every `ASSETS/MODELS/actors/agent/<fig>/work/SEQ_*.blend` timeline corrects the coat with shape keys on `Outfit_Coat`, one key per pose, each keyed to
 value 1 on its own frame. `tools/asset_generation/tripo/coat_key_follow.py` is embedded in each timeline as a module text (it registers
 when the file opens; Blender asks once to allow auto-run scripts) and keeps the editing safe. Ruled by the Director on 2026-11-13
 (the key follows the playhead) and 2026-11-15 (names carry the frame, wrong-key edits are blocked).

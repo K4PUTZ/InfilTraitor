@@ -4,7 +4,7 @@ Director, 2026-11-16 (§11.8 Q11): "todos os modelos da mesma família lado a la
 posição uma por uma, usando a mesma pose (aim)". 2026-11-17: "começar a preparar as cenas de trabalho no Blender, com o personagem em
 cada tipo de empunhadura (aim) + todas as armas daquele tipo, para ajustar os tamanhos. Começando pelas pistolas".
 
-THE FILE. `ASSETS/MODELS/fit/FAMILY_<family>_aim_<FIG>.blend`: a LINE of Agents side by side (one per model, 0.45 apart along X, all
+THE FILE. `ASSETS/MODELS/actors/agent/<fig>/work/FAMILY_<family>_aim_<FIG>.blend`: a LINE of Agents side by side (one per model, 0.45 apart along X, all
 facing -Y), every one frozen in the aim the GAME plays (the family's timeline at its `aim` marker: for H1 the Director's
 `SEQ_draw_pistol_<FIG>_arm6.blend`, frame 23 = `sequences/<fig>/draw_pistol.json`'s last stop), each holding ONE model, child of
 its RightHand bone. Agent 01 holds the family's certified reference as the timeline holds it (`PROP_pistol`, untouched). The others
@@ -36,15 +36,18 @@ family's timeline, which places the reference at every stop, places the model by
 reference, how far the Director moved it from the build's start, and a proposed muzzle (the centre of the foremost vertices along the
 barrel, glTF space of the source).
 """
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import bpy, bmesh, sys, os, math, json
 from mathutils import Matrix, Vector
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-FIT = os.path.join(ROOT, "ASSETS", "MODELS", "fit")
+FIT = None   # per figure: mp.agent(figure, "work")
 IMPORTED = os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models")
 PACK = os.path.join(IMPORTED, "quaternius_ultimate_guns_pack", "extracted")
 PP = os.path.join(IMPORTED, "items_polypizza")
-SOURCES = os.path.join(ROOT, "ASSETS", "MODELS", "sources")
+SOURCES = os.path.join(ROOT, mp.props())
 PREFIX = "mixamorig:"
 PACK_FACTOR = 0.0600     # the certified pistol's factor on the pack's native units (MOVEMENT §11.5): where the pack's guns OPEN
 SPACING = 0.45           # between two Agents of the line, along X (the figure's units: the male stands 0.88 with the hat)
@@ -259,7 +262,7 @@ def build(family, figure, out_blend, from_json=None):
     if from_json:    # every model at the place another figure's read-back gave it, relative to the reference (the female from the male's sizes)
         with open(from_json) as f:
             placed = json.load(f)["models"]
-    timeline = os.path.join(FIT, f"SEQ_{fam['timeline']}_{figure.upper()}_arm6.blend")
+    timeline = os.path.join(ROOT, mp.agent(figure, "work", f"SEQ_{fam['timeline']}_{figure.upper()}_arm6.blend"))
     bpy.ops.wm.open_mainfile(filepath=timeline)
     scene = bpy.context.scene
     markers = {m.name: m.frame for m in scene.timeline_markers}

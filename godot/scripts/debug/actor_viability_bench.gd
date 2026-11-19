@@ -4,7 +4,7 @@
 ## conversion `ActorMesh3D._apply_board_light()` does), so a handset run measures the real material, the real skinning and the
 ## real draw-call count of the candidate against the shipped agent:
 ##   `agent` — `agent_live.glb`, its own `walk_shotgun` action looping (the baseline: 11 080 tris, 20 joints).
-##   `agent_<light|full>_<female|male>[_nocoat]` — the Tripo Agents of ACTOR D87 / D91 (`ASSETS/MODELS/official/AGENT_<FIG>[_LIGHT].glb`): 65 Mixamo joints, the
+##   `agent_<light|full>_<female|male>[_nocoat]` — the Tripo Agents of ACTOR D87 / D91 (`ModelPaths.agent_rig()`): 65 Mixamo joints, the
 ##             DRESSED set only (coat, hat, the coated shirt / trousers / belt, the hat's hair), each piece its own surface. They stand in their
 ##             rest pose with the material's flat albedo (the palette and the painted head live in Blender's look, not in the glb): this measures
 ##             triangles, joints, surfaces and draw calls, the T4 question (light vs full on the Moto), not how they look.
@@ -22,7 +22,6 @@ const SHADER_PATH := "res://godot/shaders/actor_mesh3d.gdshader"
 const TripoFigureRef = preload("res://godot/scripts/geometry/tripo_figure.gd")   ## how a Tripo Agent is dressed and which clips it plays: the game's own (`ActorMesh3D`)
 const AGENT_RIG := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live.glb"
 ## the D99 base FULL, exported for measurement by `tools/asset_generation/tripo/tripo_export_base.py` (`%s` = FEMALE | MALE, then "" or "_NOKEYS")
-const BASE_RIG := "res://ASSETS/MODELS/official/AGENT_%s_BASE_A%s.glb"
 ## the corrective coat key held at 1 while each game clip plays (`ACTOR` D103, the per-clip way)
 const KEY_OF_CLIP := {"idle": "IdleFix", "walk": "WalkFix", "run": "RunFix"}
 ## Mixamo bone -> (swing axis, degrees, phase) for the official Agents' synthetic motion (skinning cost does not depend on the pose)
@@ -112,7 +111,7 @@ static func spawn(room: Node, model: String, count: int) -> String:
 		if parts.size() != 3 or not ["light", "full", "base"].has(parts[1]) or not TripoFigureRef.FIGURES.has(parts[2]):
 			push_error("[ActorViabilityBench] %s: expected agent_<light|full|base>_<female|male>" % model)
 			return ""
-		path = BASE_RIG % [parts[2].to_upper(), "" if keys else "_NOKEYS"] if base else TripoFigureRef.rig_path(parts[2], parts[1] == "light")
+		path = ModelPaths.agent_game(parts[2], "AGENT_%s_BASE_A%s.glb" % [parts[2].to_upper(), "" if keys else "_NOKEYS"]) if base else TripoFigureRef.rig_path(parts[2], parts[1] == "light")
 		if base:
 			hidden.append("Icosphere")
 		else:

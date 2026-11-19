@@ -322,7 +322,7 @@ clips, so a coat generated on them needs keys for those alone.
 já garante nossa estética low poly. Inimigos vão ter varias cabeças e acessórios diferentes, mas o corpo vai ser compartilhado entre
 todos, de forma que as animações são universais (male e female)."*
 
-- **The art: Nano Banana 2, by EDITING the Agent's own Tripo inputs** (`REFERENCES/Personagem/Referencia/MaleNoCoatFront.png` and
+- **The art: Nano Banana 2, by EDITING the Agent's own Tripo inputs** (`REFERENCES/ACTORS/AGENT/Referencia/MaleNoCoatFront.png` and
   `MaleNoCoatSide.jpeg`; for a woman `femaleNoCoatFront.png` and `femaleNoCoatSide.png`): the edit keeps his body, pose, camera,
   framing and look, and changes only the clothes and the head. So the shared body already holds in the drawing, and the enemies come
   out in the Agent's own style. **The style is anchored on his image, not on the name of the game** (Claude): the prompt leaves "Team
@@ -584,14 +584,14 @@ No text, no labels, no numbers, no arrows, no measurements, no hands, no people.
 ### 12.11 Where the art is, and the first Tripo generation (2026-11-19)
 
 The bare Standards (both sexes, the four factions) and the four accessory sheets are on the Director's disk, in
-`REFERENCES/ENEMIES/` and `REFERENCES/ENEMIES/ACESSORIES/` (local, like all of `REFERENCES/`). **One Tripo generation is left this
+`REFERENCES/ACTORS/ENEMIES/` and `REFERENCES/ACTORS/ENEMIES/ACESSORIES/` (local, like all of `REFERENCES/`). **One Tripo generation is left this
 month: the Director makes the male standard guard** (`cop_male_front.jpg` + `cop_male_side.jpg`), so the engine can start on a
 second body and the placeholder guards (`agent_live_enemy_white.glb`, §7) can retire: step E-2.
 
 ### 12.12 The guard skinned on the Agent's skeleton (2026-11-19)
 
 The month's Tripo generation came without the parts split and without the auto-rig (no credits until December):
-`ASSETS/MODELS/sources/tripo_enemies/FID/tripo_cop_male_no_rig.glb`, one mesh, 19 765 triangles, 1.0 m, no material. Laid over
+`ASSETS/MODELS/actors/enemies/FID/guard_male/source/tripo_cop_male_no_rig.glb`, one mesh, 19 765 triangles, 1.0 m, no material. Laid over
 `MALE_AGENT_BASE` the silhouettes coincide front and side (the art was an edit of his image), so **`tools/asset_generation/tripo/
 enemy_skin_from_agent.py`** gives it the Agent's 65-joint armature and copies his skin weights to the nearest surface (4 influences,
 normalised): 10 971 vertices, none unweighted. The bank's `walk` plays on it in the four facings at the game camera with no tear
@@ -603,7 +603,7 @@ normalised): 10 971 vertices, none unweighted. The bank's `walk` plays on it in 
   by REGION, one material each (the bone that weighs most on a face: head = skin with the crown and the back as hair, the collar
   set apart from the neck; torso and arms = shirt; hips and legs = trousers; feet = shoes), from a palette file
   (`enemy_palette_fid_male.json`). It keys one rest frame, since Godot gives a GLB an AnimationPlayer only when it carries a clip.
-  Output: `ASSETS/MODELS/official/ENEMY_FID_MALE_LIGHT.glb`. The stripe on the trousers and the face are not painted; a few
+  Output: `ASSETS/MODELS/actors/enemies/FID/guard_male/game/ENEMY_FID_MALE_LIGHT.glb`. The stripe on the trousers and the face are not painted; a few
   collar faces at the nape still take the skin colour (hidden at the game's size).
 - **The engine:** `ActorMesh3D.TRIPO_BY_FAMILY` puts that body on the rank-and-file family (`_enemy_white`), playing the male
   Agent's game clips; `agent_live_enemy_white.glb` is no longer read. The officers keep the old Agent's rig (`_officer`) until their
@@ -614,7 +614,7 @@ normalised): 10 971 vertices, none unweighted. The bank's `walk` plays on it in 
 
 ### 12.14 The guard's painted texture (2026-11-19)
 
-The five flat region colours became one atlas painted from the reference sheet (`REFERENCES/ENEMIES/`), by
+The five flat region colours became one atlas painted from the reference sheet (`REFERENCES/ACTORS/ENEMIES/`), by
 `tools/asset_generation/tripo/enemy_texture.py` run on enemy_light.py's output. The atlas is 2:1: the LEFT square is the head on a
 cylindrical projection about the neck (the face upright and frontal at its centre, the seam down the back), for the Director to
 paint by hand; the RIGHT square is the body (smart projection). The paint is a function of each texel's position at rest, read
@@ -623,8 +623,8 @@ opening, the trousers' waistband and white side stripe, the crease, the shoes' s
 enemy_light.py are settled again per texel at the neck (the collar measured on the source: it stands 0.06-0.10 m out up to
 0.855 m and rises at the back), at the waist (the shirt's hem weighs on the hips bone) and at the wrists.
 
-- Master: `ASSETS/MODELS/official/painted/ENEMIES/FID/enemy_fid_male_master.png` (2048 x 1024); the GLB carries it at 1024 x 512.
-- Face file: `ASSETS/MODELS/fit/FACE_PAINT_ENEMY_FID_MALE.blend` (the mesh at rest wearing the master by path: Image > Save writes the
+- Master: `ASSETS/MODELS/actors/enemies/FID/guard_male/textures/enemy_fid_male_master.png` (2048 x 1024); the GLB carries it at 1024 x 512.
+- Face file: `ASSETS/MODELS/actors/enemies/FID/guard_male/work/FACE_PAINT_ENEMY_FID_MALE.blend` (the mesh at rest wearing the master by path: Image > Save writes the
   master). A rerun of enemy_texture.py KEEPS the master's head square (`ENEMY_TEX_FORCE=1` repaints it and loses the hand paint).
   The face goes into the GLB by rebuilding the chain from the source (`enemy_skin_from_agent.py` -> `enemy_light.py` ->
   `enemy_texture.py`; the intermediates live in `temp/`): the body is repainted, the head kept.
@@ -658,6 +658,6 @@ the Agent's: `enemy_texture.py` moves FaceUV by the offset between the two nose 
 The neck under the jaw shares the jaw's texels on a cylinder, so faces below the chin (nose - 5.5 cm) and below FaceUV's floor go to
 the body's square.
 
-**Where an enemy's files live (the Director, 2026-11-19): one folder per faction.** `ASSETS/MODELS/sources/tripo_enemies/<FACTION>/`
-(Tripo's raw generations) and `ASSETS/MODELS/official/painted/ENEMIES/<FACTION>/` (the face, the master, the guide); the FID's
+**Where an enemy's files live (the Director, 2026-11-19): one folder per faction.** `ASSETS/MODELS/props/tripo_enemies/<FACTION>/`
+(Tripo's raw generations) and `ASSETS/MODELS/actors/agent/<fig>/textures/ENEMIES/<FACTION>/` (the face, the master, the guide); the FID's
 folder is `FID`.

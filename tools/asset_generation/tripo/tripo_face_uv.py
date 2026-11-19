@@ -10,8 +10,11 @@
 # tripo_face_apply.py), and, per texel, Tripo's colour read through Tripo's own UVs (FU_OUT/<fig>_base.png), the surface point and normal
 # (`_pos.npy`, `_nrm.npy`, float16), whether the hair covers it seen from outside along the normal (`_hair.npy`, at FU_RES/4) and the valid mask.
 # The painting itself is tripo_face_paint.py (plain Python), from these files.
-# Env: FU_FIG (female | male), FU_IN (the base A .blend; default ASSETS/MODELS/base/AGENT_<FIG>_A.blend), FU_SRC (the raw Tripo GLB with the atlas,
-# default ASSETS/MODELS/sources/tripo_<fig>_base.glb), FU_OUT (folder), FU_PARAMS (JSON out), FU_RES (2048).  Usage: blender -b -P tripo_face_uv.py
+# Env: FU_FIG (female | male), FU_IN (the base A .blend; default ASSETS/MODELS/actors/agent/<fig>/base/AGENT_<FIG>_A.blend), FU_SRC (the raw Tripo GLB with the atlas,
+# default ASSETS/MODELS/actors/agent/<fig>/source/tripo_<fig>_base.glb), FU_OUT (folder), FU_PARAMS (JSON out), FU_RES (2048).  Usage: blender -b -P tripo_face_uv.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import json, math, os, sys
 import numpy as np
 import bpy, bmesh
@@ -23,8 +26,8 @@ import face_uv_map as fm
 
 TAG = "tripo_face_uv"
 FIG = os.environ["FU_FIG"]; F = FIG.upper()
-IN = os.environ.get("FU_IN", f"ASSETS/MODELS/base/AGENT_{F}_A.blend")
-SRC = os.environ.get("FU_SRC", f"ASSETS/MODELS/sources/tripo_{FIG}_base.glb")
+IN = os.environ.get("FU_IN", mp.agent(FIG, "base", f"AGENT_{F}_A.blend"))
+SRC = os.environ.get("FU_SRC", mp.agent(FIG, "source", f"tripo_{FIG}_base.glb"))
 OUT = os.environ["FU_OUT"]; PARAMS = os.environ["FU_PARAMS"]; RES = int(os.environ.get("FU_RES", "2048"))
 os.makedirs(OUT, exist_ok=True)
 

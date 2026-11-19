@@ -3,7 +3,7 @@
 ## ONE AUTHORITY for the two readers of a Tripo Agent: `ActorMesh3D` (an actor on the board) and `ActorViabilityBench` (the
 ## handset measurement). Both dress the figure the same way and play the same clips, so a measurement is of what the game draws.
 ##
-## THE FIGURE is `ASSETS/MODELS/official/AGENT_<FIG>[_LIGHT].glb` (`build_agents.sh`): 65 Mixamo joints, a 1 m figure facing +Z,
+## THE FIGURE is `AGENT_<FIG>[_LIGHT].glb` (`ModelPaths.agent_rig()`) (`build_agents.sh`): 65 Mixamo joints, a 1 m figure facing +Z,
 ## each garment its own piece. The DRESSED set hides the pieces `tripo_dress` leaves beside their coat-cut variants; the coat is
 ## drawn two-sided, carries its emblem (D95) and is pushed by the legs (D94).
 ##
@@ -21,7 +21,6 @@ const TripoPoseKitRef = preload("res://godot/scripts/geometry/tripo_pose_kit.gd"
 const AimSequenceRef = preload("res://godot/scripts/geometry/aim_sequence.gd")
 
 const FIGURES: PackedStringArray = ["female", "male"]
-const RIG := "res://ASSETS/MODELS/official/AGENT_%s.glb"
 ## the pieces tripo_dress leaves BESIDE their masked variants (the undressed ones): the dressed set hides them
 const UNDRESSED_PIECES: Array[String] = ["Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere"]
 ## the other state: no coat, no hat, the plain shirt / trousers / belt and the open hair (the clean base, D89)
@@ -113,7 +112,7 @@ static var _libraries: Dictionary = {}
 
 ## The rig of `figure` ("female" | "male"), the game's LIGHT one or the FULL one.
 static func rig_path(figure: String, light: bool) -> String:
-	return RIG % (figure.to_upper() + ("_LIGHT" if light else ""))
+	return ModelPaths.agent_rig(figure, light)
 
 
 ## The importer may keep the colon of `mixamorig:Hips` or turn it into an underscore: try both, then the bare name.

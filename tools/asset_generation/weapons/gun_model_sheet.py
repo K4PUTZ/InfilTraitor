@@ -4,6 +4,9 @@ Run: /Applications/Blender.app/Contents/MacOS/Blender -b -P tools/asset_generati
 Guns at the certified pistol's factor (x0.0600 on the pack's native units = where the lab opens them), the grenade at its
 certified 0.065 GU (`bombs/frag_grenade.json`). Units: the GLB's; a length in GU = units x TripoFigure.WORLD_SCALE, the same
 conversion `WeaponDef.world_scale()` uses, so the sheet's numbers are the game's."""
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import bpy, sys, os, math
 from mathutils import Vector
 
@@ -11,7 +14,7 @@ argv = sys.argv[sys.argv.index("--") + 1:]
 ROOT, OUT = argv[0], argv[1]
 PACK = os.path.join(ROOT, "ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted")
 GRENADE = os.path.join(ROOT, "ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_grenade/Grenade.glb")
-AGENT = os.path.join(ROOT, "ASSETS/MODELS/official/AGENT_MALE_LIGHT.glb")
+AGENT = os.path.join(ROOT, mp.agent("male", "game", "AGENT_MALE_LIGHT.glb"))
 FACTOR = 0.0600
 WORLD_SCALE = 1.225
 GRENADE_H = 0.065 / WORLD_SCALE

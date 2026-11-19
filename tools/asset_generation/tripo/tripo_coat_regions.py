@@ -6,7 +6,10 @@
 # Run on the coat as it will ship (after tripo_coat_back_out, before tripo_coat_push): the UVs do not change after it. Faces made after the UV step (the pocket caps) have no UV: the
 # background is the body colour so they read as body.
 # CR_EDGES (1 with CR_PALETTE=ref), CR_GROOVE (0.55), CR_CATCH (1.30): the edges, step (4).
-# Env: CR_IN (a finished Agent GLB), CR_MAP (PNG out), CR_RES (1024), CR_DETAIL (default ASSETS/MODELS/official/detail/leather.png), CR_TILE (14).  Usage: blender -b -P tripo_coat_regions.py
+# Env: CR_IN (a finished Agent GLB), CR_MAP (PNG out), CR_RES (1024), CR_DETAIL (default ASSETS/MODELS/actors/shared/detail/leather.png), CR_TILE (14).  Usage: blender -b -P tripo_coat_regions.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import os, sys
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -21,7 +24,7 @@ coat = next((o for o in meshes if o.name.split(".")[0] == "Outfit_Coat"), None) 
 if coat is None or not coat.vertex_groups:
     tc.fail(TAG, "no skinned Outfit_Coat")
 RES = int(os.environ.get("CR_RES", "1024")); TILE = float(os.environ.get("CR_TILE", "14"))
-DETAIL = os.environ.get("CR_DETAIL", "ASSETS/MODELS/official/detail/leather.png")
+DETAIL = os.environ.get("CR_DETAIL", mp.detail("leather.png"))
 H = float(max(tc.world_verts(o)[:, 2].max() for o in meshes if o.name in ("Outfit_Hat", "Body_Head")) - min(tc.world_verts(o)[:, 2].min() for o in meshes if o.name == "Outfit_Shoes"))
 V = tc.world_verts(coat); W = tc.read_weights(coat); me = coat.data
 polys = list(me.polygons)

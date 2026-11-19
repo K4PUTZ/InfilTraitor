@@ -4,8 +4,11 @@
 # given the armature modifier and weighted RIGIDLY to `mixamorig:Head` alone (every other group present and empty, as on the base's other pieces).
 # The cut hair `Body_Hair_Hat` is bound to the hat: near the brim its weights go to the Head bone alone (see BAND below), so the edge turns with it.
 # Checks, printed: the rest pose is unchanged (max vertex move), and with the Head bone turned the hat follows it exactly.
-# Out: HS_OUT (default ASSETS/MODELS/fit/HAT_SKIN_<FIG>.blend). Env: HS_FIG (female | male), HS_OUT.
+# Out: HS_OUT (default ASSETS/MODELS/actors/agent/<fig>/work/HAT_SKIN_<FIG>.blend). Env: HS_FIG (female | male), HS_OUT.
 # Usage (repo root): HS_FIG=female blender -b --python-exit-code 1 -P tools/asset_generation/tripo/tripo_hat_skin.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import math, os, sys
 import bpy
 import numpy as np
@@ -15,8 +18,8 @@ TAG = "tripo_hat_skin"
 FIG = os.environ.get("HS_FIG", "")
 if FIG not in ("female", "male"):
     sys.exit(f"[{TAG}] HS_FIG must be female or male")
-OUT = os.path.abspath(os.environ.get("HS_OUT", f"ASSETS/MODELS/fit/HAT_SKIN_{FIG.upper()}.blend"))
-bpy.ops.wm.open_mainfile(filepath=os.path.abspath(f"ASSETS/MODELS/fit/HAT_CUT_{FIG.upper()}.blend"))
+OUT = os.path.abspath(os.environ.get("HS_OUT", mp.agent(FIG, "work", f"HAT_SKIN_{FIG.upper()}.blend")))
+bpy.ops.wm.open_mainfile(filepath=os.path.abspath(mp.agent(FIG, "work", f"HAT_CUT_{FIG.upper()}.blend")))
 bpy.context.view_layer.update()                       # world matrices are read below (a stale matrix_world cost a session, 2026-11-06)
 arm = bpy.data.objects["Armature"]; hat = bpy.data.objects["Outfit_Hat"]; head = bpy.data.objects["Body_Head"]
 if hat.parent is not None or hat.vertex_groups:

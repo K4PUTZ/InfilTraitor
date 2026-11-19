@@ -8,6 +8,9 @@
 # The .blend is opened and never saved over. Out: LB_OUT (GLB) and LB_BLEND (the same as a .blend, to look at).
 # Env: LB_FIG (female | male), LB_IN (default the base), LB_OUT, LB_BLEND, LOD_WELD (default 0.0003), LOD_SCALE (default 1.0).
 # Usage (repo root): blender -b --python-exit-code 1 -P tools/asset_generation/tripo/tripo_lod_base.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import os, sys
 import bpy, bmesh
 import numpy as np
@@ -31,7 +34,7 @@ BUDGET = {"Body_Head": 750, "Body_Hands": 450, "Body_Hair": 600, "Outfit_Coat": 
           "Body_Hair_Hat": 400, "Outfit_Hat": 450, "Outfit_Shirt_Coated": 300, "Outfit_Trousers_Coated": 500, "Outfit_Belt_Coated": 150}
 SKIP = {"Icosphere"}
 
-SRC = os.path.abspath(os.environ.get("LB_IN", f"ASSETS/MODELS/base/AGENT_{FIG.upper()}_A.blend"))      # LB_IN: fit/COATED_<FIG>.blend carries the hat and the coat-cut variants
+SRC = os.path.abspath(os.environ.get("LB_IN", mp.agent(FIG, "base", f"AGENT_{FIG.upper()}_A.blend")))      # LB_IN: fit/COATED_<FIG>.blend carries the hat and the coat-cut variants
 bpy.ops.wm.open_mainfile(filepath=SRC)
 if bpy.context.object is not None and bpy.context.object.mode != 'OBJECT':
     bpy.ops.object.mode_set(mode='OBJECT')

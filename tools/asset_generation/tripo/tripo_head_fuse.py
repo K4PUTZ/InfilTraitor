@@ -6,8 +6,11 @@
 #   3. the fused surface keeps only what lies farther than HF_GAP from those faces, its border vertices are snapped onto her border's nearest vertex,
 #      welded, the degenerate faces dissolved and the small holes left filled.
 # The pasted face keeps its weights and UVs; the fused skull takes the weights of her nearest original vertex (its UVs are redone by tripo_head_map).
-# Reads the Director's ASSETS/MODELS/fit/HEAD_EDIT_FEMALE.blend (never saved over); writes HF_OUT (default ASSETS/MODELS/fit/HEAD_FUSED_FEMALE.blend).
+# Reads the Director's ASSETS/MODELS/actors/agent/female/work/HEAD_EDIT_FEMALE.blend (never saved over); writes HF_OUT (default ASSETS/MODELS/actors/agent/female/work/HEAD_FUSED_FEMALE.blend).
 # Usage (repo root): blender -b --python-exit-code 1 -P tools/asset_generation/tripo/tripo_head_fuse.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import os, sys
 import bpy, bmesh
 from mathutils import Vector
@@ -15,8 +18,8 @@ from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 
 TAG = "tripo_head_fuse"
-SRC = os.path.abspath("ASSETS/MODELS/fit/HEAD_EDIT_FEMALE.blend")
-OUT = os.path.abspath(os.environ.get("HF_OUT", "ASSETS/MODELS/fit/HEAD_FUSED_FEMALE.blend"))
+SRC = os.path.abspath(mp.agent("female", "work", "HEAD_EDIT_FEMALE.blend"))
+OUT = os.path.abspath(os.environ.get("HF_OUT", mp.agent("female", "work", "HEAD_FUSED_FEMALE.blend")))
 THICK = float(os.environ.get("HF_THICK", "0.004"))
 VOXEL = float(os.environ.get("HF_VOXEL", "0.0015"))
 RATIO = float(os.environ.get("HF_RATIO", "0.05"))

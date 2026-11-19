@@ -5,8 +5,11 @@
 # (default 20 mm) under the hair's OUTER surface, never pulled in; where it already lies closer nothing moves, so the face, the ears and the hairline stay.
 # The faces that move most are subdivided first (HC_CUTS) so the new skull is round, and the moved region is smoothed (HC_SMOOTH passes). The weights
 # interpolate with the subdivision; the UVs are redone later by tripo_head_map. Printed: how many vertices moved, by how much, the clearance left.
-# Reads ASSETS/MODELS/base/AGENT_FEMALE_A.blend (never saved over); writes HC_OUT (default ASSETS/MODELS/fit/HEAD_CAP_FEMALE.blend).
+# Reads ASSETS/MODELS/actors/agent/female/base/AGENT_FEMALE_A.blend (never saved over); writes HC_OUT (default ASSETS/MODELS/actors/agent/female/work/HEAD_CAP_FEMALE.blend).
 # Usage (repo root): blender -b --python-exit-code 1 -P tools/asset_generation/tripo/tripo_head_cap.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import os
 import bpy, bmesh
 import numpy as np
@@ -14,13 +17,13 @@ from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
 TAG = "tripo_head_cap"
-OUT = os.path.abspath(os.environ.get("HC_OUT", "ASSETS/MODELS/fit/HEAD_CAP_FEMALE.blend"))
+OUT = os.path.abspath(os.environ.get("HC_OUT", mp.agent("female", "work", "HEAD_CAP_FEMALE.blend")))
 GAP = float(os.environ.get("HC_GAP", "0.020"))   # under the hair's OUTER surface (the male's hair stands 2.1 cm over his skull)
 CUTS = int(os.environ.get("HC_CUTS", "2"))
 SMOOTH = int(os.environ.get("HC_SMOOTH", "4"))
 DEEP = 0.005      # a head vertex more than this under its target is part of the cut skull
 
-bpy.ops.wm.open_mainfile(filepath=os.path.abspath("ASSETS/MODELS/base/AGENT_FEMALE_A.blend"))
+bpy.ops.wm.open_mainfile(filepath=os.path.abspath(mp.agent("female", "base", "AGENT_FEMALE_A.blend")))
 if bpy.context.object is not None and bpy.context.object.mode != 'OBJECT':
     bpy.ops.object.mode_set(mode='OBJECT')
 head = bpy.data.objects["Body_Head"]; hair = bpy.data.objects["Body_Hair"]

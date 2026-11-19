@@ -6,8 +6,11 @@
 #   Outfit_Trousers_Coated the same at the hips only (the hips' height less 8 % of H);
 #   Outfit_Belt_Coated     only the faces in front of the hips (the buckle's side).
 # The full pieces stay: the coat's state picks which set shows (D106 swap rule). Prints each mask's count. Cut at full resolution; tripo_lod reduces them.
-# Out: CC_OUT (default ASSETS/MODELS/fit/COATED_<FIG>.blend). Env: CC_FIG (female | male), CC_OUT, COAT_GAP, FRONT_KEEP, TROUSERS_KEEP, SHARD_X, SHARD_Z.
+# Out: CC_OUT (default ASSETS/MODELS/actors/agent/<fig>/work/COATED_<FIG>.blend). Env: CC_FIG (female | male), CC_OUT, COAT_GAP, FRONT_KEEP, TROUSERS_KEEP, SHARD_X, SHARD_Z.
 # Usage (repo root): CC_FIG=female blender -b --python-exit-code 1 -P tools/asset_generation/tripo/tripo_coated_cut.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import os, sys
 import bpy, bmesh
 import numpy as np
@@ -18,7 +21,7 @@ TAG = "tripo_coated_cut"
 FIG = os.environ.get("CC_FIG", "")
 if FIG not in ("female", "male"):
     sys.exit(f"[{TAG}] CC_FIG must be female or male")
-OUT = os.path.abspath(os.environ.get("CC_OUT", f"ASSETS/MODELS/fit/COATED_{FIG.upper()}.blend"))
+OUT = os.path.abspath(os.environ.get("CC_OUT", mp.agent(FIG, "work", f"COATED_{FIG.upper()}.blend")))
 COAT_GAP = float(os.environ.get("COAT_GAP", "0.004"))
 FRONT_KEEP = float(os.environ.get("FRONT_KEEP", "0.05"))
 # the trousers keep a WIDER front strip than the shirt (2026-11-06: with the strip at 5 % of H the coat opening of a walk showed a dark slit down the thigh, where
@@ -26,7 +29,7 @@ FRONT_KEEP = float(os.environ.get("FRONT_KEEP", "0.05"))
 TROUSERS_KEEP = float(os.environ.get("TROUSERS_KEEP", "0.10"))
 SHARD_X = float(os.environ.get("SHARD_X", "0.072"))
 SHARD_Z0, SHARD_Z1 = (float(x) for x in os.environ.get("SHARD_Z", "0.60,0.80").split(","))
-bpy.ops.wm.open_mainfile(filepath=os.path.abspath(f"ASSETS/MODELS/fit/HAT_SKIN_{FIG.upper()}.blend"))
+bpy.ops.wm.open_mainfile(filepath=os.path.abspath(mp.agent(FIG, "work", f"HAT_SKIN_{FIG.upper()}.blend")))
 bpy.context.view_layer.update()
 armB = bpy.data.objects["Armature"]; coat = bpy.data.objects["Outfit_Coat.001"]
 for n in ("Outfit_Shirt_Coated", "Outfit_Trousers_Coated", "Outfit_Belt_Coated"):

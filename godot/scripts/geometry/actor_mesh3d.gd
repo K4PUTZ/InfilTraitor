@@ -54,7 +54,7 @@ const RIG_BY_FAMILY := {
 ## A guard family that wears a Tripo body on the Agent's skeleton (ENEMIES_MASTER_PLAN §12.12-§12.13): the model, and the figure
 ## whose game clips it plays. The rank-and-file guard (2026-11-19) is the FID's male Standard, retiring `agent_live_enemy_white.glb`.
 const TRIPO_BY_FAMILY := {
-	"_enemy_white": {"figure": "male", "rig": "res://ASSETS/MODELS/official/ENEMY_FID_MALE_LIGHT.glb"},
+	"_enemy_white": {"figure": "male", "enemy": ["FID", "guard_male", "ENEMY_FID_MALE_LIGHT.glb"]},   ## ModelPaths.enemy(), game/
 }
 ## D61: a GU is 1.60 m, and a GU is one world unit; the rig is authored in metres.
 const METRES_TO_UNITS: float = 1.0 / 1.6
@@ -252,7 +252,8 @@ func setup_actor(board: Node3D, source: ActorPose) -> bool:
 	var tripo_rig: String = ""
 	if TRIPO_BY_FAMILY.has(source.frame_family):
 		tripo = String(TRIPO_BY_FAMILY[source.frame_family]["figure"])
-		tripo_rig = String(TRIPO_BY_FAMILY[source.frame_family]["rig"])
+		var where: Array = TRIPO_BY_FAMILY[source.frame_family]["enemy"]
+		tripo_rig = ModelPaths.enemy(String(where[0]), String(where[1]), "game", String(where[2]))
 	if not tripo.is_empty():
 		if not TripoFigureRef.FIGURES.has(tripo):
 			push_error("[ActorMesh3D] %s=%s: expected one of %s" % [TRIPO_FIGURE_FLAG, tripo, TripoFigureRef.FIGURES])

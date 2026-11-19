@@ -3,20 +3,23 @@
 # surface that follows the hat's underside around the head (below: the lowest hat face above the vertices near the head, per angle sector), every
 # crossing face split along it and what lies above removed, so the hair meets the brim. `Body_Hair` stays whole (the hat-off state). The brim PLANE
 # (least squares through the hat's outermost ring: the vertices farthest from the crown's vertical axis, HB_RIM of them) is only printed, as a reference.
-# Out: HB_OUT (default ASSETS/MODELS/fit/HAT_CUT_<FIG>.blend). Env: HB_FIG, HB_RIM (fraction, default 0.12), HB_BINS, HB_INNER, HB_DROP (metres, default 0).
+# Out: HB_OUT (default ASSETS/MODELS/actors/agent/<fig>/work/HAT_CUT_<FIG>.blend). Env: HB_FIG, HB_RIM (fraction, default 0.12), HB_BINS, HB_INNER, HB_DROP (metres, default 0).
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import os, sys
 import bpy, bmesh
 import numpy as np
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 FIG = os.environ["HB_FIG"]
-OUT = os.path.abspath(os.environ.get("HB_OUT", f"ASSETS/MODELS/fit/HAT_CUT_{FIG.upper()}.blend"))
+OUT = os.path.abspath(os.environ.get("HB_OUT", mp.agent(FIG, "work", f"HAT_CUT_{FIG.upper()}.blend")))
 RIM = float(os.environ.get("HB_RIM", "0.12"))
 # the BASE (its head is the current one: the female's skull was rebuilt 2026-11-06), the hat appended from the Director's seated file
-bpy.ops.wm.open_mainfile(filepath=os.path.abspath(f"ASSETS/MODELS/base/AGENT_{FIG.upper()}_A.blend"))
+bpy.ops.wm.open_mainfile(filepath=os.path.abspath(mp.agent(FIG, "base", f"AGENT_{FIG.upper()}_A.blend")))
 if bpy.context.object is not None and bpy.context.object.mode != 'OBJECT':
     bpy.ops.object.mode_set(mode='OBJECT')
-with bpy.data.libraries.load(os.path.abspath(f"ASSETS/MODELS/fit/HAT_FIT_{FIG.upper()}.blend"), link=False) as (fr, to):
+with bpy.data.libraries.load(os.path.abspath(mp.agent(FIG, "work", f"HAT_FIT_{FIG.upper()}.blend")), link=False) as (fr, to):
     to.objects = ["Outfit_Hat"]
 hat = to.objects[0]; bpy.context.scene.collection.objects.link(hat); hair = bpy.data.objects["Body_Hair"]
 # An appended object keeps a STALE matrix_world until the scene updates. The Director's hat carries a scale of (1.07, 1.07, 1.03) that the stale matrix

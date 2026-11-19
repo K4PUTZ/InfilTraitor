@@ -197,10 +197,10 @@ ASSETS/MODELS/**/*.blend1
 ASSETS/MODELS/**/*.zip
 # 2026-11-02 (Director: "vamos guardar no git porque tem as principais animações. Os modelos eu acho que podemos guardar todos"): the Tripo bases, no-coat
 # generations and the two ANIMATIONS files are versioned too (the clips live in them). The textures Godot extracts beside a GLB are regenerated on import.
-ASSETS/MODELS/sources/*.jpg
+ASSETS/MODELS/actors/**/source/*.jpg
 # the characters' own maps (ACTOR D87): the grayscale details (512, ~100 KB each) and the heads' painted maps (1024, < 1 MB) are sources
-!ASSETS/MODELS/official/detail/*.png
-!ASSETS/MODELS/official/painted/*.png
+!ASSETS/MODELS/actors/shared/detail/*.png
+!ASSETS/MODELS/actors/**/textures/*.png
 
 # ASSET ART IN GIT (Director, 2026-11-08): every model and painting is versioned so a clean clone runs. ASSETS/* still hides
 # the rest (ISOMETRIC generated frames, photo_src, audio outside MUSIC). Heavy media stays out, below.

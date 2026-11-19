@@ -2,6 +2,9 @@
 # For each (clip, frame, key): the figure posed on that bank frame, the key held at 1, coloured (black coat, white shirt, blue trousers) so a garment
 # through the coat is SEEN; rendered from the front and the back three-quarter. One sheet: rows = (clip, frame), columns = FULL front, LIGHT front,
 # FULL back, LIGHT back. Env: LC_FIG, LC_LIGHT (the light .blend), LC_OUT (PNG). Usage: blender -b --python-exit-code 1 -P tripo_light_compare.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import os, sys, math
 import bpy
 from mathutils import Vector
@@ -71,7 +74,7 @@ def run(src, col):
             files[(row, col + 2 * vi)] = path
 
 
-run(os.path.abspath(f"ASSETS/MODELS/base/AGENT_{FIG.upper()}_A.blend"), 0)
+run(os.path.abspath(mp.agent(FIG, "base", f"AGENT_{FIG.upper()}_A.blend")), 0)
 run(LIGHT, 1)
 tc.sheet(len(SHOTS), 4, files, OUT)
 print(f"[tripo_light_compare] {OUT}: rows {SHOTS}; columns FULL front, LIGHT front, FULL back, LIGHT back")

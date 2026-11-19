@@ -6,7 +6,7 @@ solver); the Director refines them here, in Blender, on the LIGHT Agent, with th
 `ASSETS/ANIMATIONS/poses/<figure>/<id>.json`, REPLACES the solved one. The mechanism, the conversion and why it is trusted: `tools/asset_generation/tripo/tripo_pose_lab.py`.
 
     python3 tools/persistent/pose_lab.py open  aim_pistol [--figure male|female|both] [--no-open]
-        Builds `ASSETS/MODELS/fit/POSE_<id>_<FIG>.blend` (the LIGHT Agent in the pose the game has today, the pistol as PROP_pistol, in Pose Mode) and opens it in Blender.
+        Builds `ASSETS/MODELS/actors/agent/<fig>/work/POSE_<id>_<FIG>.blend` (the LIGHT Agent in the pose the game has today, the pistol as PROP_pistol, in Pose Mode) and opens it in Blender.
         A .blend that already exists is NEVER overwritten (it holds his work): it is opened as it is. Pose, move the pistol, SAVE (Ctrl+S).
     python3 tools/persistent/pose_lab.py save  aim_pistol [--figure ...] [--take]
         Reads the saved .blend, writes the pose file, rebuilds the game set (`tripo_game_clips.gd`) and, with --take, films the `pistol_aim` take with it.
@@ -39,6 +39,9 @@ solver); the Director refines them here, in Blender, on the LIGHT Agent, with th
 
 Disposable work (the dumps Blender starts from, the previews) goes to temp/poses/ (git-ignored, the Director may delete it).
 """
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "../asset_generation"))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import argparse
 import os
 import shutil
@@ -56,7 +59,7 @@ TEMP = os.path.join(ROOT, "temp", "poses")
 
 
 def blend_path(pose, figure):
-    return os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"POSE_{pose}_{figure.upper()}.blend")
+    return os.path.join(ROOT, mp.agent(figure, "work", f"POSE_{pose}_{figure.upper()}.blend"))
 
 
 def pose_file(pose, figure):
@@ -132,7 +135,7 @@ def cmd_take(a):
 
 def cmd_sequence(a):
     for figure in figures_of(a.figure):
-        path = os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_{a.pose}_{figure.upper()}.blend")
+        path = os.path.join(ROOT, mp.agent(figure, "work", f"SEQ_{a.pose}_{figure.upper()}.blend"))
         if not os.path.exists(path):
             sys.exit(f"[pose_lab] {os.path.relpath(path, ROOT)} does not exist")
         out = os.path.join(ROOT, "ASSETS", "ANIMATIONS", "sequences", figure, f"{a.pose}.json")
@@ -146,11 +149,11 @@ def cmd_sequence(a):
 def cmd_throw_new(a):
     for figure in figures_of(a.figure):
         for part in ("overhand",):
-            out = os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_throw_{part}_{figure.upper()}.blend")
+            out = os.path.join(ROOT, mp.agent(figure, "work", f"SEQ_throw_{part}_{figure.upper()}.blend"))
             if os.path.exists(out):
                 print(f"[pose_lab] {os.path.relpath(out, ROOT)} exists: it holds your work, so it is left as it is")
                 continue
-            base = os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_draw_pistol_{figure.upper()}.blend")
+            base = os.path.join(ROOT, mp.agent(figure, "work", f"SEQ_draw_pistol_{figure.upper()}.blend"))
             clip = os.path.join(ROOT, "ASSETS", "ANIMATIONS", "bank", figure, "pitch_baseball.glb")
             run([BLENDER, "-b", "--python", LAB, "--", "throw_new", base, clip, out, part], f"building {os.path.relpath(out, ROOT)}")
 
@@ -160,7 +163,7 @@ LONG_DRAW_STOPS = "1,12,13,16,23,31"   # `tripo_pose_lab.LONG_DRAW_PLAN`'s frame
 
 def cmd_draw_long_new(a):
     for figure in figures_of(a.figure):
-        fit = os.path.join(ROOT, "ASSETS", "MODELS", "fit")
+        fit = os.path.join(ROOT, mp.agent(figure, "work"))
         out = os.path.join(fit, f"SEQ_draw_{a.gun}_{figure.upper()}.blend")
         if os.path.exists(out):
             print(f"[pose_lab] {os.path.relpath(out, ROOT)} exists: it holds your work, so it is left as it is")
@@ -176,11 +179,11 @@ def cmd_draw_long_new(a):
 
 def cmd_run_start_new(a):
     for figure in figures_of(a.figure):
-        out = os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_run_start_{figure.upper()}.blend")
+        out = os.path.join(ROOT, mp.agent(figure, "work", f"SEQ_run_start_{figure.upper()}.blend"))
         if os.path.exists(out):
             print(f"[pose_lab] {os.path.relpath(out, ROOT)} exists: it holds your work, so it is left as it is")
             continue
-        base = os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_draw_pistol_{figure.upper()}_idle90.blend")
+        base = os.path.join(ROOT, mp.agent(figure, "work", f"SEQ_draw_pistol_{figure.upper()}_idle90.blend"))
         clip = os.path.join(ROOT, "ASSETS", "ANIMATIONS", "bank", figure, "run.glb")
         run([BLENDER, "-b", "--python", LAB, "--", "run_start_new", base, clip, out], f"building {os.path.relpath(out, ROOT)}")
 
@@ -188,7 +191,7 @@ def cmd_run_start_new(a):
 def cmd_crouch_run_new(a):
     gait = getattr(a, "gait", "run")
     for figure in figures_of(a.figure):
-        fit = os.path.join(ROOT, "ASSETS", "MODELS", "fit")
+        fit = os.path.join(ROOT, mp.agent(figure, "work"))
         out = os.path.join(fit, f"SEQ_crouch_{gait}_{figure.upper()}.blend")
         if os.path.exists(out):
             print(f"[pose_lab] {os.path.relpath(out, ROOT)} exists: it holds your work, so it is left as it is")
@@ -202,7 +205,7 @@ def cmd_crouch_run_new(a):
 def cmd_strip(a):
     from PIL import Image, ImageChops, ImageDraw
     for figure in figures_of(a.figure):
-        blend = a.blend or os.path.join(ROOT, "ASSETS", "MODELS", "fit", f"SEQ_{a.name}_{figure.upper()}.blend")
+        blend = a.blend or os.path.join(ROOT, mp.agent(figure, "work", f"SEQ_{a.name}_{figure.upper()}.blend"))
         if not os.path.exists(blend):
             sys.exit(f"[pose_lab] {os.path.relpath(blend, ROOT)} does not exist")
         work = os.path.join(TEMP, f"strip_{a.name}_{figure}")

@@ -6,14 +6,17 @@
 # so a stroke on the LIGHT lands where the LIGHT shows it; the FULL head (more vertices) may read it a little off.
 # A master painted by hand must never be regenerated: face_paint.json carries `"hand": true` for that figure and tripo_face_paint.py refuses
 # to write over it (FP_FORCE=1 to override, which loses the hand paint).
-# Env: FPF_FIG (female | male), FPF_OUT (default ASSETS/MODELS/fit/FACE_PAINT_<FIG>.blend).  Usage (repo root): blender -b -P tripo_face_paint_file.py
+# Env: FPF_FIG (female | male), FPF_OUT (default ASSETS/MODELS/actors/agent/<fig>/work/FACE_PAINT_<FIG>.blend).  Usage (repo root): blender -b -P tripo_face_paint_file.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import os
 import bpy
 
 FIG = os.environ["FPF_FIG"]; F = FIG.upper(); ROOT = os.getcwd()
-GLB = os.path.join(ROOT, f"ASSETS/MODELS/official/AGENT_{F}_LIGHT.glb")
-MASTER = os.path.join(ROOT, f"ASSETS/MODELS/official/painted/{FIG}_face_master.png")
-OUT = os.path.abspath(os.environ.get("FPF_OUT", f"ASSETS/MODELS/fit/FACE_PAINT_{F}.blend"))
+GLB = os.path.join(ROOT, mp.agent(FIG, "game", f"AGENT_{F}_LIGHT.glb"))
+MASTER = os.path.join(ROOT, mp.agent(FIG, "textures", f"{FIG}_face_master.png"))
+OUT = os.path.abspath(os.environ.get("FPF_OUT", mp.agent(FIG, "work", f"FACE_PAINT_{F}.blend")))
 for p in (GLB, MASTER):
     if not os.path.exists(p):
         raise SystemExit(f"[tripo_face_paint_file] missing {p}")

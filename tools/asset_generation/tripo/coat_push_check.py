@@ -4,6 +4,9 @@
 # in flat colours (black coat, blue trousers, white shirt), 6 frames across the clip, so a leg through the cloth shows as blue where it should not be. Nothing is written to the model.
 # Args: <figure male|female> <clip id in ASSETS/ANIMATIONS/bank/<figure>/ (or male's, as the engine does) | rest> [<output prefix> <azimuths, e.g. 45,225>].  Env: GLB (default the figure's LIGHT Agent).
 # Usage: blender -b -P coat_push_check.py -- male walk /tmp/walk 45,225
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import os, sys, math
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -17,7 +20,7 @@ a = sys.argv[sys.argv.index("--") + 1:]
 fig, clip = a[0], a[1]
 prefix = a[2] if len(a) > 2 else ""
 azs = [float(x) for x in a[3].split(",")] if len(a) > 3 else []
-arm, P, B, meshes = tc.load("coat_push_check", os.environ.get("GLB", os.path.join(ROOT, "ASSETS/MODELS/official/AGENT_%s_LIGHT.glb" % fig.upper())))
+arm, P, B, meshes = tc.load("coat_push_check", os.environ.get("GLB", os.path.join(ROOT, mp.agent(fig, "game", "AGENT_%s_LIGHT.glb" % fig.upper()))))
 coat = bpy.data.objects["Outfit_Coat"]
 H = float(max(tc.world_verts(bpy.data.objects[n])[:, 2].max() for n in ("Outfit_Hat", "Body_Head")) - tc.world_verts(bpy.data.objects["Outfit_Shoes"])[:, 2].min())
 s = cp.spec(H)

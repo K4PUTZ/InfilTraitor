@@ -10,12 +10,15 @@
 # The two-sided source is NOT touched (`painted/<fig>_coat_police_light.png`): to go back, run glb_swap_image.py with it and glb_coat_extras.py with the lining's colour (#0B0B0D).
 #
 # Usage: python3 tripo_coat_one_colour.py <female|male> [--install]     (--install puts the map and the extras into AGENT_<FIG>_LIGHT.glb, byte edits; then reimport)
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import json, os, struct, subprocess, sys
 import numpy as np
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OFFICIAL = os.path.abspath(os.path.join(HERE, "..", "..", "..", "ASSETS", "MODELS", "official"))
+OFFICIAL = os.path.abspath(os.path.join(HERE, "..", "..", ".."))   # the repo root; the files from model_paths
 LINING_MAX = 24      # a texel whose brightest channel is at most this is the lining (#0B0B0D) or empty UV space (0, 0, 0); the buttons start at 32
 CLOTH_MIN_R = 120    # the mustard cloth's red channel starts well above this
 
@@ -54,10 +57,10 @@ def main():
     if len(sys.argv) < 2 or sys.argv[1] not in ("female", "male"):
         sys.exit("usage: tripo_coat_one_colour.py <female|male> [--install]")
     fig = sys.argv[1]
-    src = os.path.join(OFFICIAL, "painted", f"{fig}_coat_police_light.png")
-    out = os.path.join(OFFICIAL, "painted", f"{fig}_coat_police_one_colour_light.png")
-    js = os.path.join(OFFICIAL, "painted", f"{fig}_coat_sides_one_colour.json")
-    glb = os.path.join(OFFICIAL, f"AGENT_{fig.upper()}_LIGHT.glb")
+    src = os.path.join(OFFICIAL, mp.agent(fig, "textures", f"{fig}_coat_police_light.png"))
+    out = os.path.join(OFFICIAL, mp.agent(fig, "textures", f"{fig}_coat_police_one_colour_light.png"))
+    js = os.path.join(OFFICIAL, mp.agent(fig, "textures", f"{fig}_coat_sides_one_colour.json"))
+    glb = os.path.join(OFFICIAL, mp.agent(fig, "game", f"AGENT_{fig.upper()}_LIGHT.glb"))
     a = np.array(Image.open(src).convert("RGBA"))
     fill = a[..., :3].max(axis=2) <= LINING_MAX
     cloth = (a[..., 0] > CLOTH_MIN_R) & ~fill

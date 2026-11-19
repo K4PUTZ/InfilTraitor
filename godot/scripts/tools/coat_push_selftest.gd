@@ -4,7 +4,6 @@
 extends SceneTree
 
 const CoatPushRef = preload("res://godot/scripts/geometry/coat_push3d.gd")
-const AGENT_PATH := "res://ASSETS/MODELS/official/AGENT_%s.glb"
 const AGENTS: PackedStringArray = ["MALE", "FEMALE", "MALE_LIGHT", "FEMALE_LIGHT"]
 const SHADER_PATH := "res://godot/shaders/actor_mesh3d.gdshader"
 const SPEC_KEYS: PackedStringArray = ["r_thigh", "r_shin", "r_foot", "delta", "w_min", "w_max", "k_w"]
@@ -42,7 +41,8 @@ func _check(ok: bool, label: String) -> void:
 
 
 func _instance(agent: String) -> Node3D:
-	var scene := load(AGENT_PATH % agent) as PackedScene
+	var fig: String = agent.get_slice("_", 0)   ## "MALE_LIGHT" / "FEMALE"
+	var scene := load(ModelPaths.agent_rig(fig, agent.ends_with("_LIGHT"))) as PackedScene
 	return scene.instantiate() as Node3D if scene != null else null
 
 

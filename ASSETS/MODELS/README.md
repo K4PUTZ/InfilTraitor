@@ -1,18 +1,32 @@
-# ASSETS/MODELS (versioned since 2026-10-31; organised by ACTOR D89; cleaned 2026-11-04)
-Only official/ is imported by Godot. sources/, history/ and fit/ are read by Blender scripts alone and carry a `.gdignore`, so the editor never
-imports them (each .blend would start Blender on a scan, each GLB would extract its textures beside it). Test renders, work files and every other
-disposable output go to temp/ (CLAUDE.md), never here. Out of git: Blender's .blend1 backups and the raw .zip download.
+# ASSETS/MODELS (versioned since 2026-10-31; organised by ACTOR D89; cleaned 2026-11-04; ONE FOLDER PER CHARACTER since 2026-11-19)
 
-official/  the source of truth
+**Where a model lives is asked, never typed** (the Director, 2026-11-19): `tools/asset_generation/model_paths.py` for the tools
+(`python3 tools/asset_generation/model_paths.py --sh <figure>` for a shell script, `--check` proves the folders) and
+`godot/scripts/systems/model_paths.gd` (`ModelPaths`) for the game. A reorganisation edits those two files, nothing else.
+
+    actors/
+      agent/<female|male>/  source/ (ignored)  base/ (ignored)  work/ (ignored)  game/ (imported)  textures/ (imported)
+      agent/shared/         COAT_BASE, AGENT_SURFACE.json; source/ = the shared downloads (ignored)
+      shared/detail/        the tileable grain maps
+      enemies/<FACTION>/<character>/   the same stages; skins/<skin>/ for a character's variations
+    props/                  Tripo's prop and gadget generations, raw, split and zoned (was sources/tripo_props*; ignored)
+    history/                earlier steps (ignored)
+
+Godot imports only game/, textures/, agent/shared/ and shared/detail/; every ignored folder carries a `.gdignore` (each .blend would
+start Blender on a scan, each GLB would extract its textures beside it). Test renders and disposable output go to temp/ (CLAUDE.md).
+Out of git: Blender's .blend1 backups and the raw .zip download. The old-to-new map of the move is in git history (2026-11-19).
+The sections below keep their content from before the move; read each folder name through the map above.
+
+actors/agent/<fig>/game/ + textures/ + actors/agent/shared/  the source of truth (was official/)
   FEMALE_AGENT_BASE, MALE_AGENT_BASE  the clean bases: shirt, trousers, shoes, tie; no belt, hat, coat
   COAT_BASE                           the coat
   AGENT_<FIG>.glb, AGENT_<FIG>_LIGHT.glb  the built Agents (tools/asset_generation/tripo/build_agents.sh)
   detail/, painted/                   their maps (ACTOR D87). The AGENT_*_<part>.png beside the GLBs are Godot's extractions, not versioned
-base/      the two characters' base, OPEN while they are animated (ACTOR D102; frozen 2026-11-04 at D99/D101, last frozen at 2ee3cf25)
+actors/agent/<fig>/base/  the two characters' base, OPEN while they are animated (ACTOR D102; frozen 2026-11-04 at D99/D101, last frozen at 2ee3cf25)
   AGENT_<FIG>_A.blend          the A pose with the coat, hand-finished
   AGENT_<FIG>_T.blend          the T pose with the coat, hand-finished (the former COAT_FIT_<FIG>_T_HAND.blend)
   A and T are welded separately, so their vertex counts differ per piece: tripo_transition.py maps them by UV
-fit/       the coat's fit, Blender working files (ACTOR D97)
+actors/agent/<fig>/work/  Blender working files: the coat's fit, corrective frames, SEQ_ / POSE_ / FAMILY_ labs (was fit/) (ACTOR D97)
   RUN_FIX*_FEMALE.blend, IDLE_FIX_FEMALE.blend  baked frames the Director edited; tripo_pose_fix_back.py takes them to the corrective keys (ACTOR D103)
   COAT_FIT_<FIG>.blend         the A pose with the fitted coat
   COAT_FIT_<FIG>_T.blend       the T built from the A (tripo_fit_tpose.py)
@@ -24,7 +38,7 @@ fit/       the coat's fit, Blender working files (ACTOR D97)
   AGENT_*_A_STRUCT / _FLAP, RUN_FIX_F8 / F9 / DRAPE  dropped coat experiments of 2026-11-05 (D103-D104), kept as record
   FACE_PAINT_<FIG>.blend       where the Director paints a face by hand (CHARACTER §7a, 2026-11-07): the LIGHT at rest, the head wearing
                                ../official/painted/<fig>_face_master.png by path; Image > Save writes the master. Rebuilt by tripo_face_paint_file.py
-sources/   Tripo downloads, content untouched, renamed:
+actors/agent/<fig>/source/ (and agent/shared/source/)  Tripo downloads, content untouched, renamed (was sources/):
   tripo_female_base.glb        <- FEMALE_BASE.glb
   tripo_male_base.glb          <- MALE_BASE.glb
   tripo_female_nocoat.glb      <- female+no+coat.glb

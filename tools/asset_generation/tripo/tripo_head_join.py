@@ -1,10 +1,13 @@
 # tripo_head_join.py — the Director's skull top (2026-11-05) joined into the female's head as ONE mesh (ACTOR D106).
-# In ASSETS/MODELS/fit/HEAD_EDIT_FEMALE.blend he cut the male's head down to a cap and seated it over her flat skull (`Body_Head_Male`, a free mesh
+# In ASSETS/MODELS/actors/agent/female/work/HEAD_EDIT_FEMALE.blend he cut the male's head down to a cap and seated it over her flat skull (`Body_Head_Male`, a free mesh
 # with one open border lying 0-6 mm off her surface). Here: her faces wholly under the cap go, the hole's border is bridged to the cap's border,
 # the cap takes her shading and, per vertex, the weights of her nearest head vertex (so it follows the head bone exactly as the skull did).
 # The UVs of the cap are the male's; the head's texture map is redone later by tripo_head_map. Printed: faces removed, bridge result, open edges left.
-# Reads the Director's file (never saved over); writes HJ_OUT (default ASSETS/MODELS/fit/HEAD_JOINED_FEMALE.blend), the base with the joined head.
+# Reads the Director's file (never saved over); writes HJ_OUT (default ASSETS/MODELS/actors/agent/female/work/HEAD_JOINED_FEMALE.blend), the base with the joined head.
 # Usage (repo root): blender -b --python-exit-code 1 -P tools/asset_generation/tripo/tripo_head_join.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import os, sys
 import bpy, bmesh
 from mathutils import Vector
@@ -12,8 +15,8 @@ from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 
 TAG = "tripo_head_join"
-SRC = os.path.abspath("ASSETS/MODELS/fit/HEAD_EDIT_FEMALE.blend")
-OUT = os.path.abspath(os.environ.get("HJ_OUT", "ASSETS/MODELS/fit/HEAD_JOINED_FEMALE.blend"))
+SRC = os.path.abspath(mp.agent("female", "work", "HEAD_EDIT_FEMALE.blend"))
+OUT = os.path.abspath(os.environ.get("HJ_OUT", mp.agent("female", "work", "HEAD_JOINED_FEMALE.blend")))
 EPS = 0.0005
 SEAM_PASSES = int(os.environ.get("HJ_SEAM_SMOOTH", "0"))   # smoothing passes over the seam (bridge faces + HJ_SEAM_RING rings)
 SEAM_RING = int(os.environ.get("HJ_SEAM_RING", "2"))

@@ -8,6 +8,9 @@
 # ⚠️ Run it BEFORE tripo_coat_push, never on a finished Agent: Blender's round trip writes the coat's COLOR_0 alpha as 1.0, and that alpha is
 # D94's push direction; for a texture change on a finished Agent use glb_swap_image.py, which touches no mesh (found 2026-11-06: the skirt's tips glued together and the coat through the legs after TX-1 / TX-6 were applied this way).
 # Env: SF_IN, SF_OUT, SF_FIGURE (female | male), SF_MAPS (PNG folder), SF_PIECES (comma list, default the five below), SF_SPEC, SF_DETAIL, SF_RES (512).  Usage: blender -b -P tripo_surface.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import json, math, os, sys
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -17,8 +20,8 @@ import tripo_common as tc
 TAG = "tripo_surface"
 arm, P, B, meshes = tc.load(TAG, os.environ["SF_IN"])
 FIG, MAPS = os.environ["SF_FIGURE"], os.environ["SF_MAPS"]
-SPEC = json.load(open(os.environ.get("SF_SPEC", "ASSETS/MODELS/official/AGENT_SURFACE.json")))[FIG]
-DET = os.environ.get("SF_DETAIL", "ASSETS/MODELS/official/detail"); RES = int(os.environ.get("SF_RES", "512"))
+SPEC = json.load(open(os.environ.get("SF_SPEC", mp.agent_shared("AGENT_SURFACE.json"))))[FIG]
+DET = os.environ.get("SF_DETAIL", mp.detail()); RES = int(os.environ.get("SF_RES", "512"))
 PIECES = os.environ.get("SF_PIECES", "Outfit_Hat,Outfit_Shirt,Outfit_Trousers,Outfit_Tie,Outfit_Shoes,Outfit_Belt,Outfit_Buckle,Body_Head,Body_Hands,Body_Hair").split(",")
 made = {}
 for o in meshes:

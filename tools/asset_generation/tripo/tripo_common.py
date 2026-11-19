@@ -291,7 +291,7 @@ def write_png(path, arr8):
 
 
 def detail_tiled(path, res, tile):
-    """a grayscale tileable detail map (ASSETS/MODELS/official/detail) repeated `tile` times over a res x res square, scaled so its median is 0.9 (the colour is kept, the grain modulates it)"""
+    """a grayscale tileable detail map (ASSETS/MODELS/actors/shared/detail) repeated `tile` times over a res x res square, scaled so its median is 0.9 (the colour is kept, the grain modulates it)"""
     img = bpy.data.images.load(os.path.abspath(path)); img.colorspace_settings.name = 'Non-Color'
     dw, dh = img.size; d = np.array(img.pixels[:], dtype=np.float32).reshape(dh, dw, 4)[:, :, 0]
     period = res / tile; ys, xs = np.mgrid[0:res, 0:res]

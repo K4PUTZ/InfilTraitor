@@ -1,8 +1,11 @@
 # tripo_look.py — a figure in its SURFACE (ACTOR D87 T6): palette colour (or a painted map, "map", path beside the JSON) x grayscale detail per slot, read from AGENT_SURFACE.json, on the
 # clean UVs of tripo_uv.py; Tripo's corner normals kept. Blender EEVEE renders (a substitution: the look, not Godot's light): front, side
 # and back, a close-up of the chest and of the face, and the game camera (30 deg elevation, 45 deg azimuth, the figure ~190 px tall).
-# Env: LOOK_IN (a tripo_uv output), LOOK_FIGURE (female | male), LOOK_SURFACE (default ASSETS/MODELS/official/AGENT_SURFACE.json),
-#      LOOK_DETAIL (default ASSETS/MODELS/official/detail), RV_OUT. Usage: blender -b -P tripo_look.py
+# Env: LOOK_IN (a tripo_uv output), LOOK_FIGURE (female | male), LOOK_SURFACE (default ASSETS/MODELS/actors/agent/shared/AGENT_SURFACE.json),
+#      LOOK_DETAIL (default ASSETS/MODELS/actors/shared/detail), RV_OUT. Usage: blender -b -P tripo_look.py
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
+import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import json, math, os, sys
 import bpy
 from mathutils import Vector
@@ -11,9 +14,9 @@ import tripo_common as tc
 
 TAG = "tripo_look"
 IN, FIG, OUT = os.environ["LOOK_IN"], os.environ["LOOK_FIGURE"], os.environ["RV_OUT"].rstrip("/")
-SURF_PATH = os.environ.get("LOOK_SURFACE", "ASSETS/MODELS/official/AGENT_SURFACE.json")
+SURF_PATH = os.environ.get("LOOK_SURFACE", mp.agent_shared("AGENT_SURFACE.json"))
 SURF = json.load(open(SURF_PATH))[FIG]
-DET = os.environ.get("LOOK_DETAIL", "ASSETS/MODELS/official/detail")
+DET = os.environ.get("LOOK_DETAIL", mp.detail())
 os.makedirs(OUT, exist_ok=True)
 arm, P, B, meshes = tc.load(TAG, IN)
 H = max(max((o.matrix_world @ v.co).z for v in o.data.vertices) for o in meshes)

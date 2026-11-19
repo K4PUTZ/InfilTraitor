@@ -587,3 +587,12 @@ The bare Standards (both sexes, the four factions) and the four accessory sheets
 `REFERENCES/ENEMIES/` and `REFERENCES/ENEMIES/ACESSORIES/` (local, like all of `REFERENCES/`). **One Tripo generation is left this
 month: the Director makes the male standard guard** (`cop_male_front.jpg` + `cop_male_side.jpg`), so the engine can start on a
 second body and the placeholder guards (`agent_live_enemy_white.glb`, §7) can retire: step E-2.
+
+### 12.12 The guard skinned on the Agent's skeleton (2026-11-19)
+
+The month's Tripo generation came without the parts split and without the auto-rig (no credits until December):
+`ASSETS/MODELS/sources/tripo_enemies/tripo_cop_male_no_rig.glb`, one mesh, 19 765 triangles, 1.0 m, no material. Laid over
+`MALE_AGENT_BASE` the silhouettes coincide front and side (the art was an edit of his image), so **`tools/asset_generation/tripo/
+enemy_skin_from_agent.py`** gives it the Agent's 65-joint armature and copies his skin weights to the nearest surface (4 influences,
+normalised): 10 971 vertices, none unweighted. The bank's `walk` plays on it in the four facings at the game camera with no tear
+(Blender, `temp/enemies/`). Open: the light build (~5 k), the palette by region, the separable pieces (cut by region), then E-2.

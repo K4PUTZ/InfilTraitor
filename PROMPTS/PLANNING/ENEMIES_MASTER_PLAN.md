@@ -529,3 +529,20 @@ Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bo
 Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
 No text, no labels, no numbers, no arrows, no measurements, no hands, no people.
 ```
+
+### 12.8 Calm Waters' accessory sheet
+
+```
+Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 6 rows, 2 columns.
+Each row is ONE object: its FRONT view in the left column, its SIDE view in the right column (the same object rotated 90 degrees, same scale, same vertical alignment). All six objects are drawn at the same real-world scale, relative to each other.
+Rows, top to bottom:
+1. Tactical combat helmet, 24 cm across, 18 cm tall: matte grey shell with side rails, protective goggles with dark lenses pushed up and resting on the front of the helmet, a black chin strap hanging open. Empty, no head inside.
+2. Plate-carrier armour vest, 40 cm wide, 45 cm tall, seen as worn but empty: a dark red-wine front plate panel and a matching back panel, joined by black shoulder straps and side straps, open in the middle where the body would be, three flat magazine pouches across the front.
+3. Pair of knee pads, each 12 cm wide, 18 cm tall: a hard rounded grey cap over a black padded base, two black elastic straps; draw ONE pad, front and side.
+4. Tactical belt laid out as a closed ring seen as worn, 34 cm wide, 5 cm tall: black webbing, a flat metal quick-release buckle. Nothing attached to it.
+5. Pair of small black belt pouches side by side, each 10 cm tall, with a belt loop at the back.
+6. Round fragmentation grenade with its lever and ring pin, 10 cm tall, hanging from a short black clip.
+Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bold readable silhouette, solid flat colours with clearly separated material regions (grey shell, red-wine cloth, black webbing, metal, dark lens). No textures, no wear, no badges, no logos, no writing.
+Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
+No text, no labels, no numbers, no arrows, no measurements, no hands, no people.
+```

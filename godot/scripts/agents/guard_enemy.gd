@@ -86,7 +86,7 @@ var _los_revision: int = 0
 ## Which faction this guard serves (DESIGN_MASTER_PLAN 11.1: agency, militia, corporation). One archetype ships, and it is the Agency's;
 ## the id picks the colour of its reveal silhouette (`ActorMesh3D.REVEAL_PALETTES`).
 var faction: StringName = &"agency"
-## A field OFFICER (2026-11-08): wears the old agent's model (`ActorMesh3D` family `_officer`) instead of the soldier's white blazer. Only the
+## A field OFFICER (2026-11-08): wears the old agent's model (`ActorMesh3D` family `_officer`) instead of the rank-and-file's body (the FID's Standard, `ActorMesh3D.TRIPO_BY_FAMILY`, 2026-11-19). Only the
 ## look so far; rank has no rules yet (GAMEPLAY milestone). Set by `Room._spawn_guards` from the map's `actors.officers`, before `attach_pose`.
 var officer: bool = false
 var cell: Vector2i = Vector2i.ZERO

@@ -48,9 +48,13 @@ const RIG_DIR := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"
 ## agent's, loudly, once.
 const RIG_BY_FAMILY := {
 	"": "agent_live.glb",
-	"_enemy_white": "agent_live_enemy_white.glb",
 	## The field officer (2026-11-08): the old agent's model, promoted when the Tripo figure became the agent.
 	"_officer": "agent_live.glb",
+}
+## A guard family that wears a Tripo body on the Agent's skeleton (ENEMIES_MASTER_PLAN §12.12-§12.13): the model, and the figure
+## whose game clips it plays. The rank-and-file guard (2026-11-19) is the FID's male Standard, retiring `agent_live_enemy_white.glb`.
+const TRIPO_BY_FAMILY := {
+	"_enemy_white": {"figure": "male", "rig": "res://ASSETS/MODELS/official/ENEMY_FID_MALE_LIGHT.glb"},
 }
 ## D61: a GU is 1.60 m, and a GU is one world unit; the rig is authored in metres.
 const METRES_TO_UNITS: float = 1.0 / 1.6
@@ -240,15 +244,20 @@ static var _warned_action: Dictionary = {}
 
 ## Drive this mesh from `source`. Returns false (and logs) when the rig cannot be loaded, leaving nothing half-built.
 func setup_actor(board: Node3D, source: ActorPose) -> bool:
-	## Only the AGENT (family "") wears the Tripo figure; a guard keeps the rig of its own family (soldier, officer).
+	## The AGENT (family "") wears the Tripo Agent; a guard family listed in TRIPO_BY_FAMILY wears its Tripo body; the others keep
+	## the rig of their own family (the officer).
 	var tripo: String = _dev_value(TRIPO_FIGURE_FLAG, AGENT_FIGURE_DEFAULT) if source.frame_family.is_empty() else ""
 	if tripo == TRIPO_FIGURE_NONE:
 		tripo = ""
+	var tripo_rig: String = ""
+	if TRIPO_BY_FAMILY.has(source.frame_family):
+		tripo = String(TRIPO_BY_FAMILY[source.frame_family]["figure"])
+		tripo_rig = String(TRIPO_BY_FAMILY[source.frame_family]["rig"])
 	if not tripo.is_empty():
 		if not TripoFigureRef.FIGURES.has(tripo):
 			push_error("[ActorMesh3D] %s=%s: expected one of %s" % [TRIPO_FIGURE_FLAG, tripo, TripoFigureRef.FIGURES])
 			return false
-		if not _load_tripo(board, tripo, _dev_value(TRIPO_MOVE_FLAG, TRIPO_MOVE_DEFAULT)):
+		if not _load_tripo(board, tripo, _dev_value(TRIPO_MOVE_FLAG, TRIPO_MOVE_DEFAULT), tripo_rig):
 			return false
 	else:
 		var family: String = source.frame_family
@@ -311,9 +320,10 @@ func _load_rig(board: Node3D, path: String) -> bool:
 
 
 ## The Tripo Agent `figure` (LIGHT), dressed and board-lit, with the game set of its clips on its player (`TripoFigure`). False
-## (loud) when the figure or its clips are missing, leaving nothing half-built.
-func _load_tripo(board: Node3D, figure: String, move_clip: String) -> bool:
-	var path: String = TripoFigureRef.rig_path(figure, true)
+## (loud) when the figure or its clips are missing, leaving nothing half-built. `rig` replaces the Agent's model with another body on
+## his skeleton (a guard, TRIPO_BY_FAMILY); the clips stay the figure's.
+func _load_tripo(board: Node3D, figure: String, move_clip: String, rig: String = "") -> bool:
+	var path: String = rig if not rig.is_empty() else TripoFigureRef.rig_path(figure, true)
 	var scene := load(path) as PackedScene
 	if scene == null:
 		push_error("[ActorMesh3D] cannot load the Tripo Agent %s (run build_agents.sh)" % path)

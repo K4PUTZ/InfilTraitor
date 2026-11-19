@@ -596,3 +596,18 @@ The month's Tripo generation came without the parts split and without the auto-r
 enemy_skin_from_agent.py`** gives it the Agent's 65-joint armature and copies his skin weights to the nearest surface (4 influences,
 normalised): 10 971 vertices, none unweighted. The bank's `walk` plays on it in the four facings at the game camera with no tear
 (Blender, `temp/enemies/`). Open: the light build (~5 k), the palette by region, the separable pieces (cut by region), then E-2.
+
+### 12.13 The guard on the board (2026-11-19): E-2's first slice BUILT
+
+- **The light build:** `tools/asset_generation/tripo/enemy_light.py` decimates the skinned guard to 5 000 triangles and colours it
+  by REGION, one material each (the bone that weighs most on a face: head = skin with the crown and the back as hair, the collar
+  set apart from the neck; torso and arms = shirt; hips and legs = trousers; feet = shoes), from a palette file
+  (`enemy_palette_fid_male.json`). It keys one rest frame, since Godot gives a GLB an AnimationPlayer only when it carries a clip.
+  Output: `ASSETS/MODELS/official/ENEMY_FID_MALE_LIGHT.glb`. The stripe on the trousers and the face are not painted; a few
+  collar faces at the nape still take the skin colour (hidden at the game's size).
+- **The engine:** `ActorMesh3D.TRIPO_BY_FAMILY` puts that body on the rank-and-file family (`_enemy_white`), playing the male
+  Agent's game clips; `agent_live_enemy_white.glb` is no longer read. The officers keep the old Agent's rig (`_officer`) until their
+  own body exists (§6).
+- **Checked:** PLAYGROUND's nine guards boot on it with no error; capture `capture.py --map PLAYGROUND --still guard_7 --mode detail
+  --view all` (the map's automatic `guard_<n>` anchors); `verify.py smoke` green. **Not measured:** the Moto with ten actors on two
+  different Tripo bodies (the memory per distinct model, §7).

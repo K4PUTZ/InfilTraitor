@@ -653,3 +653,7 @@ an enemy face image must carry the hair too.
 above), goes in with `ENEMY_FACE=<file>`. The guard's head is a little taller than the Agent's, so its crown lies past FaceUV's top:
 those texels are clamped to the square's top edge, and the edges (the crown's row, the back seam's column above the nape) and the
 generated crown are painted hair, so a face image that paints only the hairline band still gets a full crop.
+**The face aligned (2026-11-19, the Director: eyes and nose landed low).** The guard's head sits 2.0 cm higher and 1.3 cm forward of
+the Agent's: `enemy_texture.py` moves FaceUV by the offset between the two nose tips (the Agent's measured on AGENT_MALE_LIGHT.glb).
+The neck under the jaw shares the jaw's texels on a cylinder, so faces below the chin (nose - 5.5 cm) and below FaceUV's floor go to
+the body's square.

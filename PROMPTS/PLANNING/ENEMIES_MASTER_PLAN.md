@@ -580,3 +580,10 @@ Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bo
 Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
 No text, no labels, no numbers, no arrows, no measurements, no hands, no people.
 ```
+
+### 12.11 Where the art is, and the first Tripo generation (2026-11-19)
+
+The bare Standards (both sexes, the four factions) and the four accessory sheets are on the Director's disk, in
+`REFERENCES/ENEMIES/` and `REFERENCES/ENEMIES/ACESSORIES/` (local, like all of `REFERENCES/`). **One Tripo generation is left this
+month: the Director makes the male standard guard** (`cop_male_front.jpg` + `cop_male_side.jpg`), so the engine can start on a
+second body and the placeholder guards (`agent_live_enemy_white.glb`, §7) can retire: step E-2.

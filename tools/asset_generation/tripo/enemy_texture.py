@@ -9,9 +9,9 @@ The paint is a function of each texel's position on the figure at rest (1 m tall
 reference sheet's details land on the right body part: the shirt's chest pockets with flaps, its button placket, epaulettes,
 collar and cuffs, the white undershirt at the collar's opening; the trousers' waistband and white side stripe; the shoes; the hair.
 
-The MASTER (2048 x 1024) goes to <master.png>; the GLB carries it at half size. A master that already exists keeps its HEAD square
-(the Director's hand paint) unless ENEMY_TEX_FORCE=1; only the body is repainted. A face painted afterwards goes into the GLB with
-glb_swap_image.py, never a Blender round trip of the GLB.
+The MASTER (2048 x 1024) goes to <master.png>; the GLB carries it at half size. The HEAD square uses the male Agent's FaceUV
+(face_uv_map.py), so the face is drawn on his master's layout: a 2048 x 2048 `<master>_face.png` beside the master is the face (the
+Director's, drawn from the Agent's `male_face_master.png`); without it a `<master>_face_guide.png` is written to draw on.
 
     Blender -b -P enemy_texture.py -- <light.glb> <out.glb> <palette.json> <master.png> [paint.blend]
 
@@ -91,21 +91,17 @@ bpy.ops.uv.smart_project(angle_limit=math.radians(72), island_margin=0.008, area
                          scale_to_bounds=True)
 bm = bmesh.from_edit_mesh(mesh.data)
 uv = bm.loops.layers.uv.verify()
-AX = np.array([B["Neck"][0], B["Neck"][1]])
-HEAD_Z0, HEAD_Z1 = NECK_Z - 0.01, max(v.co.z for v in mesh.data.vertices) + 0.005
+# The head takes the male Agent's FaceUV (face_uv_map.py with his params): the enemies share his silhouette, so his painted
+# face master is the layout an enemy's face is drawn on (the Director, 2026-11-19), at half scale in the left square.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import face_uv_map as fm
+FACEUV = json.load(open(os.environ.get("ENEMY_FACEUV", "ASSETS/MODELS/official/painted/male_faceuv.json")))
 for f in bm.faces:
     if f.index in head_faces:
-        us = []
-        for lo in f.loops:
-            p = mw @ lo.vert.co
-            th = math.atan2(p.x - AX[0], -(p.y - AX[1]))         # 0 = the face (-Y), +-pi = the back
-            us.append(0.5 + th / (2.0 * math.pi))
-        if max(us) - min(us) > 0.5:                             # straddles the back seam: keep it on one side
-            us = [u if u > 0.5 else 0.999 for u in us]
-        for lo, u in zip(f.loops, us):
-            p = mw @ lo.vert.co
-            v = (p.z - HEAD_Z0) / (HEAD_Z1 - HEAD_Z0)
-            lo[uv].uv = (0.004 + u * 0.492, 0.004 + v * 0.992)
+        P = np.array([[tuple(mw @ lo.vert.co) for lo in f.loops]], np.float64)
+        U = fm.tri_uv(P, FACEUV)[0]
+        for lo, (u, v) in zip(f.loops, U):
+            lo[uv].uv = (min(float(u), 0.999) * 0.5, float(v))      # a triangle across the back seam stays at the edge (hair)
     else:
         for lo in f.loops:
             u, v = lo[uv].uv
@@ -278,14 +274,27 @@ for _ in range(6):
     img[grow] = acc[grow] / cnt[grow]
     filled = filled | grow
 
-# keep the Director's hand-painted head
-if os.path.exists(master_path) and not FORCE:
-    old = bpy.data.images.load(master_path)
-    if tuple(old.size) == (W, H):
-        o = np.array(old.pixels[:], np.float32).reshape(H, W, 4)[..., :3]
-        img[:, : W // 2] = o[:, : W // 2]
-        print(TAG, "kept the head square of", master_path)
-    bpy.data.images.remove(old)
+# the face: the Director's own 2048 x 2048 image on the male Agent's FaceUV layout (<master>_face.png beside the master), dropped
+# into the head square at half size; without it the head keeps the generated skin and hair, and that square is written out at
+# full size as the guide to draw the face on (<master>_face_guide.png)
+face_path = master_path.replace("_master.png", "_face.png")
+if os.path.exists(face_path):
+    fimg = bpy.data.images.load(face_path)
+    if tuple(fimg.size) != (W // 2 * 2, H * 2):
+        fimg.scale(W // 2 * 2, H * 2)
+    f = np.array(fimg.pixels[:], np.float32).reshape(H * 2, W, 4)[..., :3]
+    hs = img[:, : W // 2]
+    keep = ~((reg[:, : W // 2] == 0) | (reg[:, : W // 2] == 1) | (reg[:, : W // 2] < 0))   # the collar stays the shirt's
+    face = f.reshape(H, 2, W // 2, 2, 3).mean((1, 3))
+    hs[~keep] = face[~keep]
+    print(TAG, "face from", face_path)
+    bpy.data.images.remove(fimg)
+else:
+    g = bpy.data.images.new("guide", W, H * 2)
+    up = np.repeat(np.repeat(img[:, : W // 2], 2, 0), 2, 1)
+    g.pixels = np.concatenate([np.clip(up, 0, 1), np.ones((H * 2, W, 1), np.float32)], -1).ravel()
+    g.filepath_raw = master_path.replace("_master.png", "_face_guide.png"); g.file_format = "PNG"; g.save()
+    print(TAG, "no face yet; guide", g.filepath_raw)
 
 os.makedirs(os.path.dirname(master_path), exist_ok=True)
 im = bpy.data.images.new("enemy_master", W, H)

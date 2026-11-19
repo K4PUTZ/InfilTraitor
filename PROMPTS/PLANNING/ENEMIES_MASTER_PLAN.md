@@ -630,3 +630,10 @@ enemy_light.py are settled again per texel at the neck (the collar measured on t
   `enemy_texture.py`; the intermediates live in `temp/`): the body is repainted, the head kept.
 - Seen on the board in four views (`capture.py --map PLAYGROUND --still guard_7 --mode detail --view all`). Not measured on the
   Moto (one 1024 x 512 texture, below the 5 % rule).
+
+**The face (2026-11-19, later).** The head square now uses the male Agent's FaceUV (`face_uv_map.py`, `male_faceuv.json`): the enemies
+share his silhouette, so his painted `male_face_master.png` is the layout an enemy face is drawn on (test-fitted: his face on the
+guard lands eyes, nose and mouth in place). The Director draws the guard's face from it (Nano Banana, then by hand) as a 2048 x 2048
+`painted/enemy_fid_male_face.png`; `enemy_texture.py` drops it into the head square, replacing skin and hair only (the collar stays
+the shirt's). Without it the script writes `painted/enemy_fid_male_face_guide.png`. The Agent's master is bald (his hat covers it):
+an enemy face image must carry the hair too.

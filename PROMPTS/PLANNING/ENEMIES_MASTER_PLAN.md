@@ -498,3 +498,10 @@ Full body from head to toes, nothing cropped. No text, no labels, no other peopl
 ```
 
 Its accessories, later: the black suit jacket (it hides the pistol), the sunglasses, the coiled earpiece, the hidden holster.
+
+**Result (2026-11-18): APPROVED ("Tudo ok").** Both bare; accepted as they came: the woman came out with East Asian features and
+light skin instead of dark-brown skin. Her side faces right (RIGHT slot), his shows his left side (LEFT).
+
+**The four factions' bare Standards are done, both sexes (2026-11-18): 9 heads so far** (the older Operator woman kept as one more).
+**Next (Director: "As pranchas de acessórios montamos amanhã"):** the accessory sheets per faction (§12.2-§12.6's "accessories,
+later" lines), then Tripo.

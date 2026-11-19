@@ -416,3 +416,46 @@ Full body from head to toes, nothing cropped. No text, no labels, no other peopl
 
 Its accessories, later: the helmet with the goggles pushed up, the red-wine plate vest, the knee pads, the belt with its pouches and
 the grenade.
+
+**Result (2026-11-18): APPROVED ("Parece tudo certo").** Both bare as asked. Accepted as they came: the woman came out older and
+grey-haired instead of late twenties and dark-haired (more age range for the pool), and the trousers show belt loops. Her side faces
+right, as the FID woman's (Tripo's RIGHT slot); his shows his left side (LEFT slot).
+
+### 12.5 The third model: the Bunsen Burners' Prospect (§4.1), BARE
+
+The shirt is a LONG-sleeved henley tucked in, not the table's tee: the same reason as the FID's sleeves (§12, route (b)); the canon
+allows "a shirt or tee" under the vest (`COSMETICS` §8.3). The leather vest is a slot piece (`COSMETICS` §8.2 `vest`), so it comes
+with the accessories, like the Operator's plate vest. The FRONT, with `MaleNoCoatFront.png`:
+
+```
+Edit this image. Keep EXACTLY the same body, proportions, height, pose (the same A-pose: arms slightly away from the body, hands open and relaxed), camera angle, framing, lighting, white background and art style (stylized low-poly game character: bold simple shapes, flat-shaded facets, clean solid colours). Change ONLY the clothes and the head, as described below.
+
+The new man: a prospect of a fictional outlaw motorcycle club, a biker. Late thirties, a heavy-browed face, tanned light-brown skin, a clean-shaved head, a thick full dark-brown beard, a hard, sullen expression with the mouth closed. Bare head: no bandana, no cap.
+
+His basic clothes, and nothing else:
+- Shirt: a dull olive-green long-sleeved henley (a plain knit, three buttons at the neck, the cuffs at the wrists), tucked into the jeans.
+- Jeans: faded blue denim jeans, straight cut, a plain waistband with no belt.
+- Boots: black leather biker boots, heavy and round-toed, the jeans falling over them.
+
+No leather vest, no jacket, no bandana, no sunglasses, no gloves, no belt, no wallet chain, no knife, no jewellery, no backpack, no weapon. Hands empty.
+Each material a clearly separated solid colour region (olive-green knit, blue denim, black leather, skin, beard). No writing, no badges, no patches, no logos, no tattoos, no dirt, no fabric pattern.
+Full body from head to toes, centred, nothing cropped. No text, no labels, no arrows, no other people, no props, no shadow on the floor.
+```
+
+For the woman, with `femaleNoCoatFront.png` ("Her basic clothes"):
+
+```
+The new woman: a prospect of a fictional outlaw motorcycle club, a biker. Early thirties, a sharp freckled face, pale skin, dark auburn hair pulled back into a low ponytail, flat on top, a hard, sullen expression with the mouth closed. Bare head: no bandana, no cap.
+```
+
+The SIDE, with the side reference FIRST and the new front second (for the woman: "woman", "her", and her hair instead of the shaved
+head and beard):
+
+```
+Edit the first image (a side view). Keep EXACTLY its body, proportions, pose, camera angle, framing, lighting, white background and art style. Replace the clothes and the head with those of the man in the second image (the same man seen from the front): the same face, shaved head, beard and skin, bare head, the same olive-green long-sleeved henley tucked in, the same faded blue jeans with a plain waistband and no belt, the same black biker boots, in the same colours, now seen from the side.
+No leather vest, no jacket, no bandana, no belt, no wallet chain, no backpack, no weapon. Hands empty.
+Full body from head to toes, nothing cropped. No text, no labels, no other people, no shadow on the floor.
+```
+
+Its accessories, later: the brown leather vest with the Prospect's bottom rocker (the emblem a decal, `ACTOR` D90), the bandana,
+the wallet chain, the knife.

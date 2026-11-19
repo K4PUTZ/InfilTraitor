@@ -648,3 +648,8 @@ an enemy face image must carry the hair too.
 > hairline, covering the whole top, the sides above the ears and the back of the head down to the nape, the hair filling the upper
 > part of the square the way a scalp unwrapped around the head would. Skin everywhere else, the same tone to every edge of the
 > image. No background, no border, no text, no shading of a 3D head: it must stay a flat texture map.
+
+**The face installed (2026-11-19).** The Director's face, `painted/ENEMIES/cop_male_face_master.jpg` (1024 x 1024, from the prompt
+above), goes in with `ENEMY_FACE=<file>`. The guard's head is a little taller than the Agent's, so its crown lies past FaceUV's top:
+those texels are clamped to the square's top edge, and the edges (the crown's row, the back seam's column above the nape) and the
+generated crown are painted hair, so a face image that paints only the hairline band still gets a full crop.

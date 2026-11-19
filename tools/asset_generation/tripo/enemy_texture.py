@@ -65,6 +65,21 @@ WAIST_Z = float(B["Spine"][2]) if "Spine" in B else float(B["Hips"][2]) + 0.05
 mw = mesh.matrix_world
 region_of_mat = [m.name.replace("Enemy_", "") for m in mesh.data.materials]
 
+# The head takes the male Agent's FaceUV (face_uv_map.py with his params): the enemies share his silhouette, so his painted
+# face master is the layout an enemy's face is drawn on (the Director, 2026-11-19), at half scale in the left square.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import face_uv_map as fm
+FACEUV = json.load(open(os.environ.get("ENEMY_FACEUV", "ASSETS/MODELS/official/painted/male_faceuv.json")))
+# The enemy's head is not where the Agent's is (the FID guard's: 2.0 cm higher, 1.3 cm forward): FaceUV moves by the offset between
+# the two nose tips, so the face's features land on the enemy's. The Agent's tip, measured on AGENT_MALE_LIGHT.glb at rest
+# (2026-11-19): the head's most forward point above 0.84 m within 5 cm of the middle.
+AGENT_NOSE = (-0.0040, -0.0684, 0.8965)
+_hv = [mw @ v.co for v in mesh.data.vertices if (mw @ v.co).z > 0.84 and abs((mw @ v.co).x) < 0.05]
+_nose = min(_hv, key=lambda c: c.y)
+FACEUV = dict(FACEUV, xc=FACEUV["xc"] + (_nose.x - AGENT_NOSE[0]), yc=FACEUV["yc"] + (_nose.y - AGENT_NOSE[1]),
+              z0=FACEUV["z0"] + (_nose.z - AGENT_NOSE[2]), z1=FACEUV["z1"] + (_nose.z - AGENT_NOSE[2]))
+print(TAG, "FaceUV moved by the nose", tuple(round(a - b, 4) for a, b in zip(tuple(_nose), AGENT_NOSE)))
+
 # --- UVs ---------------------------------------------------------------------------------------------------------------
 bm = bmesh.new()
 bm.from_mesh(mesh.data)
@@ -75,7 +90,10 @@ head_faces = set()
 for f in bm.faces:
     c = mw @ f.calc_center_median()
     if (region_of_mat[f.material_index] in ("skin", "hair") and c.z > NECK_Z) or c.z > NECK_Z + 0.035:
-        head_faces.add(f.index)
+        # a face below FaceUV's floor (the collar, the neck's base) is drawn in the body's square, never squeezed onto the edge
+        # and the neck under the jaw shares the jaw's texels on a cylinder: below the chin it is the body's too
+        if fm.uv(np.array([tuple(mw @ v.co) for v in f.verts]), FACEUV)[:, 1].min() >= 0.004 and c.z > _nose.z - 0.055:
+            head_faces.add(f.index)
 bm.to_mesh(mesh.data)
 bm.free()
 
@@ -91,17 +109,12 @@ bpy.ops.uv.smart_project(angle_limit=math.radians(72), island_margin=0.008, area
                          scale_to_bounds=True)
 bm = bmesh.from_edit_mesh(mesh.data)
 uv = bm.loops.layers.uv.verify()
-# The head takes the male Agent's FaceUV (face_uv_map.py with his params): the enemies share his silhouette, so his painted
-# face master is the layout an enemy's face is drawn on (the Director, 2026-11-19), at half scale in the left square.
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import face_uv_map as fm
-FACEUV = json.load(open(os.environ.get("ENEMY_FACEUV", "ASSETS/MODELS/official/painted/male_faceuv.json")))
 for f in bm.faces:
     if f.index in head_faces:
         P = np.array([[tuple(mw @ lo.vert.co) for lo in f.loops]], np.float64)
         U = fm.tri_uv(P, FACEUV)[0]
         for lo, (u, v) in zip(f.loops, U):
-            lo[uv].uv = (min(float(u), 0.999) * 0.5, float(v))      # a triangle across the back seam stays at the edge (hair)
+            lo[uv].uv = (min(float(u), 0.999) * 0.5, min(max(float(v), 0.004), 0.996))   # past the back seam / above the Agent's crown: the edge (hair)
     else:
         for lo in f.loops:
             u, v = lo[uv].uv
@@ -277,7 +290,7 @@ for _ in range(6):
 # the face: the Director's own 2048 x 2048 image on the male Agent's FaceUV layout (<master>_face.png beside the master), dropped
 # into the head square at half size; without it the head keeps the generated skin and hair, and that square is written out at
 # full size as the guide to draw the face on (<master>_face_guide.png)
-face_path = master_path.replace("_master.png", "_face.png")
+face_path = os.path.abspath(os.environ.get("ENEMY_FACE", master_path.replace("_master.png", "_face.png")))   # ENEMY_FACE: another file
 if os.path.exists(face_path):
     fimg = bpy.data.images.load(face_path)
     if tuple(fimg.size) != (W // 2 * 2, H * 2):
@@ -287,6 +300,12 @@ if os.path.exists(face_path):
     keep = ~((reg[:, : W // 2] == 0) | (reg[:, : W // 2] == 1) | (reg[:, : W // 2] < 0))   # the collar stays the shirt's
     face = f.reshape(H, 2, W // 2, 2, 3).mean((1, 3))
     hs[~keep] = face[~keep]
+    hs[hair[:, : W // 2]] = C["hair"]          # the crown: a face image that paints only the hairline band still gets a full crop
+    # the clamped edges (the back seam's column, the crown's row) are hair above the nape
+    m = FACEUV["margin"]
+    v_nape = m + (top - 0.081 - FACEUV["z0"]) / (FACEUV["z1"] - FACEUV["z0"]) * (1.0 - 2.0 * m)
+    hs[int(v_nape * H):, W // 2 - 10:] = C["hair"]
+    hs[H - 12:, :] = C["hair"]
     print(TAG, "face from", face_path)
     bpy.data.images.remove(fimg)
 else:

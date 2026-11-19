@@ -591,7 +591,7 @@ second body and the placeholder guards (`agent_live_enemy_white.glb`, §7) can r
 ### 12.12 The guard skinned on the Agent's skeleton (2026-11-19)
 
 The month's Tripo generation came without the parts split and without the auto-rig (no credits until December):
-`ASSETS/MODELS/sources/tripo_enemies/tripo_cop_male_no_rig.glb`, one mesh, 19 765 triangles, 1.0 m, no material. Laid over
+`ASSETS/MODELS/sources/tripo_enemies/FID/tripo_cop_male_no_rig.glb`, one mesh, 19 765 triangles, 1.0 m, no material. Laid over
 `MALE_AGENT_BASE` the silhouettes coincide front and side (the art was an edit of his image), so **`tools/asset_generation/tripo/
 enemy_skin_from_agent.py`** gives it the Agent's 65-joint armature and copies his skin weights to the nearest surface (4 influences,
 normalised): 10 971 vertices, none unweighted. The bank's `walk` plays on it in the four facings at the game camera with no tear
@@ -623,7 +623,7 @@ opening, the trousers' waistband and white side stripe, the crease, the shoes' s
 enemy_light.py are settled again per texel at the neck (the collar measured on the source: it stands 0.06-0.10 m out up to
 0.855 m and rises at the back), at the waist (the shirt's hem weighs on the hips bone) and at the wrists.
 
-- Master: `ASSETS/MODELS/official/painted/enemy_fid_male_master.png` (2048 x 1024); the GLB carries it at 1024 x 512.
+- Master: `ASSETS/MODELS/official/painted/ENEMIES/FID/enemy_fid_male_master.png` (2048 x 1024); the GLB carries it at 1024 x 512.
 - Face file: `ASSETS/MODELS/fit/FACE_PAINT_ENEMY_FID_MALE.blend` (the mesh at rest wearing the master by path: Image > Save writes the
   master). A rerun of enemy_texture.py KEEPS the master's head square (`ENEMY_TEX_FORCE=1` repaints it and loses the hand paint).
   The face goes into the GLB by rebuilding the chain from the source (`enemy_skin_from_agent.py` -> `enemy_light.py` ->
@@ -634,8 +634,8 @@ enemy_light.py are settled again per texel at the neck (the collar measured on t
 **The face (2026-11-19, later).** The head square now uses the male Agent's FaceUV (`face_uv_map.py`, `male_faceuv.json`): the enemies
 share his silhouette, so his painted `male_face_master.png` is the layout an enemy face is drawn on (test-fitted: his face on the
 guard lands eyes, nose and mouth in place). The Director draws the guard's face from it (Nano Banana, then by hand) as a 2048 x 2048
-`painted/enemy_fid_male_face.png`; `enemy_texture.py` drops it into the head square, replacing skin and hair only (the collar stays
-the shirt's). Without it the script writes `painted/enemy_fid_male_face_guide.png`. The Agent's master is bald (his hat covers it):
+`painted/ENEMIES/FID/enemy_fid_male_face.png`; `enemy_texture.py` drops it into the head square, replacing skin and hair only (the collar stays
+the shirt's). Without it the script writes `painted/ENEMIES/FID/enemy_fid_male_face_guide.png`. The Agent's master is bald (his hat covers it):
 an enemy face image must carry the hair too.
 
 **The face prompt (Nano Banana 2, 2026-11-19).** Input: the male Agent's `male_face_master.png` (2048 x 2048).
@@ -649,7 +649,7 @@ an enemy face image must carry the hair too.
 > part of the square the way a scalp unwrapped around the head would. Skin everywhere else, the same tone to every edge of the
 > image. No background, no border, no text, no shading of a 3D head: it must stay a flat texture map.
 
-**The face installed (2026-11-19).** The Director's face, `painted/ENEMIES/cop_male_face_master.jpg` (1024 x 1024, from the prompt
+**The face installed (2026-11-19).** The Director's face, `painted/ENEMIES/FID/cop_male_face_master.jpg` (1024 x 1024, from the prompt
 above), goes in with `ENEMY_FACE=<file>`. The guard's head is a little taller than the Agent's, so its crown lies past FaceUV's top:
 those texels are clamped to the square's top edge, and the edges (the crown's row, the back seam's column above the nape) and the
 generated crown are painted hair, so a face image that paints only the hairline band still gets a full crop.
@@ -657,3 +657,7 @@ generated crown are painted hair, so a face image that paints only the hairline 
 the Agent's: `enemy_texture.py` moves FaceUV by the offset between the two nose tips (the Agent's measured on AGENT_MALE_LIGHT.glb).
 The neck under the jaw shares the jaw's texels on a cylinder, so faces below the chin (nose - 5.5 cm) and below FaceUV's floor go to
 the body's square.
+
+**Where an enemy's files live (the Director, 2026-11-19): one folder per faction.** `ASSETS/MODELS/sources/tripo_enemies/<FACTION>/`
+(Tripo's raw generations) and `ASSETS/MODELS/official/painted/ENEMIES/<FACTION>/` (the face, the master, the guide); the FID's
+folder is `FID`.

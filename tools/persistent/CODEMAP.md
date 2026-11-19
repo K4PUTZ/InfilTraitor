@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**359 scripts · 103352 lines total** (under `godot/scripts/`)
+**359 scripts · 103364 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -423,7 +423,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 1341 lines
+`class_name ActorMesh3D` · extends `Node3D` · 1353 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -442,7 +442,7 @@ extends `ConfirmationDialog` · 64 lines
 - `HeadTurnRef` = `preload("res://godot/scripts/geometry/actor_head_turn3d.gd")`
 - `RIG_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"`
 - `RIG_BY_FAMILY` = `{ "": "agent_live.glb", ## The field officer (2026-11-08): the old agent's model, promoted when the Tripo figure became the agent. "_officer": "agent_live.glb", }`
-- `TRIPO_BY_FAMILY` = `{ "_enemy_white": {"figure": "male", "enemy": ["FID", "guard_male", "ENEMY_FID_MALE_LIGHT.glb"]},   ## ModelPaths.enemy(), game/ }`
+- `TRIPO_BY_FAMILY` = `{ "_enemy_white": {"figure": "male", "enemy": ["FID", "guard_male", "ENEMY_FID_MALE_LIGHT.glb"], "atlas": "enemy_fid_male_master.png"}, }`
 - `METRES_TO_UNITS` = `1.0 / 1.6`
 - `TripoFigureRef` = `preload("res://godot/scripts/geometry/tripo_figure.gd")`
 - `TRIPO_FIGURE_FLAG` = `"TRIPO_FIGURE"`

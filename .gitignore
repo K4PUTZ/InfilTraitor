@@ -224,6 +224,8 @@ ASSETS/MODELS/actors/**/source/*.jpg
 ASSETS/**/*.blend1
 ASSETS/**/*.blend2
 ASSETS/**/*.import
+# an enemy's painted atlas is read by the game itself (ActorMesh3D `atlas`): its import carries mipmaps + VRAM compression, so it is versioned
+!ASSETS/MODELS/actors/enemies/**/textures/*.png.import
 ASSETS/**/*.mp4
 ASSETS/**/*.mov
 ASSETS/**/*.wav

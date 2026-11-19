@@ -9,7 +9,8 @@ The paint is a function of each texel's position on the figure at rest (1 m tall
 reference sheet's details land on the right body part: the shirt's chest pockets with flaps, its button placket, epaulettes,
 collar and cuffs, the white undershirt at the collar's opening; the trousers' waistband and white side stripe; the shoes; the hair.
 
-The MASTER (2048 x 1024) goes to <master.png>; the GLB carries it at half size. The HEAD square uses the male Agent's FaceUV
+The MASTER (2048 x 1024) goes to <master.png>; the GLB carries it at half size. Once the master exists it is the Director's: a re-run keeps it and only rebuilds the GLB
+around it (ENEMY_TEX_FORCE=1 repaints it). The HEAD square uses the male Agent's FaceUV
 (face_uv_map.py), so the face is drawn on his master's layout: a 2048 x 2048 `<master>_face.png` beside the master is the face (the
 Director's, drawn from the Agent's `male_face_master.png`); without it a `<master>_face_guide.png` is written to draw on.
 
@@ -293,38 +294,49 @@ for _ in range(6):
 # the face: the Director's own 2048 x 2048 image on the male Agent's FaceUV layout (<master>_face.png beside the master), dropped
 # into the head square at half size; without it the head keeps the generated skin and hair, and that square is written out at
 # full size as the guide to draw the face on (<master>_face_guide.png)
-face_path = os.path.abspath(os.environ.get("ENEMY_FACE", master_path.replace("_master.png", "_face.png")))   # ENEMY_FACE: another file
-if os.path.exists(face_path):
-    fimg = bpy.data.images.load(face_path)
-    if tuple(fimg.size) != (W // 2 * 2, H * 2):
-        fimg.scale(W // 2 * 2, H * 2)
-    f = np.array(fimg.pixels[:], np.float32).reshape(H * 2, W, 4)[..., :3]
-    hs = img[:, : W // 2]
-    keep = ~((reg[:, : W // 2] == 0) | (reg[:, : W // 2] == 1) | (reg[:, : W // 2] < 0))   # the collar stays the shirt's
-    face = f.reshape(H, 2, W // 2, 2, 3).mean((1, 3))
-    hs[~keep] = face[~keep]
-    hs[hair[:, : W // 2]] = C["hair"]          # the crown: a face image that paints only the hairline band still gets a full crop
-    # the clamped edges (the back seam's column, the crown's row) are hair above the nape
-    m = FACEUV["margin"]
-    v_nape = m + (top - 0.081 - FACEUV["z0"]) / (FACEUV["z1"] - FACEUV["z0"]) * (1.0 - 2.0 * m)
-    hs[int(v_nape * H):, W // 2 - 10:] = C["hair"]
-    hs[H - 12:, :] = C["hair"]
-    print(TAG, "face from", face_path)
-    bpy.data.images.remove(fimg)
+# The MASTER is the Director's once it exists (2026-11-19): he edits it in Photoshop, Godot reimports it and the game reads it
+# (ActorMesh3D `atlas`); this script then only rebuilds the GLB around it. ENEMY_TEX_FORCE=1 repaints it, losing his edits.
+KEEP = os.path.exists(master_path) and not FORCE
+if KEEP:
+    _m = bpy.data.images.load(master_path)
+    if tuple(_m.size) != (W, H):
+        raise SystemExit(f"{TAG} {master_path}: {tuple(_m.size)}, expected {(W, H)}")
+    img = np.array(_m.pixels[:], np.float32).reshape(H, W, 4)[..., :3].copy()
+    bpy.data.images.remove(_m)
+    print(TAG, "kept the master (the Director's):", master_path)
 else:
-    g = bpy.data.images.new("guide", W, H * 2)
-    up = np.repeat(np.repeat(img[:, : W // 2], 2, 0), 2, 1)
-    g.pixels = np.concatenate([np.clip(up, 0, 1), np.ones((H * 2, W, 1), np.float32)], -1).ravel()
-    g.filepath_raw = master_path.replace("_master.png", "_face_guide.png"); g.file_format = "PNG"; g.save()
-    print(TAG, "no face yet; guide", g.filepath_raw)
+    face_path = os.path.abspath(os.environ.get("ENEMY_FACE", master_path.replace("_master.png", "_face.png")))   # ENEMY_FACE: another file
+    if os.path.exists(face_path):
+        fimg = bpy.data.images.load(face_path)
+        if tuple(fimg.size) != (W // 2 * 2, H * 2):
+            fimg.scale(W // 2 * 2, H * 2)
+        f = np.array(fimg.pixels[:], np.float32).reshape(H * 2, W, 4)[..., :3]
+        hs = img[:, : W // 2]
+        keep = ~((reg[:, : W // 2] == 0) | (reg[:, : W // 2] == 1) | (reg[:, : W // 2] < 0))   # the collar stays the shirt's
+        face = f.reshape(H, 2, W // 2, 2, 3).mean((1, 3))
+        hs[~keep] = face[~keep]
+        hs[hair[:, : W // 2]] = C["hair"]          # the crown: a face image that paints only the hairline band still gets a full crop
+        # the clamped edges (the back seam's column, the crown's row) are hair above the nape
+        m = FACEUV["margin"]
+        v_nape = m + (top - 0.081 - FACEUV["z0"]) / (FACEUV["z1"] - FACEUV["z0"]) * (1.0 - 2.0 * m)
+        hs[int(v_nape * H):, W // 2 - 10:] = C["hair"]
+        hs[H - 12:, :] = C["hair"]
+        print(TAG, "face from", face_path)
+        bpy.data.images.remove(fimg)
+    else:
+        g = bpy.data.images.new("guide", W, H * 2)
+        up = np.repeat(np.repeat(img[:, : W // 2], 2, 0), 2, 1)
+        g.pixels = np.concatenate([np.clip(up, 0, 1), np.ones((H * 2, W, 1), np.float32)], -1).ravel()
+        g.filepath_raw = master_path.replace("_master.png", "_face_guide.png"); g.file_format = "PNG"; g.save()
+        print(TAG, "no face yet; guide", g.filepath_raw)
 
-os.makedirs(os.path.dirname(master_path), exist_ok=True)
-im = bpy.data.images.new("enemy_master", W, H)
-im.pixels = np.concatenate([np.clip(img, 0, 1), np.ones((H, W, 1), np.float32)], -1).ravel()
-im.filepath_raw = master_path
-im.file_format = "PNG"
-im.save()
-print(TAG, "master", master_path)
+    os.makedirs(os.path.dirname(master_path), exist_ok=True)
+    im = bpy.data.images.new("enemy_master", W, H)
+    im.pixels = np.concatenate([np.clip(img, 0, 1), np.ones((H, W, 1), np.float32)], -1).ravel()
+    im.filepath_raw = master_path
+    im.file_format = "PNG"
+    im.save()
+    print(TAG, "master", master_path)
 
 # --- one material, the atlas at half size in the GLB ----------------------------------------------------------------------
 game = bpy.data.images.new("enemy_atlas", W // 2, H // 2)

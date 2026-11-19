@@ -661,3 +661,10 @@ the body's square.
 **Where an enemy's files live (the Director, 2026-11-19): one folder per faction.** `ASSETS/MODELS/props/tripo_enemies/<FACTION>/`
 (Tripo's raw generations) and `ASSETS/MODELS/actors/agent/<fig>/textures/ENEMIES/<FACTION>/` (the face, the master, the guide); the FID's
 folder is `FID`.
+
+**The master is the Director's (2026-11-19).** The game reads the guard's painted atlas itself
+(`actors/enemies/FID/guard_male/textures/enemy_fid_male_master.png`, `ActorMesh3D` `TRIPO_BY_FAMILY` `atlas`), replacing the copy
+inside the GLB, so his Photoshop save reaches the board when Godot reimports it (its `.import` is versioned: mipmaps + VRAM
+compression); Blender's paint file links the same PNG (Image > Reload). `enemy_texture.py` keeps an existing master and only
+rebuilds the GLB around it (`ENEMY_TEX_FORCE=1` repaints it and loses the edit). Proved on the board: the master inverted, the
+guards drew inverted; restored, normal. The cost: the script's rules (collar, stripe, pockets) are frozen in the PNG from now on.

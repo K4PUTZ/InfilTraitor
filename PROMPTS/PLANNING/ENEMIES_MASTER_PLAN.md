@@ -611,3 +611,22 @@ normalised): 10 971 vertices, none unweighted. The bank's `walk` plays on it in 
 - **Checked:** PLAYGROUND's nine guards boot on it with no error; capture `capture.py --map PLAYGROUND --still guard_7 --mode detail
   --view all` (the map's automatic `guard_<n>` anchors); `verify.py smoke` green. **Not measured:** the Moto with ten actors on two
   different Tripo bodies (the memory per distinct model, §7).
+
+### 12.14 The guard's painted texture (2026-11-19)
+
+The five flat region colours became one atlas painted from the reference sheet (`REFERENCES/ENEMIES/`), by
+`tools/asset_generation/tripo/enemy_texture.py` run on enemy_light.py's output. The atlas is 2:1: the LEFT square is the head on a
+cylindrical projection about the neck (the face upright and frontal at its centre, the seam down the back), for the Director to
+paint by hand; the RIGHT square is the body (smart projection). The paint is a function of each texel's position at rest, read
+from the bones: chest pockets with flaps, placket and buttons, epaulettes, collar, cuffs, the white undershirt at the collar's
+opening, the trousers' waistband and white side stripe, the crease, the shoes' soles, the hairline. The per-face regions of
+enemy_light.py are settled again per texel at the neck (the collar measured on the source: it stands 0.06-0.10 m out up to
+0.855 m and rises at the back), at the waist (the shirt's hem weighs on the hips bone) and at the wrists.
+
+- Master: `ASSETS/MODELS/official/painted/enemy_fid_male_master.png` (2048 x 1024); the GLB carries it at 1024 x 512.
+- Face file: `ASSETS/MODELS/fit/FACE_PAINT_ENEMY_FID_MALE.blend` (the mesh at rest wearing the master by path: Image > Save writes the
+  master). A rerun of enemy_texture.py KEEPS the master's head square (`ENEMY_TEX_FORCE=1` repaints it and loses the hand paint).
+  The face goes into the GLB by rebuilding the chain from the source (`enemy_skin_from_agent.py` -> `enemy_light.py` ->
+  `enemy_texture.py`; the intermediates live in `temp/`): the body is repainted, the head kept.
+- Seen on the board in four views (`capture.py --map PLAYGROUND --still guard_7 --mode detail --view all`). Not measured on the
+  Moto (one 1024 x 512 texture, below the 5 % rule).

@@ -546,3 +546,20 @@ Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bo
 Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
 No text, no labels, no numbers, no arrows, no measurements, no hands, no people.
 ```
+
+### 12.9 The Bunsen Burners' accessory sheet
+
+```
+Orthographic product reference sheet, a technical turnaround for 3D modeling. Portrait page, 6 rows, 2 columns.
+Each row is ONE object: its FRONT view in the left column, its SIDE view in the right column (the same object rotated 90 degrees, same scale, same vertical alignment). All six objects are drawn at the same real-world scale, relative to each other.
+Rows, top to bottom:
+1. Biker's leather vest, 44 cm wide, 55 cm tall, seen as worn but empty: worn brown leather, sleeveless, open at the front with no buttons, a turned-down collar, two small chest pockets; on the back a plain curved blank strip near the bottom hem (a bottom rocker with no text). Front view shows the open front, side view its profile.
+2. Bandana tied on the head as a skullcap, 20 cm across, 10 cm tall: brown cloth tight over the crown, a small knot at the back with two short tails. Empty, no head inside.
+3. Black leather biker belt laid out as a closed ring seen as worn, 34 cm wide, 4 cm tall: a heavy square steel buckle. Nothing attached to it.
+4. Wallet chain, 35 cm long: a heavy steel chain hanging in a loose U, a clip at one end and a small black leather wallet at the other.
+5. Knife in a brown leather belt sheath, 25 cm tall: a black handle showing above the sheath, a belt loop at the back.
+6. Pair of black fingerless leather gloves; draw ONE glove, back of the hand and side, fingers straight.
+Style: stylized low-poly game asset, flat-shaded facets, clean simple shapes, bold readable silhouette, solid flat colours with clearly separated material regions (brown leather, brown cloth, black leather, steel). No textures, no wear marks, no patches with symbols, no logos, no writing.
+Rendering: flat even studio lighting, no cast shadows, no reflections, plain light grey background, wide empty spacing between objects, nothing touching or overlapping.
+No text, no labels, no numbers, no arrows, no measurements, no hands, no people.
+```

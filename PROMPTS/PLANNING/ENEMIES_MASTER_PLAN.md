@@ -637,3 +637,14 @@ guard lands eyes, nose and mouth in place). The Director draws the guard's face 
 `painted/enemy_fid_male_face.png`; `enemy_texture.py` drops it into the head square, replacing skin and hair only (the collar stays
 the shirt's). Without it the script writes `painted/enemy_fid_male_face_guide.png`. The Agent's master is bald (his hat covers it):
 an enemy face image must carry the hair too.
+
+**The face prompt (Nano Banana 2, 2026-11-19).** Input: the male Agent's `male_face_master.png` (2048 x 2048).
+
+> Edit this image. It is a flat, unwrapped face texture for a 3D game character: keep it EXACTLY the same layout, the same square
+> size, the same flat front-facing projection, and every feature at the same position and size: eyes, eyebrows, nose, mouth, ears,
+> jawline, cheeks. Keep the same painted, soft stylised look and the same flat even lighting with no shadows from a light source.
+> Change only the person: a Black man in his thirties, dark brown skin (#8d5a3b), clean-shaven with no beard, no moustache and no
+> stubble, a calm stern expression, dark brown eyes, short black eyebrows. Add short black hair, a close crop with a clean straight
+> hairline, covering the whole top, the sides above the ears and the back of the head down to the nape, the hair filling the upper
+> part of the square the way a scalp unwrapped around the head would. Skin everywhere else, the same tone to every edge of the
+> image. No background, no border, no text, no shading of a 3D head: it must stay a flat texture map.

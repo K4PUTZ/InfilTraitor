@@ -418,7 +418,7 @@ Its accessories, later: the helmet with the goggles pushed up, the red-wine plat
 the grenade.
 
 **Result (2026-11-18): APPROVED ("Parece tudo certo").** Both bare as asked. Accepted as they came: the woman came out older and
-grey-haired instead of late twenties and dark-haired (more age range for the pool), and the trousers show belt loops. Her side faces
+grey-haired instead of late twenties and dark-haired (more age range for the pool), and the trousers show belt loops. The Director then made a YOUNGER, dark-haired version as asked; the older one may be kept as well (one more head). Her side faces
 right, as the FID woman's (Tripo's RIGHT slot); his shows his left side (LEFT slot).
 
 ### 12.5 The third model: the Bunsen Burners' Prospect (§4.1), BARE

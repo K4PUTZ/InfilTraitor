@@ -161,12 +161,17 @@ HEAD_Z = float(B["Head"][2])
 ky = np.clip((Z - NECK_Z) / (HEAD_Z - NECK_Z), 0.0, 1.0)
 rad = np.hypot(X - float(B["Neck"][0]), Y - (float(B["Neck"][1]) + (float(B["Head"][1]) - float(B["Neck"][1])) * ky))
 nth = np.arctan2(X - float(B["Neck"][0]), -(Y - float(B["Neck"][1])))
-COLLAR_TOP = NECK_Z + 0.035 + 0.02 * np.clip((np.abs(nth) - 0.9) / 0.8, 0.0, 1.0)   # it rises at the sides and back
+COLLAR_TOP = NECK_Z + 0.035 + 0.025 * np.clip((np.abs(nth) - 0.35) / 0.5, 0.0, 1.0)   # it rises at the sides and back
 upper = (reg == SH) | (reg == SK)
 reg[upper & (Z > COLLAR_TOP)] = SK                                  # the jaw and the neck above the collar
 zone = upper & (Z <= COLLAR_TOP) & (Z > NECK_Z - 0.04) & (rad < 0.09)
 reg[zone] = SH
-reg[zone & (np.abs(nth) < 0.35) & (Z > NECK_Z - 0.02) & (rad < 0.07)] = SK   # the collar's open front
+reg[zone & (NZ < -0.4) & (Z > NECK_Z + 0.02)] = SK                    # the jaw's underside, not the collar
+# the collar's open front is a narrow V between the two collar points (the Director, 2026-11-19): its apex where the points meet,
+# the white undershirt at its bottom, the neck's skin above; everything else round the neck is the collar
+V_APEX = NECK_Z - 0.012
+vmask = zone & (np.abs(nth) < 1.2) & (Z > V_APEX) & (np.abs(X - float(B["Neck"][0])) < np.minimum(0.002 + (Z - V_APEX) * 0.6, 0.024))
+reg[vmask] = SK
 # the waist: the shirt's hem weighs on the hips bone; above the trousers' top it is shirt, below it trousers
 trunk = ((reg == SH) | (reg == TR)) & (np.abs(X) < 0.105)
 reg[trunk & (Z > WAIST_Z + 0.008)] = SH
@@ -219,9 +224,8 @@ for side, arm_b in ((1.0, B["LeftArm"]), (-1.0, B["RightArm"])):
 # collar: the shirt above the neck's base, a little darker, with the undershirt's V at its opening
 collar = shirt & (Z > NECK_Z + 0.005) & (rad < 0.09)
 shade(collar, 0.9)
-vee = front & (reg != HA) & (Z > NECK_Z - 0.035) & (Z < NECK_Z + 0.01) & (AX_ < 0.004 + (Z - (NECK_Z - 0.035)) * 0.3) \
-    & (Y < float(B["Neck"][1]) - 0.015)
-put(vee & (reg == SH) | vee & (reg == SK) & (Z < NECK_Z), C["undershirt"])
+vee = (reg == SK) & (Z > V_APEX) & (Z < V_APEX + 0.022) & (np.abs(X - float(B["Neck"][0])) < 0.002 + (Z - V_APEX) * 0.6) & (NY < 0.0)
+put(vee, C["undershirt"])
 # cuffs: a band above each wrist, its upper edge a seam
 for hb, fb in ((B["LeftHand"], B["LeftForeArm"]), (B["RightHand"], B["RightForeArm"])):
     axis = (hb - fb) / np.linalg.norm(hb - fb)
@@ -253,7 +257,7 @@ head = (reg == SK) | (reg == HA)
 th = np.arctan2(X - float(B["Head"][0]), -(Y - float(B["Head"][1])))
 line = top - 0.036 - 0.045 * (1.0 - np.cos(th)) / 2.0
 hair = head & (Z > line)
-img[head] = C["skin"]
+img[head & ~vee] = C["skin"]
 put(hair, C["hair"])
 
 # subtle low-frequency cloth variation (the reference's faceted panels) on the clothes only

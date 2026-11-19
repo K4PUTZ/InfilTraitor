@@ -459,3 +459,42 @@ Full body from head to toes, nothing cropped. No text, no labels, no other peopl
 
 Its accessories, later: the brown leather vest with the Prospect's bottom rocker (the emblem a decal, `ACTOR` D90), the bandana,
 the wallet chain, the knife.
+
+**Result (2026-11-18): APPROVED ("Parece tudo ok").** Both bare; accepted as they came: the man's henley is untucked, the boots
+read as low ones. Her side faces right (Tripo's RIGHT slot), his shows his left side (LEFT).
+
+### 12.6 The fourth model: the Corporation's Operative (§4.1), BARE
+
+The suit jacket is a slot piece (`COSMETICS` §8.2 `jacket`), so it comes with the accessories; the bare model is the shirt, the dress
+trousers and the shoes. The Corporation wears no headgear, so the hair is free. The FRONT, with `MaleNoCoatFront.png`:
+
+```
+Edit this image. Keep EXACTLY the same body, proportions, height, pose (the same A-pose: arms slightly away from the body, hands open and relaxed), camera angle, framing, lighting, white background and art style (stylized low-poly game character: bold simple shapes, flat-shaded facets, clean solid colours). Change ONLY the clothes and the head, as described below.
+
+The new man: a private security operative of a fictional corporation. Late twenties, a lean clean-cut face, East Asian features, light skin, short neat black hair parted at the side, clean-shaven, a cold, composed expression with the mouth closed.
+
+His basic clothes, and nothing else:
+- Shirt: a dark purple dress shirt with long sleeves buttoned at the wrists, a pointed collar buttoned up to the neck, no tie, neatly tucked in.
+- Trousers: black slim dress trousers with a sharp crease, a plain smooth waistband with no belt.
+- Shoes: black polished dress shoes.
+
+No suit jacket, no coat, no tie, no sunglasses, no earpiece, no gloves, no belt, no holster, no watch, no jewellery, no backpack, no weapon. Hands empty.
+Each material a clearly separated solid colour region (purple cloth, black cloth, black leather, skin, hair). No writing, no badges, no logos, no dirt, no fabric pattern.
+Full body from head to toes, centred, nothing cropped. No text, no labels, no arrows, no other people, no props, no shadow on the floor.
+```
+
+For the woman, with `femaleNoCoatFront.png` ("Her basic clothes"):
+
+```
+The new woman: a private security operative of a fictional corporation. Mid-thirties, a sharp composed face, dark-brown skin, black hair in a sleek chin-length bob, a cold, composed expression with the mouth closed.
+```
+
+The SIDE, with the side reference FIRST and the new front second (for the woman: "woman", "her", and her bob):
+
+```
+Edit the first image (a side view). Keep EXACTLY its body, proportions, pose, camera angle, framing, lighting, white background and art style. Replace the clothes and the head with those of the man in the second image (the same man seen from the front): the same face, neat black hair and skin, the same dark purple long-sleeved dress shirt buttoned to the neck and tucked in, the same black dress trousers with a plain waistband and no belt, the same black dress shoes, in the same colours, now seen from the side.
+No suit jacket, no tie, no sunglasses, no earpiece, no belt, no backpack, no weapon. Hands empty.
+Full body from head to toes, nothing cropped. No text, no labels, no other people, no shadow on the floor.
+```
+
+Its accessories, later: the black suit jacket (it hides the pistol), the sunglasses, the coiled earpiece, the hidden holster.

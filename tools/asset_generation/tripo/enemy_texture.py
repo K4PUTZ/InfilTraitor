@@ -402,5 +402,12 @@ if paint_blend:
     for (mat, tex), path in zip(mats, (head_path, body_path)):
         tex.image = bpy.data.images.load(path)                  # by path: Image > Save writes the map
     arm.data.pose_position = "REST"
+    # the head and the uniform as two objects (one per map), so either is hidden or painted on its own
+    bpy.ops.object.select_all(action="DESELECT")
+    mesh.select_set(True)
+    bpy.context.view_layer.objects.active = mesh
+    bpy.ops.mesh.separate(type="MATERIAL")
+    for ob in [o for o in bpy.data.objects if o.type == "MESH"]:
+        ob.name = "Head" if ob.active_material and ob.active_material.name == "Enemy_head" else "Body"
     bpy.ops.wm.save_as_mainfile(filepath=paint_blend)
     print(TAG, "paint file", paint_blend)

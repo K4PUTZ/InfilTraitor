@@ -712,3 +712,7 @@ head (below the chin or near the axis, whichever way a face looks), so which nea
 that stay on the band keep their texels exactly (0 texel shift measured) and the paint in it stays put. Rebuilt with
 `ENEMY_NO_CARRY=1`: a carry would have copied the band's brown over the painted jaw. A test build to another path must also set it
 (that path's GLB from an earlier test is the "old layout" the carry reads, and the maps are rewritten).
+
+**Open at the close of 2026-11-20:** the Director, after the jaw fix: "de novo o problema é a projeção", without saying where. The
+measured candidates (downward faces still on FaceUV, the nose's underside and the mouth's slit; the band's seam under the jaw; the
+jaw's stretched sides; FaceUV's single axis 6 mm behind the throat) are in `PROMPTS/RESUMO_SESSAO_2026-11-20_GUARD_HEAD_MAP.md`.

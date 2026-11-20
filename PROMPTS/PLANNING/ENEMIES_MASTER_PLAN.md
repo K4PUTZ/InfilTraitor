@@ -716,3 +716,27 @@ that stay on the band keep their texels exactly (0 texel shift measured) and the
 **Open at the close of 2026-11-20:** the Director, after the jaw fix: "de novo o problema é a projeção", without saying where. The
 measured candidates (downward faces still on FaceUV, the nose's underside and the mouth's slit; the band's seam under the jaw; the
 jaw's stretched sides; FaceUV's single axis 6 mm behind the throat) are in `PROMPTS/RESUMO_SESSAO_2026-11-20_GUARD_HEAD_MAP.md`.
+He named it the same evening: the abrupt cut under the chin (the next paragraph).
+
+**The neck hangs below the jaw line; the band is retired (2026-11-20, later; the Director: "a imagem está correta, mas não existem os
+polígonos certos mapeados").** His map paints the skin under the jaw's outline, and no triangle read it (four test spots painted
+there showed nowhere on the head), while the jaw's underside and the neck read a band at the map's foot: the paint stopped dead
+along the jaw. `enemy_texture.py` (`_neck_layout`) now unrolls the neck DOWNWARD FROM THE SEAM it shares with the face. The seam's
+vertices (the jaw's lower border, then round the nape) keep their FaceUV texels on both sides, so the paint crosses it. The seam
+must run one way across the map: where it turns back, the face triangle wedged into the neck there (two of its sides on the seam)
+joins the neck (two on the guard: the neck's side under each jaw angle, normals' z -0.29). Round the neck, the vertices come from
+a Tutte embedding with mean-value weights (the seam at its u, the open foot at the seam's u for the same angle round the neck's
+axis, the cut down the nape on the map's two edges). Down the neck, a vertex hangs below the seam's curve at its own u by its
+distance from the seam, at FaceUV's own height scale where it leaves the seam and squeezed toward the map's foot below (the
+collar hides the lower neck): `v = 0.004 + A exp(-K d / A)`, `A` the seam's v at that u minus 0.004, `K` FaceUV's v per metre.
+A vertex that still turns a triangle over moves into its ring's kernel. The build FAILS LOUDLY when the neck is not one annulus
+under one seam, when the seam turns back with no triangle to absorb, or when a neck triangle stays turned over or covers another
+(the head map's other overlaps, FaceUV's own folds under the nose and in the ears, are not this rule's). Measured on the guard:
+seam 17 vertices, 2 triangles absorbed, 3 vertices moved, the neck on 154 845 texels (the band had 32 636, 672 of them doubly
+covered), 0 overlaps, every other FaceUV triangle unchanged to the bit. Dot test (`temp/enemies/neck_hang/`): the four spots
+under the jaw now land under the jaw; the red, blue and green ones stay where they were. Rebuilt with `ENEMY_NO_CARRY=1` (the
+maps already hold the paint; a carry would have copied the band's brown into the area under the jaw); head and body maps
+untouched (md5); `verify.py smoke` green; the board draws him in all four views. What is left: the lower neck reads the map's
+bottom rows squeezed, so the skin's grain shows as fine vertical streaks in the collar's V; the band's old area at the map's foot
+is now the hidden lower neck. The UV guide for the PSD (`work/enemy_fid_male_head_uv_guide.png`, cyan FaceUV, orange the neck) is
+redrawn on this layout; the one inside his PSD is still the old layout.

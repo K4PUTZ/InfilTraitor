@@ -24,10 +24,12 @@ paint.blend: a file for hand painting, the mesh at rest wearing the master by pa
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
 import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
+import heapq
 import json
 import math
 import os
 import sys
+from collections import defaultdict
 
 import bmesh
 import bpy
@@ -128,8 +130,7 @@ bm.faces.ensure_lookup_table()
 uv = bm.loops.layers.uv.verify()
 # The HEAD map holds Tripo's head piece, whole (its faces are skin or hair, enemy_light.py), and nothing else; the body map the
 # rest (2026-11-20). Its neck below the chin and the jaw's underside fall on the face's own texels on FaceUV's cylinder (the
-# streaks of 2026-11-19), so they get a band of their own at the bottom of the head map: the same angle, the height along the
-# neck squeezed below the face.
+# streaks of 2026-11-19), so they leave FaceUV and hang below the jaw line instead (_neck_layout, below).
 CHIN_Z = _nose.z - 0.055
 # FaceUV's axis runs just behind the throat (the guard's at y -0.022, the neck's front at -0.028): a face within a few centimetres
 # of it that looks DOWN, the jaw's underside, is a sliver across a third of the map's width and shows as a flat triangle without
@@ -139,7 +140,7 @@ CHIN_Z = _nose.z - 0.055
 # -0.58. The chin's front and the lips start at 4.3 cm and stay on FaceUV.
 NEAR_AXIS = 0.042
 UNDER_JAW_NZ = -0.7
-head_faces, neck_faces, lower_faces = set(), set(), set()
+head_faces, neck_faces = set(), set()
 for f in bm.faces:
     if mat_of[f.material_index] not in ("skin", "hair"):
         continue
@@ -149,8 +150,6 @@ for f in bm.faces:
     nz = (p1 - p0).cross(p2 - p0).normalized().z
     # measured from the face's midline (the nose's x), not FaceUV's axis 4 mm aside, so both sides of the chin cut alike
     near = math.hypot(c.x - _nose.x, c.y - FACEUV["yc"]) < NEAR_AXIS and c.z < _nose.z - 0.03
-    if c.z < CHIN_Z or near:
-        lower_faces.add(f.index)
     if c.z < CHIN_Z or (near and nz < UNDER_JAW_NZ):   # never every downward face under the nose: the lips' and the chin's undersides are seen
         neck_faces.add(f.index)
 bm.to_mesh(mesh.data)
@@ -168,36 +167,298 @@ bpy.ops.uv.smart_project(angle_limit=math.radians(72), island_margin=0.008, area
                          scale_to_bounds=True)
 bm = bmesh.from_edit_mesh(mesh.data)
 uv = bm.loops.layers.uv.verify()
-face_v_min = 1.0
-for f in bm.faces:
-    if f.index in head_faces and f.index not in neck_faces:
-        P = np.array([[tuple(mw @ lo.vert.co) for lo in f.loops]], np.float64)
-        face_v_min = min(face_v_min, float(fm.tri_uv(P, FACEUV)[0][:, 1].min()))
-NECK_TOP = max(face_v_min - 0.012, 0.05)
-# The band is unrolled about the NECK's own axis (between the Neck and Head bones), far from every face it holds, and its height
-# runs along the profile, up the neck and then out under the jaw (z plus the distance from that axis), so the jaw's underside is
-# a strip and not a line.
-NECK_AXIS = dict(FACEUV, xc=float(B["Neck"][0] + B["Head"][0]) / 2.0, yc=float(B["Neck"][1] + B["Head"][1]) / 2.0)
+VB = 0.004                                                              # the head square's foot (FaceUV's own clamp)
+K_V = (1.0 - 2.0 * FACEUV["margin"]) / (FACEUV["z1"] - FACEUV["z0"])    # FaceUV's v per metre of height
+NECK_AXIS = (float(B["Neck"][0] + B["Head"][0]) / 2.0, float(B["Neck"][1] + B["Head"][1]) / 2.0)
 
 
-def _profile(P: np.ndarray) -> np.ndarray:
-    return P[..., 2] + fm.radius(P, NECK_AXIS)
+def _face_uv(P: np.ndarray) -> np.ndarray:
+    """FaceUV of triangles P (T, 3, 3) as a face's loops get it: past the back seam / above the Agent's crown, the edge (hair)"""
+    U = fm.tri_uv(P, FACEUV)
+    U[..., 0] = np.minimum(U[..., 0], 0.999)
+    U[..., 1] = np.clip(U[..., 1], VB, 0.996)
+    return U
 
 
-# The band's height range is the profile's over the whole lower head (below the chin or near the axis, whichever way a face looks),
-# not over the faces it holds: which near faces join it never rescales it, so the Director's paint in it stays put (2026-11-20).
-_np = np.array([[tuple(mw @ lo.vert.co) for lo in f.loops] for f in bm.faces if f.index in lower_faces], np.float64)
-S0, S1 = (float(_profile(_np).min()), float(_profile(_np).max())) if len(_np) else (0.0, 1.0)
+def _winding(U: np.ndarray) -> float:
+    (ax, ay), (bx, by), (cx, cy) = U
+    return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+
+
+def _neck_layout(head_faces: set, neck_faces: set):
+    """The neck HANGS BELOW THE JAW LINE on the head map (2026-11-20, the Director: "a imagem está correta, mas não existem os
+    polígonos certos mapeados"). His map paints the skin under the jaw's outline, where no triangle read it, while the jaw's
+    underside and the neck were drawn on a band of their own at the map's foot: the paint stopped dead along the jaw on the
+    model. Now the neck is one piece with the face. The vertices of the seam between them (the jaw's lower border, then round
+    the nape) keep their FaceUV texels on both sides, and the neck unrolls downward from that line into the painted area:
+    - the seam must run one way across the map; where it turns back, the face triangle wedged into the neck there (two of its
+      sides on the seam) joins the neck (on the guard: the neck's side under each jaw angle);
+    - round the neck, a Tutte embedding with mean-value weights: the seam at its FaceUV u, the neck's open foot at the u the
+      seam has at the same angle round the neck's axis, the cut down the nape on the map's two edges;
+    - down the neck, a vertex hangs below the seam's curve at its own u by its distance from the seam in metres: FaceUV's own
+      height scale where it leaves the seam, squeezed toward the map's foot below (the collar hides the lower neck),
+      v = VB + A exp(-K_V d / A), A = the seam's v at that u minus VB;
+    - a vertex that still turns a triangle over moves to the nearest point from which its whole ring is seen.
+    Returns {face index: (3, 2) uv in head-square units} and the faces that joined the neck. Fails loudly when the neck is not
+    an annulus under one seam, or when a triangle stays turned over or overlaps another."""
+    neck = set(neck_faces)
+    wid, pts = {}, []
+    tri = {}
+    for f in bm.faces:                       # the import splits vertices: weld them by position to read the topology
+        if f.index not in head_faces:
+            continue
+        t = []
+        for lo in f.loops:
+            k = tuple(round(c, 6) for c in (mw @ lo.vert.co))
+            if k not in wid:
+                wid[k] = len(pts)
+                pts.append(k)
+            t.append(wid[k])
+        tri[f.index] = tuple(t)
+    X = np.array(pts, np.float64)
+    fuv = {fi: _face_uv(X[np.array(t)][None])[0] for fi, t in tri.items()}
+    e2f = defaultdict(list)
+    for fi, t in tri.items():
+        for a, b in ((t[0], t[1]), (t[1], t[2]), (t[2], t[0])):
+            e2f[(min(a, b), max(a, b))].append(fi)
+
+    def seam_of(nk: set):
+        """the seam as an ordered loop starting on FaceUV's back seam, u increasing; its uv (both ends: the start vertex)"""
+        S = [e for e, fs in e2f.items() if len(fs) == 2 and ((fs[0] in nk) != (fs[1] in nk))]
+        adj = defaultdict(list)
+        for a, b in S:
+            adj[a].append(b)
+            adj[b].append(a)
+        if not adj or any(len(n) != 2 for n in adj.values()):
+            raise SystemExit(f"{TAG} the neck's seam with the face is not one simple loop")
+        loop, prev = [S[0][0]], None
+        while True:
+            nxt = [n for n in adj[loop[-1]] if n != prev][0]
+            if nxt == loop[0]:
+                break
+            prev = loop[-1]
+            loop.append(nxt)
+        if len(loop) != len(adj):
+            raise SystemExit(f"{TAG} the neck's seam with the face is more than one loop")
+        cu = defaultdict(list)
+        for fi, t in tri.items():
+            if fi not in nk:
+                for k, w in enumerate(t):
+                    cu[w].append(fuv[fi][k])
+        spread = [np.ptp(np.array(cu[w])[:, 0]) for w in loop]
+        if max(spread) < 0.5:
+            raise SystemExit(f"{TAG} no vertex of the neck's seam lies on FaceUV's back seam")
+        i0 = int(np.argmax(spread))
+        loop = loop[i0:] + loop[:i0]
+        if np.array(cu[loop[1]])[:, 0].min() > np.array(cu[loop[-1]])[:, 0].min():
+            loop = [loop[0]] + loop[1:][::-1]
+        c0 = np.array(cu[loop[0]])
+        lo_, hi_ = c0[np.argmin(c0[:, 0])], c0[np.argmax(c0[:, 0])]
+        suv = np.array([lo_] + [cu[w][0] for w in loop[1:]] + [hi_], np.float64)
+        return loop, suv
+
+    absorbed = []
+    for _ in range(64):
+        loop, suv = seam_of(neck)
+        seq = loop + [loop[0]]
+        ear = None
+        for i in range(1, len(seq) - 1):
+            ua, ub, uc = suv[i - 1, 0], suv[i, 0], suv[i + 1, 0]
+            if (ub - ua) * (uc - ub) < 0:
+                ear = next((fi for fi, t in tri.items() if fi not in neck and set(t) == {seq[i - 1], seq[i], seq[i + 1]}), None)
+                if ear is not None:
+                    break
+        if ear is None:
+            break
+        neck.add(ear)
+        absorbed.append(ear)
+    loop, suv = seam_of(neck)
+    if not np.all(np.diff(suv[:, 0]) > 0):
+        raise SystemExit(f"{TAG} the neck's seam turns back across the map with no face to absorb: u {np.round(suv[:, 0], 3).tolist()}")
+    start, seam = loop[0], set(loop)
+    uL, uR, v0 = float(suv[0, 0]), float(suv[-1, 0]), float(suv[0, 1])
+    # the neck must be one annulus under the seam: Euler characteristic 0, one piece, an open foot
+    nv = set(w for fi in neck for w in tri[fi])
+    ne = set(e for fi in neck for e in ((min(tri[fi][0], tri[fi][1]), max(tri[fi][0], tri[fi][1])),
+                                         (min(tri[fi][1], tri[fi][2]), max(tri[fi][1], tri[fi][2])),
+                                         (min(tri[fi][2], tri[fi][0]), max(tri[fi][2], tri[fi][0]))))
+    foot = set(w for e, fs in e2f.items() if len(fs) == 1 and fs[0] in neck for w in e)
+    if len(nv) - len(ne) + len(neck) != 0 or not foot:
+        raise SystemExit(f"{TAG} the neck is not an annulus under the seam (chi {len(nv) - len(ne) + len(neck)}, foot {len(foot)})")
+    nadj = defaultdict(set)
+    for fi in neck:
+        t = tri[fi]
+        for a, b in ((t[0], t[1]), (t[1], t[2]), (t[2], t[0])):
+            nadj[a].add(b)
+            nadj[b].add(a)
+    # the cut: from the seam's back vertex down the nape to the foot, close to the back's midline
+    x0 = X[start, 0]
+    dist, prev, pq, end = {start: 0.0}, {}, [(0.0, start)], None
+    while pq:
+        dd, w = heapq.heappop(pq)
+        if dd > dist[w]:
+            continue
+        if w in foot:
+            end = w
+            break
+        for n in nadj[w]:
+            if n in seam:
+                continue
+            c = dd + float(np.linalg.norm(X[n] - X[w])) + 2.0 * abs(X[n, 0] - x0)
+            if c < dist.get(n, 1e9):
+                dist[n], prev[n] = c, w
+                heapq.heappush(pq, (c, n))
+    if end is None:
+        raise SystemExit(f"{TAG} no path down the nape from the seam to the neck's foot")
+    cut = [end]
+    while cut[-1] != start:
+        cut.append(prev[cut[-1]])
+    cut.reverse()
+    cutset = set(cut[1:])
+    side = {fi: int(X[np.array(tri[fi])].mean(0)[0] > x0) for fi in neck}     # 0: the figure's right, u from uL; 1: its left, u to uR
+    # pinned (t, s): the seam on top, the cut on the map's edges, the foot at the seam's u for the same angle round the neck
+    def phi(p):
+        return math.degrees(math.atan2(p[0] - NECK_AXIS[0], -(p[1] - NECK_AXIS[1])))
+    sp = np.array([phi(X[w]) for w in loop[1:]])
+    o = np.argsort(sp)
+    PHI = np.concatenate([[-180.0], sp[o], [180.0]])
+    UPH = np.maximum.accumulate(np.concatenate([[uL], suv[1:-1, 0][o], [uR]]))
+    arc = np.cumsum([0.0] + [float(np.linalg.norm(X[a] - X[b])) for a, b in zip(cut[:-1], cut[1:])])
+    arc /= arc[-1]
+    pin = {}
+    for k, w in enumerate(loop[1:], 1):
+        pin[(w, 0)] = pin[(w, 1)] = (suv[k, 0], 0.0)
+    pin[(start, 0)], pin[(start, 1)] = (uL, 0.0), (uR, 0.0)
+    for w, s in zip(cut[1:], arc[1:]):
+        pin[(w, 0)], pin[(w, 1)] = (uL, float(s)), (uR, float(s))
+    for w in foot:
+        if (w, 0) not in pin:
+            pin[(w, 0)] = pin[(w, 1)] = (float(np.interp(phi(X[w]), PHI, UPH)), 1.0)
+    free = sorted(w for w in nv if (w, 0) not in pin)
+    ix = {w: i for i, w in enumerate(free)}
+    A = np.zeros((len(free), len(free)))
+    rhs = np.zeros((len(free), 2))
+    for fi in neck:
+        t = tri[fi]
+        for k in range(3):
+            i, j, l = t[k], t[(k + 1) % 3], t[(k + 2) % 3]
+            if i not in ix:
+                continue
+            for a, b in ((j, l), (l, j)):            # edge i-a, the angle at i between a and b
+                e1, e2 = X[a] - X[i], X[b] - X[i]
+                ang = math.acos(float(np.clip(e1 @ e2 / (np.linalg.norm(e1) * np.linalg.norm(e2)), -1.0, 1.0)))
+                wgt = math.tan(ang / 2.0) / float(np.linalg.norm(e1))
+                A[ix[i], ix[i]] += wgt
+                if a in ix:
+                    A[ix[i], ix[a]] -= wgt
+                else:
+                    rhs[ix[i]] += wgt * np.array(pin[(a, side[fi])])
+    TS = np.linalg.solve(A, rhs) if free else np.zeros((0, 2))
+    seg_a = np.array([X[w] for w in loop])
+    seg_b = np.roll(seg_a, -1, 0)
+
+    def hang(u: float, p: np.ndarray) -> float:
+        ab = seg_b - seg_a
+        tt = np.clip(((p - seg_a) * ab).sum(1) / np.maximum((ab * ab).sum(1), 1e-18), 0.0, 1.0)
+        d = float(np.linalg.norm(seg_a + tt[:, None] * ab - p, axis=1).min())
+        top = max(float(np.interp(u, suv[:, 0], suv[:, 1])) - VB, 1e-4)
+        return VB + top * math.exp(-K_V * d / top)
+
+    out = {}
+    for fi in neck:
+        row = []
+        for w in tri[fi]:
+            if w == start:
+                row.append((uL if side[fi] == 0 else uR, v0))
+            elif w in seam:
+                row.append(tuple(suv[loop.index(w)]))
+            elif w in cutset:
+                u = uL if side[fi] == 0 else uR
+                row.append((u, hang(u, X[w])))
+            else:
+                u = float(TS[ix[w], 0]) if w in ix else pin[(w, 0)][0]
+                row.append((u, hang(u, X[w])))
+        out[fi] = np.array(row, np.float64)
+    # the winding the face's triangles have on the map; a neck triangle turned the other way moves its free vertex into its ring
+    sign = 1.0 if sum(_winding(fuv[fi]) > 0 for fi in tri if fi not in neck) * 2 > len(tri) - len(neck) else -1.0
+
+    def clip(poly, a, b, margin):
+        n = np.array([-(b - a)[1], (b - a)[0]]) * sign
+        n /= max(float(np.linalg.norm(n)), 1e-12)
+        kept = []
+        for i in range(len(poly)):
+            p, q = poly[i], poly[(i + 1) % len(poly)]
+            dp, dq = float((p - a) @ n) - margin, float((q - a) @ n) - margin
+            if dp >= 0:
+                kept.append(p)
+            if (dp >= 0) != (dq >= 0):
+                kept.append(p + (q - p) * (dp / (dp - dq)))
+        return kept
+
+    moved = []
+    for _ in range(10):
+        bad = [fi for fi in neck if _winding(out[fi]) * sign <= 1e-9]
+        if not bad:
+            break
+        for fi in bad:
+            if _winding(out[fi]) * sign > 1e-9:
+                continue
+            for w in sorted((w for w in tri[fi] if w not in seam and w not in cutset), key=lambda w: w in foot):
+                ring = [(fj, tri[fj].index(w)) for fj in neck if w in tri[fj]]
+                poly = [np.array(p, np.float64) for p in ((-1.0, -1.0), (2.0, -1.0), (2.0, 2.0), (-1.0, 2.0))]
+                for fj, k in ring:
+                    poly = clip(poly, out[fj][(k + 1) % 3], out[fj][(k + 2) % 3], 0.002)
+                    if len(poly) < 3:
+                        break
+                if len(poly) < 3:
+                    continue
+                P = np.array(poly)
+                cur = out[fi][tri[fi].index(w)].copy()
+                best = min((P[i] + np.clip((cur - P[i]) @ (P[(i + 1) % len(P)] - P[i]) /
+                                           max(float((P[(i + 1) % len(P)] - P[i]) @ (P[(i + 1) % len(P)] - P[i])), 1e-12), 0.0, 1.0)
+                            * (P[(i + 1) % len(P)] - P[i]) for i in range(len(P))), key=lambda c: float(np.linalg.norm(c - cur)))
+                best = best + 0.15 * (P.mean(0) - best)
+                for fj, k in ring:
+                    out[fj][k] = best
+                moved.append(w)
+                break
+    bad = [fi for fi in neck if _winding(out[fi]) * sign <= 1e-9]
+    if bad:
+        raise SystemExit(f"{TAG} {len(bad)} neck triangles stay turned over on the head map: {bad}")
+    # nothing of the neck may cover another triangle of the head map (FaceUV's own folds, the nose's underside, are not this one's)
+    N = 1024
+    cover = {0: np.zeros((N, N), np.int16), 1: np.zeros((N, N), np.int16)}
+    for fi in tri:
+        Pq = (out[fi] if fi in neck else fuv[fi]) * N
+        x_0, y_0 = np.floor(Pq.min(0)).astype(int)
+        x_1, y_1 = np.ceil(Pq.max(0)).astype(int)
+        xs, ys = np.meshgrid(np.arange(max(x_0, 0), min(x_1, N - 1) + 1) + 0.5, np.arange(max(y_0, 0), min(y_1, N - 1) + 1) + 0.5)
+        (ax, ay), (bx, by), (cx, cy) = Pq
+        den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy)
+        if abs(den) < 1e-9:
+            continue
+        l0 = ((by - cy) * (xs - cx) + (cx - bx) * (ys - cy)) / den
+        l1 = ((cy - ay) * (xs - cx) + (ax - cx) * (ys - cy)) / den
+        inside = (l0 > 0.02) & (l1 > 0.02) & (1.0 - l0 - l1 > 0.02)
+        cover[int(fi in neck)][ys[inside].astype(int), xs[inside].astype(int)] += 1
+    over = int(((cover[1] > 1) | ((cover[1] > 0) & (cover[0] > 0))).sum())
+    if over:
+        raise SystemExit(f"{TAG} the neck overlaps the head map on {over} texels")
+    print(TAG, f"neck below the jaw line: seam {len(loop)} vertices, {len(absorbed)} face triangles joined the neck, cut "
+          f"{len(cut)} vertices down the nape, {len(moved)} vertices moved into their ring, {int((cover[1] > 0).sum())} texels")
+    return out, absorbed
+
+
+NECK_UV, _absorbed = _neck_layout(head_faces, neck_faces)
+neck_faces |= set(_absorbed)
 for f in bm.faces:
     if f.index in head_faces:
-        P = np.array([[tuple(mw @ lo.vert.co) for lo in f.loops]], np.float64)
         if f.index in neck_faces:
-            U = fm.tri_uv(P, NECK_AXIS)[0]
-            U[:, 1] = 0.004 + (_profile(P[0]) - S0) / max(S1 - S0, 1e-6) * (NECK_TOP - 0.004)
+            U = NECK_UV[f.index]
         else:
-            U = fm.tri_uv(P, FACEUV)[0]
+            U = _face_uv(np.array([[tuple(mw @ lo.vert.co) for lo in f.loops]], np.float64))[0]
         for lo, (u, v) in zip(f.loops, U):
-            lo[uv].uv = (min(float(u), 0.999) * 0.5, min(max(float(v), 0.004), 0.996))   # past the back seam / above the Agent's crown: the edge (hair)
+            lo[uv].uv = (min(float(u), 0.999) * 0.5, min(max(float(v), VB), 0.996))
     else:
         for lo in f.loops:
             u, v = lo[uv].uv

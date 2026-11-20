@@ -2,7 +2,8 @@
 
 A generation without its own textures (the first guard, 2026-11-19) takes one palette colour per body region, each region a
 material of its own (`ActorMesh3D._apply_board_light` reads a material's albedo). The region of a face is the bone that weighs
-most on it: head = skin (its top and back = hair), torso and arms = shirt, hips and legs = trousers, feet = shoes.
+most on it: torso and arms = shirt, hips and legs = trousers, feet = shoes, hands = hands (skin's colour); Tripo's head piece
+is skin (its top and back = hair), whole, down to the neck's base inside the collar.
 
     Blender -b -P enemy_light.py -- <rigged.glb> <out.glb> <palette.json> [target_tris]
 
@@ -25,6 +26,46 @@ mesh = next(o for o in bpy.context.scene.objects if o.type == "MESH")
 for a in list(bpy.data.actions):
     bpy.data.actions.remove(a)
 armature.data.pose_position = "REST"
+
+# The HEAD PIECE (2026-11-20, the Director): Tripo models the head and neck as a loose piece of their own, the eyes as two more
+# inside it. It is the head, whole, down to the neck's base inside the collar: its faces are skin or hair and nothing else, the
+# body's never are (the hands take `hands`), so a head and a body are told apart by material and their maps swap apart. Marked
+# as a vertex group before the decimation, which collapses edges within a piece and never joins two.
+def _head_piece() -> list:
+    import bmesh as _bm
+    b = _bm.new()
+    b.from_mesh(mesh.data)
+    b.verts.ensure_lookup_table()
+    comp = [-1] * len(b.verts)
+    pieces = []
+    for v0 in b.verts:
+        if comp[v0.index] >= 0:
+            continue
+        stack, members = [v0], []
+        comp[v0.index] = len(pieces)
+        while stack:
+            a = stack.pop()
+            members.append(a.index)
+            for e in a.link_edges:
+                o = e.other_vert(a)
+                if comp[o.index] < 0:
+                    comp[o.index] = len(pieces)
+                    stack.append(o)
+        pieces.append(members)
+    co = [mesh.matrix_world @ v.co for v in b.verts]
+    head = max(pieces, key=lambda m: max(co[i].z for i in m))
+    lo = [min(co[i][k] for i in head) for k in range(3)]
+    hi = [max(co[i][k] for i in head) for k in range(3)]
+    inside = [m for m in pieces if m is not head and all(lo[k] <= co[i][k] <= hi[k] for i in m for k in range(3))
+              and min(co[i].z for i in m) > (lo[2] + hi[2]) / 2.0]   # the eyes: wholly within the head's upper half
+    b.free()
+    return head + [i for m in inside for i in m]
+
+
+_hp = _head_piece()
+_hg = mesh.vertex_groups.new(name="_head_piece")
+_hg.add(_hp, 1.0, "REPLACE")
+print(f"[enemy_light] head piece: {len(_hp)} vertices")
 
 tris = sum(len(p.vertices) - 2 for p in mesh.data.polygons)
 bpy.context.view_layer.objects.active = mesh
@@ -49,9 +90,9 @@ def region(bone: str) -> str:
 
 names = {vg.index: vg.name for vg in mesh.vertex_groups}
 mats = {}
-for key in ("skin", "hair", "shirt", "trousers", "shoes"):
+for key in ("skin", "hair", "shirt", "trousers", "shoes", "hands"):
     m = bpy.data.materials.new("Enemy_" + key)
-    h = palette[key].lstrip("#")
+    h = palette["skin" if key == "hands" else key].lstrip("#")
     m.diffuse_color = (*(int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4)), 1.0)
     m.use_nodes = True
     m.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = m.diffuse_color
@@ -59,36 +100,24 @@ for key in ("skin", "hair", "shirt", "trousers", "shoes"):
     mats[key] = len(mesh.data.materials) - 1
 mesh.data.materials[:]  # keep order
 top = max(v.co.z for v in mesh.data.vertices)
-COLLAR_R = 0.052   # metres on the 1 m figure: farther from the neck's axis than this is collar, not skin
-_neck = armature.data.bones.get("mixamorig:Neck")
-_n0 = armature.matrix_world @ _neck.head_local
-_n1 = armature.matrix_world @ _neck.tail_local
-chin = _n1.z
-
-
-DEBUG = False
-_dbg: list = []
-
-
-def _radial(c) -> float:
-    axis = (_n1 - _n0).normalized()
-    d = c - _n0
-    return (d - axis * d.dot(axis)).length
+_hgi = mesh.vertex_groups["_head_piece"].index
 for p in mesh.data.polygons:
     weight: dict = {}
+    in_head = 0.0
     for vi in p.vertices:
         for g in mesh.data.vertices[vi].groups:
+            if g.group == _hgi:
+                in_head += g.weight
+                continue
             weight[names[g.group]] = weight.get(names[g.group], 0.0) + g.weight
-    r = region(max(weight, key=weight.get)) if weight else "shirt"
-    if r == "head":
+    if in_head / len(p.vertices) > 0.5:
         c = p.center
-        # hair: the crown, and the back of the head above the ears (the figure faces -Y in Blender)
-        if c.z < top - 0.15 or (c.z < chin and (_radial(c) > COLLAR_R or p.normal.y > 0.1)):
-            r = "shirt"   # the collar weighs on the neck: it stands out from the neck, and it closes the back (the front stays open)
-        else:
-            r = "hair" if (c.z > top - 0.035 or (c.z > top - 0.09 and p.normal.y > 0.4)) else "skin"
+        # hair: the crown, and the back of the head above the ears (the figure faces -Y in Blender); the neck below is skin
+        r = "hair" if (c.z > top - 0.035 or (c.z > top - 0.09 and p.normal.y > 0.4)) else "skin"
+    else:
+        r = region(max(weight, key=weight.get)) if weight else "shirt"
+        r = {"head": "shirt", "skin": "hands"}.get(r, r)   # what the neck bone weighs on outside the head piece is the collar
     p.material_index = mats[r]
-    if DEBUG and region(max(weight, key=weight.get) if weight else "x")=="head": _dbg.append((round(p.center.z,3), round(_radial(p.center),3), r))
 for i in range(len(mesh.data.materials) - 1, -1, -1):
     if mesh.data.materials[i].name.startswith("Enemy_"):
         continue
@@ -97,12 +126,7 @@ for i in range(len(mesh.data.materials) - 1, -1, -1):
         if p.material_index > i:
             p.material_index -= 1
 
-if DEBUG:
-    import collections
-    print("[dbg] top", round(top,3), "chin", round(chin,3), "n0", tuple(round(x,3) for x in _n0))
-    for z0 in [x/100 for x in range(80,100)]:
-        rows=[d for d in _dbg if z0<=d[0]<z0+0.01]
-        if rows: print("[dbg]", z0, len(rows), collections.Counter(r for _,_,r in rows), round(min(d[1] for d in rows),3), round(max(d[1] for d in rows),3))
+mesh.vertex_groups.remove(mesh.vertex_groups["_head_piece"])   # the reference went stale with the decimation
 armature.data.pose_position = "POSE"
 # One keyed rest frame: Godot gives a GLB an AnimationPlayer only when it carries a clip, and ActorMesh3D needs that player.
 armature.animation_data_create()

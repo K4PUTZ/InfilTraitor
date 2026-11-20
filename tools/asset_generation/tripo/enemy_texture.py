@@ -37,6 +37,7 @@ args = sys.argv[sys.argv.index("--") + 1:]
 src, out, palette_path, master_path = args[0], args[1], args[2], os.path.abspath(args[3])
 paint_blend = os.path.abspath(args[4]) if len(args) > 4 else ""
 FORCE = os.environ.get("ENEMY_TEX_FORCE", "") == "1"
+REPAINT_BODY = os.environ.get("ENEMY_REPAINT_BODY", "") == "1"   # carry only the head map; the uniform is painted afresh
 W, H = 2048, 1024
 TAG = "[enemy_texture]"
 
@@ -52,6 +53,38 @@ C.setdefault("stripe", rgb("#e8ecf2"))
 C.setdefault("undershirt", rgb("#eeeeea"))
 C.setdefault("buttons", rgb("#2c568a"))
 
+head_path = master_path.replace("_master.png", "_head.png")
+body_path = master_path.replace("_master.png", "_body.png")
+HAND = os.path.exists(head_path) and os.path.exists(body_path) and not FORCE
+
+
+# The PREVIOUS layout, read from the GLB this run replaces (2026-11-20): when the layout changes under the Director's maps, his
+# paint is carried across triangle by triangle (same rest geometry, matched by centroid), never lost or left misaligned.
+def _old_layout(path: str):
+    if not (HAND and os.path.exists(path)):
+        return None
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.gltf(filepath=path)
+    for a in [o for o in bpy.context.scene.objects if o.type == "ARMATURE"]:
+        a.data.pose_position = "REST"
+    P, U, M = [], [], []
+    for o in [o for o in bpy.context.scene.objects if o.type == "MESH"]:
+        d = o.data
+        if not d.uv_layers:
+            continue
+        d.calc_loop_triangles()
+        ud = d.uv_layers.active.data
+        for t in d.loop_triangles:
+            mat = d.materials[t.material_index].name if d.materials else ""
+            if mat not in ("Enemy_head", "Enemy_body"):
+                continue
+            P.append([tuple(o.matrix_world @ d.vertices[v].co) for v in t.vertices])
+            U.append([tuple(ud[li].uv) for li in t.loops])
+            M.append(0 if mat == "Enemy_head" else 1)
+    return np.array(P, np.float64), np.array(U, np.float64), np.array(M, np.int8)
+
+
+OLD = _old_layout(out)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=src)
 arm = next(o for o in bpy.context.scene.objects if o.type == "ARMATURE")
@@ -69,7 +102,8 @@ B = {n: bone(n) for n in ("Hips", "Spine2", "Neck", "Head", "LeftUpLeg", "LeftLe
 NECK_Z = float(B["Neck"][2])
 WAIST_Z = float(B["Spine"][2]) if "Spine" in B else float(B["Hips"][2]) + 0.05
 mw = mesh.matrix_world
-region_of_mat = [m.name.replace("Enemy_", "") for m in mesh.data.materials]
+mat_of = [m.name.replace("Enemy_", "") for m in mesh.data.materials]   # skin / hair = the head piece (enemy_light.py)
+region_of_mat = ["skin" if r == "hands" else r for r in mat_of]
 
 # The head takes the male Agent's FaceUV (face_uv_map.py with his params): the enemies share his silhouette, so his painted
 # face master is the layout an enemy's face is drawn on (the Director, 2026-11-19), at half scale in the left square.
@@ -92,14 +126,20 @@ bm.from_mesh(mesh.data)
 bmesh.ops.triangulate(bm, faces=bm.faces[:])
 bm.faces.ensure_lookup_table()
 uv = bm.loops.layers.uv.verify()
-head_faces = set()
+# The HEAD map holds Tripo's head piece, whole (its faces are skin or hair, enemy_light.py), and nothing else; the body map the
+# rest (2026-11-20). Its neck below the chin and the jaw's underside fall on the face's own texels on FaceUV's cylinder (the
+# streaks of 2026-11-19), so they get a band of their own at the bottom of the head map: the same angle, the height along the
+# neck squeezed below the face.
+CHIN_Z = _nose.z - 0.055
+head_faces, neck_faces = set(), set()
 for f in bm.faces:
+    if mat_of[f.material_index] not in ("skin", "hair"):
+        continue
+    head_faces.add(f.index)
     c = mw @ f.calc_center_median()
-    if (region_of_mat[f.material_index] in ("skin", "hair") and c.z > NECK_Z) or c.z > NECK_Z + 0.035:
-        # a face below FaceUV's floor (the collar, the neck's base) is drawn in the body's square, never squeezed onto the edge
-        # and the neck under the jaw shares the jaw's texels on a cylinder: below the chin it is the body's too
-        if fm.uv(np.array([tuple(mw @ v.co) for v in f.verts]), FACEUV)[:, 1].min() >= 0.004 and c.z > _nose.z - 0.055:
-            head_faces.add(f.index)
+    nz = (mw.to_3x3() @ f.normal).normalized().z
+    if c.z < CHIN_Z or (nz < -0.35 and c.z < _nose.z - 0.02):
+        neck_faces.add(f.index)
 bm.to_mesh(mesh.data)
 bm.free()
 
@@ -115,10 +155,20 @@ bpy.ops.uv.smart_project(angle_limit=math.radians(72), island_margin=0.008, area
                          scale_to_bounds=True)
 bm = bmesh.from_edit_mesh(mesh.data)
 uv = bm.loops.layers.uv.verify()
+face_v_min = 1.0
+for f in bm.faces:
+    if f.index in head_faces and f.index not in neck_faces:
+        P = np.array([[tuple(mw @ lo.vert.co) for lo in f.loops]], np.float64)
+        face_v_min = min(face_v_min, float(fm.tri_uv(P, FACEUV)[0][:, 1].min()))
+NECK_TOP = max(face_v_min - 0.012, 0.05)
+_nz = [(mw @ lo.vert.co).z for f in bm.faces if f.index in neck_faces for lo in f.loops]
+NZ0, NZ1 = (min(_nz), max(_nz)) if _nz else (0.0, 1.0)
 for f in bm.faces:
     if f.index in head_faces:
         P = np.array([[tuple(mw @ lo.vert.co) for lo in f.loops]], np.float64)
         U = fm.tri_uv(P, FACEUV)[0]
+        if f.index in neck_faces:
+            U[:, 1] = 0.004 + (P[0][:, 2] - NZ0) / max(NZ1 - NZ0, 1e-6) * (NECK_TOP - 0.004)
         for lo, (u, v) in zip(f.loops, U):
             lo[uv].uv = (min(float(u), 0.999) * 0.5, min(max(float(v), 0.004), 0.996))   # past the back seam / above the Agent's crown: the edge (hair)
     else:
@@ -135,6 +185,8 @@ uvd = me.uv_layers.active.data
 pos = np.zeros((H, W, 3), np.float32)
 nrm = np.zeros((H, W, 3), np.float32)
 reg = np.full((H, W), -1, np.int16)
+tid = np.full((H, W), -1, np.int32)       # the triangle each texel belongs to (loop_triangles' order), and where in it
+lam_of = np.zeros((H, W, 3), np.float32)
 vco = np.array([tuple(mw @ v.co) for v in me.vertices], np.float32)
 rot = mw.to_3x3()
 vno = np.array([tuple((rot @ v.normal).normalized()) for v in me.vertices], np.float32)
@@ -161,6 +213,8 @@ for t in me.loop_triangles:
     nn = lam @ vno[vi]
     nrm[yy, xx] = nn / np.maximum(np.linalg.norm(nn, axis=1, keepdims=True), 1e-6)
     reg[yy, xx] = ["skin", "hair", "shirt", "trousers", "shoes"].index(region_of_mat[t.material_index])
+    tid[yy, xx] = t.index
+    lam_of[yy, xx] = lam
 
 # --- paint ----------------------------------------------------------------------------------------------------------------
 img = np.zeros((H, W, 3), np.float32)
@@ -177,11 +231,8 @@ ky = np.clip((Z - NECK_Z) / (HEAD_Z - NECK_Z), 0.0, 1.0)
 rad = np.hypot(X - float(B["Neck"][0]), Y - (float(B["Neck"][1]) + (float(B["Head"][1]) - float(B["Neck"][1])) * ky))
 nth = np.arctan2(X - float(B["Neck"][0]), -(Y - float(B["Neck"][1])))
 COLLAR_TOP = NECK_Z + 0.035 + 0.025 * np.clip((np.abs(nth) - 0.35) / 0.5, 0.0, 1.0)   # it rises at the sides and back
-upper = (reg == SH) | (reg == SK)
-reg[upper & (Z > COLLAR_TOP)] = SK                                  # the jaw and the neck above the collar
+upper = reg == SH                    # the head piece is skin and hair by itself (enemy_light.py): only the shirt is reshaped here
 zone = upper & (Z <= COLLAR_TOP) & (Z > NECK_Z - 0.04) & (rad < 0.09)
-reg[zone] = SH
-reg[zone & (NZ < -0.4) & (Z > NECK_Z + 0.02)] = SK                    # the jaw's underside, not the collar
 # the collar's open front is a narrow V between the two collar points (the Director, 2026-11-19): its apex where the points meet,
 # the white undershirt at its bottom, the neck's skin above; everything else round the neck is the collar
 V_APEX = NECK_Z - 0.012
@@ -281,27 +332,27 @@ cloth = shirt | trou
 img[cloth] *= (0.97 + 0.06 * rng.random((int(cloth.sum()), 1))).astype(np.float32) ** 0.15
 
 # --- bleed past the islands so mip levels and bilinear filtering do not read black ------------------------------------------
-filled = reg >= 0
-for _ in range(6):
-    acc = np.zeros_like(img)
-    cnt = np.zeros((H, W, 1), np.float32)
-    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-        sf = np.roll(filled, (dy, dx), (0, 1))
-        acc += np.roll(img, (dy, dx), (0, 1)) * sf[..., None]
-        cnt += sf[..., None]
-    grow = (~filled) & (cnt[..., 0] > 0)
-    img[grow] = acc[grow] / cnt[grow]
-    filled = filled | grow
+def _bleed() -> None:
+    filled = reg >= 0
+    for _ in range(6):
+        acc = np.zeros_like(img)
+        cnt = np.zeros((H, W, 1), np.float32)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            sf = np.roll(filled, (dy, dx), (0, 1))
+            acc += np.roll(img, (dy, dx), (0, 1)) * sf[..., None]
+            cnt += sf[..., None]
+        grow = (~filled) & (cnt[..., 0] > 0)
+        img[grow] = acc[grow] / cnt[grow]
+        filled = filled | grow
+
+
+_bleed()
 
 # the face: the Director's own 2048 x 2048 image on the male Agent's FaceUV layout (<master>_face.png beside the master), dropped
 # into the head square at half size; without it the head keeps the generated skin and hair, and that square is written out at
 # full size as the guide to draw the face on (<master>_face_guide.png)
 # The MASTER is the Director's once it exists (2026-11-19): he edits it in Photoshop, Godot reimports it and the game reads it
 # (ActorMesh3D `atlas`); this script then only rebuilds the GLB around it. ENEMY_TEX_FORCE=1 repaints it, losing his edits.
-head_path = master_path.replace("_master.png", "_head.png")
-body_path = master_path.replace("_master.png", "_body.png")
-
-
 def _load_square(path: str) -> np.ndarray:
     _m = bpy.data.images.load(path)
     if tuple(_m.size) != (W // 2, H):
@@ -311,19 +362,67 @@ def _load_square(path: str) -> np.ndarray:
     return a
 
 
-HAND = os.path.exists(head_path) and os.path.exists(body_path) and not FORCE
-OLD_MASTER = not HAND and os.path.exists(master_path) and not FORCE   # the one-atlas master of 2026-11-19, split once
-KEEP = HAND or OLD_MASTER
+def _carry(old, maps) -> int:
+    """the Director's paint onto this run's layout: each texel finds its triangle in the old GLB (same rest geometry, nearest
+    centroid) and reads the old map where that triangle's point was. A head-piece triangle the old layout drew on the BODY map
+    (the neck under the jaw, painted as the collar until 2026-11-20) takes the skin of his lower face instead. Returns how many
+    triangles found no twin (they keep the generated paint)."""
+    from mathutils.kdtree import KDTree
+    P, U, M = old
+    cen = P.mean(1)
+    kd = KDTree(len(cen))
+    for i, c in enumerate(cen):
+        kd.insert(c, i)
+    kd.balance()
+    tris = list(me.loop_triangles)
+    match = np.full(len(tris), -1, np.int64)
+    for t in tris:
+        c = vco[list(t.vertices)].mean(0)
+        _co, j, d = kd.find(c)
+        if d < 1e-4:
+            match[t.index] = j
+    on = tid >= 0
+    on[on] = match[tid[on]] >= 0
+    ys, xs = np.nonzero(on)
+    j = match[tid[ys, xs]]
+    q = pos[ys, xs].astype(np.float64)
+    a, b, c = P[j, 0], P[j, 1], P[j, 2]
+    v0, v1, v2 = b - a, c - a, q - a
+    d00, d01, d11 = (v0 * v0).sum(1), (v0 * v1).sum(1), (v1 * v1).sum(1)
+    d20, d21 = (v2 * v0).sum(1), (v2 * v1).sum(1)
+    den = np.maximum(d00 * d11 - d01 * d01, 1e-18)
+    l1 = (d11 * d20 - d01 * d21) / den
+    l2 = (d00 * d21 - d01 * d20) / den
+    lam = np.clip(np.stack([1 - l1 - l2, l1, l2], 1), 0.0, 1.0)
+    lam /= lam.sum(1, keepdims=True)
+    ouv = (lam[:, :, None] * U[j]).sum(1)
+    sx = np.clip((ouv[:, 0] * (W // 2)).astype(int), 0, W // 2 - 1)
+    sy = np.clip((ouv[:, 1] * H).astype(int), 0, H - 1)
+    keep = np.ones(len(j), bool)
+    if REPAINT_BODY:
+        keep = np.isin(tid[ys, xs], [t.index for t in tris if mat_of[t.material_index] in ("skin", "hair")])
+    img[ys[keep], xs[keep]] = np.where((M[j] == 0)[:, None], maps[0][sy, sx], maps[1][sy, sx])[keep]
+    # the head piece's neck that the old layout painted on the body map: skin, the median of the lower face
+    head_tri = np.zeros(len(tris), bool)
+    head_tri[[t.index for t in tris if mat_of[t.material_index] in ("skin", "hair")]] = True
+    from_body = head_tri[tid[ys, xs]] & (M[j] == 1)
+    low_face = (reg == SK) & (tid >= 0) & (Z > CHIN_Z) & (Z < _nose.z - 0.02) & (np.arange(W)[None, :] < W // 2)
+    low_face &= ~np.isin(tid, [t.index for t in tris if t.polygon_index in neck_faces])
+    tone = np.median(img[low_face], 0) if low_face.any() else C["skin"]
+    img[ys[from_body], xs[from_body]] = tone
+    return int((match < 0).sum())
+
+
+KEEP = HAND
 if HAND:
-    img = np.concatenate([_load_square(head_path), _load_square(body_path)], 1)
-    print(TAG, "kept the head and body maps (the Director's):", head_path, body_path)
-elif OLD_MASTER:
-    _m = bpy.data.images.load(master_path)
-    if tuple(_m.size) != (W, H):
-        raise SystemExit(f"{TAG} {master_path}: {tuple(_m.size)}, expected {(W, H)}")
-    img = np.array(_m.pixels[:], np.float32).reshape(H, W, 4)[..., :3].copy()
-    bpy.data.images.remove(_m)
-    print(TAG, "split the one-atlas master (the Director's):", master_path)
+    maps = (_load_square(head_path), _load_square(body_path))
+    if OLD is None:
+        img = np.concatenate(maps, 1)
+        print(TAG, "kept the head and body maps (the Director's):", head_path, body_path)
+    else:
+        lost = _carry(OLD, maps)
+        _bleed()
+        print(TAG, f"carried the Director's maps onto this layout ({lost} triangles without a twin keep the generated paint)")
 else:
     face_path = os.path.abspath(os.environ.get("ENEMY_FACE", master_path.replace("_master.png", "_face.png")))   # ENEMY_FACE: another file
     if os.path.exists(face_path):
@@ -351,7 +450,7 @@ else:
         print(TAG, "no face yet; guide", g.filepath_raw)
 
 
-if not HAND:
+if not HAND or OLD is not None:   # a carried layout rewrites his maps in place (backups: git)
     os.makedirs(os.path.dirname(master_path), exist_ok=True)
     for path, sq in ((head_path, img[:, : W // 2]), (body_path, img[:, W // 2:])):
         im = bpy.data.images.new(os.path.basename(path), W // 2, H)
@@ -393,6 +492,13 @@ for p in me.polygons:
         uvl[li].uv[0] = min(max((uvl[li].uv[0] - 0.5 * side) * 2.0, 0.0), 1.0)
 if straddle:
     raise SystemExit(f"{TAG} {straddle} faces cross the head / body line")
+# the head and the uniform are two meshes on one skeleton (2026-11-20): a head is swapped on its own, map and mesh
+bpy.ops.object.select_all(action="DESELECT")
+mesh.select_set(True)
+bpy.context.view_layer.objects.active = mesh
+bpy.ops.mesh.separate(type="MATERIAL")
+for ob in [o for o in bpy.data.objects if o.type == "MESH" and o.parent == arm]:
+    ob.name = ob.data.name = "Head" if ob.active_material and ob.active_material.name == "Enemy_head" else "Body"
 arm.data.pose_position = "POSE"
 bpy.ops.object.select_all(action="SELECT")
 bpy.ops.export_scene.gltf(filepath=out, export_format="GLB", use_selection=True, export_animations=True)
@@ -402,12 +508,5 @@ if paint_blend:
     for (mat, tex), path in zip(mats, (head_path, body_path)):
         tex.image = bpy.data.images.load(path)                  # by path: Image > Save writes the map
     arm.data.pose_position = "REST"
-    # the head and the uniform as two objects (one per map), so either is hidden or painted on its own
-    bpy.ops.object.select_all(action="DESELECT")
-    mesh.select_set(True)
-    bpy.context.view_layer.objects.active = mesh
-    bpy.ops.mesh.separate(type="MATERIAL")
-    for ob in [o for o in bpy.data.objects if o.type == "MESH"]:
-        ob.name = "Head" if ob.active_material and ob.active_material.name == "Enemy_head" else "Body"
     bpy.ops.wm.save_as_mainfile(filepath=paint_blend)
     print(TAG, "paint file", paint_blend)

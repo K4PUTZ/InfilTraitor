@@ -676,3 +676,15 @@ materials, `Enemy_head` and `Enemy_body`, each with its u stretched back to 0..1
 (the carried weapon keeps its own texture: before this it was given the atlas too). So a face and a uniform swap apart: N heads x M
 uniforms, never N x M atlases. The MESH is still one piece: a head shared by two different bodies needs a standard neck ring (same
 height, vertices and weights; the collar covers the cut) and waits for the second enemy body.
+
+**Head and body are two meshes, the head Tripo's own piece (2026-11-20, the Director: "de maneira efetiva e completa").** Tripo models
+the head and neck as a loose piece (the eyes two more inside it). `enemy_light.py` marks it before the decimation (a vertex group;
+the collapse never joins two pieces) and gives its faces skin or hair only; nothing else is (the hands are `Enemy_hands`, skin's
+colour; what the neck bone weighs on outside the piece is the collar). `enemy_texture.py` puts the whole piece on the HEAD map:
+FaceUV for the face, and the neck below the chin plus the jaw's underside, which fall on the face's own texels on FaceUV's cylinder
+(the streaks of 2026-11-19), on a band of their own under the face (same angle, height along the neck). The GLB carries two meshes,
+`Head` and `Body`, on one skeleton; the paint file the same. When the layout changes under the Director's maps, his paint is
+CARRIED across triangle by triangle from the GLB being replaced (same rest geometry, matched by centroid; `ENEMY_REPAINT_BODY=1`
+carries the head only and paints the uniform afresh), and a head-piece triangle the old layout had on the body map takes the skin of
+his lower face. The chain: `enemy_skin_from_agent.py` -> `enemy_light.py` -> `enemy_texture.py`, intermediates in `temp/enemies/`.
+Left: the `Icosphere` (42 vertices, no parent) that rides in the light GLB since the first build.

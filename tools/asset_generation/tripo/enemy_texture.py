@@ -132,18 +132,26 @@ uv = bm.loops.layers.uv.verify()
 # neck squeezed below the face.
 CHIN_Z = _nose.z - 0.055
 # FaceUV's axis runs just behind the throat (the guard's at y -0.022, the neck's front at -0.028): a face within a few centimetres
-# of it spans a third of the map's width and shows as a flat triangle without texture under the chin (2026-11-20). Those under
-# the jaw join the neck's band; the chin's front and the lips start at 4.3 cm and stay on FaceUV.
+# of it that looks DOWN, the jaw's underside, is a sliver across a third of the map's width and shows as a flat triangle without
+# texture under the chin (2026-11-20); those join the neck's band. The ones that look OUT, the jaw's sides beside the chin, are
+# in the painted face and stay on FaceUV: the Director's red and blue test spots on the jaw's sides showed nowhere on the head
+# while every near face left (2026-11-20). Measured on the guard: the underside's normals run z -0.76 to -0.99, the sides' -0.17 to
+# -0.58. The chin's front and the lips start at 4.3 cm and stay on FaceUV.
 NEAR_AXIS = 0.042
-head_faces, neck_faces = set(), set()
+UNDER_JAW_NZ = -0.7
+head_faces, neck_faces, lower_faces = set(), set(), set()
 for f in bm.faces:
     if mat_of[f.material_index] not in ("skin", "hair"):
         continue
     head_faces.add(f.index)
     c = mw @ f.calc_center_median()
+    p0, p1, p2 = (mw @ lo.vert.co for lo in f.loops)
+    nz = (p1 - p0).cross(p2 - p0).normalized().z
     # measured from the face's midline (the nose's x), not FaceUV's axis 4 mm aside, so both sides of the chin cut alike
     near = math.hypot(c.x - _nose.x, c.y - FACEUV["yc"]) < NEAR_AXIS and c.z < _nose.z - 0.03
-    if c.z < CHIN_Z or near:   # never every downward face under the nose: the lips' and the chin's undersides are seen
+    if c.z < CHIN_Z or near:
+        lower_faces.add(f.index)
+    if c.z < CHIN_Z or (near and nz < UNDER_JAW_NZ):   # never every downward face under the nose: the lips' and the chin's undersides are seen
         neck_faces.add(f.index)
 bm.to_mesh(mesh.data)
 bm.free()
@@ -176,7 +184,9 @@ def _profile(P: np.ndarray) -> np.ndarray:
     return P[..., 2] + fm.radius(P, NECK_AXIS)
 
 
-_np = np.array([[tuple(mw @ lo.vert.co) for lo in f.loops] for f in bm.faces if f.index in neck_faces], np.float64)
+# The band's height range is the profile's over the whole lower head (below the chin or near the axis, whichever way a face looks),
+# not over the faces it holds: which near faces join it never rescales it, so the Director's paint in it stays put (2026-11-20).
+_np = np.array([[tuple(mw @ lo.vert.co) for lo in f.loops] for f in bm.faces if f.index in lower_faces], np.float64)
 S0, S1 = (float(_profile(_np).min()), float(_profile(_np).max())) if len(_np) else (0.0, 1.0)
 for f in bm.faces:
     if f.index in head_faces:

@@ -701,3 +701,14 @@ and not a line. Overlap in the band 1246 -> 360 texels; FaceUV itself unchanged 
 paint: the band's top now holds the jaw's underside, to be blended into the chin's lower edge (a transparent layer for the PSD,
 `work/enemy_fid_male_head_chin_blend_layer.png`, made by a 3-D seam blend: within 12 mm of the seam a band texel takes the colour of
 the nearest FaceUV texel).
+
+**The jaw's sides went back on the face (2026-11-20, the Director's dot test).** He painted red and blue spots on the map's jaw
+beside the chin and a green one on the chin: only the green showed on the head. The 4.2 cm circle had taken the jaw's sides too,
+16 faces that look OUT (normals' z -0.17 to -0.58), not only its underside, 9 faces that look DOWN (-0.76 to -0.99), so the face
+painting's jaw fell on no triangle and the jaw showed the band's flat brown. Now a near face joins the band only when its normal's
+z is under -0.7 (`UNDER_JAW_NZ`); the jaw's sides are on FaceUV, where the painted face already has them, and its underside stays
+on the band (no fans: a checker shows the band's stripes under the chin). The band's height range is taken over the whole lower
+head (below the chin or near the axis, whichever way a face looks), so which near faces join it never rescales it: the 59 faces
+that stay on the band keep their texels exactly (0 texel shift measured) and the paint in it stays put. Rebuilt with
+`ENEMY_NO_CARRY=1`: a carry would have copied the band's brown over the painted jaw. A test build to another path must also set it
+(that path's GLB from an earlier test is the "old layout" the carry reads, and the maps are rewritten).

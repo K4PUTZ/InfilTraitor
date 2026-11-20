@@ -84,7 +84,7 @@ def _old_layout(path: str):
     return np.array(P, np.float64), np.array(U, np.float64), np.array(M, np.int8)
 
 
-OLD = _old_layout(out)
+OLD = None if os.environ.get("ENEMY_NO_CARRY", "") == "1" else _old_layout(out)   # 1: the maps already fit this layout
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=src)
 arm = next(o for o in bpy.context.scene.objects if o.type == "ARMATURE")
@@ -137,8 +137,7 @@ for f in bm.faces:
         continue
     head_faces.add(f.index)
     c = mw @ f.calc_center_median()
-    nz = (mw.to_3x3() @ f.normal).normalized().z
-    if c.z < CHIN_Z or (nz < -0.35 and c.z < _nose.z - 0.02):
+    if c.z < CHIN_Z:   # not the downward faces above it too: the lips' and the chin's undersides are seen (2026-11-20)
         neck_faces.add(f.index)
 bm.to_mesh(mesh.data)
 bm.free()

@@ -681,8 +681,10 @@ height, vertices and weights; the collar covers the cut) and waits for the secon
 the head and neck as a loose piece (the eyes two more inside it). `enemy_light.py` marks it before the decimation (a vertex group;
 the collapse never joins two pieces) and gives its faces skin or hair only; nothing else is (the hands are `Enemy_hands`, skin's
 colour; what the neck bone weighs on outside the piece is the collar). `enemy_texture.py` puts the whole piece on the HEAD map:
-FaceUV for the face, and the neck below the chin plus the jaw's underside, which fall on the face's own texels on FaceUV's cylinder
-(the streaks of 2026-11-19), on a band of their own under the face (same angle, height along the neck). The GLB carries two meshes,
+FaceUV for the face, and the neck below the chin, which falls on the face's own texels on FaceUV's cylinder (the streaks of
+2026-11-19), on a band of their own under the face (same angle, height along the neck). Only BELOW the chin: moving every downward
+face under the nose too took the lips' and the chin's undersides off FaceUV and broke the mouth (measured and reverted the same day).
+`ENEMY_NO_CARRY=1` keeps the maps as they are when they already fit the layout. The GLB carries two meshes,
 `Head` and `Body`, on one skeleton; the paint file the same. When the layout changes under the Director's maps, his paint is
 CARRIED across triangle by triangle from the GLB being replaced (same rest geometry, matched by centroid; `ENEMY_REPAINT_BODY=1`
 carries the head only and paints the uniform afresh), and a head-piece triangle the old layout had on the body map takes the skin of

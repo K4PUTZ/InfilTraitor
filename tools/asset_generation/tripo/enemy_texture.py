@@ -9,8 +9,10 @@ The paint is a function of each texel's position on the figure at rest (1 m tall
 reference sheet's details land on the right body part: the shirt's chest pockets with flaps, its button placket, epaulettes,
 collar and cuffs, the white undershirt at the collar's opening; the trousers' waistband and white side stripe; the shoes; the hair.
 
-The MASTER (2048 x 1024) goes to <master.png>; the GLB carries it at half size. Once the master exists it is the Director's: a re-run keeps it and only rebuilds the GLB
-around it (ENEMY_TEX_FORCE=1 repaints it). The HEAD square uses the male Agent's FaceUV
+The painting is TWO maps since 2026-11-20 (1024 x 1024 each): <stem>_head.png (the head on FaceUV) and <stem>_body.png (the
+uniform), so a head and a uniform swap apart; the GLB carries each at half size as its own material. Once they exist they are the
+Director's: a re-run keeps them and only rebuilds the GLB
+around them (ENEMY_TEX_FORCE=1 repaints them). The HEAD square uses the male Agent's FaceUV
 (face_uv_map.py), so the face is drawn on his master's layout: a 2048 x 2048 `<master>_face.png` beside the master is the face (the
 Director's, drawn from the Agent's `male_face_master.png`); without it a `<master>_face_guide.png` is written to draw on.
 
@@ -296,14 +298,32 @@ for _ in range(6):
 # full size as the guide to draw the face on (<master>_face_guide.png)
 # The MASTER is the Director's once it exists (2026-11-19): he edits it in Photoshop, Godot reimports it and the game reads it
 # (ActorMesh3D `atlas`); this script then only rebuilds the GLB around it. ENEMY_TEX_FORCE=1 repaints it, losing his edits.
-KEEP = os.path.exists(master_path) and not FORCE
-if KEEP:
+head_path = master_path.replace("_master.png", "_head.png")
+body_path = master_path.replace("_master.png", "_body.png")
+
+
+def _load_square(path: str) -> np.ndarray:
+    _m = bpy.data.images.load(path)
+    if tuple(_m.size) != (W // 2, H):
+        raise SystemExit(f"{TAG} {path}: {tuple(_m.size)}, expected {(W // 2, H)}")
+    a = np.array(_m.pixels[:], np.float32).reshape(H, W // 2, 4)[..., :3].copy()
+    bpy.data.images.remove(_m)
+    return a
+
+
+HAND = os.path.exists(head_path) and os.path.exists(body_path) and not FORCE
+OLD_MASTER = not HAND and os.path.exists(master_path) and not FORCE   # the one-atlas master of 2026-11-19, split once
+KEEP = HAND or OLD_MASTER
+if HAND:
+    img = np.concatenate([_load_square(head_path), _load_square(body_path)], 1)
+    print(TAG, "kept the head and body maps (the Director's):", head_path, body_path)
+elif OLD_MASTER:
     _m = bpy.data.images.load(master_path)
     if tuple(_m.size) != (W, H):
         raise SystemExit(f"{TAG} {master_path}: {tuple(_m.size)}, expected {(W, H)}")
     img = np.array(_m.pixels[:], np.float32).reshape(H, W, 4)[..., :3].copy()
     bpy.data.images.remove(_m)
-    print(TAG, "kept the master (the Director's):", master_path)
+    print(TAG, "split the one-atlas master (the Director's):", master_path)
 else:
     face_path = os.path.abspath(os.environ.get("ENEMY_FACE", master_path.replace("_master.png", "_face.png")))   # ENEMY_FACE: another file
     if os.path.exists(face_path):
@@ -330,37 +350,57 @@ else:
         g.filepath_raw = master_path.replace("_master.png", "_face_guide.png"); g.file_format = "PNG"; g.save()
         print(TAG, "no face yet; guide", g.filepath_raw)
 
-    os.makedirs(os.path.dirname(master_path), exist_ok=True)
-    im = bpy.data.images.new("enemy_master", W, H)
-    im.pixels = np.concatenate([np.clip(img, 0, 1), np.ones((H, W, 1), np.float32)], -1).ravel()
-    im.filepath_raw = master_path
-    im.file_format = "PNG"
-    im.save()
-    print(TAG, "master", master_path)
 
-# --- one material, the atlas at half size in the GLB ----------------------------------------------------------------------
-game = bpy.data.images.new("enemy_atlas", W // 2, H // 2)
-small = img.reshape(H // 2, 2, W // 2, 2, 3).mean((1, 3))
-game.pixels = np.concatenate([np.clip(small, 0, 1), np.ones((H // 2, W // 2, 1), np.float32)], -1).ravel()
-game.pack()
-mat = bpy.data.materials.new("Enemy_atlas")
-mat.use_nodes = True
-nt = mat.node_tree
-tex = nt.nodes.new("ShaderNodeTexImage")
-tex.image = game
-nt.links.new(tex.outputs["Color"], nt.nodes["Principled BSDF"].inputs["Base Color"])
-nt.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.9
+if not HAND:
+    os.makedirs(os.path.dirname(master_path), exist_ok=True)
+    for path, sq in ((head_path, img[:, : W // 2]), (body_path, img[:, W // 2:])):
+        im = bpy.data.images.new(os.path.basename(path), W // 2, H)
+        im.pixels = np.concatenate([np.clip(sq, 0, 1), np.ones((H, W // 2, 1), np.float32)], -1).ravel()
+        im.filepath_raw = path
+        im.file_format = "PNG"
+        im.save()
+        print(TAG, "wrote", path)
+
+# --- two materials: the HEAD map (left square) and the BODY map (right square), each at half size in the GLB -----------------
+# Split 2026-11-20 (the Director): a head's map and a uniform's map are swapped apart (N faces x M uniforms, no N x M atlases).
+# Each face lies wholly in one square (they are separate islands); its u is stretched back to 0..1 within its own map.
+uvl = me.uv_layers.active.data
+mats = []
+for name, sq in (("Enemy_head", img[:, : W // 2]), ("Enemy_body", img[:, W // 2:])):
+    game = bpy.data.images.new(name.lower() + "_map", W // 4, H // 2)
+    small = sq.reshape(H // 2, 2, W // 4, 2, 3).mean((1, 3))
+    game.pixels = np.concatenate([np.clip(small, 0, 1), np.ones((H // 2, W // 4, 1), np.float32)], -1).ravel()
+    game.pack()
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = game
+    nt.links.new(tex.outputs["Color"], nt.nodes["Principled BSDF"].inputs["Base Color"])
+    nt.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.9
+    mats.append((mat, tex))
 me.materials.clear()
-me.materials.append(mat)
+for mat, _t in mats:
+    me.materials.append(mat)
+straddle = 0
 for p in me.polygons:
-    p.material_index = 0
+    us = [uvl[li].uv[0] for li in p.loop_indices]
+    side = 0 if sum(us) / len(us) < 0.5 else 1
+    if (min(us) < 0.5 - 1e-4 and max(us) > 0.5 + 1e-4):
+        straddle += 1
+    p.material_index = side
+    for li in p.loop_indices:
+        uvl[li].uv[0] = min(max((uvl[li].uv[0] - 0.5 * side) * 2.0, 0.0), 1.0)
+if straddle:
+    raise SystemExit(f"{TAG} {straddle} faces cross the head / body line")
 arm.data.pose_position = "POSE"
 bpy.ops.object.select_all(action="SELECT")
 bpy.ops.export_scene.gltf(filepath=out, export_format="GLB", use_selection=True, export_animations=True)
 print(TAG, "wrote", out)
 
 if paint_blend:
-    tex.image = bpy.data.images.load(master_path)               # by path: Image > Save writes the master
+    for (mat, tex), path in zip(mats, (head_path, body_path)):
+        tex.image = bpy.data.images.load(path)                  # by path: Image > Save writes the map
     arm.data.pose_position = "REST"
     bpy.ops.wm.save_as_mainfile(filepath=paint_blend)
     print(TAG, "paint file", paint_blend)

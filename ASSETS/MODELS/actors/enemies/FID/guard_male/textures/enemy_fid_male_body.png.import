@@ -2,9 +2,9 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://csxl67n1qf03m"
-path.s3tc="res://.godot/imported/enemy_fid_male_master.png-a0ce0708658f3fbc3a30205762e17703.s3tc.ctex"
-path.etc2="res://.godot/imported/enemy_fid_male_master.png-a0ce0708658f3fbc3a30205762e17703.etc2.ctex"
+uid="uid://bhexkpagsaxkt"
+path.s3tc="res://.godot/imported/enemy_fid_male_body.png-7f3f4e4dd3368213e6b48993ed529a13.s3tc.ctex"
+path.etc2="res://.godot/imported/enemy_fid_male_body.png-7f3f4e4dd3368213e6b48993ed529a13.etc2.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
@@ -12,8 +12,8 @@ metadata={
 
 [deps]
 
-source_file="res://ASSETS/MODELS/actors/enemies/FID/guard_male/textures/enemy_fid_male_master.png"
-dest_files=["res://.godot/imported/enemy_fid_male_master.png-a0ce0708658f3fbc3a30205762e17703.s3tc.ctex", "res://.godot/imported/enemy_fid_male_master.png-a0ce0708658f3fbc3a30205762e17703.etc2.ctex"]
+source_file="res://ASSETS/MODELS/actors/enemies/FID/guard_male/textures/enemy_fid_male_body.png"
+dest_files=["res://.godot/imported/enemy_fid_male_body.png-7f3f4e4dd3368213e6b48993ed529a13.s3tc.ctex", "res://.godot/imported/enemy_fid_male_body.png-7f3f4e4dd3368213e6b48993ed529a13.etc2.ctex"]
 
 [params]
 

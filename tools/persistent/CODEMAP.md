@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**359 scripts · 103364 lines total** (under `godot/scripts/`)
+**359 scripts · 103374 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -423,7 +423,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 1353 lines
+`class_name ActorMesh3D` · extends `Node3D` · 1363 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -442,7 +442,7 @@ extends `ConfirmationDialog` · 64 lines
 - `HeadTurnRef` = `preload("res://godot/scripts/geometry/actor_head_turn3d.gd")`
 - `RIG_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"`
 - `RIG_BY_FAMILY` = `{ "": "agent_live.glb", ## The field officer (2026-11-08): the old agent's model, promoted when the Tripo figure became the agent. "_officer": "agent_live.glb", }`
-- `TRIPO_BY_FAMILY` = `{ "_enemy_white": {"figure": "male", "enemy": ["FID", "guard_male", "ENEMY_FID_MALE_LIGHT.glb"], "atlas": "enemy_fid_male_master.png"}, }`
+- `TRIPO_BY_FAMILY` = `{ "_enemy_white": {"figure": "male", "enemy": ["FID", "guard_male", "ENEMY_FID_MALE_LIGHT.glb"], "maps": {"Enemy_head": "enemy_fid_male_head.png", "Enemy_body": "enemy_fid_male_body.png"}}, }`
 - `METRES_TO_UNITS` = `1.0 / 1.6`
 - `TripoFigureRef` = `preload("res://godot/scripts/geometry/tripo_figure.gd")`
 - `TRIPO_FIGURE_FLAG` = `"TRIPO_FIGURE"`
@@ -472,6 +472,7 @@ extends `ConfirmationDialog` · 64 lines
 - `EJECT_UP_M` = `1.2`
 - `EJECT_BACK_M` = `0.2`
 - `THROW_TURN_RAD_S` = `TAU`
+- `SOURCE_MATERIAL_META` = `&"source_material"`
 - `REVEAL_PALETTES` = `{ &"agent": {"stripe_a": Color(0.86, 0.96, 1.0), "stripe_b": Color(0.16, 0.28, 0.38), "outline_color": Color(1.0, 1.0, 1.0)}, &"agency": {"stripe_a": Color(0.46, 0.64, 1.0), "stripe_b": Color(0.08, 0.14, 0.40), "outline_color": Color(0.30, 0.56, 1.0)}, &"militia": {"stripe_a": Color(1.0, 0.52, 0.36), "stripe_b": Color(0.40, 0.10, 0.06), "outline_color": Color(1.0, 0.34, 0.18)}, &"corporation": {"stripe_a": Color(1.0, 0.84, 0.30), "stripe_b": Color(0.38, 0.28, 0.04), "outline_color": Color(1.0, 0.74, 0.12)}, &"network": {"stripe_a": Color(0.46, 0.96, 0.62), "stripe_b": Color(0.06, 0.30, 0.14), "outline_color": Color(0.28, 0.90, 0.46)}, }`
 
 **Public vars**

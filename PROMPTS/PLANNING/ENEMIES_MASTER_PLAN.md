@@ -668,3 +668,11 @@ inside the GLB, so his Photoshop save reaches the board when Godot reimports it 
 compression); Blender's paint file links the same PNG (Image > Reload). `enemy_texture.py` keeps an existing master and only
 rebuilds the GLB around it (`ENEMY_TEX_FORCE=1` repaints it and loses the edit). Proved on the board: the master inverted, the
 guards drew inverted; restored, normal. The cost: the script's rules (collar, stripe, pockets) are frozen in the PNG from now on.
+
+**Head and uniform are two maps (2026-11-20, the Director).** The one 2048 x 1024 atlas is split into
+`textures/enemy_fid_male_head.png` (the head on the male Agent's FaceUV) and `textures/enemy_fid_male_body.png` (the uniform), 1024 x 1024
+each, cut losslessly from his edited master (the master and its copy inside the GLB are gone; his `.psd` stays his). The GLB carries two
+materials, `Enemy_head` and `Enemy_body`, each with its u stretched back to 0..1; `ActorMesh3D`'s `maps` names the PNG per material
+(the carried weapon keeps its own texture: before this it was given the atlas too). So a face and a uniform swap apart: N heads x M
+uniforms, never N x M atlases. The MESH is still one piece: a head shared by two different bodies needs a standard neck ring (same
+height, vertices and weights; the collar covers the cut) and waits for the second enemy body.

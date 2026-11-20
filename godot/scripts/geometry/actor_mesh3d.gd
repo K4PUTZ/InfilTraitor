@@ -52,10 +52,11 @@ const RIG_BY_FAMILY := {
 	"_officer": "agent_live.glb",
 }
 ## A guard family that wears a Tripo body on the Agent's skeleton (ENEMIES_MASTER_PLAN §12.12-§12.13): the model, and the figure
-## whose game clips it plays. `atlas`: the painted map in the character's textures/ folder, read by the game itself so the
-## Director's edit of that PNG reaches the board on save (Godot reimports it); it replaces the copy inside the GLB. The rank-and-file guard (2026-11-19) is the FID's male Standard, retiring `agent_live_enemy_white.glb`.
+## whose game clips it plays. `maps`: the model's material name -> its painted map in the character's textures/ folder, read by
+## the game itself so the Director's edit of that PNG reaches the board on save (Godot reimports it); it replaces the copy inside
+## the GLB. A head and a uniform are separate maps (2026-11-20), so one head goes with any uniform. The rank-and-file guard (2026-11-19) is the FID's male Standard, retiring `agent_live_enemy_white.glb`.
 const TRIPO_BY_FAMILY := {
-	"_enemy_white": {"figure": "male", "enemy": ["FID", "guard_male", "ENEMY_FID_MALE_LIGHT.glb"], "atlas": "enemy_fid_male_master.png"},
+	"_enemy_white": {"figure": "male", "enemy": ["FID", "guard_male", "ENEMY_FID_MALE_LIGHT.glb"], "maps": {"Enemy_head": "enemy_fid_male_head.png", "Enemy_body": "enemy_fid_male_body.png"}},
 }
 ## D61: a GU is 1.60 m, and a GU is one world unit; the rig is authored in metres.
 const METRES_TO_UNITS: float = 1.0 / 1.6
@@ -110,6 +111,8 @@ var _board: Node3D = null
 var _source: ActorPose = null
 var _body: Node3D = null
 var _materials: Array[ShaderMaterial] = []
+## the name of the model's material a board-lit one replaced (an enemy's `maps` key: Enemy_head, Enemy_body)
+const SOURCE_MATERIAL_META := &"source_material"
 var _player: AnimationPlayer = null
 var _head: SkeletonModifier3D = null
 var _weapons: Dictionary = {}       ## weapon name -> Node3D under hand_R
@@ -261,16 +264,22 @@ func setup_actor(board: Node3D, source: ActorPose) -> bool:
 			return false
 		if not _load_tripo(board, tripo, _dev_value(TRIPO_MOVE_FLAG, TRIPO_MOVE_DEFAULT), tripo_rig):
 			return false
-		if TRIPO_BY_FAMILY.has(source.frame_family) and TRIPO_BY_FAMILY[source.frame_family].has("atlas"):
+		if TRIPO_BY_FAMILY.has(source.frame_family) and TRIPO_BY_FAMILY[source.frame_family].has("maps"):
 			var where_t: Array = TRIPO_BY_FAMILY[source.frame_family]["enemy"]
-			var atlas_path: String = ModelPaths.enemy(String(where_t[0]), String(where_t[1]), "textures",
-					String(TRIPO_BY_FAMILY[source.frame_family]["atlas"]))
-			var atlas := load(atlas_path) as Texture2D
-			if atlas == null:
-				push_error("[ActorMesh3D] %s: atlas %s missing" % [source.frame_family, atlas_path])
-				return false
+			var maps: Dictionary = TRIPO_BY_FAMILY[source.frame_family]["maps"]
 			for m: ShaderMaterial in _materials:
-				m.set_shader_parameter("albedo_tex", atlas)
+				var src_name: String = String(m.get_meta(SOURCE_MATERIAL_META, ""))
+				if not src_name.begins_with("Enemy_"):
+					continue   ## what it carries (the weapon) keeps its own texture
+				if not maps.has(src_name):
+					push_error("[ActorMesh3D] %s: material %s has no map in %s" % [source.frame_family, src_name, maps.keys()])
+					return false
+				var map_path: String = ModelPaths.enemy(String(where_t[0]), String(where_t[1]), "textures", String(maps[src_name]))
+				var map := load(map_path) as Texture2D
+				if map == null:
+					push_error("[ActorMesh3D] %s: map %s missing" % [source.frame_family, map_path])
+					return false
+				m.set_shader_parameter("albedo_tex", map)
 				m.set_shader_parameter("has_tex", 1.0)
 	else:
 		var family: String = source.frame_family
@@ -1260,6 +1269,7 @@ func _apply_board_light(body: Node) -> void:
 					if std.albedo_texture != null:
 						sm.set_shader_parameter("albedo_tex", std.albedo_texture)
 						sm.set_shader_parameter("has_tex", 1.0)
+				sm.set_meta(SOURCE_MATERIAL_META, src.resource_name if src != null else "")
 				converted[src] = sm
 				_materials.append(sm)
 				_board.call("register_prop_light_material", sm)

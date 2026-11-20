@@ -690,3 +690,14 @@ CARRIED across triangle by triangle from the GLB being replaced (same rest geome
 carries the head only and paints the uniform afresh), and a head-piece triangle the old layout had on the body map takes the skin of
 his lower face. The chain: `enemy_skin_from_agent.py` -> `enemy_light.py` -> `enemy_texture.py`, intermediates in `temp/enemies/`.
 Left: the `Icosphere` (42 vertices, no parent) that rides in the light GLB since the first build.
+
+**The triangle under the chin was FaceUV's axis (2026-11-20).** FaceUV is a cylinder about the head's vertical axis, and on the guard
+that axis (y -0.022) runs 6 mm behind the throat's front (-0.028): every face within a few centimetres of it spans 25-60 % of the
+map's width (measured per face) and shows as a flat triangle without texture, which no painting could fix (a checker on the head
+showed it). Fix in `enemy_texture.py`: faces under the jaw within 4.2 cm of the face's midline axis (the nose's x, so both sides cut
+alike; the chin's front and the lips start at 4.3 cm) join the neck band, and the band is unrolled about the NECK's own axis (between
+the Neck and Head bones) with its height along the profile (z plus the distance from that axis), so the jaw's underside is a strip
+and not a line. Overlap in the band 1246 -> 360 texels; FaceUV itself unchanged (the Director's PSD stays aligned). What is left is
+paint: the band's top now holds the jaw's underside, to be blended into the chin's lower edge (a transparent layer for the PSD,
+`work/enemy_fid_male_head_chin_blend_layer.png`, made by a 3-D seam blend: within 12 mm of the seam a band texel takes the colour of
+the nearest FaceUV texel).

@@ -131,13 +131,19 @@ uv = bm.loops.layers.uv.verify()
 # streaks of 2026-11-19), so they get a band of their own at the bottom of the head map: the same angle, the height along the
 # neck squeezed below the face.
 CHIN_Z = _nose.z - 0.055
+# FaceUV's axis runs just behind the throat (the guard's at y -0.022, the neck's front at -0.028): a face within a few centimetres
+# of it spans a third of the map's width and shows as a flat triangle without texture under the chin (2026-11-20). Those under
+# the jaw join the neck's band; the chin's front and the lips start at 4.3 cm and stay on FaceUV.
+NEAR_AXIS = 0.042
 head_faces, neck_faces = set(), set()
 for f in bm.faces:
     if mat_of[f.material_index] not in ("skin", "hair"):
         continue
     head_faces.add(f.index)
     c = mw @ f.calc_center_median()
-    if c.z < CHIN_Z:   # not the downward faces above it too: the lips' and the chin's undersides are seen (2026-11-20)
+    # measured from the face's midline (the nose's x), not FaceUV's axis 4 mm aside, so both sides of the chin cut alike
+    near = math.hypot(c.x - _nose.x, c.y - FACEUV["yc"]) < NEAR_AXIS and c.z < _nose.z - 0.03
+    if c.z < CHIN_Z or near:   # never every downward face under the nose: the lips' and the chin's undersides are seen
         neck_faces.add(f.index)
 bm.to_mesh(mesh.data)
 bm.free()
@@ -160,14 +166,26 @@ for f in bm.faces:
         P = np.array([[tuple(mw @ lo.vert.co) for lo in f.loops]], np.float64)
         face_v_min = min(face_v_min, float(fm.tri_uv(P, FACEUV)[0][:, 1].min()))
 NECK_TOP = max(face_v_min - 0.012, 0.05)
-_nz = [(mw @ lo.vert.co).z for f in bm.faces if f.index in neck_faces for lo in f.loops]
-NZ0, NZ1 = (min(_nz), max(_nz)) if _nz else (0.0, 1.0)
+# The band is unrolled about the NECK's own axis (between the Neck and Head bones), far from every face it holds, and its height
+# runs along the profile, up the neck and then out under the jaw (z plus the distance from that axis), so the jaw's underside is
+# a strip and not a line.
+NECK_AXIS = dict(FACEUV, xc=float(B["Neck"][0] + B["Head"][0]) / 2.0, yc=float(B["Neck"][1] + B["Head"][1]) / 2.0)
+
+
+def _profile(P: np.ndarray) -> np.ndarray:
+    return P[..., 2] + fm.radius(P, NECK_AXIS)
+
+
+_np = np.array([[tuple(mw @ lo.vert.co) for lo in f.loops] for f in bm.faces if f.index in neck_faces], np.float64)
+S0, S1 = (float(_profile(_np).min()), float(_profile(_np).max())) if len(_np) else (0.0, 1.0)
 for f in bm.faces:
     if f.index in head_faces:
         P = np.array([[tuple(mw @ lo.vert.co) for lo in f.loops]], np.float64)
-        U = fm.tri_uv(P, FACEUV)[0]
         if f.index in neck_faces:
-            U[:, 1] = 0.004 + (P[0][:, 2] - NZ0) / max(NZ1 - NZ0, 1e-6) * (NECK_TOP - 0.004)
+            U = fm.tri_uv(P, NECK_AXIS)[0]
+            U[:, 1] = 0.004 + (_profile(P[0]) - S0) / max(S1 - S0, 1e-6) * (NECK_TOP - 0.004)
+        else:
+            U = fm.tri_uv(P, FACEUV)[0]
         for lo, (u, v) in zip(f.loops, U):
             lo[uv].uv = (min(float(u), 0.999) * 0.5, min(max(float(v), 0.004), 0.996))   # past the back seam / above the Agent's crown: the edge (hair)
     else:

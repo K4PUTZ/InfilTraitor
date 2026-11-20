@@ -410,6 +410,12 @@ def _carry(old, maps) -> int:
     low_face &= ~np.isin(tid, [t.index for t in tris if t.polygon_index in neck_faces])
     tone = np.median(img[low_face], 0) if low_face.any() else C["skin"]
     img[ys[from_body], xs[from_body]] = tone
+    # the head piece's back of the neck, which the old rules painted as the collar on the head map itself: closer to the shirt's
+    # colour than to his skin, it takes the skin (or the hair where the nape's hair is)
+    hy, hx = ys[head_tri[tid[ys, xs]]], xs[head_tri[tid[ys, xs]]]
+    col = img[hy, hx]
+    shirtish = np.linalg.norm(col - C["shirt"], axis=1) < np.linalg.norm(col - tone, axis=1)
+    img[hy[shirtish], hx[shirtish]] = np.where((reg[hy[shirtish], hx[shirtish]] == HA)[:, None], C["hair"], tone)
     return int((match < 0).sum())
 
 

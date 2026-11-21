@@ -740,3 +740,10 @@ untouched (md5); `verify.py smoke` green; the board draws him in all four views.
 bottom rows squeezed, so the skin's grain shows as fine vertical streaks in the collar's V; the band's old area at the map's foot
 is now the hidden lower neck. The UV guide for the PSD (`work/enemy_fid_male_head_uv_guide.png`, cyan FaceUV, orange the neck) is
 redrawn on this layout; the one inside his PSD is still the old layout.
+
+**The collar's streaks are the Director's to paint (2026-11-20, the same evening: "Deixa, eu pinto").** The layout stays. Where,
+measured on the installed map (`temp/enemies/neck_hang/neck_squeeze_zone_sheet.png`, the zone tinted on a copy of his map and
+rendered on the model): on the neck a map pixel covers up to 13.8 times more height than width, and up to 17 mm of neck height per
+pixel row (0.17 mm on the face). 2x or more on rows y 835-1012 of the 1024 map (the PSD is 1024 too), 4x or more on 873-1012, 8x or
+more on 978-1012. The collar's V shows the 2-4x zone above and the 4x-and-more zone at its tip. A tone smooth along each row (no
+pores, no detail across the row), carried down to the map's bottom edge, takes the streaks away; nothing in the code changes.

@@ -12,6 +12,9 @@ const SEQUENCE_FILE := "res://ASSETS/ANIMATIONS/sequences/%s/%s.json"
 const PISTOL_DRAW := "draw_pistol"
 ## The standing overhand throw (MOVEMENT 2026-11-12, `PROMPTS/THROW_STUDY_2026-11-12.md`): idle -> cocked (held while aiming) -> release -> follow -> idle; its prop is the grenade.
 const THROW_OVERHAND := "throw_overhand"
+## The LONG GUNS' draw (MOVEMENT §11.6 step 3, Director 2026-11-17/18), on the shotgun: idle -> lapel -> centre -> hip (the draw ends there: the hip
+## shot) -> aim (the aimed shot, at the eye). The gun rides the LEFT hand; its markers name the stops (`marker_weight("hip", ...)`).
+const LONG_DRAW := "draw_shotgun"
 
 var fps: float = 24.0
 var first: int = 1

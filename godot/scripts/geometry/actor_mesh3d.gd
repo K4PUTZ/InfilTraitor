@@ -24,8 +24,11 @@
 ## while it walks, phased by the GROUND it covers (one pass of the clip per its `travel_m`), so the feet do not slide at any step
 ## length. Facing (D44, D47's snap), position and gravity are this node's, unchanged. THE PISTOL (2026-11-08): with `weapon` `_pistol` and `grip` `_aimed` the aim layer
 ## (`ActorAimPose3D`, `AIM_STOPS`) takes the arms from the clip through the draw (fists at the sternum, the gun comes out of the coat) to a two-handed aim, and back on cancel.
-## Not yet on that figure: the other weapons in the hand (the shotgun and the rifle stand through the aim), crouched and prone, the throw (a Tripo actor stands through it; the
-## throw still releases on the sprite's clock), the clip transitions (a snap, D47's default) and the corrective coat keys (`ACTOR` D103, only on the base).
+## THE LONG GUNS (2026-11-22, `FAMILY_DRAWS`): a weapon held as the shotgun draws on its own timeline, out of the coat's right flap with the left hand, to the hip
+## or on to the shoulder (`ActorPose.shot_stance`). Not yet on that figure: the rifles' and the sniper's own models (their rows have none: they are not drawn),
+## a long gun crouched or prone, moving with a weapon.
+## Not yet on that figure (2026-11-08): crouched and prone, the throw (a Tripo actor stands through it; the throw still releases on the sprite's clock), the clip
+## transitions (a snap, D47's default) and the corrective coat keys (`ACTOR` D103, only on the base).
 class_name ActorMesh3D
 extends Node3D
 
@@ -131,6 +134,7 @@ var _recoil: ActorRecoilRef = null  ## the shot's kick on the arms (null: no aim
 var _shot_t: float = INF             ## seconds since the last shot (the gun's own kick)
 var _shot_hold: float = 0.0          ## the aim is held this long more after a shot
 var _aim_t: float = 0.0              ## how far the aim has travelled, 0 (down) to 1 (held)
+var _aim_target: float = 0.0         ## where it is heading this frame: 0, the long gun's hip stop, or 1 (`weapon_at_stance`)
 var _pistol: Node3D = null           ## the pistol in the right hand (hidden until the fists reach the sternum)
 var _pistol_holder: Node3D = null    ## carries the placement (the pose's, blended between the stops)
 var _figure: String = ""            ## the Tripo figure ("male" / "female"): a family model's grip may be its own per figure
@@ -171,12 +175,27 @@ var _sequence: AimSequenceRef = null    ## the Director's timeline of the draw (
 var _lower_s: float = AIM_LOWER_S    ## and back: the sequence's own duration too (Director 2026-11-11: a draw is quick by nature, the way back is as quick as the way there)
 var _raise_s: float = AIM_RAISE_S    ## how long the weight takes to go 0 -> 1 (the sequence's own duration when there is one)
 ## THE CROUCHED DRAW (Director, 2026-11-15): a second aim layer from the timeline `draw_crouch_pistol` (the crouch's last frame held, the arms of the
-## standing draw). One set per posture, [layer, sequence, raise s, lower s]; the active one is in `_aim` / `_sequence` / `_raise_s` / `_lower_s`
-## and changes only with the pistol away (`_aim_t` 0): a posture change while aimed lowers the gun, then raises it in the new posture.
+## standing draw). One set per hold FAMILY and posture (`_aim_key`: "pistol:standing", "pistol:crouch", "shotgun:standing"), a Dictionary
+## {layer, seq, raise, lower, hip, coat, morphs}; the active one is in `_aim` / `_sequence` / `_raise_s` / `_lower_s` / `_aim_kind` and changes only with
+## the gun away (`_aim_t` 0): a posture or weapon change while aimed lowers the gun, then raises it in the new set.
 const DRAW_CROUCH := "draw_crouch_pistol"
+## THE LONG GUNS (MOVEMENT §11.6 step 3, Director 2026-11-17/18): a second hold family on the same gun node. Its timeline (`AimSequence.LONG_DRAW`) takes
+## the gun out of the coat's right flap with the LEFT hand (the node's bone follows the timeline's: `_use_aim_set`), turns it level at the HIP and goes on
+## to the shoulder at the EYE. The draw stops at the `hip` marker for the hip shot (the stance "hip", where the draw ends) and runs to the end for the
+## aimed one ("aimed"). A family is a weapon row's `held_as`, drawn only when the held row has a model. No kneeling long-gun timeline yet (step 4):
+## crouched, a long gun is not drawn.
+const FAMILY_DRAWS := {
+	"pistol": {"standing": AimSequenceRef.PISTOL_DRAW, "crouch": DRAW_CROUCH},
+	"shotgun": {"standing": AimSequenceRef.LONG_DRAW},
+}
 const RISE_CLIPS := {"run": "crouch_run", "walk": "crouch_walk"}   ## rising from the crouch into the gait (Director, 2026-11-15): a move ordered while fully crouched opens on it, not on the gait's start
 var _aim_sets: Dictionary = {}
-var _aim_kind: String = "standing"
+var _aim_kind: String = "pistol:standing"
+var _aim_hip_w: float = 1.0          ## the active set's weight for the stance "hip" (its `hip` marker; 1 = the set has one stance)
+var _aim_coat: MeshInstance3D = null ## the active set's own coat keys (the long draw's `LongDrawFix_f*`), with `_aim_morphs` name -> blend shape index
+var _aim_morphs: Dictionary = {}
+var _armed_id: String = ""           ## the weapon row `_armed` was read for
+var _armed: bool = false             ## that row has a model to draw (a row without one is not drawn: the figure keeps its arms down, as before)
 var _run_pass: float = 0.0           ## the `run` clip's ground per pass (0 = the game set has none: a dash walks)
 var _walked: float = 0.0             ## ground covered while walking, world units: the move clip's phase
 ## THE PASSAGES (MOVEMENT 2026-11-14): a move from standing opens on its gait's authored START (played on its own clock, scaled like the actor's travel:
@@ -495,8 +514,12 @@ func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 		recoil.queue_free()
 	_raise_s = _sequence.raise_seconds() if _sequence != null else AIM_RAISE_S
 	_lower_s = _raise_s if _sequence != null else AIM_LOWER_S
-	_aim_sets["standing"] = [_aim, _sequence, _raise_s, _lower_s]
-	_build_crouch_aim(lib, figure)
+	_aim_kind = _aim_key("pistol", "standing")
+	_aim_sets[_aim_kind] = {"layer": _aim, "seq": _sequence, "raise": _raise_s, "lower": _lower_s, "hip": 1.0, "coat": null, "morphs": {}}
+	for family: String in FAMILY_DRAWS:
+		for posture: String in FAMILY_DRAWS[family]:
+			if not _aim_sets.has(_aim_key(family, posture)):
+				_build_family_aim(lib, figure, family, posture)
 	_build_pistol(stops)
 	var coat: MeshInstance3D = TripoFigureRef.coat_of(_body)
 	_coat_draw_shape = coat.find_blend_shape_by_name(DRAW_COAT_SHAPE) if coat != null else -1
@@ -506,17 +529,28 @@ func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 		push_warning("[ActorMesh3D] the %s coat has no '%s' morph: it stays closed through the draw" % [figure, DRAW_COAT_SHAPE])
 
 
-## The crouched draw's layer, right after the standing one (so the recoil still acts after both). No timeline or a missing pose: the figure
-## simply does not aim while crouched (said once when a pose is missing).
-func _build_crouch_aim(lib: AnimationLibrary, figure: String) -> void:
+## The aim set of a hold family in a posture (`FAMILY_DRAWS`): "pistol:standing", "shotgun:standing", ...
+static func _aim_key(family: String, posture: String) -> String:
+	return "%s:%s" % [family, posture]
+
+
+## The posture an aim set is chosen for: the crouch has its own draws, every other posture the standing ones.
+static func _posture_kind(state: Dictionary) -> String:
+	return "crouch" if String(state["posture"]) == "crouch" else "standing"
+
+
+## A further draw's layer (the crouched pistol, the long guns' draw), right after the standing pistol's, so the recoil still acts after all of them. No
+## timeline or a missing pose: the set does not exist and the figure simply does not draw that family in that posture (said once when a pose is missing).
+## A long draw also drives its own coat keys (`LongDrawFix_f<frame>`, each at its frame); the pistol's draws drive only `DrawFix` (`_coat_draw_shape`).
+func _build_family_aim(lib: AnimationLibrary, figure: String, family: String, posture: String) -> void:
 	var seq: AimSequenceRef = AimSequenceRef.new()
-	if not seq.load_file(figure, DRAW_CROUCH):
+	if not seq.load_file(figure, String(FAMILY_DRAWS[family][posture])):
 		return
 	var stops: Array = []
 	for stop: Dictionary in seq.stops:
 		var pose_id: String = TripoFigureRef.POSE_PREFIX + String(stop["id"])
 		if not lib.has_animation(pose_id):
-			push_warning("[ActorMesh3D] the %s game set has no '%s': no crouched draw (run godot/scripts/tools/tripo_game_clips.gd)" % [figure, pose_id])
+			push_warning("[ActorMesh3D] the %s game set has no '%s': no %s draw %s (run godot/scripts/tools/tripo_game_clips.gd)" % [figure, pose_id, family, posture])
 			return
 		stops.append([float(stop["weight"]), lib.get_animation(pose_id), bool(stop["passing"])])
 	var layer: ActorAimPoseRef = ActorAimPoseRef.new()
@@ -526,7 +560,39 @@ func _build_crouch_aim(lib: AnimationLibrary, figure: String) -> void:
 		layer.queue_free()
 		return
 	layer.weight = 0.0
-	_aim_sets["crouch"] = [layer, seq, seq.raise_seconds(), seq.raise_seconds()]
+	var morphs: Dictionary = {}
+	var coat: MeshInstance3D = TripoFigureRef.coat_of(_body) if family != "pistol" else null
+	if coat != null:
+		for morph: String in seq.at(0.5)["morphs"]:
+			var idx: int = coat.find_blend_shape_by_name(morph)
+			if idx >= 0:
+				morphs[morph] = idx   ## a key the coat lacks (an empty one, never shaped) plays without it
+	_aim_sets[_aim_key(family, posture)] = {"layer": layer, "seq": seq, "raise": seq.raise_seconds(), "lower": seq.raise_seconds(),
+		"hip": seq.marker_weight("hip", 1.0), "coat": coat if not morphs.is_empty() else null, "morphs": morphs}
+
+
+## The set `kind` becomes the active one (only with the gun away, `_aim_t` 0): its layer, timeline, paces, hip stop and coat keys, and the gun node
+## follows its timeline's bone (a long gun rides the LEFT hand). The set it leaves gives its coat keys back.
+func _use_aim_set(kind: String) -> void:
+	_aim.weight = 0.0
+	for morph: String in _aim_morphs:
+		_aim_coat.set_blend_shape_value(int(_aim_morphs[morph]), 0.0)
+	var aim_set: Dictionary = _aim_sets[kind]
+	_aim_kind = kind
+	_aim = aim_set["layer"]
+	_sequence = aim_set["seq"]
+	_raise_s = float(aim_set["raise"])
+	_lower_s = float(aim_set["lower"])
+	_aim_hip_w = float(aim_set["hip"])
+	_aim_coat = aim_set["coat"]
+	_aim_morphs = aim_set["morphs"]
+	if _pistol == null or _sequence == null:
+		return
+	var bone: int = TripoFigureRef.find_bone(_skeleton, _sequence.gun_bone())
+	if bone < 0:
+		push_error("[ActorMesh3D] no bone '%s' for the %s draw: the gun stays on '%s'" % [_sequence.gun_bone(), kind, _pistol.bone_name])
+	elif _skeleton.get_bone_name(bone) != _pistol.bone_name:
+		_pistol.bone_name = _skeleton.get_bone_name(bone)
 
 
 ## The throw's timeline as a path layer and the grenade in its hand. No timeline or a missing pose: said once, the agent throws standing still as before.
@@ -840,8 +906,9 @@ func _pistol_placement(weight: float) -> Transform3D:
 	return Transform3D(Basis(q).scaled(Vector3.ONE * s), (from["pos"] as Vector3).lerp(to["pos"] as Vector3, t))
 
 
-## The aim layer's weight this frame: toward 1 while the pistol is held aimed and standing, toward 0 otherwise (the raise and the lowering are the same
-## travel read both ways), eased; the gun is drawn only once the fist is up.
+## The aim layer's weight this frame: toward the stance's stop while the held weapon is aimed and the figure stands (or kneels, fully down), toward 0
+## otherwise (the raise and the lowering are the same travel read both ways), eased; the gun is drawn only once the hand is at it. The stance's stop is
+## the end of the timeline, or the long gun's `hip` marker for the hip shot.
 func _update_aim(state: Dictionary) -> void:
 	if _aim == null:
 		return
@@ -851,34 +918,42 @@ func _update_aim(state: Dictionary) -> void:
 	_shot_hold = maxf(0.0, _shot_hold - dt)
 	if _shot_t != INF:
 		_shot_t += dt
-	var kind: String = "crouch" if String(state["posture"]) == "crouch" else "standing"
-	if _aim_t <= 0.0 and kind != _aim_kind and _aim_sets.has(kind):   ## the gun is away: the posture's own layer takes over
-		_aim.weight = 0.0
-		_aim_kind = kind
-		var aim_set: Array = _aim_sets[kind]
-		_aim = aim_set[0]
-		_sequence = aim_set[1]
-		_raise_s = float(aim_set[2])
-		_lower_s = float(aim_set[3])
+	var posture_kind: String = _posture_kind(state)
+	var kind: String = _aim_key(String(state["weapon"]), posture_kind)
+	if _aim_t <= 0.0 and kind != _aim_kind and _aim_sets.has(kind):   ## the gun is away: the family's and the posture's own layer takes over
+		_use_aim_set(kind)
 	var ready: bool = kind == _aim_kind and float(state["walk"]) < 0.0 and (String(state["posture"]) == "standing" \
-		or (kind == "crouch" and not _crouch.is_empty() and _crouch_t >= float(_crouch["len"])))   ## crouched: once fully down
-	if String(state["weapon"]) == "pistol" and String(state.get("weapon_id", "")) != "" and _pistol != null and not _pistol.visible:
-		_hold_model(String(state["weapon_id"]))   ## swapped only while the gun is out of sight (in the coat)
+		or (posture_kind == "crouch" and not _crouch.is_empty() and _crouch_t >= float(_crouch["len"])))   ## crouched: once fully down
+	var weapon_id: String = String(state.get("weapon_id", ""))
+	if weapon_id == "":
+		weapon_id = String(state["weapon"])   ## "" = the grip's default weapon (`ActorPose.weapon_id`): the family's reference row, `pistol` / `shotgun`
+	if weapon_id != _armed_id:
+		_armed_id = weapon_id
+		var w: WeaponDef = WeaponRegistry.shared().get_weapon(weapon_id) if weapon_id != "" else null
+		_armed = w != null and w.model_path != ""
+	if kind == _aim_kind and _armed and _pistol != null and not _pistol.visible:
+		_hold_model(weapon_id)   ## swapped only while the gun is out of sight (in the coat)
 		_hold_attachment(String(state.get("attachment", "")))
 	var stow: bool = bool(state.get("stow", false))   ## the actor is about to do something else: the gun goes away now (`ActorPose.stow_weapon`)
 	if stow:
 		_shot_hold = 0.0
-	var want: bool = not stow and ready and ((String(state["weapon"]) == "pistol" and String(state["grip"]) == "_aimed") or _shot_hold > 0.0)
-	var target: float = 1.0 if want else 0.0
-	_aim_t = move_toward(_aim_t, target, dt / (_raise_s if want else _lower_s))
+	var want: bool = not stow and ready and _armed and (String(state["grip"]) == "_aimed" or _shot_hold > 0.0)
+	_aim_target = 0.0
+	if want:
+		_aim_target = _aim_hip_w if String(state.get("stance", "aimed")) == "hip" else 1.0
+	_aim_t = move_toward(_aim_t, _aim_target, dt / (_raise_s if _aim_target > _aim_t else _lower_s))
 	_aim.weight = _aim_t
 	if _sequence != null:   ## his timeline: the coat, the gun's visibility and placement are what he keyed
 		var here: Dictionary = _sequence.at(_aim_t)
 		if _coat != null:
 			_coat.set_blend_shape_value(_coat_draw_shape, float(here["coat"]))
+		var morphs: Dictionary = here["morphs"]
+		for morph: String in _aim_morphs:
+			_aim_coat.set_blend_shape_value(int(_aim_morphs[morph]), float(morphs.get(morph, 0.0)))
 		if _pistol != null:
+			var placed: Transform3D = here["gun"]
 			_pistol.visible = bool(here["visible"])
-			_pistol_holder.transform = (here["gun"] as Transform3D) * _gun_kick()
+			_pistol_holder.transform = placed * _gun_kick(placed.basis.get_scale().x)
 		return
 	if _coat != null:
 		var opened: float = smoothstep(0.0, PISTOL_SHOWN_FROM, _aim_t) if _aim_t <= PISTOL_SHOWN_FROM else 1.0 - smoothstep(PISTOL_SHOWN_FROM, DRAW_COAT_CLOSED_AT, _aim_t)
@@ -894,14 +969,23 @@ func weapon_out() -> bool:
 	return _aim != null and (_aim_t > 0.0 or _shot_hold > 0.0)
 
 
-## The gun's own kick in its model space (barrel +X, up +Y): back along the barrel and up about the grip, on the arms' envelope.
-func _gun_kick() -> Transform3D:
+## MOVEMENT §11.6 step 3: whether the held weapon is at the stance its shot is fired from (the long gun's hip, or the end of its draw), so the shot
+## waits for it (`AgentShotController`). True when the figure is not drawing anything (no aim layer, a row with no model, a posture with no draw):
+## there is nothing to wait for.
+func weapon_at_stance() -> bool:
+	return _aim == null or _aim_target <= 0.0 or absf(_aim_t - _aim_target) <= 1e-4
+
+
+## The gun's own kick in its model space (barrel +X, up +Y): back along the barrel (`GUN_KICK_BACK`, the figure's units: the model's own scale
+## `model_scale` in the hand is divided out, so a long gun drawn at a fraction of its file's units kicks as far as the pistol) and up about the grip,
+## on the arms' envelope.
+func _gun_kick(model_scale: float = 1.0) -> Transform3D:
 	if _recoil == null or _shot_t == INF:
 		return Transform3D.IDENTITY
 	var e: float = _recoil.envelope(_shot_t)
 	if e <= 0.0:
 		return Transform3D.IDENTITY
-	return Transform3D(Basis(Vector3(0.0, 0.0, 1.0), deg_to_rad(GUN_KICK_DEG * e)), Vector3(-GUN_KICK_BACK * e, 0.0, 0.0))
+	return Transform3D(Basis(Vector3(0.0, 0.0, 1.0), deg_to_rad(GUN_KICK_DEG * e)), Vector3(-GUN_KICK_BACK * e / maxf(model_scale, 1e-6), 0.0, 0.0))
 
 
 ## A shot from the pistol in the hand: the arms and the gun kick, the aim is held through it, a case flies. False when no gun is drawn (the old rig).
@@ -1121,7 +1205,7 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 	var crouched: bool = not walking and not _crouch.is_empty() and String(state["posture"]) == "crouch"
 	## The gun goes back into the coat BEFORE the kneel or the rise (Director, 2026-11-17): while the other posture's aim is still up, the body waits
 	## (`_update_aim` lowers it the moment the posture changes, then the new posture's own aim takes over, raised again if the aim is still held).
-	var gun_first: bool = _aim_t > 0.0 and _aim_kind != ("crouch" if String(state["posture"]) == "crouch" else "standing")
+	var gun_first: bool = _aim_t > 0.0 and not _aim_kind.ends_with(":" + _posture_kind(state))
 	if gun_first and (crouched or (_crouch_t >= 0.0 and not walking)):
 		pass   ## the kneel (or the rise) holds where it is
 	elif crouched:
@@ -1163,7 +1247,7 @@ func _show_tripo(walking: bool, ground: Vector2, state: Dictionary) -> void:
 		## The pose layers (aim, draw, throw) all start from the idle's frame 90 (Director 2026-11-13: 145 was farthest from the legs but its stance is crooked
 		## on the female): the moment one is asked for, the idle CUTS to it and holds, no blend, no wait.
 		var layered: bool = _aim_t > 0.0 or _throwing() or String(state["throw"]) != "" \
-			or (String(state["weapon"]) == "pistol" and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing")
+			or (_armed and _aim_sets.has(_aim_key(String(state["weapon"]), "standing")) and String(state["grip"]) == "_aimed" and String(state["posture"]) == "standing")
 		if layered:
 			if not _idle_cut:
 				_idle_t = minf(IDLE_REFERENCE_FRAME / 24.0, length)

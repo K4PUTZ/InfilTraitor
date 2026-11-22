@@ -22,5 +22,35 @@
   ],
   "blowout": 0.0,
   "soot_radius": 2,
-  "held_as": "shotgun"
+  "held_as": "shotgun",
+  "model": {
+    "path": "res://ASSETS/props/shotgun/shotgun.glb",
+    "surface_materials": {
+      "Metal": "steel_dark",
+      "Black": "rubber",
+      "Black2": "rubber",
+      "LightMetal": "metal",
+      "DarkMetal": "steel_dark",
+      "Wood": "wood",
+      "DarkWood": "wood",
+      "Grey": "painted_metal"
+    },
+    "hand": {
+      "bone": "LeftHand",
+      "pos": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": 0.085
+    },
+    "muzzle": [
+      4.35,
+      0.2169,
+      0.0
+    ]
+  },
+  "fx": {
+    "case": false
+  }
 }

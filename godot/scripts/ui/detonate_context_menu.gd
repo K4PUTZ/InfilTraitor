@@ -14,6 +14,9 @@
 ## click while `_context_menu.visible` as an outside-click cancel, and a second
 ## instance would need that guard to know about both.
 ##
+## MOVEMENT §11.6 step 3 (2026-11-22): an optional SECOND action under the first, for a long gun's two
+## shots (from the hip / aimed). Hidden unless open_at() names it; Enter still fires the first.
+##
 ## The class and file name are now historical — this is no longer detonation
 ## specific. Renaming both is a follow-up, not a silent partial rename that
 ## would leave the file and the class disagreeing.
@@ -31,6 +34,7 @@ signal closed
 @onready var _panel := PanelContainer.new()
 @onready var _vbox := VBoxContainer.new()
 @onready var _btn_action := Button.new()
+@onready var _btn_second := Button.new()
 @onready var _sep := HSeparator.new()
 @onready var _btn_cancel := Button.new()
 
@@ -38,6 +42,8 @@ signal closed
 ## was for. Cleared on close so a stale handler can never fire against a prop
 ## that is no longer selected.
 var _on_confirm: Callable = Callable()
+## The second action's handler (an empty Callable while the menu shows one action).
+var _on_second: Callable = Callable()
 
 
 func _ready() -> void:
@@ -69,6 +75,12 @@ func _ready() -> void:
 	_btn_action.pressed.connect(_on_action_pressed)
 	_vbox.add_child(_btn_action)
 
+	_btn_second.flat = true
+	_btn_second.focus_mode = Control.FOCUS_ALL
+	_btn_second.pressed.connect(_on_second_pressed)
+	_btn_second.visible = false
+	_vbox.add_child(_btn_second)
+
 	## Explicit line style — HSeparator's default theme color is too close to
 	## the panel's own black background to read as a divider at this size.
 	var sep_style := StyleBoxLine.new()
@@ -95,11 +107,16 @@ func _ready() -> void:
 ## literal string — CLAUDE.md bans hardcoded player-facing text.
 ## on_confirm: invoked when that button is pressed. Defaults to an empty
 ## Callable, in which case the button only closes the menu.
+## second_key / on_second: an optional second action under the first ("" = none).
 func open_at(top_anchor_screen_pos: Vector2, gap_above_px: float = 30.0,
 		action_key: String = "ui.context_menu.detonate",
-		on_confirm: Callable = Callable()) -> void:
+		on_confirm: Callable = Callable(), second_key: String = "",
+		on_second: Callable = Callable()) -> void:
 	_btn_action.text = tr(action_key)
 	_on_confirm = on_confirm
+	_btn_second.visible = second_key != ""
+	_btn_second.text = tr(second_key) if second_key != "" else ""
+	_on_second = on_second
 	visible = true
 	opened.emit()
 	## Reset to a known size before measuring — a stale size from a previous
@@ -119,6 +136,7 @@ func close() -> void:
 		return
 	visible = false
 	_on_confirm = Callable()
+	_on_second = Callable()
 	closed.emit()
 
 
@@ -127,6 +145,13 @@ func _on_action_pressed() -> void:
 	## already gone by the time the action's own visuals (blast flash, muzzle
 	## flash) play.
 	var confirm := _on_confirm
+	close()
+	if confirm.is_valid():
+		confirm.call()
+
+
+func _on_second_pressed() -> void:
+	var confirm := _on_second
 	close()
 	if confirm.is_valid():
 		confirm.call()

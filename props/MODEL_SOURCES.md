@@ -8,6 +8,7 @@ All CC0 (public domain); no attribution required, recorded here so the origin is
 |---|---|---|---|
 | `wooden_table_02/` | Wooden Table 02 (1k glTF + textures) | Serhii Khromov | https://polyhaven.com/a/wooden_table_02 |
 | `pistol_quaternius/pistol.glb` | "Pistol" from the Ultimate Guns Pack (Pistol_6) | Quaternius | https://poly.pizza/m/52kQzphmeF |
+| `shotgun/shotgun.glb` | "Shotgun" from the Ultimate Guns Pack (Shotgun_2; the pack's `Shotgun.glb`, byte for byte; the H3 family's reference, 2026-11-22) | Quaternius | https://poly.pizza/bundle/Ultimate-Guns-Pack-cpgUfI4t2F |
 
 Each surface keeps the colour/texture it was authored with (`PropMesh3D.setup_model`); see `PropDef.model_path`.
 

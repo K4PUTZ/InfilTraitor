@@ -30,7 +30,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")
 LIGHT_GLB = None   # mp.agent(figure, "game", ...)
 PROP_GLB = {"pistol": os.path.join(ROOT, "ASSETS", "props", "pistol_quaternius", "pistol.glb"),
             "grenade": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_grenade", "Grenade.glb"),
-            "shotgun": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_ultimate_guns_pack", "extracted", "Shotgun.glb")}
+            "shotgun": os.path.join(ROOT, "ASSETS", "props", "shotgun", "shotgun.glb")}   # the game's model (weapons/shotgun.json), the pack's `Shotgun.glb` byte for byte
 PREFIX = "mixamorig:"                       # the Blender importer keeps Tripo's colon; Godot turns it into an underscore
 HIDE = ("Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere")   # the pieces the game's DRESSED set hides (`TripoFigure.UNDRESSED_PIECES`)
 EPS_CHANGED = 1e-3                          # a bone the Director moved: its local rotation differs from the base by more than this (quaternion distance)

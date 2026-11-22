@@ -235,6 +235,20 @@ func play_shot_kick() -> bool:
 	return false
 
 
+## MOVEMENT §11.6 step 3 — the long gun's shot stance ("hip" or "aimed", `ActorPose.SHOT_STANCES`): the figure draws to the hip or on to the shoulder.
+func set_shot_stance(stance: String) -> bool:
+	return pose != null and pose.set_shot_stance(stance)
+
+
+## MOVEMENT §11.6 step 3 — whether the figure's weapon is at the stance its shot is fired from (`ActorMesh3D.weapon_at_stance()`). True when the
+## figure draws nothing (the old rig, a headless run): there is nothing to wait for.
+func weapon_at_stance() -> bool:
+	var figure: Variant = pose.get_meta("figure3d") if pose != null and pose.has_meta("figure3d") else null
+	if figure != null and is_instance_valid(figure) and (figure as Object).has_method("weapon_at_stance"):
+		return bool((figure as Object).call("weapon_at_stance"))
+	return true
+
+
 ## MOVEMENT §11.6 step 5 — the shot's own body (a dart, the taser's probes, the grapple's hook, a flare) thrown by the figure at `to`
 ## (board-local), `normal` / `host` the struck face and voxel (`ActorMesh3D.fire_projectile`). False when nothing flew (a tracer row, no figure).
 func fire_projectile(to: Vector3, normal: Vector3, host: Vector3i) -> bool:

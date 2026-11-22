@@ -671,6 +671,7 @@ static func build_library(figure: String, hips_rest: Vector3) -> AnimationLibrar
 	var timeline_ids: PackedStringArray = AimSequenceRef.pose_ids(figure, AimSequenceRef.PISTOL_DRAW)   ## the Director's timelines: one pose per keyed frame, each from its own file
 	timeline_ids.append_array(AimSequenceRef.pose_ids(figure, AimSequenceRef.THROW_OVERHAND))
 	timeline_ids.append_array(AimSequenceRef.pose_ids(figure, "draw_crouch_pistol"))   ## the crouched draw (2026-11-15; `ActorMesh3D.DRAW_CROUCH`)
+	timeline_ids.append_array(AimSequenceRef.pose_ids(figure, AimSequenceRef.LONG_DRAW))   ## the long guns' draw (2026-11-22; `ActorMesh3D.FAMILY_DRAWS`)
 	for id: String in timeline_ids:
 		var pose: Animation = bank_pose(figure, id)
 		if pose == null:

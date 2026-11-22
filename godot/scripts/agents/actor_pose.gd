@@ -52,6 +52,10 @@ var weapon: String = "shotgun"
 var weapon_id: String = ""
 ## The attachment on the held weapon's muzzle (`attachments/<id>.json`, "" = none; Director 2026-11-17: the suppressor).
 var muzzle_attachment: String = ""
+## The shot's stance with a LONG gun (MOVEMENT §11.6 step 3, Director 2026-11-17): "hip" (fast, misses more; standing only; where the draw ends)
+## or "aimed" (on to the shoulder at the eye, one AP more; the only one kneeling). A pistol has one stance; it ignores this.
+const SHOT_STANCES: PackedStringArray = ["hip", "aimed"]
+var shot_stance: String = "hip"
 ## MOVEMENT 2026-11-17 (Director): the weapon is out only to aim and fire; the actor sets this while it does something else (a move), and the
 ## figure puts the weapon away at once (no hold after a shot) and keeps it away (`ActorMesh3D.weapon_out()` says when it is gone).
 var stow_weapon: bool = false
@@ -135,6 +139,15 @@ func set_grip(name: String) -> void:
 			% [name, grip if grip != "" else "lowered"])
 		return
 	grip = name
+
+
+## The long gun's shot stance (`SHOT_STANCES`: "hip" or "aimed"); an unknown one is refused loudly and the stance kept.
+func set_shot_stance(stance: String) -> bool:
+	if not SHOT_STANCES.has(stance):
+		push_error("[ActorPose] no shot stance '%s' (have %s): keeping '%s'" % [stance, SHOT_STANCES, shot_stance])
+		return false
+	shot_stance = stance
+	return true
 
 
 ## Nothing to load any more: every grip the rig has is resident with it. Kept for the callers that warm a grip ahead of
@@ -249,6 +262,7 @@ func mesh_state() -> Dictionary:
 		"weapon": weapon,
 		"weapon_id": weapon_id,
 		"attachment": muzzle_attachment,
+		"stance": shot_stance,
 		"stow": stow_weapon,
 		"walk": _walk_progress if _posture != "prone" else -1.0,
 		"dash": _dash,

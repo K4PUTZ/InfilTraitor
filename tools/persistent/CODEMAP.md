@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**359 scripts · 103374 lines total** (under `godot/scripts/`)
+**359 scripts · 103574 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `actor_pose.gd`
 
-`class_name ActorPose` · extends `Node` · 291 lines
+`class_name ActorPose` · extends `Node` · 305 lines
 
 `godot/scripts/agents/actor_pose.gd`
 
@@ -45,7 +45,7 @@
 
 ### `agent.gd`
 
-`class_name Agent` · extends `Node2D` · 663 lines
+`class_name Agent` · extends `Node2D` · 677 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -92,6 +92,8 @@
 - `func muzzle_points() -> Dictionary:`
 - `func grenade_release_points() -> Dictionary:`
 - `func play_shot_kick() -> bool:`
+- `func set_shot_stance(stance: String) -> bool:`
+- `func weapon_at_stance() -> bool:`
 - `func fire_projectile(to: Vector3, normal: Vector3, host: Vector3i) -> bool:`
 - `func muzzle_origin() -> Vector2:`
 - `func play_throw_raise() -> bool:`
@@ -423,11 +425,11 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 1363 lines
+`class_name ActorMesh3D` · extends `Node3D` · 1447 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
-> ActorMesh3D — an actor as a live skinned mesh on the 3D board (RENDER3D R3D-ACTORS, `ACTOR` D64). THE MESH SHOWS, `ActorPose` DECIDES (step 3, the bridge). The contract the retired `ActorBillboard3D` kept: the sprite still owns every decision — facing (D44's four, D47's snap at the GU boundary), posture, grip, weapon, the walk's progress, the throw and the head's grid angle — and this node reads them each frame through `ActorPose.mesh_state()` and turns them into a yaw, an action and a time. Nothing in the actor's logic knows which of the two draws it. THE RIG is `tools/asset_generation/r3d_live_rig_export.py`'s: one skinned mesh, every motion a keyed action (`<posture>_<weapon>_<grip>`, `walk_<weapon>`, `throw_raise_<weapon>`, `throw_release_<weapon>`), the weapons on `hand_R` and the grenade on `hand_L` as `BoneAttachment3D`s. An action is never PLAYED: it is SEEKED to the fraction the sprite is at, so the walk stays locked to the step's progress (one cycle per GU, D61) and the throw to the sprite's own clock, which is what fires `throw_released`. LIT the board's way (`actor_mesh3d.gdshader`: no Godot light, one cell-plane fetch; Moto: 9 walking rigs +1.0 ms), its materials kept in sync by `Board3DLive.register_prop_light_material()` exactly as a prop's are. PLACED in BASE world coordinates: the feet are the sprite's 2D position through `Board3DLive.ground_point()` (the N lattice in every view), the yaw is the base grid step's, so a camera yaw turns the figure with the board for free. A TRIPO AGENT (MOVEMENT MV-4, first slice, 2026-11-05; THE AGENT'S DEFAULT since 2026-11-08, the male unless `TRIPO_FIGURE=female`, `none` = the old rig; guards are never affected: the soldier keeps the white rig, the officer wears the old agent's `agent_live.glb`). The agent wears that LIGHT Agent instead (`TripoFigure`: 65 Mixamo joints, the dressed set, the coat two-sided, its emblem, the legs pushing it) and plays the game set's clips: `idle` on its own clock while the actor stands, the move clip (`TRIPO_MOVE`, `walk` by default) while it walks, phased by the GROUND it covers (one pass of the clip per its `travel_m`), so the feet do not slide at any step length. Facing (D44, D47's snap), position and gravity are this node's, unchanged. THE PISTOL (2026-11-08): with `weapon` `_pistol` and `grip` `_aimed` the aim layer (`ActorAimPose3D`, `AIM_STOPS`) takes the arms from the clip through the draw (fists at the sternum, the gun comes out of the coat) to a two-handed aim, and back on cancel. Not yet on that figure: the other weapons in the hand (the shotgun and the rifle stand through the aim), crouched and prone, the throw (a Tripo actor stands through it; the throw still releases on the sprite's clock), the clip transitions (a snap, D47's default) and the corrective coat keys (`ACTOR` D103, only on the base).
+> ActorMesh3D — an actor as a live skinned mesh on the 3D board (RENDER3D R3D-ACTORS, `ACTOR` D64). THE MESH SHOWS, `ActorPose` DECIDES (step 3, the bridge). The contract the retired `ActorBillboard3D` kept: the sprite still owns every decision — facing (D44's four, D47's snap at the GU boundary), posture, grip, weapon, the walk's progress, the throw and the head's grid angle — and this node reads them each frame through `ActorPose.mesh_state()` and turns them into a yaw, an action and a time. Nothing in the actor's logic knows which of the two draws it. THE RIG is `tools/asset_generation/r3d_live_rig_export.py`'s: one skinned mesh, every motion a keyed action (`<posture>_<weapon>_<grip>`, `walk_<weapon>`, `throw_raise_<weapon>`, `throw_release_<weapon>`), the weapons on `hand_R` and the grenade on `hand_L` as `BoneAttachment3D`s. An action is never PLAYED: it is SEEKED to the fraction the sprite is at, so the walk stays locked to the step's progress (one cycle per GU, D61) and the throw to the sprite's own clock, which is what fires `throw_released`. LIT the board's way (`actor_mesh3d.gdshader`: no Godot light, one cell-plane fetch; Moto: 9 walking rigs +1.0 ms), its materials kept in sync by `Board3DLive.register_prop_light_material()` exactly as a prop's are. PLACED in BASE world coordinates: the feet are the sprite's 2D position through `Board3DLive.ground_point()` (the N lattice in every view), the yaw is the base grid step's, so a camera yaw turns the figure with the board for free. A TRIPO AGENT (MOVEMENT MV-4, first slice, 2026-11-05; THE AGENT'S DEFAULT since 2026-11-08, the male unless `TRIPO_FIGURE=female`, `none` = the old rig; guards are never affected: the soldier keeps the white rig, the officer wears the old agent's `agent_live.glb`). The agent wears that LIGHT Agent instead (`TripoFigure`: 65 Mixamo joints, the dressed set, the coat two-sided, its emblem, the legs pushing it) and plays the game set's clips: `idle` on its own clock while the actor stands, the move clip (`TRIPO_MOVE`, `walk` by default) while it walks, phased by the GROUND it covers (one pass of the clip per its `travel_m`), so the feet do not slide at any step length. Facing (D44, D47's snap), position and gravity are this node's, unchanged. THE PISTOL (2026-11-08): with `weapon` `_pistol` and `grip` `_aimed` the aim layer (`ActorAimPose3D`, `AIM_STOPS`) takes the arms from the clip through the draw (fists at the sternum, the gun comes out of the coat) to a two-handed aim, and back on cancel. THE LONG GUNS (2026-11-22, `FAMILY_DRAWS`): a weapon held as the shotgun draws on its own timeline, out of the coat's right flap with the left hand, to the hip or on to the shoulder (`ActorPose.shot_stance`). Not yet on that figure: the rifles' and the sniper's own models (their rows have none: they are not drawn), a long gun crouched or prone, moving with a weapon. Not yet on that figure (2026-11-08): crouched and prone, the throw (a Tripo actor stands through it; the throw still releases on the sprite's clock), the clip transitions (a snap, D47's default) and the corrective coat keys (`ACTOR` D103, only on the base).
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/actor_mesh3d.gdshader"`
@@ -473,9 +475,18 @@ extends `ConfirmationDialog` · 64 lines
 - `EJECT_BACK_M` = `0.2`
 - `THROW_TURN_RAD_S` = `TAU`
 - `SOURCE_MATERIAL_META` = `&"source_material"`
+- `GAIT_PASSAGES` = `{ "run": {"clip": "run", "start": "run_start", "stops": {"l": "run_stop_l", "r": "run_stop_r"}, "contacts": [[14.0, "r"], [21.0, "l"], [29.0, "r"], [36.0, "l"]]}, "walk": {"clip": "walk", "start": "walk_start", "stops": {"l": "walk_stop"}, "contacts": [[22.0, "l"], [50.0, "l"]]}, }`
+- `PHASE_K_RANGE` = `Vector2(0.7, 1.4)`
+- `IDLE_COAT_KEY` = `"IdleFix"`
+- `WALK_COAT_KEY` = `"WalkFix"`
+- `RUN_COAT_KEY` = `"RunFix"`
+- `IDLE_REFERENCE_FRAME` = `90.0`
+- `FALL_GU_S` = `3.0`
+- `CLIMB_GU_S` = `1.5`
 - `REVEAL_PALETTES` = `{ &"agent": {"stripe_a": Color(0.86, 0.96, 1.0), "stripe_b": Color(0.16, 0.28, 0.38), "outline_color": Color(1.0, 1.0, 1.0)}, &"agency": {"stripe_a": Color(0.46, 0.64, 1.0), "stripe_b": Color(0.08, 0.14, 0.40), "outline_color": Color(0.30, 0.56, 1.0)}, &"militia": {"stripe_a": Color(1.0, 0.52, 0.36), "stripe_b": Color(0.40, 0.10, 0.06), "outline_color": Color(1.0, 0.34, 0.18)}, &"corporation": {"stripe_a": Color(1.0, 0.84, 0.30), "stripe_b": Color(0.38, 0.28, 0.04), "outline_color": Color(1.0, 0.74, 0.12)}, &"network": {"stripe_a": Color(0.46, 0.96, 0.62), "stripe_b": Color(0.06, 0.30, 0.14), "outline_color": Color(0.28, 0.90, 0.46)}, }`
 
 **Public vars**
+- `var reveal_behind_walls: bool = false:`
 - `var silhouette_phase: float = 0.0:`
 - `var reveal_faction: StringName = &"":`
 
@@ -483,9 +494,6 @@ extends `ConfirmationDialog` · 64 lines
 - `func setup_actor(board: Node3D, source: ActorPose) -> bool:`
 - `func throw_release_global() -> Vector3:`
 - `func fire_projectile(to: Vector3, normal: Vector3, host: Vector3i) -> bool:`
-- `func weapon_out() -> bool:`
-- `func fire_kick() -> bool:`
-- `func muzzle_global() -> Vector3:`
 
 ---
 
@@ -517,7 +525,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `aim_sequence.gd`
 
-extends `RefCounted` · 107 lines
+extends `RefCounted` · 110 lines
 
 `godot/scripts/geometry/aim_sequence.gd`
 
@@ -527,6 +535,7 @@ extends `RefCounted` · 107 lines
 - `SEQUENCE_FILE` = `"res://ASSETS/ANIMATIONS/sequences/%s/%s.json"`
 - `PISTOL_DRAW` = `"draw_pistol"`
 - `THROW_OVERHAND` = `"throw_overhand"`
+- `LONG_DRAW` = `"draw_shotgun"`
 
 **Public vars**
 - `var fps: float = 24.0`
@@ -1555,7 +1564,7 @@ extends `Node3D` · 3579 lines
 
 ### `tripo_figure.gd`
 
-`class_name TripoFigure` · extends `RefCounted` · 679 lines
+`class_name TripoFigure` · extends `RefCounted` · 680 lines
 
 `godot/scripts/geometry/tripo_figure.gd`
 
@@ -4316,7 +4325,7 @@ extends `Node` · 818 lines
 > ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) throw <index> <x,y>                  RETIRE-2: dev grenade #index THROWN to the GU x,y through the real throw (the agent's release, the arc, the landing hop, the roll, the fuse, the blast); returns at once, so follow it with `frames`/`capture_at` aim <x,y>                            RETIRE-2D: the grenade targeting preview on a GU (the perimeter, the dome, the arc, the shrapnel rays, the footprint and the virtual grenade), as a player aiming; stays open canvas_check <name>                  RETIRE-2D: prints `[CANVAS-CHECK] <name> examined=N canvas=M <names>`: how many overlays that have a 3D target there are, and which of them are painting the 2D canvas instead capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read container_stats <name>               R3D-CLAIMS C2: prints how many released containers were converted back to full `Voxel` objects and how many single handles were made (`VoxelContainer.Stats`) probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points needs that guard to exist (GLASS has none: the step aborts the scenario) reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` view_mode dev|light|heat|numbers|ruler   flips one analysis aid, through the same toggles the HUD and the F-keys reach (the dev overlays under a camera yaw need a scenario to switch them on; call it again to flip it back) pick_check <name>                    touch picking in the CURRENT view: the centre of every on-screen cell goes through the real pick (`_screen_to_tile`) and must come back as that cell (or the standing prop that covers it); prints `[PICK-CHECK]` (tools/persistent/pick_gate.py reads it) world_check <name>                   the maths the air overlays (tracer, throw arc, aim dome, lamps) stand on, in the CURRENT view: where `WorldCanvas3D.lift()` puts fixed points (world state, must not move with the view) and whether `screen_axes()` is what the camera really does to a grid step; prints `[WORLD-CHECK]` (tools/persistent/world_gate.py) relight                              R3D-13: the map-wide light repaint on the CURRENT world, in place — what a rotation or a restore runs, without either (a probe before and after names what the incremental light left different from a full relight) flood <mode>                         MATERIALS F12 feasibility bench: the WHOLE playable floor under water, as one body. plane05 / plane025 = a `FluidPlane` of 0.5 / 0.25 GU cells (no walls: every cell is active, the upper bound) driven by a source, ticked every 0.3 s, drawn by a driven `LiquidSheet3D`; ch1 / ch4 / ch8 = that many copies of PIPE_LAB's real channel (1.5 x 10 GU, 0.5 GU cells since F8, source + drain, ch8q = 8 of them at the old 0.25 GU cells, closed curb), each with its own driven sheet: the M6 F8 cost of N bodies; level = one flat sheet and no sim (the "level model"); off = remove it. Prints `[FLOOD]` lines (`Room.scenario_flood`) struct_audit                         ROOF_MASTER_PLAN RF-G G3: asks `StructuralSupport` about EVERY standing voxel of the map and prints how many have no support (an intact map must say 0) and what the walk cost (`Room.scenario_struct_audit`) struct_cut                           RF-G G3 bench: dev flag `STRUCT_CUT=<material>,<levels>` destroys the foot of every voxel of that material, then the support service runs roof_gravity                         ROOF_MASTER_PLAN v0.28: every soft roof (fabric) lets go under gravity alone and becomes a cloth hanging from what held it (`Room.scenario_roof_gravity`) passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed walk <x,y>                           MOVEMENT MV-4: the agent walks to a cell the way a tap orders it (`Room.scenario_walk_agent`: the real path, the AP spent); fails when the cell is unreachable or the AP is short turn <x,y>                           the FIRST tap on a destination: the idle agent turns toward the cell (no move) actor_bench <agent|agent_*> <n>     dev viability test: n live rigs of the shipped agent or a Tripo Agent on the board, lit its way (`ActorViabilityBench`), draw calls printed after 30 frames quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
 
 **Constants / tuning**
-- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "aim_cancel": 0, "canvas_check": 1, "probe_store": 1, "shoot": 1, "weapon": 1, "attach": 1, "shot_aim": 1, "shot_cancel": 0, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1, "container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "walk": 1, "turn": 1, "posture": 1, "actor_bench": 2, "decal_wall": 2, "skylight_hit": 0, "roof_gravity": 0, "flood": 1, "struct_audit": 0, "struct_cut": 0, "alert_reset": 0, "new_turn": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1, }`
+- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "aim_cancel": 0, "canvas_check": 1, "probe_store": 1, "shoot": 1, "shoot_aimed": 1, "weapon": 1, "attach": 1, "shot_aim": 1, "shot_cancel": 0, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1, "container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "walk": 1, "turn": 1, "posture": 1, "actor_bench": 2, "decal_wall": 2, "skylight_hit": 0, "roof_gravity": 0, "flood": 1, "struct_audit": 0, "struct_cut": 0, "alert_reset": 0, "new_turn": 0, "profile": -1, "hud": 1, "frame": -1, "frame_check": 1, "still": -1, "shake": 1, "rail": 1, "take": 1, }`
 - `CELL_TOKENS` = `{"throw": [2], "aim": [1], "centre": [1], "place_guard": [2], "walk": [1], "turn": [1], "decal_wall": [2], "occ_bench": [1, 2]}`
 - `FRAME_MODES` = `["wide", "detail", "close", "fit"]`
 - `VIEWS` = `["N", "E", "S", "W"]`
@@ -6665,11 +6674,11 @@ extends `SceneTree` · 428 lines
 
 ### `detonate_context_menu.gd`
 
-`class_name DetonateContextMenu` · extends `Control` · 137 lines
+`class_name DetonateContextMenu` · extends `Control` · 162 lines
 
 `godot/scripts/ui/detonate_context_menu.gd`
 
-> DetonateContextMenu — small black-box context menu for right-clicking an interactive TEST-ZONE prop (placeholder, 2026-07-21). One parameterised action then a separator then "Cancelar (Esc)". Enter/Space activate the focused button natively (Godot's own Control focus system) — no custom accept handling needed. Esc and outside-clicks are handled by the caller (room.gd owns all mouse/keyboard coordination — see its _unhandled_input), not here, so there is exactly one place deciding "is the menu open" instead of two competing input handlers. WEAPON-FIRE-01 (2026-07-29): the action label and its handler are now passed in at open_at() time, because a second prop type needed a second verb ("Atirar" on a bench weapon vs. "Detonar" on a grenade). One shared menu INSTANCE is deliberate, not incidental: room.gd's _unhandled_input treats any click while `_context_menu.visible` as an outside-click cancel, and a second instance would need that guard to know about both. The class and file name are now historical — this is no longer detonation specific. Renaming both is a follow-up, not a silent partial rename that would leave the file and the class disagreeing.
+> DetonateContextMenu — small black-box context menu for right-clicking an interactive TEST-ZONE prop (placeholder, 2026-07-21). One parameterised action then a separator then "Cancelar (Esc)". Enter/Space activate the focused button natively (Godot's own Control focus system) — no custom accept handling needed. Esc and outside-clicks are handled by the caller (room.gd owns all mouse/keyboard coordination — see its _unhandled_input), not here, so there is exactly one place deciding "is the menu open" instead of two competing input handlers. WEAPON-FIRE-01 (2026-07-29): the action label and its handler are now passed in at open_at() time, because a second prop type needed a second verb ("Atirar" on a bench weapon vs. "Detonar" on a grenade). One shared menu INSTANCE is deliberate, not incidental: room.gd's _unhandled_input treats any click while `_context_menu.visible` as an outside-click cancel, and a second instance would need that guard to know about both. MOVEMENT §11.6 step 3 (2026-11-22): an optional SECOND action under the first, for a long gun's two shots (from the hip / aimed). Hidden unless open_at() names it; Enter still fires the first. The class and file name are now historical — this is no longer detonation specific. Renaming both is a follow-up, not a silent partial rename that would leave the file and the class disagreeing.
 
 **Signals**
 - `signal cancelled`
@@ -6677,7 +6686,7 @@ extends `SceneTree` · 428 lines
 - `signal closed`
 
 **Public API**
-- `func open_at(top_anchor_screen_pos: Vector2, gap_above_px: float = 30.0, action_key: String = "ui.context_menu.detonate", on_confirm: Callable = Callable()) -> void:`
+- `func open_at(top_anchor_screen_pos: Vector2, gap_above_px: float = 30.0, action_key: String = "ui.context_menu.detonate", on_confirm: Callable = Callable(), second_key: String = "", on_second: Callable = Callable()) -> void:`
 - `func close() -> void:`
 
 ---
@@ -6926,7 +6935,7 @@ extends `Node2D` · 63 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1384 lines
+`class_name AgentShotController` · 1432 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -7077,14 +7086,11 @@ extends `RefCounted` · 404 lines
 
 ### `scenario_steps.gd`
 
-extends `Node` · 904 lines
+extends `Node` · 915 lines
 
 `godot/scripts/world/controllers/scenario_steps.gd`
 
 > ScenarioSteps — the scenario runner's ops that act on the room (`scenario_<op>()`), out of `room.gd` (HERITAGE T3, 2026-11-11). Dev tooling: created on first use by `Room.scenario_steps()`, never in play. `ScenarioRunner` calls these by name (`"scenario_" + op`); each returns whether its step completed and reaches the room's state through `room`, the way the other controllers do.
-
-**Signals**
-- `signal scenario_detonation_done(ok: bool)`
 
 **Constants / tuning**
 - `BoardProbeClass` = `preload("res://godot/scripts/systems/board_probe.gd")`
@@ -7108,24 +7114,6 @@ extends `Node` · 904 lines
 - `func scenario_passages(label: String) -> bool:`
 - `func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:`
 - `func scenario_shoot(index: int) -> bool:`
-- `func scenario_weapon(weapon_id: String) -> bool:`
-- `func scenario_attach(attachment_id: String) -> bool:`
-- `func scenario_shot_aim(index: int) -> bool:`
-- `func scenario_shot_cancel() -> bool:`
-- `func scenario_decal_wall(material_id: String, gu: Vector2i) -> bool:`
-- `func scenario_reload() -> bool:`
-- `func scenario_save_restore() -> bool:`
-- `func scenario_view_mode(mode: String) -> bool:`
-- `func scenario_perspective(direction: String) -> bool:`
-- `func scenario_skylight_hit() -> bool:`
-- `func scenario_struct_audit() -> bool:`
-- `func scenario_struct_cut() -> bool:`
-- `func scenario_flood(mode: String) -> bool:`
-- `func scenario_roof_gravity() -> bool:`
-- `func scenario_relight() -> bool:`
-- `func scenario_throw(index: int, target: Vector2i) -> bool:`
-- `func scenario_detonate(index: int) -> void:`
-- `func scenario_place_guard(index: int, cell: Vector2i) -> bool:`
 - `func scenario_walk_agent(cell: Vector2i) -> bool:`
 - `func scenario_turn_agent(cell: Vector2i) -> void:`
 - `func scenario_agent_posture(name: String) -> bool:`

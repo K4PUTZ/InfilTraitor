@@ -336,6 +336,17 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 
 
 func scenario_shoot(index: int) -> bool:
+	return await _scenario_fire(index, "")
+
+
+## Scenario step `shoot_aimed <guard>` (MOVEMENT §11.6 step 3): a long gun's AIMED shot, the figure going on from the hip to the shoulder first
+## (the menu's second action); `shoot` fires a long gun from the hip. A pistol fires the same either way.
+func scenario_shoot_aimed(index: int) -> bool:
+	return await _scenario_fire(index, "aimed")
+
+
+## `stance`: "" = the held weapon's own (`AgentShotController.fire_at_active`).
+func _scenario_fire(index: int, stance: String) -> bool:
 	if room._agent_shot_controller == null or index < 0 or index >= room._guards.size():
 		push_error("[Room] scenario_shoot: no shot controller or no guard #%d (%d on the map)"
 			% [index, room._guards.size()])
@@ -351,7 +362,7 @@ func scenario_shoot(index: int) -> bool:
 	room._agent_shot_controller.open_menu_for(index)
 	for _f in range(10):
 		await room.get_tree().process_frame
-	room._agent_shot_controller.fire_at_active()
+	room._agent_shot_controller.fire_at_active(stance)
 	var waited: int = 0
 	while (room._destruction_render_busy or room.is_resolving_action()) and waited < 1800:
 		await room.get_tree().process_frame

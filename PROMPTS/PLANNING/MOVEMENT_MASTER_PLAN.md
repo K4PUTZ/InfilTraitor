@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
+> ⏭️ **2026-11-22 — the SHOTGUN's draw is IN THE GAME on both figures (§11.6 step 3): the long-gun family in `ActorMesh3D` (the gun on the left hand, the draw stopping at the hip or running on to the shoulder), the hip and aimed shots in the menu, takes `shotgun_draw` / `shotgun_shot`. Read back from the timelines as they stood (the Director's fine adjustment of the male still to come). Record: `PROMPTS/RESUMO_SESSAO_2026-11-22_SHOTGUN_DRAW_IN_GAME.md`.**
 > ⏭️ **v1.5, 2026-11-16 — the BASIC MOVES IN USE are CLOSED on both figures (Director: "a gente fechou os movimentos básicos em uso") and what is left is PLANNED in §11, docs only:** every held item of the canon sorted into eight HOLD families, the body postures still to make (beside cover and at a corner, standing and crouched), the throws left (from the kneel; the bowl, standing only), the fixed interactions (computer, alarms, buttons, levers, valves), the weapon models already on disk, the grenade's size defect measured (3.0× the hand's in flight), and the order of work (§11.6). **PRONE is SUSPENDED** until GAMEPLAY-01 rules whether it is viable. **Step 0 DONE (the grenade is the hand's size everywhere, 0.065 GU); step 1 ruled: ALL 21 pack firearms are used on their families' holds; then every weapon in the figure's hands (size, grip, muzzle). Nine questions wait on the Director (§11.8).**
 > ⏭️ **2026-11-14 — the DASH is built: a move that spends both AP plays the Tripo figure's `run` (0.32 s/GU, phased by the ground); the idle <-> move passage is still a snap (an `AnimationPlayer` crossfade over `seek` failed: the run never showed). NEXT, by the Director: the characters turn, then idle -> run / walk passages. Record: `PROMPTS/RESUMO_SESSAO_2026-11-14_DASH.md`.**
 > ⏭️ **2026-11-15 — the CROUCH is in the game on both figures (16 frames, held; standing up = the crouch backwards), and so are the crouched draw / aim / shot / holster (`draw_crouch_pistol`, a second aim layer chosen by posture; the recoil unchanged). Next: the crouch -> walk / run passage. Record: `PROMPTS/RESUMO_SESSAO_2026-11-15_CROUCH_DRAW_SHOT.md`.**
@@ -820,8 +821,28 @@ Each step lands on both figures before the next; a step with a look ends in a ca
      runs just under the right eye, the head down on the stock and leaning right onto it, the butt high in the shoulder
      (`LONG_AIM_*`; the eye found from the nose's tip on the head mesh). ONE aim for the shotguns, the rifles and the snipers; the
      HIP shot is the shotguns' and the rifles', never the snipers' (a sniper draws straight to the aim); it opens at x0.085 of the pack's units, about 1 m long (at the pistol's 0.0600 its stock stops short of the shoulder): its
-     size is the Director's. The coat has one EMPTY key per pose, `LongDrawFix_f12` ... `_f31`: opening the right flap is his. Not
-     read back yet: the game has no long gun's draw until he has posed it (then `pose_lab.py sequence draw_shotgun`).
+     size is the Director's. The coat has one EMPTY key per pose, `LongDrawFix_f12` ... `_f31`: opening the right flap is his.
+   - **IN THE GAME on both figures, 2026-11-22** (read back as the files stood: his male save of 2026-11-18 02:49 is the session's last write
+     byte for byte in its keys, so his fine adjustment was still to come; the female is the builder's plus that session's edits, no key of his).
+     `pose_lab.py sequence draw_shotgun --figure both` -> `sequences/<fig>/draw_shotgun.json` (male: stops 12 rests, 13 and 16 passing, 23
+     rests, 31 rests; female: 12, 16, 23, 31) and the pose files; `TripoFigure.build_library` carries them. His male `LongDrawFix_f12` (the right
+     flap opened at the lapel, 304 vertices) is a morph of `AGENT_MALE_LIGHT.glb` (`glb_add_morph.py`); the empty keys stay out of the GLBs.
+     **The engine:** `ActorMesh3D`'s aim sets are per hold FAMILY and posture (`FAMILY_DRAWS`: `pistol:standing`, `pistol:crouch`,
+     `shotgun:standing`); a set changes only with the gun away, and the one gun node takes the timeline's bone (the long gun rides the LEFT
+     hand), the row's model and, for a long draw, its own coat keys. The draw stops at the `hip` marker for the stance "hip" and runs to the
+     end for "aimed" (`ActorPose.shot_stance`); the holster is the timeline backwards from wherever the gun is. A family is drawn only when the
+     held row has a model: `weapons/shotgun.json` has one now (`ASSETS/props/shotgun/shotgun.glb`, the pack's `Shotgun.glb` byte for byte,
+     LEFT hand at x0.085, muzzle at the bore's front face, no spent case: a pump throws it at the pump, not at the shot), so the smg and the
+     sniper rifle (held as the shotgun, no model) are still not drawn. `ActorPose.weapon_id` "" (the agent's default) means the family's
+     reference row. **The two shots in the menu:** a long gun standing offers "Atirar do quadril (Enter)" and "Atirar mirando" (the context
+     menu's optional second action); kneeling or prone, or a sniper, the aimed one alone. The menu opening draws to the hip; the aimed shot
+     goes on to the shoulder and fires once the figure is there (`AgentShotController._reach_stance`, after the precook join so the lag stays
+     before the animation; `Agent.weapon_at_stance`). As with the pistol, the end of a shot puts the gun away. Takes `shotgun_draw` (the 4
+     views) and `shotgun_shot` (hip, then aimed), scenario step `shoot_aimed <guard>`; filmed on both figures: the flash leaves the muzzle at
+     the waist (123 px over the floor) and at the eye (163 px). Not done: his fine adjustment of the male and the female in step with his
+     keys (a new read-back when he has saved), the shotgun's size certified (`size_certified`: until then a load warning says so), the
+     kneeling long-gun draw (step 4), the other shotgun models (the H3 family lab), the pump / case (step 5), the AP of the aimed shot
+     (GAMEPLAY-01).
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).
 5. **The shot per weapon,** as data over the procedural recoil (`ActorRecoil3D`): the kick, the burst (count and interval), the hold
    after it, the case from the `port` (none for the revolver, the taser, the darts). The flash and the tracer already leave

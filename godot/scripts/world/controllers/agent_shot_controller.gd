@@ -84,6 +84,14 @@ const GUARD_TOP_PX: float = 72.0
 const GRIP_AIMED: String = "_aimed"
 const GRIP_LOWERED: String = ""
 
+## MOVEMENT §11.6 step 3 (Director, 2026-11-17): a LONG gun (a row held as the shotgun) has two shots: from the HIP (fast, misses more; standing
+## only; where its draw ends) and AIMED (on to the shoulder at the eye, one AP more; the only one kneeling, and a sniper rifle's only one). Their
+## numbers are GAMEPLAY-01's (shots spend no AP yet): this gives the choice and the figure's stance. A pistol has one shot (stance "").
+const STANCE_HIP: String = "hip"
+const STANCE_AIMED: String = "aimed"
+## How many frames a long gun's shot waits for the figure to reach its stance before it goes anyway, loudly (the whole long draw is 1.25 s).
+const STANCE_WAIT_MAX_FRAMES: int = 180
+
 ## How many DRAWN FRAMES the rounds get to cross before the wall reacts. A frame
 ## count, not a duration: see the note in fire_at_active() for why a duration is
 ## exactly the thing that failed here. 8 frames at 60 Hz is ~0.13 s, which is
@@ -253,8 +261,15 @@ func open_menu_for(index: int) -> void:
 	## a session — and W-LOAD-02 moved those frames to the map load, so what is
 	## left after this line is ~5 ms. Both halves matter: the ordering makes the
 	## menu independent of whatever the rest of this function ever grows into.
-	room._context_menu.open_at(_top_screen_pos(guard), MENU_GAP_ABOVE_PX,
-		"ui.context_menu.fire", fire_at_active)
+	var stance: String = _shot_stance_for(Registries.get_weapon_registry().get_weapon(_weapon_id))
+	if stance == STANCE_HIP:   ## a long gun standing: both shots, the hip first (Enter)
+		room._context_menu.open_at(_top_screen_pos(guard), MENU_GAP_ABOVE_PX, "ui.context_menu.fire_hip", fire_at_active.bind(STANCE_HIP),
+			"ui.context_menu.fire_aimed", fire_at_active.bind(STANCE_AIMED))
+	elif stance == STANCE_AIMED:   ## a long gun kneeling: the aimed shot alone
+		room._context_menu.open_at(_top_screen_pos(guard), MENU_GAP_ABOVE_PX, "ui.context_menu.fire_aimed", fire_at_active.bind(STANCE_AIMED))
+	else:
+		room._context_menu.open_at(_top_screen_pos(guard), MENU_GAP_ABOVE_PX,
+			"ui.context_menu.fire", fire_at_active)
 	## The weapon comes up when the target is picked, not when the trigger is
 	## pulled — the menu being open IS the moment the player has committed to a
 	## target, the same moment the grenade path uses to start pre-production.
@@ -270,11 +285,36 @@ func open_menu_for(index: int) -> void:
 		## and lets the sprite apply the rule in the one place it lives.
 		if room.agent.pose != null:
 			room.agent.pose.face_direction(guard.cell - room.agent.cell)
+		if stance != "":
+			room.agent.set_shot_stance(stance)   ## the draw ends at the hip; kneeling, it goes on to the aim
 		room.agent.set_grip(GRIP_AIMED)
 	## W-PRECOOK: the target is picked, so the warm starts NOW. Everything below
 	## is a PREDICTION — nothing is committed and nothing is drawn — so a player
 	## who cancels loses only the work, and one who changes target re-keys it.
 	_begin_precook(guard)
+
+
+## The stance a shot of `def` is fired from with the agent as it stands: "" for a weapon with one shot (a pistol), "hip" for a long gun standing
+## (the menu offers both), "aimed" for a long gun kneeling or prone, or a sniper rifle (the aimed shot alone).
+func _shot_stance_for(def) -> String:
+	if def == null or String(def.held_as) != "shotgun":
+		return ""
+	var standing: bool = room.agent == null or not is_instance_valid(room.agent) or room.agent.posture == Agent.Posture.STANDING
+	return STANCE_HIP if standing and not (def.tags as Array).has("sniper") else STANCE_AIMED
+
+
+## The figure takes `stance` and the shot waits until it is there: at the hip, or on at the shoulder (the aimed shot's extra beat). False when the
+## room or the agent went away meanwhile; past `STANCE_WAIT_MAX_FRAMES` it says so and the shot goes anyway.
+func _reach_stance(agent, stance: String) -> bool:
+	agent.set_shot_stance(stance)
+	for _frame in range(STANCE_WAIT_MAX_FRAMES):
+		await room.get_tree().process_frame   ## the figure reads the stance on its next frame
+		if not is_instance_valid(room) or not is_instance_valid(agent):
+			return false
+		if agent.weapon_at_stance():
+			return true
+	push_warning("[AgentShotController] the figure did not reach the '%s' stance in %d frames: the shot goes anyway" % [stance, STANCE_WAIT_MAX_FRAMES])
+	return true
 
 
 ## Idempotent, and lowers the weapon. Reached from three directions — the menu's
@@ -426,7 +466,9 @@ func cancel_active() -> void:
 ## deliberately and almost line for line — that path is selftested and has been
 ## shipping since July, and a second, subtly different copy of the damage
 ## pipeline is exactly how two behaviours drift apart.
-func fire_at_active() -> void:
+## `stance`: a long gun's shot ("hip" / "aimed", the menu's two actions); "" = the held weapon's own (`_shot_stance_for`: the hip for a long gun
+## standing, nothing for a pistol).
+func fire_at_active(stance: String = "") -> void:
 	var guards: Array = room._guards
 	if _active_guard_index < 0 or _active_guard_index >= guards.size():
 		return
@@ -506,6 +548,12 @@ func fire_at_active() -> void:
 	## nothing on screen half-finished.
 	await room.shot_precook_ready()
 	if not is_instance_valid(room) or not is_instance_valid(room._voxel_board):
+		return
+	## MOVEMENT §11.6 step 3: a long gun's shot leaves from its stance, so the figure gets there first (the aimed shot goes on from the hip to the
+	## shoulder). After the precook join, so the lag still comes before any animation.
+	if stance == "":
+		stance = _shot_stance_for(weapon_def)
+	if stance != "" and not await _reach_stance(agent, stance):
 		return
 
 	## E-MUZZLE-01: the flash fires at the shot, before any damage resolves —

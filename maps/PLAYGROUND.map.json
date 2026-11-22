@@ -932,6 +932,46 @@
           ]
         },
         {
+          "id": "agent_long_aim_rail",
+          "keys": [
+            {
+              "frame": "close",
+              "target": "@agent_close",
+              "view": "S",
+              "hold": 168
+            },
+            {
+              "frame": "close",
+              "target": "@agent_close",
+              "view": "E",
+              "hold": 168
+            },
+            {
+              "frame": "close",
+              "target": "@agent_close",
+              "view": "N",
+              "hold": 168
+            },
+            {
+              "frame": "close",
+              "target": "@agent_close",
+              "view": "W",
+              "hold": 168
+            }
+          ]
+        },
+        {
+          "id": "agent_long_shot_rail",
+          "keys": [
+            {
+              "frame": "close",
+              "target": "@agent_close",
+              "view": "S",
+              "hold": 520
+            }
+          ]
+        },
+        {
           "id": "agent_close_rail",
           "keys": [
             {
@@ -1654,6 +1694,56 @@
           "length": 200,
           "seed": 1,
           "note": "HERITAGE T2 W4: the agent draws the pistol, aims at guard 5 and fires; the flash and the tracer start at the gun's muzzle."
+        },
+        {
+          "id": "shotgun_draw",
+          "profile": "engine",
+          "rail": "agent_long_aim_rail",
+          "steps": [
+            "weapon shotgun",
+            "shot_aim 5",
+            "wait 1.6",
+            "shot_cancel",
+            "wait 1.2",
+            "shot_aim 5",
+            "wait 1.6",
+            "shot_cancel",
+            "wait 1.2",
+            "shot_aim 5",
+            "wait 1.6",
+            "shot_cancel",
+            "wait 1.2",
+            "shot_aim 5",
+            "wait 1.6",
+            "shot_cancel",
+            "wait 1.2"
+          ],
+          "at_key": 0,
+          "after_hold": 0,
+          "length": 690,
+          "seed": 1,
+          "note": "MOVEMENT §11.6 step 3 (2026-11-22): the agent draws the shotgun from the coat's right flap (the left hand takes the barrel, turns it level at the hip), holds at the hip and puts it away (the timeline backwards); once per camera view S, E, N, W. Run with INFILTRAITOR_TRIPO_FIGURE=male|female."
+        },
+        {
+          "id": "shotgun_shot",
+          "profile": "engine",
+          "rail": "agent_long_shot_rail",
+          "steps": [
+            "weapon shotgun",
+            "shot_aim 5",
+            "wait 1.4",
+            "shoot 5",
+            "wait 1.6",
+            "shoot_aimed 5",
+            "wait 1.8",
+            "shot_cancel",
+            "wait 1.6"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 520,
+          "seed": 1,
+          "note": "MOVEMENT §11.6 step 3 (2026-11-22): the shotgun's two shots: drawn to the hip, the HIP shot; then the AIMED one (on from the hip to the shoulder at the eye, then the shot); then put away. Run with INFILTRAITOR_TRIPO_FIGURE=male|female."
         },
         {
           "id": "h1_family",

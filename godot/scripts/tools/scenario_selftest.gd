@@ -85,17 +85,17 @@ func _test_ladder_parses() -> bool:
 	return true
 
 
-## The weapon-flow steps a take films (a pistol drawn, aimed, put away; a grenade's aim cancelled), typed as written.
+## The weapon-flow steps a take films (a pistol drawn, aimed, put away; a grenade's aim cancelled; a long gun's aimed shot), typed as written.
 func _test_aim_ops() -> bool:
-	var result: Dictionary = ScenarioRunnerClass.parse("weapon pistol; shot_aim 5; wait 0.9; shot_cancel; aim 28,9; aim_cancel")
+	var result: Dictionary = ScenarioRunnerClass.parse("weapon pistol; shot_aim 5; wait 0.9; shot_cancel; aim 28,9; aim_cancel; shoot_aimed 5")
 	var steps: Array = result["steps"]
 	var ops: Array = steps.map(func(s: Dictionary) -> String: return str(s["op"]))
-	var typed: bool = str(result["error"]).is_empty() and ops == ["weapon", "shot_aim", "wait", "shot_cancel", "aim", "aim_cancel"] \
-		and steps[0]["weapon"] == "pistol" and steps[1]["index"] == 5 and is_equal_approx(steps[2]["seconds"], 0.9)
+	var typed: bool = str(result["error"]).is_empty() and ops == ["weapon", "shot_aim", "wait", "shot_cancel", "aim", "aim_cancel", "shoot_aimed"] \
+		and steps[0]["weapon"] == "pistol" and steps[1]["index"] == 5 and is_equal_approx(steps[2]["seconds"], 0.9) and steps[6]["index"] == 5
 	if not typed:
 		print("[TEST 4] ❌ aim ops — error '%s', ops %s" % [result["error"], ops])
 		return false
-	print("[TEST 4] ✅ weapon / shot_aim / shot_cancel / aim_cancel parse in order with typed arguments")
+	print("[TEST 4] ✅ weapon / shot_aim / shot_cancel / aim_cancel / shoot_aimed parse in order with typed arguments")
 	return true
 
 

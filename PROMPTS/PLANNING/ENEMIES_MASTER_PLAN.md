@@ -747,3 +747,76 @@ rendered on the model): on the neck a map pixel covers up to 13.8 times more hei
 pixel row (0.17 mm on the face). 2x or more on rows y 835-1012 of the 1024 map (the PSD is 1024 too), 4x or more on 873-1012, 8x or
 more on 978-1012. The collar's V shows the 2-4x zone above and the 4x-and-more zone at its tip. A tone smooth along each row (no
 pores, no detail across the row), carried down to the map's bottom edge, takes the streaks away; nothing in the code changes.
+
+**The uniform re-cut, baked from the Tripo source and painted by piece: INSTALLED (2026-11-22).** The request, 2026-11-21:
+*"Falta corrigir o defeito na gola da camisa. E eu queria dar uma geral na roupa como um todo, acho que está com baixa resolução e
+qualidade ruim."* A prototype was built in `temp/` and shown to the Director. His ruling on 2026-11-22: *"Deixa sem a camiseta.
+Queremos usar a cabeça em outros corpos. Possivelmente ainda vamos melhorar o uniforme, mas por enquanto vamos assim mesmo. Pode
+instalar no game."*
+
+- **What was wrong (measured on the installed guard):**
+  - The smart projection cut the uniform into 838 islands (332 of them a single triangle) on 26 % of its 1024 map: about 6 texels
+    per figure-centimetre, against the face's 33.
+  - The paint placed the pockets, the placket and the buttons by bone rules, beside the ones Tripo modelled.
+  - The collar's defect: the V rule painted skin and the undershirt's white on the collar's inner faces, and a ragged, darker yoke
+    band ran under it.
+  - The actor shader lights only 0.72-1.0 of the albedo, so a uniform's volume must be painted into its map.
+  - The fine streaks on the neck inside the V are the head map's squeezed rows, the Director's to paint (the paragraph above);
+    nothing about them changed.
+- **What `enemy_texture.py` does now.** The head map's code is unchanged: FaceUV and `_neck_layout`; the Head mesh in the GLB is
+  identical to the bit. The uniform map is `tools/asset_generation/tripo/enemy_uniform.py`, 2048 x 2048, in three steps:
+  1. **Layout.** Tripo's 50 loose pieces are classified: the shirt, the trousers, 2 shoes, 2 hands, 2 pockets, 2 flaps,
+     2 epaulettes, 11 buttons, 26 laces and the right leg's piping.
+     - The pieces are cut into panels where a tailor sews: the sleeves (by the skin weights), the torso's front and back (at the side
+       seam), the collar, the two legs, the soles, the hands' back and palm, and the wrist caps.
+     - Each panel is cut open into a disk along shortest paths (a sleeve under the arm, a leg on its inside) and unwrapped angle
+       based at one density (soles 0.35 of it, laces 0.5, hands 0.8). It is then stood upright and packed. The buttons share one
+       patch, the laces another.
+     - Result: 133 islands on 52.7 % of the map, a median of 17.1 texels per figure-centimetre (2.8 times the old map).
+     - Stretch: median 1.12. Above 2x: 1-2 % of the garments' triangles, 12 % of the shoes', and most of the buttons' and laces'
+       stacked patches.
+  2. **Bake.** The Tripo source (`source/tripo_cop_male_no_rig.glb`, 19 765 triangles; now a build input, versioned) is baked
+     selected-to-active with Cycles: ambient occlusion at 7 cm and at 1.2 cm, and the source's normal.
+  3. **Paint.**
+     - The colour of each piece, times the occlusion, the fold detail and a sky term; ridges lighter, creases darker.
+     - A poplin grain on the shirt, a twill on the trousers.
+     - Stitches on the pockets, the flaps, the epaulettes, the waist and the hems, and the placket's two lines either side of the
+       buttons' line.
+     - A highlight on each button.
+     - The left stripe along the slit Tripo left there (the right leg has a piping piece).
+     - Every empty texel takes its nearest island's colour.
+     - No undershirt, because the head goes on other bodies.
+- **The command:** `Blender -b -P enemy_texture.py -- <light.glb> <out.glb> <palette.json> <master.png> <source.glb>
+  [paint.blend]`.
+  - The source argument is new and required.
+  - The palette's optional keys are `stripe`, `buttons` and `laces`; `undershirt` is gone.
+  - A map is now kept per map:
+    - The head map is kept whenever it exists.
+    - The uniform map is kept too, unless `ENEMY_REPAINT_BODY=1` (with or without a carry) or `ENEMY_TEX_FORCE=1`.
+    - A kept uniform map of another size stops the build.
+  - The carry reads each old map at its own size.
+  - The GLB's two copies are 512 x 512 each, previews only. Godot extracts them uncompressed and keeps them loaded with the scene,
+    so the uniform's copy did not grow with its map.
+- **The build:**
+  - Flags: `ENEMY_NO_CARRY=1 ENEMY_REPAINT_BODY=1`.
+  - Inputs: `temp/enemies/split/light_flat.glb`, `enemy_palette_fid_male.json`, the textures' master name, the source and the paint
+    file.
+  - About 1.5 min on the Mac. Two runs gave the same GLB and the same map, byte for byte.
+  - His head map is untouched (md5 `3065c19d…`).
+  - The Body keeps its 4 452 triangles, their corners and their skin weights. It has 3 594 vertices instead of 5 644, because there
+    are fewer UV splits.
+- **Checked:**
+  - The installed uniform renders the same as the prototype (`temp/enemies/uniform_install/renders/cmp_*.png`).
+  - The board draws him in four views with no error (`capture.py --map PLAYGROUND --still guard_7 --mode detail --view all`; sheet
+    `temp/enemies/uniform_install/board_guard_7_before_after.png`).
+  - `verify.py smoke` is green.
+- **Cost:** the uniform map imports at 2.67 MiB (ETC2 / S3TC with mipmaps) against 0.67 MiB, so +2 MiB of GPU memory per body.
+  That is under the 5 % rule and was not measured on the Moto.
+- **Left open:**
+  - A new body's pieces must be checked against `_kind_of`. Its thresholds are measured on this guard, and the build stops unless it
+    finds exactly one shirt and one trousers piece.
+  - The shoes' stretch.
+  - The packing (it could reach about 60 %).
+  - The right piping's top end makes a small white tick at the waistband (Tripo's piece).
+  - The Director may improve the uniform later.
+  - The stray `Icosphere` still rides in the GLB.

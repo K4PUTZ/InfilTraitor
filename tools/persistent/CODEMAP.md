@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**359 scripts · 103574 lines total** (under `godot/scripts/`)
+**359 scripts · 103626 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -425,7 +425,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 1447 lines
+`class_name ActorMesh3D` · extends `Node3D` · 1451 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -466,8 +466,6 @@ extends `ConfirmationDialog` · 64 lines
 - `ActorRecoilRef` = `preload("res://godot/scripts/geometry/actor_recoil3d.gd")`
 - `ShellCasingsRef` = `preload("res://godot/scripts/geometry/shell_casings3d.gd")`
 - `ShotProjectilesRef` = `preload("res://godot/scripts/geometry/shot_projectiles3d.gd")`
-- `GUN_KICK_DEG` = `6.0`
-- `GUN_KICK_BACK` = `0.012`
 - `SHOT_HOLD_S` = `0.6`
 - `EJECT_PORT` = `Vector3(0.06, 0.03, 0.0)`
 - `EJECT_RIGHT_M` = `0.8`
@@ -499,25 +497,25 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_recoil3d.gd`
 
-`class_name ActorRecoil3D` · extends `SkeletonModifier3D` · 82 lines
+`class_name ActorRecoil3D` · extends `SkeletonModifier3D` · 130 lines
 
 `godot/scripts/geometry/actor_recoil3d.gd`
 
-> ActorRecoil3D — the kick of a shot on a Tripo Agent's arms (MOVEMENT, 2026-11-12). A LAYER after the aim (`ActorAimPose3D`): on `kick()` the arms, forearms and wrists of BOTH arms pitch up about the gun's own lateral axis (taken at the kick), fast, then ease back to wherever the aim layer holds them. Nothing is stored between shots: the envelope is a function of the time since the kick, and at zero it leaves the skeleton untouched. Two-handed: each joint takes the same world rotation on both sides, so the hands rise together and the grip holds. Procedural on purpose: an upper-body reaction of a quarter second needs no clip (the in-house rule of 2026-11-08: credits are for whole-body motion). A `SkeletonModifier3D` added after the aim layer and before the head turn (children of a skeleton run in order).
+> ActorRecoil3D — the kick of a shot on a Tripo Agent's upper body (MOVEMENT, 2026-11-12; the long guns' kick 2026-11-22). A LAYER after the aim (`ActorAimPose3D`): on `kick()` the joints of the shot's PROFILE pitch up about the gun's own lateral axis (taken at the kick), fast, then ease back to wherever the aim layer holds them. Nothing is stored between shots: the envelope is a function of the time since the kick, and at zero it leaves the skeleton untouched. Each joint takes the same world rotation on both sides, so the hands rise together and the grip holds. Procedural on purpose: an upper-body reaction of a fraction of a second needs no clip (the in-house rule of 2026-11-08: credits are for whole-body motion). THE PROFILES (`profiles`, chosen by `ActorMesh3D.fire_kick()` from the hold family and the stance): - "pistol" (2026-11-12): the arms, forearms and wrists; the gun also kicks in the hand (`gun_deg` up about its grip, `gun_back` along the barrel). - "shotgun:hip" / "shotgun:aimed" (2026-11-22, the Director: the long gun's two shots get a recoil): the TRUNK rocks back (Spine, Spine1, Spine2: everything above turns with it, both arms and the gun, so the hands stay on the gun) and the arms add the muzzle's climb. At the hip the arms take more of it (no shoulder behind the butt); aimed, the trunk does (the butt in the shoulder, the head going with the cheek on the stock). The gun does not move in the hands; it settles slower than the pistol. A profile's joint degrees ADD down the chain (the wrist's total is the sum of its parents'). Stats are `var` (rule 1). A `SkeletonModifier3D` added after the aim layer and before the head turn (children of a skeleton run in order).
 
 **Constants / tuning**
 - `TripoFigureRef` = `preload("res://godot/scripts/geometry/tripo_figure.gd")`
+- `CHAIN` = `[ ["spine", "Spine", [""]], ["spine1", "Spine1", [""]], ["spine2", "Spine2", [""]], ["arm", "Arm", ["Right", "Left"]], ["forearm", "ForeArm", ["Right", "Left"]], ["hand", "Hand", ["Right", "Left"]], ]`
 
 **Public vars**
-- `var arm_deg: float = 1.5`
-- `var forearm_deg: float = 3.0`
-- `var hand_deg: float = 7.0`
-- `var rise_s: float = 0.035`
-- `var settle_s: float = 0.26`
+- `var profiles: Dictionary = { "pistol": {"spine": 0.0, "spine1": 0.0, "spine2": 0.0, "arm": 1.5, "forearm": 3.0, "hand": 7.0, "rise_s": 0.035, "settle_s": 0.26, "gun_deg": 6.0, "gun_back": 0.012}, "shotgun:hip": {"spine": 1.5, "spine1": 2.0, "spine2": 2.5, "arm": 1.5, "forearm": 2.5, "hand": 4.0, "rise_s": 0.045, "settle_s": 0.4, "gun_deg": 0.0, "gun_back": 0.0}, "shotgun:aimed": {"spine": 2.0, "spine1": 3.0, "spine2": 4.0, "arm": 0.5, "forearm": 1.0, "hand": 2.0, "rise_s": 0.045, "settle_s": 0.45, "gun_deg": 0.0, "gun_back": 0.0}, }`
 
 **Public API**
 - `func setup(skeleton: Skeleton3D) -> bool:`
-- `func kick(axis_global: Vector3) -> void:`
+- `func profile_for(family: String, stance: String) -> String:`
+- `func kick(axis_global: Vector3, profile: String = "pistol") -> void:`
+- `func gun_kick_deg() -> float:`
+- `func gun_kick_back() -> float:`
 - `func envelope(t: float) -> float:`
 - `func apply_to(skeleton: Skeleton3D, e: float) -> void:`
 

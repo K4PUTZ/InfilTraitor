@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
+> ⏭️ **2026-11-22 (later) — the Director's fine adjustment of the shotgun's draw is IN THE GAME: the male as he saved it, the female in step with it (his rotations, his gun in the left hand, her right hand put back on the grip, his coat flap), and the long gun's RECOIL at the hip and aimed (`ActorRecoil3D` profiles: the trunk rocks back, the arms add the climb, the gun fixed in the hands). ⚠️ A finger moved with G is not keyed and the game never reads it. §11.6 step 3; record: the same summary's last section.**
 > ⏭️ **2026-11-22 — the SHOTGUN's draw is IN THE GAME on both figures (§11.6 step 3): the long-gun family in `ActorMesh3D` (the gun on the left hand, the draw stopping at the hip or running on to the shoulder), the hip and aimed shots in the menu, takes `shotgun_draw` / `shotgun_shot`. Read back from the timelines as they stood (the Director's fine adjustment of the male still to come). Record: `PROMPTS/RESUMO_SESSAO_2026-11-22_SHOTGUN_DRAW_IN_GAME.md`.**
 > ⏭️ **v1.5, 2026-11-16 — the BASIC MOVES IN USE are CLOSED on both figures (Director: "a gente fechou os movimentos básicos em uso") and what is left is PLANNED in §11, docs only:** every held item of the canon sorted into eight HOLD families, the body postures still to make (beside cover and at a corner, standing and crouched), the throws left (from the kneel; the bowl, standing only), the fixed interactions (computer, alarms, buttons, levers, valves), the weapon models already on disk, the grenade's size defect measured (3.0× the hand's in flight), and the order of work (§11.6). **PRONE is SUSPENDED** until GAMEPLAY-01 rules whether it is viable. **Step 0 DONE (the grenade is the hand's size everywhere, 0.065 GU); step 1 ruled: ALL 21 pack firearms are used on their families' holds; then every weapon in the figure's hands (size, grip, muzzle). Nine questions wait on the Director (§11.8).**
 > ⏭️ **2026-11-14 — the DASH is built: a move that spends both AP plays the Tripo figure's `run` (0.32 s/GU, phased by the ground); the idle <-> move passage is still a snap (an `AnimationPlayer` crossfade over `seek` failed: the run never showed). NEXT, by the Director: the characters turn, then idle -> run / walk passages. Record: `PROMPTS/RESUMO_SESSAO_2026-11-14_DASH.md`.**
@@ -843,10 +844,29 @@ Each step lands on both figures before the next; a step with a look ends in a ca
      keys (a new read-back when he has saved), the shotgun's size certified (`size_certified`: until then a load warning says so), the
      kneeling long-gun draw (step 4), the other shotgun models (the H3 family lab), the pump / case (step 5), the AP of the aimed shot
      (GAMEPLAY-01).
+   - **His fine adjustment IN THE GAME on both figures, and the long gun's recoil, 2026-11-22 (later).** The male is his save of 21:32
+     (`SEQ_draw_shotgun_MALE.blend`): stops 11 (new, passing), 12 (rests), 13, 16, 18, 20 (passing), 23 and 31 (rests); his hands and
+     fingers re-posed at 11-13, 23 and 31 (the right hand from 12 on first put at the rig's rest, his pick, *"a aberta do Alt+R"*, then posed
+     by him). ⚠️ **A joint moved with G where no location curve exists is NOT keyed, holds on every frame, and the game never reads it:** 20
+     such moves (the fingers of both hands and both shoulders, up to 1.6 cm) sat in his saves of 17:04-17:58 and made the hand look crooked
+     even in the idle, where Alt+R cannot reach them; cleared with his OK (Alt+G on those bones, never the Hips). His last save holds 22 new
+     ones (fingers, up to 1 cm): the game plays those fingers without them, and the difference was rendered for him. The coat's flap is the
+     11-18 one byte for byte (the GLB unchanged). **The female in step** (her file was the builder's plus the 11-18 edits, none of his): at
+     each of his stops but her idle, his rotations as they are (the crouch's way, `6eb531a1`; his changes applied as a delta on her own poses
+     missed his gun angles through the draw), the gun at HIS placement against the left hand's bone (hers had been fitted to a hand turned up
+     to 97° away), her right hand put back on the grip at 23 and 31 by a two-bone solve to his hand's place on the gun (palm to gun at the
+     hip 3.6 -> 1.8 cm; his 1.5), his flap by nearest vertex (304 -> 337 of her vertices) as `LongDrawFix_f12` on `AGENT_FEMALE_LIGHT.glb`;
+     her stops are his. **The recoil (Director: *"o tiro hip e o tiro aim (acrescentar o recoil)"*):** `ActorRecoil3D` kicks by a PROFILE
+     chosen from the hold family and the stance (`profile_for`, called by `ActorMesh3D.fire_kick`): "pistol" as before (the arms, and the
+     gun in the hand: `GUN_KICK_*` moved from `ActorMesh3D` into it); "shotgun:hip" and "shotgun:aimed": the TRUNK rocks back (Spine, Spine1,
+     Spine2: the arms and the gun go with it, so the hands stay on the gun) and the arms add the muzzle's climb, the gun fixed in the hands;
+     at the hip the arms take more (trunk 6° + arms 8° at the wrist), aimed the trunk (9° + 3.5°, the head going with the cheek on the
+     stock); up in 0.045 s, settled in 0.40 / 0.45 s. First values, his to tune. Filmed on both figures (`shotgun_draw`, `shotgun_shot`).
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).
 5. **The shot per weapon,** as data over the procedural recoil (`ActorRecoil3D`): the kick, the burst (count and interval), the hold
    after it, the case from the `port` (none for the revolver, the taser, the darts). The flash and the tracer already leave
-   `model.muzzle`. A pump or a bolt cycle is a small timeline of its own, only if the Director wants it.
+   `model.muzzle`. A pump or a bolt cycle is a small timeline of its own, only if the Director wants it. (2026-11-22: the kick is already
+   per hold family and stance, `ActorRecoil3D.profiles`: "pistol", "shotgun:hip", "shotgun:aimed"; a row's own kick is still this step's.)
    **Built 2026-11-17 (the projectiles, D21's second amendment):** each row says how its shot LOOKS in an `fx` section
    (`WeaponDef.fx_*`: `flash` powder / energy / none, `case`, `projectile` tracer / bolt / dart / probes / hook / flare, `part`,
    `string`, `spin`, `color`). `ShotProjectiles3D` (one per board, like the cases) flies the bodies: the crossbow's own dart (the

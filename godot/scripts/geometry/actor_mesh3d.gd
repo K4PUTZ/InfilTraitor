@@ -89,14 +89,14 @@ const PISTOL_SHOWN_FROM: float = 0.5
 ## `DRAW_COAT_CLOSED_AT` as the left hand lets go. The gun is hidden AT that stop and in the hand from the next frame on, already at the aim's place and size (the poses carry the same placement).
 const DRAW_COAT_SHAPE: String = "DrawFix"
 const DRAW_COAT_CLOSED_AT: float = 0.75
-## THE SHOT (MOVEMENT, 2026-11-12): `fire_kick()` kicks the arms (`ActorRecoil3D`), the gun in the hand (`GUN_KICK_DEG` up about its grip,
-## `GUN_KICK_BACK` back along the barrel, model units) and throws a spent case (`ShellCasings3D`) from `EJECT_PORT` (a point of the pistol model, on
-## top of the slide). The aim is HELD `SHOT_HOLD_S` after the shot, so the arms come back to it before the controller's lowering takes them down.
+## THE SHOT (MOVEMENT, 2026-11-12): `fire_kick()` kicks the body by the shot's recoil profile (`ActorRecoil3D.profiles`, chosen from the hold family
+## and the stance: the pistol's arms and the gun in the hand, up about its grip and back along the barrel; since 2026-11-22 the long gun's trunk and
+## arms, at the hip or aimed, the gun fixed in the hands) and throws a spent case (`ShellCasings3D`) from `EJECT_PORT` (a point of the pistol model,
+## on top of the slide) when the row throws one. The aim is HELD `SHOT_HOLD_S` after the shot, so the body comes back to it before the controller's
+## lowering takes it down.
 const ActorRecoilRef = preload("res://godot/scripts/geometry/actor_recoil3d.gd")
 const ShellCasingsRef = preload("res://godot/scripts/geometry/shell_casings3d.gd")
 const ShotProjectilesRef = preload("res://godot/scripts/geometry/shot_projectiles3d.gd")
-const GUN_KICK_DEG: float = 6.0
-const GUN_KICK_BACK: float = 0.012
 const SHOT_HOLD_S: float = 0.6
 const EJECT_PORT := Vector3(0.06, 0.03, 0.0)
 ## The case's throw, metres/s: to the shooter's right, up, a little back.
@@ -976,24 +976,28 @@ func weapon_at_stance() -> bool:
 	return _aim == null or _aim_target <= 0.0 or absf(_aim_t - _aim_target) <= 1e-4
 
 
-## The gun's own kick in its model space (barrel +X, up +Y): back along the barrel (`GUN_KICK_BACK`, the figure's units: the model's own scale
-## `model_scale` in the hand is divided out, so a long gun drawn at a fraction of its file's units kicks as far as the pistol) and up about the grip,
-## on the arms' envelope.
+## The gun's own kick in its model space (barrel +X, up +Y), as the last shot's recoil profile says (`ActorRecoil3D.gun_kick_*`; none for a long
+## gun, which the body carries): back along the barrel (the figure's units: the model's own scale `model_scale` in the hand is divided out) and up
+## about the grip, on the body's envelope.
 func _gun_kick(model_scale: float = 1.0) -> Transform3D:
 	if _recoil == null or _shot_t == INF:
 		return Transform3D.IDENTITY
 	var e: float = _recoil.envelope(_shot_t)
 	if e <= 0.0:
 		return Transform3D.IDENTITY
-	return Transform3D(Basis(Vector3(0.0, 0.0, 1.0), deg_to_rad(GUN_KICK_DEG * e)), Vector3(-GUN_KICK_BACK * e / maxf(model_scale, 1e-6), 0.0, 0.0))
+	return Transform3D(Basis(Vector3(0.0, 0.0, 1.0), deg_to_rad(_recoil.gun_kick_deg() * e)),
+		Vector3(-_recoil.gun_kick_back() * e / maxf(model_scale, 1e-6), 0.0, 0.0))
 
 
-## A shot from the pistol in the hand: the arms and the gun kick, the aim is held through it, a case flies. False when no gun is drawn (the old rig).
+## A shot from the gun in the hand: the body (and the pistol in the hand) kick by the recoil profile of the held family and the stance the shot
+## leaves from (a long gun at the hip or at the shoulder), the aim is held through it, a case flies when the row throws one. False when no gun is
+## drawn (the old rig).
 func fire_kick() -> bool:
 	if _recoil == null or _pistol == null or not _pistol.visible or not _pistol_holder.is_inside_tree():
 		return false
 	var gt: Transform3D = _pistol_holder.global_transform
-	_recoil.kick(gt.basis.z)
+	var stance: String = "hip" if _aim_hip_w < 1.0 and _aim_target < 1.0 else "aimed"
+	_recoil.kick(gt.basis.z, _recoil.profile_for(_aim_kind.get_slice(":", 0), stance))
 	_shot_t = 0.0
 	_shot_hold = SHOT_HOLD_S
 	if _held_def == null or _held_def.fx_case:

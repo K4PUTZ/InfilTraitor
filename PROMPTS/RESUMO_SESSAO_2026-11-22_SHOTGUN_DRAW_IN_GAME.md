@@ -37,3 +37,29 @@ step 3 ("IN THE GAME on both figures, 2026-11-22").
 2. The female in step with his keys (12, 13, the shoulders at 23, the right flap), in a new file beside hers.
 3. The shotgun's size certified by him (`size_certified`; a load warning says it is not).
 4. Then §11.6: the kneeling long-gun draw (step 4), the H3 family lab, the pump / case (step 5).
+
+## Later the same day: his fine adjustment, the female in step, the recoil
+
+Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_PLAN` §11.6 step 3, its last bullet.
+
+- **His crooked fingers were joints moved with G.** The rig's zero is Tripo's bent hand, so Alt+R never gives a straight one; the
+  neutral is frame 1 (the game's idle, `lab_base`). What made the fingers look "deslocados e tortos" even in the idle were 20 bones
+  moved with G where no location curve exists: not keyed by autokey, held on every frame, never read by the game. Cleared with his OK
+  (Alt+G on those bones, never the Hips) in a new file beside his (`_clean`), which he then finished. His final save carries 22 new such
+  moves (fingers, up to 1 cm); the game plays those fingers without them, rendered for him side by side. Check: a bone whose
+  `pose.location` is not zero and has no location curve.
+- **The male:** his save of 21:32 is `SEQ_draw_shotgun_MALE.blend` (his 17:58 save and every step since are in `temp/h3/`), read back:
+  stops 11 (new, passing), 12 (rests), 13, 16, 18, 20 (passing), 23, 31 (rests). The coat's flap is the 11-18 one byte for byte.
+- **The female in step:** at every one of his stops but her idle, his rotations as they are (as the crouch was, `6eb531a1`), the gun
+  at his placement against the left hand's bone, her right hand put back on the grip at 23 and 31 by a two-bone solve to his hand's
+  place on the gun, his flap carried by nearest vertex onto her coat and byte-added to `AGENT_FEMALE_LIGHT.glb`. A delta of his changes on
+  her own poses was tried first and missed his gun angles through the draw. Her 11-18 file is in `temp/h3/`.
+- **The recoil:** `ActorRecoil3D` profiles per hold family and stance: the pistol's unchanged; the shotgun at the hip and aimed rock the
+  trunk back with the arms and the gun on it (the hands stay on the gun), the arms adding the climb. First values, his to tune.
+
+### Next
+
+1. The Director's look at the films: the recoil's strength, the female's draw; the 22 G-moved fingers redone with R where he wants
+   what his Blender shows.
+2. The shotgun's size certified by him (`size_certified`).
+3. Then §11.6: the kneeling long-gun draw (step 4), the H3 family lab, the pump / case (step 5).

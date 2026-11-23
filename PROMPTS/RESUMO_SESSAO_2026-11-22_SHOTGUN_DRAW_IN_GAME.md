@@ -123,5 +123,7 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
 
 1. His verdict on the grip at the aim. If he moves it and saves: the shotgun read back again (both figures, the female in step), then the
    five scenes built on the new aim.
-2. The two sci-fi snipers: with the snipers or with the sci-fi set (asked).
+2. The groups are set (Director, on the two sci-fi snipers: *"Com os snipers"*), by the numbers of `FAMILY_H3_aim_MALE.blend`:
+   shotguns 01-04, rifles 05-08, snipers 09-12 and 16-17, sci-fi 13-15 and 18, grenade launchers 19-21 (their scene at the hip, `hip` =
+   23, on the shotgun's grip until theirs exists: Claude's reading, stated to him).
 3. Then as before: he sizes each scene, the read-back, the female's files, the H3 rows, the engine's long-gun holder.

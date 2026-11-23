@@ -810,9 +810,11 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    launchers have NO aimed stage: the hip only** (the snipers stay the aim only, the shotguns and the rifles both), probably on a grip
    of their own, not yet designed. Before the split the Director re-checks the grip at the certified AIM (*"acho que o cabo da arma
    não está bem posicionado"*) in his `SEQ_draw_shotgun_MALE.blend` (opened for him at `aim` = 31, never saved by Claude): if he
-   moves it, the shotgun's clips are read back again (the female in step) and the five scenes are built on the new aim. Asked: whether
-   the two sci-fi snipers go with the snipers or with the sci-fi set (the sci-fi launcher goes with the launchers: its hip-only
-   animation is what sets its group).
+   moves it, the shotgun's clips are read back again (the female in step) and the five scenes are built on the new aim. The groups
+   (Director, on the two sci-fi snipers: *"Com os snipers"*): shotguns = the certified shotgun, `Shotgun-ZmPTnh7njL`, the sawed-off and
+   the short stock; rifles = the three assault rifles and the bullpup; snipers = the pack's four and the two sci-fi snipers; sci-fi = the
+   three sci-fi rifles and the lightning gun; grenade launchers = the three, the sci-fi one included (its hip-only animation sets its
+   group: Claude's reading, stated to him with the launchers' scene at the hip, `hip` = 23, on the shotgun's grip until theirs exists).
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
    **H3 opens with the SHOTGUNS (Director, 2026-11-17).** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra

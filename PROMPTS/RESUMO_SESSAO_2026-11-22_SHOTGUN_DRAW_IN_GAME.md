@@ -55,11 +55,11 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
   place on the gun, his flap carried by nearest vertex onto her coat and byte-added to `AGENT_FEMALE_LIGHT.glb`. A delta of his changes on
   her own poses was tried first and missed his gun angles through the draw. Her 11-18 file is in `temp/h3/`.
 - **The recoil:** `ActorRecoil3D` profiles per hold family and stance: the pistol's unchanged; the shotgun at the hip and aimed rock the
-  trunk back with the arms and the gun on it (the hands stay on the gun), the arms adding the climb. First values, his to tune.
+  trunk back with the arms and the gun on it (the hands stay on the gun), the arms adding the climb. Ratified by him as they are (*"Está bom assim"*).
 
 ### Next
 
-1. The Director's look at the films: the recoil's strength, the female's draw; the 22 G-moved fingers redone with R where he wants
+1. The Director's look at the female's draw (the recoil's strength is ratified); the 22 G-moved fingers redone with R where he wants
    what his Blender shows.
 2. The shotgun's size certified by him (`size_certified`).
 3. Then §11.6: the kneeling long-gun draw (step 4), the H3 family lab, the pump / case (step 5).

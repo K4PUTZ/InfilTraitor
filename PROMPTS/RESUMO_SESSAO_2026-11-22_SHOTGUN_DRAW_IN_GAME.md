@@ -107,3 +107,21 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
 2. The read-back, the female's file from the male's sizes, then the H3 rows (`family_rows.py` H3 table) and the engine's long-gun holder for
    `held_like`; a take drawing each one.
 3. Still open: the 22 G-moved fingers, §11.6 steps 4-5, the stages played by hand (later, by his word).
+
+## 2026-11-23 (later still): H3 split into five, the aim's grip re-checked first
+
+- **The Director:** *"Certo, vamos separar um pouco as armas porque as animações vão ter que ser um pouco diferentes. Shotguns, rifles,
+  sniper, scyfi e grenade launcher. Este último não tem posição mirada, vai ser só cintura, e provavelmente usando outra empunhadura.
+  Antes de abrir as cenas separadas, eu quero dar uma olhada na posição da mira certificada, acho que o cabo da arma não está bem
+  posicionado."*
+- Recorded in `MOVEMENT` §11.6 step 2: five lab scenes (shotguns, rifles, snipers, sci-fi, grenade launchers) in place of the one H3 file
+  (nothing was sized in it); the launchers fire from the hip only, probably on a grip of their own.
+- His `SEQ_draw_shotgun_MALE.blend` (his save of 2026-11-22 21:32, md5 unchanged) opened for him in a new Blender at `aim` = 31; Claude
+  saves nothing in it.
+
+### Next
+
+1. His verdict on the grip at the aim. If he moves it and saves: the shotgun read back again (both figures, the female in step), then the
+   five scenes built on the new aim.
+2. The two sci-fi snipers: with the snipers or with the sci-fi set (asked).
+3. Then as before: he sizes each scene, the read-back, the female's files, the H3 rows, the engine's long-gun holder.

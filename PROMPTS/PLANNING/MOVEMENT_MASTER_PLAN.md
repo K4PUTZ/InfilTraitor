@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
+> ⏭️ **2026-11-23 (later still) — H3 SPLITS INTO FIVE LAB SCENES by animation (Director: *"vamos separar um pouco as armas porque as animações vão ter que ser um pouco diferentes"*): shotguns, rifles, snipers, sci-fi, grenade launchers; the GRENADE LAUNCHERS have NO aimed stage (the hip only), probably on a grip of their own. First the Director re-checks the grip at the certified AIM in his `SEQ_draw_shotgun_MALE.blend`. §11.6 step 2.**
 > ⏭️ **2026-11-23 (later) — the shotgun's size CERTIFIED and H3's LAB FILE BUILT (Director: *"A certificação do tamanho da escopeta está ok. Vamos conferir as demais armas da família"*): `FAMILY_H3_aim_MALE.blend`, 21 Agents in the long gun's aim, each with one long gun on the left hand, its trigger guard on the shotgun's (the pack's shotguns, rifles, bullpup and snipers; the sci-fi rifles, snipers and lightning gun; the three grenade launchers). The Director sizes and grips each one; then the read-back, the female, the rows. §11.6 step 2.**
 > ⏭️ **2026-11-23 — THE SHOT IN STAGES (Director: *"Durante o jogo vamos pausar em cada etapa"*; `WEAPON_MASTER_PLAN` D43, `DESIGN_MASTER_PLAN` §8.7): the weapon's choice draws it; a long gun stops at the hip and waits (fire from the hip, or aim, +1 AP); at the target the whole body turns in place to it; the shot; the weapon stays where it fired until a walk or another item. The pistol the same from the target on. §11.6 step 3; take `shot_stages`.**
 
@@ -802,6 +803,16 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    read-back; the female's file built from the male's sizes; then the rows (`family_rows.py` gets an H3 table) and the engine's long-gun
    holder for `held_like`. ⚠️ H1's file names its sources by the layout before 2026-11-19 (`ASSETS/MODELS/sources/`): its read-back
    stops at the taser until those paths are mapped (`props/`).
+   **2026-11-23 (later still): H3 splits into FIVE lab scenes, one per animation group** (Director: *"vamos separar um pouco as
+   armas porque as animações vão ter que ser um pouco diferentes. Shotguns, rifles, sniper, scyfi e grenade launcher. Este último não
+   tem posição mirada, vai ser só cintura, e provavelmente usando outra empunhadura"*): shotguns, rifles, snipers, sci-fi, grenade
+   launchers, in place of the one 21-Agent file above for the sizing (nothing was sized in it: its md5 unchanged). **The grenade
+   launchers have NO aimed stage: the hip only** (the snipers stay the aim only, the shotguns and the rifles both), probably on a grip
+   of their own, not yet designed. Before the split the Director re-checks the grip at the certified AIM (*"acho que o cabo da arma
+   não está bem posicionado"*) in his `SEQ_draw_shotgun_MALE.blend` (opened for him at `aim` = 31, never saved by Claude): if he
+   moves it, the shotgun's clips are read back again (the female in step) and the five scenes are built on the new aim. Asked: whether
+   the two sci-fi snipers go with the snipers or with the sci-fi set (the sci-fi launcher goes with the launchers: its hip-only
+   animation is what sets its group).
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
    **H3 opens with the SHOTGUNS (Director, 2026-11-17).** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra

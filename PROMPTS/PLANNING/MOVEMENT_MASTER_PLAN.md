@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
+> ⏭️ **2026-11-23 (night) — the Director's GRIP at the long gun's AIM is IN THE GAME on both figures, and H3's FIVE SCENES are BUILT on it (Director: *"Ajustei e salvei"*): his save changed the aim only (frame 31: both hands turned ~33°, the arms, the neck, the trigger finger), the female in step by the 11-22 recipe; `FAMILY_H3_{SHOTGUNS,RIFLES,SNIPERS,SCIFI}_aim_MALE.blend` and `FAMILY_H3_LAUNCHERS_hip_MALE.blend` wait for his sizes. §11.6 steps 2 and 3.**
 > ⏭️ **2026-11-23 (later still) — H3 SPLITS INTO FIVE LAB SCENES by animation (Director: *"vamos separar um pouco as armas porque as animações vão ter que ser um pouco diferentes"*): shotguns, rifles, snipers, sci-fi, grenade launchers; the GRENADE LAUNCHERS have NO aimed stage (the hip only), probably on a grip of their own. First the Director re-checks the grip at the certified AIM in his `SEQ_draw_shotgun_MALE.blend`. §11.6 step 2.**
 > ⏭️ **2026-11-23 (later) — the shotgun's size CERTIFIED and H3's LAB FILE BUILT (Director: *"A certificação do tamanho da escopeta está ok. Vamos conferir as demais armas da família"*): `FAMILY_H3_aim_MALE.blend`, 21 Agents in the long gun's aim, each with one long gun on the left hand, its trigger guard on the shotgun's (the pack's shotguns, rifles, bullpup and snipers; the sci-fi rifles, snipers and lightning gun; the three grenade launchers). The Director sizes and grips each one; then the read-back, the female, the rows. §11.6 step 2.**
 > ⏭️ **2026-11-23 — THE SHOT IN STAGES (Director: *"Durante o jogo vamos pausar em cada etapa"*; `WEAPON_MASTER_PLAN` D43, `DESIGN_MASTER_PLAN` §8.7): the weapon's choice draws it; a long gun stops at the hip and waits (fire from the hip, or aim, +1 AP); at the target the whole body turns in place to it; the shot; the weapon stays where it fired until a walk or another item. The pistol the same from the target on. §11.6 step 3; take `shot_stages`.**
@@ -815,6 +816,14 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    the short stock; rifles = the three assault rifles and the bullpup; snipers = the pack's four and the two sci-fi snipers; sci-fi = the
    three sci-fi rifles and the lightning gun; grenade launchers = the three, the sci-fi one included (its hip-only animation sets its
    group: Claude's reading, stated to him with the launchers' scene at the hip, `hip` = 23, on the shotgun's grip until theirs exists).
+   **Built 2026-11-23 (night), on his new aim** (step 3's last bullet): `family_lab.py build H3_<GROUP> male` ->
+   `FAMILY_H3_SHOTGUNS_aim_MALE.blend` (01-04), `FAMILY_H3_RIFLES_aim_MALE.blend` (01, 05-08), `FAMILY_H3_SNIPERS_aim_MALE.blend` (01,
+   09-12, 16, 17), `FAMILY_H3_SCIFI_aim_MALE.blend` (01, 13-15, 18) and `FAMILY_H3_LAUNCHERS_hip_MALE.blend` (01, 19-21, at `hip` = 23);
+   `H3_GROUPS` derives each from H3's one list and keeps its numbers. Checked: every model read back from its group file sits, relative
+   to the reference, where it sits in the one H3 file, rebuilt on the new aim and as first built on the old one (50 comparisons: scale
+   identical, position within 2·10⁻⁵ of the reference's units, turn 0.0000°); his timeline's md5 unchanged by the builds. The one
+   21-Agent file stays on disk as it is (nothing was sized in it). Tiles: `temp/h3_family/h3s_male_groups_sheet.png`. Next: he sizes and
+   grips each scene and saves; then each read-back, the female's five files from the male's, the H3 rows, the engine's holder.
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
    **H3 opens with the SHOTGUNS (Director, 2026-11-17).** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra
@@ -902,6 +911,18 @@ Each step lands on both figures before the next; a step with a look ends in a ca
      at the hip the arms take more (trunk 6° + arms 8° at the wrist), aimed the trunk (9° + 3.5°, the head going with the cheek on the
      stock); up in 0.045 s, settled in 0.40 / 0.45 s. **Ratified by the Director as they are** (*"Está bom assim"*, 2026-11-22).
    - **The shot in stages, 2026-11-23 (`WEAPON` D43 has the ruling and his answers; `DESIGN` §8.7 the gameplay).** The draw starts with the weapon's CHOICE (`AgentShotController.choose_weapon`, the number keys; the HUD's list later), no longer with the click on an enemy. A long gun standing stops at the hip and the flow pauses there (the menu over the agent: *Atirar do quadril* / *Mirar*); the aim goes on to the shoulder. At the target (stage 2) the WHOLE BODY turns in place to it at any angle, the throw's turn at its pace (`ActorPose.shot_aim_dir`, cleared by the next step of a move; `ActorMesh3D.facing_aim()`): the shot waits for the turn as it waits for the stance. After the shot nothing lowers the weapon: it stays where it fired (aimed: at the shoulder), the body facing the target, until a move (`Agent.move_along_path` lowers the grip, so the holster plays before the first step as before) or another item (`AgentShotController.put_away`: another weapon, the grenade). Scenario steps `draw <id>`, `stance hip|aimed`, `trigger`; take `shot_stages` (profile `ui`, the menus in sight). Filmed on both figures (`shotgun_draw`, `shotgun_shot`).
+   - **His grip at the AIM, 2026-11-23 (night)** (Director: *"acho que o cabo da arma não está bem posicionado"*, then *"Ajustei e
+     salvei"*). His save of 19:20 (`SEQ_draw_shotgun_MALE.blend`; his saves of 19:15 and 19:20 copied to `temp/h3/`) changed the KEYS at
+     frame 31 only (72 channels): both hands turned 32-33° (the gun rides the left hand, so the whole gun re-angles with it; its placement
+     in that hand is unchanged), the forearms 11-13°, the arms 7-12°, the shoulders 9-12°, the neck 8°, the head 3°, the right index
+     7-46°, the thumb 16-36°, the middle and ring 11-17°. The hip (23) is unchanged; the passing stops 18 and 20 move up to 3.6° (the
+     Bézier handles of the keys at 23 follow the key at 31). The right middle and ring fingers were also moved about 1 mm more with G:
+     still not keyed, still not read (22 such fingers, as on 11-22). Read back with `pose_lab.py sequence draw_shotgun --figure both`; a
+     fresh read of his 21:32 save gives the game's old files exactly, so every change is his. **The female in step by the 11-22 recipe,
+     checked first:** re-run on his 21:32 save it gives her 11-22 file key for key once the right hand's solve takes the stops where his
+     palm is within 4 cm of the gun (his aim was at 3.8 cm, now 2.6); on his new save her keys change at 18, 20 and 31 like his, her palm
+     at the aim 2.95 cm from the gun. The gun's keys at 1 and 12, where it is hidden, hold a stale placement on both figures (Blender does
+     not evaluate a hidden object; the read-back already gives a hidden sample the first shown one). Filmed: `shotgun_shot` on both figures.
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).
 5. **The shot per weapon,** as data over the procedural recoil (`ActorRecoil3D`): the kick, the burst (count and interval), the hold
    after it, the case from the `port` (none for the revolver, the taser, the darts). The flash and the tracer already leave

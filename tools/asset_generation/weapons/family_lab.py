@@ -31,8 +31,16 @@ finds every trigger where it finds the shotgun's. The pack's models open at the 
 at a length relative to it. Three have no shoulder stock (the sawed-off, the short stock and the MGL-style launcher): they stand in the
 shouldered aim only to be sized and gripped; their aim is two arms forward (H2's way, the Director 2026-11-17).
 
+H3 IN FIVE SCENES (2026-11-23, the Director: "vamos separar um pouco as armas porque as animações vão ter que ser um pouco
+diferentes. Shotguns, rifles, sniper, scyfi e grenade launcher. Este último não tem posição mirada, vai ser só cintura"; on the two
+sci-fi snipers: "Com os snipers"). One file per animation group (`H3_GROUPS`): the H3 line restricted to the group's models, each
+still numbered as in the one H3 file (the numbers he judges them by), the certified shotgun as 01 in every one (each model is read
+back relative to it). The grenade launchers have no aimed stage: their scene stands at the HIP (`hip` marker), on the shotgun's grip
+until a grip of their own exists.
+
 Run inside Blender:
   blender -b --python family_lab.py -- build  <family> <figure> <out .blend> [readback .json]
+      <family>: H1, H3, or one of H3's groups (H3_SHOTGUNS, H3_RIFLES, H3_SNIPERS, H3_SCIFI, H3_LAUNCHERS)
       with a read-back: every model opens where that read-back placed it relative to the reference (the female's file from the
       male's sizes; her own aim, the same pistol, so only the figures' difference is left to adjust)
   blender -b --python family_lab.py -- render <saved .blend> <out prefix> [readback .json] -> <prefix>_line.png (the whole line, three-quarters)
@@ -128,6 +136,19 @@ FAMILIES = {
         ],
     },
 }
+# H3 split by animation (the module's header): each group is H3 with its models only, numbered as in the one H3 file (02-21 in the
+# order of FAMILIES["H3"]["models"]), and the marker it is sized at.
+H3_GROUPS = {
+    "H3_SHOTGUNS": {"numbers": (2, 3, 4), "marker": "aim"},
+    "H3_RIFLES": {"numbers": (5, 6, 7, 8), "marker": "aim"},
+    "H3_SNIPERS": {"numbers": (9, 10, 11, 12, 16, 17), "marker": "aim"},
+    "H3_SCIFI": {"numbers": (13, 14, 15, 18), "marker": "aim"},
+    "H3_LAUNCHERS": {"numbers": (19, 20, 21), "marker": "hip"},
+}
+for _group, _spec in H3_GROUPS.items():
+    FAMILIES[_group] = dict(FAMILIES["H3"], numbers=list(_spec["numbers"]), marker=_spec["marker"],
+                            models=[FAMILIES["H3"]["models"][n - 2] for n in _spec["numbers"]])
+
 RENDER_DEFAULT = {"tile_ortho": 0.42, "tile_target": (0.0, -0.06, 0.0)}   # H1's tiles (a pistol hand)
 
 CM = Matrix(((1, 0, 0), (0, 0, 1), (0, -1, 0))).to_4x4()    # Blender (x, y, z) -> glTF (x, z, -y)
@@ -560,8 +581,9 @@ def build_long(family, figure, out_blend, from_json=None):
     arm["lab_aim"] = f"{os.path.basename(timeline)}@{frame}"
 
     rows = []
-    for i, (name, path, start, gframe, anchor2) in enumerate(fam["models"], start=2):
-        offset = Vector(((i - 1) * fam["spacing"], 0.0, 0.0))
+    numbers = fam.get("numbers") or list(range(2, len(fam["models"]) + 2))     # a group keeps the one H3 file's numbers
+    for slot, (i, (name, path, start, gframe, anchor2)) in enumerate(zip(numbers, fam["models"]), start=1):
+        offset = Vector((slot * fam["spacing"], 0.0, 0.0))
         coll = bpy.data.collections.new(f"{i:02d} {name}")
         root.children.link(coll)
         a2 = clone_figure(arm, body, offset, coll)

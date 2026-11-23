@@ -127,3 +127,24 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
    shotguns 01-04, rifles 05-08, snipers 09-12 and 16-17, sci-fi 13-15 and 18, grenade launchers 19-21 (their scene at the hip, `hip` =
    23, on the shotgun's grip until theirs exists: Claude's reading, stated to him).
 3. Then as before: he sizes each scene, the read-back, the female's files, the H3 rows, the engine's long-gun holder.
+
+## 2026-11-23 (night): his grip at the aim in the game, the female in step, H3's five scenes
+
+- **The Director:** *"Ajustei e salvei"* (the grip at the certified aim). His save of 19:20 changed the keys at frame 31 only: both hands
+  turned 32-33° (the gun on the left hand re-angles with it, its placement in the hand unchanged), the forearms, arms, shoulders, neck and
+  head, the right index finger and thumb on the trigger. The hip (23) is unchanged; the passing stops 18 and 20 move up to 3.6° (Bézier
+  handles). The right middle and ring fingers also moved about 1 mm more with G, not keyed, not read by the game.
+- **In the game on both figures:** `pose_lab.py sequence draw_shotgun --figure both` (the sequences, the pose files, the clip libraries).
+  The female by the 11-22 recipe (`female_from_male` copygun + `right_on_gun` at 4 cm), proven first: on his 21:32 save it gives her 11-22
+  file key for key. Filmed: `shotgun_shot`, both figures.
+- **H3's five scenes,** built on the new aim (`family_lab.py build H3_<GROUP> male`): `FAMILY_H3_SHOTGUNS_aim_MALE.blend`,
+  `FAMILY_H3_RIFLES_aim_MALE.blend`, `FAMILY_H3_SNIPERS_aim_MALE.blend`, `FAMILY_H3_SCIFI_aim_MALE.blend`, `FAMILY_H3_LAUNCHERS_hip_MALE.blend`.
+  Every model sits, relative to the reference, as in the one H3 file (50 comparisons, turn 0.0000°). Tiles:
+  `temp/h3_family/h3s_male_groups_sheet.png`.
+
+### Next
+
+1. The Director sizes and grips each of the five scenes and saves.
+2. Each read-back, the female's five files from the male's sizes, the H3 rows (`family_rows.py`), the engine's long-gun holder, a take
+   drawing each one.
+3. Still open: the 22 G-moved fingers, §11.6 steps 4-5, the stages played by hand (later, by his word), the launchers' own grip.

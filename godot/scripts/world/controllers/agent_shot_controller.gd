@@ -30,6 +30,10 @@
 ## have meant a fake prop standing in for the agent, which is the substitution
 ## this project's evidence rules ban. The bench file stays as it is, unused by
 ## PLAYGROUND but intact for its calibration history (§6b).
+##
+## 2026-11-23 — THE SHOT IN STAGES (Director: *"Durante o jogo vamos pausar em cada etapa"*), each one a pause for the player. This is D32-D34's
+## flow (the nearest target first, any other one chosen, the trigger a second input) with this file's menu as its surface until the HUD's buttons
+## (INTERFACE Part 5); see `Flow` below.
 class_name AgentShotController
 
 const RubblePresetsRef = preload("res://godot/scripts/systems/destruction/rubble_presets.gd")
@@ -108,6 +112,26 @@ const TRACER_FLIGHT_FRAMES: int = 8
 var room = null
 var _active_guard_index: int = -1
 
+## THE STAGES (Director, 2026-11-23; DESIGN §8.7, MOVEMENT §11.6 step 3):
+## 1. the weapon chosen comes out (`choose_weapon`: the number keys today, the HUD's buttons later). A long gun standing stops at the HIP and the
+##    menu over the agent asks: fire from the hip (less accurate) or raise it to the aim (one AP more; both numbers are GAMEPLAY-01's). A pistol,
+##    a long gun kneeling and a sniper rifle go straight to the aim.
+## 2. the target: the one clicked, else the nearest enemy (D33); the figure turns in place to it (`ActorPose.shot_aim_dir`, the throw's way); the
+##    menu over it is the mark and the trigger (D34: the trigger is a second input, its button, Enter, or a second click on the same enemy);
+##    another enemy clicked becomes the target. No hit chance is shown until GAMEPLAY-01 gives its formula (the Director, the same day).
+## 3. the shot, from the hip or from the shoulder (`fire_at_active`).
+## 4. the weapon STAYS where it fired, the body facing the target, until the agent walks (`Agent.move_along_path`) or another item is chosen
+##    (`choose_weapon`, the grenade): `put_away`. A cancel at stage 1 or 2 leaves it out too.
+## With the weapon out, a click on an enemy goes straight to stage 2 at the stance it is held in; choosing the same weapon again opens its stage 1
+## (held at the hip) or 2.
+enum Flow { IDLE, STANCE, TARGET, FIRING }
+var _flow: int = Flow.IDLE
+var _flow_stance: String = ""      ## the stance this flow's shot leaves from: "hip" / "aimed"; "" = a weapon with one (a pistol)
+var _pending_guard: int = -1       ## the enemy the flow was started on (a click), kept for stage 2; -1 = the nearest
+var _switching: bool = false       ## another item is coming: the drawn one is on its way back into the coat
+## How many frames a change of item waits for the drawn weapon to be put away before it goes on anyway, loudly.
+const AWAY_WAIT_MAX_FRAMES: int = 180
+
 
 ## Voxel.DamageState -> the word the tier print uses. The enum's own ordering is
 ## INTACT/CRACKED/DESTROYED/DENTED, which reads as a typo when printed raw.
@@ -142,8 +166,8 @@ func _init(room_ref) -> void:
 
 
 ## The dev key of a hold family (Director, 2026-11-17: the pistol's family is many weapons on one hold): asking for a weapon of the
-## family already held steps to the family's NEXT row instead (2, 2, 2... walks pistol, pistol_compact, ...); any other id is
-## `set_weapon`.
+## family already held steps to the family's NEXT row instead (2, 2, 2... walks pistol, pistol_compact, ...); any other id is that id.
+## Either way the choice is the shot's first stage (`choose_weapon`).
 func select_or_cycle(weapon_id: String) -> void:
 	var reg = Registries.get_weapon_registry()
 	var cur = reg.get_weapon(_weapon_id)
@@ -152,9 +176,80 @@ func select_or_cycle(weapon_id: String) -> void:
 		var ids: PackedStringArray = reg.family(String(want.held_as))
 		var i: int = ids.find(_weapon_id)
 		if ids.size() > 1 and i >= 0:
-			set_weapon(ids[(i + 1) % ids.size()])
+			choose_weapon(ids[(i + 1) % ids.size()])
 			return
-	set_weapon(weapon_id)
+	choose_weapon(weapon_id)
+
+
+## Stage 1: the player chooses a weapon and it comes out. Another one than the weapon in the hand is a change of item (stage 4): the one out
+## goes back into the coat first. The same one chosen again while it is out opens its next stage (the hip's choice, or the target).
+func choose_weapon(weapon_id: String) -> void:
+	if _flow == Flow.FIRING or _switching:
+		return
+	var agent = room.agent
+	if agent == null or not is_instance_valid(agent):
+		return
+	if weapon_id != _weapon_id:
+		if agent.weapon_out() or _is_drawn() or _flow != Flow.IDLE:
+			put_away()
+			_switching = true
+			var away: bool = await _wait_away(agent)
+			_switching = false
+			if not away:
+				return
+		set_weapon(weapon_id)
+		if _weapon_id != weapon_id:
+			return   ## refused (no such row), said loudly by `set_weapon`
+	_begin_flow(-1)
+
+
+## Stage 4's end: the weapon goes back into the coat (its draw played backwards) and the body turns back to its grid facing. Called when another
+## item is chosen (`choose_weapon`, the grenade) and by the scenario's `shot_cancel`; a move does the same itself (`Agent.move_along_path`).
+func put_away() -> void:
+	_close_flow_menu()
+	cancel_active()
+	var agent = room.agent
+	if agent == null or not is_instance_valid(agent):
+		return
+	agent.set_grip(GRIP_LOWERED)
+	if agent.pose != null:
+		agent.pose.shot_aim_dir = Vector2.ZERO
+
+
+## Whether stage 2 is open: a target is marked and its trigger is up (room.gd lets a click on an enemy through the menu then).
+func is_targeting() -> bool:
+	return _flow == Flow.TARGET
+
+
+## A click on an enemy while stage 2 is open: the marked one fires (D34, the second input on the same target); another becomes the target.
+func click_enemy(index: int) -> void:
+	if _flow == Flow.TARGET and index == _active_guard_index:
+		trigger()
+		return
+	open_menu_for(index)
+
+
+## Stage 2's trigger on the marked target (the menu's button, Enter, a second click on it). False when no target is marked.
+func trigger() -> bool:
+	if _flow != Flow.TARGET:
+		return false
+	_close_flow_menu()
+	fire_at_active(_flow_stance)
+	return true
+
+
+## The hip's choice of stage 1 taken from outside the menu (a scenario's `stance`). False when that choice is not open.
+func choose_stance(stance: String) -> bool:
+	if _flow != Flow.STANCE or not (stance == STANCE_HIP or stance == STANCE_AIMED):
+		return false
+	_close_flow_menu()
+	_choose_stance(stance)
+	return true
+
+
+## Whether a shot is under way (stage 3: from the trigger to the impact's commit).
+func is_firing() -> bool:
+	return _flow == Flow.FIRING
 
 
 ## The attachment on the muzzle (Director, 2026-11-17: the suppressor is a mountable accessory, on the bullet pistols only).
@@ -242,56 +337,152 @@ func hit_test(screen_pos: Vector2) -> int:
 ## grenade's menu opens on the thrown object; a shot has a shooter and a target,
 ## and opening on the target is what scales when there are several enemies —
 ## each one carries its own action instead of one menu having to ask which.
+##
+## Since the stages (2026-11-23) a click on an enemy NAMES the target of stage 2: with the weapon out it goes straight there, at the stance the
+## weapon is held in (another enemy while one is marked becomes the target); with the weapon away, the held weapon comes out first (stage 1) and
+## stage 2 starts on this enemy. It never fires (`click_enemy` does, on the marked one).
 func open_menu_for(index: int) -> void:
-	var guards: Array = room._guards
-	if index < 0 or index >= guards.size():
+	if not _valid_guard(index) or _flow == Flow.FIRING or _switching:
 		return
-	var guard = guards[index]
-	if guard == null or not is_instance_valid(guard):
+	if _flow == Flow.STANCE:
+		_pending_guard = index   ## the hip's choice is still open: the target waits for it
 		return
+	if _is_drawn():
+		_enter_target(_held_stance(), index)
+		return
+	_begin_flow(index)
+
+
+## Stage 1: the held weapon comes out and the flow pauses at its first choice (a long gun standing, at the hip: the menu over the agent), or goes
+## on to stage 2 (a weapon with one stance, or a long gun already at the shoulder). `guard_index`: the enemy stage 2 starts on, -1 = the nearest.
+func _begin_flow(guard_index: int) -> void:
+	var agent = room.agent
+	if agent == null or not is_instance_valid(agent):
+		return
+	_pending_guard = guard_index
+	var stances: String = _shot_stance_for(Registries.get_weapon_registry().get_weapon(_weapon_id))
+	if not _is_drawn() and stances != "":
+		agent.set_shot_stance(stances)   ## the long draw stops at the hip (both shots), or goes on to the shoulder (the aimed one alone)
+	## ⚠️ THE MENU IS THE FIRST THING THAT HAPPENS (Director, 2026-08-20: *"a gente poderia chamar o menu imediatamente no clique sobre o
+	## inimigo, e depois iniciar o cálculo"*): opening it costs 0.3 ms; the draw and the warm come after it.
+	var at_hip: bool = stances == STANCE_HIP and _held_stance() == STANCE_HIP
+	if at_hip:
+		_open_stance_menu()
+	agent.set_grip(GRIP_AIMED)   ## the draw (nothing when it is out already)
+	if not at_hip:
+		_enter_target(_held_stance(), _pending_guard)
+
+
+## The hip's choice (stage 1), in the menu over the agent until the HUD has its buttons (Director, 2026-11-23). Enter takes the hip.
+func _open_stance_menu() -> void:
+	_flow = Flow.STANCE
+	var agent = room.agent
+	room._context_menu.close()
+	room._context_menu.open_at(room.screen_of_lifted(agent.head_point(), agent.position), MENU_GAP_ABOVE_PX,
+		"ui.context_menu.fire_hip", _choose_stance.bind(STANCE_HIP), "ui.context_menu.aim", _choose_stance.bind(STANCE_AIMED))
+
+
+func _choose_stance(stance: String) -> void:
+	if _flow != Flow.STANCE:
+		return
+	room.agent.set_shot_stance(stance)   ## "aimed": the gun goes on from the hip to the shoulder
+	_enter_target(stance, _pending_guard)
+
+
+## Stage 2: the target is `guard_index` when one was named, else the nearest enemy (D33). None at all: the weapon stays out and the flow ends.
+func _enter_target(stance: String, guard_index: int) -> void:
+	_flow_stance = stance
+	_pending_guard = -1
+	var index: int = guard_index if _valid_guard(guard_index) else _nearest_guard()
+	if index < 0:
+		print_debug("[AGENT-SHOT] no enemy to aim at: the weapon stays out")
+		_close_flow_menu()
+		cancel_active()
+		return
+	_aim_at(index)
+
+
+## Marks enemy `index` as the target: the menu over it (the mark and the trigger), the figure turning to it, the warm (W-PRECOOK: everything after
+## the menu is a PREDICTION, nothing is committed or drawn, so a player who cancels loses only the work and one who changes target re-keys it).
+func _aim_at(index: int) -> void:
+	var guard = room._guards[index]
+	if index != _active_guard_index:
+		room.cancel_shot_precook()
 	_active_guard_index = index
-	## ⚠️ THE MENU IS THE FIRST THING THAT HAPPENS, AND THAT IS THE POINT.
-	##
-	## Director, 2026-08-20: *"o lag está acontecendo no momento do clique com o
-	## botão direito no inimigo. Me parece que a gente poderia chamar o menu
-	## imediatamente no clique sobre o inimigo, e depois iniciar o cálculo."*
-	##
-	## Opening it costs 0.3 ms (measured); everything below it used to run first.
-	## The weight was `set_grip()` — 146 ms of a 160 ms frame, on the first aim of
-	## a session — and W-LOAD-02 moved those frames to the map load, so what is
-	## left after this line is ~5 ms. Both halves matter: the ordering makes the
-	## menu independent of whatever the rest of this function ever grows into.
-	var stance: String = _shot_stance_for(Registries.get_weapon_registry().get_weapon(_weapon_id))
-	if stance == STANCE_HIP:   ## a long gun standing: both shots, the hip first (Enter)
-		room._context_menu.open_at(_top_screen_pos(guard), MENU_GAP_ABOVE_PX, "ui.context_menu.fire_hip", fire_at_active.bind(STANCE_HIP),
-			"ui.context_menu.fire_aimed", fire_at_active.bind(STANCE_AIMED))
-	elif stance == STANCE_AIMED:   ## a long gun kneeling: the aimed shot alone
-		room._context_menu.open_at(_top_screen_pos(guard), MENU_GAP_ABOVE_PX, "ui.context_menu.fire_aimed", fire_at_active.bind(STANCE_AIMED))
-	else:
-		room._context_menu.open_at(_top_screen_pos(guard), MENU_GAP_ABOVE_PX,
-			"ui.context_menu.fire", fire_at_active)
-	## The weapon comes up when the target is picked, not when the trigger is
-	## pulled — the menu being open IS the moment the player has committed to a
-	## target, the same moment the grenade path uses to start pre-production.
-	## It also means the raised weapon is on screen while the menu is, which is
-	## what makes the pose visible at all: the shot itself resolves in one frame.
-	if room.agent != null and is_instance_valid(room.agent):
-		## He TURNS TOWARD THE TARGET before raising the weapon. Not listed in
-		## §6c's parts, and included because the first capture made the omission
-		## obvious: a figure firing over his own shoulder reads as a bug in the
-		## shot, not as a missing nicety. `face_direction()` already owns the
-		## reduction from an arbitrary delta to one of D44's four facings (a
-		## diagonal has no frame and never will), so this passes the raw GU delta
-		## and lets the sprite apply the rule in the one place it lives.
-		if room.agent.pose != null:
-			room.agent.pose.face_direction(guard.cell - room.agent.cell)
-		if stance != "":
-			room.agent.set_shot_stance(stance)   ## the draw ends at the hip; kneeling, it goes on to the aim
-		room.agent.set_grip(GRIP_AIMED)
-	## W-PRECOOK: the target is picked, so the warm starts NOW. Everything below
-	## is a PREDICTION — nothing is committed and nothing is drawn — so a player
-	## who cancels loses only the work, and one who changes target re-keys it.
+	_flow = Flow.TARGET
+	room._context_menu.close()
+	room._context_menu.open_at(_top_screen_pos(guard), MENU_GAP_ABOVE_PX, "ui.context_menu.fire", fire_at_active.bind(_flow_stance))
+	_turn_to(guard)
 	_begin_precook(guard)
+
+
+## The figure faces `guard`: its grid facing is the nearest of D44's four (what the logic reads, `face_direction`), and the body turns in place to
+## the exact direction (stage 2, the throw's way: `ActorPose.shot_aim_dir`).
+func _turn_to(guard) -> void:
+	var agent = room.agent
+	var d: Vector2i = guard.cell - agent.cell
+	if agent.pose == null or d == Vector2i.ZERO:
+		return
+	agent.pose.face_direction(d)
+	agent.pose.shot_aim_dir = Vector2(d)
+
+
+## The stance the held weapon is at, or going to: "" for a weapon with one stance (a pistol); a long gun's, from the pose.
+func _held_stance() -> String:
+	var stances: String = _shot_stance_for(Registries.get_weapon_registry().get_weapon(_weapon_id))
+	if stances != STANCE_HIP:
+		return stances
+	var agent = room.agent
+	return String(agent.pose.shot_stance) if agent != null and is_instance_valid(agent) and agent.pose != null else STANCE_HIP
+
+
+## Whether the weapon is out (or coming out): the grip is the aimed one.
+func _is_drawn() -> bool:
+	var agent = room.agent
+	return agent != null and is_instance_valid(agent) and agent.pose != null and agent.pose.grip == GRIP_AIMED
+
+
+func _valid_guard(index: int) -> bool:
+	return index >= 0 and index < room._guards.size() and room._guards[index] != null and is_instance_valid(room._guards[index])
+
+
+## D33: the enemy nearest the agent (GU distance; the lower index on a tie). -1 when there is none.
+func _nearest_guard() -> int:
+	var agent = room.agent
+	if agent == null or not is_instance_valid(agent):
+		return -1
+	var best: int = -1
+	var best_d: float = INF
+	for i in range(room._guards.size()):
+		if not _valid_guard(i):
+			continue
+		var g = room._guards[i]
+		if g.cell == agent.cell:
+			continue
+		var d: float = Vector2(g.cell - agent.cell).length()
+		if d < best_d:
+			best_d = d
+			best = i
+	return best
+
+
+## Closes the menu when it is this flow's (stage 1 or 2); the shared menu may be a grenade's.
+func _close_flow_menu() -> void:
+	if (_flow == Flow.STANCE or _flow == Flow.TARGET) and room._context_menu != null and room._context_menu.visible:
+		room._context_menu.close()
+
+
+## Waits until the figure shows no weapon (a change of item). False when the room or the agent went away meanwhile; past
+## `AWAY_WAIT_MAX_FRAMES` it says so and goes on.
+func _wait_away(agent) -> bool:
+	for _frame in range(AWAY_WAIT_MAX_FRAMES):
+		if not is_instance_valid(room) or not is_instance_valid(agent):
+			return false
+		if not agent.weapon_out():
+			return true
+		await room.get_tree().process_frame
+	push_warning("[AgentShotController] the weapon was still out after %d frames: the next one comes out anyway" % AWAY_WAIT_MAX_FRAMES)
+	return true
 
 
 ## The stance a shot of `def` is fired from with the agent as it stands: "" for a weapon with one shot (a pistol), "hip" for a long gun standing
@@ -303,23 +494,22 @@ func _shot_stance_for(def) -> String:
 	return STANCE_HIP if standing and not (def.tags as Array).has("sniper") else STANCE_AIMED
 
 
-## The figure takes `stance` and the shot waits until it is there: at the hip, or on at the shoulder (the aimed shot's extra beat). False when the
-## room or the agent went away meanwhile; past `STANCE_WAIT_MAX_FRAMES` it says so and the shot goes anyway.
+## The figure takes `stance` ("" = the held weapon's one stance, a pistol's aim) and the shot waits until the weapon is there (at the hip, or on at
+## the shoulder: the aimed shot's extra beat) and the body faces the target (stage 2's turn). False when the room or the agent went away meanwhile;
+## past `STANCE_WAIT_MAX_FRAMES` it says so and the shot goes anyway.
 func _reach_stance(agent, stance: String) -> bool:
-	agent.set_shot_stance(stance)
+	if stance != "":
+		agent.set_shot_stance(stance)
 	for _frame in range(STANCE_WAIT_MAX_FRAMES):
 		await room.get_tree().process_frame   ## the figure reads the stance on its next frame
 		if not is_instance_valid(room) or not is_instance_valid(agent):
 			return false
-		if agent.weapon_at_stance():
+		if agent.weapon_at_stance() and agent.facing_aim():
 			return true
-	push_warning("[AgentShotController] the figure did not reach the '%s' stance in %d frames: the shot goes anyway" % [stance, STANCE_WAIT_MAX_FRAMES])
+	push_warning("[AgentShotController] the figure did not reach the '%s' stance facing its target in %d frames: the shot goes anyway" % [stance, STANCE_WAIT_MAX_FRAMES])
 	return true
 
 
-## Idempotent, and lowers the weapon. Reached from three directions — the menu's
-## own Cancelar, room.gd's outside-click/Escape path, and the end of a shot — so
-## the weapon coming back down cannot be forgotten on any one of them.
 ## Predict this shot's destroyed voxels and warm the alternative cache for them.
 ##
 ## The prediction runs the SAME functions the shot will — same salt, same picks,
@@ -454,12 +644,14 @@ func _salt_for(origin_gu: Vector2i, target_gu: Vector2i) -> String:
 	return "AGENTSHOT_%s_%s_%d" % [origin_gu, target_gu, room._world_revision]
 
 
+## Idempotent: ends the shot's flow. Reached from the menu's own Cancelar, room.gd's outside-click / Escape path and the end of a shot: the
+## target is let go and its warm dropped. The weapon STAYS where it is (Director, 2026-11-23, stage 4: it is put away only when the agent walks or
+## another item is chosen, `put_away`); it used to come down here.
 func cancel_active() -> void:
 	_active_guard_index = -1
+	_pending_guard = -1
+	_flow = Flow.IDLE
 	room.cancel_shot_precook()
-	if room != null and is_instance_valid(room) and room.agent != null \
-			and is_instance_valid(room.agent):
-		room.agent.set_grip(GRIP_LOWERED)
 
 
 ## The trigger. Mirrors WeaponBenchController.fire_active()'s resolution stage
@@ -469,9 +661,16 @@ func cancel_active() -> void:
 ## `stance`: a long gun's shot ("hip" / "aimed", the menu's two actions); "" = the held weapon's own (`_shot_stance_for`: the hip for a long gun
 ## standing, nothing for a pistol).
 func fire_at_active(stance: String = "") -> void:
+	if _flow == Flow.FIRING:
+		return
+	if _flow == Flow.STANCE and _valid_guard(_pending_guard):
+		## A scenario fires from stage 1 (`shoot` right after `shot_aim`): stage 2 on its named target, the hip's choice made by `stance`.
+		_flow_stance = stance if stance != "" else _held_stance()
+		_aim_at(_pending_guard)
 	var guards: Array = room._guards
 	if _active_guard_index < 0 or _active_guard_index >= guards.size():
 		return
+	_close_flow_menu()   ## a scenario's shot closes the menu still up; the player's trigger closed it already
 	var guard = guards[_active_guard_index]
 	if guard == null or not is_instance_valid(guard):
 		cancel_active()
@@ -510,6 +709,7 @@ func fire_at_active(stance: String = "") -> void:
 		return
 
 	var salt: String = _salt_for(origin_gu, target_gu)
+	_flow = Flow.FIRING
 
 	## ── PART C: THE ROLL IS REAL, AND ITS OUTCOME IS FORCED ────────────────
 	## §6c is explicit that the scaffold must not bypass D12. It does not: the
@@ -550,10 +750,13 @@ func fire_at_active(stance: String = "") -> void:
 	if not is_instance_valid(room) or not is_instance_valid(room._voxel_board):
 		return
 	## MOVEMENT §11.6 step 3: a long gun's shot leaves from its stance, so the figure gets there first (the aimed shot goes on from the hip to the
-	## shoulder). After the precook join, so the lag still comes before any animation.
+	## shoulder), facing its target (stage 2's turn; a scenario's shot may not have had its stage 2). After the precook join, so the lag still
+	## comes before any animation.
 	if stance == "":
-		stance = _shot_stance_for(weapon_def)
-	if stance != "" and not await _reach_stance(agent, stance):
+		stance = _held_stance()
+	agent.set_grip(GRIP_AIMED)
+	_turn_to(guard)
+	if not await _reach_stance(agent, stance):
 		return
 
 	## E-MUZZLE-01: the flash fires at the shot, before any damage resolves —

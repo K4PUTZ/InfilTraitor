@@ -92,8 +92,9 @@ const DRAW_COAT_CLOSED_AT: float = 0.75
 ## THE SHOT (MOVEMENT, 2026-11-12): `fire_kick()` kicks the body by the shot's recoil profile (`ActorRecoil3D.profiles`, chosen from the hold family
 ## and the stance: the pistol's arms and the gun in the hand, up about its grip and back along the barrel; since 2026-11-22 the long gun's trunk and
 ## arms, at the hip or aimed, the gun fixed in the hands) and throws a spent case (`ShellCasings3D`) from `EJECT_PORT` (a point of the pistol model,
-## on top of the slide) when the row throws one. The aim is HELD `SHOT_HOLD_S` after the shot, so the body comes back to it before the controller's
-## lowering takes it down.
+## on top of the slide) when the row throws one. The aim is HELD `SHOT_HOLD_S` after the shot even if the grip is lowered meanwhile, so the body
+## comes back to it first. Since 2026-11-23 nothing lowers it after a shot anyway: the weapon stays where it fired until the agent walks or another
+## item is chosen (the shot's fourth stage, `AgentShotController`).
 const ActorRecoilRef = preload("res://godot/scripts/geometry/actor_recoil3d.gd")
 const ShellCasingsRef = preload("res://godot/scripts/geometry/shell_casings3d.gd")
 const ShotProjectilesRef = preload("res://godot/scripts/geometry/shot_projectiles3d.gd")
@@ -109,6 +110,8 @@ const EJECT_BACK_M: float = 0.2
 ## `throw_released` lands on the timeline's release frame), then the follow-through and the way back to the idle at the timeline's pace; the cancel plays the raise back.
 ## The grenade rides the right hand as the timeline places it, and the coat takes the timeline's `ThrowFix_*` morphs.
 const THROW_TURN_RAD_S: float = TAU
+## How close the body's yaw must be to the shot's target before the shot leaves (`facing_aim`): half a degree.
+const AIM_FACING_EPS_RAD: float = 0.0087
 
 var _board: Node3D = null
 var _source: ActorPose = null
@@ -168,6 +171,7 @@ var _throw_coat: MeshInstance3D = null
 var _throw_morphs: Dictionary = {}   ## morph name -> blend shape index on the coat
 var _shown_yaw: float = NAN          ## the body's yaw on screen, eased toward the grid facing or the throw's aim
 var _throw_turning_back: bool = false   ## a throw just ended and the body is still turning back to its grid facing
+var _facing_aim: bool = true         ## the body faces the shot's target (or is aiming at none): `facing_aim()`
 var _coat: MeshInstance3D = null     ## the Agent's coat, when it owns the draw's morph
 var _coat_draw_shape: int = -1       ## that morph's index
 var _pistol_stops: Array = []        ## [[weight, placement {bone, pos, quat, scale}], ...] one per aim stop, from the poses' `props` meta
@@ -976,6 +980,12 @@ func weapon_at_stance() -> bool:
 	return _aim == null or _aim_target <= 0.0 or absf(_aim_t - _aim_target) <= 1e-4
 
 
+## MOVEMENT §11.6 step 3 (Director, 2026-11-23): whether the body has finished turning to the shot's target (`ActorPose.shot_aim_dir`), so the
+## shot waits for it (`AgentShotController`). True when no target is set.
+func facing_aim() -> bool:
+	return _facing_aim
+
+
 ## The gun's own kick in its model space (barrel +X, up +Y), as the last shot's recoil profile says (`ActorRecoil3D.gun_kick_*`; none for a long
 ## gun, which the body carries): back along the barrel (the figure's units: the model's own scale `model_scale` in the hand is divided out) and up
 ## about the grip, on the body's envelope.
@@ -1079,17 +1089,24 @@ func _sync() -> void:
 	var throwing_now: bool = _throwing() or String(state["throw"]) != ""
 	if aim_dir != Vector2.ZERO and throwing_now:
 		want_yaw = yaw_for_direction(aim_dir)
+	## The shot's second stage (Director 2026-11-23) turns the body in place to its target the same way, and holds it there while the weapon is
+	## out at it (`ActorPose.shot_aim_dir`); cleared, the body turns back to the grid facing.
+	var shot_dir: Vector2 = state.get("shot_dir", Vector2.ZERO)
+	var aiming: bool = shot_dir != Vector2.ZERO and not (throwing_now or float(state["walk"]) >= 0.0)
+	if aiming:
+		want_yaw = yaw_for_direction(shot_dir)
 	## The first tap on a destination turns the idle figure toward it; a move that starts mid-turn keeps turning to the step's facing.
 	var turn_dir: Vector2 = state.get("turn_dir", Vector2.ZERO)
 	var tapping: bool = turn_dir != Vector2.ZERO and not (throwing_now or float(state["walk"]) >= 0.0)
 	if tapping:
 		want_yaw = yaw_for_direction(turn_dir)
-	var throwing: bool = throwing_now or tapping
+	var throwing: bool = throwing_now or tapping or aiming
 	if is_nan(_shown_yaw) or not (throwing or _throw_turning_back):   ## outside a throw the facing snaps, as it always did (D47)
 		_shown_yaw = want_yaw
 	var turn: float = wrapf(want_yaw - _shown_yaw, -PI, PI)
 	_shown_yaw += clampf(turn, -THROW_TURN_RAD_S * get_process_delta_time(), THROW_TURN_RAD_S * get_process_delta_time())
 	_throw_turning_back = throwing or absf(wrapf(want_yaw - _shown_yaw, -PI, PI)) > 1e-4
+	_facing_aim = not aiming or tapping or absf(wrapf(want_yaw - _shown_yaw, -PI, PI)) <= AIM_FACING_EPS_RAD
 	_body.rotation.y = _shown_yaw + _front_yaw
 	var body_yaw: float = _shown_yaw
 	if not _tripo.is_empty():

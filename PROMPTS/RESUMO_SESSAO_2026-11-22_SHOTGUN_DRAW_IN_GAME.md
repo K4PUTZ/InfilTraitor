@@ -63,3 +63,24 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
    what his Blender shows.
 2. The shotgun's size certified by him (`size_certified`).
 3. Then §11.6: the kneeling long-gun draw (step 4), the H3 family lab, the pump / case (step 5).
+
+## 2026-11-23: the recoil ratified, the shot in stages
+
+- **The recoil:** the Director ratified the long gun's recoil as it is (*"Está bom assim"*), recorded in `MOVEMENT_MASTER_PLAN`
+  §11.6 step 3 (`a8856af5`).
+- **The shot in stages** (Director: *"Durante o jogo vamos pausar em cada etapa"*), ruled in `WEAPON_MASTER_PLAN` D43 with his four
+  answers (aimed stays at the shoulder; the pistol follows stages 2-4; no hit percentage until GAMEPLAY-01; stage 1's choice is a menu over
+  the agent until the HUD has its buttons). Gameplay statement in `DESIGN_MASTER_PLAN` §8.7, the figure's part in `MOVEMENT` §11.6 step 3,
+  the HUD buttons in `INTERFACE_MASTER_PLAN` Part 5.
+- **Built:** `AgentShotController.Flow` (IDLE, STANCE, TARGET, FIRING): the weapon's key draws it (`choose_weapon`), a long gun standing
+  stops at the hip with the menu over the agent (*Atirar do quadril* / *Mirar*), the target is the nearest enemy (D33) or the one clicked,
+  the body turns in place to it (`ActorPose.shot_aim_dir`, `ActorMesh3D.facing_aim()`, the throw's turn), the trigger is the menu's button,
+  Enter or a second click on the same enemy, and after the shot the weapon stays where it fired until a walk (`Agent.move_along_path`
+  lowers the grip) or another item (`put_away`: another weapon, the grenade). Scenario steps `draw`, `stance`, `trigger`; take
+  `shot_stages` on PLAYGROUND (profile `ui`; guards 4 and 6 placed beside the agent at the POIs `shot_target_left` / `_right`).
+- **Checked:** the take filmed on both figures (sheets and videos shown), the pistol through `holster_walk`, `verify.py smoke` green.
+
+### Next
+
+1. The Director's look at the stages in the game (the films), and the HUD buttons for stage 1 when INTERFACE Part 5 starts.
+2. Still open from before: the 22 G-moved fingers, the shotgun's `size_certified`, §11.6 steps 4-5.

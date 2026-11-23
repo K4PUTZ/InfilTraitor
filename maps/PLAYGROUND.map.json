@@ -972,6 +972,17 @@
           ]
         },
         {
+          "id": "shot_stages_rail",
+          "keys": [
+            {
+              "frame": "detail",
+              "target": "@shot_stages_area",
+              "view": "S",
+              "hold": 1020
+            }
+          ]
+        },
+        {
           "id": "agent_close_rail",
           "keys": [
             {
@@ -1744,6 +1755,38 @@
           "length": 520,
           "seed": 1,
           "note": "MOVEMENT §11.6 step 3 (2026-11-22): the shotgun's two shots: drawn to the hip, the HIP shot; then the AIMED one (on from the hip to the shoulder at the eye, then the shot); then put away. Run with INFILTRAITOR_TRIPO_FIGURE=male|female."
+        },
+        {
+          "id": "shot_stages",
+          "profile": "ui",
+          "rail": "shot_stages_rail",
+          "steps": [
+            "place_guard 4 @shot_target_left",
+            "place_guard 6 @shot_target_right",
+            "draw shotgun",
+            "wait 1.8",
+            "stance hip",
+            "wait 1.2",
+            "shot_aim 5",
+            "wait 1.2",
+            "shot_aim 6",
+            "wait 1.2",
+            "trigger",
+            "wait 1.4",
+            "draw shotgun",
+            "wait 1.0",
+            "stance aimed",
+            "wait 1.6",
+            "trigger",
+            "wait 1.6",
+            "walk @agent_walk_south",
+            "wait 2.6"
+          ],
+          "at_key": 0,
+          "after_hold": 20,
+          "length": 1020,
+          "seed": 1,
+          "note": "MOVEMENT §11.6 step 3 / WEAPON D43 (Director, 2026-11-23): the shot in stages, the menus in sight (profile ui). Guards 4 and 6 are put beside the agent (left, right) so every target is in frame. 1: the shotgun drawn with its key (`draw`) stops at the hip, the menu over the agent asks hip or aim; the hip chosen. 2: the nearest marked (guard 4), then 5 and 6: the figure turns in place to each. 3: the hip shot at 6; 4: the gun stays at the hip. The same weapon again: the hip's choice again, the aim chosen (up to the shoulder, the nearest marked), the aimed shot, the gun stays at the shoulder; then a walk puts it away first. Run with INFILTRAITOR_TRIPO_FIGURE=male|female, --shape landscape."
         },
         {
           "id": "h1_family",
@@ -2703,6 +2746,42 @@
           ],
           "tags": [
             "detail"
+          ]
+        },
+        {
+          "id": "shot_stages_area",
+          "at": [
+            27.0,
+            10.5,
+            0.625
+          ],
+          "extent": [
+            6.0,
+            3.5,
+            1.0
+          ],
+          "tags": [
+            "detail"
+          ]
+        },
+        {
+          "id": "shot_target_left",
+          "at": [
+            25.5,
+            9.5
+          ],
+          "tags": [
+            "event"
+          ]
+        },
+        {
+          "id": "shot_target_right",
+          "at": [
+            29.5,
+            9.5
+          ],
+          "tags": [
+            "event"
           ]
         }
       ],

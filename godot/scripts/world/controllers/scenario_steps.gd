@@ -363,6 +363,15 @@ func _scenario_fire(index: int, stance: String) -> bool:
 	for _f in range(10):
 		await room.get_tree().process_frame
 	room._agent_shot_controller.fire_at_active(stance)
+	return await _wait_shot()
+
+
+## Until the shot under way has landed and its render passes are done (or 1800 frames each), then `SHOT_SETTLE_FRAMES`. False on the cap.
+func _wait_shot() -> bool:
+	var firing: int = 0
+	while room._agent_shot_controller.is_firing() and firing < 1800:   ## the warm, the stance, the turn, the impact
+		await room.get_tree().process_frame
+		firing += 1
 	var waited: int = 0
 	while (room._destruction_render_busy or room.is_resolving_action()) and waited < 1800:
 		await room.get_tree().process_frame
@@ -371,7 +380,36 @@ func _scenario_fire(index: int, stance: String) -> bool:
 	## thirty, because they are gone by then (R3D-7 sparks check).
 	for _f in range(room._dev_flag_num("SHOT_SETTLE_FRAMES", 30)):
 		await room.get_tree().process_frame
-	return waited < 1800
+	return firing < 1800 and waited < 1800
+
+
+## Scenario step `draw <id>`: the shot's first stage as the number keys run it (Director, 2026-11-23): the weapon is chosen and comes out
+## (`AgentShotController.choose_weapon`: the one in the hand goes back into the coat first when it is another); a long gun standing stops at the
+## hip with the hip's choice over the agent, a pistol goes on to its target (the nearest enemy).
+func scenario_draw(weapon_id: String) -> bool:
+	if room._agent_shot_controller == null:
+		push_error("[Room] scenario_draw: no shot controller")
+		return false
+	await room._agent_shot_controller.choose_weapon(weapon_id)
+	return true
+
+
+## Scenario step `stance <hip|aimed>`: stage 1's choice, as the menu over the agent takes it; stage 2 opens on the nearest enemy (or the one a
+## `shot_aim` named meanwhile).
+func scenario_stance(stance: String) -> bool:
+	if room._agent_shot_controller == null or not room._agent_shot_controller.choose_stance(stance):
+		push_error("[Room] scenario_stance: the hip's choice is not open (a long gun standing, drawn with `draw`, opens it)")
+		return false
+	return true
+
+
+## Scenario step `trigger`: stage 2's second input on the marked target (the menu's button, Enter, a second click on the enemy); waits for the
+## shot to land. The weapon stays out after it (stage 4).
+func scenario_trigger() -> bool:
+	if room._agent_shot_controller == null or not room._agent_shot_controller.trigger():
+		push_error("[Room] scenario_trigger: no target is marked (stage 2 opens after `draw`, `stance` or `shot_aim`)")
+		return false
+	return await _wait_shot()
 
 
 ## Scenario step `weapon <id>`: the agent's firearm, as the number keys choose it (`AgentShotController.set_weapon`).
@@ -392,8 +430,9 @@ func scenario_attach(attachment_id: String) -> bool:
 	return true
 
 
-## Scenario step `shot_aim <guard>`: the aim of `scenario_shoot` WITHOUT the trigger: the agent turns toward the guard and raises his
-## weapon (the menu opens on the target). `shot_cancel` puts it down again.
+## Scenario step `shot_aim <guard>`: the aim of `scenario_shoot` WITHOUT the trigger, as the shot's stages run it (Director, 2026-11-23): the
+## held weapon comes out; a long gun standing stops at the hip with the hip's choice over the agent, then the guard is the target (the figure turns
+## to it); a pistol goes straight to the target. `shot_cancel` puts the weapon away again (`AgentShotController.put_away`).
 func scenario_shot_aim(index: int) -> bool:
 	if room._agent_shot_controller == null or index < 0 or index >= room._guards.size():
 		push_error("[Room] scenario_shot_aim: no shot controller or no guard #%d (%d on the map)" % [index, room._guards.size()])
@@ -406,7 +445,7 @@ func scenario_shot_cancel() -> bool:
 	if room._agent_shot_controller == null:
 		push_error("[Room] scenario_shot_cancel: no shot controller")
 		return false
-	room._agent_shot_controller.cancel_active()
+	room._agent_shot_controller.put_away()
 	return true
 
 

@@ -288,6 +288,12 @@ bar of the agent's ACTIONS, not a lone button and not a menu on every tap.
    layout change.
 5. Visible proof on a phone-sized viewport (portrait), Director-ratified.
 
+**2026-11-23 — the shot's stages are the flow the bar drives (`WEAPON_MASTER_PLAN` D43, `DESIGN_MASTER_PLAN` §8.7).** Choosing a
+weapon in the bar's list draws it (stage 1); a long gun standing then asks *fire from the hip* or *aim*, and the Director wants those two
+as HUD buttons (*"Vão haver botões no HUD, mas por enquanto ficamos com o menu sobre o agente"*): until this part lands they are the
+context menu over the agent, and the trigger of stage 2 is the menu over the marked enemy. The engine side for them already exists
+(`AgentShotController.choose_weapon` / `choose_stance` / `trigger` / `is_targeting`); the HUD facade still needs its signals.
+
 **⚠️ Engine side — NOT built yet, and JAMES must not build it** (he may not touch
 `room.gd`; `.README_WORKSPACE.md`): the HUD facade needs, from CLAUDE on `main`,
 (a) a signal or method per action the bar raises, wired in `room.gd` to the existing

@@ -1372,6 +1372,14 @@ targets at all, ammunition, and how a shotgun's many independent pellets collaps
 into one displayed percentage all belong to the COMBAT wave. They are enumerated
 as open questions in `WEAPON_MASTER_PLAN.md` §7c.
 
+**The shot in stages — `DESIGNED`, built 2026-11-23 *(Director, 2026-11-23; `WEAPON_MASTER_PLAN` D43)*.** Each stage is a pause for
+the player: **1.** the weapon chosen comes out; a long gun standing stops at the hip, where the player fires at once (losing accuracy) or
+raises it to the aim (one AP more); a pistol, a long gun kneeling and a sniper rifle go straight to the aim. **2.** The aim mode above: the
+nearest enemy first, any other one chosen, and at this stage the figure turns horizontally to the target, at the hip as at the aim, while
+the player weighs the odds. **3.** The shot, from the hip or from the shoulder. **4.** The weapon is not put away until the agent walks or
+another item is chosen; it stays where it fired (aimed, at the shoulder). Until GAMEPLAY-01 gives the formula no percentage is shown, only
+the marked target; the hip's lost accuracy and the aim's AP are GAMEPLAY-01's numbers.
+
 **What the agent is holding while he aims:** the whole arsenal, not one weapon —
 §10.2's per-mission pick is superseded, see the note there.
 

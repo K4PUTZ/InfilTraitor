@@ -9678,6 +9678,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	## first), so any mouse press here is an "outside" click.
 	if _context_menu != null and _context_menu.visible:
 		if event is InputEventMouseButton and event.pressed:
+			## The shot's second stage (Director, 2026-11-23): while a target is marked, a click on an ENEMY is not an outside click: the marked
+			## one fires (D34's second input), another becomes the target (`AgentShotController.click_enemy`).
+			if _agent_shot_controller != null and _agent_shot_controller.is_targeting():
+				var enemy: int = _agent_shot_controller.hit_test((event as InputEventMouseButton).position)
+				if enemy != -1:
+					_agent_shot_controller.click_enemy(enemy)
+					get_viewport().set_input_as_handled()
+					return
 			_cancel_context_menu()
 			get_viewport().set_input_as_handled()
 		return
@@ -10417,6 +10425,10 @@ func _on_grenade_mode_requested() -> void:
 	## PERF-F7: the grenade's fire is still resolving — see is_resolving_action().
 	if is_resolving_action():
 		return
+	## The grenade is another item: a weapon still out after a shot goes back into the coat first (the shot's fourth stage, Director
+	## 2026-11-23); the throw's raise waits for it (`ActorMesh3D`).
+	if _agent_shot_controller != null:
+		_agent_shot_controller.put_away()
 	if _grenade_controller != null:
 		_grenade_controller.enter_grenade_mode()
 

@@ -163,6 +163,11 @@ func _head_anchor() -> Vector2:
 	return HEAD_OFFSET.get(posture, HEAD_OFFSET[Posture.STANDING])
 
 
+## The top of the head, in the same space as `position`: where a menu over the agent anchors (the shot's first stage, 2026-11-23).
+func head_point() -> Vector2:
+	return position + _head_anchor()
+
+
 ## WEAPON_MASTER_PLAN §6c Part A — where a SHOT leaves this agent, in the same
 ## space as `position`.
 ##
@@ -247,6 +252,24 @@ func weapon_at_stance() -> bool:
 	if figure != null and is_instance_valid(figure) and (figure as Object).has_method("weapon_at_stance"):
 		return bool((figure as Object).call("weapon_at_stance"))
 	return true
+
+
+## MOVEMENT §11.6 step 3 (Director, 2026-11-23) — whether the figure's body has turned to the shot's target (`ActorMesh3D.facing_aim()`). True
+## when the figure draws nothing (the old rig, a headless run).
+func facing_aim() -> bool:
+	var figure: Variant = pose.get_meta("figure3d") if pose != null and pose.has_meta("figure3d") else null
+	if figure != null and is_instance_valid(figure) and (figure as Object).has_method("facing_aim"):
+		return bool((figure as Object).call("facing_aim"))
+	return true
+
+
+## Whether the figure still shows a weapon: raised, held after a shot, or on its way back into the coat (`ActorMesh3D.weapon_out()`). False
+## when the figure draws nothing.
+func weapon_out() -> bool:
+	var figure: Variant = pose.get_meta("figure3d") if pose != null and pose.has_meta("figure3d") else null
+	if figure != null and is_instance_valid(figure) and (figure as Object).has_method("weapon_out"):
+		return bool((figure as Object).call("weapon_out"))
+	return false
 
 
 ## MOVEMENT §11.6 step 5 — the shot's own body (a dart, the taser's probes, the grapple's hook, a flare) thrown by the figure at `to`
@@ -444,6 +467,10 @@ func move_along_path(path: Array[Vector2i], dash: bool = false) -> void:
 	is_moving = true
 	if pose != null:
 		pose.stow_weapon = true
+		## The shot's fourth stage ends here (Director, 2026-11-23: the weapon stays out until the agent walks or another item is chosen): it goes
+		## back into the coat for good, and the body stops facing the shot's target.
+		pose.set_grip("")
+		pose.shot_aim_dir = Vector2.ZERO
 	await _weapon_away()
 	_dashing = dash
 	if pose != null:

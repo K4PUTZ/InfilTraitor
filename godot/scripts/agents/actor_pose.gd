@@ -35,6 +35,11 @@ var throw_aim_dir: Vector2 = Vector2.ZERO
 ## The first tap on a destination turns the idle figure toward it (any angle, like the throw's aim); the next `face_step` (the move
 ## starting) clears it and the body keeps turning to the step's facing from where it is. ZERO = no turn asked.
 var turn_aim_dir: Vector2 = Vector2.ZERO
+## The shot's target (MOVEMENT §11.6 step 3, Director 2026-11-23: at the shot's second stage the figure turns horizontally to whoever is aimed
+## at): the grid direction to it (target cell - own cell), set by `AgentShotController` while the weapon is out at it; the mesh turns the whole
+## body to it in place, at the throw's pace, and back to the grid facing when it is cleared (the weapon put away, or the next step of a move).
+## ZERO = none.
+var shot_aim_dir: Vector2 = Vector2.ZERO
 const POSTURES: PackedStringArray = ["standing", "crouch", "prone"]
 ## Grip suffixes the rig has actions for ("" = lowered).
 const GRIPS: PackedStringArray = ["", "_aimed"]
@@ -109,6 +114,7 @@ func face_step(step: Vector2i) -> void:
 		return
 	_facing_step = step
 	turn_aim_dir = Vector2.ZERO
+	shot_aim_dir = Vector2.ZERO
 
 
 ## An arbitrary direction, reduced to the nearest of D44's four: the guards snap to eight and a diagonal has no facing
@@ -274,6 +280,7 @@ func mesh_state() -> Dictionary:
 		"throw_reversed": _throw_reversed,
 		"throw_dir": throw_aim_dir,
 		"turn_dir": turn_aim_dir,
+		"shot_dir": shot_aim_dir,
 		"head": _head_grid_deg if _has_head_yaw else NAN,
 	}
 

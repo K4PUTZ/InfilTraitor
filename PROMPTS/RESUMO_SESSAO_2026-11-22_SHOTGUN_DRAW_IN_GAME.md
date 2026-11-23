@@ -84,3 +84,26 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
 
 1. The Director's look at the stages in the game (the films), and the HUD buttons for stage 1 when INTERFACE Part 5 starts.
 2. Still open from before: the 22 G-moved fingers, the shotgun's `size_certified`, §11.6 steps 4-5.
+
+## 2026-11-23 (later): the shotgun's size certified, H3's lab file
+
+- **The Director:** *"Não vamos fazer playtest por enquanto. Se tiver algum erro corrigimos depois. A certificação do tamanho da escopeta
+  está ok. Vamos conferir as demais armas da família."* The stages of the shot are left unplayed by hand for now.
+- **Certified:** `weapons/shotgun.json` `model.size_certified` 2026-11-23 (x0.085 of the pack's units, the size his timeline holds at every
+  sample on both figures); the load warning is gone.
+- **H3's lab file** (`MOVEMENT` §11.6 step 2): `family_lab.py build H3 male` -> `ASSETS/MODELS/actors/agent/male/work/FAMILY_H3_aim_MALE.blend`,
+  21 Agents frozen in the long gun's aim (his `SEQ_draw_shotgun_MALE.blend` at frame 31, read and never saved: its md5 unchanged), one
+  long gun each on the LEFT hand with its trigger guard on the certified shotgun's: the pack's 3 other shotguns, 3 assault rifles, the
+  bullpup and 4 snipers; the sci-fi set's 3 rifles, 2 snipers and the lightning gun; the 3 grenade launchers. Frames and trigger guards are
+  explicit per model (the H1 guesses fail on long guns: measured on side renders). The read-back reads them; checked on the untouched file
+  and, for no regression, on H1's file (all 14 rows reproduced exactly). Tiles: `temp/h3_family/h3_male_start_tiles_sheet.png`.
+- **Found on the way:** H1's lab file names its sources by the layout before 2026-11-19 (`ASSETS/MODELS/sources/...`), so its read-back
+  stops at the taser until the paths are mapped to `props/` (done for the check in a scratch wrapper, not in the tool).
+
+### Next
+
+1. The Director sizes and grips each long gun in `FAMILY_H3_aim_MALE.blend` and saves (to judge: the bullpup and the two P90-style sci-fi
+   rifles, whose butt goes into the body with the hand on the trigger; the three without a shoulder stock, whose aim is H2's way).
+2. The read-back, the female's file from the male's sizes, then the H3 rows (`family_rows.py` H3 table) and the engine's long-gun holder for
+   `held_like`; a take drawing each one.
+3. Still open: the 22 G-moved fingers, §11.6 steps 4-5, the stages played by hand (later, by his word).

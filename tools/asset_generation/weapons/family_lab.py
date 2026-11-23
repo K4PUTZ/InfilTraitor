@@ -18,6 +18,19 @@ of moves, turns and uniform scales is recovered; reshaping is reported) and save
 The pose is the family's, shared by every model (§11.2): it is not edited here. The file is built ONCE and never rebuilt over his
 work (`pose_lab.py family` opens it as it is).
 
+H3, THE LONG GUNS (2026-11-23, the Director: "A certificação do tamanho da escopeta está ok. Vamos conferir as demais armas da
+família"). The same line in the long gun's aim: the Director's `SEQ_draw_shotgun_<FIG>.blend` at its `aim` marker (frame 31), opened
+and never saved (the lab is saved as a new file). The long gun rides the LEFT hand (the timeline keys it there), so every model is a
+child of the LeftHand bone. The reference is the certified shotgun AS THE TIMELINE HOLDS IT (`PROP_shotgun`: the glb's raw mesh at the
+object's x8.5, i.e. x0.085 of the pack's units); its glb frame is found by fitting its source to it. A model's frame and anchor are
+EXPLICIT per model (`FAMILIES["H3"]`), because the guessed ones fail on long guns (measured 2026-11-23 on side renders: the grip-low
+rule turned the bullpup, a sniper, three sci-fi rifles and the lightning gun barrel-backwards, one launcher lies on its side, and the
+grip anchor lands on the BUTT): `frame` is the turn that puts the barrel along +X and the top up, `anchor` the centre of the TRIGGER
+GUARD (the hole of the side silhouette in front of the grip, picked by eye where there are several), so the right hand's index finger
+finds every trigger where it finds the shotgun's. The pack's models open at the shotgun's own factor (one pack, one scale); the others
+at a length relative to it. Three have no shoulder stock (the sawed-off, the short stock and the MGL-style launcher): they stand in the
+shouldered aim only to be sized and gripped; their aim is two arms forward (H2's way, the Director 2026-11-17).
+
 Run inside Blender:
   blender -b --python family_lab.py -- build  <family> <figure> <out .blend> [readback .json]
       with a read-back: every model opens where that read-back placed it relative to the reference (the female's file from the
@@ -80,7 +93,42 @@ FAMILIES = {
             ("Suppressor-VLiLj3j1tS", os.path.join(PP, "suppressors", "Suppressor-VLiLj3j1tS.glb"), 0.6, "muzzle"),
         ],
     },
+    # A long-gun model: (label, source glb, start, frame, anchor). start = "pack" (the reference's own factor: the same pack, the same
+    # native units) or its length as a fraction of the reference's. frame = the turns, in order, that put the imported model barrel +X,
+    # up +Z ([axis, degrees] pairs). anchor = (x, z) of the trigger guard's centre in that frame, the model's own units, y = the box's
+    # middle. Read off side renders on 2026-11-23 (the silhouette's holes; `MOVEMENT` §11.6 step 2 has the record).
+    "H3": {
+        "long": True, "timeline_file": "SEQ_draw_shotgun_{FIG}.blend", "marker": "aim", "hand": "LeftHand",
+        "reference": "shotgun", "reference_label": "Shotgun (certified)", "reference_glb": "ASSETS/props/shotgun/shotgun.glb",
+        "reference_anchor": (0.4894, -0.2153),
+        "spacing": 0.6,
+        "render": {"tile_ortho": 0.9, "tile_target": (0.0, -0.1, 0.05), "line": False},
+        "models": [
+            ("Shotgun-ZmPTnh7njL", os.path.join(PACK, "Shotgun-ZmPTnh7njL.glb"), "pack", [["Z", 0]], (0.4929, -0.2047)),
+            ("Shotgun Sawed Off", os.path.join(PACK, "Shotgun Sawed Off.glb"), "pack", [["Z", 0]], (0.5365, -0.0471)),
+            ("Shotgun Short Stock", os.path.join(PACK, "Shotgun Short Stock.glb"), "pack", [["Z", 0]], (0.7765, -0.0224)),
+            ("Assault Rifle", os.path.join(PACK, "Assault Rifle.glb"), "pack", [["Z", 0]], (0.4553, 0.2565)),
+            ("Assault Rifle-Bgvuu4CUMV", os.path.join(PACK, "Assault Rifle-Bgvuu4CUMV.glb"), "pack", [["Z", 0]], (0.4694, 0.2624)),
+            ("Assault Rifle-fpLucho45C", os.path.join(PACK, "Assault Rifle-fpLucho45C.glb"), "pack", [["Z", 0]], (0.4659, 0.2612)),
+            ("Bullpup", os.path.join(PACK, "Bullpup.glb"), "pack", [["Z", 0]], (0.5659, 0.2812)),
+            ("Sniper Rifle", os.path.join(PACK, "Sniper Rifle.glb"), "pack", [["Z", 0]], (0.6094, -0.2012)),
+            ("Sniper Rifle-ASOMZIErq3", os.path.join(PACK, "Sniper Rifle-ASOMZIErq3.glb"), "pack", [["Z", 0]], (0.4518, -0.1400)),
+            ("Sniper Rifle-TKaBjAEofL", os.path.join(PACK, "Sniper Rifle-TKaBjAEofL.glb"), "pack", [["Z", 0]], (0.3176, -0.0200)),
+            ("Sniper Rifle-i65hEldsw6", os.path.join(PACK, "Sniper Rifle-i65hEldsw6.glb"), "pack", [["Z", 0]], (-0.3706, 0.1506)),
+            ("Scifi_AR-MJmAjTeT9h", os.path.join(PP, "scifi", "Scifi_AR-MJmAjTeT9h.glb"), 0.95, [["Z", 0]], (0.1834, 0.0680)),
+            ("Scifi_Assault_Rifle-JqdHbURERk", os.path.join(PP, "scifi", "Scifi_Assault_Rifle-JqdHbURERk.glb"), 0.95, [["Z", 0]], (0.2421, 0.0676)),
+            ("Scifi_Assault_Rifle-RGtBoJNn3N", os.path.join(PP, "scifi", "Scifi_Assault_Rifle-RGtBoJNn3N.glb"), 0.95, [["Z", 0]], (0.1355, 0.0645)),
+            ("Scifi_Sniper-46615JyFm7", os.path.join(PP, "scifi", "Scifi_Sniper-46615JyFm7.glb"), 1.1, [["Z", 0]], (0.0869, 0.0522)),
+            ("Scifi_Sniper-VU7QiZYae0", os.path.join(PP, "scifi", "Scifi_Sniper-VU7QiZYae0.glb"), 1.1, [["Z", 0]], (0.1372, 0.0930)),
+            ("Lightning_Gun-Nl8qWErOw2", os.path.join(PP, "scifi", "Lightning_Gun-Nl8qWErOw2.glb"), 0.8, [["Z", 270]], (0.6177, 0.1782)),
+            ("Grenade_Launcher-ZKvWhvu4tV", os.path.join(PP, "launchers", "Grenade_Launcher-ZKvWhvu4tV.glb"), 0.65, [["Z", 180]], (-0.1859, -0.1093)),
+            ("Grenade_Launcher-phmPZCnGOA", os.path.join(PP, "launchers", "Grenade_Launcher-phmPZCnGOA.glb"), 0.8,
+             [["Z", 90], ["X", -90], ["Z", 180]], (-0.2432, -0.0885)),
+            ("Scifi_Grenade_Launcher-r10Gkf9yDs", os.path.join(PP, "launchers", "Scifi_Grenade_Launcher-r10Gkf9yDs.glb"), 0.8, [["Z", 0]], (0.0988, 0.0616)),
+        ],
+    },
 }
+RENDER_DEFAULT = {"tile_ortho": 0.42, "tile_target": (0.0, -0.06, 0.0)}   # H1's tiles (a pistol hand)
 
 CM = Matrix(((1, 0, 0), (0, 0, 1), (0, -1, 0))).to_4x4()    # Blender (x, y, z) -> glTF (x, z, -y)
 
@@ -177,6 +225,17 @@ def to_gun_frame(ob):
     return turn
 
 
+def gun_frame_matrix(frame):
+    """The turn (4x4) that puts an imported model in the gun frame (barrel +X, up +Z): `frame` is a list of [axis, degrees] applied in
+    order (H3's explicit frames), or one angle about Z."""
+    if not isinstance(frame, (list, tuple)):
+        frame = [["Z", float(frame)]]
+    m = Matrix.Identity(4)
+    for ax, deg in frame:
+        m = Matrix.Rotation(math.radians(float(deg)), 4, str(ax)) @ m
+    return m
+
+
 # ---- the figure ------------------------------------------------------------------------------------------------------------------------------
 def freeze(scene, frame):
     """The timeline's state at `frame` made static: the pose, the coat's keys, the reference prop's place and visibility; the actions,
@@ -258,6 +317,8 @@ def build(family, figure, out_blend, from_json=None):
     if os.path.exists(out_blend):
         fail(f"{os.path.relpath(out_blend, ROOT)} exists: it holds the Director's work and is never rebuilt")
     fam = FAMILIES[family]
+    if fam.get("long"):
+        return build_long(family, figure, out_blend, from_json)
     placed = None
     if from_json:    # every model at the place another figure's read-back gave it, relative to the reference (the female from the male's sizes)
         with open(from_json) as f:
@@ -429,6 +490,143 @@ def build(family, figure, out_blend, from_json=None):
     print(f"[family_lab] wrote {os.path.relpath(out_blend, ROOT)}: {len(rows) + 1} Agents, one model each")
 
 
+def build_long(family, figure, out_blend, from_json=None):
+    """A LONG-gun family's lab file (the module's header, H3): the line in the family's aim, every model a child of the hand bone that
+    holds the reference (the LEFT hand), its trigger guard on the reference's, its barrel along the reference's. Each model's mesh is
+    in the figure's units about its trigger guard, so its object reads Scale 1.0 at the start and S scales it about the trigger."""
+    fam = FAMILIES[family]
+    placed = None
+    if from_json:    # every model at the place another figure's read-back gave it, relative to the reference
+        with open(from_json) as f:
+            placed = json.load(f)["models"]
+    timeline = os.path.join(ROOT, mp.agent(figure, "work", fam["timeline_file"].format(FIG=figure.upper())))
+    bpy.ops.wm.open_mainfile(filepath=timeline)      # the Director's timeline: read here, never saved (the lab is saved as a new file)
+    scene = bpy.context.scene
+    markers = {m.name: m.frame for m in scene.timeline_markers}
+    if fam["marker"] not in markers:
+        fail(f"{os.path.basename(timeline)} has no marker '{fam['marker']}' (has {markers})")
+    frame = markers[fam["marker"]]
+    freeze(scene, frame)
+    for n in REMOVE:
+        if n in bpy.data.objects:
+            bpy.data.objects.remove(bpy.data.objects[n])
+    arms = [o for o in bpy.data.objects if o.type == "ARMATURE"]
+    if len(arms) != 1:
+        fail(f"{os.path.basename(timeline)}: expected one armature, found {len(arms)}")
+    arm = arms[0]
+    hand = PREFIX + fam["hand"]
+    ref = bpy.data.objects.get("PROP_" + fam["reference"])
+    if ref is None or ref.parent is not arm or ref.parent_bone != hand:
+        fail(f"{os.path.basename(timeline)}: no PROP_{fam['reference']} on the {fam['hand']}")
+    body = [o for o in bpy.data.objects if o.type == "MESH" and o.parent is arm and o is not ref]
+    for o in bpy.data.objects:
+        o.select_set(False)
+    if bpy.context.object and bpy.context.object.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+
+    # The reference's glb frame in the world: its source as `import_model` gives it (the frame every read-back uses) fitted to where the
+    # timeline holds its raw mesh. The same glb, so the same vertices in the same order: the fit is exact or the file is not what we think.
+    src = import_model(os.path.join(ROOT, fam["reference_glb"]), "_ref_src")
+    sp = verts(src)
+    bpy.data.objects.remove(src)
+    rw = [ref.matrix_world @ v.co for v in ref.data.vertices]
+    if len(sp) != len(rw):
+        fail(f"PROP_{fam['reference']} has {len(rw)} vertices, {fam['reference_glb']} {len(sp)}: not the reference's model")
+    s_ref, R_ref, t_ref, rms = umeyama(sp, rw)
+    if rms > 1e-5:
+        fail(f"PROP_{fam['reference']} does not fit {fam['reference_glb']} (rms {rms:.2e}): its vertices are not the glb's")
+    ref_imp = _sim(s_ref, R_ref, t_ref)
+    lo, hi = box(sp)
+    ref_len = hi.x - lo.x
+    ra = fam["reference_anchor"]
+    a_ref = ref_imp @ Vector((ra[0], (lo.y + hi.y) / 2.0, ra[1]))
+    rot = R_ref.to_4x4()
+    print(f"[family_lab] {figure} {family}: the aim is {os.path.basename(timeline)} frame {frame}; reference x{s_ref:.4f} of its units "
+          f"(fit rms {rms:.1e}), {ref_len * s_ref:.4f} long, trigger guard at {tuple(round(v, 4) for v in a_ref)}")
+
+    root = scene.collection
+    c0 = bpy.data.collections.new(f"01 {fam['reference_label']}")
+    root.children.link(c0)
+    for o in [arm, ref] + body:
+        for c in list(o.users_collection):
+            c.objects.unlink(o)
+        c0.objects.link(o)
+    ref.name = f"GUN_01 {fam['reference_label']}"
+    ref["lab_role"] = "reference"
+    ref["lab_source"] = fam["reference_glb"]
+    label(f"01\n{fam['reference_label']}", Vector((0.0, -0.42, 0.012)), c0)
+    arm["lab_family"] = family
+    arm["lab_figure"] = figure
+    arm["lab_aim"] = f"{os.path.basename(timeline)}@{frame}"
+
+    rows = []
+    for i, (name, path, start, gframe, anchor2) in enumerate(fam["models"], start=2):
+        offset = Vector(((i - 1) * fam["spacing"], 0.0, 0.0))
+        coll = bpy.data.collections.new(f"{i:02d} {name}")
+        root.children.link(coll)
+        a2 = clone_figure(arm, body, offset, coll)
+        bpy.context.view_layer.update()
+        gun = import_model(path, f"GUN_{i:02d} {name}")
+        for c in list(gun.users_collection):
+            c.objects.unlink(gun)
+        coll.objects.link(gun)
+        g_turn = gun_frame_matrix(gframe)
+        gun.data.transform(g_turn)
+        pts = verts(gun)
+        lo, hi = box(pts)
+        length = hi.x - lo.x
+        anchor = Vector((anchor2[0], (lo.y + hi.y) / 2.0, anchor2[1]))     # the trigger guard: gun frame, the model's own units
+        if placed is not None:
+            key = f"{i:02d} {name}"
+            if key not in placed:
+                fail(f"{os.path.basename(from_json)} has no '{key}'")
+            r = placed[key]
+            gun.data.transform(g_turn.inverted())          # back to the glb's own frame (the read-back's `rel` maps it), origin on the anchor
+            anchor = g_turn.inverted() @ anchor
+            gun.data.transform(Matrix.Translation(-anchor))
+            from mathutils import Quaternion
+            q = r["rel_quat"]
+            g = Matrix.Translation(Vector(r["rel_pos"])) @ Quaternion((q[3], q[0], q[1], q[2])).to_matrix().to_4x4() @ Matrix.Scale(r["rel_scale"], 4)
+            loc, quat, sc = (Matrix.Translation(offset) @ ref_imp @ (CM.inverted() @ g @ CM) @ Matrix.Translation(anchor)).decompose()
+            gun.data.transform(Matrix.Scale(sc.x, 4))       # the size in the mesh: the object reads Scale 1.0
+            world = Matrix.Translation(loc) @ quat.to_matrix().to_4x4()
+            mesh_frame = []
+            factor = r["rel_scale"]
+        else:
+            factor = 1.0 if start == "pack" else float(start) * ref_len / length
+            gun.data.transform(Matrix.Translation(-anchor))
+            gun.data.transform(Matrix.Scale(factor * s_ref, 4))
+            world = Matrix.Translation(offset) @ Matrix.Translation(a_ref) @ rot
+            mesh_frame = gframe
+        gun.parent = a2
+        gun.parent_type = "BONE"
+        gun.parent_bone = hand
+        bpy.context.view_layer.update()
+        gun.matrix_world = world
+        gun["lab_role"] = "held"
+        gun["lab_source"] = os.path.relpath(path, ROOT)
+        gun["lab_start_factor"] = factor                     # the start, in the reference's units per the model's
+        gun["lab_mesh_frame"] = json.dumps(mesh_frame)      # the turn from the source to THIS mesh (the read-back turns the source by it)
+        gun["lab_gun_frame"] = json.dumps(gframe)           # the turn from the source to the gun frame, barrel +X (the muzzle is read there)
+        gun["lab_anchor"] = list(anchor)
+        if placed is not None:
+            gun["lab_from"] = os.path.basename(from_json)
+        tris = sum(len(p.vertices) - 2 for p in gun.data.polygons)
+        label(f"{i:02d}\n{name}", offset + Vector((0.0, -0.42, 0.012)), coll)
+        how = f"from {os.path.basename(from_json)}" if placed is not None else ("pack" if start == "pack" else f"{float(start):.2f} x the reference")
+        print(f"[family_lab]   {i:02d} {name:36s} x{factor:.4f} of the reference's units ({how}), {length * factor / ref_len:.2f} x its length, "
+              f"frame {gframe}, {tris} tris")
+        rows.append(name)
+
+    for o in bpy.data.objects:
+        o.select_set(False)
+    bpy.context.view_layer.objects.active = None
+    scene["lab_family"] = family
+    os.makedirs(os.path.dirname(out_blend), exist_ok=True)
+    bpy.ops.wm.save_as_mainfile(filepath=out_blend)
+    print(f"[family_lab] wrote {os.path.relpath(out_blend, ROOT)}: {len(rows) + 1} Agents, one model each")
+
+
 # ---- the render ------------------------------------------------------------------------------------------------------------------------------
 def _setup_render(scene, w, h):
     scene.render.engine = "BLENDER_EEVEE"
@@ -474,19 +672,23 @@ def render(blend, prefix, readback_json=None):
             ob.users_collection[0].objects.link(bead)
             bead.location = Vector(r["muzzle_world"])
     guns = sorted([o for o in bpy.data.objects if o.name.startswith("GUN_") and o.get("lab_role") != "carrier"], key=lambda o: o.name)
+    look = dict(RENDER_DEFAULT)
+    look.update(FAMILIES.get(scene.get("lab_family", ""), {}).get("render", {}))
     cam = _setup_render(scene, 2400, 1000)
-    # the whole line, from the front three-quarters, above the hands
-    xs = [o.matrix_world.translation.x for o in guns]
-    mid = Vector(((min(xs) + max(xs)) / 2.0, -0.1, 0.62))
-    cam.data.lens = 28
-    cam.location = mid + Vector((-1.0, -6.6, 1.4))
-    cam.rotation_euler = (mid - cam.location).to_track_quat("-Z", "Y").to_euler()
-    scene.render.filepath = prefix + "_line.png"
-    bpy.ops.render.render(write_still=True)
-    print(f"[family_lab] rendered {scene.render.filepath}")
+    if look.get("line", True):
+        # the whole line, from the front three-quarters, above the hands. Not for the long guns: from the front (even three-quarters,
+        # even from above) a long gun points at the camera and reads as nothing (H3's first renders, 2026-11-23); their tiles say it all
+        xs = [o.matrix_world.translation.x for o in guns]
+        mid = Vector(((min(xs) + max(xs)) / 2.0, -0.1, 0.62))
+        cam.data.lens = 28
+        cam.location = mid + Vector((-1.0, -6.6, 1.4))
+        cam.rotation_euler = (mid - cam.location).to_track_quat("-Z", "Y").to_euler()
+        scene.render.filepath = prefix + "_line.png"
+        bpy.ops.render.render(write_still=True)
+        print(f"[family_lab] rendered {scene.render.filepath}")
     # each gun hand from the Agent's right side (-X), orthographic, one scale for all: a tile per model
     cam.data.type = "ORTHO"
-    cam.data.ortho_scale = 0.42
+    cam.data.ortho_scale = look["tile_ortho"]
     scene.render.resolution_x, scene.render.resolution_y = 520, 420
     tiles = []
     for o in guns:
@@ -495,7 +697,7 @@ def render(blend, prefix, readback_json=None):
             if x.type in ("MESH", "FONT", "ARMATURE"):
                 x.hide_render = x not in mine
         p = o.matrix_world.translation.copy()
-        target = Vector((p.x, p.y - 0.06, p.z))
+        target = p + Vector(look["tile_target"])
         cam.location = target + Vector((-2.0, 0.0, 0.0))
         cam.rotation_euler = (math.radians(90), 0, math.radians(-90))
         path = f"{prefix}_tile_{o.name[4:6]}.png"
@@ -540,9 +742,15 @@ def readback(blend, out_json):
     ref_m = None
     for ob in guns:
         role = ob.get("lab_role")
+        explicit = "lab_mesh_frame" in ob      # a long-gun file (`build_long`): the turns are stored, not found again
+        if explicit:
+            mesh_frame = gun_frame_matrix(json.loads(ob["lab_mesh_frame"]))
+        elif role != "reference":
+            mesh_frame = Matrix.Rotation(math.radians(float(ob.get("lab_turn_deg", 0.0))), 4, "Z")
+        else:
+            mesh_frame = Matrix.Identity(4)
         src = import_model(os.path.join(ROOT, ob["lab_source"]), "_src")
-        if role != "reference":
-            src.data.transform(Matrix.Rotation(math.radians(float(ob.get("lab_turn_deg", 0.0))), 4, "Z"))
+        src.data.transform(mesh_frame)
         sp = verts(src)
         if len(sp) != len(ob.data.vertices):
             fail(f"{ob.name}: {len(ob.data.vertices)} vertices in the file, {len(sp)} in its source: the mesh was edited beyond a placement")
@@ -556,23 +764,27 @@ def readback(blend, out_json):
         dp = [to_frame @ (ob.matrix_world @ v.co) for v in ob.data.vertices]
         s, R, t, rms = umeyama(sp, dp)
         # the fit maps the TURNED source; the board loads the glb as it is: fold the build's turn in, so `m` maps the glb's own frame
-        m = _sim(s, R, t) @ (Matrix.Rotation(math.radians(float(ob.get("lab_turn_deg", 0.0))), 4, "Z") if role != "reference" else Matrix.Identity(4))
+        m = _sim(s, R, t) @ mesh_frame
         # the muzzle and the length are read in the GUN frame (barrel +X), whatever frame the file holds the mesh in: a file built
-        # from a read-back keeps the glb's own frame (`lab_turn_deg` 0), so the frame's turn is found again as the build finds it
-        if role != "reference":
-            probe = import_model(os.path.join(ROOT, ob["lab_source"]), "_probe")
-            frame_turn = to_gun_frame(probe)
-            bpy.data.objects.remove(probe)
+        # from a read-back keeps the glb's own frame (`lab_turn_deg` 0), so the frame's turn is found again as the build finds it;
+        # a long-gun file stores it (`lab_gun_frame`)
+        if explicit:
+            to_gun = gun_frame_matrix(json.loads(ob["lab_gun_frame"])) @ mesh_frame.inverted()
         else:
-            frame_turn = 0.0
-        to_gun = Matrix.Rotation(math.radians(frame_turn - (float(ob.get("lab_turn_deg", 0.0)) if role != "reference" else 0.0)), 4, "Z")
+            if role != "reference":
+                probe = import_model(os.path.join(ROOT, ob["lab_source"]), "_probe")
+                frame_turn = to_gun_frame(probe)
+                bpy.data.objects.remove(probe)
+            else:
+                frame_turn = 0.0
+            to_gun = Matrix.Rotation(math.radians(frame_turn - (float(ob.get("lab_turn_deg", 0.0)) if role != "reference" else 0.0)), 4, "Z")
         sg = [to_gun @ p for p in sp]
         lo, hi = box(sg)
         tip_x = hi.x - 0.03 * (hi.x - lo.x)
         tip_ids = [i for i, p in enumerate(sg) if p.x >= tip_x]
         muzzle = sum((sp[i] for i in tip_ids), Vector()) / len(tip_ids)
         muzzle_world = ob.matrix_world @ (sum((ob.data.vertices[i].co for i in tip_ids), Vector()) / len(tip_ids))
-        muzzle = Matrix.Rotation(math.radians(-float(ob.get("lab_turn_deg", 0.0))), 4, "Z") @ muzzle if role != "reference" else muzzle
+        muzzle = mesh_frame.inverted() @ muzzle
         muzzle_gltf = CM @ muzzle
         start = float(ob.get("lab_start_factor", 0.0))
         rows[ob.name[4:]] = {"role": role, "source": ob["lab_source"], "holder": ob.parent_bone or holder.name,
@@ -623,7 +835,10 @@ def swap(blend, key, old_glb, new_glb):
     ob = bpy.data.objects.get("GUN_" + key)
     if ob is None:
         fail(f"no GUN_{key} in {os.path.basename(blend)}")
-    turn = Matrix.Rotation(math.radians(float(ob.get("lab_turn_deg", 0.0))), 4, "Z")
+    if "lab_mesh_frame" in ob:      # a long-gun file stores its turn
+        turn = gun_frame_matrix(json.loads(ob["lab_mesh_frame"]))
+    else:
+        turn = Matrix.Rotation(math.radians(float(ob.get("lab_turn_deg", 0.0))), 4, "Z")
     old = import_model(old_glb, "_old")
     old.data.transform(turn)
     sp = verts(old)

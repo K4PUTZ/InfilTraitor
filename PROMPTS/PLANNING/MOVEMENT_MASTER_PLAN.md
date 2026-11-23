@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
+> ⏭️ **2026-11-23 (later) — the shotgun's size CERTIFIED and H3's LAB FILE BUILT (Director: *"A certificação do tamanho da escopeta está ok. Vamos conferir as demais armas da família"*): `FAMILY_H3_aim_MALE.blend`, 21 Agents in the long gun's aim, each with one long gun on the left hand, its trigger guard on the shotgun's (the pack's shotguns, rifles, bullpup and snipers; the sci-fi rifles, snipers and lightning gun; the three grenade launchers). The Director sizes and grips each one; then the read-back, the female, the rows. §11.6 step 2.**
 > ⏭️ **2026-11-23 — THE SHOT IN STAGES (Director: *"Durante o jogo vamos pausar em cada etapa"*; `WEAPON_MASTER_PLAN` D43, `DESIGN_MASTER_PLAN` §8.7): the weapon's choice draws it; a long gun stops at the hip and waits (fire from the hip, or aim, +1 AP); at the target the whole body turns in place to it; the shot; the weapon stays where it fired until a walk or another item. The pistol the same from the target on. §11.6 step 3; take `shot_stages`.**
 
 > ⏭️ **2026-11-22 (later) — the Director's fine adjustment of the shotgun's draw is IN THE GAME: the male as he saved it, the female in step with it (his rotations, his gun in the left hand, her right hand put back on the grip, his coat flap), and the long gun's RECOIL at the hip and aimed (`ActorRecoil3D` profiles: the trunk rocks back, the arms add the climb, the gun fixed in the hands; ratified by him as they are). ⚠️ A finger moved with G is not keyed and the game never reads it. §11.6 step 3; record: the same summary's last section.**
@@ -778,6 +779,29 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    `attach <id|none>`; takes `suppressed_shot`, `suppressor_variants`. Filmed on both figures: the round leaves the suppressor's
    end. Each suppressor will have its own attributes (silences more or less, takes more or less damage, hurts accuracy):
    **the attribute sheet of every weapon and attachment is the GAMEPLAY milestone's** (Director, same day).
+   **2026-11-23: the shotgun's size CERTIFIED and H3's lab file BUILT** (Director: *"A certificação do tamanho da escopeta está ok.
+   Vamos conferir as demais armas da família"*; and *"Não vamos fazer playtest por enquanto. Se tiver algum erro corrigimos depois"*: the
+   stages of the shot are not played by hand for now). `weapons/shotgun.json` `size_certified` 2026-11-23 (x0.085 of the pack's units,
+   the size the timeline holds; its load warning is gone). `family_lab.py build H3 male` ->
+   `ASSETS/MODELS/actors/agent/male/work/FAMILY_H3_aim_MALE.blend`: 21 Agents in the long gun's AIM as the game plays it (the
+   Director's `SEQ_draw_shotgun_MALE.blend` at `aim` = 31, opened and never saved), each with one model on the LEFT hand (the timeline
+   keys the long gun there): 01 the certified shotgun as the timeline holds it, then the pack's 3 other shotguns, 3 assault rifles, the
+   bullpup, 4 sniper rifles, and the sci-fi set's 3 rifles, 2 snipers and the lightning gun, and the 3 grenade launchers (`ITEMS` §2.10
+   files them all under H3). Every model with its TRIGGER GUARD on the shotgun's and its barrel along the shotgun's, its mesh in the
+   figure's units about the trigger guard (Scale 1.0 at the start, S scales about the trigger); the pack's at the shotgun's own factor,
+   the others at a length relative to it (sci-fi rifles 0.95, snipers 1.1, lightning gun 0.8, launchers 0.8, the stockless MGL 0.65).
+   **The frames and anchors are EXPLICIT per model** (`FAMILIES["H3"]`), measured on side renders: the H1 guesses fail on long guns (the
+   grip-low rule put the bullpup, one sniper, three sci-fi rifles and the lightning gun barrel-backwards; one launcher lies on its side in
+   its file; the grip anchor lands on the butt); the trigger guard is the side silhouette's hole in front of the grip, picked by eye
+   where there are several. The read-back stores and reads those frames (`lab_mesh_frame`, `lab_gun_frame`); checked on the untouched
+   file (every model x1.0 of its start, residuals under 4·10⁻⁷) and on H1's file (the 14 rows' grips and muzzles reproduced exactly).
+   Render: the tiles only (`render ... temp/h3_family/<prefix>`; a long gun seen from the front reads as nothing). **For the Director's
+   eye:** the bullpup and the two P90-style sci-fi rifles have the trigger far forward of the butt, so with the right hand on the trigger
+   their butt goes into the body (the one pose cannot move the hand); the sawed-off, the short stock and the MGL-style launcher have no
+   shoulder stock (sized here in the shouldered aim only; their aim is H2's way). Next: he sizes and grips each model and saves; the
+   read-back; the female's file built from the male's sizes; then the rows (`family_rows.py` gets an H3 table) and the engine's long-gun
+   holder for `held_like`. ⚠️ H1's file names its sources by the layout before 2026-11-19 (`ASSETS/MODELS/sources/`): its read-back
+   stops at the taser until those paths are mapped (`props/`).
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
    **H3 opens with the SHOTGUNS (Director, 2026-11-17).** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra

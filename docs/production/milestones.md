@@ -1251,7 +1251,11 @@ themselves; what sound does in play is M6.0, the music is SOUNDTRACK. Visual and
   The first one is saved: the bullpup's hip and aim on the male, `ASSETS/ANIMATIONS/poses/male/grip_bullpup_{hip,aim}.json` (2026-11-24,
   `family_lab.py grip`; the lab read-back's `own_grip` is its gun in its own hand), and its own draw timeline,
   `SEQ_draw_bullpup_MALE.blend` (`family_lab.py seq`), posed by the Director and read back into
-  `ASSETS/ANIMATIONS/sequences/male/draw_bullpup.json` (2026-11-24); the game plays the family's draw until this item.
+  `ASSETS/ANIMATIONS/sequences/male/draw_bullpup.json` (2026-11-24), and the female's in step (`family_lab.py in_step`,
+  `SEQ_draw_bullpup_FEMALE.blend`); the game plays the family's draw until this item. The two stockless shotguns (the sawed-off,
+  the short stock) were brought forward from here the same day (Director: *"É pouca coisa, e acho que não vale a pena ficar
+  adiando"*): each gets its own timeline now (`SEQ_draw_shotgun_sawed_off_MALE.blend` first). Playing a model's own timeline in the
+  game (and the H3 rows that make these two weapons) is still unbuilt; it stays this item's unless the Director moves it.
 
 **Rule:** a polish item changes how something looks or sounds, never what it does; a gameplay attribute is GAMEPLAY-01's.
 

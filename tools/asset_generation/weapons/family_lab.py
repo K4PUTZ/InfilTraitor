@@ -56,6 +56,9 @@ Run inside Blender:
   blender -b --python family_lab.py -- seq <family timeline .blend> <nn> <out .blend> <marker>=<lab .blend> [...]
       -> model nn's OWN draw timeline: the family's, the model in the reference's place, each named stop posed as that lab scene's Agent
          (`seq`'s docstring; `SEQ_draw_<model>_<FIG>.blend`, read back by `pose_lab.py sequence draw_<model>`)
+  blender -b --python family_lab.py -- in_step <his family timeline> <his model timeline> <her family timeline> <out .blend>
+      -> the other figure's model timeline in step with his: his change from his family timeline put on her own keys, the model at his place in
+         her hand, her right hand on it where his is (`in_step`'s docstring; `SEQ_draw_bullpup_FEMALE.blend`)
   blender -b --python family_lab.py -- render <saved .blend> <out prefix> [readback .json] -> <prefix>_line.png (the whole line, three-quarters)
                                                                                   <prefix>_tile_<nn>.png (each gun hand from the side, one scale)
   blender -b --python family_lab.py -- swap <saved .blend> "<nn name>" <old glb> <new glb>   -> a model replaced by its edited version, in place
@@ -74,7 +77,7 @@ import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
 import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
 import bpy, bmesh, sys, os, math, json, re
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 FIT = None   # per figure: mp.agent(figure, "work")
@@ -1134,6 +1137,275 @@ def seq(family_blend, key, out_blend, stops):
           f"{', '.join(f'{m} {markers[m]}' for m in grips)} from the lab scenes, the draw to {draw_end} the family's")
 
 
+IN_STEP_PALM_CM = 4.0    # her right hand goes onto the model at the stops where his right palm is within this of it (the 2026-11-23 recipe: his aim at 3.8 cm)
+
+
+def _palm(arm, side):
+    """The palm's centre (between the hand's head and the middle finger's root), world space."""
+    pb = arm.pose.bones
+    return arm.matrix_world @ ((pb[PREFIX + side + "Hand"].head + pb[PREFIX + side + "HandMiddle1"].head) * 0.5)
+
+
+def _bvh_world(ob):
+    """The object's evaluated surface in world space, for nearest-point queries."""
+    from mathutils.bvhtree import BVHTree
+    ev = ob.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    me = ev.to_mesh()
+    tree = BVHTree.FromPolygons([ob.matrix_world @ v.co for v in me.vertices], [tuple(p.vertices) for p in me.polygons])
+    ev.to_mesh_clear()
+    return tree
+
+
+def _coat_keys():
+    """The open timeline's coat: its animated values and a digest of each shape key, to tell whether two timelines share one coat."""
+    import array, hashlib
+    coat = bpy.data.objects.get("Outfit_Coat")
+    if coat is None or coat.data.shape_keys is None:
+        return None
+    sk = coat.data.shape_keys
+    values = sorted((fc.data_path, fc.array_index, tuple((round(k.co[0], 4), round(k.co[1], 6)) for k in fc.keyframe_points))
+                    for fc in _curves(sk.animation_data))
+    shapes = {}
+    for kb in sk.key_blocks:
+        co = array.array("f", [0.0]) * (len(kb.data) * 3)
+        kb.data.foreach_get("co", co)
+        shapes[kb.name] = hashlib.sha1(co.tobytes()).hexdigest()
+    return {"values": values, "shapes": shapes}
+
+
+def _timeline(path, frames=None, model=False):
+    """One of his timelines, read (never saved) at `frames` (default: the frames its armature is keyed on): each bone's rotation and the Hips' place.
+    With `model`: its model's keys (the place against the hand's bone, read off the keys themselves), the model's visibility curves, and at each of
+    those frames where the model is shown the right hand's place against it and the right palm's distance to it."""
+    bpy.ops.wm.open_mainfile(filepath=path)
+    sc = bpy.context.scene
+    arm = next(o for o in bpy.data.objects if o.type == "ARMATURE")
+    keyed = sorted({round(k.co[0]) for fc in _curves(arm.animation_data) for k in fc.keyframe_points})
+    out = {"keyed": keyed, "rot": {}, "hips": {}, "hip_h": (arm.matrix_world @ arm.data.bones[PREFIX + "Hips"].head_local).z,
+           "props": json.loads(arm["lab_props"]), "pose": arm.get("lab_pose", ""), "figure": arm["lab_figure"], "coat": _coat_keys()}
+    for f in (frames or keyed):
+        sc.frame_set(f)
+        out["rot"][f] = {pb.name: pb.rotation_quaternion.copy() for pb in arm.pose.bones}
+        out["hips"][f] = arm.pose.bones[PREFIX + "Hips"].location.copy()
+    if not model:
+        return out
+    gun = bpy.data.objects["PROP_" + out["props"][0]]
+    hand = arm.pose.bones[gun.parent_bone]
+    gkeyed = sorted({round(k.co[0]) for fc in _curves(gun.animation_data) if fc.data_path in ("location", "rotation_quaternion", "scale")
+                     for k in fc.keyframe_points})
+    out.update({"bone": gun.parent_bone, "gun_keyed": gkeyed, "in_hand": {}, "hidden": {}, "right_rel": {}, "palm_cm": {},
+                "vis": [(fc.data_path, fc.array_index, [(tuple(k.co), k.interpolation) for k in fc.keyframe_points])
+                        for fc in _curves(gun.animation_data) if fc.data_path.startswith("hide")]})
+    if gun.rotation_mode != "QUATERNION":
+        fail(f"{os.path.basename(path)}: PROP_{out['props'][0]} is not in quaternions")
+    chans = {(fc.data_path, fc.array_index): fc for fc in _curves(gun.animation_data)}
+
+    def key_values(f, path, n, now):
+        return [chans[(path, i)].evaluate(f) if (path, i) in chans else now[i] for i in range(n)]
+
+    # the place against the hand's bone read off the KEYS (a hidden object is not re-evaluated by Blender, so its matrix_world is stale there):
+    # a child of a bone sits at the bone's tail; checked against the evaluated place wherever the model is shown
+    tail = Matrix.Translation((0.0, hand.bone.length, 0.0)) @ gun.matrix_parent_inverse
+    for f in gkeyed:
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        out["hidden"][f] = gun.hide_viewport
+        out["in_hand"][f] = tail @ Matrix.LocRotScale(Vector(key_values(f, "location", 3, gun.location)),
+                                                      Quaternion(key_values(f, "rotation_quaternion", 4, gun.rotation_quaternion)).normalized(),
+                                                      Vector(key_values(f, "scale", 3, gun.scale)))
+        if not gun.hide_viewport:
+            ev = hand.matrix.inverted() @ (arm.matrix_world.inverted() @ gun.matrix_world)
+            if max(abs(a - b) for ra, rb in zip(ev, out["in_hand"][f]) for a, b in zip(ra, rb)) > 1e-4:
+                fail(f"{os.path.basename(path)}: PROP_{out['props'][0]}'s keys at {f} do not give its place on {gun.parent_bone}")
+    for f in (frames or keyed):
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        if not gun.hide_viewport:
+            out["palm_cm"][f], out["right_rel"][f] = _right_on(arm, gun)
+    return out
+
+
+def _right_on(arm, gun):
+    """The right palm's distance to the model (cm) and the right hand's place against the model (armature space), for the frame the scene is on."""
+    rel = (arm.matrix_world.inverted() @ gun.matrix_world).inverted() @ arm.pose.bones[PREFIX + "RightHand"].matrix
+    return _bvh_world(gun).find_nearest(_palm(arm, "Right"))[3] * 100.0, rel
+
+
+def in_step(ref_blend, fin_blend, her_blend, out_blend):
+    """THE FEMALE IN STEP WITH A MODEL'S OWN TIMELINE (2026-11-24, the Director: "Vamos começar primeiro fazendo a versão feminina", on the bullpup).
+    His model timeline (`fin_blend`, `SEQ_draw_bullpup_MALE.blend`) is his family timeline (`ref_blend`, `SEQ_draw_shotgun_MALE.blend`) CHANGED; her
+    family timeline (`her_blend`, `SEQ_draw_shotgun_FEMALE.blend`, read, never saved; its hip and aim are his own hand's, 2026-11-23) takes THAT CHANGE,
+    never his poses over hers (his rule for her hip and aim: "a later male change there is carried by his hand, or by a delta that keeps his keys"):
+      - her body, at each frame his model timeline is keyed on but the first (her idle stays hers): each bone's change from his family timeline to his
+        model timeline put on hers (Δ = fin · ref⁻¹, left-multiplied), the fingers too (her own curl kept, his change on it); the Hips hers plus his
+        change, scaled by the hip heights. A stop his model timeline dropped (keyed in his family timeline, not in his model timeline: the bullpup's
+        18 and 20) is dropped on hers;
+      - the model in her hand at HIS place against that hand's bone at each of its keys (the slides included: they are kept in the hand's frame), its
+        visibility his;
+      - her RIGHT hand ON the model at the stops where his palm is within IN_STEP_PALM_CM of it: his hand's place against the model, times HER OWN
+        departure from his on the family's gun at that stop when both palms were on it there (her hip and aim by his hand), reached by a two-bone
+        solve of her arm and forearm that keeps her elbow's bending plane and turns each bone the least (the 11-22 recipe's solve);
+      - her coat, markers and range stay hers: his model timeline must keep his family's coat (checked; carrying a coat change is not built).
+    With no change (his model timeline = his family timeline) her family timeline comes back key for key. Written as a new file, never over one."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "asset_generation", "tripo"))
+    import tripo_pose_lab as tpl
+    if os.path.realpath(out_blend) in {os.path.realpath(p) for p in (ref_blend, fin_blend, her_blend)} or os.path.exists(out_blend):
+        fail(f"{os.path.relpath(out_blend, ROOT)} exists or is an input: a timeline is never written over")
+    fin = _timeline(fin_blend, model=True)
+    ref = _timeline(ref_blend, frames=fin["keyed"], model=True)
+    prop = fin["props"][0]
+    if fin["figure"] != ref["figure"]:
+        fail(f"{os.path.basename(fin_blend)} is the {fin['figure']}'s, {os.path.basename(ref_blend)} the {ref['figure']}'s")
+    if fin["coat"] != ref["coat"]:
+        fail(f"{os.path.basename(fin_blend)} changed the coat of {os.path.basename(ref_blend)}: carrying a coat change to her is not built")
+    if prop not in tpl.PROP_GLB:
+        fail(f"tripo_pose_lab.PROP_GLB has no '{prop}'")
+    dropped = [f for f in ref["keyed"] if f not in fin["keyed"]]
+    print(f"[family_lab] his {fin['pose']} keyed at {fin['keyed']}; his family's at {ref['keyed']}; dropped {dropped}; his right palm on the {prop} "
+          f"(cm): {{{', '.join(f'{f}: {d:.2f}' for f, d in fin['palm_cm'].items())}}}")
+
+    bpy.ops.wm.open_mainfile(filepath=her_blend)
+    sc = bpy.context.scene
+    arm = next(o for o in bpy.data.objects if o.type == "ARMATURE")
+    bpy.context.view_layer.objects.active = arm
+    if arm.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+    if json.loads(arm["lab_props"]) != ref["props"] or arm["lab_figure"] == fin["figure"]:
+        fail(f"{os.path.basename(her_blend)}: the {arm['lab_figure']}'s {arm['lab_props']}, not the other figure's timeline of {ref['props']}")
+    if any(pb.rotation_mode != "QUATERNION" for pb in arm.pose.bones):
+        fail(f"{os.path.basename(her_blend)}: a bone in an Euler mode (the timeline keys quaternions)")
+    old = bpy.data.objects.get("PROP_" + ref["props"][0])
+    if old is None or old.parent is not arm or old.parent_bone != fin["bone"]:
+        fail(f"{os.path.basename(her_blend)}: no PROP_{ref['props'][0]} on {fin['bone']}")
+    her, her_on = {}, {}
+    for f in fin["keyed"]:
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        her[f] = ({pb.name: pb.rotation_quaternion.copy() for pb in arm.pose.bones}, arm.pose.bones[PREFIX + "Hips"].location.copy())
+        if not old.hide_viewport:
+            her_on[f] = _right_on(arm, old)
+    ratio = (arm.matrix_world @ arm.data.bones[PREFIX + "Hips"].head_local).z / fin["hip_h"]
+
+    # her body: his change on her keys
+    prev = dict(her[fin["keyed"][0]][0])
+    worst = {}
+    for f in fin["keyed"][1:]:
+        for pb in arm.pose.bones:
+            n = pb.name
+            q = (fin["rot"][f][n] @ ref["rot"][f][n].inverted()) @ her[f][0][n]
+            q.normalize()
+            if q.dot(prev[n]) < 0.0:
+                q.negate()
+            prev[n] = q
+            a = math.degrees(q.rotation_difference(her[f][0][n]).angle)
+            worst[n] = max(worst.get(n, 0.0), min(a, 360.0 - a))
+            pb.rotation_quaternion = q
+            pb.keyframe_insert("rotation_quaternion", frame=f)
+        hb = arm.pose.bones[PREFIX + "Hips"]
+        hb.location = her[f][1] + (fin["hips"][f] - ref["hips"][f]) * ratio
+        hb.keyframe_insert("location", frame=f)
+    gone = 0
+    for fc in _curves(arm.animation_data):
+        while True:
+            i = next((i for i, k in enumerate(fc.keyframe_points) if round(k.co[0]) in dropped), None)
+            if i is None:
+                break
+            fc.keyframe_points.remove(fc.keyframe_points[i])
+            gone += 1
+        fc.update()
+    big = sorted(((round(v, 1), n.replace(PREFIX, "")) for n, v in worst.items() if not tpl.is_finger(n)), reverse=True)[:8]
+    print(f"[family_lab] her body: his change at {fin['keyed'][1:]} (hip ratio {ratio:.4f}); {gone} keys dropped at {dropped}; the largest turns "
+          f"from her own pose: {big}")
+
+    # the model in her hand at his place against the hand's bone
+    bpy.data.objects.remove(old)
+    gun, node_scale = tpl.import_prop(prop, {})
+    gun.parent = arm
+    gun.parent_type = "BONE"
+    gun.parent_bone = fin["bone"]
+    gun.rotation_mode = "QUATERNION"
+    gun["lab_node_scale"] = node_scale
+    gun["lab_bone"] = fin["bone"].replace(PREFIX, "")
+    hand = arm.pose.bones[fin["bone"]]
+    gprev = None
+    for f in fin["gun_keyed"]:
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        gun.matrix_world = arm.matrix_world @ hand.matrix @ fin["in_hand"][f]
+        bpy.context.view_layer.update()
+        if gprev is not None and gun.rotation_quaternion.dot(gprev) < 0.0:
+            gun.rotation_quaternion = -gun.rotation_quaternion
+        gprev = gun.rotation_quaternion.copy()
+        for path in ("location", "rotation_quaternion", "scale"):
+            gun.keyframe_insert(path, frame=f)
+    for path, idx, keys in fin["vis"]:
+        gun.keyframe_insert(path, frame=keys[0][0][0])
+        fc = next(c for c in _curves(gun.animation_data) if c.data_path == path and c.array_index == idx)
+        fc.keyframe_points.clear()
+        fc.keyframe_points.add(len(keys))
+        for kp, (co, interp) in zip(fc.keyframe_points, keys):
+            kp.co = co
+            kp.interpolation = interp
+        fc.update()
+    print(f"[family_lab] the {prop} in her {fin['bone'].replace(PREFIX, '')} at his place at {len(fin['gun_keyed'])} keys; visibility his")
+
+    # her right hand where his is on the model
+    up, fore, rh = (arm.pose.bones[PREFIX + n] for n in ("RightArm", "RightForeArm", "RightHand"))
+
+    def turn_bone(bone, head, new_dir):
+        cur = bone.matrix.to_3x3().normalized()
+        rot = (cur @ Vector((0.0, 1.0, 0.0))).rotation_difference(new_dir.normalized()).to_matrix()
+        bone.matrix = Matrix.Translation(head) @ (rot @ cur).to_4x4()
+        bpy.context.view_layer.update()
+
+    for f in [f for f in fin["keyed"] if fin["palm_cm"].get(f, 1e9) <= IN_STEP_PALM_CM]:
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        before = _bvh_world(gun).find_nearest(_palm(arm, "Right"))[3]
+        old_q = {b.name: b.rotation_quaternion.copy() for b in (up, fore, rh)}
+        dep = Matrix.Identity(4)      # her own departure from his hand's place on the family's gun, when both were on it here
+        if ref["palm_cm"].get(f, 1e9) <= IN_STEP_PALM_CM and her_on.get(f, (1e9, None))[0] <= IN_STEP_PALM_CM:
+            dep = ref["right_rel"][f].inverted() @ her_on[f][1]
+        target = (arm.matrix_world.inverted() @ gun.matrix_world) @ fin["right_rel"][f] @ dep
+        W, S, E0 = target.to_translation(), up.head.copy(), fore.head.copy()
+        L1, L2 = up.bone.length, fore.bone.length
+        d = min((W - S).length, (L1 + L2) * 0.9999)
+        u = (W - S).normalized()
+        bend = (E0 - S) - u * (E0 - S).dot(u)
+        v = bend.normalized() if bend.length > 1e-6 else u.orthogonal().normalized()
+        a = (L1 * L1 - L2 * L2 + d * d) / (2.0 * d)
+        E = S + u * a + v * math.sqrt(max(L1 * L1 - a * a, 0.0))
+        turn_bone(up, S, E - S)
+        turn_bone(fore, fore.head.copy(), (S + u * d) - fore.head)
+        rh.matrix = Matrix.Translation(rh.head.copy()) @ target.to_3x3().normalized().to_4x4()
+        bpy.context.view_layer.update()
+        for b in (up, fore, rh):
+            if b.rotation_quaternion.dot(old_q[b.name]) < 0.0:
+                b.rotation_quaternion = -b.rotation_quaternion
+            b.keyframe_insert("rotation_quaternion", frame=f)
+        after = _bvh_world(gun).find_nearest(_palm(arm, "Right"))[3]
+        _l, dq, _s = dep.decompose()
+        sw = arm.matrix_world.to_scale().x * 100.0      # armature units -> cm
+        print(f"[family_lab] {f}: her right palm to the {prop} {before * 100:.2f} -> {after * 100:.2f} cm (his {fin['palm_cm'][f]:.2f}); her own "
+              f"departure from his hand kept: {dep.to_translation().length * sw:.2f} cm, {math.degrees(dq.angle):.1f} deg; wrist missed by "
+              f"{(rh.head - W).length * sw:.2f} cm")
+
+    arm["lab_pose"] = fin["pose"]
+    arm["lab_props"] = json.dumps([prop])
+    arm["lab_in_step"] = json.dumps({"his_model": os.path.basename(fin_blend), "his_family": os.path.basename(ref_blend),
+                                     "her_family": os.path.basename(her_blend)})
+    sc.frame_set(1)
+    for o in bpy.data.objects:
+        o.select_set(False)
+    arm.select_set(True)
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode="POSE")
+    os.makedirs(os.path.dirname(out_blend), exist_ok=True)
+    bpy.ops.wm.save_as_mainfile(filepath=out_blend)
+    print(f"[family_lab] wrote {os.path.relpath(out_blend, ROOT)}: the {arm['lab_figure']} {prop} draw in step with {os.path.basename(fin_blend)}, "
+          f"on {os.path.basename(her_blend)}'s keys")
+
+
 def swap(blend, key, old_glb, new_glb):
     """A model of a SAVED lab file replaced by a new version of its source (the Director's own edit of the model): the old source is
     fitted to the mesh as it sits in the file (its size and grip, untouched) and the new source gets the same transform. The new
@@ -1183,6 +1455,8 @@ def main():
         if not stops:
             fail("seq needs at least one <marker>=<lab .blend>")
         seq(a[1], a[2], a[3], stops)
+    elif a[0] == "in_step":
+        in_step(a[1], a[2], a[3], a[4])
     elif a[0] == "swap":
         swap(a[1], a[2], a[3], a[4])
     elif a[0] == "readback":

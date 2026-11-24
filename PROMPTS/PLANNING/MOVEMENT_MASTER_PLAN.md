@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
+> ⏭️ **2026-11-24 (evening) — the FEMALE's BULLPUP built IN STEP, and the two STOCKLESS SHOTGUNS brought forward from the polish (Director: *"Vamos começar primeiro fazendo a versão feminina. E depois eu queria abrir as duas shotguns de cano curto que a gente adiou ontem para a fase de polimento, e fazer agora. É pouca coisa"*):** `family_lab.py in_step` puts his CHANGE from his family timeline to his model timeline on HER family timeline (her hip and aim by his hand kept, her right hand's own departure on the grip kept; with no change her file comes back key for key) -> `SEQ_draw_bullpup_FEMALE.blend`, the bullpup in her hand exactly at his place. The sawed-off's own timeline is built (`SEQ_draw_shotgun_sawed_off_MALE.blend`, `family_lab.py seq`; both hands on it at the hip and the aim) for him to pose its aim (arms forward, at the eyes); the short stock follows its scheme. §11.6 step 2.
 > ⏭️ **2026-11-24 (afternoon) — the BULLPUP's DRAW posed by the Director and READ BACK (Director: *"Ajustei e salvei"*, then *"A 3, sem 18/20"*):** his save moved the left hand's hold at 12, 13 and 16 (the hand on another part of the grip, the bullpup still upright at 16). The slide 17-22 was re-baked from his 16: a baked slide is DERIVED from the two stops beside it, so moving the gun at one of them leaves a jump until it is re-baked (here 87° in the hand at 17). By his choice, the left arm's keys at 18 and 20 (the shotgun's, inherited) are gone, so the ~90° turn to the hip spreads over 16-23 instead of two frames. `ASSETS/ANIMATIONS/sequences/male/draw_bullpup.json` + six stop poses; played only at POLISH-01. §11.6 step 2.
 > ⏭️ **2026-11-24 (later) — the RIFLES DONE and the BULLPUP's OWN DRAW TIMELINE built (Director: *"Vamos montar no Blender toda a sequência da mira só com essa arma. As demais estão prontas"*):** his hip grip saved too (`grip_bullpup_hip.json`); `SEQ_draw_bullpup_MALE.blend` = his shotgun timeline with the bullpup, its hip (23) and aim (31) from the lab scenes, the draw to the centre the family's (`family_lab.py seq`); he poses the bullpup's draw next. Not in the game until POLISH-01. §11.6 step 2.
 > ⏭️ **2026-11-24 — the RIFLES sized and the BULLPUP's own GRIP SAVED; the rifles' HIP scene built (Director: *"A última arma especificamente tem um design diferente, então eu tive que modificar o esqueleto. Vamos já deixar essa empunhadura salva. Precisamos checar o hip em seguida"*):** the three assault rifles moved a few millimetres at their built size; the bullpup x0.75 on a body of its own (26 bones). That body is kept as a pose file for POLISH-01, `ASSETS/ANIMATIONS/poses/male/grip_bullpup_aim.json` (`family_lab.py grip`; nothing in the game reads it yet), and the read-back gives such a model twice (`rel_*` on the family's body, `own_grip` in its own hand). `FAMILY_H3_RIFLES_hip_MALE.blend` stands the line at the hip on his sizes. §11.6 step 2.
@@ -883,6 +884,34 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    `ASSETS/ANIMATIONS/sequences/male/draw_bullpup.json` + `seq_draw_bullpup_f{11,12,13,16,23,31}.json`: 23 and 31 = the two grip files
    exactly; the gun's samples move at most 28 mm / 12.5° a frame (13-16, his own keys); the game set rebuilt byte-identical (nothing
    reads `draw_bullpup` until POLISH-01). Next: the snipers, the sci-fi and the launchers; the female's bullpup.
+   **The female's bullpup, in step (2026-11-24, evening).** *"Vamos começar primeiro fazendo a versão feminina."* Her shotgun timeline
+   already holds his own hands at her hip and aim (2026-11-23), so the 11-22 recipe (his rotations over hers) would undo them. Instead,
+   `family_lab.py in_step <his family timeline> <his model timeline> <her family timeline> <out>` (the recipe's scratch scripts made
+   into a command) carries only his CHANGE: at each stop of his bullpup timeline but the idle, every bone, fingers included, takes
+   his turn from his shotgun timeline to his bullpup timeline, left-multiplied on her own key; the Hips her place plus his change
+   (hip heights 1.0091). The stops he dropped (18, 20) are dropped on hers. The bullpup rides her left hand at HIS place against the
+   hand's bone, read off his KEYS: a hidden object is not re-evaluated, so reading its place at a hidden frame gave the in-between
+   13-16 a 1.5° difference through the key at 12. Her right hand goes onto the grip at the stops where his palm is within 4 cm (23,
+   31), at his hand's place on the model times HER OWN departure from his on the shotgun there (2.2 cm / 20° at the hip, 3.3 cm / 20°
+   at the aim), by the recipe's two-bone solve. Her coat stays hers; his model timeline must keep his family's coat (checked). Proof:
+   run with no change (his shotgun timeline as both of his), it gives her shotgun timeline back key for key; the only difference is
+   the hidden gun at 1 and 12, which her file holds stale. Built: `SEQ_draw_bullpup_FEMALE.blend`. Read back in `temp/`: the stops
+   are his (11, 12, 13, 16, 23, 31); the bullpup sits in her hand at his place on every shown frame (3·10⁻⁴ mm, 10⁻⁴°); her coat's
+   values are his; her right palm is 2.8 cm from the grip at the hip and 3.3 cm at the aim (his 2.0 and 2.2). The largest turns from
+   her shotgun pose are the bullpup's own (the left hand 112° at the aim, the right arm and forearm 48°). Opened for the Director.
+   **The stockless shotguns, now (2026-11-24, evening).** *"Depois eu queria abrir as duas shotguns de cano curto que a gente adiou
+   ontem para a fase de polimento, e fazer agora. É pouca coisa ... vamos abrir uma delas na cena completa, e depois a outra shotgun
+   segue o mesmo esquema. Como a empunhadura é igual as outras provavelmente o ajuste vai ser só no aim, e talvez algo no hip."* The
+   sawed-off goes first. The hip stop needs a lab scene: with only `aim=`, the family's draw would run on to the hip with the model at
+   the TIP's hold point, where the shotgun is held at the pump. So `family_lab.py build H3_SHOTGUNS male <temp> <his 22:43 read-back>
+   --marker hip` stands the line at 23 in `temp/` (a builder input, not a scene to edit). Then `family_lab.py seq <his shotgun
+   timeline> 03 SEQ_draw_shotgun_sawed_off_MALE.blend hip=<temp> aim=FAMILY_H3_SHOTGUNS_aim_MALE.blend`: the draw to 16 the family's,
+   the sawed-off (0.313 long) held at its own hold point; 23 and 31 the family's body with it where the lab put it, both palms on it
+   (left 0.9 cm, right 1.3-1.4; the shotgun's 0.7 and 1.5-2.6). The hand slides 89 mm from 16 to 23 and none from 23 to 31. Its aim is
+   still the shouldered one; the Director poses it H2's way (both arms forward, at the eyes; step 3's ruling). `tripo_pose_lab`:
+   `PROP_GLB` `shotgun_sawed_off` / `shotgun_short_stock` (the pack's sources), both draws in `LONG_GUN_SEQUENCES`. Next: his
+   female bullpup save, or his word that it stands -> `pose_lab.py sequence draw_bullpup --figure female`. Then the sawed-off opened
+   for his aim (and hip), read back; the short stock on the sawed-off's scheme; the females of both.
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
    **H3 opens with the SHOTGUNS (Director, 2026-11-17).** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra

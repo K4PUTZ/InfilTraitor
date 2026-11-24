@@ -255,3 +255,31 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
 1. The snipers, the sci-fi and the launchers; the shotguns' hip if he wants it.
 2. The H3 rows (`rel_*`, the family's body), the female's files (she has no bullpup grip or timeline yet), the engine's long-gun holder,
    a take per weapon.
+
+## 2026-11-24 (evening): the female's bullpup in step; the stockless shotguns brought forward
+
+- **The Director:** *"Vamos começar primeiro fazendo a versão feminina. E depois eu queria abrir as duas shotguns de cano curto que a
+  gente adiou ontem para a fase de polimento, e fazer agora. É pouca coisa ... vamos abrir uma delas na cena completa, e depois a outra
+  shotgun segue o mesmo esquema."*
+- **`family_lab.py in_step`** (the 11-22 recipe's scratch scripts made into a command, changed to keep his own work on her): his
+  CHANGE from his shotgun timeline to his bullpup timeline goes onto HER shotgun timeline (every bone, fingers included,
+  left-multiplied; the Hips scaled by the hip heights; his dropped stops 18/20 dropped). The bullpup goes in her left hand at his place
+  read off his keys. Her right hand goes onto the grip at his place times her own departure on the shotgun (2.2 cm / 20° at the hip,
+  3.3 cm / 20° at the aim). Proof: with no change it gives her shotgun timeline back key for key (only the hidden gun at 1 and 12,
+  stale in her file, differs).
+- **Built and opened:** `ASSETS/MODELS/actors/agent/female/work/SEQ_draw_bullpup_FEMALE.blend` (as built: `temp/h3_family/
+  SEQ_draw_bullpup_FEMALE_built.blend`). Read back in `temp/`: stops 11, 12, 13, 16, 23, 31; the bullpup at his place in her hand on
+  every shown frame; her right palm 2.8 / 3.3 cm from the grip (his 2.0 / 2.2). Sheets: `temp/h3_family/bullpup_female_sheet.png`,
+  `bullpup_female_side.png`.
+- **The sawed-off's own timeline:** `ASSETS/MODELS/actors/agent/male/work/SEQ_draw_shotgun_sawed_off_MALE.blend`, from his shotgun
+  timeline with `hip=` a hip line built in `temp/` from his 22:43 read-back and `aim=` his `FAMILY_H3_SHOTGUNS_aim_MALE.blend`. Both
+  palms are on it at 23 and 31; the aim is still the shouldered one, for him to pose with both arms forward at the eyes. Not opened
+  yet: one Blender file at a time. Sheet: `temp/h3_family/sawed_off_seq_sheet.png`. `tripo_pose_lab`: the two stockless shotguns in
+  `PROP_GLB` and `LONG_GUN_SEQUENCES`.
+
+### Next
+
+1. His word on the female's bullpup (adjusted and saved, or as it is) -> `pose_lab.py sequence draw_bullpup --figure female`; commit the
+   SEQ with it.
+2. The sawed-off opened for his aim (and hip) -> read back; the short stock on its scheme; the females of both by `in_step`.
+3. Then the snipers, the sci-fi and the launchers; the H3 rows, the engine's long-gun holder, a take per weapon.

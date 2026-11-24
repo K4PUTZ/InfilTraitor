@@ -32,7 +32,12 @@ PROP_GLB = {"pistol": os.path.join(ROOT, "ASSETS", "props", "pistol_quaternius",
             "grenade": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_grenade", "Grenade.glb"),
             "shotgun": os.path.join(ROOT, "ASSETS", "props", "shotgun", "shotgun.glb"),   # the game's model (weapons/shotgun.json), the pack's `Shotgun.glb` byte for byte
             # a long gun with a draw of its own (2026-11-24, `family_lab.py seq`): its pack source until the H3 rows copy it into ASSETS/props/<id>/
-            "bullpup": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_ultimate_guns_pack", "extracted", "Bullpup.glb")}
+            "bullpup": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_ultimate_guns_pack", "extracted", "Bullpup.glb"),
+            # the two stockless shotguns, each with a draw of its own (2026-11-24, the Director: "abrir as duas shotguns de cano curto ... e fazer agora")
+            "shotgun_sawed_off": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_ultimate_guns_pack", "extracted",
+                                              "Shotgun Sawed Off.glb"),
+            "shotgun_short_stock": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_ultimate_guns_pack", "extracted",
+                                                "Shotgun Short Stock.glb")}
 PREFIX = "mixamorig:"                       # the Blender importer keeps Tripo's colon; Godot turns it into an underscore
 HIDE = ("Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere")   # the pieces the game's DRESSED set hides (`TripoFigure.UNDRESSED_PIECES`)
 EPS_CHANGED = 1e-3                          # a bone the Director moved: its local rotation differs from the base by more than this (quaternion distance)
@@ -855,7 +860,7 @@ LONG_COAT_KEY = "LongDrawFix"
 LONG_SUPPORT_FWD_DEG = 20.0
 LONG_SUPPORT_CURL_DEG = (45.0, 80.0, 50.0)    # each finger's three joints (knuckle, middle, tip)
 LONG_PALM_DEPTH = 0.008                       # from the hand's bone line to the palm's skin
-LONG_GUN_SEQUENCES = ("draw_shotgun", "draw_bullpup")   # the long guns' draw timelines: their read-back keeps the fingers (`sequence`); the bullpup's
+LONG_GUN_SEQUENCES = ("draw_shotgun", "draw_bullpup", "draw_shotgun_sawed_off", "draw_shotgun_short_stock")   # the long guns' draw timelines: their read-back keeps the fingers (`sequence`); the bullpup's
                                                          # is its own (2026-11-24, `family_lab.py seq`)
 
 

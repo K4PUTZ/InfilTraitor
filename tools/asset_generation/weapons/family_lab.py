@@ -59,6 +59,9 @@ Run inside Blender:
   blender -b --python family_lab.py -- in_step <his family timeline> <his model timeline> <her family timeline> <out .blend>
       -> the other figure's model timeline in step with his: his change from his family timeline put on her own keys, the model at his place in
          her hand, her right hand on it where his is (`in_step`'s docstring; `SEQ_draw_bullpup_FEMALE.blend`)
+  blender -b --python family_lab.py -- raise <timeline .blend> <out .blend> <f0> <f1> <breakdowns,comma> [bulge m]
+      -> the raise between two stops rebuilt from the gun: its path straight and eased, bowed forward out of the coat, both hands on it at
+         the breakdowns, the slide re-keyed (`raise_from_gun`'s docstring; the female's bullpup, hip 23 to aim 31)
   blender -b --python family_lab.py -- render <saved .blend> <out prefix> [readback .json] -> <prefix>_line.png (the whole line, three-quarters)
                                                                                   <prefix>_tile_<nn>.png (each gun hand from the side, one scale)
   blender -b --python family_lab.py -- swap <saved .blend> "<nn name>" <old glb> <new glb>   -> a model replaced by its edited version, in place
@@ -1406,6 +1409,167 @@ def in_step(ref_blend, fin_blend, her_blend, out_blend):
           f"on {os.path.basename(her_blend)}'s keys")
 
 
+RAISE_BULGE_M = 0.06     # how far forward of the straight line the gun's origin bows at mid-raise (the female's bullpup, 2026-11-24: 6 cm keeps her
+                         # left arm at 97 % of its reach; 8 cm takes all of it and 10 cm more than it has, the wrist then missing by 1.3 cm)
+
+
+def _ease(t):
+    """The raise's timing: a smoothstep, the game's own easing between two resting stops (`ActorAimPose3D`)."""
+    return t * t * (3.0 - 2.0 * t)
+
+
+def _blend_matrix(M0, M1, s):
+    """Two places mixed: the offsets and the scales linearly, the turns by slerp."""
+    l0, q0, s0 = M0.decompose()
+    l1, q1, s1 = M1.decompose()
+    sc = s0.lerp(s1, s)
+    return Matrix.Translation(l0.lerp(l1, s)) @ q0.slerp(q1, s).to_matrix().to_4x4() @ Matrix.Diagonal((sc.x, sc.y, sc.z, 1.0))
+
+
+def _reach(arm, side, target):
+    """The arm of `side` solved so its hand bone takes `target` (armature space: place and turn): the elbow kept in the bending plane it has now,
+    each bone turned the least (in_step's solve). Returns how far the wrist misses (cm) and the share of the arm's length the reach needs."""
+    pb = arm.pose.bones
+    up, fore, hand = pb[PREFIX + side + "Arm"], pb[PREFIX + side + "ForeArm"], pb[PREFIX + side + "Hand"]
+
+    def turn(bone, head, new_dir):
+        cur = bone.matrix.to_3x3().normalized()
+        rot = (cur @ Vector((0.0, 1.0, 0.0))).rotation_difference(new_dir.normalized()).to_matrix()
+        bone.matrix = Matrix.Translation(head) @ (rot @ cur).to_4x4()
+        bpy.context.view_layer.update()
+
+    W, S, E0 = target.to_translation(), up.head.copy(), fore.head.copy()
+    L1, L2 = up.bone.length, fore.bone.length
+    d = min((W - S).length, (L1 + L2) * 0.9999)
+    u = (W - S).normalized()
+    bend = (E0 - S) - u * (E0 - S).dot(u)
+    v = bend.normalized() if bend.length > 1e-6 else u.orthogonal().normalized()
+    a = (L1 * L1 - L2 * L2 + d * d) / (2.0 * d)
+    E = S + u * a + v * math.sqrt(max(L1 * L1 - a * a, 0.0))
+    turn(up, S, E - S)
+    turn(fore, fore.head.copy(), (S + u * d) - fore.head)
+    hand.matrix = Matrix.Translation(hand.head.copy()) @ target.to_3x3().normalized().to_4x4()
+    bpy.context.view_layer.update()
+    return (hand.head - W).length * arm.matrix_world.to_scale().x * 100.0, (W - S).length / (L1 + L2)
+
+
+def raise_from_gun(src_blend, out_blend, f0, f1, breakdowns, bulge=RAISE_BULGE_M):
+    """THE RAISE REBUILT FROM THE GUN (2026-11-24, the Director on the female's bullpup, after posing her draw and aim: "o movimento nos últimos
+    frames está meio duro. Da uma conferida e veja se consegue suavizar. As poses estão corretas"; on the result: "Pode instalar").
+    Measured on his save: a breakdown of the left arm at 27 took the gun out of the coat by turning it ~50 degrees to her left; it came back
+    in the last three frames (20 degrees a frame), cut through the hat and the head at 30 and stopped dead at 31, and the right hand hung up
+    to 7.5 cm off the grip while the left one carried the gun alone. Without that breakdown the gun rises through the coat. Rebuilt:
+      - the stops at f0 and f1 untouched, body and gun as saved (the hip and the aim are his poses);
+      - the gun's path between them: its turn slerped straight from f0's to f1's (the muzzle stays on the target), its origin on a cubic arc
+        bowed FORWARD by `bulge` (out of the coat), timed by a smoothstep (`_ease`);
+      - at each breakdown frame both hands ON it: the left at the slide's place (the palm's point of the gun from f0's to f1's while the gun
+        turns in the hand from f0's hold to f1's: `tripo_pose_lab._bake_slide`'s formula, on the same smoothstep), the right at its own place
+        on the gun mixed from f0's to f1's; each arm by `_reach`; their keys there replace what was keyed (a shoulder's own key stays);
+      - the gun keyed on the left hand at every frame between, on the same smoothstep (the slide), so it rides the hand.
+    Between the breakdowns Blender's own interpolation of the arms keeps both palms within a centimetre of their holds (measured on the
+    bullpup: left 0.5-1.0 cm, right 2.1-2.8 cm, as at the stops). The read-back makes each breakdown a PASSING stop; the game eases a span
+    between two resting stops with its own smoothstep and passes these linearly, so the spacing they carry is eased a second time when the
+    game plays a model's own timeline (POLISH-01). Written as a new file, never over one."""
+    if os.path.abspath(src_blend) == os.path.abspath(out_blend) or os.path.exists(out_blend):
+        fail(f"{os.path.relpath(out_blend, ROOT)}: the raise is written as a new file, never over one")
+    if not breakdowns or not all(f0 < f < f1 for f in breakdowns):
+        fail(f"breakdowns {breakdowns} must lie strictly between {f0} and {f1}")
+    bpy.ops.wm.open_mainfile(filepath=src_blend)
+    sc = bpy.context.scene
+    arm = next((o for o in bpy.data.objects if o.type == "ARMATURE"), None)
+    gun = next((o for o in bpy.data.objects if o.name.startswith("PROP_")), None)
+    if arm is None or gun is None or gun.parent is not arm or gun.parent_bone != PREFIX + "LeftHand":
+        fail(f"{os.path.basename(src_blend)}: no PROP_ riding the armature's LeftHand (the slide is the left hand's)")
+    keyed = {round(k.co[0]) for fc in _curves(arm.animation_data) for k in fc.keyframe_points}
+    if f0 not in keyed or f1 not in keyed:
+        fail(f"{os.path.basename(src_blend)}: the armature is not keyed at {f0} and {f1} (the raise runs between two stops)")
+    inv = arm.matrix_world.inverted()
+
+    def hand_w(side):
+        return arm.matrix_world @ arm.pose.bones[PREFIX + side + "Hand"].matrix
+
+    end = {}
+    for f in (f0, f1):
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        if gun.hide_viewport:
+            fail(f"the {gun.name} is hidden at {f}: its place there is not evaluated")
+        G = gun.matrix_world.copy()
+        end[f] = {"G": G, "A": hand_w("Left").inverted() @ G, "c": G.inverted() @ _palm(arm, "Left"), "R": G.inverted() @ hand_w("Right")}
+    P0, Q0, S0 = end[f0]["G"].decompose()
+    P1, Q1, S1 = end[f1]["G"].decompose()
+    pts = [v.co for v in gun.data.vertices]
+    ext = [max(c[i] for c in pts) - min(c[i] for c in pts) for i in range(3)]
+    axis = ext.index(max(ext))                        # the barrel: the model's longest axis
+    barrel = end[f1]["G"].to_3x3().normalized() @ Vector([1.0 if i == axis else 0.0 for i in range(3)])
+    fwd = Vector((barrel.x, barrel.y, 0.0)).normalized()
+    if fwd.dot(Vector((0.0, -1.0, 0.0))) < 0.0:       # every Agent faces -Y: the muzzle's end of the axis
+        fwd = -fwd
+    if fwd.dot(Vector((0.0, -1.0, 0.0))) < 0.7:
+        fail(f"the barrel at {f1} points {tuple(round(v, 2) for v in fwd)}, not ahead of the Agent (-Y)")
+    _l, qa0, sa0 = end[f0]["A"].decompose()
+    _l, qa1, sa1 = end[f1]["A"].decompose()
+    c0, c1 = end[f0]["c"], end[f1]["c"]
+    p0, p1 = end[f0]["A"] @ c0, end[f1]["A"] @ c1
+
+    def in_hand(s):
+        sc_ = sa0.lerp(sa1, s)
+        return (Matrix.Translation(p0.lerp(p1, s)) @ qa0.slerp(qa1, s).to_matrix().to_4x4() @ Matrix.Diagonal((sc_.x, sc_.y, sc_.z, 1.0))
+                @ Matrix.Translation(-c0.lerp(c1, s)))
+
+    def gun_at(s):
+        b1, b2, u = P0 + fwd * bulge, P1 + fwd * bulge, 1.0 - s
+        pos = P0 * (u ** 3) + b1 * (3.0 * u * u * s) + b2 * (3.0 * u * s * s) + P1 * (s ** 3)
+        sc_ = S0.lerp(S1, s)
+        return Matrix.Translation(pos) @ Q0.slerp(Q1, s).to_matrix().to_4x4() @ Matrix.Diagonal((sc_.x, sc_.y, sc_.z, 1.0))
+
+    print(f"[family_lab] raise {f0}-{f1} of {os.path.basename(src_blend)}: the {gun.name} turns {math.degrees(Q0.rotation_difference(Q1).angle):.1f} deg and "
+          f"travels {(P1 - P0).length * 100:.1f} cm, bowed {bulge * 100:.0f} cm forward; the left hand slides {(c1 - c0).length * S0.x * 1000:.0f} mm along it")
+    names = [s + b for s in ("Left", "Right") for b in ("Arm", "ForeArm", "Hand")]
+    for f in sorted(breakdowns):
+        s = _ease((f - f0) / float(f1 - f0))
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        before = {n: arm.pose.bones[PREFIX + n].rotation_quaternion.copy() for n in names}
+        Gs = gun_at(s)
+        missL, reachL = _reach(arm, "Left", inv @ Gs @ in_hand(s).inverted())
+        missR, reachR = _reach(arm, "Right", inv @ Gs @ _blend_matrix(end[f0]["R"], end[f1]["R"], s))
+        for n in names:                                   # keyed only once both arms are solved: a key re-reads the animation on the next update
+            b = arm.pose.bones[PREFIX + n]
+            if b.rotation_quaternion.dot(before[n]) < 0.0:
+                b.rotation_quaternion = -b.rotation_quaternion
+            b.keyframe_insert("rotation_quaternion", frame=f)
+        if max(missL, missR) > 0.5:
+            print(f"[family_lab] WARNING: at {f} a wrist misses by {max(missL, missR):.2f} cm (out of reach): a smaller bulge keeps the arm in reach")
+        print(f"[family_lab] breakdown {f} ({s * 100:.0f} % of the raise): left wrist off by {missL:.2f} cm at {reachL * 100:.0f} % of its reach, "
+              f"right by {missR:.2f} cm at {reachR * 100:.0f} %")
+    for f in range(f0 + 1, f1):
+        for path in ("location", "rotation_quaternion", "scale"):
+            try:
+                gun.keyframe_delete(path, frame=f)
+            except RuntimeError:
+                pass
+    sc.frame_set(f0)
+    bpy.context.view_layer.update()
+    qprev = gun.rotation_quaternion.copy()
+    for f in range(f0 + 1, f1):
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        gun.matrix_world = hand_w("Left") @ in_hand(_ease((f - f0) / float(f1 - f0)))
+        bpy.context.view_layer.update()
+        if gun.rotation_quaternion.dot(qprev) < 0.0:
+            gun.rotation_quaternion = -gun.rotation_quaternion
+        qprev = gun.rotation_quaternion.copy()
+        for path in ("location", "rotation_quaternion", "scale"):
+            gun.keyframe_insert(path, frame=f)
+    arm["lab_raise"] = json.dumps({"from": os.path.basename(src_blend), "span": [f0, f1], "breakdowns": sorted(breakdowns), "bulge_m": bulge})
+    sc.frame_set(1)
+    os.makedirs(os.path.dirname(out_blend), exist_ok=True)
+    bpy.ops.wm.save_as_mainfile(filepath=out_blend)
+    print(f"[family_lab] wrote {os.path.relpath(out_blend, ROOT)}: {f0} and {f1} as saved, both hands on the {gun.name} at {sorted(breakdowns)}, "
+          f"the slide re-keyed on {f0 + 1}-{f1 - 1}")
+
+
 def swap(blend, key, old_glb, new_glb):
     """A model of a SAVED lab file replaced by a new version of its source (the Director's own edit of the model): the old source is
     fitted to the mesh as it sits in the file (its size and grip, untouched) and the new source gets the same transform. The new
@@ -1457,6 +1621,9 @@ def main():
         seq(a[1], a[2], a[3], stops)
     elif a[0] == "in_step":
         in_step(a[1], a[2], a[3], a[4])
+    elif a[0] == "raise":
+        raise_from_gun(a[1], a[2], int(a[3]), int(a[4]), [int(x) for x in a[5].split(",") if x],
+                       float(a[6]) if len(a) > 6 else RAISE_BULGE_M)
     elif a[0] == "swap":
         swap(a[1], a[2], a[3], a[4])
     elif a[0] == "readback":

@@ -283,3 +283,30 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
    SEQ with it.
 2. The sawed-off opened for his aim (and hip) -> read back; the short stock on its scheme; the females of both by `in_step`.
 3. Then the snipers, the sci-fi and the launchers; the H3 rows, the engine's long-gun holder, a take per weapon.
+
+## 2026-11-24 (night): the female's bullpup posed by him, its raise smoothed, read back
+
+- **The Director:** *"Ajustei o saque e a mira feminina, mas o movimento nos últimos frames está meio duro. Da uma conferida e veja se
+  consegue suavizar. As poses estão corretas."* After the comparison: *"Pode instalar"*.
+- **His save** (17:35, kept as `temp/h3_family/SEQ_draw_bullpup_FEMALE_his_1735.blend`): the draw re-posed (11 deleted, keys at 9),
+  the hip and the aim re-posed, the bullpup moved at 31, a breakdown of the left arm at 27.
+- **Why it was stiff** (measured 23-31): the breakdown cleared her body by turning the gun ~50° to her left; it whipped back in the
+  last three frames (~20° a frame), cut the hat and the head at 30 and was still moving at 31; the right palm hung up to 7.5 cm off
+  the gun. Without the breakdown the right palm hangs 9.9 cm off and the barrel yaws 15°; the coat is touched about as much either way.
+  (A first count of mine said "through the coat" without the breakdown: it counted the cuffs round the hands; the count away from the
+  wrists is the one in the plan.)
+- **`family_lab.py raise`** (`raise_from_gun`): the raise between two kept stops rebuilt from the gun: the muzzle on the target, an
+  arc bowed 6 cm forward, a smoothstep, both arms solved onto it at 25, 27 and 29 (his shoulder's key at 27 kept), the slide re-keyed
+  on 24-30. The gun now turns at most 4.2° a frame and settles into the aim; both palms stay on it. Also removed: the leftover keys of
+  the deleted stop 11 (right forearm and hand), which snapped the right hand 36° from 11 to 12.
+- **Installed** (`ASSETS/MODELS/actors/agent/female/work/SEQ_draw_bullpup_FEMALE.blend`, made by the tool, the same keys as the
+  candidate he saw) and **read back**: `ASSETS/ANIMATIONS/sequences/female/draw_bullpup.json` + nine stop poses; 12, 13, 16, 23 and
+  31 equal his save's read-back; the game set byte-identical. GIFs: `temp/h3_family/smooth/bullpup_female_smooth_{24,8}fps.gif`.
+- **Note for POLISH-01** (milestones): the three breakdowns read back as passing stops, which the game's smoothstep over the span would
+  ease a second time.
+
+### Next
+
+1. The sawed-off opened for his aim (arms forward, at the eyes) and maybe the hip -> read back; the short stock on its scheme; the
+   females of both by `in_step` (then `raise` if their raise needs it).
+2. Then the snipers, the sci-fi and the launchers; the H3 rows, the engine's long-gun holder, a take per weapon.

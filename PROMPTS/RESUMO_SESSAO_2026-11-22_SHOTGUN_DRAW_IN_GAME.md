@@ -148,3 +148,22 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
 2. Each read-back, the female's five files from the male's sizes, the H3 rows (`family_rows.py`), the engine's long-gun holder, a take
    drawing each one.
 3. Still open: the 22 G-moved fingers, §11.6 steps 4-5, the stages played by hand (later, by his word), the launchers' own grip.
+
+## 2026-11-23 (night, later): her hip and aim by his hand
+
+- **The Director:** *"Primeiro eu vou ter que ajustar o hip e a mira feminina também"* (before sizing the five scenes), then *"Ajustei e
+  salvei"*. Her timeline was opened for him at the hip; he started from the recipe's file (`b112d762`). His save of 21:57 changed her
+  body's keys at 23 and 31 only: the arms, the hands, the right fingers and the trunk at both, the neck and the shoulders at the aim. The
+  gun's placement in the left hand, the coat and the markers are unchanged; her other stops did not move. Three right fingers were moved
+  with G (up to 2.6 mm): not keyed, not read by the game.
+- **In the game:** `pose_lab.py sequence draw_shotgun --figure female`; the male's files unchanged byte for byte. Filmed: `shotgun_shot`
+  on the female (`temp/videos/femfix_shotgun_shot_female.mp4`).
+- **Her 23 and 31 are his from now on:** the in-step recipe never runs over those two stops again (his file is never overwritten).
+
+### Next
+
+1. The Director sizes and grips each of the five scenes and saves.
+2. Each read-back, the female's five files from the male's sizes (on her hip and aim as he left them), the H3 rows
+   (`family_rows.py`), the engine's long-gun holder, a take drawing each one.
+3. Still open: the G-moved fingers (22 on the male, 3 on the female), §11.6 steps 4-5, the stages played by hand (later, by his word),
+   the launchers' own grip.

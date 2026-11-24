@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
+> ⏭️ **2026-11-23 (night, later) — the Director's own hands on the FEMALE's HIP and AIM are IN THE GAME (Director: *"Primeiro eu vou ter que ajustar o hip e a mira feminina também"*, then *"Ajustei e salvei"*): his save of her timeline changed her keys at 23 and 31 only (the arms, the hands, the right fingers, the trunk; at the aim also the neck and the shoulders); from now on those two stops are his, never the recipe's. §11.6 step 3.**
 > ⏭️ **2026-11-23 (night) — the Director's GRIP at the long gun's AIM is IN THE GAME on both figures, and H3's FIVE SCENES are BUILT on it (Director: *"Ajustei e salvei"*): his save changed the aim only (frame 31: both hands turned ~33°, the arms, the neck, the trigger finger), the female in step by the 11-22 recipe; `FAMILY_H3_{SHOTGUNS,RIFLES,SNIPERS,SCIFI}_aim_MALE.blend` and `FAMILY_H3_LAUNCHERS_hip_MALE.blend` wait for his sizes. §11.6 steps 2 and 3.**
 > ⏭️ **2026-11-23 (later still) — H3 SPLITS INTO FIVE LAB SCENES by animation (Director: *"vamos separar um pouco as armas porque as animações vão ter que ser um pouco diferentes"*): shotguns, rifles, snipers, sci-fi, grenade launchers; the GRENADE LAUNCHERS have NO aimed stage (the hip only), probably on a grip of their own. First the Director re-checks the grip at the certified AIM in his `SEQ_draw_shotgun_MALE.blend`. §11.6 step 2.**
 > ⏭️ **2026-11-23 (later) — the shotgun's size CERTIFIED and H3's LAB FILE BUILT (Director: *"A certificação do tamanho da escopeta está ok. Vamos conferir as demais armas da família"*): `FAMILY_H3_aim_MALE.blend`, 21 Agents in the long gun's aim, each with one long gun on the left hand, its trigger guard on the shotgun's (the pack's shotguns, rifles, bullpup and snipers; the sci-fi rifles, snipers and lightning gun; the three grenade launchers). The Director sizes and grips each one; then the read-back, the female, the rows. §11.6 step 2.**
@@ -923,6 +924,18 @@ Each step lands on both figures before the next; a step with a look ends in a ca
      palm is within 4 cm of the gun (his aim was at 3.8 cm, now 2.6); on his new save her keys change at 18, 20 and 31 like his, her palm
      at the aim 2.95 cm from the gun. The gun's keys at 1 and 12, where it is hidden, hold a stale placement on both figures (Blender does
      not evaluate a hidden object; the read-back already gives a hidden sample the first shown one). Filmed: `shotgun_shot` on both figures.
+   - **Her hip and aim by his hand, 2026-11-23 (night, later)** (Director: *"Primeiro eu vou ter que ajustar o hip e a mira feminina
+     também"*, then *"Ajustei e salvei"*). He started from the recipe's file of 19:29 (`b112d762`); his save of 21:57 of
+     `SEQ_draw_shotgun_FEMALE.blend` (both copied to `temp/h3/`) changed her body's KEYS at 23 and 31 only (56 and 64 channels). The
+     gun's keys (its placement in the left hand), the coat's keys and shapes and the markers are unchanged. Read back, at the hip: the
+     right hand 18°, the right arm 14°, the forearms 9-10°, the right fingers 9-24° (the index 9-17°, the middle, ring and little 24°),
+     the trunk (Spine1) 7°, the left arm and hand 3-4°, the left shoulder 1°; at the aim: the neck 22°, the arms 15-23°, the right hand
+     27°, the right thumb 4-34°, the right index 11-14°, the shoulders 10-12°, the forearms 12-13°, the left hand 10°, the trunk 2-6°.
+     Her other stops did not move. Her right middle, ring and little fingers were also moved with G (up to 2.6 mm): not keyed, not read.
+     Read back with `pose_lab.py sequence draw_shotgun --figure female` (the male's game files unchanged byte for byte); her pose files
+     at 11 and 12 change only in the hidden gun's stale placement. **From now on her 23 and 31 are HIS** (his file is never
+     overwritten): the in-step recipe never runs over those two stops again; a later male change there is carried by his hand, or by a
+     delta that keeps his keys. Filmed: `shotgun_shot` on the female.
 4. **The same, kneeling:** the kneel's legs under the family's arms (the pistol's `draw_crouch_new` way).
 5. **The shot per weapon,** as data over the procedural recoil (`ActorRecoil3D`): the kick, the burst (count and interval), the hold
    after it, the case from the `port` (none for the revolver, the taser, the darts). The flash and the tracer already leave

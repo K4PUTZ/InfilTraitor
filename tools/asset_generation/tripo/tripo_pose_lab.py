@@ -30,7 +30,9 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")
 LIGHT_GLB = None   # mp.agent(figure, "game", ...)
 PROP_GLB = {"pistol": os.path.join(ROOT, "ASSETS", "props", "pistol_quaternius", "pistol.glb"),
             "grenade": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_grenade", "Grenade.glb"),
-            "shotgun": os.path.join(ROOT, "ASSETS", "props", "shotgun", "shotgun.glb")}   # the game's model (weapons/shotgun.json), the pack's `Shotgun.glb` byte for byte
+            "shotgun": os.path.join(ROOT, "ASSETS", "props", "shotgun", "shotgun.glb"),   # the game's model (weapons/shotgun.json), the pack's `Shotgun.glb` byte for byte
+            # a long gun with a draw of its own (2026-11-24, `family_lab.py seq`): its pack source until the H3 rows copy it into ASSETS/props/<id>/
+            "bullpup": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_ultimate_guns_pack", "extracted", "Bullpup.glb")}
 PREFIX = "mixamorig:"                       # the Blender importer keeps Tripo's colon; Godot turns it into an underscore
 HIDE = ("Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere")   # the pieces the game's DRESSED set hides (`TripoFigure.UNDRESSED_PIECES`)
 EPS_CHANGED = 1e-3                          # a bone the Director moved: its local rotation differs from the base by more than this (quaternion distance)
@@ -853,13 +855,15 @@ LONG_COAT_KEY = "LongDrawFix"
 LONG_SUPPORT_FWD_DEG = 20.0
 LONG_SUPPORT_CURL_DEG = (45.0, 80.0, 50.0)    # each finger's three joints (knuckle, middle, tip)
 LONG_PALM_DEPTH = 0.008                       # from the hand's bone line to the palm's skin
-LONG_GUN_SEQUENCES = ("draw_shotgun",)         # the long guns' draw timelines: their read-back keeps the fingers (`sequence`)
+LONG_GUN_SEQUENCES = ("draw_shotgun", "draw_bullpup")   # the long guns' draw timelines: their read-back keeps the fingers (`sequence`); the bullpup's
+                                                         # is its own (2026-11-24, `family_lab.py seq`)
 
 
-def _gun_frame_points(obj, factor):
+def _gun_frame_points(obj, factor, turn=None):
     """A long gun's GUN FRAME (barrel +X, its top +Z, centred on y = 0) from the model as imported, and its points in that frame at `factor`: the butt, the grip
     (the stock's wrist), the pump (`LONG_PUMP_AT` along the fore-end), the hold (`LONG_HOLD_AT` of the length, on the barrel), the muzzle. The pieces are the pack's
-    materials (Wood = the stock, DarkWood = the fore-end, DarkMetal = the barrel); a model without them falls back on fractions of its length.
+    materials (Wood = the stock, DarkWood = the fore-end, DarkMetal = the barrel); a model without them falls back on fractions of its length. `turn` (4x4): the
+    gun frame GIVEN, the lab's explicit one (`family_lab.FAMILIES["H3"]`), instead of found: the rules below turn the bullpup barrel-backwards (2026-11-23).
     Returns (F: the import's world -> the gun frame at the factor, 4x4; {point name: Vector}; length)."""
     W0 = obj.matrix_world.copy()
     world = [W0 @ v.co for v in obj.data.vertices]
@@ -873,20 +877,25 @@ def _gun_frame_points(obj, factor):
 
     A = Matrix.Identity(4)
     lo, hi = bounds(world)
-    if hi.y - lo.y > hi.x - lo.x:
-        A = Matrix.Rotation(math.radians(90.0), 4, "Z") @ A
-    turned = [A @ p for p in world]
-    lo, hi = bounds(turned)
     stock = members("Wood")
-    if stock:   # the stock is the rear
-        rear_is_low = sum(turned[i].x for i in stock) / len(stock) < (lo.x + hi.x) / 2.0
-    else:       # the handgun rule (`family_lab.to_gun_frame`): the low part is the rear
-        low = [p for p in turned if p.z < lo.z + 0.35 * (hi.z - lo.z)]
-        rear_is_low = not low or sum(p.x for p in low) / len(low) <= (lo.x + hi.x) / 2.0
-    if not rear_is_low:
-        A = Matrix.Rotation(math.radians(180.0), 4, "Z") @ A
+    if turn is not None:
+        A = turn.copy()
         turned = [A @ p for p in world]
         lo, hi = bounds(turned)
+    else:
+        if hi.y - lo.y > hi.x - lo.x:
+            A = Matrix.Rotation(math.radians(90.0), 4, "Z") @ A
+        turned = [A @ p for p in world]
+        lo, hi = bounds(turned)
+        if stock:   # the stock is the rear
+            rear_is_low = sum(turned[i].x for i in stock) / len(stock) < (lo.x + hi.x) / 2.0
+        else:       # the handgun rule (`family_lab.to_gun_frame`): the low part is the rear
+            low = [p for p in turned if p.z < lo.z + 0.35 * (hi.z - lo.z)]
+            rear_is_low = not low or sum(p.x for p in low) / len(low) <= (lo.x + hi.x) / 2.0
+        if not rear_is_low:
+            A = Matrix.Rotation(math.radians(180.0), 4, "Z") @ A
+            turned = [A @ p for p in world]
+            lo, hi = bounds(turned)
     A = Matrix.Translation((0.0, -(lo.y + hi.y) / 2.0, 0.0)) @ A
     F = Matrix.Scale(factor, 4) @ A
     q = [F @ p for p in world]

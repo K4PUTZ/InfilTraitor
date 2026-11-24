@@ -205,3 +205,26 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
    `grip_bullpup_hip.json`.
 2. Then the snipers, the sci-fi and the launchers (and the shotguns' hip, if he wants it: they fire from the hip too).
 3. As before: each read-back, the female's files, the H3 rows (`rel_*`, the family's body), the engine's long-gun holder, a take.
+
+## 2026-11-24 (later): the rifles done, the bullpup's hip grip, the bullpup's own draw timeline
+
+- **His save of the rifles' hip scene (01:34):** 05-07 untouched (*"As demais estão prontas"*: the three assault rifles are done, x1.0
+  of the reference's units, the aim's places at the hip too); the bullpup's Agent re-posed at the hip (30 bones; four fingers also
+  moved with G). Saved: `ASSETS/ANIMATIONS/poses/male/grip_bullpup_hip.json`.
+- **The Director:** *"Ainda vai ficar faltando o draw, porque ele vai ter que segurar em outra parte do cabo. Vamos montar no Blender
+  toda a sequência da mira só com essa arma."* Built: `family_lab.py seq <SEQ_draw_shotgun_MALE.blend> 08 <out> hip=<hip lab>
+  aim=<aim lab>` -> `ASSETS/MODELS/actors/agent/male/work/SEQ_draw_bullpup_MALE.blend` (his shotgun timeline read, never saved): the
+  bullpup in the shotgun's place; 23 and 31 his lab grips; the draw to the centre (16) the family's, the bullpup held at its own hold
+  point where the shotgun is held; the hand slides along it 16-23 and 23-31. Opened for him.
+- **Checked:** read back by `sequence` into `temp/`: 23 and 31 = the grip files exactly (bones, Hips, the bullpup in the hand); 11-16 =
+  the shotgun's stops; at 18 and 20 his keys stand (only the left arm, forearm and hand at 18, the forearm at 20), the bones he left
+  unkeyed there move toward the bullpup's hip. Key frames rendered (`temp/h3_family/bullpup_seq_sheet.png`). His files' md5s unchanged.
+- **Tools:** `tripo_pose_lab`: `PROP_GLB["bullpup"]` (the pack's source until the H3 rows copy it), `draw_bullpup` in
+  `LONG_GUN_SEQUENCES`, `_gun_frame_points(turn=)` (the lab's explicit gun frame).
+
+### Next
+
+1. The Director poses the bullpup's draw (where the left hand takes it) on `SEQ_draw_bullpup_MALE.blend` and saves.
+2. `pose_lab.py sequence draw_bullpup` reads it back (the timeline committed with it, as the shotgun's); the game plays it only at
+   POLISH-01 (the long-gun holder plays the family's body). The female has no bullpup grip yet.
+3. Then the snipers, the sci-fi and the launchers; the shotguns' hip if he wants it; the H3 rows, the female's files, the holder.

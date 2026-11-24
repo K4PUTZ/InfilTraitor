@@ -53,6 +53,9 @@ Run inside Blender:
       --marker: the line at another stop of the timeline than the family's (2026-11-24: the rifles' `hip` after their aim)
   blender -b --python family_lab.py -- grip <saved .blend> <nn> <out .json>   -> Agent nn's whole pose + its model in its hand,
       a pose file whose id is the file's name (`ASSETS/ANIMATIONS/poses/<figure>/grip_<model>_<stance>.json`)
+  blender -b --python family_lab.py -- seq <family timeline .blend> <nn> <out .blend> <marker>=<lab .blend> [...]
+      -> model nn's OWN draw timeline: the family's, the model in the reference's place, each named stop posed as that lab scene's Agent
+         (`seq`'s docstring; `SEQ_draw_<model>_<FIG>.blend`, read back by `pose_lab.py sequence draw_<model>`)
   blender -b --python family_lab.py -- render <saved .blend> <out prefix> [readback .json] -> <prefix>_line.png (the whole line, three-quarters)
                                                                                   <prefix>_tile_<nn>.png (each gun hand from the side, one scale)
   blender -b --python family_lab.py -- swap <saved .blend> "<nn name>" <old glb> <new glb>   -> a model replaced by its edited version, in place
@@ -970,6 +973,167 @@ def grip(blend, key, out_json):
           f"{prop} on the {bone.replace(PREFIX, '')} x{out['props'][prop]['scale']:.5f} (fit rms {rms:.1e})")
 
 
+def _curves(ad):
+    """The F-curves of an animation data block (a layered action's channel bags, or a legacy action's curves)."""
+    if ad is None or ad.action is None:
+        return []
+    act = ad.action
+    if getattr(act, "layers", None):
+        return [fc for l in act.layers for st in l.strips for cb in st.channelbags for fc in cb.fcurves]
+    return list(act.fcurves)
+
+
+def seq(family_blend, key, out_blend, stops):
+    """A MODEL'S OWN DRAW TIMELINE (2026-11-24, the Director on the bullpup, its hip and aim grips saved: "Ainda vai ficar faltando o draw, porque ele vai ter
+    que segurar em outra parte do cabo. Vamos montar no Blender toda a sequência da mira só com essa arma"). The family's timeline (his
+    `SEQ_draw_shotgun_<FIG>.blend`: read, never saved) with model `key` in the reference's place:
+      - at each stop a lab scene names (`stops`: {marker: lab .blend}, the scene built on this timeline at that marker), that scene's Agent: its
+        rotations and the Hips' place keyed on the timeline (the game reads nothing else: a finger moved with G there is not carried), the model at its
+        place in the Agent's hand;
+      - before the first of them, the family's body and the family's draw, the model held at the reference's HOLD point (`LONG_HOLD_AT` of its own length,
+        on its barrel, in the lab's explicit gun frame) wherever the reference is held: his scaffold for the draw, which he poses on this timeline;
+      - between those stops the hand SLIDES along the model (`_bake_slide`: Blender's own interpolation of two places on a bone swings the gun off the hand).
+    The coat's keys, the markers and the range stay the family's. Written as a new file, never over one."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "asset_generation", "tripo"))
+    import tripo_pose_lab as tpl
+    if os.path.exists(out_blend):
+        fail(f"{os.path.relpath(out_blend, ROOT)} exists: it holds the Director's work and is never rebuilt")
+    grips, prop, source, gframe, factor = {}, None, None, None, None
+    for marker, lab in stops.items():
+        bpy.ops.wm.open_mainfile(filepath=lab)
+        bpy.context.view_layer.update()
+        guns = [o for o in bpy.data.objects if o.name.startswith("GUN_") and o.get("lab_role") != "carrier"]
+        ob = next((o for o in guns if o.name[4:] == key or o.name[4:6] == key), None)
+        ref = next((o for o in guns if o.get("lab_role") == "reference"), None)
+        if ob is None or ref is None or ob.parent_type != "BONE":
+            fail(f"{os.path.basename(lab)}: no GUN_{key} held by an Agent's bone (or no reference)")
+        arm = ob.parent
+        if any(pb.rotation_mode != "QUATERNION" for pb in arm.pose.bones):
+            fail(f"{os.path.basename(lab)}: Agent {ob.name[4:]} has a bone in an Euler mode: the timeline keys quaternions")
+        mesh_frame = _mesh_frame(ob)
+        s, R, t, _rms = _fit_in(ob, _source_points(ob, mesh_frame), arm.matrix_world @ arm.pose.bones[ob.parent_bone].matrix)
+        name = re.sub(r"[^a-z0-9]+", "_", ob.name[7:].split(" (")[0].lower()).strip("_")
+        if prop not in (None, name) or source not in (None, ob["lab_source"]):
+            fail(f"the stops hold different models ({prop}, {name})")
+        prop, source, factor = name, ob["lab_source"], s
+        gframe = json.loads(ob["lab_gun_frame"]) if "lab_gun_frame" in ob else [["Z", float(ob.get("lab_turn_deg", 0.0))]]
+        grips[marker] = {"rot": {pb.name: pb.rotation_quaternion.copy() for pb in arm.pose.bones},
+                         "hips": arm.pose.bones[PREFIX + "Hips"].location.copy(),
+                         "m": _sim(s, R, t) @ mesh_frame,      # the glb's scene root (import coordinates) -> the hand bone's frame
+                         "bone": ob.parent_bone, "built_on": ref.parent.get("lab_aim", ""), "lab": os.path.basename(lab)}
+        print(f"[family_lab] {marker}: {os.path.basename(lab)} Agent {ob.name[4:]} (built on {grips[marker]['built_on']}), {prop} x{s:.5f} in its hand")
+    if os.path.normpath(os.path.join(ROOT, source)) != os.path.normpath(tpl.PROP_GLB.get(prop, "")):
+        fail(f"tripo_pose_lab.PROP_GLB['{prop}'] must be {source} (the timeline's read-back loads the model from there)")
+
+    bpy.ops.wm.open_mainfile(filepath=family_blend)      # his timeline: read here, never saved (the model's is saved as a new file)
+    sc = bpy.context.scene
+    arm, rig = tpl.load_rig_from_blend()
+    bpy.context.view_layer.objects.active = arm
+    if arm.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+    markers = {m.name: m.frame for m in sc.timeline_markers}
+    fam_prop = json.loads(arm["lab_props"])[0]
+    fgun = bpy.data.objects.get("PROP_" + fam_prop)
+    if fgun is None or fgun.parent is not arm:
+        fail(f"{os.path.basename(family_blend)}: no PROP_{fam_prop} on the armature")
+    for marker, g in grips.items():
+        base, _sep, frame = g["built_on"].rpartition("@")
+        if marker not in markers or base != os.path.basename(family_blend) or not frame.isdigit() or int(frame) != markers[marker]:
+            fail(f"{g['lab']} was built on {g['built_on']}, this timeline's '{marker}' is frame {markers.get(marker)} of {os.path.basename(family_blend)}")
+        if g["bone"] != fgun.parent_bone:
+            fail(f"{g['lab']} holds the model on {g['bone']}, the timeline on {fgun.parent_bone}")
+    grip_frames = sorted(markers[m] for m in grips)
+    draw_end = max(f for f in markers.values() if f < grip_frames[0])          # the last marker of the family's draw before the first grip (the centre)
+    hand_bone = fgun.parent_bone
+
+    def hand_world():
+        return arm.matrix_world @ arm.pose.bones[hand_bone].matrix
+
+    def palm_world():
+        h, m1 = arm.pose.bones[PREFIX + "LeftHand"], arm.pose.bones[PREFIX + "LeftHandMiddle1"]
+        return arm.matrix_world @ ((h.head + m1.head) * 0.5)
+
+    # the family's gun on the hand at each of its keys up to the draw's end (a hidden object is not re-evaluated: its frames take the first shown place)
+    keyed = sorted({round(k.co[0]) for fc in _curves(fgun.animation_data) for k in fc.keyframe_points})
+    fam = {}
+    for f in [f for f in keyed if f <= draw_end]:
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        fam[f] = [hand_world().inverted() @ fgun.matrix_world, fgun.hide_viewport, fgun.hide_render]
+    shown = next((fam[f][0] for f in sorted(fam) if not fam[f][1]), None)
+    for f in fam:
+        if fam[f][1] and shown is not None:
+            fam[f][0] = shown
+
+    # the model as the game reads it; the reference's hold point matched by the model's own (its gun frame the lab's, its size the lab's)
+    probe, _ns = tpl.import_prop(fam_prop, {})
+    W0s = probe.matrix_world.copy()
+    Fs, ps, _Ls = tpl._gun_frame_points(probe, tpl.LONG_GUN_FACTOR)
+    bpy.data.objects.remove(probe)
+    gun, node_scale = tpl.import_prop(prop, {})
+    W0b = gun.matrix_world.copy()
+    Fb, pb_pts, Lb = tpl._gun_frame_points(gun, factor, turn=gun_frame_matrix(gframe))
+    K = (Fs @ W0s).inverted() @ Matrix.Translation(ps["hold"] - pb_pts["hold"]) @ (Fb @ W0b)
+    print(f"[family_lab] {prop}: {Lb:.3f} long at x{factor:.5f}; held in the draw at its hold {tuple(round(v, 3) for v in pb_pts['hold'])} where the "
+          f"{fam_prop} is held at its own")
+
+    # the body at each grip: the lab Agent's rotations and Hips, keyed over the family's keys at that frame
+    for marker, g in grips.items():
+        f = markers[marker]
+        sc.frame_set(f)
+        for pb in arm.pose.bones:
+            if pb.rotation_mode != "QUATERNION":
+                fail(f"{os.path.basename(family_blend)}: {pb.name} is not in quaternions")
+            pb.rotation_quaternion = g["rot"][pb.name]
+            pb.keyframe_insert("rotation_quaternion", frame=f)
+        hb = arm.pose.bones[PREFIX + "Hips"]
+        hb.location = g["hips"]
+        hb.keyframe_insert("location", frame=f)
+
+    # the model on the hand: the family's draw keys (the hold matched), each grip's place, the slides between
+    bpy.data.objects.remove(fgun)
+    gun.parent = arm
+    gun.parent_type = "BONE"
+    gun.parent_bone = grips[next(iter(grips))]["bone"]
+    gun.rotation_mode = "QUATERNION"
+    gun["lab_node_scale"] = node_scale
+    gun["lab_bone"] = gun.parent_bone.replace(PREFIX, "")
+    places = {f: (A @ K, hv, hr) for f, (A, hv, hr) in fam.items()}
+    for marker, g in grips.items():
+        places[markers[marker]] = (g["m"] @ W0b, False, False)
+    for f in sorted(places):
+        A, hv, hr = places[f]
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        gun.matrix_world = hand_world() @ A
+        gun.hide_viewport, gun.hide_render = hv, hr
+        bpy.context.view_layer.update()
+        for path in ("location", "rotation_quaternion", "scale", "hide_viewport", "hide_render"):
+            gun.keyframe_insert(path, frame=f)
+    ends = [draw_end] + grip_frames
+    for f0, f1 in zip(ends, ends[1:]):
+        c = []
+        for f in (f0, f1):
+            sc.frame_set(f)
+            bpy.context.view_layer.update()
+            c.append(gun.matrix_world.inverted() @ palm_world())       # the model's point under the palm
+        tpl._bake_slide(sc, arm, gun, f0, f1, c[0], c[1])
+        print(f"[family_lab] frames {f0}-{f1}: the hand slides {(c[1] - c[0]).length * gun.matrix_world.to_scale().x * 1000:.0f} mm along the {prop}")
+    arm["lab_pose"] = "draw_" + prop
+    arm["lab_props"] = json.dumps([prop])
+    arm["lab_grips"] = json.dumps({m: g["lab"] for m, g in grips.items()})
+    sc.frame_set(1)
+    for o in bpy.data.objects:
+        o.select_set(False)
+    arm.select_set(True)
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode="POSE")
+    os.makedirs(os.path.dirname(out_blend), exist_ok=True)
+    bpy.ops.wm.save_as_mainfile(filepath=out_blend)
+    print(f"[family_lab] wrote {os.path.relpath(out_blend, ROOT)}: the {arm['lab_figure']} {prop} draw on {os.path.basename(family_blend)}'s keys, "
+          f"{', '.join(f'{m} {markers[m]}' for m in grips)} from the lab scenes, the draw to {draw_end} the family's")
+
+
 def swap(blend, key, old_glb, new_glb):
     """A model of a SAVED lab file replaced by a new version of its source (the Director's own edit of the model): the old source is
     fitted to the mesh as it sits in the file (its size and grip, untouched) and the new source gets the same transform. The new
@@ -1014,6 +1178,11 @@ def main():
         build(a[1], a[2], a[3], a[4] if len(a) > 4 else None, marker)
     elif a[0] == "grip":
         grip(a[1], a[2], a[3])
+    elif a[0] == "seq":
+        stops = dict(x.split("=", 1) for x in a[4:])
+        if not stops:
+            fail("seq needs at least one <marker>=<lab .blend>")
+        seq(a[1], a[2], a[3], stops)
     elif a[0] == "swap":
         swap(a[1], a[2], a[3], a[4])
     elif a[0] == "readback":

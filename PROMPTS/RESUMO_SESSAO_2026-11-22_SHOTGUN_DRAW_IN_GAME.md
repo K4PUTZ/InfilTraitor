@@ -183,3 +183,25 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
 1. The Director sizes the rifles, then the snipers, the sci-fi and the launchers, and saves each.
 2. Each read-back, the female's five files, the H3 rows (`family_rows.py`), the engine's long-gun holder, a take drawing each one.
 3. Still open: as above, plus the grip per weapon (POLISH-01).
+
+## 2026-11-24: the rifles sized, the bullpup's own grip saved, the rifles' hip scene
+
+- **His save of the rifles' scene (00:37):** the three assault rifles moved 4-9 mm at their built size; the bullpup x0.75 of the
+  reference's units (0.68 of the shotgun's length) on a body of its own, 26 bones (both arms, both hands, the fingers); nine finger
+  joints also moved with G, which the game ignores.
+- **The Director:** *"A última arma especificamente tem um design diferente, então eu tive que modificar o esqueleto. Vamos já deixar
+  essa empunhadura salva. Precisamos checar o hip em seguida."* Saved, the polish ruling standing:
+  `ASSETS/ANIMATIONS/poses/male/grip_bullpup_aim.json` (`family_lab.py grip <lab .blend> 08 <out>`): that Agent's 65 bones, the Hips,
+  the bullpup in its own left hand. Proven on Agent 01, which gives back `seq_draw_shotgun_f31.json` (bones and Hips identical, the
+  shotgun within 6·10⁻⁸). For POLISH-01: nothing in the game reads it yet.
+- **The read-back** gives a re-posed Agent's model twice: `rel_*` on the family's body (what the one body shows), `own_grip` in its own
+  hand. Nothing read before changes: the H1 files (both figures) and the shotguns' save hold no re-posed Agent.
+- **The rifles' hip:** `family_lab.py build H3_RIFLES male <out> <read-back> --marker hip` -> `FAMILY_H3_RIFLES_hip_MALE.blend`
+  (frame 23, his sizes, every Agent on the family's hip), opened for him; read back as built it gives the aim's placements exactly.
+
+### Next
+
+1. The Director checks the rifles at the hip (the bullpup's hands at least) and saves; a re-posed bullpup is kept as
+   `grip_bullpup_hip.json`.
+2. Then the snipers, the sci-fi and the launchers (and the shotguns' hip, if he wants it: they fire from the hip too).
+3. As before: each read-back, the female's files, the H3 rows (`rel_*`, the family's body), the engine's long-gun holder, a take.

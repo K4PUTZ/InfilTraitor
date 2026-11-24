@@ -38,11 +38,21 @@ still numbered as in the one H3 file (the numbers he judges them by), the certif
 back relative to it). The grenade launchers have no aimed stage: their scene stands at the HIP (`hip` marker), on the shotgun's grip
 until a grip of their own exists.
 
+A MODEL WITH A GRIP OF ITS OWN (2026-11-24, the Director on the bullpup: "A última arma especificamente tem um design diferente,
+então eu tive que modificar o esqueleto. Vamos já deixar essa empunhadura salva"). He may re-pose the Agent that holds one model.
+The game still plays ONE body per family until POLISH-01 ("a pegada individual por arma pra fase de polimento", 2026-11-23), so
+the read-back gives that model twice: `rel_*` on the FAMILY's body (its place in the world, read in the reference Agent's hand: what
+the one body shows), and `own_grip` in its own re-posed hand, with the bones he changed. `grip` writes that Agent's whole pose as a
+pose file (`TripoFigure`'s format, the model in its own hand), so the grip is kept for POLISH-01; nothing in the game reads it yet.
+
 Run inside Blender:
-  blender -b --python family_lab.py -- build  <family> <figure> <out .blend> [readback .json]
+  blender -b --python family_lab.py -- build  <family> <figure> <out .blend> [readback .json] [--marker <name>]
       <family>: H1, H3, or one of H3's groups (H3_SHOTGUNS, H3_RIFLES, H3_SNIPERS, H3_SCIFI, H3_LAUNCHERS)
       with a read-back: every model opens where that read-back placed it relative to the reference (the female's file from the
       male's sizes; her own aim, the same pistol, so only the figures' difference is left to adjust)
+      --marker: the line at another stop of the timeline than the family's (2026-11-24: the rifles' `hip` after their aim)
+  blender -b --python family_lab.py -- grip <saved .blend> <nn> <out .json>   -> Agent nn's whole pose + its model in its hand,
+      a pose file whose id is the file's name (`ASSETS/ANIMATIONS/poses/<figure>/grip_<model>_<stance>.json`)
   blender -b --python family_lab.py -- render <saved .blend> <out prefix> [readback .json] -> <prefix>_line.png (the whole line, three-quarters)
                                                                                   <prefix>_tile_<nn>.png (each gun hand from the side, one scale)
   blender -b --python family_lab.py -- swap <saved .blend> "<nn name>" <old glb> <new glb>   -> a model replaced by its edited version, in place
@@ -60,7 +70,7 @@ barrel, glTF space of the source).
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), ".."))
 import model_paths as mp  # where every model lives (ASSETS/MODELS layout)
-import bpy, bmesh, sys, os, math, json
+import bpy, bmesh, sys, os, math, json, re
 from mathutils import Matrix, Vector
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -332,14 +342,16 @@ def label(text, loc, coll, size=0.028):
     return ob
 
 
-def build(family, figure, out_blend, from_json=None):
+def build(family, figure, out_blend, from_json=None, marker=None):
     if family not in FAMILIES:
         fail(f"unknown family {family} (have {', '.join(FAMILIES)})")
     if os.path.exists(out_blend):
         fail(f"{os.path.relpath(out_blend, ROOT)} exists: it holds the Director's work and is never rebuilt")
     fam = FAMILIES[family]
     if fam.get("long"):
-        return build_long(family, figure, out_blend, from_json)
+        return build_long(family, figure, out_blend, from_json, marker)
+    if marker:
+        fail("--marker is for the long guns' timeline (H3)")
     placed = None
     if from_json:    # every model at the place another figure's read-back gave it, relative to the reference (the female from the male's sizes)
         with open(from_json) as f:
@@ -511,10 +523,11 @@ def build(family, figure, out_blend, from_json=None):
     print(f"[family_lab] wrote {os.path.relpath(out_blend, ROOT)}: {len(rows) + 1} Agents, one model each")
 
 
-def build_long(family, figure, out_blend, from_json=None):
+def build_long(family, figure, out_blend, from_json=None, marker=None):
     """A LONG-gun family's lab file (the module's header, H3): the line in the family's aim, every model a child of the hand bone that
     holds the reference (the LEFT hand), its trigger guard on the reference's, its barrel along the reference's. Each model's mesh is
-    in the figure's units about its trigger guard, so its object reads Scale 1.0 at the start and S scales it about the trigger."""
+    in the figure's units about its trigger guard, so its object reads Scale 1.0 at the start and S scales it about the trigger.
+    `marker`: another stop of the timeline (the hip); a read-back's placements are relative to the reference, so they hold there too."""
     fam = FAMILIES[family]
     placed = None
     if from_json:    # every model at the place another figure's read-back gave it, relative to the reference
@@ -524,9 +537,10 @@ def build_long(family, figure, out_blend, from_json=None):
     bpy.ops.wm.open_mainfile(filepath=timeline)      # the Director's timeline: read here, never saved (the lab is saved as a new file)
     scene = bpy.context.scene
     markers = {m.name: m.frame for m in scene.timeline_markers}
-    if fam["marker"] not in markers:
-        fail(f"{os.path.basename(timeline)} has no marker '{fam['marker']}' (has {markers})")
-    frame = markers[fam["marker"]]
+    marker = marker or fam["marker"]
+    if marker not in markers:
+        fail(f"{os.path.basename(timeline)} has no marker '{marker}' (has {markers})")
+    frame = markers[marker]
     freeze(scene, frame)
     for n in REMOVE:
         if n in bpy.data.objects:
@@ -562,7 +576,7 @@ def build_long(family, figure, out_blend, from_json=None):
     ra = fam["reference_anchor"]
     a_ref = ref_imp @ Vector((ra[0], (lo.y + hi.y) / 2.0, ra[1]))
     rot = R_ref.to_4x4()
-    print(f"[family_lab] {figure} {family}: the aim is {os.path.basename(timeline)} frame {frame}; reference x{s_ref:.4f} of its units "
+    print(f"[family_lab] {figure} {family}: the {marker} is {os.path.basename(timeline)} frame {frame}; reference x{s_ref:.4f} of its units "
           f"(fit rms {rms:.1e}), {ref_len * s_ref:.4f} long, trigger guard at {tuple(round(v, 4) for v in a_ref)}")
 
     root = scene.collection
@@ -755,38 +769,90 @@ def _sim(s, R, t):
     return m
 
 
+def _mesh_frame(ob):
+    """The turn the build gave the model's mesh (the read-back turns the source by it before fitting)."""
+    if "lab_mesh_frame" in ob:      # a long-gun file (`build_long`): the turns are stored, not found again
+        return gun_frame_matrix(json.loads(ob["lab_mesh_frame"]))
+    if ob.get("lab_role") != "reference":
+        return Matrix.Rotation(math.radians(float(ob.get("lab_turn_deg", 0.0))), 4, "Z")
+    return Matrix.Identity(4)
+
+
+def _source_points(ob, mesh_frame):
+    src = import_model(os.path.join(ROOT, ob["lab_source"]), "_src")
+    src.data.transform(mesh_frame)
+    sp = verts(src)
+    bpy.data.objects.remove(src)
+    if len(sp) != len(ob.data.vertices):
+        fail(f"{ob.name}: {len(ob.data.vertices)} vertices in the file, {len(sp)} in its source: the mesh was edited beyond a placement")
+    return sp
+
+
+def _fit_in(ob, sp, frame):
+    """(s, R, t, rms): the model's source points fitted to where its vertices are, in `frame`'s coordinates."""
+    to_frame = frame.inverted()
+    return umeyama(sp, [to_frame @ (ob.matrix_world @ v.co) for v in ob.data.vertices])
+
+
+def _reposed(arm, ref_arm):
+    """How `arm` (a lab Agent) differs from `ref_arm` (the reference Agent: the family's body), or None when it holds the same pose:
+    the bones he changed himself [(name, degrees turned, distance moved with G)], read on the pose channels. The test is element by
+    element on the evaluated matrices (anything that poses a bone counts): a quaternion of an evaluated matrix is not a unit one where
+    the rig carries a scale (1.000008 on the right leg), and its dot with itself reads as a 0.13 degree turn (2026-11-24)."""
+    differs = any(max(abs(x - y) for ra, rb in zip(pb.matrix, ref_arm.pose.bones[pb.name].matrix) for x, y in zip(ra, rb)) > 1e-6
+                  for pb in arm.pose.bones)
+    if not differs:
+        return None
+    out = []
+    for pb in arm.pose.bones:
+        a, b = pb.matrix_basis, ref_arm.pose.bones[pb.name].matrix_basis
+        qa, qb = a.to_3x3().normalized().to_quaternion().normalized(), b.to_3x3().normalized().to_quaternion().normalized()
+        deg = math.degrees(2.0 * math.acos(min(1.0, abs(qa.dot(qb)))))
+        moved = (a.translation - b.translation).length
+        if deg > 0.05 or moved > 1e-5:
+            out.append((pb.name.replace(PREFIX, ""), round(deg, 2), round(moved, 6)))
+    return out
+
+
+def _rel_fields(rel):
+    """A transform in the reference model's frame (Blender axes) as the read-back's `rel_*` (glTF axes)."""
+    g = CM @ rel @ CM.inverted()
+    gl, gq, gs = g.decompose()
+    return {"rel_scale": round(gs.x, 5), "rel_pos": [round(c, 5) for c in gl], "rel_quat": [round(gq.x, 5), round(gq.y, 5), round(gq.z, 5), round(gq.w, 5)],
+            "rel_turn_deg": round(math.degrees(gq.angle), 2)}
+
+
 def readback(blend, out_json):
     import numpy as np
     bpy.ops.wm.open_mainfile(filepath=blend)
     bpy.context.view_layer.update()
     guns = sorted([o for o in bpy.data.objects if o.name.startswith("GUN_") and o.get("lab_role") != "carrier"], key=lambda o: o.name)
+    ref_gun = next((o for o in guns if o.get("lab_role") == "reference"), None)
+    ref_arm = ref_gun.parent if ref_gun is not None and ref_gun.parent_type == "BONE" else None
     rows = {}
     ref_m = None
     for ob in guns:
         role = ob.get("lab_role")
         explicit = "lab_mesh_frame" in ob      # a long-gun file (`build_long`): the turns are stored, not found again
-        if explicit:
-            mesh_frame = gun_frame_matrix(json.loads(ob["lab_mesh_frame"]))
-        elif role != "reference":
-            mesh_frame = Matrix.Rotation(math.radians(float(ob.get("lab_turn_deg", 0.0))), 4, "Z")
-        else:
-            mesh_frame = Matrix.Identity(4)
-        src = import_model(os.path.join(ROOT, ob["lab_source"]), "_src")
-        src.data.transform(mesh_frame)
-        sp = verts(src)
-        if len(sp) != len(ob.data.vertices):
-            fail(f"{ob.name}: {len(ob.data.vertices)} vertices in the file, {len(sp)} in its source: the mesh was edited beyond a placement")
+        mesh_frame = _mesh_frame(ob)
+        sp = _source_points(ob, mesh_frame)
         holder = ob.parent
         if ob.parent_type == "BONE":
             pb = holder.pose.bones[ob.parent_bone]
             frame = holder.matrix_world @ pb.matrix
         else:
             frame = holder.matrix_world
-        to_frame = frame.inverted()
-        dp = [to_frame @ (ob.matrix_world @ v.co) for v in ob.data.vertices]
-        s, R, t, rms = umeyama(sp, dp)
+        s, R, t, rms = _fit_in(ob, sp, frame)
         # the fit maps the TURNED source; the board loads the glb as it is: fold the build's turn in, so `m` maps the glb's own frame
         m = _sim(s, R, t) @ mesh_frame
+        # an Agent he RE-POSED for this model (its own grip, POLISH-01): `rel_*` is the model on the FAMILY's body (where he put it,
+        # read in the reference Agent's hand: what the game's one body shows), `own_grip` in its own hand (the module's header)
+        own = None
+        changed = _reposed(holder, ref_arm) if ob.parent_type == "BONE" and ref_arm is not None and holder is not ref_arm else None
+        if changed is not None:
+            own = {"m": m, "bones": changed}
+            s2, R2, t2, _rms2 = _fit_in(ob, sp, holder.matrix_world @ ref_arm.pose.bones[ob.parent_bone].matrix)
+            m = _sim(s2, R2, t2) @ mesh_frame
         # the muzzle and the length are read in the GUN frame (barrel +X), whatever frame the file holds the mesh in: a file built
         # from a read-back keeps the glb's own frame (`lab_turn_deg` 0), so the frame's turn is found again as the build finds it;
         # a long-gun file stores it (`lab_gun_frame`)
@@ -811,18 +877,24 @@ def readback(blend, out_json):
         start = float(ob.get("lab_start_factor", 0.0))
         rows[ob.name[4:]] = {"role": role, "source": ob["lab_source"], "holder": ob.parent_bone or holder.name,
                              "scale_in_holder": s, "rms_in_holder": rms, "length_native": hi.x - lo.x,
-                             "start_factor": start, "_m": m, "muzzle_proposed": [round(c, 4) for c in muzzle_gltf],
+                             "start_factor": start, "_m": m, "_own": own, "muzzle_proposed": [round(c, 4) for c in muzzle_gltf],
                              "muzzle_world": [round(c, 5) for c in muzzle_world]}
         if role == "reference":
             ref_m = m
             ref_len = hi.x - lo.x
             ref_scale = s
-        bpy.data.objects.remove(src)
     if ref_m is None:
         fail("no reference model in the file")
     out = {"blend": os.path.relpath(blend, ROOT), "reference": [k for k, r in rows.items() if r["role"] == "reference"][0], "models": {}}
     for k, r in rows.items():
         m = r.pop("_m")
+        own = r.pop("_own")
+        if own is not None:
+            r["own_grip"] = dict(_rel_fields(ref_m.inverted() @ own["m"]), bones=[b[0] for b in own["bones"]],
+                                 moved_with_g=[b[0] for b in own["bones"] if b[2] > 1e-5])
+            print(f"[family_lab] {k}: its Agent was RE-POSED ({len(own['bones'])} bones: {', '.join(f'{b[0]} {b[1]}' for b in own['bones'])}): "
+                  f"rel_* below is on the family's body, own_grip in its own hand (x{r['own_grip']['rel_scale']:.4f}, turn {r['own_grip']['rel_turn_deg']} deg, "
+                  f"pos {r['own_grip']['rel_pos']}); moved with G, which the game ignores: {r['own_grip']['moved_with_g'] or 'none'}")
         if r["role"] == "muzzle":     # held by the carrier pistol, already in the reference model's frame
             rel = m
         else:
@@ -846,6 +918,56 @@ def readback(blend, out_json):
     with open(out_json, "w") as f:
         json.dump(out, f, indent=1)
     print(f"[family_lab] wrote {out_json}")
+
+
+def grip(blend, key, out_json):
+    """Agent `key`'s whole pose as a pose file, its model in its hand (the module's header: a model with a grip of its own). The pose:
+    every bone's Godot local rotation and the Hips' place, by `tripo_pose_lab.Rig` (the maths `sequence` and `extract` use); the model:
+    its scene root's placement in the hand bone's frame, the source fitted as the read-back fits it. The id is the file's name. Proof it
+    is the same maths: on Agent 01 it gives back the timeline's own stop file (`seq_draw_shotgun_f31.json` for H3's aim)."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "asset_generation", "tripo"))
+    import tripo_pose_lab as tpl
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    bpy.context.view_layer.update()
+    guns = [o for o in bpy.data.objects if o.name.startswith("GUN_") and o.get("lab_role") != "carrier"]
+    ob = next((o for o in guns if o.name[4:] == key or o.name[4:6] == key), None)
+    ref = next((o for o in guns if o.get("lab_role") == "reference"), None)
+    if ob is None or ref is None:
+        fail(f"no GUN_{key} (or no reference) in {os.path.basename(blend)}")
+    arm, ref_arm = ob.parent, ref.parent
+    if ob.parent_type != "BONE" or ref.parent_type != "BONE" or "lab_rest" not in ref_arm:
+        fail(f"GUN_{key}: not held by an Agent's bone in a lab file built on a pose_lab timeline (no lab_rest)")
+    rig = tpl.Rig(arm, json.loads(ref_arm["lab_rest"]))      # the Agents share the reference's armature data: its rest is theirs
+    local, G = rig.read()
+    ignored = [pb.name.replace(PREFIX, "") for pb in arm.pose.bones if pb.name != PREFIX + "Hips" and pb.location.length > 1e-4]
+    if ignored:
+        print(f"[family_lab] WARNING: {', '.join(ignored)} MOVED with G: the game plays rotations only, so these joints close where their rotation puts them")
+    bone = ob.parent_bone
+    pb = arm.pose.bones[bone]
+    mesh_frame = _mesh_frame(ob)
+    sp = _source_points(ob, mesh_frame)
+    s, R, t, rms = _fit_in(ob, sp, arm.matrix_world @ pb.matrix)
+    if rms / s > 1e-4:
+        print(f"[family_lab] WARNING: GUN_{key} was RESHAPED (fit rms {rms:.2e}): the pose file keeps the model's shape, at the closest fit")
+    root_g = CM @ (pb.matrix @ _sim(s, R, t) @ mesh_frame) @ CM.inverted()    # the model's scene root: glTF axes, the armature's space
+    node = G[bone.replace(PREFIX, "")].to_4x4()
+    node.translation = tpl.CM @ pb.head
+    loc, rot, scl = (node.inverted() @ root_g).decompose()
+    prop = re.sub(r"[^a-z0-9]+", "_", ob.name[7:].split(" (")[0].lower()).strip("_")
+    changed = _reposed(arm, ref_arm) if arm is not ref_arm else None
+    out = {"format": "infiltraitor-pose", "v": 1, "figure": ref_arm["lab_figure"], "id": os.path.splitext(os.path.basename(out_json))[0],
+           "bones": {n: tpl.xyzw(local[n]) for n in rig.names},
+           "props": {prop: {"bone": bone.replace(PREFIX, ""), "pos": [loc.x, loc.y, loc.z], "quat": tpl.xyzw(rot), "scale": (scl.x + scl.y + scl.z) / 3.0}},
+           "hips_pos": list(tpl.CM @ arm.pose.bones[PREFIX + "Hips"].matrix.translation),
+           "lab": {"file": os.path.basename(blend), "agent": ob.name[4:], "source": ob["lab_source"], "family_pose": ref_arm.get("lab_aim", ""),
+                   "bones_changed": [b[0] for b in changed] if changed else [], "moved_with_g_ignored": ignored,
+                   "note": "a model's own grip, kept for POLISH-01: nothing in the game reads this file yet; the prop key is the lab model's "
+                           "name until its weapon row exists"}}
+    os.makedirs(os.path.dirname(out_json), exist_ok=True)
+    with open(out_json, "w") as f:
+        json.dump(out, f, indent=1)
+    print(f"[family_lab] wrote {out_json}: Agent {ob.name[4:]}, {len(out['bones'])} bones ({len(out['lab']['bones_changed'])} changed from the family's), "
+          f"{prop} on the {bone.replace(PREFIX, '')} x{out['props'][prop]['scale']:.5f} (fit rms {rms:.1e})")
 
 
 def swap(blend, key, old_glb, new_glb):
@@ -882,9 +1004,16 @@ def swap(blend, key, old_glb, new_glb):
 def main():
     a = args_after_dashes()
     if not a:
-        fail("usage: -- build <family> <figure> <out .blend> | render <blend> <out prefix> | readback <blend> <out .json>")
+        fail("usage: -- build <family> <figure> <out .blend> [readback .json] [--marker <name>] | render <blend> <out prefix> | readback <blend> <out .json> | grip <blend> <nn> <out .json>")
     if a[0] == "build":
-        build(a[1], a[2], a[3], a[4] if len(a) > 4 else None)
+        marker = None
+        if "--marker" in a:
+            i = a.index("--marker")
+            marker = a[i + 1]
+            a = a[:i] + a[i + 2:]
+        build(a[1], a[2], a[3], a[4] if len(a) > 4 else None, marker)
+    elif a[0] == "grip":
+        grip(a[1], a[2], a[3])
     elif a[0] == "swap":
         swap(a[1], a[2], a[3], a[4])
     elif a[0] == "readback":

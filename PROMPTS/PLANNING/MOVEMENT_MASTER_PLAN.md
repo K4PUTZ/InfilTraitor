@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
+> ⏭️ **2026-11-24 — the RIFLES sized and the BULLPUP's own GRIP SAVED; the rifles' HIP scene built (Director: *"A última arma especificamente tem um design diferente, então eu tive que modificar o esqueleto. Vamos já deixar essa empunhadura salva. Precisamos checar o hip em seguida"*):** the three assault rifles moved a few millimetres at their built size; the bullpup x0.75 on a body of its own (26 bones). That body is kept as a pose file for POLISH-01, `ASSETS/ANIMATIONS/poses/male/grip_bullpup_aim.json` (`family_lab.py grip`; nothing in the game reads it yet), and the read-back gives such a model twice (`rel_*` on the family's body, `own_grip` in its own hand). `FAMILY_H3_RIFLES_hip_MALE.blend` stands the line at the hip on his sizes. §11.6 step 2.
 > ⏭️ **2026-11-23 (night, later) — the Director's own hands on the FEMALE's HIP and AIM are IN THE GAME (Director: *"Primeiro eu vou ter que ajustar o hip e a mira feminina também"*, then *"Ajustei e salvei"*): his save of her timeline changed her keys at 23 and 31 only (the arms, the hands, the right fingers, the trunk; at the aim also the neck and the shoulders); from now on those two stops are his, never the recipe's. §11.6 step 3.**
 > ⏭️ **2026-11-23 (night) — the Director's GRIP at the long gun's AIM is IN THE GAME on both figures, and H3's FIVE SCENES are BUILT on it (Director: *"Ajustei e salvei"*): his save changed the aim only (frame 31: both hands turned ~33°, the arms, the neck, the trigger finger), the female in step by the 11-22 recipe; `FAMILY_H3_{SHOTGUNS,RIFLES,SNIPERS,SCIFI}_aim_MALE.blend` and `FAMILY_H3_LAUNCHERS_hip_MALE.blend` wait for his sizes. §11.6 steps 2 and 3.**
 > ⏭️ **2026-11-23 (later still) — H3 SPLITS INTO FIVE LAB SCENES by animation (Director: *"vamos separar um pouco as armas porque as animações vão ter que ser um pouco diferentes"*): shotguns, rifles, snipers, sci-fi, grenade launchers; the GRENADE LAUNCHERS have NO aimed stage (the hip only), probably on a grip of their own. First the Director re-checks the grip at the certified AIM in his `SEQ_draw_shotgun_MALE.blend`. §11.6 step 2.**
@@ -833,6 +834,22 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    (`docs/production/milestones.md`). Until then a lab scene sizes and places the guns only. **The shotguns' scene:** his save of 22:43
    changed no gun and no bone (`lab_diff` against the build), then *"Pode abrir a próxima cena"*: the four stay as built, each x1.0 of
    the reference's units (the sawed-off 0.64 of the reference's length, the short stock 0.77).
+   **The rifles' scene, and the first grip of its own (2026-11-24).** His save of 00:37: the three assault rifles moved 4-9 mm at their
+   built size (x1.0 of the reference's units: 0.94, 0.89 and 0.95 of its length); the BULLPUP x0.75 (0.68 of the shotgun's length) on a
+   body of its own, 26 bones re-posed (both arms, both hands, the fingers; nine finger joints also moved with G, which the game
+   ignores). The Director: *"A última arma especificamente tem um design diferente, então eu tive que modificar o esqueleto. Vamos já
+   deixar essa empunhadura salva. Precisamos checar o hip em seguida."* So the grip is SAVED and the polish ruling above stands:
+   `family_lab.py grip` writes that Agent's whole pose, the bullpup in its own left hand, as a pose file,
+   `ASSETS/ANIMATIONS/poses/male/grip_bullpup_aim.json` (`TripoFigure`'s format, `tripo_pose_lab.Rig`'s maths; proven on Agent 01,
+   which gives back `seq_draw_shotgun_f31.json`: the 65 bones and the Hips identical, the shotgun within 6·10⁻⁸). Nothing in the game
+   reads it before POLISH-01; its prop key is the lab model's name until the H3 rows name the weapon. The read-back now gives a
+   re-posed Agent's model twice: `rel_*` on the FAMILY's body (where he put it, read in the reference Agent's hand: what the one body
+   shows; the bullpup turned 19.6° against the reference) and `own_grip` in its own hand (turned 103°: that hand turned 111°). A probe of
+   the H1 files (both figures) and of the shotguns' save found no re-posed Agent, so nothing read before changes. **The rifles' HIP:**
+   `build H3_RIFLES male <out> <read-back> --marker hip` -> `FAMILY_H3_RIFLES_hip_MALE.blend`, the line at the timeline's `hip`
+   (frame 23) on his sizes, every Agent on the family's hip (the bullpup on the family's body too); read back as built, every model sits
+   exactly where the aim's read-back put it; his timeline's md5 unchanged. Next: he checks the rifles at the hip (the bullpup's hands at
+   least) and saves; a bullpup re-posed there is kept the same way, as `grip_bullpup_hip.json`.
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
    **H3 opens with the SHOTGUNS (Director, 2026-11-17).** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra

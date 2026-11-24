@@ -228,3 +228,30 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
 2. `pose_lab.py sequence draw_bullpup` reads it back (the timeline committed with it, as the shotgun's); the game plays it only at
    POLISH-01 (the long-gun holder plays the family's body). The female has no bullpup grip yet.
 3. Then the snipers, the sci-fi and the launchers; the shotguns' hip if he wants it; the H3 rows, the female's files, the holder.
+
+## 2026-11-24 (afternoon): the bullpup's draw, his, read back
+
+- **His save (14:01, "Ajustei e salvei"):** only the left side changed: the arm, forearm, hand and index at 12; the arm, forearm, hand and
+  every finger at 13; the hand and fingers at 16; the bullpup at 13 and 16 (the hand on another part of the grip, near the hip grip's
+  hold, the bullpup still upright at 16). 23, 31, the coat keys and the markers untouched. Both his saves (13:51, 14:01) are kept in
+  `temp/h3_family/`.
+- **Two faults, measured frame by frame** (the gun's corners in the world and in the hand, the hand's turn):
+  - the slide 17-22 had been baked from the OLD 16: the bullpup jumped 87° in the hand at 17. Re-baked from his stops as saved
+    (`tripo_pose_lab._bake_slide`): 10 mm along the gun, 2.7° a frame;
+  - his keys at 18 (left arm, forearm, hand) and 20 (forearm) are the shotgun's, its hand already near the hip, so the hand turned 84°
+    between 16 and 18.
+- **Three versions shown side by side** (`temp/h3_family/bullpup_16_23_variants.png`: his save; the slide re-baked; re-baked and those
+  keys removed). He chose the third (*"A 3, sem 18/20"*): the turn spreads over 16-23, at most 19° a frame. It replaced his file (his
+  choice authorized it); the only other change against his save is the slide.
+- **Read back:** `pose_lab.py sequence draw_bullpup` -> `ASSETS/ANIMATIONS/sequences/male/draw_bullpup.json` (stops 11, 12, 13, 16, 23,
+  31) + six `seq_draw_bullpup_f*.json`: identical to the read-back of the same file in `temp/`; 23 and 31 = the grip files exactly; the
+  gun's samples move at most 28 mm / 12.5° a frame (13-16, his own keys). The game set rebuilt byte-identical: nothing reads
+  `draw_bullpup` until POLISH-01.
+- **Lesson:** a baked slide is derived from the two stops beside it. When the gun moves at one of them, re-bake the slide, and check
+  the hand's turn against keys inherited from another weapon.
+
+### Next
+
+1. The snipers, the sci-fi and the launchers; the shotguns' hip if he wants it.
+2. The H3 rows (`rel_*`, the family's body), the female's files (she has no bullpup grip or timeline yet), the engine's long-gun holder,
+   a take per weapon.

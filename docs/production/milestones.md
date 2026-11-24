@@ -1250,7 +1250,8 @@ themselves; what sound does in play is M6.0, the music is SOUNDTRACK. Visual and
   (its own hip and aim, read off the lab scenes, on both figures), in place of the one body every model of the family plays today.
   The first one is saved: the bullpup's hip and aim on the male, `ASSETS/ANIMATIONS/poses/male/grip_bullpup_{hip,aim}.json` (2026-11-24,
   `family_lab.py grip`; the lab read-back's `own_grip` is its gun in its own hand), and its own draw timeline,
-  `SEQ_draw_bullpup_MALE.blend` (`family_lab.py seq`), whose draw the Director poses.
+  `SEQ_draw_bullpup_MALE.blend` (`family_lab.py seq`), posed by the Director and read back into
+  `ASSETS/ANIMATIONS/sequences/male/draw_bullpup.json` (2026-11-24); the game plays the family's draw until this item.
 
 **Rule:** a polish item changes how something looks or sounds, never what it does; a gameplay attribute is GAMEPLAY-01's.
 

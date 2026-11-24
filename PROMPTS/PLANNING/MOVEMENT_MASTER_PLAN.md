@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
+> ⏭️ **2026-11-24 (afternoon) — the BULLPUP's DRAW posed by the Director and READ BACK (Director: *"Ajustei e salvei"*, then *"A 3, sem 18/20"*):** his save moved the left hand's hold at 12, 13 and 16 (the hand on another part of the grip, the bullpup still upright at 16). The slide 17-22 was re-baked from his 16: a baked slide is DERIVED from the two stops beside it, so moving the gun at one of them leaves a jump until it is re-baked (here 87° in the hand at 17). By his choice, the left arm's keys at 18 and 20 (the shotgun's, inherited) are gone, so the ~90° turn to the hip spreads over 16-23 instead of two frames. `ASSETS/ANIMATIONS/sequences/male/draw_bullpup.json` + six stop poses; played only at POLISH-01. §11.6 step 2.
 > ⏭️ **2026-11-24 (later) — the RIFLES DONE and the BULLPUP's OWN DRAW TIMELINE built (Director: *"Vamos montar no Blender toda a sequência da mira só com essa arma. As demais estão prontas"*):** his hip grip saved too (`grip_bullpup_hip.json`); `SEQ_draw_bullpup_MALE.blend` = his shotgun timeline with the bullpup, its hip (23) and aim (31) from the lab scenes, the draw to the centre the family's (`family_lab.py seq`); he poses the bullpup's draw next. Not in the game until POLISH-01. §11.6 step 2.
 > ⏭️ **2026-11-24 — the RIFLES sized and the BULLPUP's own GRIP SAVED; the rifles' HIP scene built (Director: *"A última arma especificamente tem um design diferente, então eu tive que modificar o esqueleto. Vamos já deixar essa empunhadura salva. Precisamos checar o hip em seguida"*):** the three assault rifles moved a few millimetres at their built size; the bullpup x0.75 on a body of its own (26 bones). That body is kept as a pose file for POLISH-01, `ASSETS/ANIMATIONS/poses/male/grip_bullpup_aim.json` (`family_lab.py grip`; nothing in the game reads it yet), and the read-back gives such a model twice (`rel_*` on the family's body, `own_grip` in its own hand). `FAMILY_H3_RIFLES_hip_MALE.blend` stands the line at the hip on his sizes. §11.6 step 2.
 > ⏭️ **2026-11-23 (night, later) — the Director's own hands on the FEMALE's HIP and AIM are IN THE GAME (Director: *"Primeiro eu vou ter que ajustar o hip e a mira feminina também"*, then *"Ajustei e salvei"*): his save of her timeline changed her keys at 23 and 31 only (the arms, the hands, the right fingers, the trunk; at the aim also the neck and the shoulders); from now on those two stops are his, never the recipe's. §11.6 step 3.**
@@ -866,6 +867,22 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    fingers), `_gun_frame_points(turn=)`. Not in the game: a model's own timeline is POLISH-01's (the long-gun holder plays the family's).
    Next: he poses the bullpup's draw (where the left hand takes it) and saves; `pose_lab.py sequence draw_bullpup` reads it back. The
    female has no bullpup grip yet.
+   **The bullpup's draw, his (2026-11-24, afternoon).** His save (14:01; the one before, 13:51, and this one kept in `temp/h3_family/`)
+   changed only the left side: the arm, forearm, hand and index at 12, the arm, forearm, hand and every finger at 13, the hand and
+   fingers at 16, and the bullpup at 13 and 16. The hand now holds it on another part of the grip, near where the hip grip holds it
+   (10 mm and ~19° off), with the bullpup still upright at 16, so the hand is ~90° from the hip. Two faults followed, both measured on
+   the gun's corners and the hand frame by frame:
+   - **The slide was stale.** 17-22 were baked from the OLD 16, so the bullpup jumped 87° in the hand at 17. A baked slide is derived
+     from the two stops beside it: whoever moves the gun at one of them must re-bake it (`tripo_pose_lab._bake_slide` from the stops as
+     saved, the palm's point on the gun at each end). Re-baked, the hand slides 10 mm, 2.7° a frame.
+   - **The turn was a whip.** His keys at 18 (left arm, forearm, hand) and 20 (forearm) are the shotgun's, its hand already near the
+     hip, so the hand turned 84° between 16 and 18. Three versions were shown side by side (his save; the slide re-baked; re-baked and
+     those keys removed); he chose the third (*"A 3, sem 18/20"*): the turn spreads over 16-23, at most 19° a frame. Those were the only
+     keys at 18 and 20, so the stops are now 11, 12, 13, 16, 23, 31.
+   The chosen file replaced his (he authorized it by choosing). `pose_lab.py sequence draw_bullpup` ->
+   `ASSETS/ANIMATIONS/sequences/male/draw_bullpup.json` + `seq_draw_bullpup_f{11,12,13,16,23,31}.json`: 23 and 31 = the two grip files
+   exactly; the gun's samples move at most 28 mm / 12.5° a frame (13-16, his own keys); the game set rebuilt byte-identical (nothing
+   reads `draw_bullpup` until POLISH-01). Next: the snipers, the sci-fi and the launchers; the female's bullpup.
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
    **H3 opens with the SHOTGUNS (Director, 2026-11-17).** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra

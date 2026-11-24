@@ -1246,6 +1246,8 @@ themselves; what sound does in play is M6.0, the music is SOUNDTRACK. Visual and
 - **From M6.05 (merged):** the finish of the guard and Agent animations, the particles (noise, detection, alerts), the UI's animation
   and polish.
 - **The coat's slivers** (deferred 2026-11-12) and the other items recorded as "for the final polish" in the plans.
+- **The grip per weapon** (deferred 2026-11-23, `MOVEMENT_MASTER_PLAN` §11.6 step 2): the body fitted to each model of a hold family
+  (its own hip and aim, read off the lab scenes, on both figures), in place of the one body every model of the family plays today.
 
 **Rule:** a polish item changes how something looks or sounds, never what it does; a gameplay attribute is GAMEPLAY-01's.
 

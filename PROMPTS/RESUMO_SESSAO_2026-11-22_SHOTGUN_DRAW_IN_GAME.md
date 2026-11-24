@@ -167,3 +167,19 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
    (`family_rows.py`), the engine's long-gun holder, a take drawing each one.
 3. Still open: the G-moved fingers (22 on the male, 3 on the female), §11.6 steps 4-5, the stages played by hand (later, by his word),
    the launchers' own grip.
+
+## 2026-11-23 (night, late): the grip per weapon to the polish, the shotguns as built
+
+- **The Director asked** whether a skeleton changed in a lab scene is adapted per weapon, and whether rotated fingers reach the game.
+  Answered from the code: the lab's read-back reads the guns only, every model of a family plays the family's one body; on a timeline
+  a rotation keyed at its frame is read, fingers included, while G and S on any bone but the Hips, and a rotation left unkeyed, are not.
+- **Ruled:** *"Vamos colocar essa questão da pegada individual por arma pra fase de polimento e seguir como está."* The body per weapon
+  is a POLISH-01 deliverable (`docs/production/milestones.md`; MOVEMENT §11.6 step 2). The lab scenes size and place the guns only.
+- **The shotguns' scene:** his save of 22:43 changed no gun and no bone; the four stay as built (`readback`:
+  `temp/h3_family/readback_H3_SHOTGUNS_male_2243.json`). The rifles' scene opened next.
+
+### Next
+
+1. The Director sizes the rifles, then the snipers, the sci-fi and the launchers, and saves each.
+2. Each read-back, the female's five files, the H3 rows (`family_rows.py`), the engine's long-gun holder, a take drawing each one.
+3. Still open: as above, plus the grip per weapon (POLISH-01).

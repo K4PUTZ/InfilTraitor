@@ -825,6 +825,14 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    identical, position within 2·10⁻⁵ of the reference's units, turn 0.0000°); his timeline's md5 unchanged by the builds. The one
    21-Agent file stays on disk as it is (nothing was sized in it). Tiles: `temp/h3_family/h3s_male_groups_sheet.png`. Next: he sizes and
    grips each scene and saves; then each read-back, the female's five files from the male's, the H3 rows, the engine's holder.
+   **The grip per weapon goes to the POLISH (Director, 2026-11-23: *"Vamos colocar essa questão da pegada individual por arma pra fase
+   de polimento e seguir como está"*).** The lab's read-back reads the guns only (each one's size, place and turn against the
+   reference, in the left hand); every model of a family plays the family's one body (the shotgun's timeline), so a skeleton changed in
+   a lab scene stays in the file. A body per weapon (each lab Agent's changed bones read as that model's own stop poses, the hip in a
+   scene of its own, the female per weapon, the draw's lapel and centre still the family's) is POLISH-01's
+   (`docs/production/milestones.md`). Until then a lab scene sizes and places the guns only. **The shotguns' scene:** his save of 22:43
+   changed no gun and no bone (`lab_diff` against the build), then *"Pode abrir a próxima cena"*: the four stay as built, each x1.0 of
+   the reference's units (the sawed-off 0.64 of the reference's length, the short stock 0.77).
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
    **H3 opens with the SHOTGUNS (Director, 2026-11-17).** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra

@@ -1,7 +1,7 @@
 # INFILTRAITOR
 
 > Mobile turn-based stealth tactics game  
-> **Engine:** Godot 4.6 (GDScript) · **Rendering:** isometric 2.5D voxels on a Godot 3D board · **Platform:** iOS / Android, portrait
+> **Engine:** Godot 4.7 (GDScript) · **Rendering:** isometric 2.5D voxels on a Godot 3D board · **Platform:** iOS / Android, portrait
 
 ---
 
@@ -91,8 +91,11 @@ Run smoke test (CLAUDE.md § Verification Protocol)
 
 **Engine track (RENDER3D): closed up to R3D-ROT (2026-10-02).** The 2D `TileMapLayer` board was deleted at R3D-END (2026-09-25; `34881f81`
 is the last commit that builds it). Built since: R3D-LIGHT (blast and shot frames inside the 100 ms budget on the target phones),
-R3D-PROPS, R3D-ACTORS, R3D-WORLD and R3D-ROT. `python3 tools/persistent/verify.py full` passes (selftests, boot, identity and
-rotation gates: ground, shot, occlusion, mirror, pick, roof-yaw, world, round trip, pixel).
+R3D-PROPS, R3D-ACTORS, R3D-WORLD and R3D-ROT. Since then the materials closed (liquids, 2026-10-19), cloth and cardboard roofs and walls
+became sheets with structural support, the surfaces grew, and the project moved to Godot 4.7.2 (2026-10-19). **Since 2026-10-27 the work is
+the characters and their motion** (`MOVEMENT_MASTER_PLAN`: the Agent's idle, gaits, crouch, the pistol's cycle, the throw, the long guns' draws),
+then the items and the enemies (ITEMS-01, ENEMIES-01). The checks follow the work left (2026-11-12): `verify.py` picks docs / quick / smoke;
+`full` adds the occlusion, roof-yaw and pick gates and the light gate; the blast, glass and shot gates are parked (`run_selftests.py --all`).
 
 - **Live status, what works and what does not:** [`docs/production/current_state.md`](docs/production/current_state.md)
 - **The engine plan and every open thread:** [`PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md`](PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)
@@ -101,7 +104,7 @@ rotation gates: ground, shot, occlusion, mirror, pick, roof-yaw, world, round tr
 - **June 2026 status log** (M2 sound, light vision, refactor sprint 04): [`docs/history/README_STATUS_2026-06.md`](docs/history/README_STATUS_2026-06.md)
 
 Not built yet (designed, in `docs/DESIGN_MASTER_PLAN.md`): confrontation and cover, the 3-layer resistance model, the equipment
-classes, enemy factions and hierarchy, segment map structure and Freelance escalation, the noise indicator, saves with slots.
+classes, enemy factions and hierarchy (their models are ENEMIES-01's), segment map structure and Freelance escalation, the noise indicator, saves with slots.
 
 ### How to check a change
 
@@ -134,7 +137,10 @@ ASSETS/
 ├── materials/<id>/     ← one folder per material: its grayscale facade and damage decals (what the 3D board reads)
 ├── props/              ← CC0 models, slots and .vox voxel objects (props/MODEL_SOURCES.md has the licences)
 ├── TEXTURES/           ← photographic surfaces and patches
-├── ANIMATIONS/ AUDIO/  ← rigs and sound
+├── MODELS/             ← one folder per character or prop with its stages (actors/agent/<fig>/{source,base,work,game,textures},
+│                         actors/enemies/<FACTION>/...); a path is asked of model_paths.py / ModelPaths, never typed
+├── ANIMATIONS/         ← the clip bank, the game set, the pose and sequence files the game reads
+├── AUDIO/              ← sound
 ├── ISOMETRIC/          ← the floor / structure TileSet sources only (the 3D board needs no tile atlas)
 └── ART_SPECIFICATIONS.md   ← read before authoring any texture or decal
 REFERENCES/             ← visual style screenshots (Emperor, StarCraft, XCOM)

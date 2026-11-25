@@ -1,5 +1,5 @@
 # PERFORMANCE_BUDGET_MASTER_PLAN
-## One content, many phones: the memory and time budget a segment has to fit — v0.3 (PB-0/1 ratified, PB-2 attributed and acted on)
+## One content, many phones: the memory and time budget a segment has to fit — v0.5 (PB-0 to PB-7: the HEAVY segment fits on both handsets, 2026-10-09)
 
 > ⏭️ **2026-11-10 — WHAT GETS MEASURED (Director).** A cost is measured only when one change could move processing or memory by more than 5 % on its own (about 1.7 ms of the frame or 51 MiB on the Moto). Smaller details are not measured and not listed as owed; the whole engine is reviewed at the end of M7.0's optimization, before the beta and the playtests (`docs/production/milestones.md`).
 

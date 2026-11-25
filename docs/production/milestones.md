@@ -66,6 +66,28 @@ silently stuck on a 2026-06-18 condition nobody re-checked.
 
 ---
 
+## Status reconciliation — 2026-11-25
+
+> What changed since the 2026-10-02 table below, which stays as the engine's record. The work moved from the engine to the characters,
+> their motion, the items and the enemies.
+
+| Block | Status now | Where it lives |
+|---|---|---|
+| Materials M1-M6 (glass, soft materials, liquids) | ✅ closed 2026-10-19 | `MATERIALS_MASTER_PLAN` v1.5 |
+| Roofs, soft sheets, structural support | 🟡 v0.52 (2026-10-18): cloth and cardboard roofs and walls as sheets, support and falls; the roof shot, light from outdoors and the generalised collapse unbuilt | `ROOF_MASTER_PLAN` |
+| Surfaces (floors and marks) | 🟡 v1.8 (2026-10-07): built through SM-2 scatter; SM-1 marking next | `SURFACES_MASTER_PLAN` |
+| Engine version | ✅ Godot 4.7.2 since 2026-10-19 | `PERFORMANCE_BUDGET_MASTER_PLAN` |
+| The 2D board's heritage | ✅ T1, T3, T6 and T5's first part done, T2's W1-W3 done (2026-11-11/12); W4, W5 open | `HERITAGE_AND_LOOSE_ENDS_PLAN` |
+| The checks | ✅ re-tiered 2026-11-12: smoke is the default, the blast / glass / shot gates parked | `CLAUDE.md`, `tools/persistent/verify.py` |
+| The Agent (both figures) | ✅ Tripo models, LIGHT and FULL, textured in the POLICE dress, the faces painted by hand (2026-11-08) | `CHARACTER_MASTER_PLAN`, `ACTOR` D85-D108 |
+| MOVEMENT (opened 2026-10-27) | 🟢 in progress: idle, walk, run, dash, crouch and its moves, the pistol's cycle, the throw, the H1 family; the long guns' draw in the game and per-model timelines (MV-6); the snipers' scene | `MOVEMENT_MASTER_PLAN` |
+| ITEMS-01 (opened 2026-11-16) | 🟢 what exists and what is missing; Tripo makes the rest | `ITEMS_MASTER_PLAN` |
+| ENEMIES-01 (opened 2026-11-18) | 🟢 the four factions' bare Standards; the FID's male guard skinned, with its head map and uniform | `ENEMIES_MASTER_PLAN` |
+| POLISH-01 | ⏳ defined 2026-11-17: the visual and sound polish (per-weapon grips and timelines, the coat's slivers, the foley) | below |
+| GAMEPLAY-01, the AI track, saves with slots | ⏳ unbuilt; AP costs and restrictions wait for GAMEPLAY-01 | below, `DESIGN_MASTER_PLAN` |
+
+---
+
 ## Status reconciliation — 2026-10-02
 
 > The M-numbered ledger below was written between June and September 2026. This table is the re-audit against the code and the plans on 2026-10-02; headings of the items that changed carry their new status, and the bodies are kept as the history they are.

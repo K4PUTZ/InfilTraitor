@@ -8,13 +8,27 @@
 
 ---
 
-## Where the project stands — 2026-11-10 (the code and heritage audit; a draft plan, nothing ratified)
+## Where the project stands — 2026-11-25 (the characters move, the long guns are drawn, the first enemy is dressed)
 
-- **A read-only audit of the whole code** (`PROMPTS/AUDITS/CODE_AND_HERITAGE_2026-11-10.md`): the drawing is 3D but the coordinate space is still the 2D plane; a weapon has no single identity and the pistol has three sizes; the 2026-11-04 dead-code list is untouched. No code changed.
-- **A draft plan, v0.1** (`PROMPTS/PLANNING/HERITAGE_AND_LOOSE_ENDS_PLAN.md`): six tracks, each waiting on the Director; his open questions are in the session record.
-  Record: `PROMPTS/RESUMO_SESSAO_2026-11-10_CODE_HERITAGE_AUDIT.md`.
+- **The audit's plan is ratified and mostly closed** (`HERITAGE_AND_LOOSE_ENDS_PLAN` v0.2, 2026-11-11/12): T1, T3, T6 and T5's first part
+  done, T2's W1-W3 done (W4, W5 open), T4 the storey evaluation only. **The checks follow the work left** (2026-11-12): `verify.py smoke` is
+  the default, the blast / glass / shot gates and 66 selftests are parked, not deleted.
+- **MOVEMENT (opened 2026-10-27), the Agent's motion on both figures:** idle (the reference frame 90), walk and run with their starts and stops,
+  the dash, the crouch with its draw / shot / holster and its moves to run and walk, the pistol's whole cycle (draw, aim, shot with recoil and
+  cases, holster), the overhand throw, the H1 family (14 rows, suppressors) and the projectiles (2026-11-17). **The long guns (H3, from
+  2026-11-18):** drawn from under the coat's right flap, the hip and the eye-level aim, in the game on both figures (2026-11-22); the shot in
+  stages (`WEAPON` D43, 2026-11-23); five H3 lab scenes, the rifles sized; the bullpup and the two stockless shotguns with draw timelines of
+  their own on both figures, kept from passing through the body (2026-11-25); the snipers' scene with the head lifted to the scope, waiting
+  for the Director's sizes. A model's own timeline plays in the game only at POLISH-01; until then each family plays its one body.
+- **ITEMS-01 (opened 2026-11-16) and ENEMIES-01 (opened 2026-11-18):** what exists and what is missing, Tripo making the rest; the four
+  factions' bare Standards approved; the first enemy, the FID's male guard, skinned on the Agent's skeleton with a head map of its own and a
+  tailored uniform (2026-11-19/22). `ASSETS/MODELS/` is one folder per character (2026-11-19).
+- **Not built yet:** the gameplay behind all this (AP costs and restrictions wait for GAMEPLAY-01, with confrontation, cover and resistance),
+  the guard AI beyond the existing FSM, saves with slots. POLISH-01 (2026-11-17) holds the visual and sound polish: per-weapon grips and
+  timelines, the coat's slivers, the foley.
+- Records: `PROMPTS/RESUMO_SESSAO_2026-11-1*` and `-2*`; the newest is `PROMPTS/RESUMO_SESSAO_2026-11-22_SHOTGUN_DRAW_IN_GAME.md`.
 
-Older sections (2026-11-09 back to 2026-08-30) and the summer status blocks (domains, percentages): [`docs/history/CURRENT_STATE_TO_2026-11-11.md`](../history/CURRENT_STATE_TO_2026-11-11.md).
+Older sections (2026-11-10 back to 2026-08-30) and the summer status blocks (domains, percentages): [`docs/history/CURRENT_STATE_TO_2026-11-11.md`](../history/CURRENT_STATE_TO_2026-11-11.md).
 
 ---
 

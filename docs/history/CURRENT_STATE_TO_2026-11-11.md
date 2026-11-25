@@ -7,6 +7,12 @@
 
 ---
 
+## Where the project stands — 2026-11-10 (the code and heritage audit; a draft plan, nothing ratified)
+
+- **A read-only audit of the whole code** (`PROMPTS/AUDITS/CODE_AND_HERITAGE_2026-11-10.md`): the drawing is 3D but the coordinate space is still the 2D plane; a weapon has no single identity and the pistol has three sizes; the 2026-11-04 dead-code list is untouched. No code changed.
+- **A draft plan, v0.1** (`PROMPTS/PLANNING/HERITAGE_AND_LOOSE_ENDS_PLAN.md`): six tracks, each waiting on the Director; his open questions are in the session record.
+  Record: `PROMPTS/RESUMO_SESSAO_2026-11-10_CODE_HERITAGE_AUDIT.md`.
+
 ## Where the project stands — 2026-11-09 (the pistol's quarter turn found; the owed Moto round done)
 
 - **The pistol sits in the game as in Blender** (the pose lab ignored the model node's -90 degree rotation), the draw holds it upright, the aim's elbows are closed on both figures. PLAYGROUND lost its two loose glass panes.

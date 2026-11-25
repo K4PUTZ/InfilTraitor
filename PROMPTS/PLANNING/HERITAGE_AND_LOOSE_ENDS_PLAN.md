@@ -1,5 +1,5 @@
 # HERITAGE_AND_LOOSE_ENDS_PLAN
-## Closing what the 2D-to-3D transition left, and the registered loose ends — v0.1 DRAFT
+## Closing what the 2D-to-3D transition left, and the registered loose ends — v0.2, ratified 2026-11-11 (T1, T3, T6 done; T2's W1-W3 and T5's first part done; T2's W4, W5 open; T4 the storey evaluation only)
 
 > 🟢 **v0.2 · 2026-11-11 · RATIFIED (Director: "Pode seguir com todas as etapas"), except T4 beyond the storey evaluation.** His
 > rulings are §5. Drafted 2026-11-10 from the audit [`CODE_AND_HERITAGE_2026-11-10`](../AUDITS/CODE_AND_HERITAGE_2026-11-10.md),

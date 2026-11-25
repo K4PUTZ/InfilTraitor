@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
+> ⏭️ **2026-11-25 — the SHORT STOCK's raise rebuilt and READ BACK; the long-gun draws' GUN-THROUGH-BODY cuts FIXED (Director: *"Pode conferir"*, *"Grava os videos com a parte que atravessa a cintura e cruza o casaco"*, then *"pode instalar a correção em todas as instâncias que precisarem"*):** a new check (the gun's triangles crossing the figure's, away from the hands) found the long guns passing through the belt, buckle, trousers, shirt and tie at 13-15, where they appear out of the coat (hidden there by design and by the camera, the Director says), and through the coat in the slide. Fixed by moving the left hand with the gun by the smallest offset that leaves 0.6 cm, keyed at the cutting frames: the short stock and both bullpups installed and read back. The two family SHOTGUNS need the stock swung forward too (up to 30° at 13), and from the game camera the stock then shows below the coat where his version hides the cut: built and shown, not installed (advised: leave them). §11.6 step 2.
 > ⏭️ **2026-11-24 (late night) — the FEMALE's SAWED-OFF built IN STEP, its RAISE rebuilt from the gun, posed by the Director and READ BACK (Director: *"Depois da uma conferida na feminina"*, then *"Abre no Blender"* and *"Ajustei e salvei"*):** `family_lab.py in_step` carried his sawed-off onto her shotgun keys (her own hold kept at 23 and 31), but at the raise's breakdowns 25/27/29 it has no departure of hers to carry, so her right hand swung ~20° aside and back; `family_lab.py raise` run after it fixed that (the hand at most 3.5° a frame, the barrel level within 1.4°, both palms on). He then re-posed her draw before the lapel (new keys at 8, right forearm, and 9, left arm; the left forearm at 11 and 12). `ASSETS/ANIMATIONS/sequences/female/draw_shotgun_sawed_off.json` + eleven stops. Then her 13 FIXED on his word (*"Corrige o 13"*, then *"Pode instalar"*): her coat crossed the gun there (from the build; the male is clear); the left hand and the gun moved 1.5 cm to her left (the arm two-bone solved, the turn kept), 0.9 cm clear of the coat; read back again. §11.6 step 2.
 > ⏭️ **2026-11-24 (night, later) — the SAWED-OFF posed by the Director, smoothed and READ BACK; the SHORT STOCK's scene built (Director: *"Ajustei e salvei"*, then *"Pode instalar"*):** he re-posed the left arm at 13 and 16 and the fingers, and kept the aim as built (the gun at the eyes, both hands on it). The shotgun's inherited keys at 18/20 dropped (his bullpup ruling) and the raise rebuilt by `family_lab.py raise` (3 cm bow): the barrel no longer dips 18°, the right hand stays on. `ASSETS/ANIMATIONS/sequences/male/draw_shotgun_sawed_off.json` + nine stops; 11-23 and 31 = his. `SEQ_draw_shotgun_short_stock_MALE.blend` built the same way (`seq 04`, 18/20 dropped) and opened for him. §11.6 step 2.
 > ⏭️ **2026-11-24 (night) — the FEMALE's BULLPUP posed by the Director, its RAISE SMOOTHED and READ BACK (Director: *"Ajustei o saque e a mira feminina, mas o movimento nos últimos frames está meio duro. Da uma conferida e veja se consegue suavizar. As poses estão corretas"*, then *"Pode instalar"*):** his breakdown at 27 took the gun out of her body by turning it ~50° aside, so it whipped back in the last three frames (through the hat and head at 30) while the right hand hung off the grip. `family_lab.py raise` rebuilds a raise FROM THE GUN between two stops he keeps: the muzzle on the target, an arc bowed 6 cm forward on a smoothstep, both hands solved onto it at 25, 27 and 29, the slide re-keyed. A leftover of the deleted stop 11 (right forearm and hand) snapped the right hand 36° in one frame; removed. `ASSETS/ANIMATIONS/sequences/female/draw_bullpup.json` + nine stops; 12, 13, 16, 23, 31 = his. §11.6 step 2.
@@ -992,6 +993,38 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    hidden object, so the placement is whatever the file was saved with. The sequence's samples carry the right one, the stop files
    do not. Next: his short stock (saved 22:35, not yet called done) -> its raise -> read back; then her short stock (`in_step`, then
    `raise`).
+   **The short stock checked; the long-gun draws' cuts fixed (2026-11-25).** *"Pode conferir"*: his save (22:35, kept as
+   `temp/h3_family/SEQ_draw_shotgun_short_stock_MALE_his_2235.blend`) changed only the left index at 12 and the left hand at 31. Its
+   raise had the sawed-off's fault (the barrel down 10° at 26 and aside 11° at 27, the right palm 3.5 cm off): rebuilt by
+   `family_lab.py raise <his save> <out> 23 31 25,27,29 0.03` (the barrel within 1.5°, the gun at most 1.6° a frame, the right palm
+   within 2.2 cm). **A new check, the gun through the figure** (scratch `clip_body.py`: the gun's triangles crossing the figure's,
+   more than 12 cm from both wrists; the gun is hidden before 13, so a count there is the stale hidden gun, not a cut) found the
+   short stock passing through the belt, buckle, trousers, shirt and tie at 13-15 (192 triangle pairs at 14) and through the coat at
+   19, and his family shotgun, in the game, doing the same and more (915 pairs at 13-15). He could not see it from my angles
+   (*"Grava os videos com a parte que atravessa a cintura e cruza o casaco"*, then *"faz os videos com a sua sugestão de correção
+   também"*): videos with the gun painted orange and every figure triangle it cuts painted red, his beside the fix (scratch
+   `clip_video.py`, `assemble_grid.py`; `temp/videos/short_stock_cintura_13_15.mp4`, `short_stock_casaco_19.mp4`,
+   `escopeta_familia_cintura_13_15.mp4`). His reading: where the gun appears inside the shirt is hidden by design and by the camera
+   angle; *"Mas ficou ok, pode instalar a correção em todas as instâncias que precisarem"*. **The fix:** the smallest world offset of
+   the gun that clears the whole figure by 0.6 cm (scratch `offset_search.py`), made by moving the left hand with the gun riding it
+   (the arm two-bone solved by `family_lab._reach`, the turn kept; scratch `fix_draw.py`), keyed at the cutting frames. The short
+   stock: 13 (2.25 cm forward, 1 up, 1 to his left), 14 (2.25 forward), 15 (1 forward), 19 (1 forward, 0.5 to his right), on top of
+   its rebuilt raise; the move from 12 to 13 grows from 15 to 31 mm; installed and read back
+   (`ASSETS/ANIMATIONS/sequences/male/draw_shotgun_short_stock.json`, 12 stops, 13, 14, 15 and 19 passing). **Every long-gun draw
+   surveyed** (13-22): the sawed-offs clean (the male's coat touched by 2 pairs at 15, left); the male bullpup through the waist at
+   13-14 and the coat at 18-19, the female's through the waist at 13 and the coat at 20-21: fixed the same way (male 13: 1 cm
+   forward; 14: 2.5 forward, 0.5 to his right, 1 down; 18: 1.75 forward, 1 to his right; 19: 0.25 forward, 1 to his right; female
+   13: 1.25 forward, 0.5 to her left, 1 up; 20: 1 forward, 1 to her right; 21: 2.75 forward, 1 to her right, 1 up), installed and
+   read back (male 9 stops, female 11). The male's little pause at 17 in Blender now flows on. **The two family shotguns** need more:
+   no offset within 6 cm clears their 13 (or her 15), the stock runs down the thigh; swinging the stock forward about the left palm
+   does (male 13: 30° with 1.5 cm forward and 1 to his left, 14: 20° with 0.5 forward, 15: 15°; female 13: 30°, 14: 20°, 15: 20°,
+   16: 5°; scratch `fix_draw_tilt.py`, built in `temp/h3_family/cutfix/sg_{m,f}_fix.blend`). But seen from the game camera the
+   swung stock then shows below the coat, where his version hides the cut inside it (`temp/videos/escopeta_{masculina,feminina}_correcao.mp4`):
+   shown to him with that advice (leave them as they are), not installed. Left as they are, his poses: the contacts at the hip and the aim (the butt in the shoulder, the
+   cheek on the bullpups' stock, the hat brim on the male bullpup at 31, the male bullpup's stock through the coat as it rises 23-31).
+   Each fix adds passing stops, and the curves' continuous-acceleration smoothing moves the frames around them a little (measured:
+   the gun's travel a frame within a few mm of his). Backups of every replaced file are in `temp/h3_family/`. Next: the shotguns on
+   his word; then her short stock (`in_step` from the fixed male, then `raise`).
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
    **H3 opens with the SHOTGUNS (Director, 2026-11-17).** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra

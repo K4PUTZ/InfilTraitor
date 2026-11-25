@@ -357,3 +357,25 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
 
 1. His short stock once he calls it done -> diff, its raise checked -> read back -> commit; then hers (`in_step`, then `raise`).
 2. Then the snipers, the sci-fi and the launchers; the H3 rows, the engine's long-gun holder, a take per weapon.
+
+## 2026-11-25: the short stock checked; the long-gun draws kept out of the body
+
+- **The Director:** *"Pode conferir"*; *"Grava os videos com a parte que atravessa a cintura e cruza o casaco"*; *"faz os videos com a
+  sua sugestão de correção também"*; then, seeing them: where the gun appears inside the shirt is hidden by design and by the camera
+  angle, *"Mas ficou ok, pode instalar a correção em todas as instâncias que precisarem"*.
+- **His short stock** (22:35, kept as `temp/h3_family/SEQ_draw_shotgun_short_stock_MALE_his_2235.blend`): only the left index at 12
+  and the left hand at 31 changed. Its raise rebuilt like the sawed-off's (`family_lab.py raise ... 23 31 25,27,29 0.03`).
+- **The cut check:** the gun's triangles crossing the figure's away from the hands (scratch `clip_body.py`); videos with the gun
+  orange and the cut triangles red (scratch `clip_video.py`, `assemble_grid.py`; `temp/videos/`).
+- **Fixed by moving the left hand with the gun** by the smallest offset leaving 0.6 cm (scratch `offset_search.py`, `fix_draw.py`),
+  keyed at the cutting frames: the short stock (13, 14, 15, 19) and both bullpups (male 13, 14, 18, 19; female 13, 20, 21),
+  installed and read back; the game set byte-identical; verify (smoke) passed. Backups in `temp/h3_family/` and `temp/h3_family/cutfix/`.
+- **The family shotguns:** offsets cannot clear their 13; swinging the stock forward up to 30° does (`temp/h3_family/cutfix/sg_{m,f}_fix.blend`),
+  but from the game camera the stock then shows below the coat, where his version hides the cut. Shown, not installed.
+- **Left as his poses:** the contacts at the hip and the aim (the butt in the shoulder, the cheek on the bullpups' stock).
+
+### Next
+
+1. The family shotguns: his word on the swung-stock version (recommended: leave them, the cut is hidden there).
+2. Her short stock: `in_step` from the fixed male, then `raise`, then the cut check.
+3. Then the snipers, the sci-fi and the launchers; the H3 rows, the engine's long-gun holder, a take per weapon.

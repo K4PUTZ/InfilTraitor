@@ -379,3 +379,23 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
 1. The family shotguns: his word on the swung-stock version (recommended: leave them, the cut is hidden there).
 2. Her short stock: `in_step` from the fixed male, then `raise`, then the cut check.
 3. Then the snipers, the sci-fi and the launchers; the H3 rows, the engine's long-gun holder, a take per weapon.
+
+## 2026-11-25 (later): the snipers' scene, the eye to the scope
+
+- **The Director:** *"De resto é isso, se não tiver mais nada estranho podemos fechar e seguir para os snipers. [...] Possivelmente vai
+  precisar de um ajuste na cabeça/coluna/pescoço, pra conseguir olhar pela luneta. Tenta encaixar a pegada deles na pose da mira, e já
+  abre a cena com todos, pra gente validar os tamanhos."* The family shotguns stay as they are.
+- **The scene:** `FAMILY_H3_SNIPERS_aim_MALE.blend` (01, 09-12, 16, 17), built 2026-11-23 on his current aim, never saved by him (kept as
+  `temp/h3_family/snipers/FAMILY_H3_SNIPERS_aim_MALE_built_1123.blend`); its grip is the rifles' (trigger guard at the shotgun's).
+- **The scope:** the pack's four carry glass lenses (the scope's axis through their centres, the rear one the eyepiece); the eye sat
+  1.1-1.4 cm under the axis. The two sci-fi snipers have no scope; their housing passes through the face and the hat.
+- **The head:** one turn of the neck (9.1, -2.0, 1.4)° and the head (-17.4, -2.2, 3.3)°, on every sniper Agent but 01 (scratch
+  `sniper_head.py`): the eye at the eyepiece (0.4-0.7 cm under the axis), the look along the barrel; the eye exactly on the axis costs a
+  14° cant and a 7° look (`temp/h3_family/snipers/head_f.blend`). Sheets: `temp/h3_family/snipers/head_side_sheet.png`,
+  `snipers_line_sheet.png`. Installed in the scene and opened for him.
+
+### Next
+
+1. His sizes in the snipers' scene (the two sci-fi first: they pass through the head), then the head fitted again on them.
+2. The read-back, the snipers' body as a grip file, the female's scene from the male's sizes.
+3. Her short stock (`in_step` from the fixed male, then `raise`, then the cut check); then the sci-fi and the launchers.

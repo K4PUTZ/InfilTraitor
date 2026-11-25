@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
+> ⏭️ **2026-11-25 (later) — the SNIPERS' scene: the rifles' grip, the HEAD lifted to the SCOPE, opened for his sizes (Director: *"Tenta encaixar a pegada deles na pose da mira, e já abre a cena com todos, pra gente validar os tamanhos"*):** the family shotguns stay as they are. The pack's four snipers have glass lenses, so the scope's axis is exact; on the family's aim the eye sat 1.1-1.4 cm under it. One turn of the neck (9°) and the head (-17°), the same on every sniper Agent, lifts the eye to the eyepiece with the look along the barrel; the two sci-fi snipers' housings pass through the face and the hat (a size for him). `FAMILY_H3_SNIPERS_aim_MALE.blend`. §11.6 step 2.
 > ⏭️ **2026-11-25 — the SHORT STOCK's raise rebuilt and READ BACK; the long-gun draws' GUN-THROUGH-BODY cuts FIXED (Director: *"Pode conferir"*, *"Grava os videos com a parte que atravessa a cintura e cruza o casaco"*, then *"pode instalar a correção em todas as instâncias que precisarem"*):** a new check (the gun's triangles crossing the figure's, away from the hands) found the long guns passing through the belt, buckle, trousers, shirt and tie at 13-15, where they appear out of the coat (hidden there by design and by the camera, the Director says), and through the coat in the slide. Fixed by moving the left hand with the gun by the smallest offset that leaves 0.6 cm, keyed at the cutting frames: the short stock and both bullpups installed and read back. The two family SHOTGUNS need the stock swung forward too (up to 30° at 13), and from the game camera the stock then shows below the coat where his version hides the cut: built and shown, not installed (advised: leave them). §11.6 step 2.
 > ⏭️ **2026-11-24 (late night) — the FEMALE's SAWED-OFF built IN STEP, its RAISE rebuilt from the gun, posed by the Director and READ BACK (Director: *"Depois da uma conferida na feminina"*, then *"Abre no Blender"* and *"Ajustei e salvei"*):** `family_lab.py in_step` carried his sawed-off onto her shotgun keys (her own hold kept at 23 and 31), but at the raise's breakdowns 25/27/29 it has no departure of hers to carry, so her right hand swung ~20° aside and back; `family_lab.py raise` run after it fixed that (the hand at most 3.5° a frame, the barrel level within 1.4°, both palms on). He then re-posed her draw before the lapel (new keys at 8, right forearm, and 9, left arm; the left forearm at 11 and 12). `ASSETS/ANIMATIONS/sequences/female/draw_shotgun_sawed_off.json` + eleven stops. Then her 13 FIXED on his word (*"Corrige o 13"*, then *"Pode instalar"*): her coat crossed the gun there (from the build; the male is clear); the left hand and the gun moved 1.5 cm to her left (the arm two-bone solved, the turn kept), 0.9 cm clear of the coat; read back again. §11.6 step 2.
 > ⏭️ **2026-11-24 (night, later) — the SAWED-OFF posed by the Director, smoothed and READ BACK; the SHORT STOCK's scene built (Director: *"Ajustei e salvei"*, then *"Pode instalar"*):** he re-posed the left arm at 13 and 16 and the fingers, and kept the aim as built (the gun at the eyes, both hands on it). The shotgun's inherited keys at 18/20 dropped (his bullpup ruling) and the raise rebuilt by `family_lab.py raise` (3 cm bow): the barrel no longer dips 18°, the right hand stays on. `ASSETS/ANIMATIONS/sequences/male/draw_shotgun_sawed_off.json` + nine stops; 11-23 and 31 = his. `SEQ_draw_shotgun_short_stock_MALE.blend` built the same way (`seq 04`, 18/20 dropped) and opened for him. §11.6 step 2.
@@ -1025,6 +1026,28 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    Each fix adds passing stops, and the curves' continuous-acceleration smoothing moves the frames around them a little (measured:
    the gun's travel a frame within a few mm of his). Backups of every replaced file are in `temp/h3_family/`. Next: the shotguns on
    his word; then her short stock (`in_step` from the fixed male, then `raise`).
+   **The snipers' scene: their grip in the aim, the eye to the scope (2026-11-25, later).** *"De resto é isso, se não tiver mais nada
+   estranho podemos fechar e seguir para os snipers. Acredito que a empunhadura vai ser muito parecida com a dos rifles.
+   Possivelmente vai precisar de um ajuste na cabeça/coluna/pescoço, pra conseguir olhar pela luneta. Tenta encaixar a pegada deles
+   na pose da mira, e já abre a cena com todos, pra gente validar os tamanhos."* The family shotguns stay as they are (the item closed
+   with that). The snipers' scene, `FAMILY_H3_SNIPERS_aim_MALE.blend` (01, 09-12, 16, 17), was built on 2026-11-23 on his current
+   aim and never saved by him (kept as `temp/h3_family/snipers/FAMILY_H3_SNIPERS_aim_MALE_built_1123.blend`): its grip is already
+   the rifles' (each trigger guard at the right index where the shotgun's is, the gun riding the left hand; the pack's four at x1.0
+   of the reference's units, the two sci-fi at 1.1 of its length). Measured (scratch `scope_probe.py`): the pack's four carry GLASS
+   lenses, so the scope's axis runs through the two lens centres and the rear one is the eyepiece. On the family's aim the right eye
+   (the long aim's rule: the nose's tip plus `LONG_EYE_FROM_NOSE`, carried by the Head bone) sat 1.1-1.4 cm under the axis, 0.6-1.2
+   to its left, 2.7-2.8 behind the eyepiece (11: 5.9, its scope sits forward). The two sci-fi snipers have no scope and their housing
+   rises 2.5 and 3.5 cm above the eye, through the face and the hat (129 / 234 and 240 / 356 triangle pairs): a size or place for him.
+   **The head** (scratch `sniper_head.py`): ONE turn of the Neck and the Head, the same on every sniper Agent (01 keeps the family's),
+   fitted by Nelder-Mead to bring the eye onto the four scopes' mean axis at its distance behind the eyepiece, the head's look kept:
+   the neck (9.1, -2.0, 1.4)°, the head (-17.4, -2.2, 3.3)° (local XYZ), so the head lifts and still looks along the barrel (1.3°
+   off); the eye 0.4-0.7 cm under the axis, inside the eyepiece; the cheek on the stock (36-57 triangle pairs of the head against the
+   gun). The eye exactly on the axis takes the head canted about 14° and the look 7° off: shown as the other choice
+   (`temp/h3_family/snipers/head_f.blend`). No spine: the arms ride it, so a spine turn carries the gun with the head and changes
+   nothing between the eye and the scope. The butts against the right shoulder joint: from 2.1 cm past it (17) to 7.3 (09, 12), the
+   shotgun's 7.8. Close-ups: `temp/h3_family/snipers/head_side_sheet.png`. The scene installed with that head and opened for him.
+   Next: his sizes; the head fitted again on them; the read-back; the snipers' body kept as a grip file (`family_lab.py grip`); the
+   female's scene from the male's sizes.
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
    **H3 opens with the SHOTGUNS (Director, 2026-11-17).** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra

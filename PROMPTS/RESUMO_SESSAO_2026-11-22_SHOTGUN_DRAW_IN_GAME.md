@@ -343,8 +343,11 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
   both palms on). GIF: `temp/h3_family/sawed/sawed_off_male_female_24fps.gif`.
 - **His save:** new keys at 8 (right forearm) and 9 (left arm and forearm), the left forearm at 11 and 12; 13 on untouched. Smooth
   into the lapel; out of 12 the left palm moves 42 mm in one frame (30 on the male) as the gun appears.
-- **Open:** at 13 her coat crosses the middle of the gun (41 triangle pairs away from the hands; from the build, the male clear).
-  Sheet: `temp/h3_family/sawed/f13_closeup_sheet.png`. Asked whether to fix it.
+- **Her 13 fixed** (*"Corrige o 13"*, *"Pode instalar"*): at 13 her coat crossed the middle of the gun (41 triangle pairs away from
+  the hands; from the build, the male clear). The left hand and the gun moved 1.5 cm to her left there (the arm solved, the turn
+  kept), in a new file first (`temp/h3_family/sawed/f13fix/`): 0.9 cm clear of the coat and the buckle, nothing touching from 11 to
+  31. The curves' continuous-acceleration smoothing carried the change back to the unkeyed left hand at 8-9 (about 2°). Images:
+  `temp/h3_family/sawed/f13_fix_zoom.png`, `f13_fix_12fps.gif`.
 - **Read back as he saved it:** `ASSETS/ANIMATIONS/sequences/female/draw_shotgun_sawed_off.json` + eleven stop poses (his new 8 and 9
   are passing stops); the game set byte-identical; verify (smoke) passed.
 - **The short stock:** his save at 22:35 (kept as `temp/h3_family/SEQ_draw_shotgun_short_stock_MALE_his_2235.blend`), not yet called
@@ -352,6 +355,5 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
 
 ### Next
 
-1. The coat at her 13, if he wants it fixed (a new file, shown, read back again).
-2. His short stock once he calls it done -> diff, its raise checked -> read back -> commit; then hers (`in_step`, then `raise`).
-3. Then the snipers, the sci-fi and the launchers; the H3 rows, the engine's long-gun holder, a take per weapon.
+1. His short stock once he calls it done -> diff, its raise checked -> read back -> commit; then hers (`in_step`, then `raise`).
+2. Then the snipers, the sci-fi and the launchers; the H3 rows, the engine's long-gun holder, a take per weapon.

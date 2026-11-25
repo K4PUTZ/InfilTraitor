@@ -310,3 +310,25 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
 1. The sawed-off opened for his aim (arms forward, at the eyes) and maybe the hip -> read back; the short stock on its scheme; the
    females of both by `in_step` (then `raise` if their raise needs it).
 2. Then the snipers, the sci-fi and the launchers; the H3 rows, the engine's long-gun holder, a take per weapon.
+
+## 2026-11-24 (night, later): the sawed-off posed by him, smoothed, read back; the short stock's scene
+
+- **The Director:** *"Em seguida vamos pra cena da shotgun de cano curto"*; *"Ajustei e salvei"* (20:46, kept as
+  `temp/h3_family/SEQ_draw_shotgun_sawed_off_MALE_his_2046.blend`): left arm and hand at 13 and 16, fingers at 12, 23, 31. He kept the
+  aim as built (the gun at the eyes, both hands on it).
+- **Measured:** the shotgun's keys inherited at 18/20 crowded the turn to the hip into 20-23 (30° a frame); in the raise the barrel
+  dipped 18° and the right palm hung 4.9 cm off.
+- **Fixed in a new file, shown side by side, installed** (*"Pode instalar"*): 18/20 dropped (as he chose for the bullpup), the raise
+  by `family_lab.py raise ... 23 31 25,27,29 0.03`: barrel level, both hands on, the motion all but stopping at the hip as in the game.
+  GIFs: `temp/h3_family/sawed/sawed_off_smooth_{24,8}fps.gif`.
+- **Read back:** `ASSETS/ANIMATIONS/sequences/male/draw_shotgun_sawed_off.json` + nine stop poses; his stops equal his save's read-back;
+  the game set byte-identical.
+- **The short stock** (*"a outra shotgun segue o mesmo esquema"*): `SEQ_draw_shotgun_short_stock_MALE.blend` by `family_lab.py seq ...
+  04 ...`, 18/20 dropped at once; both palms on it at 23 and 31; it cuts the belt, trousers and tie at 13-15 (the draw from under the
+  coat). Opened for him (built copy `temp/h3_family/SEQ_draw_shotgun_short_stock_MALE_built.blend`); into git with its read-back.
+
+### Next
+
+1. His short stock save -> diff, its raise checked (`raise` if needed) -> `pose_lab.py sequence draw_shotgun_short_stock` -> commit.
+2. The females of the sawed-off and the short stock (`in_step`, then `raise` if needed).
+3. Then the snipers, the sci-fi and the launchers; the H3 rows, the engine's long-gun holder, a take per weapon.

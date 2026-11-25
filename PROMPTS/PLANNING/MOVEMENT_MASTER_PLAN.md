@@ -1,6 +1,7 @@
 # MOVEMENT_MASTER_PLAN
 ## How the characters move: the animation bank, the map of what the game needs, and the path from a Tripo clip to a move on the grid — v1.5
 
+> ⏭️ **2026-11-24 (night, later) — the SAWED-OFF posed by the Director, smoothed and READ BACK; the SHORT STOCK's scene built (Director: *"Ajustei e salvei"*, then *"Pode instalar"*):** he re-posed the left arm at 13 and 16 and the fingers, and kept the aim as built (the gun at the eyes, both hands on it). The shotgun's inherited keys at 18/20 dropped (his bullpup ruling) and the raise rebuilt by `family_lab.py raise` (3 cm bow): the barrel no longer dips 18°, the right hand stays on. `ASSETS/ANIMATIONS/sequences/male/draw_shotgun_sawed_off.json` + nine stops; 11-23 and 31 = his. `SEQ_draw_shotgun_short_stock_MALE.blend` built the same way (`seq 04`, 18/20 dropped) and opened for him. §11.6 step 2.
 > ⏭️ **2026-11-24 (night) — the FEMALE's BULLPUP posed by the Director, its RAISE SMOOTHED and READ BACK (Director: *"Ajustei o saque e a mira feminina, mas o movimento nos últimos frames está meio duro. Da uma conferida e veja se consegue suavizar. As poses estão corretas"*, then *"Pode instalar"*):** his breakdown at 27 took the gun out of her body by turning it ~50° aside, so it whipped back in the last three frames (through the hat and head at 30) while the right hand hung off the grip. `family_lab.py raise` rebuilds a raise FROM THE GUN between two stops he keeps: the muzzle on the target, an arc bowed 6 cm forward on a smoothstep, both hands solved onto it at 25, 27 and 29, the slide re-keyed. A leftover of the deleted stop 11 (right forearm and hand) snapped the right hand 36° in one frame; removed. `ASSETS/ANIMATIONS/sequences/female/draw_bullpup.json` + nine stops; 12, 13, 16, 23, 31 = his. §11.6 step 2.
 > ⏭️ **2026-11-24 (evening) — the FEMALE's BULLPUP built IN STEP, and the two STOCKLESS SHOTGUNS brought forward from the polish (Director: *"Vamos começar primeiro fazendo a versão feminina. E depois eu queria abrir as duas shotguns de cano curto que a gente adiou ontem para a fase de polimento, e fazer agora. É pouca coisa"*):** `family_lab.py in_step` puts his CHANGE from his family timeline to his model timeline on HER family timeline (her hip and aim by his hand kept, her right hand's own departure on the grip kept; with no change her file comes back key for key) -> `SEQ_draw_bullpup_FEMALE.blend`, the bullpup in her hand exactly at his place. The sawed-off's own timeline is built (`SEQ_draw_shotgun_sawed_off_MALE.blend`, `family_lab.py seq`; both hands on it at the hip and the aim) for him to pose its aim (arms forward, at the eyes); the short stock follows its scheme. §11.6 step 2.
 > ⏭️ **2026-11-24 (afternoon) — the BULLPUP's DRAW posed by the Director and READ BACK (Director: *"Ajustei e salvei"*, then *"A 3, sem 18/20"*):** his save moved the left hand's hold at 12, 13 and 16 (the hand on another part of the grip, the bullpup still upright at 16). The slide 17-22 was re-baked from his 16: a baked slide is DERIVED from the two stops beside it, so moving the gun at one of them leaves a jump until it is re-baked (here 87° in the hand at 17). By his choice, the left arm's keys at 18 and 20 (the shotgun's, inherited) are gone, so the ~90° turn to the hip spreads over 16-23 instead of two frames. `ASSETS/ANIMATIONS/sequences/male/draw_bullpup.json` + six stop poses; played only at POLISH-01. §11.6 step 2.
@@ -939,6 +940,27 @@ Each step lands on both figures before the next; a step with a look ends in a ca
    samples differ only at 24-30, the gun; the game set rebuilt byte-identical. A breakdown is a PASSING stop: when the game plays a
    model's own timeline (POLISH-01), `ActorAimPose3D`'s smoothstep over 23-31 eases the spacing these breakdowns already carry a
    second time. Next: the sawed-off opened for his aim (and hip), read back; the short stock on its scheme; the females of both.
+   **The sawed-off, his, smoothed; the short stock's scene (2026-11-24, night, later).** *"Em seguida vamos pra cena da shotgun de
+   cano curto"*, then *"Ajustei e salvei"* (20:46, kept as `temp/h3_family/SEQ_draw_shotgun_sawed_off_MALE_his_2046.blend`): the left
+   arm and hand at 13 and 16, the left hand's fingers at 12, 23 and 31, the right index at 23; the gun untouched. The aim stays as
+   built: the family's aim body with the stockless gun in its hand puts the pistol grip in front of the face, the gun at the eyes,
+   both hands on it (left palm 0.9 cm, right 1.3); he kept it. Measured: the shotgun's keys inherited at 18 (left arm, forearm,
+   hand) and 20 (forearm) held the gun upright to 19 and crowded the turn to the hip into 20-23 (the hand at 30° a frame, still 22°
+   at 23); in the raise the barrel dipped 18° (26) and the right palm hung up to 4.9 cm off. Fixed in a new file, shown side by side
+   and installed on his word (*"Pode instalar"*): 18 and 20 dropped (his bullpup ruling, *"sem 18/20"*), the turn now 13-23° a frame
+   across 17-23, slowing into the hip; the raise by `family_lab.py raise <his save, 18/20 dropped> <out> 23 31 25,27,29 0.03` (3 cm
+   bow: nothing touches the coat here; 0 cm reads the same), the barrel level within 1.5°, the gun turning at most 1.7° a frame,
+   both palms on it (right 1.1-1.5 cm). In his file the motion ran through the hip; now it all but stops there, as the game does (the
+   hip shot is a resting stop, the aim one more step). Read back: `ASSETS/ANIMATIONS/sequences/male/draw_shotgun_sawed_off.json` +
+   nine stop poses (11, 13, 16 passing, 12 rests, 23 rests, 25-29 passing, 31 rests); 11, 12, 13, 16, 23 and 31 equal his save's
+   read-back to 2.4·10⁻⁷; the gun's samples are unchanged (it does not move in the hand from 23 to 31); the game set rebuilt
+   byte-identical. The SHORT STOCK, *"a outra shotgun segue o mesmo esquema"*: `family_lab.py seq <his shotgun timeline> 04
+   SEQ_draw_shotgun_short_stock_MALE.blend hip=<the temp hip line> aim=FAMILY_H3_SHOTGUNS_aim_MALE.blend`, the shotgun's 18 and 20
+   dropped at once (two rulings now): 0.380 long, the hand slides 121 mm from 16 to 23 and none after; both palms on it at the hip
+   (0.6 / 1.3 cm) and the aim (0.6 / 2.1); away from the hands the gun cuts the belt, buckle, trousers, shirt and tie at 13-15 (the
+   draw from under the coat, held at its tip: up to 192 triangle pairs a frame). Opened for him; the file goes into git with its
+   read-back, once he has posed it. Next:
+   his short stock -> its raise checked (`raise` if it needs it) -> read back; then the females of both (`in_step`).
 3. **The poses per family, standing:** one timeline per family on its reference weapon (H3: the shotgun or the rifle; H2: the
    submachine gun): draw, hold, aim, and the way back. Then the family's other weapons by their points, checked by eye.
    **H3 opens with the SHOTGUNS (Director, 2026-11-17).** *"Vamos ter o tiro do hip, e o tiro mirando. Tiro do hip é rápido e erra

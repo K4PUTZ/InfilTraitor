@@ -1255,7 +1255,8 @@ themselves; what sound does in play is M6.0, the music is SOUNDTRACK. Visual and
   `SEQ_draw_bullpup_FEMALE.blend`), posed by him, its raise smoothed (`family_lab.py raise`) and read back into
   `ASSETS/ANIMATIONS/sequences/female/draw_bullpup.json`; the game plays the family's draw until this item. The two stockless shotguns (the sawed-off,
   the short stock) were brought forward from here the same day (Director: *"É pouca coisa, e acho que não vale a pena ficar
-  adiando"*): each gets its own timeline now (`SEQ_draw_shotgun_sawed_off_MALE.blend` first). Playing a model's own timeline in the
+  adiando"*): each gets its own timeline now (the sawed-off's posed by him, smoothed and read back into
+  `ASSETS/ANIMATIONS/sequences/male/draw_shotgun_sawed_off.json`; the short stock's built for him). Playing a model's own timeline in the
   game (and the H3 rows that make these two weapons) is still unbuilt; it stays this item's unless the Director moves it. When it is
   built: a breakdown inside a span (the female's bullpup has three, 25, 27 and 29, between the hip and the aim) reads back as a
   PASSING stop that already carries the timeline's easing, and `ActorAimPose3D` eases the span with its own smoothstep on top, so it

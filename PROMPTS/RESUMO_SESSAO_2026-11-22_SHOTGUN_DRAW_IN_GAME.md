@@ -332,3 +332,26 @@ Items 1 and 2 of the list above are done. The plan's record is `MOVEMENT_MASTER_
 1. His short stock save -> diff, its raise checked (`raise` if needed) -> `pose_lab.py sequence draw_shotgun_short_stock` -> commit.
 2. The females of the sawed-off and the short stock (`in_step`, then `raise` if needed).
 3. Then the snipers, the sci-fi and the launchers; the H3 rows, the engine's long-gun holder, a take per weapon.
+
+## 2026-11-24 (late night): the female's sawed-off in step, smoothed, posed by him, read back
+
+- **The Director:** *"Depois da uma conferida na feminina"*; *"Abre no Blender"*; *"Ajustei e salvei"* (22:40, kept as
+  `temp/h3_family/SEQ_draw_shotgun_sawed_off_FEMALE_his_2240.blend`).
+- **Built:** `family_lab.py in_step` (his shotgun, his sawed-off, her shotgun): her own hold kept at 23 and 31. At the raise's
+  breakdowns (25, 27, 29) `in_step` has no departure of hers to carry, so her right hand swung ~20° aside and back;
+  `family_lab.py raise ... 23 31 25,27,29 0.03` run after it fixed that (the hand at most 3.5° a frame, the barrel level within 1.4°,
+  both palms on). GIF: `temp/h3_family/sawed/sawed_off_male_female_24fps.gif`.
+- **His save:** new keys at 8 (right forearm) and 9 (left arm and forearm), the left forearm at 11 and 12; 13 on untouched. Smooth
+  into the lapel; out of 12 the left palm moves 42 mm in one frame (30 on the male) as the gun appears.
+- **Open:** at 13 her coat crosses the middle of the gun (41 triangle pairs away from the hands; from the build, the male clear).
+  Sheet: `temp/h3_family/sawed/f13_closeup_sheet.png`. Asked whether to fix it.
+- **Read back as he saved it:** `ASSETS/ANIMATIONS/sequences/female/draw_shotgun_sawed_off.json` + eleven stop poses (his new 8 and 9
+  are passing stops); the game set byte-identical; verify (smoke) passed.
+- **The short stock:** his save at 22:35 (kept as `temp/h3_family/SEQ_draw_shotgun_short_stock_MALE_his_2235.blend`), not yet called
+  done, not read.
+
+### Next
+
+1. The coat at her 13, if he wants it fixed (a new file, shown, read back again).
+2. His short stock once he calls it done -> diff, its raise checked -> read back -> commit; then hers (`in_step`, then `raise`).
+3. Then the snipers, the sci-fi and the launchers; the H3 rows, the engine's long-gun holder, a take per weapon.

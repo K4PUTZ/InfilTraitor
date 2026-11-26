@@ -133,7 +133,10 @@ FAMILIES = {
         "models": [
             ("Shotgun-ZmPTnh7njL", os.path.join(PACK, "Shotgun-ZmPTnh7njL.glb"), "pack", [["Z", 0]], (0.4929, -0.2047)),
             ("Shotgun Sawed Off", os.path.join(PACK, "Shotgun Sawed Off.glb"), "pack", [["Z", 0]], (0.5365, -0.0471)),
-            ("Shotgun Short Stock", os.path.join(PACK, "Shotgun Short Stock.glb"), "pack", [["Z", 0]], (0.7765, -0.0224)),
+            # the game's copy, not the pack's: its ejection port is closed (2026-11-26, `glb_close_opening.py`), and `family_rows.py --h3`
+            # copies this source over ASSETS/props/shotgun_short_stock/ (the same file now, so the copy is skipped and the floor stays)
+            ("Shotgun Short Stock", os.path.join(ROOT, "ASSETS", "props", "shotgun_short_stock", "shotgun_short_stock.glb"), "pack", [["Z", 0]],
+             (0.7765, -0.0224)),
             ("Assault Rifle", os.path.join(PACK, "Assault Rifle.glb"), "pack", [["Z", 0]], (0.4553, 0.2565)),
             ("Assault Rifle-Bgvuu4CUMV", os.path.join(PACK, "Assault Rifle-Bgvuu4CUMV.glb"), "pack", [["Z", 0]], (0.4694, 0.2624)),
             ("Assault Rifle-fpLucho45C", os.path.join(PACK, "Assault Rifle-fpLucho45C.glb"), "pack", [["Z", 0]], (0.4659, 0.2612)),

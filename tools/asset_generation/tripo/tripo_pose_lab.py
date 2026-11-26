@@ -36,8 +36,9 @@ PROP_GLB = {"pistol": os.path.join(ROOT, "ASSETS", "props", "pistol_quaternius",
             # the two stockless shotguns, each with a draw of its own (2026-11-24, the Director: "abrir as duas shotguns de cano curto ... e fazer agora")
             "shotgun_sawed_off": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_ultimate_guns_pack", "extracted",
                                               "Shotgun Sawed Off.glb"),
-            "shotgun_short_stock": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_ultimate_guns_pack", "extracted",
-                                                "Shotgun Short Stock.glb"),
+            # the game's model (2026-11-26): the pack's `Shotgun Short Stock.glb` with its ejection port closed by a black floor
+            # (`glb_close_opening.py`; the Director: "poe o fundo preto na janela e pode instalar")
+            "shotgun_short_stock": os.path.join(ROOT, "ASSETS", "props", "shotgun_short_stock", "shotgun_short_stock.glb"),
             # the sci-fi sniper, a grip of its own (2026-11-25, the Director: "montar a cena completa só da 17 com draw, hip e aim")
             "scifi_sniper_vu7qizyae0": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "items_polypizza", "scifi",
                                                     "Scifi_Sniper-VU7QiZYae0.glb"),

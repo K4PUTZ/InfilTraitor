@@ -952,6 +952,16 @@ handset. Still decoration in D21's sense: the resolved impact decides where they
 burns with its own glow only (no light on the board); the sci-fi pistols and the ray gun fire an energy bolt (no case, no powder
 smoke).
 
+### ⚠️ Third note (Director, 2026-11-26): the actions worked by hand after a shot
+
+Found on renders of the 21 long guns (`MOVEMENT` §11.6, top block of 2026-11-26), with the Director's rulings: the short stock (in
+the game) and the pack's `Shotgun-ZmPTnh7njL` (no row yet) are PUMP guns, so their recoil will rack the fore-end with the support hand
+and throw the shell out of the ejection port (the row's `fx.case` is false today); the pack's four snipers (09-12) work a BOLT with
+the right hand, animated later (*"Deixa pra depois a animação do ferrolho das snipers"*). The certified shotgun is a COMMON shotgun,
+its wooden fore-end held by a ring (*"Acho que é uma shotgun comum"*): nothing per shot; the sawed-off breaks open. What it asks of
+the models: the moving piece as a node of its own (the pump, the bolt handle), so the game can slide it with the hand; on the
+certified shotgun's model the wood already touches the receiver, so it could not rack back as modelled.
+
 ### The parts, in dependency order
 
 **Part A — the shot leaves an ACTOR.** Give the shot an origin that is the

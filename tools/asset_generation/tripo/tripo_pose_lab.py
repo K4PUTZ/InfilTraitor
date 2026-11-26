@@ -40,7 +40,9 @@ PROP_GLB = {"pistol": os.path.join(ROOT, "ASSETS", "props", "pistol_quaternius",
                                                 "Shotgun Short Stock.glb"),
             # the sci-fi sniper, a grip of its own (2026-11-25, the Director: "montar a cena completa só da 17 com draw, hip e aim")
             "scifi_sniper_vu7qizyae0": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "items_polypizza", "scifi",
-                                                    "Scifi_Sniper-VU7QiZYae0.glb")}
+                                                    "Scifi_Sniper-VU7QiZYae0.glb"),
+            "scifi_sniper_46615jyfm7": os.path.join(ROOT, "ASSETS", "props", "scifi_sniper_46615jyfm7",   # the pack model joined into one mesh
+                                                    "scifi_sniper_46615jyfm7.glb")}
 PREFIX = "mixamorig:"                       # the Blender importer keeps Tripo's colon; Godot turns it into an underscore
 HIDE = ("Outfit_Shirt", "Outfit_Trousers", "Outfit_Belt", "Body_Hair", "Icosphere")   # the pieces the game's DRESSED set hides (`TripoFigure.UNDRESSED_PIECES`)
 EPS_CHANGED = 1e-3                          # a bone the Director moved: its local rotation differs from the base by more than this (quaternion distance)
@@ -863,7 +865,7 @@ LONG_COAT_KEY = "LongDrawFix"
 LONG_SUPPORT_FWD_DEG = 20.0
 LONG_SUPPORT_CURL_DEG = (45.0, 80.0, 50.0)    # each finger's three joints (knuckle, middle, tip)
 LONG_PALM_DEPTH = 0.008                       # from the hand's bone line to the palm's skin
-LONG_GUN_SEQUENCES = ("draw_shotgun", "draw_bullpup", "draw_shotgun_sawed_off", "draw_shotgun_short_stock", "draw_scifi_sniper_vu7qizyae0")   # the long guns' draw timelines: their read-back keeps the fingers (`sequence`); the bullpup's
+LONG_GUN_SEQUENCES = ("draw_shotgun", "draw_bullpup", "draw_shotgun_sawed_off", "draw_shotgun_short_stock", "draw_scifi_sniper_vu7qizyae0", "draw_scifi_sniper_46615jyfm7")   # the long guns' draw timelines: their read-back keeps the fingers (`sequence`); the bullpup's
                                                          # is its own (2026-11-24, `family_lab.py seq`)
 
 

@@ -1,0 +1,67 @@
+{
+  "id": "bullpup",
+  "delivery": "LINE",
+  "step_multipliers": [
+    1.0,
+    0.75,
+    0.8,
+    0.7,
+    0.55,
+    0.4,
+    0.25
+  ],
+  "destroy_multiplier": 0.45,
+  "punch": 0.5,
+  "gameplay": {
+    "class": "firearm",
+    "range_band": "medium_long"
+  },
+  "tags": [
+    "firearm",
+    "rifle",
+    "automatic",
+    "assault_rifle"
+  ],
+  "blowout": 0.65,
+  "soot_radius": 3,
+  "held_as": "shotgun",
+  "model": {
+    "path": "res://ASSETS/props/bullpup/bullpup.glb",
+    "surface_materials": {
+      "Metal": "steel_dark",
+      "Black": "rubber",
+      "Black2": "rubber",
+      "LightMetal": "metal",
+      "DarkMetal": "steel_dark",
+      "Wood": "wood",
+      "DarkWood": "wood",
+      "Grey": "painted_metal"
+    },
+    "draw": "draw_bullpup",
+    "held_like": {
+      "weapon": "shotgun",
+      "figures": {
+        "male": {
+          "scale": 0.74756,
+          "pos": [
+            0.38527,
+            -0.44242,
+            -0.21383
+          ],
+          "quat": [
+            0.16975,
+            0.00924,
+            0.00155,
+            0.98544
+          ]
+        }
+      }
+    },
+    "size_certified": "2026-11-26",
+    "muzzle": [
+      2.6406,
+      0.814,
+      -0.0005
+    ]
+  }
+}

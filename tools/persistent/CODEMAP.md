@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**359 scripts · 103937 lines total** (under `godot/scripts/`)
+**359 scripts · 103975 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -402,7 +402,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 1468 lines
+`class_name ActorMesh3D` · extends `Node3D` · 1496 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -1532,7 +1532,7 @@ extends `Node3D` · 3579 lines
 
 ### `tripo_figure.gd`
 
-`class_name TripoFigure` · extends `RefCounted` · 680 lines
+`class_name TripoFigure` · extends `RefCounted` · 686 lines
 
 `godot/scripts/geometry/tripo_figure.gd`
 
@@ -3129,7 +3129,7 @@ extends `RefCounted` · 63 lines
 
 ### `weapon_def.gd`
 
-`class_name WeaponDef` · 241 lines
+`class_name WeaponDef` · 245 lines
 
 `godot/scripts/systems/destruction/weapon_def.gd`
 
@@ -3156,6 +3156,7 @@ extends `RefCounted` · 63 lines
 - `var muzzle: Vector3 = Vector3.INF`
 - `var held_as: String = "shotgun"`
 - `var held_like: String = ""`
+- `var draw: String = ""`
 - `var held_rel_figures: Dictionary = {}`
 
 ---

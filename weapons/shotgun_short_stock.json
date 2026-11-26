@@ -1,0 +1,68 @@
+{
+  "id": "shotgun_short_stock",
+  "delivery": "CONE",
+  "step_multipliers": [
+    1.0,
+    0.85,
+    0.6,
+    0.35,
+    0.15
+  ],
+  "cone_half_angle_deg": 6.0,
+  "destroy_multiplier": 0.6,
+  "punch": 0.24,
+  "projectile_count": 24,
+  "gameplay": {
+    "class": "firearm",
+    "range_band": "short"
+  },
+  "tags": [
+    "firearm",
+    "shotgun"
+  ],
+  "blowout": 0.0,
+  "soot_radius": 2,
+  "held_as": "shotgun",
+  "model": {
+    "path": "res://ASSETS/props/shotgun_short_stock/shotgun_short_stock.glb",
+    "surface_materials": {
+      "Metal": "steel_dark",
+      "Black": "rubber",
+      "Black2": "rubber",
+      "LightMetal": "metal",
+      "DarkMetal": "steel_dark",
+      "Wood": "wood",
+      "DarkWood": "wood",
+      "Grey": "painted_metal"
+    },
+    "draw": "draw_shotgun_short_stock",
+    "held_like": {
+      "weapon": "shotgun",
+      "figures": {
+        "male": {
+          "scale": 1.0,
+          "pos": [
+            -0.2871,
+            -0.1929,
+            0.0
+          ],
+          "quat": [
+            0.0,
+            -0.0,
+            -0.0,
+            1.0
+          ]
+        }
+      }
+    },
+    "size_certified": "2026-11-26",
+    "muzzle": [
+      4.0028,
+      0.3658,
+      0.0006
+    ]
+  },
+  "fx": {
+    "case": false
+  }
+}

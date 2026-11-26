@@ -1,0 +1,81 @@
+{
+  "id": "scifi_sniper_46615jyfm7",
+  "delivery": "LINE",
+  "step_multipliers": [
+    1.0,
+    0.95,
+    0.9,
+    0.85,
+    0.8,
+    0.7,
+    0.6,
+    0.5,
+    0.4,
+    0.3
+  ],
+  "destroy_multiplier": 0.7,
+  "punch": 0.7,
+  "projectile_count": 1,
+  "gameplay": {
+    "class": "firearm",
+    "range_band": "long"
+  },
+  "tags": [
+    "firearm",
+    "rifle",
+    "sniper",
+    "sniper_rifle",
+    "scifi"
+  ],
+  "soot_radius": 4,
+  "held_as": "shotgun",
+  "model": {
+    "path": "res://ASSETS/props/scifi_sniper_46615jyfm7/scifi_sniper_46615jyfm7.glb",
+    "surface_materials": {
+      "White": "plastic",
+      "Black": "rubber",
+      "Grey": "painted_metal",
+      "Main": "painted_metal"
+    },
+    "draw": "draw_scifi_sniper_46615jyfm7",
+    "held_like": {
+      "weapon": "shotgun",
+      "figures": {
+        "male": {
+          "scale": 2.57253,
+          "pos": [
+            0.26585,
+            -0.34958,
+            0.0
+          ],
+          "quat": [
+            0.0,
+            -0.0,
+            -0.0,
+            1.0
+          ]
+        },
+        "female": {
+          "scale": 2.57253,
+          "pos": [
+            0.26585,
+            -0.34958,
+            0.0
+          ],
+          "quat": [
+            -0.0,
+            -0.0,
+            0.0,
+            1.0
+          ]
+        }
+      }
+    },
+    "size_certified": "2026-11-26",
+    "muzzle": [
+      1.4992,
+      0.1812,
+      0.0001
+    ]
+  }
+}

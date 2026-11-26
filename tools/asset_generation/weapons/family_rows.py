@@ -14,6 +14,8 @@ copied into `ASSETS/props/<id>/<id>.glb` (the game's import tree; the sources ma
 
   python3 tools/asset_generation/weapons/family_rows.py <male readback .json> [--female <female readback .json>] [--dry]
   python3 tools/asset_generation/weapons/family_rows.py <male readback .json> --attachments [--dry]     -> attachments/<id>.json
+  python3 tools/asset_generation/weapons/family_rows.py --h3 <male readbacks...> [--female <female readbacks...>] [--dry]
+      -> the long guns with a draw of their own (`H3_OWN`): rows held as the shotgun, `model.draw` = their timeline
 
 `held_like.figures` names each figure's grip explicitly (Director, 2026-11-17): the male's read-back, and the female's with
 `--female`; a figure left out is warned at load (`WeaponDef`), never filled from the other.
@@ -113,7 +115,7 @@ def main():
             f.write("\n")
 
 
-if __name__ == "__main__" and "--attachments" not in sys.argv:
+if __name__ == "__main__" and "--attachments" not in sys.argv and "--h3" not in sys.argv:
     main()
 
 
@@ -164,3 +166,63 @@ def write_attachments(rb, dry):
 
 if __name__ == "__main__" and "--attachments" in sys.argv:
     write_attachments(json.load(open([x for x in sys.argv[1:] if not x.startswith("--")][0])), "--dry" in sys.argv)
+
+
+# ---- H3, the long guns with a draw of their OWN (Director, 2026-11-26: "vamos ja instalar todas as pegadas próprias que estiverem prontas, o polish
+# vai ser só pra o que ainda não foi feito"; the numbers copied from the family's row: "Sim, copia da família") ----------------------------------
+# lab name -> (row id = the model id of its timeline `draw_<id>`, template row, extra tags, surface materials). Held as the shotgun (one body);
+# `model.draw` names the row's own timeline, played on every figure that has it (`ActorMesh3D`), the family's with `held_like` on one that does not.
+H3_OWN = {
+    "03 Shotgun Sawed Off": ("shotgun_sawed_off", "shotgun", [], PACK),
+    "04 Shotgun Short Stock": ("shotgun_short_stock", "shotgun", [], PACK),
+    "08 Bullpup": ("bullpup", "assault_rifle", [], PACK),
+    "16 Scifi_Sniper-46615JyFm7": ("scifi_sniper_46615jyfm7", "sniper_rifle", ["scifi"], SCIFI),
+    "17 Scifi_Sniper-VU7QiZYae0": ("scifi_sniper_vu7qizyae0", "sniper_rifle", ["scifi"], SCIFI),
+}
+
+
+def write_h3_own(male_rbs, female_rbs, dry):
+    """`--h3 <male readback> [...] [--female <female readback> ...]`: one row per H3_OWN model found in the read-backs."""
+    fem = {}
+    for f in female_rbs:
+        fem.update(json.load(open(f))["models"])
+    today = datetime.date.today().isoformat()
+    for rbp in male_rbs:
+        for lab, r in json.load(open(rbp))["models"].items():
+            if lab not in H3_OWN:
+                continue
+            wid, tmpl, tags, surf = H3_OWN[lab]
+            path = os.path.join(WEAPONS, wid + ".json")
+            if os.path.exists(path):
+                row = json.load(open(path))
+            else:
+                row = json.load(open(os.path.join(WEAPONS, tmpl + ".json")))
+                row["id"] = wid
+                row["tags"] = [t for t in row.get("tags", []) if t != tmpl] + [tmpl] + tags
+            dst_rel = f"ASSETS/props/{wid}/{wid}.glb"
+            row["held_as"] = "shotgun"
+            row["model"] = {
+                "path": "res://" + dst_rel,
+                "surface_materials": surf,
+                "draw": "draw_" + wid,
+                "held_like": held_like("shotgun", r, fem.get(lab)),
+                "size_certified": today,
+                "muzzle": r["muzzle_proposed"],
+            }
+            print(f"[family_rows] {wid:24s} <- {lab:28s} ({tmpl}) draw_{wid}  figures {sorted(row['model']['held_like']['figures'])}")
+            if dry:
+                continue
+            src, dst = os.path.join(ROOT, r["source"]), os.path.join(ROOT, dst_rel)
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            if os.path.abspath(src) != os.path.abspath(dst):
+                shutil.copyfile(src, dst)
+            with open(path, "w") as f:
+                json.dump(row, f, indent=2)
+                f.write("\n")
+
+
+if __name__ == "__main__" and "--h3" in sys.argv:
+    _a = sys.argv[sys.argv.index("--h3") + 1:]
+    _m = [x for x in (_a[:_a.index("--female")] if "--female" in _a else _a) if not x.startswith("--")]
+    _f = [x for x in _a[_a.index("--female") + 1:] if not x.startswith("--")] if "--female" in _a else []
+    write_h3_own(_m, _f, "--dry" in sys.argv)

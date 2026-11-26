@@ -108,6 +108,9 @@ var held_as: String = "shotgun"
 ## figure's lab file by `family_lab.py readback`, so the reference's placement at every stop of the family's timeline places this
 ## model by one product. No figure inherits another's: a figure the row does not name is said at load (not certified on that body).
 var held_like: String = ""
+## A long gun with a draw of its OWN (Director, 2026-11-26): `model.draw` names its timeline (`ASSETS/ANIMATIONS/sequences/<figure>/<draw>.json`),
+## its model placed by that timeline itself; a figure with no such file draws it on the family's timeline at its `held_like` place. "" = the family's.
+var draw: String = ""
 var held_rel_figures: Dictionary = {}   ## figure -> Transform3D
 
 ## MOVEMENT §11.6 step 5 (Director, 2026-11-17): how the shot LOOKS, per row (`fx`): what flashes at the muzzle (`powder` the
@@ -185,6 +188,7 @@ static func from_json(data: Dictionary) -> WeaponDef:
 		def.model_path = String(m.get("path", ""))
 		def.surface_materials = m.get("surface_materials", {})
 		def.size_certified = String(m.get("size_certified", ""))
+		def.draw = String(m.get("draw", ""))
 		if m.has("muzzle"):
 			def.muzzle = JsonFileRef.vector3(m.get("muzzle"), Vector3.INF, "weapon '%s' muzzle" % def.id, [])
 		var hand: Variant = m.get("hand", {})

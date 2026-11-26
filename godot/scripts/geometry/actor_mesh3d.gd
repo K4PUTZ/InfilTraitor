@@ -524,6 +524,9 @@ func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 		for posture: String in FAMILY_DRAWS[family]:
 			if not _aim_sets.has(_aim_key(family, posture)):
 				_build_family_aim(lib, figure, family, posture)
+	for draw: String in _own_draws():   ## a long gun with a timeline of its own (2026-11-26): a set keyed by that timeline, standing only
+		if not _aim_sets.has(_aim_key(draw, "standing")):
+			_build_family_aim(lib, figure, "shotgun", "standing", draw)
 	_build_pistol(stops)
 	var coat: MeshInstance3D = TripoFigureRef.coat_of(_body)
 	_coat_draw_shape = coat.find_blend_shape_by_name(DRAW_COAT_SHAPE) if coat != null else -1
@@ -531,6 +534,24 @@ func _build_aim_layer(lib: AnimationLibrary, figure: String) -> void:
 		_coat = coat
 	else:
 		push_warning("[ActorMesh3D] the %s coat has no '%s' morph: it stays closed through the draw" % [figure, DRAW_COAT_SHAPE])
+
+
+## The timelines the weapon rows name as their own draw (`WeaponDef.draw`), each once.
+static func _own_draws() -> PackedStringArray:
+	var out := PackedStringArray()
+	var reg: WeaponRegistry = WeaponRegistry.shared()
+	for id: String in reg.registry:
+		var d: String = String(reg.registry[id].draw)
+		if d != "" and not out.has(d):
+			out.append(d)
+	return out
+
+
+## The aim set a weapon row is drawn with in a posture: its own timeline's when it names one and this figure has it (standing), else its family's.
+func _set_key_for(w: WeaponDef, family: String, posture: String) -> String:
+	if w != null and w.draw != "" and posture == "standing" and _aim_sets.has(_aim_key(w.draw, "standing")):
+		return _aim_key(w.draw, "standing")
+	return _aim_key(family, posture)
 
 
 ## The aim set of a hold family in a posture (`FAMILY_DRAWS`): "pistol:standing", "shotgun:standing", ...
@@ -546,15 +567,20 @@ static func _posture_kind(state: Dictionary) -> String:
 ## A further draw's layer (the crouched pistol, the long guns' draw), right after the standing pistol's, so the recoil still acts after all of them. No
 ## timeline or a missing pose: the set does not exist and the figure simply does not draw that family in that posture (said once when a pose is missing).
 ## A long draw also drives its own coat keys (`LongDrawFix_f<frame>`, each at its frame); the pistol's draws drive only `DrawFix` (`_coat_draw_shape`).
-func _build_family_aim(lib: AnimationLibrary, figure: String, family: String, posture: String) -> void:
+## `own`: a weapon row's own timeline (`WeaponDef.draw`) instead of the family's; its set is keyed by that name. No file for this figure: no set, the
+## row is drawn on the family's timeline (silently: a figure may simply not have it yet).
+func _build_family_aim(lib: AnimationLibrary, figure: String, family: String, posture: String, own: String = "") -> void:
 	var seq: AimSequenceRef = AimSequenceRef.new()
-	if not seq.load_file(figure, String(FAMILY_DRAWS[family][posture])):
+	var seq_name: String = own if own != "" else String(FAMILY_DRAWS[family][posture])
+	if not FileAccess.file_exists(AimSequenceRef.SEQUENCE_FILE % [figure, seq_name]) and own != "":
+		return
+	if not seq.load_file(figure, seq_name):
 		return
 	var stops: Array = []
 	for stop: Dictionary in seq.stops:
 		var pose_id: String = TripoFigureRef.POSE_PREFIX + String(stop["id"])
 		if not lib.has_animation(pose_id):
-			push_warning("[ActorMesh3D] the %s game set has no '%s': no %s draw %s (run godot/scripts/tools/tripo_game_clips.gd)" % [figure, pose_id, family, posture])
+			push_warning("[ActorMesh3D] the %s game set has no '%s': no %s draw %s (run godot/scripts/tools/tripo_game_clips.gd)" % [figure, pose_id, seq_name, posture])
 			return
 		stops.append([float(stop["weight"]), lib.get_animation(pose_id), bool(stop["passing"])])
 	var layer: ActorAimPoseRef = ActorAimPoseRef.new()
@@ -571,7 +597,7 @@ func _build_family_aim(lib: AnimationLibrary, figure: String, family: String, po
 			var idx: int = coat.find_blend_shape_by_name(morph)
 			if idx >= 0:
 				morphs[morph] = idx   ## a key the coat lacks (an empty one, never shaped) plays without it
-	_aim_sets[_aim_key(family, posture)] = {"layer": layer, "seq": seq, "raise": seq.raise_seconds(), "lower": seq.raise_seconds(),
+	_aim_sets[_aim_key(own if own != "" else family, posture)] = {"layer": layer, "seq": seq, "raise": seq.raise_seconds(), "lower": seq.raise_seconds(),
 		"hip": seq.marker_weight("hip", 1.0), "coat": coat if not morphs.is_empty() else null, "morphs": morphs}
 
 
@@ -754,7 +780,9 @@ func _hold_model(id: String) -> void:
 	_attach_id = ""
 	_attach_def = null
 	var model := scene.instantiate() as Node3D
-	model.transform = w.held_rel_for(_figure)
+	## its own timeline places the model itself; the family's places the reference, so the row's grip on it (`held_like`)
+	var own: bool = w.draw != "" and _aim_sets.has(_aim_key(w.draw, "standing"))
+	model.transform = Transform3D.IDENTITY if own else w.held_rel_for(_figure)
 	_split_fx_pieces(model, w)   ## before the light: the split keeps the source materials the light converts
 	_pistol_holder.add_child(model)
 	_apply_board_light(model)
@@ -923,18 +951,18 @@ func _update_aim(state: Dictionary) -> void:
 	if _shot_t != INF:
 		_shot_t += dt
 	var posture_kind: String = _posture_kind(state)
-	var kind: String = _aim_key(String(state["weapon"]), posture_kind)
+	var weapon_id: String = String(state.get("weapon_id", ""))
+	if weapon_id == "":
+		weapon_id = String(state["weapon"])   ## "" = the grip's default weapon (`ActorPose.weapon_id`): the family's reference row, `pistol` / `shotgun`
+	var wdef: WeaponDef = WeaponRegistry.shared().get_weapon(weapon_id) if weapon_id != "" else null
+	var kind: String = _set_key_for(wdef, String(state["weapon"]), posture_kind)
 	if _aim_t <= 0.0 and kind != _aim_kind and _aim_sets.has(kind):   ## the gun is away: the family's and the posture's own layer takes over
 		_use_aim_set(kind)
 	var ready: bool = kind == _aim_kind and float(state["walk"]) < 0.0 and (String(state["posture"]) == "standing" \
 		or (posture_kind == "crouch" and not _crouch.is_empty() and _crouch_t >= float(_crouch["len"])))   ## crouched: once fully down
-	var weapon_id: String = String(state.get("weapon_id", ""))
-	if weapon_id == "":
-		weapon_id = String(state["weapon"])   ## "" = the grip's default weapon (`ActorPose.weapon_id`): the family's reference row, `pistol` / `shotgun`
 	if weapon_id != _armed_id:
 		_armed_id = weapon_id
-		var w: WeaponDef = WeaponRegistry.shared().get_weapon(weapon_id) if weapon_id != "" else null
-		_armed = w != null and w.model_path != ""
+		_armed = wdef != null and wdef.model_path != ""
 	if kind == _aim_kind and _armed and _pistol != null and not _pistol.visible:
 		_hold_model(weapon_id)   ## swapped only while the gun is out of sight (in the coat)
 		_hold_attachment(String(state.get("attachment", "")))

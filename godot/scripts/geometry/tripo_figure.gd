@@ -672,6 +672,12 @@ static func build_library(figure: String, hips_rest: Vector3) -> AnimationLibrar
 	timeline_ids.append_array(AimSequenceRef.pose_ids(figure, AimSequenceRef.THROW_OVERHAND))
 	timeline_ids.append_array(AimSequenceRef.pose_ids(figure, "draw_crouch_pistol"))   ## the crouched draw (2026-11-15; `ActorMesh3D.DRAW_CROUCH`)
 	timeline_ids.append_array(AimSequenceRef.pose_ids(figure, AimSequenceRef.LONG_DRAW))   ## the long guns' draw (2026-11-22; `ActorMesh3D.FAMILY_DRAWS`)
+	var own_draws: PackedStringArray = []   ## a long gun's own draw (`WeaponDef.draw`, 2026-11-26): a figure without its file simply has none
+	for wid: String in WeaponRegistry.shared().registry:
+		var d: String = String(WeaponRegistry.shared().registry[wid].draw)
+		if d != "" and not own_draws.has(d) and FileAccess.file_exists(AimSequenceRef.SEQUENCE_FILE % [figure, d]):
+			own_draws.append(d)
+			timeline_ids.append_array(AimSequenceRef.pose_ids(figure, d))
 	for id: String in timeline_ids:
 		var pose: Animation = bank_pose(figure, id)
 		if pose == null:

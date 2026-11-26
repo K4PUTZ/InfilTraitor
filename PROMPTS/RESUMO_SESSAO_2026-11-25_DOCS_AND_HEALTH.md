@@ -78,3 +78,25 @@ added); the index regrouped by theme with short hooks (11.1 KB -> 7.8 KB, every 
 1. The Director ratifies the snipers' sizes (the Blender window stays open); then the head fitted again, the read-back, the grip file.
 2. Her short stock (`in_step` from the fixed male, `raise`, the cut check); the female scenes; then the sci-fi and the launchers; the H3 rows.
 3. The repository items of §4 for whoever owns them.
+
+## 7. 2026-11-25 (later) to 2026-11-26 — the snipers closed and the own grips in the game
+
+- **Snipers:** the Director's sizes read back; the snipers' HIP scene built (his ruling: snipers get a hip shot too, "vão errar mais ainda",
+  not wired in the game yet: the `sniper` tag still makes them aimed only). Sniper 12 without its bipod and its clamp (his edit;
+  `ASSETS/props/sniper_rifle_no_bipod/`, commits `387428d7`, `9fd232fb`); the pack original keeps both for the prone stance (suspended).
+  The female snipers' scenes built from his sizes with her head fitted to the scopes (lab files).
+- **Own timelines posed by him and read back:** sci-fi 17 male (`70d5f673`), sci-fi 16 male / female and 17 female (`2659e660`). Model 16
+  joined into one mesh (`ASSETS/props/scifi_sniper_46615jyfm7/`, same vertices): the timeline tools take one mesh.
+- **The own grips installed in the game** (Director, 2026-11-26: "o polish vai ser só pra o que ainda não foi feito"; numbers copied from the
+  family): five rows held as the shotgun with `model.draw` (bullpup, sawed-off, short stock, sci-fi 16, 17), `family_rows.py --h3`;
+  `ActorMesh3D` plays each row's own timeline (the family's at `held_like` on a figure without one); take `long_own_draws`. Commit
+  `3ef7efa3`; `verify.py` smoke green; filmed on both figures. MOVEMENT_MASTER_PLAN's top block has the record.
+- Seen in passing, not touched: the male coat has no `DrawFix` morph (the pistol draw's lapel stays closed; it is lost on a
+  `build_agents` rebuild, see the memory).
+
+## 8. Next (the Director, 2026-11-26)
+
+1. Check the result in the game; the female's short stock (her own timeline: `in_step` from the male's, `raise`, the cut check).
+2. The grenade launchers.
+3. Waiting: the snipers' hip shot in the engine (drop the aimed-only `sniper` rule, a wider miss); the H3 rows of the models without an own
+   timeline (they play the family's at `held_like`).

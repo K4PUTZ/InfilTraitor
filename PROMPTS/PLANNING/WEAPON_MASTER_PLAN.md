@@ -961,6 +961,8 @@ the right hand, animated later (*"Deixa pra depois a animação do ferrolho das 
 its wooden fore-end held by a ring (*"Acho que é uma shotgun comum"*): nothing per shot; the sawed-off breaks open. What it asks of
 the models: the moving piece as a node of its own (the pump, the bolt handle), so the game can slide it with the hand; on the
 certified shotgun's model the wood already touches the receiver, so it could not rack back as modelled.
+Ordered the same night (*"coloca na milestone de movimento fazer as animações do pump, ferrolho, e posteriormente recarga de todas
+as armas"*): `MOVEMENT` §11.6 step 12, after every weapon's draw / hip / aim.
 
 ### The parts, in dependency order
 

@@ -22,7 +22,7 @@ REBUILT, everything after the hip dropped (no aim):
 Each stop: the trunk at an eased share of the way from the idle to the hip (with a lean down and left while the right hand reaches the
 pocket); the arms solved to targets (`family_lab._reach`, the elbow's plane kept); the right hand's fingers the hip's from `appear`.
 Targets are in the FIGURE's frame measured from its own bones (the hip joint, the hip height H), so the same numbers serve both figures.
-The gun is keyed at EVERY frame from `appear` to the hip at the place the right hand holds it at the hip (its grip), so it never swims.
+The gun RIDES THE RIGHTHAND bone (as the pistol: the left hand opens the coat), at its hip grip from `appear` on, so it never swims.
 Coat: the inherited lapel-draw keys (`DrawFix_*`, `LongDrawFix_*`) go, an EMPTY `LauncherDrawFix_f<NN>` is made at each stop for the
 Director to sculpt the skirt (`docs/pipelines/timeline_coat_keys.md`).
 
@@ -275,16 +275,21 @@ def build(src, out, stops=(5, 9, 11, 15, 19)):
     for path in ("hide_viewport", "hide_render"):
         gun.keyframe_insert(path, frame=f_idle)
         gun.keyframe_insert(path, frame=S["appear"] - 1)
-    gprev = None
-    for f in range(S["appear"], f_hip + 1):
-        sc.frame_set(f)
-        bpy.context.view_layer.update()
-        gun.matrix_world = (mw @ pb[P + "RightHand"].matrix) @ grip_r
+    # the RIGHT hand carries the gun (Director 2026-11-27: "assim como nas pistolas, é a mão esquerda que levanta o casaco"): the prop rides
+    # the RightHand bone at its hip grip, one constant placement from `appear` on; the left hand only helps (the lapel draws' long guns keep
+    # the LeftHand). The read-back takes the bone from `lab_bone`, as for the pistol.
+    sc.frame_set(f_hip)
+    bpy.context.view_layer.update()
+    for fc in [fc for fc in FL._curves(gun.animation_data) if fc.data_path in ("location", "rotation_quaternion", "rotation_euler", "scale")]:
+        _drop(fc, lambda f: True)
+    gun.parent_bone = P + "RightHand"
+    gun.matrix_parent_inverse = Matrix.Identity(4)
+    gun["lab_bone"] = "RightHand"
+    bpy.context.view_layer.update()
+    gun.matrix_world = G_hip
+    bpy.context.view_layer.update()
+    for f in (S["appear"], f_hip):
         gun.hide_viewport = gun.hide_render = False
-        bpy.context.view_layer.update()
-        if gprev is not None and gun.rotation_quaternion.dot(gprev) < 0.0:
-            gun.rotation_quaternion = -gun.rotation_quaternion
-        gprev = gun.rotation_quaternion.copy()
         for path in ("location", "rotation_quaternion", "scale", "hide_viewport", "hide_render"):
             gun.keyframe_insert(path, frame=f)
     for fc in FL._curves(gun.animation_data):

@@ -35,6 +35,9 @@
 
 > ActorPose — WHAT an actor's figure is doing: its facing, posture, grip, weapon, walk, throw and head. It draws nothing; `ActorMesh3D` draws it (RENDER3D R3D-ACTORS, `ACTOR` D64). R3D-ACTORS step 5 (2026-10-01) RETIRED THE GAMEPLAY FRAME BAKE from this node: the colour/normal frame sets, the head and hat layers, the per-posture anchors and D17's normal-map relight are gone, and with them every texture this file loaded (D42's RAM was the atlases'). What stayed is the half both renderers shared, unchanged in meaning: - FACING, SNAPPED AT THE GU BOUNDARY (D47), one of FOUR (D44, kept for gameplay at step 2: the mesh could turn to any yaw, but whether movement keeps four facings is a design question, and keeping it changes nothing). Stored as the BASE grid step it came from, so it survives a camera turn by construction. - THE POSTURE, THE GRIP, THE WEAPON. Each is now a name the live rig has an action for (`tools/asset_generation/r3d_live_rig_export.py`); a name it does not have is refused loudly and the previous one kept. - THE WALK, read straight off the step's progress (one cycle per GU, D61): no accumulator to drift. Standing only, as before: a crouched or prone figure slides. - THE THROW: raise (held for the aim), release, and the cancel as the raise played backwards (the Director's own reuse rule). `throw_released` fires when the release crosses THROW_RELEASE_FRACTION — the fraction of the key list p3_throw_export.py releases at — and at the latest when the release ends, because `execute_grenade_throw()` awaits it. Standing only, as the bake was. - THE HEAD'S GRID ANGLE (a guard looking where its cone points), clamped to HEAD_YAW_LIMIT_DEG off the body by the mesh. It was `AgentSprite`, a `Sprite2D` that drew nothing; it is a plain `Node` now (RETIRE of R3D-RETIRE-2D). The members that hold it are `Agent.pose` / `attach_pose()` (renamed from `sprite` / `attach_sprite()` on 2026-11-11, HERITAGE T1).
 
+**Signals**
+- `signal throw_released`
+
 **Constants / tuning**
 - `THROW_RAISE` = `"raise"`
 - `THROW_RELEASE` = `"release"`
@@ -42,9 +45,55 @@
 - `HEAD_YAW_LIMIT_DEG` = `60.0`
 - `POSTURES` = `["standing", "crouch", "prone"]`
 - `GRIPS` = `["", "_aimed"]`
+- `HELD` = `["shotgun", "pistol"]`
+- `STEPS` = `[Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]`
+- `START_STEP` = `Vector2i(0, -1)`
+- `SHOT_STANCES` = `["hip", "aimed"]`
 
 **Public vars**
+- `var throw_aim_dir: Vector2 = Vector2.ZERO`
+- `var turn_aim_dir: Vector2 = Vector2.ZERO`
 - `var shot_aim_dir: Vector2 = Vector2.ZERO`
+- `var frame_family: String = ""`
+- `var grip: String = ""`
+- `var weapon: String = "shotgun"`
+- `var weapon_id: String = ""`
+- `var muzzle_attachment: String = ""`
+- `var shot_stance: String = "hip"`
+- `var stow_weapon: bool = false`
+- `var room: Node = null`
+- `var dash_start: Dictionary = {}`
+- `var dash_rise: Dictionary = {}`
+- `var walk_rise: Dictionary = {}`
+- `var dash_rate: float = 0.0`
+- `var dash_stop: Dictionary = {}`
+- `var walk_start: Dictionary = {}`
+- `var walk_stop: Dictionary = {}`
+- `var dash_len: float = 0.0`
+- `var stop_side: String = ""`
+- `var stop_t: float = -1.0`
+
+**Public API**
+- `func setup(p_room: Node) -> bool:`
+- `func face_step(step: Vector2i) -> void:`
+- `func face_direction(dir: Vector2i) -> void:`
+- `func is_crouched() -> bool:`
+- `func set_posture_name(name: String) -> void:`
+- `func set_grip(name: String) -> void:`
+- `func set_shot_stance(stance: String) -> bool:`
+- `func preload_grip(name: String) -> bool:`
+- `func set_weapon(id: String) -> bool:`
+- `func set_walk_phase_quantise(_n: int) -> void:`
+- `func set_walk_phase(progress01: float) -> void:`
+- `func stop_walking() -> void:`
+- `func set_dash(on: bool) -> void:`
+- `func set_head_yaw_grid_deg(grid_deg: float) -> void:`
+- `func set_dev_vision(enabled: bool) -> void:`
+- `func update_for_cell() -> void:`
+- `func head_offset_px() -> Vector2:`
+- `func play_throw(sequence: String, seconds: float, hold: bool = false, reversed_playback: bool = false) -> bool:`
+- `func stop_throw() -> void:`
+- `func mesh_state() -> Dictionary:`
 
 ---
 
@@ -71,6 +120,13 @@
 - `COVER_PARTIAL_MULT` = `0.55`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 - `HEAD_OFFSET` = `{ Posture.STANDING: Vector2(0.0, -64.0), Posture.CROUCHING: Vector2(0.0, -44.0), Posture.PRONE: Vector2(26.0, -10.0), }`
+- `MUZZLE_DROP_FRACTION` = `0.18`
+- `THROW_RAISE_SECONDS` = `0.18`
+- `THROW_RELEASE_SECONDS` = `0.40`
+- `THROW_CANCEL_SECONDS` = `0.12`
+- `STOW_WAIT_MAX_S` = `2.0`
+- `COVER_RING_RADIUS_PX` = `30.0`
+- `COVER_RING_SEGMENTS` = `32`
 
 **Public vars**
 - `var posture: Posture = Posture.STANDING`
@@ -87,6 +143,31 @@
 
 **Public API**
 - `func throw_origin() -> Vector2:`
+- `func head_point() -> Vector2:`
+- `func muzzle_points() -> Dictionary:`
+- `func grenade_release_points() -> Dictionary:`
+- `func play_shot_kick() -> bool:`
+- `func set_shot_stance(stance: String) -> bool:`
+- `func weapon_at_stance() -> bool:`
+- `func facing_aim() -> bool:`
+- `func weapon_out() -> bool:`
+- `func fire_projectile(to: Vector3, normal: Vector3, host: Vector3i) -> bool:`
+- `func muzzle_origin() -> Vector2:`
+- `func play_throw_raise() -> bool:`
+- `func play_throw_cancel() -> bool:`
+- `func play_throw_release() -> bool:`
+- `func set_grip(name: String) -> void:`
+- `func throw_launch_height() -> float:`
+- `func setup(offset: Vector2, start_cell: Vector2i) -> void:`
+- `func attach_pose(p_room: Node) -> bool:`
+- `func set_cell(new_cell: Vector2i) -> void:`
+- `func get_vision_radius() -> int:`
+- `func set_posture(new_posture: Posture) -> void:`
+- `func set_dev_vision(enabled: bool) -> void:`
+- `func on_perspective_changed() -> void:`
+- `func update_cover(blocked_cells: Dictionary) -> void:`
+- `func move_along_path(path: Array[Vector2i], dash: bool = false) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 
@@ -148,10 +229,56 @@
 - `TIMER_SEARCH_TO_SUSPICIOUS` = `2`
 - `TIMER_NOISE_SUSPICIOUS` = `3`
 - `TIMER_NOISE_SUSPICIOUS_MED` = `2`
+- `CONE_REDRAW_ANGLE_EPS` = `0.00001`
+- `TURN_SPEED` = `4.0`
+- `SEARCH_RADIUS` = `2`
+- `SEARCH_TURNS_MAX` = `5`
+- `COMMS_LABEL_DURATION` = `2.0`
+- `PATROL_DASH_PX` = `8.0`
+- `DETECTION_LABEL_HEIGHT_PX` = `82.0`
 
 **Public vars**
 - `var visual_offset: Vector2 = Vector2.ZERO`
 - `var enemy_id: String = ""`
+- `var faction: StringName = &"agency"`
+- `var officer: bool = false`
+- `var cell: Vector2i = Vector2i.ZERO`
+- `var patrol_route: Array[Vector2i] = []`
+- `var patrol_index: int = 0`
+- `var facing: Vector2i = Vector2i.UP`
+- `var pose: ActorPose = null`
+- `var state: String = STATE_PATROL`
+- `var state_timer: int = 0`
+- `var last_known_agent_cell: Vector2i = INVALID_CELL`
+- `var is_moving: bool = false`
+- `var fov_degrees: float = 90.0`
+- `var fov_range: int = 8`
+- `var facing_angle_deg: float = 0.0`
+- `var body_angle: float   = 0.0`
+- `var vision_angle: float = 0.0`
+- `var attention: GuardAttention = GuardAttention.new()`
+- `var dev_vision: bool = false`
+- `var detection: float = 0.0`
+- `var idle_turns_remaining: int = 0`
+
+**Public API**
+- `func set_dev_vision(enabled: bool) -> void:`
+- `func set_los_data(blocked_cells: Dictionary, blocked_edges: Dictionary, room_size: Vector2i = Vector2i.ZERO, shadow_tiles: Dictionary = {}) -> void:`
+- `func setup( offset: Vector2, id: String, route: Array[Vector2i], start_index: int = 0 ) -> void:`
+- `func reset_to_route_start() -> void:`
+- `func evaluate_detection( player_cell: Vector2i, _vision_range: int = VISION_RANGE, blocked_cells: Dictionary = {}, blocked_edges: Dictionary = {}, _close_warning_range: int = 2, agent_ref: Agent = null ) -> Dictionary:`
+- `func pick_next_patrol_cell( occupied_cells: Dictionary, blocked_cells: Dictionary, blocked_edges: Dictionary, room_size: Vector2i ) -> Vector2i:`
+- `func move_to_cell_animated( new_cell: Vector2i, blocked_cells: Dictionary, blocked_edges: Dictionary, room_size: Vector2i ) -> void:`
+- `func move_along_path(path: Array[Vector2i]) -> void:`
+- `func can_see_cell(target_cell: Vector2i, blocked_cells: Dictionary, blocked_edges: Dictionary) -> bool:`
+- `func receive_alert(known_cell: Vector2i, target_state: String) -> void:`
+- `func observe_player(player_visible: bool, severity: int, player_cell: Vector2i) -> void:`
+- `func hear_noise(noise_tile: Vector2i, perceived_intensity: float) -> void:`
+- `func tick_state() -> void:`
+- `func choose_next_cell( occupied_cells: Dictionary, blocked_cells: Dictionary, blocked_edges: Dictionary, player_cell: Vector2i, room_size: Vector2i ) -> Vector2i:`
+- `func refresh_vision_smooth() -> void:`
+- `func attach_pose(p_room: Node) -> bool:`
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 
@@ -171,6 +298,23 @@ extends `Node` · 274 lines
 - `CAMERA_MAX_BORDER_TILES` = `4`
 - `CAMERA_SOFT_ZONE_TILES` = `2`
 - `WORLD_TILE_PX` = `128.0`
+
+**Public vars**
+- `var capture_locked: bool = false`
+- `var capture_shake: bool = true`
+- `var shake_phase: float = 0.0`
+- `var shake_frequency_x: float = 31.0`
+- `var shake_frequency_y: float = 23.0`
+- `var shake_decay_power: float = 2.0`
+
+**Public API**
+- `func capture_refuses(who: String) -> bool:`
+- `func setup(camera_ref: Camera2D, room_ref: Node2D) -> void:`
+- `func handle_input(event: InputEvent) -> bool:`
+- `func focus_on(world_pos: Vector2) -> void:`
+- `func shake(duration: float, amplitude: float) -> void:`
+- `func stop_shake() -> void:`
+- `func set_zoom_for_capture(new_z: float) -> void:`
 
 ---
 
@@ -209,6 +353,38 @@ extends `Node` · 96 lines
 extends `Node` · 306 lines
 
 `godot/scripts/controllers/hud_controller.gd`
+
+**Signals**
+- `signal end_turn_requested()`
+- `signal reset_requested()`
+- `signal fullscreen_toggled(enabled: bool)`
+- `signal viewport_toggled()`
+- `signal numbers_toggled(enabled: bool)`
+- `signal perspective_requested(direction: String)`
+- `signal view_mode_toggled(which: String, is_pressed: bool)`
+
+**Constants / tuning**
+- `_ACTIVE_MOD` = `Color(1.0, 1.0, 1.0, 1.0)`
+- `_INACTIVE_MOD` = `Color(1.0, 1.0, 1.0, 0.45)`
+- `_DIM_MOD` = `Color(1.0, 1.0, 1.0, 0.35)`
+
+**Public API**
+- `func setup(hud_root: Node) -> void:`
+- `func update_ap(current: int, max_ap: int, is_enemy_phase: bool = false) -> void:`
+- `func update_alert(pct: float) -> void:`
+- `func show_enemy_banner() -> void:`
+- `func hide_enemy_banner() -> void:`
+- `func show_busted(text_key: String = "ui.banner.busted") -> void:`
+- `func hide_busted() -> void:`
+- `func is_auto_end_turn_enabled() -> bool:`
+- `func set_numbers_button_active(active: bool) -> void:`
+- `func set_viewport_button_text(text: String) -> void:`
+- `func set_perspective_active(direction: String) -> void:`
+- `func set_view_mode_active(which: String, enabled: bool) -> void:`
+- `func set_capture_hidden(hidden: bool) -> void:`
+- `func is_capture_hidden() -> bool:`
+- `func set_perspective_pad_visible(is_visible: bool) -> void:`
+- `func add_toolbar_button(button: Button) -> bool:`
 
 ---
 
@@ -258,6 +434,22 @@ extends `Node2D` · 325 lines
 - `HeightOverlayClass` = `preload("res://godot/scripts/overlays/height_overlay.gd")`
 - `TemporalOverlayClass` = `preload("res://godot/scripts/overlays/temporal_overlay.gd")`
 - `EliteExposureOverlayClass` = `preload("res://godot/scripts/overlays/elite_exposure_overlay.gd")`
+- `HEAT_OVERLAY_Z` = `1`
+- `OVERLAY_AFTER_CAMERA_INDEX` = `1`
+
+**Public vars**
+- `var dev_vision: bool = true`
+- `var light_vision: bool = false`
+- `var heat_vision: bool = false`
+
+**Public API**
+- `func setup(room_ref: Node2D, fog_of_war_ref: Node2D) -> void:`
+- `func toggle_dev() -> void:`
+- `func toggle_light() -> void:`
+- `func toggle_heat() -> void:`
+- `func request_redraw() -> void:`
+- `func is_shadow_overlay_visible() -> bool:`
+- `func attach_board3d(live: Node3D) -> void:`
 
 ---
 
@@ -380,6 +572,8 @@ extends `ConfirmationDialog` · 64 lines
 
 **Public API**
 - `func load_stops(skeleton: Skeleton3D, stops: Array) -> bool:`
+- `func eased_weight(w: float) -> float:`
+- `func apply_to(skeleton: Skeleton3D) -> void:`
 
 ---
 
@@ -440,9 +634,20 @@ extends `ConfirmationDialog` · 64 lines
 - `PISTOL_SHOWN_FROM` = `0.5`
 - `DRAW_COAT_SHAPE` = `"DrawFix"`
 - `DRAW_COAT_CLOSED_AT` = `0.75`
+- `ActorRecoilRef` = `preload("res://godot/scripts/geometry/actor_recoil3d.gd")`
+- `ShellCasingsRef` = `preload("res://godot/scripts/geometry/shell_casings3d.gd")`
+- `ShotProjectilesRef` = `preload("res://godot/scripts/geometry/shot_projectiles3d.gd")`
+- `SHOT_HOLD_S` = `0.6`
+- `EJECT_PORT` = `Vector3(0.06, 0.03, 0.0)`
+- `EJECT_RIGHT_M` = `0.8`
+- `EJECT_UP_M` = `1.2`
+- `EJECT_BACK_M` = `0.2`
 - `THROW_TURN_RAD_S` = `TAU`
 - `AIM_FACING_EPS_RAD` = `0.0087`
 - `SOURCE_MATERIAL_META` = `&"source_material"`
+- `DRAW_CROUCH` = `"draw_crouch_pistol"`
+- `FAMILY_DRAWS` = `{ "pistol": {"standing": AimSequenceRef.PISTOL_DRAW, "crouch": DRAW_CROUCH}, "shotgun": {"standing": AimSequenceRef.LONG_DRAW}, }`
+- `RISE_CLIPS` = `{"run": "crouch_run", "walk": "crouch_walk"}`
 - `GAIT_PASSAGES` = `{ "run": {"clip": "run", "start": "run_start", "stops": {"l": "run_stop_l", "r": "run_stop_r"}, "contacts": [[14.0, "r"], [21.0, "l"], [29.0, "r"], [36.0, "l"]]}, "walk": {"clip": "walk", "start": "walk_start", "stops": {"l": "walk_stop"}, "contacts": [[22.0, "l"], [50.0, "l"]]}, }`
 - `PHASE_K_RANGE` = `Vector2(0.7, 1.4)`
 - `IDLE_COAT_KEY` = `"IdleFix"`
@@ -454,6 +659,7 @@ extends `ConfirmationDialog` · 64 lines
 - `REVEAL_PALETTES` = `{ &"agent": {"stripe_a": Color(0.86, 0.96, 1.0), "stripe_b": Color(0.16, 0.28, 0.38), "outline_color": Color(1.0, 1.0, 1.0)}, &"agency": {"stripe_a": Color(0.46, 0.64, 1.0), "stripe_b": Color(0.08, 0.14, 0.40), "outline_color": Color(0.30, 0.56, 1.0)}, &"militia": {"stripe_a": Color(1.0, 0.52, 0.36), "stripe_b": Color(0.40, 0.10, 0.06), "outline_color": Color(1.0, 0.34, 0.18)}, &"corporation": {"stripe_a": Color(1.0, 0.84, 0.30), "stripe_b": Color(0.38, 0.28, 0.04), "outline_color": Color(1.0, 0.74, 0.12)}, &"network": {"stripe_a": Color(0.46, 0.96, 0.62), "stripe_b": Color(0.06, 0.30, 0.14), "outline_color": Color(0.28, 0.90, 0.46)}, }`
 
 **Public vars**
+- `var drum_turns_per_s: float = 4.0`
 - `var reveal_behind_walls: bool = false:`
 - `var silhouette_phase: float = 0.0:`
 - `var reveal_faction: StringName = &"":`
@@ -463,7 +669,13 @@ extends `ConfirmationDialog` · 64 lines
 - `func throw_release_global() -> Vector3:`
 - `func fire_projectile(to: Vector3, normal: Vector3, host: Vector3i) -> bool:`
 - `func weapon_out() -> bool:`
+- `func weapon_at_stance() -> bool:`
+- `func facing_aim() -> bool:`
+- `func fire_kick() -> bool:`
 - `func muzzle_global() -> Vector3:`
+- `func hand_grenade_world() -> Vector3:`
+- `func head_offset_px() -> Vector2:`
+- `func set_status_tint(color: Color, pulse: float) -> void:`
 
 ---
 
@@ -511,6 +723,16 @@ extends `RefCounted` · 110 lines
 - `var fps: float = 24.0`
 - `var first: int = 1`
 - `var last: int = 2`
+- `var stops: Array = []`
+- `var markers: Dictionary = {}`
+- `var prop: String = "pistol"`
+
+**Public API**
+- `func load_file(figure: String, name: String) -> bool:`
+- `func raise_seconds() -> float:`
+- `func at(weight: float) -> Dictionary:`
+- `func gun_bone() -> String:`
+- `func marker_weight(name: String, fallback: float) -> float:`
 
 ---
 
@@ -525,6 +747,7 @@ extends `Node3D` · 3579 lines
 **Signals**
 - `signal view_changed(direction: String)`
 - `signal remesh_committed()`
+- `signal shot_touched(touched: Array)`
 
 **Constants / tuning**
 - `PickMathRef` = `preload("res://godot/scripts/geometry/pick_math.gd")`
@@ -537,6 +760,101 @@ extends `Node3D` · 3579 lines
 - `VIEW_FACE_SLOTS` = `{ "N": Vector2i(1, 2), "E": Vector2i(2, 1), "S": Vector2i(1, 2), "W": Vector2i(2, 1), }`
 - `VIEW_YAW_DEG` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": 270.0}`
 - `OPAQUE_SHADER` = `"""`
+- `DECAL_TAIL` = `"""`
+- `GlassCrackMirror3DClass` = `preload("res://godot/scripts/geometry/glass_crack_mirror3d.gd")`
+- `GlassVoxelFall3DRef` = `preload("res://godot/scripts/geometry/glass_voxel_fall3d.gd")`
+- `ShardField3DRef` = `preload("res://godot/scripts/geometry/shard_field3d.gd")`
+- `PaneFrameRef` = `preload("res://godot/scripts/systems/destruction/pane_frame.gd")`
+- `DECAL_MATERIAL_ID` = `"__decals__"`
+- `DECAL_LIFT_VOXELS` = `0.02`
+- `FRESH_SUFFIX` = `"#fresh"`
+- `SOLID_SUFFIX` = `"#solid"`
+- `INVALID_PICK` = `Vector2i(-9999, -9999)`
+- `OCC_BLOCK` = `4`
+- `OCC_DASH_VOXELS` = `1.0`
+- `OCC_FACE_DIRS` = `[Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]`
+- `OCC_CAP_TOP` = `Color(0.36, 0.33, 0.56)`
+- `GLASS_EDGE_SUFFIX` = `"#glass_edge"`
+- `GLASS_EDGE_SORT_OFFSET` = `0.2`
+- `CHUNK_SORT_STEP` = `1.0e-4`
+- `GLASS_RIM_INK_PATH` = `"res://ASSETS/materials/glass/fracture_glass_blast_fine_0.png"`
+- `RIM_DEEP` = `Vector2(0.12, 0.46)`
+- `RIM_SHALLOW` = `Vector2(0.0, 0.08)`
+- `RIM_POINTS` = `Vector2i(1, 2)`
+- `RIM_SKEW_S` = `0.06`
+- `RIM_SKEW_D` = `0.12`
+- `RIM_CORNER` = `Vector2(0.45, 0.85)`
+- `GLASS_CAP_VOXELS` = `2`
+- `DENT_DIR_OF_CARVED_SIDE` = `{ Voxel.CarvedSide.TOP: Dir.TOP, Voxel.CarvedSide.LEFT: Dir.SW, Voxel.CarvedSide.RIGHT: Dir.SE, Voxel.CarvedSide.FACE_NW: Dir.NW, Voxel.CarvedSide.FACE_NE: Dir.NE, }`
+- `DENT_MARGIN` = `0.12`
+- `DENT_DEPTH` = `0.3`
+- `DENT_RINGS` = `[[1.0, 0.0], [0.78, 0.16], [0.55, 0.56], [0.34, 0.92]]`
+- `DENT_SQUARENESS` = `3.0`
+- `GLASS_SHEEN_PATH` = `"res://ASSETS/materials/glass/glass_sheen.png"`
+
+**Public vars**
+- `var capture_yaw: float = NAN`
+- `var fire_flicker: bool = false`
+- `var last_occ_digest: int = 0`
+- `var last_occ_canon: int = 0`
+- `var occ_digest_on: bool = false`
+- `var last_occ_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0, 0, 0])`
+
+**Public API**
+- `func build(room: Node, cell_to_world: Callable) -> void:`
+- `func ground_point(point_2d: Vector2) -> Vector3:`
+- `func stand_height(p: Vector3, actor: Node = null) -> float:`
+- `func ceiling_above(p: Vector3) -> float:`
+- `func register_soft_sheet(sheet: Node3D) -> void:`
+- `func sheet_reveal_state(sheet: SoftSheet3D) -> void:`
+- `func voxel_face_point(grid_pos: Vector2i, level: int, normal: Vector3) -> Vector3:`
+- `func particle_pair(world_point: Vector3) -> Array[Vector2]:`
+- `func particle_origin(world_pos: Vector2, floor_pos: Vector2) -> Vector3:`
+- `func lift_pair_of_global(p: Vector3) -> Array:`
+- `func ground_affine() -> Transform2D:`
+- `func ground_level() -> int:`
+- `func ground_origin() -> Vector2:`
+- `func pick_ground(screen_pos: Vector2) -> Vector3:`
+- `func pick_cell(screen_pos: Vector2) -> Vector2i:`
+- `func screen_of_world(p: Vector3) -> Vector2:`
+- `func cell_screen_center(cell: Vector2i) -> Vector2:`
+- `func lattice_delta(screen_delta: Vector2) -> Vector2:`
+- `func camera_basis() -> Basis:`
+- `func screen_of(world: Vector3) -> Vector2:`
+- `func canvas_point(world: Vector3, item: CanvasItem) -> Vector2:`
+- `func lattice_basis() -> Basis:`
+- `func px_per_unit() -> float:`
+- `func finish_occ_digests() -> void:`
+- `func on_occlusion(occ_set) -> void:`
+- `func register_prop_light_material(mat: ShaderMaterial) -> void:`
+- `func register_overlay_material(mat: ShaderMaterial) -> void:`
+- `func unregister_overlay_material(mat: ShaderMaterial) -> void:`
+- `func unregister_prop_light_material(mat: ShaderMaterial) -> void:`
+- `func refresh_prop_shadows(force: bool = false, only_gus: Dictionary = {}) -> void:`
+- `func mesh_prop_position(id: String) -> Variant:`
+- `func spawn_prop_fragments(sim: PropFragmentSim, zone_materials: Array, rubble: bool = false) -> PropFragments3D:`
+- `func spawn_prop_pile(records: Array, y0: float, zone_materials: Array, division: int = 1, rubble: bool = false) -> PropFragments3D:`
+- `func running_prop_fragments() -> Array:`
+- `func remove_mesh_prop(id: String) -> void:`
+- `func on_blast_commit(delta) -> void:`
+- `func remesh_pending() -> bool:`
+- `func glass_fall_materials(material: int) -> Array:`
+- `func geometry_root_transform() -> Transform3D:`
+- `func geometry_root() -> Node3D:`
+- `func store_material_of(claim: int) -> int:`
+- `func voxel_centre_local(x: int, y: int, level: int) -> Vector3:`
+- `func fresh_lift_textured(material_id: String = "wood") -> float:`
+- `func fresh_lift() -> float:`
+- `func face_shade(x: int, y: int, level: int, x_normal: bool, with_soot: bool = true) -> float:`
+- `func top_shade(x: int, y: int, level: int, soot_amount: float = 1.0) -> float:`
+- `func on_shot_commit(touched: Array) -> void:`
+- `func sync_soot_levels(levels: Dictionary, reason: String) -> void:`
+- `func on_blast_soot(extra_levels: Dictionary = {}) -> void:`
+- `func on_blast_light(delta) -> void:`
+- `func material_facade_texture(material_id: String) -> Texture2D:`
+- `func material_surface_texture(material_id: String) -> Texture2D:`
+- `func surface_macro_texture() -> Texture2D:`
+- `func set_view(direction: String) -> void:`
 
 ---
 
@@ -750,6 +1068,15 @@ extends `Node3D` · 3579 lines
 - `DEFAULT_HALF_GU` = `0.5 / GeometryCoords.VOXELS_PER_UNIT_AXIS`
 - `TILE_GRID` = `8`
 
+**Public API**
+- `func attach(board: Node3D, textures: Array, priority: int, lift: float, half_gu: float = -1.0, cull_tiles: bool = false) -> void:`
+- `func detach() -> void:`
+- `func set_pile(key: Vector3i, variant: int, alpha: float, tint: Color = Color.WHITE) -> void:`
+- `func place(id, center: Vector2, level: int, variant: int, alpha: float, tint: Color = Color.WHITE, rot: float = 0.0, scale: float = 1.0) -> void:`
+- `func remove(id) -> void:`
+- `func clear() -> void:`
+- `func pile_count() -> int:`
+
 ---
 
 ### `footprint_marks3d.gd`
@@ -787,6 +1114,16 @@ extends `Node3D` · 3579 lines
 **Constants / tuning**
 - `VOXELS_PER_UNIT_AXIS` = `8`
 - `VOXEL_TILE_SIZE` = `Vector2i(32, 16)`
+- `VOXEL_STEP_PX` = `128.0 / 0.70710678 * 0.8660254 / 8.0`
+- `VOXEL_STOREY_HEIGHT_PX` = `VOXEL_STEP_PX * 8.0`
+- `LEVELS_PER_STOREY` = `8`
+- `PLAYABLE_STOREY` = `10`
+- `PLAYABLE_LEVEL` = `PLAYABLE_STOREY * LEVELS_PER_STOREY`
+- `TEX_AUTHORING_N` = `16`
+- `VOXEL_ATOM_H` = `36`
+- `VOXEL_TILE_H` = `16`
+- `FLOOR_TOP_LEVEL` = `PLAYABLE_LEVEL - 1`
+- `FLOOR_DEEP_LEVEL` = `PLAYABLE_LEVEL - 2`
 
 ---
 
@@ -811,6 +1148,10 @@ extends `Node3D` · 3579 lines
 
 **Public vars**
 - `var pane_materials: Array = []`
+
+**Public API**
+- `func setup(renderer: VoxelBoard, ground_level: int) -> void:`
+- `func twin_count() -> int:`
 
 ---
 
@@ -837,6 +1178,19 @@ extends `Node3D` · 3579 lines
 
 > GlassVoxelFall3D — G-D55 as the Director refined it (2026-10-10): the glass that lost its support falls VOXEL BY VOXEL, each a small block of the pane carrying its own piece of the crack, and only becomes shards where it hits what is under it. *"Tudo acontecendo ao mesmo tempo, com variações internas de velocidade e ângulo […] voxels mais longes e mais baixos caem primeiro, voxels mais perto e mais altos caem depois. Mas é apenas uma leve influência […] Deixa os voxels +aprox 1/4 de segundo parados antes de cair […] randomizado entre 1/3 e 1/5."* (2026-10-11: the rest moved off the voxels — the pane now stands on the board while its support is walked — and the swap became a crossfade, `FADE_IN`.) THE MOTION IS CLOSED FORM, per voxel (B4: every number hashed off its base cell, never `randf`): it waits `FALL_FROM_FRAME` frames (the far and low ones; the near and high up to `ORDER_LEAD_FRAMES` more: a slight lead), then falls under its own g (a spread of g), with its own small push (up, out along the pane's normal, sideways) and its own tumble (a hashed axis and speed); it stops at the first frame its lowest corner reaches the top of what stands under its column (the pane's base, a floor) — so the impact frame and the impact point are known at the start, and the shard rain for the whole event is ONE overlay whose flights start at those frames and points. DRAWING: a handful of MultiMeshes, never a node per voxel (the Mali pays per draw): per (material, pane orientation) the broad faces on the pane's material and the thickness on its edge twin (every edge marked broken: the rim ink), and per live crack one quad per voxel it covers, on the crack's own material in its per-voxel mode (`crack_per_voxel`: INSTANCE_CUSTOM.xy is the voxel's offset in the crack, so the ink is the pane's own). The body materials are copies with the opening cut off (a falling voxel is not in the pane any more) and the rim ink read in model space (it does not slide over a moving voxel). Aged in drawn frames, 60 per second, never seconds: a stalled frame must not swallow the fall.
 
+**Constants / tuning**
+- `FADE_IN` = `[0.0, 0.04, 0.15, 0.31, 0.5, 0.69, 0.85, 0.96, 1.0]`
+- `FALL_FROM_FRAME` = `2`
+- `MAX_FALL_FRAMES` = `240`
+- `HORIZONTAL_FACE` = `4`
+
+**Public API**
+- `func setup(live: Node, entries: Array, cracks: Array, on_impact: Callable) -> Array:`
+- `func set_landings(landing_of: Dictionary) -> Array:`
+- `func elapsed() -> int:`
+- `func show_cracks() -> void:`
+- `func start() -> void:`
+
 ---
 
 ### `ground_canvas3d.gd`
@@ -853,6 +1207,25 @@ extends `Node3D` · 3579 lines
 - `SHADER_BEHIND_GLASS` = `"res://godot/shaders/ground_overlay3d_behind_glass.gdshader"`
 - `GLASS_FADE` = `0.3`
 - `CIRCLE_SEGMENTS` = `48`
+
+**Public API**
+- `func attach(board: Node3D, priority: int, lift: float, multiply: bool = false) -> void:`
+- `func follow_visibility_of(owner: CanvasItem) -> void:`
+- `func begin(owner: CanvasItem) -> void:`
+- `func end() -> void:`
+- `func clear() -> void:`
+- `func begin_empty() -> void:`
+- `func vertices() -> PackedVector3Array:`
+- `func colors() -> PackedColorArray:`
+- `func detach() -> void:`
+- `func draw_colored_polygon(points: PackedVector2Array, color: Color) -> void:`
+- `func draw_polygon(points: PackedVector2Array, colors: PackedColorArray) -> void:`
+- `func draw_set_transform(position: Vector2 = Vector2.ZERO, rotation: float = 0.0, scale: Vector2 = Vector2.ONE) -> void:`
+- `func draw_rect(rect: Rect2, color: Color, filled: bool = true, width: float = -1.0, _antialiased: bool = false) -> void:`
+- `func draw_string(_font: Font, pos: Vector2, text: String, _alignment: int = 0, _width: float = -1.0, font_size: int = 16, color: Color = Color.WHITE) -> void:`
+- `func draw_line(from: Vector2, to: Vector2, color: Color, width: float = 1.0, _antialiased: bool = false) -> void:`
+- `func draw_polyline(points: PackedVector2Array, color: Color, width: float = 1.0, antialiased: bool = false) -> void:`
+- `func draw_circle(center: Vector2, radius: float, color: Color) -> void:`
 
 ---
 
@@ -990,11 +1363,13 @@ extends `Node3D` · 3579 lines
 - `PER_CELL` = `4`
 - `FLOATS` = `16`
 - `LIFT` = `0.03`
+- `UNIT` = `1.0 / 8.0`
 
 **Public vars**
 - `var fire: RefCounted = null`
 
 **Public API**
+- `func setup(burn: RefCounted, base_y: float, flame_width: float, flame_height: float) -> void:`
 - `func update_frame() -> void:`
 
 ---
@@ -1017,6 +1392,18 @@ extends `Node3D` · 3579 lines
 - `RISE_MIN_PX_S` = `90.0`
 - `RISE_MAX_PX_S` = `300.0`
 - `SIZE_MIN` = `0.25`
+- `SIZE_MAX` = `0.9`
+- `LIFT_GU` = `0.05`
+- `SMOKE_OIL` = `Color(0.13, 0.11, 0.10, 0.78)`
+- `SMOKE_STEAM` = `Color(0.9, 0.92, 0.95, 0.42)`
+- `SMOKE_SCALE` = `1.2`
+- `SMOKE_MAX_PER_FRAME` = `24`
+
+**Public vars**
+- `var rate_scale: float = 1.0`
+
+**Public API**
+- `func tick(dt: float, fire: RefCounted, base_y: float, embers: Node, smoke: Node = null) -> void:`
 
 ---
 
@@ -1045,6 +1432,10 @@ extends `Node3D` · 3579 lines
 
 **Public API**
 - `func setup(rect: Rect2, base_y: float, params: Dictionary, flow: Vector2, fluid_plane: RefCounted) -> void:`
+- `func set_fire_surface(amount: float) -> void:`
+- `func surface_y() -> float:`
+- `func tick() -> void:`
+- `func snap() -> void:`
 
 ---
 
@@ -1083,6 +1474,25 @@ extends `Node3D` · 3579 lines
 - `SHADOW_SHADER` = `"res://godot/shaders/ground_overlay3d.gdshader"`
 - `SHADOW_LIFT` = `0.005`
 - `SHADOW_SEGMENTS` = `12`
+
+**Public vars**
+- `var screen_position: Vector2 = Vector2.ZERO:`
+- `var flight_px: float = 0.0:`
+- `var yaw: float = 0.0:`
+
+**Public API**
+- `func setup_object(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, surface_materials: Dictionary, default_material: String, shadow_half_gu: float) -> bool:`
+- `func set_tumble(angle: float, axis: Vector3 = Vector3.RIGHT) -> void:`
+- `func roll_axis_for(dir: Vector2) -> Vector3:`
+- `func set_shadow(strength: float, softness: float, scale: float) -> void:`
+- `func set_contrast(value: float) -> void:`
+- `func repaint(paint_id: String) -> void:`
+- `func set_override_material(material: Material) -> void:`
+- `func model_height() -> float:`
+- `func model_size() -> Vector3:`
+- `func top_world_2d() -> Vector2:`
+- `func model_point_world(p: Vector3) -> Vector3:`
+- `func place_world(ground: Vector3, height: float) -> void:`
 
 ---
 
@@ -1169,6 +1579,38 @@ extends `Node3D` · 3579 lines
 - `P_SWAY_AXIS` = `13`
 - `P_SLUMP` = `100`
 
+**Public vars**
+- `var count: int = 0`
+- `var voxel: float = 0.125`
+- `var origin: Vector3 = Vector3.ZERO`
+- `var weight: float = 1.0`
+- `var time: float = 0.0`
+- `var wave_time: float = 0.06`
+- `var hold: float = 0.0`
+- `var release: PackedFloat32Array = PackedFloat32Array()`
+- `var pos: PackedVector3Array = PackedVector3Array()`
+- `var vel: PackedVector3Array = PackedVector3Array()`
+- `var euler: PackedVector3Array = PackedVector3Array()`
+- `var spin: PackedVector3Array = PackedVector3Array()`
+- `var state: PackedInt32Array = PackedInt32Array()`
+- `var zone: PackedInt32Array = PackedInt32Array()`
+- `var level: PackedInt32Array = PackedInt32Array()`
+- `var column: Array[Vector2i] = []`
+- `var tone: PackedFloat32Array = PackedFloat32Array()`
+- `var flat: PackedByteArray = PackedByteArray()`
+- `var jitter: PackedFloat32Array = PackedFloat32Array()`
+- `var vanish_at: PackedFloat32Array = PackedFloat32Array()`
+
+**Public API**
+- `func is_done() -> bool:`
+- `func advance(delta: float) -> void:`
+- `func step() -> void:`
+- `func pile_records() -> Array:`
+- `func vanished_count() -> int:`
+- `func char_amount(i: int) -> float:`
+- `func char_finished() -> bool:`
+- `func rotation_of(i: int) -> Basis:`
+
 ---
 
 ### `prop_fragments3d.gd`
@@ -1187,6 +1629,13 @@ extends `Node3D` · 3579 lines
 - `SHADER_PATH` = `"res://godot/shaders/prop_mesh3d.gdshader"`
 - `FLOATS_PER_INSTANCE` = `16`
 
+**Public API**
+- `func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array, rubble: bool = false) -> void:`
+- `func is_finished() -> bool:`
+- `func floor_y() -> float:`
+- `func voxel_size() -> float:`
+- `func finish_now() -> void:`
+
 ---
 
 ### `prop_mesh3d.gd`
@@ -1204,6 +1653,8 @@ extends `Node3D` · 3579 lines
 - `func setup(board: Node3D, mesh: Mesh, cell: Vector2i, level: int, albedo: Color, mesh_half_height: float) -> void:`
 - `func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, cell: Vector2i, level: int, surface_materials: Dictionary = {}, default_material: String = "generic") -> void:`
 - `func build_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, surface_materials: Dictionary = {}, default_material: String = "generic") -> Dictionary:`
+- `func set_contrast(value: float) -> void:`
+- `func repaint(paint_id: String) -> void:`
 
 ---
 
@@ -1230,6 +1681,7 @@ extends `Node3D` · 3579 lines
 - `PAD_VOXELS` = `2`
 - `KEY_DIR` = `Vector3(-0.45, 0.8, 0.4)`
 - `SHADER_PATH` = `"res://godot/shaders/prop_contact_shadow3d.gdshader"`
+- `LIFT` = `0.012`
 
 ---
 
@@ -1261,6 +1713,17 @@ extends `Node3D` · 3579 lines
 - `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
 - `SHADER_RECT` = `"res://godot/shaders/particle_quad3d.gdshader"`
 - `FLOATS_PER_INSTANCE` = `16`
+
+**Public API**
+- `func attach_rect(parent: Node3D, priority: int = 0) -> void:`
+- `func begin(capacity: int, cam: Basis, px_per_unit: float, lattice: Variant = null) -> void:`
+- `func begin_on_board(capacity: int) -> void:`
+- `func push_axes(anchor_3d: Vector3, anchor_2d: Vector2, pos_2d: Vector2, ax_2d: Vector2, ay_2d: Vector2, color: Color) -> void:`
+- `func push_line(anchor_3d: Vector3, anchor_2d: Vector2, p0_2d: Vector2, p1_2d: Vector2, width_px: float, color: Color) -> void:`
+- `func flush() -> void:`
+- `func clear() -> void:`
+- `func live_count() -> int:`
+- `func buffer() -> PackedFloat32Array:`
 
 ---
 
@@ -1378,6 +1841,9 @@ extends `Node3D` · 3579 lines
 - `var pane_id: String = ""`
 - `var face: int = -1`
 
+**Public API**
+- `func total_voxel_count() -> int:`
+
 ---
 
 ### `slab_generator.gd`
@@ -1465,6 +1931,22 @@ extends `Node3D` · 3579 lines
 
 **Public API**
 - `func setup(board: Node3D, sim: SoftSheetSim, skin: Dictionary, group: SoftSheetGroup = null) -> void:`
+- `func reveal() -> void:`
+- `func show_at_rest(burning: bool = false, finished: bool = false) -> void:`
+- `func show_settled() -> void:`
+- `func is_resting() -> bool:`
+- `func sim() -> SoftSheetSim:`
+- `func set_revealed(revealed: bool) -> void:`
+- `func covers_any_gu(gus: Dictionary) -> bool:`
+- `func current_positions() -> PackedFloat64Array:`
+- `func is_wall() -> bool:`
+- `func covers_any_column(columns: Dictionary) -> bool:`
+- `func is_done() -> bool:`
+- `func sample(x: float, z: float) -> Vector3:`
+- `func covers(cell: Vector2i) -> bool:`
+- `func column_point(cell: Vector2i) -> Vector3:`
+- `func is_settled() -> bool:`
+- `func scorch(at: Vector3, radius: float, strength: float) -> int:`
 
 ---
 
@@ -1479,6 +1961,21 @@ extends `Node3D` · 3579 lines
 **Public vars**
 - `var sims: Array = []`
 - `var seams: Array = []`
+
+**Public API**
+- `func add(sim: SoftSheetSim) -> int:`
+- `func index_of(sim: SoftSheetSim) -> int:`
+- `func sew(tolerance: float = -1.0) -> int:`
+- `func step() -> void:`
+- `func settle_now(max_seconds: float = 10.0, speed: float = 0.10, hold: float = 0.4) -> int:`
+- `func is_settled() -> bool:`
+- `func sim_time() -> float:`
+- `func advance(delta: float) -> int:`
+- `func alpha() -> float:`
+- `func start() -> void:`
+- `func stop() -> void:`
+- `func owe(seconds: float) -> void:`
+- `func snapshot() -> Dictionary:`
 
 ---
 
@@ -1529,6 +2026,17 @@ extends `Node3D` · 3579 lines
 
 **Public API**
 - `func make_kinematic(nodes: PackedInt32Array) -> void:`
+- `func is_inside_solid(p: Vector3) -> bool:`
+- `func has_solid_near(p: Vector3, radius: float) -> bool:`
+- `func is_deep_in_solid(p: Vector3, depth: float) -> bool:`
+- `func node_position(i: int, j: int) -> Vector3:`
+- `func advance(delta: float) -> int:`
+- `func alpha() -> float:`
+- `func is_settled() -> bool:`
+- `func restore(positions: PackedFloat64Array) -> bool:`
+- `func settle_now(max_seconds: float = 6.0, speed: float = 0.10, hold: float = 0.4) -> int:`
+- `func positions_lerped(a: float, out: PackedFloat32Array) -> void:`
+- `func step() -> void:`
 
 ---
 
@@ -1559,6 +2067,14 @@ extends `Node3D` · 3579 lines
 - `POSE_PREFIX` = `"pose_"`
 - `FINGER_BONES` = `[ "LeftHandIndex1", "LeftHandIndex2", "LeftHandMiddle1", "LeftHandMiddle2", "LeftHandPinky1", "LeftHandPinky2", "LeftHandRing1", "LeftHandRing2", "LeftHandThumb1", "LeftHandThumb2", "RightHandIndex1", "RightHandIndex2", "RightHandMiddle1", "RightHandMiddle2", "RightHandPinky1", "RightHandPinky2", "RightHandRing1", "RightHandRing2", "RightHandThumb1", "RightHandThumb2", ]`
 - `POSES` = `{ "draw_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.07, "height": -0.075, "gap": 0.05, "pole": 0.9, "hand_pitch": 50.0}}, "aim_pistol": {"clip": "fire", "time": 0.5, "bones": FINGER_BONES, "props": ["pistol"], "two_hand_aim": {"reach": 0.255, "height": 0.02, "gap": 0.044, "pole": 0.4}}, ## The Director's in-between (2026-11-09), two fifths of the way from the draw to the aim: his file when he has posed it, else this plain blend. "mid_pistol": {"between": ["draw_pistol", "aim_pistol"], "at": 0.4}, ## Derived, never posed or stored (`_between_pose`): that in-between with the front foot off the floor (`lift`: the rig's own units, Blender's metres on the 1 m figure); `travel` = the stops the foot goes between. "step_pistol": {"between": ["mid_pistol", "aim_pistol"], "at": 0.0, "travel": ["draw_pistol", "aim_pistol"], "foot": "LeftFoot", "lift": 0.02}, }`
+- `STEP_MIN_TRAVEL` = `0.02`
+- `POSE_FILE` = `"res://ASSETS/ANIMATIONS/poses/%s/%s.json"`
+- `LIBRARY_NAME` = `&"bank"`
+- `HIPS` = `"Hips"`
+- `TRAVEL_META` = `&"travel_m"`
+- `CLIP_FILE` = `"res://ASSETS/ANIMATIONS/sequences/%s/%s.json"`
+- `FOOTED_CLIPS` = `{ "run_start": {"next": "run"}, "run_stop_l": {"prev": "run", "prev_frame": 21, "next": "idle", "next_frame": 90}, "run_stop_r": {"prev": "run", "prev_frame": 14, "next": "idle", "next_frame": 90}, ## the walk's passages (2026-11-14): one start and one stop per figure (a walk cycle is exactly one GU, so every walk ends in the same phase) "walk_start": {"next": "walk"}, "walk_stop": {"prev": "walk", "prev_frame": 22, "next": "idle", "next_frame": 90}, ## the crouch (2026-11-15): idle frame 90 -> kneeling on the right knee; its last frame is HELD (the crouch pose, CrouchFix on) "crouch": {"prev": "idle", "prev_frame": 90, "hold": true}, ## rising from the crouch into the run (2026-11-15): the crouch's last frame (index 15 of 24 fps) -> the run's contact; must come AFTER "crouch" (its prev) "crouch_run": {"prev": "crouch", "prev_frame": 15, "next": "run"}, "crouch_walk": {"prev": "crouch", "prev_frame": 15, "next": "walk"}, }`
+- `HELD_PROPS` = `{"grenade": "frag_grenade"}`
 
 ---
 
@@ -1636,22 +2152,54 @@ extends `Node3D` · 3579 lines
 - `PaneFrameRef` = `preload("res://godot/scripts/systems/destruction/pane_frame.gd")`
 - `IMPACT_DECAL_MATERIALS` = `["concrete", "metal", "stone", "wood", "brick"]`
 - `IMPACT_DECAL_VARIANTS` = `3`
+- `DAMAGE_SUBSTRATE_VARIANTS` = `3`
+- `IMPACT_FLOOR_MATERIAL` = `"earth"`
+- `IMPACT_CRACK_MATERIALS` = `["concrete", "stone", "brick"]`
+- `FLOOR_DEPTH_DIM` = `[1.0, 0.82, 0.62, 0.46, 0.34]`
+- `LIGHT_BUCKET_COUNT` = `12`
+- `FACE_SOOT_CODE_CLEAN` = `172`
+- `FACE_SOOT_CODE_COUNT` = `216`
+- `_CellPlaneStoreScript` = `preload("res://godot/scripts/systems/cell_plane_store.gd")`
+- `BUCKET_UNWRITTEN` = `_CellPlaneStoreScript.BUCKET_UNWRITTEN`
 - `GlassCrackParamsClass` = `preload("res://godot/scripts/systems/destruction/glass_crack_params.gd")`
 - `CRAZE_MASK_TEXELS_PER_VOXEL` = `6`
 - `FloorPile3DRef` = `preload("res://godot/scripts/geometry/floor_pile3d.gd")`
+- `PatchDecal3DRef` = `preload("res://godot/scripts/geometry/floor_pile3d.gd")`
+- `DebrisPileRef` = `preload("res://godot/scripts/geometry/floor_pile3d.gd")`
+- `DEBRIS_ART_FALLBACK` = `"wood"`
 - `PropMesh3DRef` = `preload("res://godot/scripts/geometry/prop_mesh3d.gd")`
+- `GLASS_OCC_MAX_SIDE` = `128`
 
 **Public vars**
 - `var glass_occ_hold: Dictionary = {}`
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
+- `var debug_nudge: Vector2 = Vector2.ZERO`
 - `var render_frame_budget_ms: float = 200.0`
 
 **Public API**
 - `func release_glass_occ_hold() -> void:`
+- `func has_level(level: int) -> bool:`
+- `func level_keys() -> Array:`
+- `func wall_level_keys() -> Array:`
+- `func ground_plane_level() -> int:`
+- `func relative_level(level: int) -> int:`
+- `func top_wall_level() -> int:`
+- `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
+- `func voxel_world_position(grid_pos: Vector2i, level: int) -> Vector2:`
+- `func level_origin(level: int) -> Vector2:`
+- `func level_z_index(level: int) -> int:`
+- `func get_max_voxel_z_index() -> int:`
+- `func get_walked_cell_count() -> int:`
+- `func memory_census(label: String) -> void:`
+- `func apply_debug_nudge(delta: Vector2) -> void:`
+- `func register_geometry(registry: EdgeRegistry, junction_columns: Array = []) -> void:`
+- `func register_block_levels(_gu_cell: Vector2i, start_level: int, storey_span: int, _material_name: String) -> void:`
 - `func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:`
 - `func build_occupancy_live(changes: Array[Vector3i]) -> Dictionary:`
 - `func build_occupancy_live_erasing(predict: Dictionary, changes: Array[Vector3i], erased: Array[Vector3i]) -> Dictionary:`
 - `func columns_with_structure() -> Dictionary:`
+- `func note_external_write(level: int, cell: Vector2i) -> void:`
+- `func apply_light_field(field) -> void:`
 - `func apply_light_field_cells(field, cells: Dictionary) -> void:`
 - `func begin_light_apply_job(field, cells: Dictionary) -> void:`
 - `func step_light_apply_job(budget_us: int) -> bool:`
@@ -1663,12 +2211,24 @@ extends `Node3D` · 3579 lines
 - `func process_dirty_slabs(registry: SlabRegistry) -> void:`
 - `func process_dirty_async(registry: EdgeRegistry, states: Array = []) -> void:`
 - `func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> void:`
+- `func reset_cell_planes() -> void:`
+- `func begin_bucket_journal() -> void:`
+- `func end_bucket_journal() -> Dictionary:`
+- `func cell_bucket_at(level: int, cell: Vector2i) -> int:`
+- `func cell_plane_image(level: int) -> Image:`
+- `func cell_plane_levels() -> Array:`
+- `func cell_soot_at(level: int, cell: Vector2i) -> int:`
+- `func flush_cell_soot() -> int:`
 - `func prefetch_glass_crack_sheet(sheet_id: String, variant: int) -> void:`
 - `func glass_crack_covering(pane_id: String, run: int, level: int) -> int:`
 - `func spawn_glass_crack(spec: Dictionary) -> int:`
 - `func spawn_glass_craze(spec: Dictionary) -> int:`
 - `func spawn_floor_shard_pile(level: int, cell: Vector2i, count: int, variant: int) -> bool:`
 - `func set_pile_board3d(board: Node3D) -> void:`
+- `func set_patch_board3d(board: Node3D) -> void:`
+- `func place_patch_demo(cell: Vector2i, level: int) -> void:`
+- `func set_debris_pile_board3d(board: Node3D) -> void:`
+- `func warm_debris_pile(material_id: String) -> void:`
 - `func place_debris_piece(id, center: Vector2, level: int, material_id: String, variant: int, tint: Color, rot: float = 0.0) -> void:`
 - `func place_prop_demo(board: Node3D, prop_id: String, cell: Vector2i, level: int) -> void:`
 - `func clear_floor_shards() -> void:`
@@ -1680,6 +2240,29 @@ extends `Node3D` · 3579 lines
 - `func glass_craze_count() -> int:`
 - `func clear_glass_cracks() -> void:`
 - `func clear_glass_rim_cells() -> void:`
+- `func set_glass_crack_hole_cut(v: float) -> void:`
+- `func glass_crack_hole_cut() -> float:`
+- `func note_glass_erased(level: int, cell: Vector2i) -> void:`
+- `func refresh_glass_crack_occupancy() -> int:`
+- `func refresh_craze_opening_masks() -> int:`
+- `func note_glass_erased_for_rim(level: int, cell: Vector2i) -> void:`
+- `func refresh_glass_rims() -> int:`
+- `func apply_glass_remnant_at(level: int, cell: Vector2i, shape_id: String, anchor_mask: int, _flop: bool) -> bool:`
+- `func claim_glass_opening(level: int, cell: Vector2i, opening_id: String) -> void:`
+- `func apply_glass_opening_at(level: int, cell: Vector2i, opening_id: String) -> int:`
+- `func glass_cell_present(level: int, cell: Vector2i) -> bool:`
+- `func erase_glass_cell(level: int, cell: Vector2i) -> bool:`
+- `func register_slab(slab: Slab, apply: bool = true) -> Array:`
+- `func reveal_floor_slab(slab: Slab, apply: bool = true) -> Array:`
+- `func register_slab_solid(slab: Slab) -> void:`
+- `func register_fixed_level(gu_cell: Vector2i, level: int, apply: bool = true) -> Array:`
+- `func register_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:`
+- `func prop_blocks() -> Array[PropBlock]:`
+- `func prop_gus() -> Array:`
+- `func register_vox_prop(gu_cell: Vector2i, start_storey: int, prop_def, build: Dictionary) -> void:`
+- `func register_mesh_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:`
+- `func mesh_props() -> Array[MeshPropInstance]:`
+- `func clear() -> void:`
 
 ---
 
@@ -1701,6 +2284,14 @@ extends `Node3D` · 3579 lines
 - `func cells_packed() -> PackedInt32Array:`
 - `func has_cells_only() -> bool:`
 - `func voxel_at(i: int) -> Voxel:`
+- `func cell_at(i: int) -> Vector3i:`
+- `func is_released() -> bool:`
+- `func claim_offset() -> int:`
+- `func release_voxels(offset: int, ordinal: int) -> void:`
+- `func bind_claims(offset: int, ordinal: int) -> void:`
+- `func increment_dirty() -> void:`
+- `func decrement_dirty() -> void:`
+- `func clear_all_dirty() -> void:`
 
 ---
 
@@ -1730,6 +2321,11 @@ extends `Node3D` · 3579 lines
 - `func polygon(points: PackedVector3Array, color: Color) -> void:`
 - `func ring(centre: Vector3, radius_px: float, color: Color, width_px: float) -> void:`
 - `func up(px: float) -> Vector3:`
+- `func begin_screen(anchor3: Vector3, anchor2: Vector2) -> void:`
+- `func screen_axes() -> Array[Vector2]:`
+- `func draw_colored_polygon(points: PackedVector2Array, color: Color) -> void:`
+- `func draw_line(from: Vector2, to: Vector2, color: Color, width: float = 1.0, _antialiased: bool = false) -> void:`
+- `func draw_polyline(points: PackedVector2Array, color: Color, width: float = 1.0, _antialiased: bool = false) -> void:`
 
 ---
 
@@ -1814,6 +2410,41 @@ extends `Node3D` · 3579 lines
 
 `godot/scripts/overlays/aim_bubble_overlay.gd`
 
+**Constants / tuning**
+- `SEG_STRIDE` = `6`
+- `SEG_AXIS_X` = `0`
+- `SEG_POS` = `1`
+- `SEG_SPAN_MIN` = `2`
+- `SEG_SPAN_MAX` = `3`
+- `SEG_Z_MIN` = `4`
+- `SEG_Z_MAX` = `5`
+- `MAX_SEGMENTS` = `32`
+- `SHADER_DIR` = `"res://godot/shaders/"`
+
+**Public vars**
+- `var dome_color: Color = Color(1.0, 0.66, 0.30, 1.0)`
+- `var fill_alpha: float = 0.13`
+- `var floor_fill_alpha: float = 0.20`
+- `var floor_line_alpha: float = 0.55`
+- `var rim_alpha: float = 0.90`
+- `var line_width: float = 3.5`
+- `var grid_alpha: float = 0.45`
+- `var grid_line_width: float = 2.4`
+- `var lat_ring_count: int = 5`
+- `var long_meridian_count: int = 12`
+- `var wall_fill_alpha: float = 0.24`
+- `var wall_line_alpha: float = 0.85`
+- `var wall_grid_alpha: float = 0.60`
+- `var wall_grid_step_gu: float = 0.25`
+- `var wall_search_margin: float = 1.0`
+- `var shell_segments: int = 64`
+- `var shell_rings: int = 16`
+
+**Public API**
+- `func set_board3d(board: Node3D) -> void:`
+- `func show_dome(center: Vector2, radius_gu: float, center_gu: Vector2i, wall_height_edges: Dictionary) -> void:`
+- `func clear() -> void:`
+
 ---
 
 ### `blast_wireframe_overlay.gd`
@@ -1864,6 +2495,11 @@ extends `Node3D` · 3579 lines
 
 `godot/scripts/overlays/debris_overlay.gd`
 
+**Constants / tuning**
+- `CircleField3DRef` = `preload("res://godot/scripts/geometry/circle_field3d.gd")`
+- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
+- `QuadField3DRef` = `preload("res://godot/scripts/geometry/quad_field3d.gd")`
+
 **Public vars**
 - `var dust_delay_min: float = 0.25`
 - `var dust_delay_max: float = 0.45`
@@ -1902,6 +2538,35 @@ extends `Node3D` · 3579 lines
 - `var chip_rotation_speed_min: float = -10.0`
 - `var chip_rotation_speed_max: float = 10.0`
 - `var chip_fade_power: float = 1.3`
+- `var trickle_count_min: int = 10`
+- `var trickle_count_max: int = 22`
+- `var trickle_delay_min: float = 0.3`
+- `var trickle_delay_max: float = 0.6`
+- `var trickle_span_min: float = 0.2`
+- `var trickle_span_max: float = 0.6`
+- `var trickle_fall_min: float = 0.3`
+- `var trickle_fall_max: float = 0.55`
+- `var trickle_speed_min: float = 0.65`
+- `var trickle_speed_max: float = 1.5`
+- `var trickle_darken_min: float = 0.0`
+- `var trickle_darken_max: float = 0.4`
+- `var trickle_dash_len: Vector2 = Vector2(0.5, 3.0)`
+- `var trickle_dash_width: float = 0.3`
+- `var trickle_rest_min: float = 0.3`
+- `var trickle_rest_max: float = 0.5`
+- `var trickle_sway: float = 1.1`
+- `var trickle_pile_spread: float = 3.2`
+- `var trickle_opacity: float = 0.5`
+- `var trickle_origin_shift: Vector2 = Vector2(2.0, -3.0)`
+- `var trickle_start_radii: Vector2 = Vector2(3.0, 3.6)`
+
+**Public API**
+- `func add_dust(origin: Vector2, target: Vector2, color: Color, anchor_3d: Vector3 = ParticleMathRef.NO_ANCHOR) -> void:`
+- `func add_sand_trickle(origin: Vector2, target: Vector2, color: Color) -> void:`
+- `func add_glass_dust(center: Vector2, reach: float, color: Color) -> void:`
+- `func add_chips(origin: Vector2, target: Vector2, count: int, color: Color, spread_scale: float = 1.0) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
+- `func clear() -> void:`
 
 ---
 
@@ -1946,6 +2611,54 @@ extends `Node2D` · 254 lines
 `class_name EmberOverlay` · extends `Node2D` · 426 lines
 
 `godot/scripts/overlays/ember_overlay.gd`
+
+**Constants / tuning**
+- `CircleField3DRef` = `preload("res://godot/scripts/geometry/circle_field3d.gd")`
+- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
+
+**Public vars**
+- `var glow_radius: float = 9.0`
+- `var fade_power: float = 1.6`
+- `var min_glow_duration: float = 1.5`
+- `var max_glow_duration: float = 4.0`
+- `var height_bias_low: float = 0.65`
+- `var height_bias_high: float = 1.3`
+- `var hue_hot_min: float = 0.075`
+- `var hue_hot_max: float = 0.145`
+- `var hue_cold_min: float = 0.0`
+- `var hue_cold_max: float = 0.035`
+- `var sat_min: float = 0.75`
+- `var sat_max: float = 0.95`
+- `var sat_cool_gain: float = 0.18`
+- `var val_min: float = 0.60`
+- `var val_max: float = 0.85`
+- `var val_cool_floor: float = 0.35`
+- `var burnt_ember_radius_gain: float = 1.18`
+- `var burnt_ember_life_gain: float = 1.08`
+- `var burnt_ember_cool_rate: float = 0.85`
+- `var hue_cool_ease: float = 0.40`
+- `var val_cool_ease: float = 1.80`
+- `var radius_jitter_min: float = 0.7`
+- `var radius_jitter_max: float = 1.4`
+- `var halo_scale_min: float = 1.25`
+- `var halo_scale_max: float = 1.8`
+- `var halo_alpha_factor: float = 0.20`
+- `var pulse_speed_min: float = 2.0`
+- `var pulse_speed_max: float = 6.0`
+- `var pulse_amount_min: float = 0.15`
+- `var pulse_amount_max: float = 0.35`
+- `var ember_smoke_color: Color = Color(0.13, 0.11, 0.10, 0.72)`
+- `var ember_smoke_scale: float = 0.85`
+- `var ember_smoke_radius_gain: float = 0.5`
+- `var top_face_lift_gu: float = 0.04`
+
+**Public API**
+- `func set_board3d(board: Node3D) -> void:`
+- `func set_smoke_overlay(overlay: SmokeSparkOverlay) -> void:`
+- `func top_face_anchor(cell: Vector2i, level: int) -> Vector3:`
+- `func add_ember(world_pos: Vector2, duration: float = -1.0, velocity: Vector2 = Vector2.ZERO, drag: float = 0.0, rise: float = 0.0, duration_scale: float = 1.0, delay: float = 0.0, radius_scale: float = 1.0, cool_rate: float = 1.0, smoke_on_death: bool = true, floor_pos: Vector2 = ParticleMathRef.NO_FLOOR, anchor_3d: Vector3 = ParticleMathRef.NO_ANCHOR) -> void:`
+- `func ember_color_at(e: Dictionary, t: float) -> Color:`
+- `func clear() -> void:`
 
 ---
 
@@ -2412,6 +3125,43 @@ extends `Node2D` · 115 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 
+**Constants / tuning**
+- `CircleField3DRef` = `preload("res://godot/scripts/geometry/circle_field3d.gd")`
+- `QuadField3DRef` = `preload("res://godot/scripts/geometry/quad_field3d.gd")`
+- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
+
+**Public vars**
+- `var smoke_blob_count_min: int = 2`
+- `var smoke_blob_count_max: int = 3`
+- `var smoke_duration_min: float = 1.8`
+- `var smoke_duration_max: float = 3.2`
+- `var smoke_start_radius: float = 6.0`
+- `var smoke_end_radius: float = 16.0`
+- `var smoke_3d_radius_scale: float = 0.8`
+- `var smoke_drift_x: float = 10.0`
+- `var smoke_drift_y_min: float = 48.0`
+- `var smoke_drift_y_max: float = 82.0`
+- `var smoke_drift_damping: float = 0.78`
+- `var smoke_fade_power: float = 1.4`
+- `var smoke_spawn_jitter: float = 4.0`
+- `var spark_speed_min: float = 90.0`
+- `var spark_speed_max: float = 220.0`
+- `var spark_gravity: float = 0.0`
+- `var spark_duration_min: float = 0.45`
+- `var spark_duration_max: float = 0.85`
+- `var spark_trail_length: float = 15.0`
+- `var spark_trail_segments: int = 4`
+- `var spark_trail_tail_alpha: float = 0.12`
+- `var spark_width: float = 1.9`
+- `var spark_fade_power: float = 1.2`
+
+**Public API**
+- `func set_board3d(board: Node3D) -> void:`
+- `func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: float = 1.0, blob_count_override: int = 0, drift_scale: float = 1.0, delay: float = 0.0, floor_pos: Vector2 = ParticleMathRef.NO_FLOOR, anchor_3d: Vector3 = ParticleMathRef.NO_ANCHOR, style: Dictionary = {}) -> void:`
+- `func add_sparks(pos: Vector2, count: int, color: Color, speed_scale: float = 1.0, duration_scale: float = 1.0, floor_pos: Vector2 = ParticleMathRef.NO_FLOOR, anchor_3d: Vector3 = ParticleMathRef.NO_ANCHOR, cone_dir: Vector2 = Vector2.ZERO, cone_half_angle: float = 0.0) -> void:`
+- `func smoke_count() -> int:`
+- `func clear() -> void:`
+
 ---
 
 ### `target_cursor_overlay.gd`
@@ -2476,6 +3226,9 @@ extends `Node2D` · 282 lines
 
 `godot/scripts/overlays/throw_arc_overlay.gd`
 
+**Constants / tuning**
+- `WorldCanvas3DRef` = `preload("res://godot/scripts/geometry/world_canvas3d.gd")`
+
 **Public vars**
 - `var arc_color: Color = Color(1.0, 0.8, 0.3, 0.7)`
 - `var line_width: float = 2.0`
@@ -2484,6 +3237,17 @@ extends `Node2D` · 282 lines
 - `var bounce_height_ratio: float = 0.12`
 - `var bounce_duration_s: float = 0.18`
 - `var flight_turns: float = 1.0`
+- `var roll_turns_at_max_range: float = 1.0 / 8.0`
+- `var roll_back_ratio: float = 0.5`
+- `var roll_back_duration_ratio: float = 0.7`
+- `var roll_radius_px: float = 11.0`
+
+**Public API**
+- `func settle_duration_at_max_range(cook_s: float) -> float:`
+- `func set_board3d(board: Node3D) -> void:`
+- `func show_arc(from_pos: Vector2, to_pos: Vector2) -> void:`
+- `func set_launch_height(launch_px: float) -> void:`
+- `func clear() -> void:`
 
 ---
 
@@ -2572,12 +3336,21 @@ extends `Node2D` · 135 lines
 - `TAIL_COLOR` = `Color(1.0, 0.62, 0.22, 0.55)`
 - `CORE_WIDTH_PX` = `2.0`
 - `TAIL_WIDTH_PX` = `4.0`
+- `HOLD_FRAMES` = `5`
+- `FADE_FRAMES` = `3`
+- `STREAK_FRACTION` = `0.16`
+- `HEAD_RADIUS_PX` = `2.6`
+- `HEAD_COLOR` = `Color(1.0, 0.97, 0.86, 1.0)`
 - `BOLT_FRACTION` = `0.3`
 - `BOLT_TAIL_WIDTH_PX` = `6.0`
 - `BOLT_CORE_WIDTH_PX` = `2.5`
 - `BOLT_HEAD_RADIUS_PX` = `3.6`
 - `BOLT_FLASH_RADIUS_PX` = `9.0`
 - `WorldCanvas3DRef` = `preload("res://godot/scripts/geometry/world_canvas3d.gd")`
+
+**Public API**
+- `func add_tracer(from: Vector2, to: Vector2, from_floor: Vector2 = Vector2.INF, to_floor: Vector2 = Vector2.INF, energy: Color = Color(0.0, 0.0, 0.0, 0.0)) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 
@@ -2674,6 +3447,21 @@ extends `RefCounted` · 37 lines
 
 **Constants / tuning**
 - `BUCKET_UNWRITTEN` = `255`
+- `PLANE_MARGIN` = `16`
+
+**Public API**
+- `func write_soot(level: int, cell: Vector2i, code: int) -> void:`
+- `func write_bucket(level: int, cell: Vector2i, bucket: int) -> int:`
+- `func write_warm(level: int, cell: Vector2i, warm: int) -> bool:`
+- `func write_buckets_level(level: int, cells: Array, buckets: PackedByteArray) -> void:`
+- `func write_buckets_levels(levels: Array, cells: Array, buckets: Array) -> void:`
+- `func bucket_at(level: int, cell: Vector2i) -> int:`
+- `func soot_at(level: int, cell: Vector2i) -> int:`
+- `func plane_image(level: int) -> Image:`
+- `func plane_levels() -> Array:`
+- `func flush(_skip_writes: bool) -> int:`
+- `func ensure_level(level: int) -> void:`
+- `func reset_all() -> void:`
 
 ---
 
@@ -2716,6 +3504,9 @@ extends `RefCounted` · 37 lines
 - `var muzzle: Vector3 = Vector3.INF`
 - `var girth: float = 1.0`
 
+**Public API**
+- `func mount_in(w: WeaponDef, w_scale: float) -> Transform3D:`
+
 ---
 
 ### `attachment_registry.gd`
@@ -2755,6 +3546,8 @@ extends `RefCounted` · 37 lines
 - `NO_EPICENTER_BIAS` = `Vector2i(-999999, -999999)`
 - `FACE_SOOT_CLEAN` = `4`
 - `FACE_SOOT_CHAR` = `5`
+- `_SOOT_NEIGHBOURS` = `[Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]`
+- `SOOT_EDGE_DIAGONALS` = `[ Vector3i(1, 1, 0), Vector3i(1, -1, 0), Vector3i(-1, 1, 0), Vector3i(-1, -1, 0), Vector3i(1, 0, 1), Vector3i(1, 0, -1), Vector3i(-1, 0, 1), Vector3i(-1, 0, -1), Vector3i(0, 1, 1), Vector3i(0, 1, -1), Vector3i(0, -1, 1), Vector3i(0, -1, -1)]`
 
 ---
 
@@ -2799,6 +3592,12 @@ extends `RefCounted` · 37 lines
 **Public vars**
 - `var registry: Dictionary = {}`
 - `var load_errors: Array[String] = []`
+
+**Public API**
+- `func register(bomb_def) -> void:`
+- `func get_bomb(p_id: String):`
+- `func count() -> int:`
+- `func load_from_disk() -> void:`
 
 ---
 
@@ -2851,6 +3650,32 @@ extends `RefCounted` · 37 lines
 - `SMOKE_BLOBS_PER_VOXEL` = `1`
 - `PHASE_SETUP` = `0`
 - `PHASE_SLICES` = `1`
+- `PHASE_JUNCTIONS` = `2`
+- `PHASE_PROPS` = `3`
+- `PHASE_ROOFS` = `4`
+- `PHASE_FLOORS` = `5`
+- `PHASE_WALK` = `6`
+- `PHASE_BURN` = `7`
+- `PHASE_SOOT` = `8`
+- `PHASE_LIGHT` = `9`
+- `PHASE_PACKAGE` = `10`
+- `PHASE_EXPOSE` = `11`
+- `PHASE_SOOTWAVE` = `12`
+- `PHASE_SMOKE` = `13`
+- `PHASE_DONE` = `14`
+- `PHASE_NAMES` = `[ "SETUP", "SLICES", "JUNCTIONS", "PROPS", "ROOFS", "FLOORS", "WALK", "BURN", "SOOT", "LIGHT", "PACKAGE", "EXPOSE", "SOOTWAVE", "SMOKE", "DONE", ]`
+- `BURN_RADIAL_REACH_VOXELS` = `26.0`
+- `BURN_BASE_LIFE_S` = `0.55`
+- `BURN_LIFE_JITTER` = `0.60`
+- `EMBER_CLIMB_MAX_LEVELS` = `3`
+- `EMBER_CLIMB_CHANCE` = `0.55`
+- `EMBER_CLIMB_DECAY` = `0.55`
+- `EMBER_CLIMB_LIFE_DECAY` = `0.7`
+- `EMBER_CLIMB_DELAY_S` = `0.10`
+- `EMBER_CLIMB_DELAY_JITTER` = `0.55`
+- `EMBER_SEED_STAGGER_S` = `0.20`
+- `EMBER_NEIGHBOURS` = `[ Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1), ]`
+- `DEBRIS_EFFECTS` = `["dust", "sparks", "chips"]`
 
 ---
 
@@ -2883,12 +3708,15 @@ extends `RefCounted` · 37 lines
 - `var soot_fade_frames: int = 5`
 - `var soot_start_s: float = 0.0`
 - `var soot_step_s: float = 0.075`
+- `var effect_budget_us: int = 8000`
 
 **Public API**
 - `func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {}, debris_overlay: DebrisOverlay = null, debris_colors: Dictionary = {}) -> void:`
 - `func start(plan: Dictionary, voxel_board, smoke_overlay, tree: SceneTree) -> void:`
 - `func commit_under_flash(plan: Dictionary, voxel_board) -> float:`
 - `func run_hit_stop_tail(voxel_board) -> float:`
+- `func prepare(plan: Dictionary) -> void:`
+- `func prepare_step(voxel_board, budget_usec: int) -> void:`
 
 ---
 
@@ -2904,6 +3732,12 @@ extends `RefCounted` · 37 lines
 - `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `FacadeSampler` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `PaneFrameRef` = `preload("res://godot/scripts/systems/destruction/pane_frame.gd")`
+- `MANIFEST_PATH` = `"res://ASSETS/materials/glass/fracture_manifest.json"`
+- `SHEET_TEMPLATE` = `"res://ASSETS/materials/glass/fracture_glass_%s_%d.png"`
+- `ARMORED_SHEET_TIGHT` = `"armored_tight"`
+- `ARMORED_SHEET_WIDE` = `"armored_wide"`
+- `CRAZE_BUCKET_COARSE` = `["blast_coarse", "blast_mid_70", "blast_mid_90"]`
+- `CRAZE_BUCKET_FINE` = `["blast_mid_110", "blast_wild", "blast_fine"]`
 
 ---
 
@@ -2942,6 +3776,7 @@ extends `RefCounted` · 37 lines
 **Constants / tuning**
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `NO_LANDING` = `-1`
+- `INDEX_STEP_CELLS` = `2048`
 
 ---
 
@@ -2959,6 +3794,8 @@ extends `RefCounted` · 37 lines
 - `MIN_VALLEY` = `0.708`
 - `FAMILY` = `{ ## A — "bico fundo": the long-spiked star, the silhouette the build has been ## making since CRACK-03. "star_deep":    {"lobes": 8, "r_out": 1.90, "r_in": 0.75, "phase": 0.0, "size": "small"}, ## B — "bico raso": the same star pulled in to half the reach. "star_shallow": {"lobes": 8, "r_out": 1.30, "r_in": 0.74, "phase": 0.0, "size": "small"}, ## C — "entalhe em V, cantos ficam": four points on the orthogonals only, so ## the diagonal corners of the struck cell's neighbours are never reached. "notch_v":      {"lobes": 4, "r_out": 1.70, "r_in": 0.76, "phase": 0.0, "size": "small"}, ## D — "chanfro 45 graus": the compact one. `r_in = r_out · cos(π/8)` makes it ## a regular octagon rather than a star. "chamfer_45":   {"lobes": 8, "r_out": 0.80, "r_in": 0.739, "phase": 0.3927, "size": "small"}, ## The large members. Same language, more reach — a rifle or a shotgun breach ## is not a different mechanism, only a bigger polygon. "star_deep_wide":  {"lobes": 8, "r_out": 3.20, "r_in": 1.05, "phase": 0.0, "size": "large"}, "star_ragged_wide": {"lobes": 11, "r_out": 2.80, "r_in": 1.20, "phase": 0.19, "size": "large"}, "chamfer_45_wide": {"lobes": 8, "r_out": 2.10, "r_in": 1.94, "phase": 0.3927, "size": "large"}, ## ── THE IRREGULAR MEMBERS (Director, 2026-09-04: *"algumas mais esquisitas, ## com um chunk grande faltando, angulos irregulares"*, on three references — ## a real bullet impact and two shard renders). ────────────────────────── ## ## ⚠️ EVERY RADIUS STILL CLEARS `MIN_VALLEY`. An asymmetric opening is one ## whose LARGE side is much larger, never one whose small side vanishes: the ## struck voxel is gone whole either way, so a radius under 0.708 would ask ## to keep a corner of it. [16] holds the line for these the same as the rest. ## ## `chunk_bite` — one big smooth chunk gone from a single quadrant, the rest a ## tight ragged rim. The asymmetry IS the shape. ## ## ⚠️ THE READ COMES FROM THE JUMP BETWEEN ADJACENT RADII, NOT FROM THE RANGE. ## The first pass at these two used 16 vertices easing smoothly from 4.2 down ## to 1.0, a 4:1 range — and both rendered as ROUND BLOBS ## (`glass_openings_family_2026-09-04.png`, first version). Every reference the ## Director sent is made of long STRAIGHT fracture edges, and a straight edge ## is what you get when two adjacent vertices are far apart in radius: the ## chord between them cuts across. Fewer vertices, bigger jumps. "chunk_bite": {"size": "small", "phase": 0.55, "radii": [ 2.90, 3.10, 1.00, 0.85, 1.60, 0.80, 1.10, 0.78, 0.90, 2.20]}, ## `star_wild` — irregular in BOTH axes: spikes of unequal length at unequal ## angles, so no two arms of the hole read as a pair. "star_wild": {"size": "small", "phase": 0.11, "radii": [ 2.10, 0.80, 1.30, 0.75, 2.60, 0.90, 1.00, 0.76, 1.70, 0.80, 2.30, 0.85], "angles": [ 0.00, 0.06, 0.13, 0.21, 0.27, 0.35, 0.44, 0.51, 0.60, 0.68, 0.79, 0.90]}, ## `shard_fan_wide` — the many-thin-spikes read of the third reference: a ## dense fan of long slivers, each a different length. "shard_fan_wide": {"size": "large", "phase": 0.0, "radii": [ 3.40, 1.10, 2.60, 1.05, 3.90, 1.20, 2.20, 1.00, 3.10, 1.15, 3.60, 1.05, 2.40, 1.10, 3.30, 1.00, 2.80, 1.20, 3.70, 1.10]}, ## `crescent_wide` — the first reference's silhouette: a huge chunk taken out ## of one side with a long sweeping edge, the far side barely opened. "crescent_wide": {"size": "large", "phase": 0.30, "radii": [ 4.30, 3.90, 1.15, 1.00, 1.40, 1.05, 0.95, 1.20, 1.00, 1.60, 2.60, 3.90]}, ## `gash_wide` — the one shape class the other eleven did not have: ELONGATED. ## Every other member is roughly radial, so a map of them reads as twelve sizes ## of the same idea. This one runs long on one axis and stays tight on the ## other, with the sides jagged rather than parallel — a pane that split along ## a line rather than a round that punched through it. "gash_wide": {"size": "large", "phase": 0.08, "radii": [ 3.60, 1.50, 2.20, 0.90, 1.10, 0.85, 2.90, 3.80, 1.30, 0.90, 1.00, 0.80, 1.90, 1.20]}, }`
 - `POOLS` = `{ "small": ["star_deep", "star_shallow", "notch_v", "chamfer_45", "chunk_bite", "star_wild"], "large": ["star_deep_wide", "star_ragged_wide", "chamfer_45_wide", "shard_fan_wide", "crescent_wide", "gash_wide"], }`
+- `MASK_TEXELS_PER_VOXEL` = `24`
+- `MASK_PAD` = `0.25`
 
 ---
 
@@ -3037,6 +3874,13 @@ extends `RefCounted` · 37 lines
 - `MaterialRowsRef` = `preload("res://godot/scripts/systems/material_rows.gd")`
 - `RES_MATERIALS_DIR` = `"res://ASSETS/materials"`
 - `USER_MATERIALS_DIR` = `"user://materials"`
+- `DEFAULT_DESTROY_FACTOR` = `0.5`
+- `DEFAULT_DENT_FACTOR` = `0.0`
+- `DEFAULT_CRACK_FACTOR` = `0.0`
+- `DEFAULT_FLAMMABILITY` = `0.0`
+- `DEFAULT_BURN_CONSUMPTION` = `0.0`
+- `DEFAULT_SMOKE_CHANCE` = `1.0`
+- `DEFAULT_SUPPORT_REACH` = `96.0`
 
 ---
 
@@ -3070,6 +3914,8 @@ extends `RefCounted` · 37 lines
 - `FLY` = `0`
 - `STAY` = `1`
 - `GONE` = `2`
+- `BLOCKS_PER_FRAME` = `5`
+- `ISLAND_NEIGHBOURS` = `3`
 
 ---
 
@@ -3113,6 +3959,10 @@ extends `RefCounted` · 37 lines
 
 **Constants / tuning**
 - `NEIGHBOURS` = `[Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]`
+- `BUDGET` = `1920`
+- `LATERAL_MARGIN` = `100`
+- `UP_MARGIN` = `40`
+- `MAX_FOUND` = `120000`
 
 ---
 
@@ -3144,6 +3994,8 @@ extends `RefCounted` · 63 lines
 - `DELIVERY_LINE` = `"LINE"`
 - `DELIVERY_NONE` = `"NONE"`
 - `VALID_DELIVERIES` = `[ DELIVERY_RADIAL, DELIVERY_CONE, DELIVERY_LINE, DELIVERY_NONE, ]`
+- `FX_FLASHES` = `["powder", "energy", "none"]`
+- `FX_PROJECTILES` = `["tracer", "bolt", "dart", "probes", "hook", "flare"]`
 
 **Public vars**
 - `var id: String`
@@ -3151,6 +4003,14 @@ extends `RefCounted` · 63 lines
 - `var step_multipliers: Array[float] = []`
 - `var cone_half_angle_deg: float = 0.0`
 - `var destroy_multiplier: float = 1.0`
+- `var punch: float = 1.0`
+- `var projectile_count: int = 1`
+- `var blowout: float = 1.0`
+- `var soot_radius: int = 3`
+- `var gameplay: Dictionary = {}`
+- `var tags: Array[String] = []`
+- `var model_path: String = ""`
+- `var surface_materials: Dictionary = {}`
 - `var hand_bone: String = "RightHand"`
 - `var hand_pos: Vector3 = Vector3.ZERO`
 - `var hand_scale: float = 1.0`
@@ -3160,6 +4020,18 @@ extends `RefCounted` · 63 lines
 - `var held_like: String = ""`
 - `var draw: String = ""`
 - `var held_rel_figures: Dictionary = {}`
+- `var fx_flash: String = "powder"`
+- `var fx_case: bool = true`
+- `var fx_projectile: String = "tracer"`
+- `var fx_color: Color = Color(1.0, 0.93, 0.72)`
+- `var fx_part: String = ""`
+- `var fx_string: String = ""`
+- `var fx_spin: String = ""`
+
+**Public API**
+- `func held_rel_for(figure: String) -> Transform3D:`
+- `func world_scale() -> float:`
+- `func world_size(rotation_deg: Vector3 = Vector3.ZERO) -> Vector3:`
 
 ---
 
@@ -3291,6 +4163,8 @@ extends `Node` · 217 lines
 - `func floor_of(col: Vector2i) -> int:`
 - `func ceiling_of(col: Vector2i) -> int:`
 - `func flood(seed_col: Vector2i, brim_level: int) -> void:`
+- `func build_plane(cell_gu: float, fluidity: float, brim_level: int, info: Dictionary) -> RefCounted:`
+- `func refresh(plane: RefCounted, columns: Array, brim_level: int, info: Dictionary) -> int:`
 
 ---
 
@@ -3310,6 +4184,9 @@ extends `Node` · 217 lines
 - `GRATE_FULL_FLUIDITY` = `0.8`
 - `MAX_CELLS` = `4096`
 - `MIN_CELL_GU` = `0.125`
+- `WEIR_C` = `0.035`
+- `FALL_DROP` = `2.0`
+- `FALL_MIN_FLOW` = `0.002`
 
 **Public vars**
 - `var cols: int = 0`
@@ -3320,6 +4197,42 @@ extends `Node` · 217 lines
 - `var ground: PackedFloat32Array = PackedFloat32Array()`
 - `var depth: PackedFloat32Array = PackedFloat32Array()`
 - `var ceiling: PackedFloat32Array = PackedFloat32Array()`
+- `var spilled: float = 0.0`
+- `var committed: PackedFloat32Array = PackedFloat32Array()`
+- `var dig: float = 0.0`
+- `var surface_cap: float = 1.0e9`
+- `var threaded: bool = false`
+- `var rounds_scale: float = 1.0`
+
+**Public API**
+- `func setup(width: int, height: int, cell_size_gu: float, grid_origin: Vector2, liquid_fluidity: float) -> void:`
+- `func index(c: int, r: int) -> int:`
+- `func in_grid(c: int, r: int) -> bool:`
+- `func is_rim(c: int, r: int) -> bool:`
+- `func cell_of(gu: Vector2) -> Vector2i:`
+- `func cells_in(rect: Rect2) -> PackedInt32Array:`
+- `func set_ground_rect(rect: Rect2, height: float) -> void:`
+- `func set_ceiling_rect(rect: Rect2, height: float) -> void:`
+- `func add_source(rect: Rect2, rate: float) -> void:`
+- `func set_source_rate(index: int, rate: float) -> bool:`
+- `func source_rate(index: int) -> float:`
+- `func lower_ground(rect: Rect2, height: float) -> void:`
+- `func add_sink(rect: Rect2, rate: float) -> void:`
+- `func add_grate(axis: String, at: float) -> void:`
+- `func open_grate(axis: String, at: float) -> void:`
+- `func add_inputs(fluid: Dictionary) -> void:`
+- `func surface(i: int) -> float:`
+- `func falls() -> Array:`
+- `func total_volume() -> float:`
+- `func tick() -> void:`
+- `func begin_tick() -> void:`
+- `func step_rounds(count: int) -> void:`
+- `func consume(i: int, amount: float) -> void:`
+- `func has_pending() -> bool:`
+- `func finish_tick() -> void:`
+- `func rounds_per_tick() -> int:`
+- `func mark_ground_changed() -> void:`
+- `func set_cell_pass(i: int, fraction: float) -> void:`
 
 ---
 
@@ -3333,6 +4246,10 @@ extends `Node` · 217 lines
 
 **Constants / tuning**
 - `CHOICES` = `[30, 60, 0]`
+- `DEFAULT_CAP` = `30`
+- `SETTINGS_PATH` = `"user://settings.cfg"`
+- `SETTINGS_SECTION` = `"display"`
+- `SETTINGS_KEY` = `"max_fps"`
 
 ---
 
@@ -3371,6 +4288,9 @@ extends `Node` · 217 lines
 - `FAMILY` = `["glass", "glass_armored", "glass_screen_green", "glass_screen_red", "glass_screen_amber"]`
 - `BASE` = `"glass"`
 - `FRACTURE_WIDTHS` = `["tight", "wide"]`
+- `CLASS_OF` = `{ "glass": Class.BREAKABLE, "glass_armored": Class.ARMORED, "glass_screen_green": Class.INDESTRUCTIBLE, "glass_screen_red": Class.INDESTRUCTIBLE, "glass_screen_amber": Class.INDESTRUCTIBLE, }`
+- `CLASS_UNSET` = `-1`
+- `CLASS_NAMES` = `{ "breakable": Class.BREAKABLE, "armored": Class.ARMORED, "indestructible": Class.INDESTRUCTIBLE, }`
 
 ---
 
@@ -3515,6 +4435,21 @@ extends `Node` · 217 lines
 - `HEIGHT_HUMAN` = `2`
 - `HEIGHT_TALL_STRUCTURE` = `3`
 - `HEIGHT_OVERHEAD` = `4`
+- `TINT_WARM` = `0`
+- `TINT_COOL` = `1`
+- `FLICKER_ON_HOLD_MIN` = `2.0`
+- `FLICKER_ON_HOLD_MAX` = `6.0`
+- `FLICKER_BLIPS_MIN` = `1`
+- `FLICKER_BLIPS_MAX` = `4`
+- `FLICKER_BLIP_OFF_MIN` = `0.03`
+- `FLICKER_BLIP_OFF_MAX` = `0.16`
+- `FLICKER_BLIP_ON_MIN` = `0.04`
+- `FLICKER_BLIP_ON_MAX` = `0.22`
+- `FLICKER_DIM_ENERGY` = `0.18`
+- `FLICKER_DIM_CHANCE` = `0.35`
+- `STATE_ON` = `"on"`
+- `STATE_FLICKER` = `"flicker"`
+- `STATE_PULSE` = `"pulse"`
 
 **Public vars**
 - `var cell: Vector2i = Vector2i.ZERO`
@@ -3527,6 +4462,32 @@ extends `Node` · 217 lines
 - `var tactical_energy: float = 1.0`
 - `var visual_energy: float = 1.0`
 - `var warmth: float = 0.0`
+- `var tint: int = 0`
+- `var reach: float = 1.0e9`
+- `var fading: bool = false`
+- `var inner_ratio: float = -1.0`
+- `var flicker_enabled: bool = false`
+- `var flicker_interval: float = 1.0`
+- `var flicker_phase: float = 0.0`
+- `var pulse_enabled: bool = false`
+- `var pulse_speed: float = 1.0`
+- `var pulse_phase: float = 0.0`
+- `var pulse_min: float = 0.5`
+- `var pulse_max: float = 1.0`
+- `var rotation_speed: float = 0.0`
+- `var rotation_phase: float = 0.0`
+- `var current_state: String = STATE_ON`
+- `var energy_multiplier: float = 1.0`
+- `var changed_this_frame: bool = false`
+- `var last_energy: float = 1.0`
+- `var light_id: String = ""`
+- `var owner_name: String = ""`
+
+**Public API**
+- `func update_temporal_state(delta: float) -> void:`
+- `func set_flicker(enabled: bool, interval: float = 1.0) -> void:`
+- `func get_effective_tactical_energy() -> float:`
+- `func get_direction_vector() -> Vector2:`
 
 ---
 
@@ -3598,6 +4559,12 @@ extends `Node` · 217 lines
 
 > VoxelLightField — per-voxel light BUCKET data (VL-01, VOXEL_LIGHT_MASTER_PLAN). The single seam between tactical lighting (LightRegistry / ShadowProjector, GU resolution) and every VISUAL consumer. VoxelBoard.apply_light_field() reads it to repaint faces; future vision modes (thermal / night / X-ray) query it instead of touching tilemaps. Canon split preserved: this consumes LightSource.visual_energy, never tactical_energy — visual brightness is not tactical visibility. Deterministic and discrete: same lights + same layout always produce the same bucket per (cell, level). No per-frame work — built on lighting_rebuilt, queried lazily with a cache.
 
+**Constants / tuning**
+- `TRACKED_NONE` = `0`
+- `TRACKED_LIVE` = `1`
+- `TRACKED_PRED` = `2`
+- `FACE_SOOT_BASE` = `BlastCalculator.FACE_SOOT_CHAR + 1`
+
 **Public vars**
 - `var ambient_intensity: float = 0.15`
 - `var no_lights_bucket: int = -1`
@@ -3609,6 +4576,28 @@ extends `Node` · 217 lines
 - `var face_enclosed_factor: float = 0.30`
 - `var ao_strength: float = 0.55`
 - `var under_structure_factor: float = 0.68`
+- `var micro_jitter_buckets: int = 0`
+- `var glass_roof_transmission: float = 0.35`
+
+**Public API**
+- `func set_roofs(slabs: Array) -> void:`
+- `func add_roof_column_below(key: Vector3i, out: Dictionary) -> void:`
+- `func build(lights: Array, shadow_results: Array, top_wall_level: int, occupancy: Dictionary = {}, under_structure: Dictionary = {}, geometry_only: bool = false, live_changes: Variant = null, pred_erased: Variant = null) -> void:`
+- `func occupancy_differences(other: Dictionary) -> Array[Vector3i]:`
+- `func has_stale_subset() -> bool:`
+- `func stale_cells() -> Dictionary:`
+- `func clear_stale_accum() -> void:`
+- `func clear_caches() -> void:`
+- `func gus_in_light_range(light) -> Array:`
+- `func warm_for(cell: Vector2i, level: int) -> int:`
+- `func set_lights(lights: Array, shadow_results: Array) -> void:`
+- `func is_buried(cell: Vector2i, level: int) -> bool:`
+- `func buckets_for_level(level: int, cells: Array, maps: Dictionary, origin: Vector2i, width: int, height: int) -> PackedByteArray:`
+- `func live_occupancy_or_null() -> Variant:`
+- `func occupancy_byte_maps() -> Dictionary:`
+- `func bucket_for(cell: Vector2i, level: int) -> int:`
+- `func micro_jitter_offset(cell: Vector2i, level: int) -> int:`
+- `func surface_factor(cell: Vector2i, level: int) -> float:`
 
 ---
 
@@ -3640,6 +4629,10 @@ extends `Node` · 217 lines
 - `func reset() -> void:`
 - `func rule_depth(info: Dictionary) -> float:`
 - `func on_step(info: Dictionary, on_fire: bool) -> bool:`
+- `func settle(info: Dictionary) -> void:`
+- `func on_turn_end(info: Dictionary, on_fire: bool, dose: float) -> float:`
+- `func on_turn_start() -> int:`
+- `func is_glowing() -> bool:`
 
 ---
 
@@ -3703,6 +4696,8 @@ extends `Node` · 217 lines
 - `func bodies() -> Array:`
 - `func count() -> int:`
 - `func at_cell(cell: Vector2i) -> Dictionary:`
+- `func extinguishes_at(gu: Vector2) -> bool:`
+- `func set_source_rate(body: int, source: int, rate: float) -> bool:`
 
 ---
 
@@ -3726,6 +4721,39 @@ extends `Node` · 217 lines
 - `FALL_PER_S` = `1.1`
 - `HOT_LEVEL` = `0.35`
 - `FULL_DEPTH` = `0.5`
+- `OXYGEN_REACH_GU` = `1.0`
+- `STARVED` = `0.1`
+- `VOXEL_GU` = `0.125`
+
+**Public vars**
+- `var plane: RefCounted = null`
+- `var burning: PackedByteArray = PackedByteArray()`
+- `var speed_gu: float = DEFAULT_SPEED`
+- `var burn_per_turn: float = DEFAULT_BURN`
+- `var dose_step: float = DEFAULT_DOSE_STEP`
+- `var dose_turn: float = DEFAULT_DOSE_TURN`
+- `var visual: PackedFloat32Array = PackedFloat32Array()`
+- `var hot_cells: PackedInt32Array = PackedInt32Array()`
+- `var oxygen: PackedFloat32Array = PackedFloat32Array()`
+- `var headroom_gu: PackedFloat32Array = PackedFloat32Array()`
+- `var base_color: Color = Color(0.0, 0.0, 0.0, 0.0)`
+- `var out_cells: PackedInt32Array = PackedInt32Array()`
+- `var out_by_water: PackedByteArray = PackedByteArray()`
+- `var version: int = 0`
+
+**Public API**
+- `func setup(fluid_plane: RefCounted, spec: Dictionary) -> void:`
+- `func recompute_oxygen() -> void:`
+- `func count() -> int:`
+- `func centre_of(i: int) -> Vector2:`
+- `func ignite(centre: Vector2, radius: float) -> int:`
+- `func extinguish_rect(rect: Rect2) -> int:`
+- `func extinguish_all() -> void:`
+- `func tick(put_out: Callable = Callable()) -> void:`
+- `func advance_visual(dt: float) -> bool:`
+- `func burning_at(cell: Vector2i) -> bool:`
+- `func state() -> PackedByteArray:`
+- `func restore(saved: PackedByteArray) -> void:`
 
 ---
 
@@ -3743,6 +4771,19 @@ extends `Node` · 217 lines
 - `DEFAULT_SPACING_GU` = `2.0`
 - `DEFAULT_WARMTH` = `0.65`
 - `DEFAULT_INNER` = `0.5`
+- `DEFAULT_ENERGY` = `1.0`
+- `ON_FROM` = `0.2`
+- `OFF_BELOW` = `0.1`
+- `GROW_GU` = `0.5`
+- `STEP_S` = `0.3`
+
+**Public vars**
+- `var lights: Array = []`
+
+**Public API**
+- `func setup(burn: RefCounted, rect: Rect2, spec: Dictionary) -> void:`
+- `func tick(delta: float, can_step: bool) -> Dictionary:`
+- `func annulus_gus(light, a: float, b: float) -> Array:`
 
 ---
 
@@ -3763,6 +4804,7 @@ extends `Node` · 217 lines
 
 **Public API**
 - `func setup(fluid_plane: RefCounted) -> void:`
+- `func refresh() -> void:`
 
 ---
 
@@ -3974,13 +5016,19 @@ extends `Node` · 217 lines
 - `SMALL_ROOF_MAX_STRIPES` = `5`
 - `_FACE_DIRS` = `[Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]`
 - `FACE_DIRS` = `_FACE_DIRS`
+- `MEMO_MAX` = `16`
+- `_ROOF_NEIGHBOURS_4` = `[Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]`
+- `_ROOF_NEIGHBOURS_8` = `[Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)]`
 
 **Public vars**
+- `var silhouette_half_width_px: float = 52.0`
+- `var silhouette_height_px: float = 222.0`
 - `var view: String = "N"`
 - `var base_voxel_size: Vector2i = Vector2i.ZERO`
 - `var base_gu_size: Vector2i = Vector2i.ZERO`
 - `var last_phase_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0])`
 - `var last_tail_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0])`
+- `var memo_enabled: bool = true`
 
 **Public API**
 - `func turn_voxel(p: Vector2i) -> Vector2i:`
@@ -3996,6 +5044,8 @@ extends `Node` · 217 lines
 - `func get_recompute_count() -> int:`
 - `func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns: Array = [], ceiling_slabs: Array = []) -> void:`
 - `func get_exposure() -> Dictionary:`
+- `func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _room_size: Vector2i) -> Dictionary:`
+- `func prewarm_views(slices: Array) -> bool:`
 
 ---
 
@@ -4020,6 +5070,25 @@ extends `Node` · 217 lines
 `godot/scripts/systems/prediction/claim_grid.gd`
 
 > ClaimGrid - the detonation plan's `cell_to_voxel`, without the 215 000-entry Dictionary of `Voxel` objects. R3D-CLAIMS C2. The plan's WALK used to build `Dictionary[Vector3i -> Voxel]` over every claim of the board (and `VoxelStore.walk_cache` kept it for the store's life: ~21 MB, and every `Voxel` object in it alive). The answer is already in the store: its dense grid knows which claim holds a cell, so this object answers `voxel_at()` / `has()` / `size()` from the grid and hands back the container's own `Voxel` for that claim (made on request, one per claim). Same answers as the Dictionary, "the last claim of a cell wins" included: a cell two claims hold answers for the one that comes last in claim order, which is what assigning in walk order did. A plan built over a board with no matching store (a fixture) has no grid to ask; it fills `put()` as the old walk did.
+
+**Public vars**
+- `var overlay: Dictionary = {}`
+- `var anchored: Dictionary = {}`
+- `var below_props: Dictionary = {}`
+
+**Public API**
+- `func put(key: Vector3i, voxel: Voxel) -> void:`
+- `func voxel_at(key: Vector3i) -> Voxel:`
+- `func damage_at(key: Vector3i) -> int:`
+- `func material_at(key: Vector3i) -> String:`
+- `func put_material(key: Vector3i, material: String) -> void:`
+- `func standing_step_cost(key: Vector3i) -> int:`
+- `func standing_material(key: Vector3i) -> Variant:`
+- `func has(key: Vector3i) -> bool:`
+- `func claim_at(key: Vector3i) -> int:`
+- `func size() -> int:`
+- `func is_empty() -> bool:`
+- `func is_store_backed() -> bool:`
 
 ---
 
@@ -4076,6 +5145,13 @@ extends `Node` · 217 lines
 
 **Public API**
 - `func request(signature: String, revision: int, bomb_def, source_gu: Vector2i, ctx: Dictionary) -> DetonationPrediction:`
+- `func has_live(signature: String, revision: int) -> bool:`
+- `func peek(signature: String, revision: int) -> WorldDelta:`
+- `func pump(budget_ms: float) -> bool:`
+- `func is_busy() -> bool:`
+- `func invalidate() -> void:`
+- `func size() -> int:`
+- `func stats_line() -> String:`
 
 ---
 
@@ -4131,6 +5207,12 @@ extends `Node` · 217 lines
 - `var glass_openings: Array = []`
 - `var glass_crazes: Array = []`
 - `var glass_shard_piles: Dictionary = {}`
+- `var glass_remnants: Array = []`
+- `var glass_rim_shards: Array = []`
+- `var glass_shard_flights: Array = []`
+- `var skylight_bursts: Array = []`
+- `var blast_rubble: Array = []`
+- `var blast_epicentre: Vector2 = Vector2.ZERO`
 - `var blast_impacts: Array = []`
 - `var blast_breaches: Array = []`
 - `var blast_trickles: Array = []`
@@ -4149,6 +5231,8 @@ extends `Node` · 217 lines
 - `func changes(voxel) -> bool:`
 - `func projection_of(voxel) -> Array:`
 - `func state_of(voxel) -> int:`
+- `func commit(room = null, defer_rain: bool = false) -> void:`
+- `func is_empty() -> bool:`
 
 ---
 
@@ -4173,6 +5257,8 @@ extends `Node` · 217 lines
 - `var storeys: int = 1`
 - `var gameplay: Dictionary`
 - `var tags: Array[String]`
+- `var mesh_tier: int = 0`
+- `var mesh_size: Vector3 = Vector3.ONE`
 - `var model_path: String = ""`
 - `var slot: String = ""`
 - `var vox_model: String = ""`
@@ -4205,6 +5291,18 @@ extends `Node` · 217 lines
 - `var registry: Dictionary = {}`
 - `var load_errors: Array[String] = []`
 - `var slots: Dictionary = {}`
+- `var family_of: Callable = Callable()`
+- `var material_registry = null`
+
+**Public API**
+- `func register(prop_def) -> void:`
+- `func get_prop(p_id: String):`
+- `func count() -> int:`
+- `func load_from_disk() -> void:`
+- `func register_slot(slot: SlotDef) -> void:`
+- `func models_for_slot(slot_id: String) -> Array:`
+- `func resolve_placement(name: String, salt: String = "") -> Dictionary:`
+- `func problems_of(def, slot: SlotDef) -> Array[String]:`
 
 ---
 
@@ -4630,6 +5728,19 @@ extends `RefCounted` · 86 lines
 - `func occupancy_dict(predict_destroyed: Dictionary = {}) -> Dictionary:`
 - `func occupancy_live(changes: Array[Vector3i]) -> Dictionary:`
 - `func occupancy_live_erasing(predict: Dictionary, changes: Array[Vector3i], erased: Array[Vector3i]) -> Dictionary:`
+- `func occupancy_live_after(gone: Dictionary) -> Dictionary:`
+- `func occupancy_after_begin() -> Dictionary:`
+- `func occupancy_after_step(cursor: Dictionary, deadline_usec: int) -> bool:`
+- `func occupancy_after_finish(cursor: Dictionary, gone: Dictionary) -> Dictionary:`
+- `func occupancy_dict_after(gone: Dictionary) -> Dictionary:`
+- `func glass_pane_face_at(x: int, y: int, level: int) -> int:`
+- `func pane_byte_owning(x: int, y: int, level: int) -> int:`
+- `func has_glass_pane(x: int, y: int, level: int) -> bool:`
+- `func container_count() -> int:`
+- `func container_claims(ci: int) -> Vector2i:`
+- `func irregular_containers() -> int:`
+- `func multi_cells() -> int:`
+- `func bytes() -> int:`
 
 ---
 
@@ -4761,6 +5872,8 @@ extends `SceneTree` · 2423 lines
 - `func test_carved_side_survives_rotation() -> void:`
 - `func test_crater_crack_absent_without_weights() -> void:`
 - `func test_crater_crack_bands_and_severity_ladder() -> void:`
+- `func test_crater_crack_follows_crack_factor_and_respects_d32_6() -> void:`
+- `func test_soft_materials_never_take_a_mark() -> void:`
 
 ---
 
@@ -4790,6 +5903,11 @@ extends `SceneTree` · 675 lines
 - `func test_1_simulate_writes_nothing(before: Dictionary, after: Dictionary) -> void:`
 - `func test_2_simulate_is_deterministic(da: WorldDelta, db: WorldDelta) -> void:`
 - `func test_3_the_delta_is_not_empty_on_the_real_map(wd: WorldDelta) -> void:`
+- `func test_4_commit_realises_the_delta(wd: WorldDelta, edge_registry, slab_registry) -> void:`
+- `func test_5_sliced_build_matches_one_shot(one_shot: WorldDelta, bomb_def, source_gu: Vector2i, ctx: Dictionary) -> void:`
+- `func test_6_cancellation_leaves_nothing_behind(bomb_def, source_gu: Vector2i, ctx: Dictionary, edge_registry, slab_registry) -> void:`
+- `func test_7_cursor_sweep_and_invalidation(bomb_def, ctx: Dictionary, gus: Array) -> void:`
+- `func test_8_scorch_is_a_proposal_until_commit(wd: WorldDelta, room) -> void:`
 
 ---
 
@@ -4798,6 +5916,9 @@ extends `SceneTree` · 675 lines
 extends `SceneTree` · 81 lines
 
 `godot/scripts/tools/board_look_selftest.gd`
+
+**Constants / tuning**
+- `BOARD_PATH` = `"res://godot/scripts/geometry/board3d_live.gd"`
 
 ---
 
@@ -4920,6 +6041,18 @@ extends `SceneTree` · 998 lines
 **Public vars**
 - `var passed: int = 0`
 - `var failed: int = 0`
+
+**Public API**
+- `func test_1_wave_census(plan: Dictionary, source_gu: Vector2i) -> void:`
+- `func test_3_no_live_layer_mutation(before: Dictionary, after: Dictionary) -> void:`
+- `func test_4_exposure_fallback(plan: Dictionary) -> void:`
+- `func test_5_smoke_ring_weights_consumed(plan: Dictionary, bomb_def) -> void:`
+- `func test_6_real_ring_gates(plan: Dictionary, bomb_def) -> void:`
+- `func test_7_ember_wave_on_real_wood(built: Dictionary, bomb_def, ctx: Dictionary) -> void:`
+- `func test_8_smoke_entries_carry_material(plan: Dictionary) -> void:`
+- `func test_9_ember_climb_and_cooling_ramp(built: Dictionary, bomb_def, ctx: Dictionary) -> void:`
+- `func test_10_debris_wave(built: Dictionary, bomb_def, ctx: Dictionary) -> void:`
+- `func test_11_burnt_embers_on_real_fabric(built: Dictionary, bomb_def, ctx: Dictionary) -> void:`
 
 ---
 
@@ -5268,6 +6401,33 @@ extends `SceneTree` · 1588 lines
 - `var passed: int = 0`
 - `var failed: int = 0`
 
+**Public API**
+- `func test_curve_matches_the_arsenal_targets() -> void:`
+- `func test_shotgun_blast_compound_odds() -> void:`
+- `func test_flat_bottom_and_capped_ceiling() -> void:`
+- `func test_monotonic_in_punch() -> void:`
+- `func test_roll_is_deterministic_and_honours_probability() -> void:`
+- `func test_region_radius_scales_with_punch() -> void:`
+- `func test_small_pane_is_binary_with_remnants() -> void:`
+- `func test_big_pane_partial_then_full() -> void:`
+- `func test_remnant_floor_never_leaves_zero_border() -> void:`
+- `func test_blast_glass_punch_reliable_inside_zero_outside() -> void:`
+- `func test_banded_pane_never_destroys_its_own_frame_bands() -> void:`
+- `func test_unanchored_pane_keeps_nothing() -> void:`
+- `func test_layer_falloff_weakens_each_successive_pane() -> void:`
+- `func test_local_hole_does_not_wall_off_the_flood() -> void:`
+- `func test_armored_takes_the_whole_pane_and_leaves_fewer_remnants() -> void:`
+- `func test_indestructible_never_breaks_and_stops_the_round() -> void:`
+- `func test_glass_never_dents() -> void:`
+- `func test_per_placement_class_overrides_the_material() -> void:`
+- `func test_only_rifle_class_pierces_armored_glass() -> void:`
+- `func test_cook_proposes_the_opening_and_only_commit_claims_it() -> void:`
+- `func test_a_pane_the_blast_does_not_take_crazes() -> void:`
+- `func test_the_survivors_leave_the_function() -> void:`
+- `func test_a_remnant_is_orphaned_when_its_frame_is_destroyed() -> void:`
+- `func test_shockwave_edge_is_jittered() -> void:`
+- `func test_rim_shards_cling_to_the_torn_glass_edge() -> void:`
+
 ---
 
 ### `glass_transparency_selftest.gd`
@@ -5285,6 +6445,15 @@ extends `SceneTree` · 436 lines
 **Public vars**
 - `var passed: int = 0`
 - `var failed: int = 0`
+
+**Public API**
+- `func test_glass_pane_ids_group_the_surface() -> void:`
+- `func test_material_bands_route_per_level() -> void:`
+- `func test_glass_does_not_occlude() -> void:`
+- `func test_intact_glass_still_blocks_light() -> void:`
+- `func test_pane_size_ceiling_is_enforced() -> void:`
+- `func test_two_glass_materials_are_two_panes() -> void:`
+- `func test_a_damaged_glass_voxel_yields_no_opaque_tile_entry() -> void:`
 
 ---
 
@@ -5571,6 +6740,9 @@ extends `RefCounted` · 76 lines
 - `func is_solid(x: int, y: int, level: int) -> bool:`
 - `func lay(box: Rect2i, pits: Array, dig: int = 4) -> void:`
 - `func divider(x: int, y0: int, y1: int) -> void:`
+- `func raised_pipe(x0: int, y0: int, y1: int) -> void:`
+- `func bars(x0: int, x1: int, y: int) -> void:`
+- `func body(seed: Vector2, fluidity: float, fluid: Dictionary = {}, brim_level: int = 80, cell: float = 0.5) -> Dictionary:`
 
 ---
 
@@ -5639,6 +6811,12 @@ extends `SceneTree` · 179 lines
 **Public vars**
 - `var passed: int = 0`
 - `var failed: int = 0`
+
+**Public API**
+- `func test_1_one_registered_row_per_material() -> void:`
+- `func test_2_old_duplicate_row_is_gone_not_shadowed() -> void:`
+- `func test_3_has_facade_flags_are_the_contract() -> void:`
+- `func test_8_earth_is_a_buildable_material() -> void:`
 
 ---
 
@@ -6324,6 +7502,9 @@ extends `SceneTree` · 218 lines
 
 `godot/scripts/tools/soot_stamp_selftest.gd`
 
+**Constants / tuning**
+- `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
+
 ---
 
 ### `soot_truth_selftest.gd`
@@ -6515,6 +7696,7 @@ extends `SceneTree` · 247 lines
 **Public API**
 - `func test_every_family_variant_has_an_asset() -> void:`
 - `func test_manifest_agrees_with_the_renderer() -> void:`
+- `func test_every_data_reachable_tier_has_art() -> void:`
 
 ---
 
@@ -6808,6 +7990,11 @@ extends `Node2D` · 59 lines
 - `MODEL_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/Shotgun Short Stock.glb"`
 - `ELEVATION_DEG` = `30.0`
 - `AZIMUTH_START_DEG` = `45.0`
+- `SPIN_DEG_PER_SEC` = `36.0`
+- `PORTRAIT_ASPECT_CUTOFF` = `1.0`
+
+**Public API**
+- `func open() -> void:`
 
 ---
 
@@ -6888,6 +8075,8 @@ extends `Node2D` · 63 lines
 
 **Constants / tuning**
 - `FloorOpeningsRef` = `preload("res://godot/scripts/geometry/floor_openings.gd")`
+- `WALL_BASE_Z_INDEX` = `8`
+- `INVALID_CELL` = `Vector2i(-1, -1)`
 
 **Public vars**
 - `var room: Node`
@@ -6916,6 +8105,39 @@ extends `Node2D` · 63 lines
 - `RubblePresetsRef` = `preload("res://godot/scripts/systems/destruction/rubble_presets.gd")`
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `WEAPON_ID` = `"shotgun"`
+- `FACING_DELTA` = `[ Vector2i(-1, 0),   ## NW Vector2i(0, -1),   ## NE Vector2i(1, 0),    ## SE Vector2i(0, 1),    ## SW ]`
+- `MENU_GAP_ABOVE_PX` = `30.0`
+- `PELLET_FLOOD_MAX_STEPS` = `40`
+- `MUZZLE_LEVELS_ABOVE_GROUND` = `4`
+- `GUARD_TOP_PX` = `72.0`
+- `GRIP_AIMED` = `"_aimed"`
+- `GRIP_LOWERED` = `""`
+- `STANCE_HIP` = `"hip"`
+- `STANCE_AIMED` = `"aimed"`
+- `STANCE_WAIT_MAX_FRAMES` = `180`
+- `TRACER_FLIGHT_FRAMES` = `8`
+- `AWAY_WAIT_MAX_FRAMES` = `180`
+- `_TIER_NAME` = `{ Voxel.DamageState.CRACKED: "CRACKED", Voxel.DamageState.DENTED: "DENTED", Voxel.DamageState.DESTROYED: "DESTROYED", }`
+
+**Public vars**
+- `var room = null`
+
+**Public API**
+- `func select_or_cycle(weapon_id: String) -> void:`
+- `func choose_weapon(weapon_id: String) -> void:`
+- `func put_away() -> void:`
+- `func is_targeting() -> bool:`
+- `func click_enemy(index: int) -> void:`
+- `func trigger() -> bool:`
+- `func choose_stance(stance: String) -> bool:`
+- `func is_firing() -> bool:`
+- `func set_attachment(attachment_id: String) -> void:`
+- `func cycle_attachment() -> void:`
+- `func set_weapon(weapon_id: String) -> void:`
+- `func hit_test(screen_pos: Vector2) -> int:`
+- `func open_menu_for(index: int) -> void:`
+- `func cancel_active() -> void:`
+- `func fire_at_active(stance: String = "") -> void:`
 
 ---
 
@@ -6988,6 +8210,62 @@ extends `Node` · 251 lines
 
 **Constants / tuning**
 - `BLAST_IGNITES_LIQUID_GU` = `3.0`
+- `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
+- `GrenadePropClass` = `preload("res://godot/scripts/overlays/grenade_prop.gd")`
+- `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
+- `DetonationPresenterClass` = `preload("res://godot/scripts/systems/destruction/detonation_presenter.gd")`
+- `DEFAULT_TARGET_OFFSET` = `Vector2i(3, 0)`
+- `THROW_PROFILE_ENV` = `"INFILTRAITOR_THROW_PROFILE"`
+- `MENU_GAP_ABOVE_PX` = `30.0`
+- `BOMB_ID` = `GrenadePropClass.BOMB_ID`
+- `FUSE_AIM_INTENSITY` = `0.3`
+- `THROW_CLEARANCE_PX` = `30.0`
+- `SLOW_STEP_MS` = `30.0`
+- `PERSIST_BUDGET_CHECK` = `64`
+
+**Public vars**
+- `var room: Node`
+- `var throw_range_gu: float = 7.0`
+- `var throw_range_penalty_gu: Dictionary = { Agent.Posture.STANDING: 0.0, Agent.Posture.CROUCHING: 2.0, Agent.Posture.PRONE: 4.0, }`
+- `var throw_range_skill_bonus_gu: float = 0.0`
+- `var aim_dome_radius_gu: float = 2.0`
+- `var throw_duration_s: float = 0.6`
+- `var grenade_cook_s: float = 1.0`
+- `var prepare_budget_us: int = 6000`
+- `var throw_prediction_timeout_s: float = 1.0`
+- `var predict_budget_ms: float = 4.0`
+- `var cook_budget_ms: float = 14.0`
+- `var SHAKE_SECONDS: float = 1.0`
+- `var SHAKE_AMPLITUDE_PX: float = 12.0`
+- `var burst_lead_frames: int = 3`
+- `var blast_pop_height_px: float = 20.0`
+- `var blast_pop_frames: int = 3`
+- `var hit_stop_frame_budget_us: int = 110000`
+
+**Public API**
+- `func is_targeting() -> bool:`
+- `func effective_throw_range_gu() -> float:`
+- `func clear() -> void:`
+- `func add_grenade(gu_cell: Vector2i) -> void:`
+- `func on_view_changed() -> void:`
+- `func hit_test(screen_pos: Vector2) -> int:`
+- `func open_menu_for(index: int) -> void:`
+- `func fuse_fx_start(grenade: Dictionary, intensity: float, hand: bool) -> void:`
+- `func fuse_fx_set(grenade: Dictionary, intensity: float, hand: bool = false) -> void:`
+- `func fuse_fx_stop(grenade: Dictionary) -> void:`
+- `func fuse_fx_fade(grenade: Dictionary, seconds: float) -> void:`
+- `func fuse_fx_tick(dt: float) -> void:`
+- `func enter_grenade_mode() -> void:`
+- `func handle_targeting_click(cell: Vector2i) -> bool:`
+- `func execute_grenade_throw() -> void:`
+- `func cancel_targeting() -> void:`
+- `func probe_throw_clamp(targets: Array) -> void:`
+- `func probe_pick() -> void:`
+- `func is_in_targeting_mode() -> bool:`
+- `func is_blast_playing() -> bool:`
+- `func detonate_active() -> void:`
+- `func cancel_preproduction() -> void:`
+- `func cancel_active() -> void:`
 
 ---
 
@@ -7049,6 +8327,10 @@ extends `RefCounted` · 404 lines
 
 **Public API**
 - `func reset() -> void:`
+- `func surface_for(gameplay: Dictionary, plane: RefCounted) -> RefCounted:`
+- `func add_body(index: int, kind: String, body: Dictionary, plane: RefCounted) -> void:`
+- `func liquid_turn() -> void:`
+- `func on_step(cell: Vector2i, info: Dictionary) -> void:`
 - `func on_turn_end(cell: Vector2i, info: Dictionary, dose: float) -> float:`
 - `func on_turn_start(cell: Vector2i, info: Dictionary) -> int:`
 - `func refresh_agent_look() -> void:`
@@ -7088,6 +8370,8 @@ extends `Node` · 954 lines
 - `func scenario_passages(label: String) -> bool:`
 - `func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:`
 - `func scenario_shoot(index: int) -> bool:`
+- `func scenario_shoot_aimed(index: int) -> bool:`
+- `func scenario_draw(weapon_id: String) -> bool:`
 - `func scenario_stance(stance: String) -> bool:`
 - `func scenario_trigger() -> bool:`
 - `func scenario_weapon(weapon_id: String) -> bool:`
@@ -7135,6 +8419,8 @@ extends `Node` · 954 lines
 - `func is_selectable_cell(cell: Vector2i) -> bool:`
 - `func set_selected_cell(cell: Vector2i) -> void:`
 - `func handle_tile_click(cell: Vector2i) -> void:`
+- `func try_move_to(cell: Vector2i) -> bool:`
+- `func handle_move_click(cell: Vector2i) -> void:`
 
 ---
 
@@ -7338,6 +8624,51 @@ extends `Node` · 954 lines
 - `MapCompilerRef` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `MapCompassRef` = `preload("res://godot/scripts/world/maps/map_compass.gd")`
 - `MapEnvelopeRef` = `preload("res://godot/scripts/world/maps/map_envelope.gd")`
+- `SECTION_KEYS` = `["v", "envelope", "poi", "regions", "objectives"]`
+- `RESERVED_KEYS` = `["exits"]`
+- `OBJECTIVE_KINDS` = `["reach_terminal", "neutralise", "undetected", "recover_item", "escort", "sabotage", "survive"]`
+- `RESERVED_NAMES` = `["map", "map_ring", "agent_start", "agent", "corner_n", "corner_e", "corner_s", "corner_w", "side_nw", "side_ne", "side_se", "side_sw"]`
+- `SAFE_ZONE_DEPTH` = `2`
+- `MIN_STOREYS` = `1.0`
+- `DEFAULT_HOLD` = `60`
+- `DEFAULT_MOVE` = `45`
+- `KEY_FIELDS` = `["frame", "target", "view", "move", "hold", "ease", "turn", "follow", "centre", "zoom"]`
+- `TAKE_FIELDS` = `["id", "profile", "rail", "steps", "at_key", "after_hold", "length", "seed", "note", "env"]`
+- `FRAME_MODES` = `["wide", "detail", "close", "fit", "explicit"]`
+- `EASES` = `["linear", "in_out", "out"]`
+- `TURNS` = `["cut", "orbit"]`
+- `VIEWS` = `["N", "E", "S", "W"]`
+
+**Public vars**
+- `var playable_rect: Rect2i = Rect2i()`
+- `var buffer: int = 0`
+- `var map_size: Vector2i = Vector2i.ZERO`
+- `var tallest_storeys: float = MIN_STOREYS`
+- `var agent_start_cell: Vector2i = Vector2i.ZERO`
+- `var exit_cells: Array[Vector2i] = []`
+- `var envelope: Dictionary = {}`
+- `var poi: Dictionary = {}`
+- `var regions: Dictionary = {}`
+- `var objectives: Dictionary = {}`
+- `var rails: Dictionary = {}`
+- `var takes: Dictionary = {}`
+
+**Public API**
+- `func load_compiled(compiled: Dictionary) -> RefCounted:`
+- `func rail(id: String) -> Dictionary:`
+- `func take(id: String) -> Dictionary:`
+- `func bounds_box() -> AABB:`
+- `func bounds_ring_box() -> AABB:`
+- `func exits() -> Array[Dictionary]:`
+- `func safe_zone(entry_side: String) -> AABB:`
+- `func resolve(ref: String, room: Object = null) -> Dictionary:`
+- `func ground_cell(ref: String, room: Object = null) -> Dictionary:`
+- `func add_poi(id: String, at_raw: Vector3, tags: Array = []) -> bool:`
+- `func add_region(id: String, min_raw: Vector3, max_raw: Vector3, tags: Array = []) -> bool:`
+- `func move(id: String, to_or_delta: Vector3) -> bool:`
+- `func remove(id: String) -> bool:`
+- `func rename(old_id: String, new_id: String) -> bool:`
+- `func to_section() -> Dictionary:`
 
 ---
 
@@ -7408,6 +8739,9 @@ extends `Node` · 954 lines
 extends `Node2D` · 10511 lines
 
 `godot/scripts/world/room.gd`
+
+**Signals**
+- `signal blast_beat(beat: String)`
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
@@ -7498,6 +8832,249 @@ extends `Node2D` · 10511 lines
 - `FIRE_LIGHT_BUDGET_US` = `5000`
 - `FIRE_LIGHT_UPLOAD_S` = `0.5`
 - `GROUND_SCATTER_LAYER_BUDGET` = `1.5`
+- `CLAIM_TAG_UNKNOWN` = `0`
+- `CLAIM_TAG_COLUMN` = `1`
+- `CLAIM_TAG_SLAB` = `2`
+- `CLAIM_TAG_SLICE_BASE` = `10`
+- `RAIN_STEP_FLIGHTS` = `32`
+- `GLASS_COLLAPSE_INDEX_BUDGET_US` = `12000`
+- `GlassSupportRef` = `preload("res://godot/scripts/systems/destruction/glass_support.gd")`
+- `ShotProjectilesRef` = `preload("res://godot/scripts/geometry/shot_projectiles3d.gd")`
+- `GlassVoxelFall3DClass` = `preload("res://godot/scripts/geometry/glass_voxel_fall3d.gd")`
+- `SHADOW_MULT` = `GuardEnemy.SHADOW_MULT`
+- `PENUMBRA_MULT` = `GuardEnemy.PENUMBRA_MULT`
+- `VISION_TILE_RADIUS` = `5`
+- `FOW_REVEAL_RADIUS` = `9`
+- `WORLD_TILE_PX` = `128.0`
+- `ENEMY_CAMERA_TWEEN_DURATION` = `0.45`
+- `ENEMY_PHASE_MAX_OPEN_ZOOM` = `0.65`
+- `ACTOR_END_HOLD_DELAY` = `0.5`
+- `TRAIL_MAX` = `5`
+- `AIM_Z_FOOTPRINT` = `100`
+- `AIM_Z_PERIMETER` = `101`
+- `AIM_Z_DOME` = `102`
+- `AIM_Z_RAYS` = `103`
+- `AIM_Z_ARC` = `104`
+- `PROP_DEBRIS_FAR_EVERY` = `5`
+- `DEBRIS_SOOT_MULT` = `[0.10, 0.35, 0.60, 0.85]`
+- `DEBRIS_TINT_SCALE` = `{"wood": 0.72}`
+- `BLAST_ISO_GROUND_SQUASH` = `0.5`
+- `GUARD_NOISE_CHANCE_BY_STATE` = `{ "patrol": 0.15, "suspicious": 0.40, "alert": 0.60, "chase": 0.70, "search": 0.50, }`
+- `GUARD_NOISE_INTENSITY_BY_STATE` = `{ "patrol": 0.4, "suspicious": 0.6, "alert": 0.9, "chase": 1.0, "search": 0.7, }`
+- `WHISTLE_RADIUS` = `3`
+- `FRAMING_PORTRAIT_CANVAS` = `Vector2i(390, 844)`
+- `FRAMING_LANDSCAPE_CANVAS` = `Vector2i(844, 390)`
+- `FRAMING_DESKTOP_CANVAS` = `Vector2i(1280, 720)`
+- `SKYLIGHT_HIT_RADIUS` = `6.5`
+- `LIGHT_APPLY_SLICE_US` = `10000`
+- `NO_SHOOTER` = `Vector2i(-99999, -99999)`
+- `RubblePresetsRef` = `preload("res://godot/scripts/systems/destruction/rubble_presets.gd")`
+- `SPLINTER_STAMP_CHANCE` = `70`
+- `CellPlaneStoreClass` = `preload("res://godot/scripts/systems/cell_plane_store.gd")`
+- `ShardField3DWarmRef` = `preload("res://godot/scripts/geometry/shard_field3d.gd")`
+- `SHOT_REPAINT_SOOT_RINGS` = `3`
+- `SHOT_PRECOOK_WARM_BUDGET_US` = `6000`
+- `PERF_SNAPSHOT_MISSING` = `Vector2i(-1, -1)`
+- `GroundCanvas3DRoomRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
+- `VIEW_CHECK_EVERY_FRAMES` = `10`
+- `VIEW_SETTLE_USEC` = `250_000`
+- `TEST_ZONE_GRENADE_GUS` = `[ Vector2i(3, 5),   ## concrete wall (gu 2,2 - 4,2) Vector2i(8, 5),   ## metal wall (gu 7,2 - 9,2) Vector2i(13, 5),  ## stone wall (gu 12,2 - 14,2) Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2) ]`
+- `OVERLAY_TARGET_KEYS` = `["_ground", "_tiles_ground", "_world", "_field3d", "_glow_field3d", "_trail_field3d", "_dust_field3d", "_chip_field3d", "_puff_field3d", "_spark_field3d"]`
+
+**@export**
+- `segment_grid_pos: Vector2i = Vector2i(1, 1)`
+- `level_seed: int = 0`
+- `map_id: String = "PLAYGROUND"`
+
+**Public vars**
+- `var map_layout: RefCounted = null`
+- `var vision_bonus_tiles: int = 0`
+- `var vfx_dust_chance: float = 0.4`
+- `var vfx_spark_chance: float = 0.65`
+- `var vfx_chip_chance: float = 0.55`
+- `var vfx_dust_materials: Array[String] = ["concrete", "stone", "gravel", "earth"]`
+- `var vfx_metal_spark_count_min: int = 3`
+- `var vfx_metal_spark_count_max: int = 8`
+- `var vfx_stone_spark_count: int = 2`
+- `var vfx_chip_count_min: int = 1`
+- `var vfx_chip_count_max: int = 4`
+- `var vfx_debris_pile_min_pieces: int = 2`
+- `var vfx_debris_pile_max_pieces: int = 5`
+- `var vfx_debris_pile_spread: float = 0.35`
+- `var vfx_prop_debris_scatter: float = 0.45`
+- `var vfx_smoke_darken_wood: float = 0.55`
+- `var vfx_smoke_darken_default: float = 0.15`
+- `var vfx_smoke_alpha: float = 0.6`
+- `var vfx_metal_spark_color: Color = Color(1.0, 0.95, 0.7, 1.0)`
+- `var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)`
+- `var vfx_impact_profiles: Dictionary = { "metal":    {"sparks": 16, "smoke": false, "dust": false, "chips": 0}, "stone":    {"sparks": 7,  "smoke": false, "dust": true,  "dust_chance": 0.35, "chips": 0},   ## Director 2026-10-13: a little more than one in four, less than the others "concrete": {"sparks": 2,  "smoke": true,  "dust": true,  "chips": 0}, ## Brick follows stone, a little more fragile (Director 2026-10-05): fewer sparks. "brick":    {"sparks": 5,  "smoke": false, "dust": true,  "chips": 0}, ## Plywood (madeirite): wood with more splinters (Director 2026-10-12). "plywood":  {"sparks": 0,  "smoke": true,  "dust": false, "chips": 6, "chip_spread": 2.0, "chip_stamp": 0.55}, ## Cardboard and fabric (Director 2026-10-12): no splinters, no dust; a darker smoke fills the opening to pull the eye (`smoke_dark`). "cardboard": {"sparks": 0, "smoke": true,  "dust": false, "chips": 0, "smoke_dark": 0.55}, "fabric":   {"sparks": 0,  "smoke": true,  "dust": false, "chips": 0, "smoke_dark": 0.6}, "wood":     {"sparks": 0,  "smoke": true,  "dust": false, "chips": 3, "chip_spread": 1.8, "chip_stamp": 0.4},   ## Director 2026-10-12: chips fan out farther and fade; where they land a debris stamp stays }`
+- `var vfx_impact_spark_jitter: float = 0.35`
+- `var vfx_impact_dust_chance: float = 0.5`
+- `var vfx_impact_face_offset_gu: float = 0.03`
+- `var vfx_impact_spray_cone_deg: float = 38.0`
+- `var vfx_surface_spark_speed_scale: float = 2.2`
+- `var vfx_surface_spark_duration_scale: float = 0.6`
+- `var blast_debris_rate_scale: float = 0.25`
+- `var blast_burst_ember_count: int = 22`
+- `var blast_burst_ember_spread_px: float = 64.0`
+- `var blast_burst_ember_life_min: float = 0.50`
+- `var blast_burst_ember_life_max: float = 1.25`
+- `var blast_burst_ember_start_radius_px: float = 7.0`
+- `var blast_burst_ember_speed_min: float = 150.0`
+- `var blast_burst_ember_speed_max: float = 320.0`
+- `var blast_burst_ember_drag: float = 3.4`
+- `var blast_burst_ember_rise_px_s: float = 150.0`
+- `var blast_burst_ember_rise_jitter: float = 0.45`
+- `var blast_burst_ember_up_deg: float = 72.0`
+- `var blast_burst_ember_down_deg: float = 10.0`
+- `var blast_burst_spark_count: int = 34`
+- `var blast_burst_spark_color: Color = Color(1.0, 0.9, 0.62, 1.0)`
+- `var blast_burst_dust_count: int = 7`
+- `var blast_burst_dust_drop_px: float = 44.0`
+- `var blast_burst_height_gu: float = 0.25`
+- `var blast_burst_dust_color: Color = Color(0.62, 0.58, 0.52, 1.0)`
+- `var render_scale_m: float = 1.0`
+- `var soft_roofs_rest: bool = false`
+- `var soft_sheet_voxels: Dictionary = {}`
+- `var soft_walls_rest: bool = false`
+- `var SHADOW_SPILL_MAX_RADIUS: int = 4`
+- `var SHADOW_SPILL_DENSITY_STEP: int = 2`
+- `var SHADOW_SPILL_BASE_DARKEN: float = 0.18`
+- `var SHADOW_SPILL_FALLOFF: float = 0.5`
+- `var SHADOW_SPILL_DIAGONAL_FACTOR: float = 0.65`
+- `var fuse_ember_rate: Vector2 = Vector2(9.0, 80.0)`
+- `var fuse_ember_radius_scale: Vector2 = Vector2(0.30, 0.52)`
+- `var fuse_spark_burst_rate: Vector2 = Vector2(1.5, 10.0)`
+- `var fuse_sputter_life_min: float = 0.14`
+- `var fuse_sputter_life_max: float = 0.32`
+- `var fuse_sputter_jitter_px: float = 3.5`
+- `var fuse_sputter_rise_px_s: float = 36.0`
+- `var fuse_max_dt: float = 0.1`
+- `var fuse_smoke_rate: Vector2 = Vector2(1.6, 5.0)`
+- `var fuse_smoke_color: Color = Color(0.88, 0.87, 0.84, 0.30)`
+- `var fuse_smoke_scale: float = 0.30`
+- `var fuse_smoke_duration_scale: float = 0.55`
+- `var fuse_smoke_drift_scale: float = 0.30`
+- `var muzzle_flash_count: int = 8`
+- `var muzzle_flash_life: float = 0.30`
+- `var muzzle_flash_spread_px: float = 7.0`
+- `var muzzle_flash_forward_px: float = 9.0`
+- `var muzzle_spark_count: int = 14`
+- `var muzzle_spark_cone_deg: float = 26.0`
+- `var muzzle_spark_color: Color = Color(1.0, 0.93, 0.66, 1.0)`
+- `var muzzle_smoke_color: Color = Color(0.88, 0.87, 0.84, 0.34)`
+- `var muzzle_smoke_scale: float = 0.7`
+- `var muzzle_smoke_puffs: int = 2`
+- `var muzzle_smoke_forward_px: float = 22.0`
+- `var muzzle_smoke_duration_scale: float = 0.35`
+- `var muzzle_smoke_drift_scale: float = 0.22`
+- `var muzzle_smoke_delay_factor: float = 1.0`
+- `var muzzle_flash_radius_scale: float = 2.0`
+- `var muzzle_floor_drop_px: float = 96.0`
+- `var energy_spark_count: int = 10`
+- `var prop_collapse_standing_fraction: float = 0.2`
+- `var PROP_DEBRIS_RAIN_BATCH: int = 24`
+- `var weapon_soot_radius: int = 3`
+- `var consequence_beat: bool = DevFlag.value("CONSEQUENCE", "") != "0"`
+- `var consequence_light_seconds: float = ( DevFlag.value("LIGHT_SECONDS", "").to_float() if DevFlag.value("LIGHT_SECONDS", "").is_valid_float() else 1.0)`
+- `var consequence_light_steps: int = 12`
+
+**Public API**
+- `func bump_world_revision() -> void:`
+- `func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int, is_blast: bool = false, carved_side: int = Voxel.CarvedSide.NONE, variant: int = 0, substrate: int = 0, source: Voxel = null) -> void:`
+- `func record_claim_damage_to_base(v: Voxel) -> void:`
+- `func record_glass_crack_to_base(hit_grid_pos: Vector2i, hit_level: int, wide: bool) -> void:`
+- `func claim_glass_opening_for_hit(grid_pos: Vector2i, level: int, wide: bool, record: bool = true) -> String:`
+- `func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float, record: bool = true) -> int:`
+- `func prefetch_glass_crazes(crazes: Array) -> void:`
+- `func record_glass_shards(piles: Dictionary) -> int:`
+- `func spawn_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = null, paused: bool = false) -> int:`
+- `func begin_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = null, paused: bool = false) -> Dictionary:`
+- `func step_glass_rain(job: Dictionary, budget_usec: int) -> bool:`
+- `func spawn_skylight_burst(bursts: Array) -> void:`
+- `func claim_glass_remnants(remnants: Array, record: bool = true) -> int:`
+- `func claim_glass_rim_shards(shards: Array, record: bool = true) -> int:`
+- `func reap_orphaned_remnants() -> Dictionary:`
+- `func schedule_glass_collapse(delay_s: float) -> void:`
+- `func start_glass_collapse(plan: Array) -> void:`
+- `func glass_opening_for(grid_pos: Vector2i, level: int, wide: bool) -> String:`
+- `func glass_base_key(grid_pos: Vector2i, level: int) -> String:`
+- `func load_map(new_map_id: String, new_seed: int = 0) -> void:`
+- `func view_direction() -> String:`
+- `func set_framing(framing: String, via: String = "code") -> void:`
+- `func board3d() -> Node:`
+- `func toggle_layout_overlay(rail_id: String = "") -> void:`
+- `func scenario_steps() -> Node:`
+- `func capture() -> Node:`
+- `func set_capture_view(ground_centre: Vector2, zoom: float) -> void:`
+- `func material_tints() -> Dictionary:`
+- `func schedule_structural_support(touched: Array) -> void:`
+- `func cloths_for_save() -> Array:`
+- `func refresh_cloth_records() -> void:`
+- `func rebuild_soft_sheets() -> void:`
+- `func scorch_soft_sheets(epicentre: Vector2) -> void:`
+- `func soft_roof_supports() -> Dictionary:`
+- `func release_soft_roofs_after_blast(before: Dictionary) -> bool:`
+- `func release_roof_sheet(roof: Dictionary, from_rest: bool = true, blast_cells: Dictionary = {}) -> bool:`
+- `func set_camera_zoom(zoom_level: float, via: String = "code") -> void:`
+- `func guard_cell(index: int) -> Variant:`
+- `func centre_camera_on(target: Variant) -> void:`
+- `func opened_edge_keys_full() -> Dictionary:`
+- `func spawn_blast_burst(world_pos: Vector2, ground_2d: Vector2 = ParticleMath.NO_FLOOR) -> void:`
+- `func tick_fuse_fx(key: int, pos_2d: Vector2, floor_2d: Vector2, anchor_3d: Vector3, intensity: float, dt: float) -> void:`
+- `func end_fuse_fx(key: int) -> void:`
+- `func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2, muzzle_floor: Vector2 = Vector2.INF) -> void:`
+- `func spawn_energy_flash(muzzle_pos: Vector2, direction: Vector2, color: Color, muzzle_floor: Vector2 = Vector2.INF) -> void:`
+- `func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String, carved_side: int = Voxel.CarvedSide.NONE, shooter_gu: Vector2i = NO_SHOOTER, dust_chance: float = -1.0, chips_mult: float = 1.0) -> void:`
+- `func spawn_prop_shatter(cell: Vector2i, level: int, material_id: String, fragment_count: int = 8) -> void:`
+- `func prop_top_px(gu: Vector2i) -> float:`
+- `func apply_prop_proximity_effects(gu_rings: Dictionary, bomb_def) -> void:`
+- `func release_prop_breaks() -> void:`
+- `func spawn_shot_rubble(cells: Array, push_dir: Vector3, seed: String, forward: bool = false) -> int:`
+- `func spawn_blast_rubble(cells: Array, epicentre: Vector2) -> int:`
+- `func spawn_blast_breaches(cells: Array) -> int:`
+- `func spawn_blast_roof_rubble(cells: Array, epicentre: Vector2) -> int:`
+- `func char_after_fire(cells: Array) -> void:`
+- `func season_blast_trickles(trickles: Array) -> void:`
+- `func season_blast_impacts(impacts: Array, source_gu: Vector2i) -> void:`
+- `func apply_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings: Dictionary, bomb_def) -> void:`
+- `func begin_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings: Dictionary, bomb_def) -> Dictionary:`
+- `func step_prop_debris_fall(job: Dictionary, budget_usec: int) -> bool:`
+- `func blast_smoke_tints() -> Dictionary:`
+- `func blast_debris_policy() -> Dictionary:`
+- `func blast_debris_palette() -> Dictionary:`
+- `func begin_shot_precook(predict_destroyed: Dictionary, scope_gus: Array) -> void:`
+- `func cancel_shot_precook() -> void:`
+- `func shot_precook_ready() -> void:`
+- `func shot_repaint_scope(impact_gus: Array) -> Array:`
+- `func stamp_soot(writes: Dictionary) -> Dictionary:`
+- `func absorb_scorch(writes: Dictionary) -> void:`
+- `func settle_soot() -> Dictionary:`
+- `func project_soot_store() -> void:`
+- `func apply_shot_soot(touched: Array, radius: int = -1) -> void:`
+- `func ground_size() -> Vector2i:`
+- `func has_ground_cell(cell: Vector2i) -> bool:`
+- `func screen_of_lifted(point_2d: Vector2, floor_2d: Vector2) -> Vector2:`
+- `func liquid_stand_y(cell: Vector2i, actor: Node) -> float:`
+- `func refresh_liquid_containers(voxels: Array) -> void:`
+- `func register_body_lights(fire_lights: RefCounted) -> void:`
+- `func queue_light_cells(gus: Array) -> void:`
+- `func ignite_liquids(centre: Vector2, radius: float) -> int:`
+- `func liquid_fire_at(cell: Vector2i):`
+- `func field_lights(registry) -> Array:`
+- `func liquid_at(cell: Vector2i) -> Dictionary:`
+- `func tick_liquids() -> void:`
+- `func view_context() -> Dictionary:`
+- `func event_probe_arm(beat: String) -> void:`
+- `func event_probe_beat(beat: String) -> void:`
+- `func event_probe_report(label: String) -> void:`
+- `func report_blast_passage(delta) -> void:`
+- `func report_passage_of(voxels: Array, tag: String) -> void:`
+- `func play_consequence_light(delta = null) -> void:`
+- `func begin_blast_lock() -> void:`
+- `func end_blast_lock() -> void:`
+- `func is_resolving_action() -> bool:`
+- `func is_grenade_targeting() -> bool:`
 
 ---
 

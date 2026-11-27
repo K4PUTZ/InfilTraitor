@@ -53,24 +53,54 @@ class FileInfo:
     line_count: int = 0
 
 
-def _bracket_balance(text: str) -> int:
-    """Net unclosed () [] {} in text, ignoring delimiters inside strings."""
-    depth = 0
-    in_str = False
-    quote = ""
-    for ch in text:
-        if in_str:
-            if ch == quote:
-                in_str = False
-            continue
-        if ch in "\"'":
-            in_str = True
-            quote = ch
-        elif ch in "([{":
-            depth += 1
-        elif ch in ")]}":
-            depth -= 1
-    return depth
+def _code_skeleton(lines: list[str]) -> tuple[list[str], list[bool]]:
+    """Per line, its CODE (the line without its strings and its comment) and whether it starts inside a triple-quoted string.
+
+    Brackets are counted on the code alone (2026-11-27). They used to be counted on the whole line, comments included, with an
+    apostrophe taken for a string quote, so an unindented `## ... (the gun's phase A/B).` left a bracket open and every declaration
+    after it was joined into that line and never parsed; a shader kept in a `\"\"\"` string did the same through its own `//` comments
+    (`board3d_live.gd` lost 92 of 104). 88 of 359 scripts had lost entries in CODEMAP.md, 1 429 of 4 298. A `#` outside a string
+    starts a comment to the end of the line at any bracket depth; an escaped quote does not close a string; a triple-quoted string
+    runs across lines."""
+    skel: list[str] = []
+    starts_in_triple: list[bool] = []
+    triple = ""          # the open triple quote across lines, "" when none
+    for line in lines:
+        starts_in_triple.append(bool(triple))
+        code: list[str] = []
+        quote = ""       # an open one-line string's quote
+        i, n = 0, len(line)
+        while i < n:
+            ch = line[i]
+            if triple or quote:
+                if ch == "\\":
+                    i += 2
+                elif triple and line.startswith(triple, i):
+                    triple = ""
+                    i += 3
+                else:
+                    if not triple and ch == quote:
+                        quote = ""
+                    i += 1
+                continue
+            if ch == "#":
+                break
+            if line.startswith('"""', i) or line.startswith("'''", i):
+                triple = line[i:i + 3]
+                i += 3
+                continue
+            if ch in "\"'":
+                quote = ch
+            else:
+                code.append(ch)
+            i += 1
+        skel.append("".join(code))
+    return skel, starts_in_triple
+
+
+def _bracket_balance(code: str) -> int:
+    """Net unclosed () [] {} in a line's code (`_code_skeleton`: its strings and its comment already out)."""
+    return sum(ch in "([{" for ch in code) - sum(ch in ")]}" for ch in code)
 
 
 def parse_file(path: Path) -> FileInfo:
@@ -78,6 +108,7 @@ def parse_file(path: Path) -> FileInfo:
     info = FileInfo(rel_path=rel)
     lines = path.read_text(encoding="utf-8").splitlines()
     info.line_count = len(lines)
+    skel, in_triple = _code_skeleton(lines)
 
     in_top_comment = True
     i = 0
@@ -102,6 +133,12 @@ def parse_file(path: Path) -> FileInfo:
                 continue
             in_top_comment = False  # first real code line ends the doc block
 
+        # A line that starts inside a triple-quoted string is that string's text
+        # (a shader's source, say), never a declaration.
+        if in_triple[i]:
+            i += 1
+            continue
+
         # Only inspect declaration-scope (unindented) lines.
         if line[:1] in (" ", "\t"):
             i += 1
@@ -109,14 +146,15 @@ def parse_file(path: Path) -> FileInfo:
 
         # Join continuation lines for multi-line declarations (arrays spanning
         # several lines, wrapped func signatures) so values aren't truncated.
-        if _bracket_balance(line) > 0:
+        # Brackets are counted on the code alone (`_code_skeleton`).
+        depth = _bracket_balance(skel[i])
+        if depth > 0:
             parts = [line]
-            depth = _bracket_balance(line)
             j = i + 1
             while j < n and depth > 0:
                 cont = lines[j].rstrip("\n").strip()
                 parts.append(cont)
-                depth += _bracket_balance(cont)
+                depth += _bracket_balance(skel[j])
                 j += 1
             line = " ".join(p for p in parts if p)
             i = j

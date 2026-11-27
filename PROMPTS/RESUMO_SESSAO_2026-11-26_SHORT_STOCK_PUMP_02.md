@@ -65,13 +65,19 @@ every number, is `MOVEMENT_MASTER_PLAN`'s top blocks of 2026-11-26 ("later", "ni
 - **Before installing over his timeline,** read back his untouched file first: no diff means the tool reproduces the game, so the
   install changes only what was edited.
 
+## Found and fixed after the close
+
+- **`gen_codemap.py` hid declarations** (pre-existing; fixed on 2026-11-27 on the Director's word, the `[FIX]` commit after
+  `f508e500`): it counted brackets on whole lines, COMMENTS included, and took an apostrophe for a string quote, so a `##` line like
+  "(the gun's phase A/B)" left a bracket open and every declaration after it was joined into that line and never parsed; a shader kept
+  in a `"""` string did the same through its own `//` comments. Brackets are now counted on the code alone (`_code_skeleton`: strings
+  and comments out, triple-quoted strings followed across lines, escaped quotes kept inside their string). `CODEMAP.md` went from
+  2 869 to 4 298 entries in 88 of the 359 scripts (`room.gd` 88 -> 326, `board3d_live.gd` 12 -> 104, `voxel_board.gd` 45 -> 112,
+  `grenade_controller.gd` 1 -> 53); every top-level declaration line is now parsed (4 298 by an independent scan), and none of the
+  2 869 old entries changed. It surfaced because the flag's doc comment of `e30132de` hid some of `ActorMesh3D`'s entries.
+
 ## Found, not touched
 
-- **`gen_codemap.py` hides declarations** (pre-existing): `_bracket_balance` counts brackets on unindented COMMENT lines and takes an
-  apostrophe for a string quote, so a `##` line like "(the gun's phase A/B)" leaves a bracket open and the parser joins the lines after
-  it as one, swallowing the declarations there. Measured on 2026-11-27: 80 of the 359 scripts lose entries in `CODEMAP.md` (2 869
-  entries shown, 3 772 with comment lines skipped; `voxel_board.gd` 45 of 112, `actor_pose.gd` 7 of 52, `ember_overlay.gd` 0 of 42).
-  It surfaced here because the flag's doc comment of `e30132de` hid some of `ActorMesh3D`'s entries (back since `24262d0d`).
 - **The throw take ends with "ERROR: 8 resources still in use at exit"** (Godot's shutdown report): the same line in the takes of
   2026-11-16, so not from this session's change.
 - **A trap for the rows:** `temp/h3_family/rows/rb_SHOTGUNS_m.json` (2026-11-26 01:27) still names the pack's short stock as its source;
@@ -81,4 +87,3 @@ every number, is `MOVEMENT_MASTER_PLAN`'s top blocks of 2026-11-26 ("later", "ni
 
 1. The grenade launchers (his sizes); the snipers' hip shot in the engine; the H3 rows of the models without their own timeline.
 2. Then step 12: the pump (the short stock and 02), the bolt (snipers 09-12), the reloads.
-3. Outside MOVEMENT: `gen_codemap.py`'s comment handling (above).

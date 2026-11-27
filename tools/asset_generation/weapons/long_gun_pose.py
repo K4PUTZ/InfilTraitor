@@ -274,8 +274,12 @@ def _gun_turn(prop):
     fail(f"{prop}: no H3 model of family_lab with the source {src}")
 
 
-def _pump_box(prop):
-    """`prop`'s PUMP in its gun frame: (M: the model's own coordinates -> the gun frame at factor 1, the pump's lowest corner, its highest)."""
+def _pump_box(prop, part="pump"):
+    """`prop`'s PUMP in its gun frame: (M: the model's own coordinates -> the gun frame at factor 1, the pump's lowest corner, its highest).
+
+    part="foregrip" (2026-11-27, the grenade launcher 20, the Director: "tem o mesmo cabo de apoio vertical pra mão esquerda que usamos em
+    outras armas"): the VERTICAL FORE-GRIP instead, the loose piece furthest forward along the barrel that is taller than it is long and
+    hangs below the hold point; the palm's height is kept from its TOP, under the barrel, since the grips differ in length (the bullpup's at x 1.90-2.17, 0.67 high; the launcher's at 0.31-0.40, 0.25 high)."""
     import bmesh
     probe, _ns = tpl.import_prop(prop, {})
     W0 = probe.matrix_world.copy()
@@ -305,6 +309,11 @@ def _pump_box(prop):
         parts.append((is_wood, Vector([min(p[i] for p in pts) for i in range(3)]), Vector([max(p[i] for p in pts) for i in range(3)])))
     bm.free()
     bpy.data.objects.remove(probe)
+    if part == "foregrip":
+        tall = [(lo, hi) for _w, lo, hi in parts if (hi.z - lo.z) > 1.5 * (hi.x - lo.x) and lo.z < _pts["hold"].z]
+        if not tall:
+            fail(f"{prop}: no vertical fore-grip below the hold")
+        return (M,) + max(tall, key=lambda b: b[0].x)
     woods = [(lo, hi) for w, lo, hi in parts if w]
     if not woods:
         fail(f"{prop}: no wooden piece (no pump) on the model")
@@ -312,32 +321,39 @@ def _pump_box(prop):
     return M, lo, hi
 
 
-def pump_grip(target, donor, out, stops, ks=None, cap=97.0, rebake=()):
+def pump_grip(target, donor, out, stops, ks=None, cap=97.0, rebake=(), part="pump"):
     ks = ks or {}
     if os.path.exists(out) or os.path.realpath(out) in (os.path.realpath(target), os.path.realpath(donor)):
         fail(f"{out} exists or is an input: a timeline is never written over")
     # the donor's hold on its pump, per stop: the share along it, the offsets in figure units, the hand's turn against the barrel, the fingers
     sc, arm, gun = _open(donor)
     dprop = json.loads(arm["lab_props"])[0]
-    Md, lo_d, hi_d = _pump_box(dprop)
+    Md, lo_d, hi_d = _pump_box(dprop, part)
+    dframe = {}                                                        # a stop "23:31": the target's 23 takes the donor's hold at 31
+    for i, f in enumerate(stops):
+        if isinstance(f, str) and ":" in f:
+            t_, d_ = (int(x) for x in f.split(":"))
+            stops[i], dframe[t_] = t_, d_
+        else:
+            stops[i] = dframe.setdefault(int(f), int(f))
     fingers = [b.name for b in arm.pose.bones if b.name.startswith(P + "LeftHand") and any(x in b.name for x in FINGERS)]
     grip = {}
     for f in stops:
-        sc.frame_set(f)
+        sc.frame_set(dframe[f])
         bpy.context.view_layer.update()
         GF = _gun_a(arm, gun) @ Md.inverted()                          # the donor's gun frame in armature space
         k_d = GF.to_scale().x
         q = GF.inverted() @ _palm_a(arm, "Left")
-        grip[f] = {"u": (q.x - lo_d.x) / (hi_d.x - lo_d.x), "dy": (q.y - (lo_d.y + hi_d.y) / 2.0) * k_d, "dz": (q.z - lo_d.z) * k_d,
+        grip[f] = {"u": (q.x - lo_d.x) / (hi_d.x - lo_d.x), "dy": (q.y - (lo_d.y + hi_d.y) / 2.0) * k_d, "dz": (q.z - (hi_d.z if part == "foregrip" else lo_d.z)) * k_d,
                    "turn": GF.to_quaternion().inverted() @ arm.pose.bones[P + "LeftHand"].matrix.to_quaternion(),
                    "fingers": {n: arm.pose.bones[n].rotation_quaternion.copy() for n in fingers}}
         print(f"[long_gun_pose] pump_grip: donor {os.path.basename(donor)} ({dprop}) {f}: the palm {grip[f]['u'] * 100:.0f} % along its pump "
-              f"({(hi_d.x - lo_d.x) * k_d * 100:.1f} long, {(hi_d.z - lo_d.z) * k_d * 100:.1f} high), {grip[f]['dz'] * 100:+.2f} from its underside, "
+              f"({(hi_d.x - lo_d.x) * k_d * 100:.1f} long, {(hi_d.z - lo_d.z) * k_d * 100:.1f} high), {grip[f]['dz'] * 100:+.2f} from its {'top' if part == 'foregrip' else 'underside'}, "
               f"{grip[f]['dy'] * 100:+.2f} across")
     # the target
     sc, arm, gun = _open(target)
     tprop = json.loads(arm["lab_props"])[0]
-    Mt, lo_t, hi_t = _pump_box(tprop)
+    Mt, lo_t, hi_t = _pump_box(tprop, part)
     keyed = _keyed(arm)
     missing = [f for f in stops if f not in keyed]
     if missing:
@@ -351,7 +367,7 @@ def pump_grip(target, donor, out, stops, ks=None, cap=97.0, rebake=()):
         G = _gun_a(arm, gun)
         GF = G @ Mt.inverted()
         k_t = GF.to_scale().x
-        q_t = Vector((lo_t.x + grip[f]["u"] * (hi_t.x - lo_t.x), (lo_t.y + hi_t.y) / 2.0 + grip[f]["dy"] / k_t, lo_t.z + grip[f]["dz"] / k_t))
+        q_t = Vector((lo_t.x + grip[f]["u"] * (hi_t.x - lo_t.x), (lo_t.y + hi_t.y) / 2.0 + grip[f]["dy"] / k_t, (hi_t.z if part == "foregrip" else lo_t.z) + grip[f]["dz"] / k_t))
         need = (GF.inverted() @ _palm_a(arm, "Left")).x - q_t.x         # gun-frame units along the barrel
         rh_rel = G.inverted() @ pb[P + "RightHand"].matrix
         r_on = FL._bvh_world(gun).find_nearest(FL._palm(arm, "Right"))[3] * 100.0
@@ -404,7 +420,8 @@ def pump_grip(target, donor, out, stops, ks=None, cap=97.0, rebake=()):
             c.append(gun.matrix_world.inverted() @ FL._palm(arm, "Left"))
         tpl._bake_slide(sc, arm, gun, a_, b_, c[0], c[1])
         print(f"[long_gun_pose] pump_grip: the slide {a_}-{b_} re-baked: the hand runs {(c[1] - c[0]).length * gun.matrix_world.to_scale().x * 1000:.0f} mm along it")
-    arm["lab_pump_grip"] = json.dumps({"donor": os.path.basename(donor), "stops": stops, "slide": {str(k): v for k, v in ks.items()}, "cap": cap})
+    arm["lab_pump_grip"] = json.dumps({"donor": os.path.basename(donor), "stops": stops, "donor_frames": {str(k): v for k, v in dframe.items()},
+                                       "part": part, "slide": {str(k): v for k, v in ks.items()}, "cap": cap})
     _save(sc, arm, out)
 
 
@@ -617,7 +634,8 @@ def main():
     elif a[0] == "pump_grip":
         ks = {int(k): (v if v == "auto" else float(v)) for k, v in (x.split("=") for x in a[5].split(","))} if len(a) > 5 and a[5] != "-" else {}
         rebake = [tuple(int(v) for v in x.split("-")) for x in a[7].split(",")] if len(a) > 7 and a[7] != "-" else []
-        pump_grip(a[1], a[2], a[3], [int(x) for x in a[4].split(",")], ks, float(a[6]) if len(a) > 6 else 97.0, rebake)
+        pump_grip(a[1], a[2], a[3], a[4].split(","), ks, float(a[6]) if len(a) > 6 else 97.0, rebake,
+                  a[8] if len(a) > 8 else "pump")
     elif a[0] == "nudge":
         nudge(a[1], a[2], {int(k): tuple(float(c) for c in v.split(":")) for k, v in (x.split("=") for x in a[3].split(","))})
     elif a[0] == "drop":

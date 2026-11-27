@@ -44,6 +44,14 @@ PROP_GLB = {"pistol": os.path.join(ROOT, "ASSETS", "props", "pistol_quaternius",
             "shotgun_zmptnh7njl": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_ultimate_guns_pack", "extracted",
                                                "Shotgun-ZmPTnh7njL.glb"),
             # the sci-fi sniper, a grip of its own (2026-11-25, the Director: "montar a cena completa só da 17 com draw, hip e aim")
+            # the three grenade launchers (2026-11-27, the Director: sizes set in FAMILY_H3_LAUNCHERS_hip_MALE.blend; no aim, the hip only, a draw of
+            # their own from beside the waist): their pack sources until an H3 row copies them into ASSETS/props/<id>/
+            "grenade_launcher_zkvwhvu4tv": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "items_polypizza", "launchers",
+                                                        "Grenade_Launcher-ZKvWhvu4tV.glb"),
+            "grenade_launcher_phmpzcngoa": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "items_polypizza", "launchers",
+                                                        "Grenade_Launcher-phmPZCnGOA.glb"),
+            "scifi_grenade_launcher_r10gkf9yds": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "items_polypizza",
+                                                              "launchers", "Scifi_Grenade_Launcher-r10Gkf9yDs.glb"),
             "scifi_sniper_vu7qizyae0": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "items_polypizza", "scifi",
                                                     "Scifi_Sniper-VU7QiZYae0.glb"),
             "scifi_sniper_46615jyfm7": os.path.join(ROOT, "ASSETS", "props", "scifi_sniper_46615jyfm7",   # the pack model joined into one mesh

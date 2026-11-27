@@ -25,6 +25,7 @@ const PREFIX: String = "INFILTRAITOR_"
 ## name -> [default, description]. Sorted by name. Dev-only: nothing here is a gameplay setting.
 const FLAGS: Dictionary = {
 	"AGENT_START_GU": ["", "\"x,y\": puts the agent's spawn (and so the camera's first centre) there without editing the map"],
+	"AIM_GUN_EASED": ["", "1: a timeline's gun / grenade and coat keys follow the body's EASED path weight, in step with the arms (the gun-phase A/B, MOVEMENT 2026-11-26)"],
 	"BENCHMARK": ["", "1: run the detonation benchmark (`_run_detonation_benchmark`) once the map is up, then quit"],
 	"BENCH_GRENADE": ["0", "the benchmark's grenade index among the dev grenades"],
 	"BENCH_RUNS": ["3", "how many detonations the benchmark times"],
@@ -159,6 +160,7 @@ const FLAGS: Dictionary = {
 	"TEL_FILE": ["1", "0: telemetry is not written to its file"],
 	"TEL_LOGCAT": ["1", "0: telemetry is not echoed to the log"],
 	"THROW_PROFILE": ["", "1: the throw's timeline (DIAG-22)"],
+	"TIME_SCALE": ["", "the engine's time scale (0.25 = a quarter speed): a slow-motion take that keeps every in-between frame (Movie Maker still writes 60 fps)"],
 	"TRIPO_FIGURE": ["male", "the Agent every actor wears: male | female | none (none = the old r3d_live rig, for comparisons)"],
 	"TRIPO_MOVE": ["walk", "the clip the Tripo figure moves with"],
 	"VENT_STEAM": ["1", "0: no steam plumes from the vents (a handset A/B)"],

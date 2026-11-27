@@ -122,18 +122,36 @@ func _process_modification_with_delta(_delta: float) -> void:
 		apply_to(skeleton)
 
 
+## The stretch of the path `w` falls in: x = the resting stop it starts from (-1 for the pose the player wrote), y = the resting stop it ends at.
+func _span(w: float) -> Vector2i:
+	var end: int = 0
+	while end < _stop_at.size() - 1 and (w > _stop_at[end] or _passing[end]):
+		end += 1
+	var begin: int = end - 1
+	while begin >= 0 and _passing[begin]:
+		begin -= 1
+	return Vector2i(begin, end)
+
+
+## Where along the path the BODY is when the owner sets `w`: between two resting stops the path is eased by a smoothstep (the arms come to rest at each).
+## Whatever else rides the same timeline (the gun or the grenade in the hand, the coat's keys) is in step with the arms only when read at this weight
+## (MOVEMENT 2026-11-26: read at `w` it ran up to about a frame ahead of or behind the hand; her short stock's gun showed through the belt at 13).
+func eased_weight(w: float) -> float:
+	if w <= 0.0 or _stop_at.is_empty():
+		return w
+	var span: Vector2i = _span(w)
+	var span_from: float = 0.0 if span.x < 0 else _stop_at[span.x]
+	return lerpf(span_from, _stop_at[span.y], smoothstep(0.0, 1.0, clampf((w - span_from) / (_stop_at[span.y] - span_from), 0.0, 1.0)))
+
+
 ## The whole modification, on a skeleton handed in (the engine's call above passes its own; a selftest passes a rig it holds, with no tree and no frame).
 func apply_to(skeleton: Skeleton3D) -> void:
 	if weight <= 0.0 or _bones.is_empty():
 		return
-	var end: int = 0                      ## the resting stop this stretch of the path ends at
-	while end < _stop_at.size() - 1 and (weight > _stop_at[end] or _passing[end]):
-		end += 1
-	var begin: int = end - 1              ## the resting stop it starts from, -1 for the pose the player wrote
-	while begin >= 0 and _passing[begin]:
-		begin -= 1
-	var span_from: float = 0.0 if begin < 0 else _stop_at[begin]
-	var eased: float = lerpf(span_from, _stop_at[end], smoothstep(0.0, 1.0, clampf((weight - span_from) / (_stop_at[end] - span_from), 0.0, 1.0)))
+	var span: Vector2i = _span(weight)
+	var begin: int = span.x               ## the resting stop this stretch of the path starts from, -1 for the pose the player wrote
+	var end: int = span.y                 ## the resting stop it ends at
+	var eased: float = eased_weight(weight)
 	var stop: int = begin + 1
 	while stop < end and eased > _stop_at[stop]:
 		stop += 1

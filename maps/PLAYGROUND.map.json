@@ -972,6 +972,17 @@
           ]
         },
         {
+          "id": "agent_long_slow_rail",
+          "keys": [
+            {
+              "frame": "close",
+              "target": "@agent_close",
+              "view": "S",
+              "hold": 1500
+            }
+          ]
+        },
+        {
           "id": "shot_stages_rail",
           "keys": [
             {
@@ -1773,6 +1784,47 @@
           "length": 1550,
           "seed": 1,
           "note": "MOVEMENT §11.6 (2026-11-26): the long guns with a draw of their own (`model.draw`): each drawn to the hip, raised to the aim and put away, the bullpup, the two stockless shotguns, the two sci-fi snipers. Run with INFILTRAITOR_TRIPO_FIGURE=male|female."
+        },
+        {
+          "id": "short_stock_draw",
+          "profile": "engine",
+          "rail": "agent_long_shot_rail",
+          "steps": [
+            "place_guard 4 @shot_target_left",
+            "draw shotgun_short_stock",
+            "wait 1.8",
+            "stance aimed",
+            "wait 1.6",
+            "shot_cancel",
+            "wait 1.6"
+          ],
+          "at_key": 0,
+          "after_hold": 0,
+          "length": 330,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-26: the short stock alone, close: drawn to the hip, raised to the aim, put away. Run with INFILTRAITOR_TRIPO_FIGURE=male|female; the gun-phase A/B with INFILTRAITOR_AIM_GUN_EASED=1."
+        },
+        {
+          "id": "short_stock_draw_slow",
+          "profile": "engine",
+          "rail": "agent_long_slow_rail",
+          "env": {
+            "TIME_SCALE": 0.25
+          },
+          "steps": [
+            "place_guard 4 @shot_target_left",
+            "draw shotgun_short_stock",
+            "wait 1.8",
+            "stance aimed",
+            "wait 1.6",
+            "shot_cancel",
+            "wait 1.6"
+          ],
+          "at_key": 0,
+          "after_hold": 0,
+          "length": 1320,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-26: short_stock_draw at a quarter speed (TIME_SCALE: every in-between its own frame), for the gun-phase A/B (INFILTRAITOR_AIM_GUN_EASED=1). Run with INFILTRAITOR_TRIPO_FIGURE=male|female."
         },
         {
           "id": "shotgun_shot",

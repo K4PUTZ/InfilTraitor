@@ -10215,6 +10215,12 @@ func _apply_perf_ablations() -> void:
 	if fps_raw.is_valid_int():
 		Engine.max_fps = int(fps_raw)
 		print("[PERF-DEV] MAX_FPS — Engine.max_fps = %d" % Engine.max_fps)
+	## MOVEMENT 2026-11-26: `TIME_SCALE=<f>` slows (or speeds) the whole game for a slow-motion take: Movie Maker still writes its fixed 60 fps, each
+	## frame `f` of a sixtieth of game time apart, so every in-between is a frame of its own (a normal-speed video stretched in post repeats frames).
+	var time_scale_raw: String = DevFlag.value("TIME_SCALE")
+	if time_scale_raw.is_valid_float() and float(time_scale_raw) > 0.0:
+		Engine.time_scale = float(time_scale_raw)
+		print("[CAPTURE-DEV] TIME_SCALE — Engine.time_scale = %.3f" % Engine.time_scale)
 	if _dev_flag_on("STRETCH_VIEWPORT"):
 		get_window().content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 		_apply_world_render_scale()

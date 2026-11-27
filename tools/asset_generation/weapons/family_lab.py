@@ -59,9 +59,11 @@ Run inside Blender:
   blender -b --python family_lab.py -- in_step <his family timeline> <his model timeline> <her family timeline> <out .blend>
       -> the other figure's model timeline in step with his: his change from his family timeline put on her own keys, the model at his place in
          her hand, her right hand on it where his is (`in_step`'s docstring; `SEQ_draw_bullpup_FEMALE.blend`)
-  blender -b --python family_lab.py -- raise <timeline .blend> <out .blend> <f0> <f1> <breakdowns,comma> [bulge m]
+  blender -b --python family_lab.py -- raise <timeline .blend> <out .blend> <f0> <f1> <breakdowns,comma> [bulge m] [turn deg] [turn end] [bulge end m|-]
       -> the raise between two stops rebuilt from the gun: its path straight and eased, bowed forward out of the coat, both hands on it at
-         the breakdowns, the slide re-keyed (`raise_from_gun`'s docstring; the female's bullpup, hip 23 to aim 31)
+         the breakdowns, the slide re-keyed (`raise_from_gun`'s docstring; the female's bullpup, hip 23 to aim 31); a turn about the left palm
+         in mid-raise keeps a stocked gun's butt out of the coat (2026-11-26, the short stock). The hip before it: `long_gun_pose.py`;
+         the cuts it leaves: `gun_cuts.py`
   blender -b --python family_lab.py -- render <saved .blend> <out prefix> [readback .json] -> <prefix>_line.png (the whole line, three-quarters)
                                                                                   <prefix>_tile_<nn>.png (each gun hand from the side, one scale)
   blender -b --python family_lab.py -- swap <saved .blend> "<nn name>" <old glb> <new glb>   -> a model replaced by its edited version, in place
@@ -1456,7 +1458,7 @@ def _reach(arm, side, target):
     return (hand.head - W).length * arm.matrix_world.to_scale().x * 100.0, (W - S).length / (L1 + L2)
 
 
-def raise_from_gun(src_blend, out_blend, f0, f1, breakdowns, bulge=RAISE_BULGE_M):
+def raise_from_gun(src_blend, out_blend, f0, f1, breakdowns, bulge=RAISE_BULGE_M, yaw_deg=0.0, yaw_end=1.0, bulge_end=None):
     """THE RAISE REBUILT FROM THE GUN (2026-11-24, the Director on the female's bullpup, after posing her draw and aim: "o movimento nos últimos
     frames está meio duro. Da uma conferida e veja se consegue suavizar. As poses estão corretas"; on the result: "Pode instalar").
     Measured on his save: a breakdown of the left arm at 27 took the gun out of the coat by turning it ~50 degrees to her left; it came back
@@ -1472,7 +1474,15 @@ def raise_from_gun(src_blend, out_blend, f0, f1, breakdowns, bulge=RAISE_BULGE_M
     Between the breakdowns Blender's own interpolation of the arms keeps both palms within a centimetre of their holds (measured on the
     bullpup: left 0.5-1.0 cm, right 2.1-2.8 cm, as at the stops). The read-back makes each breakdown a PASSING stop; the game eases a span
     between two resting stops with its own smoothstep and passes these linearly, so the spacing they carry is eased a second time when the
-    game plays a model's own timeline (POLISH-01). Written as a new file, never over one."""
+    game plays a model's own timeline (POLISH-01).
+    THE BUTT KEPT OUT OF THE COAT (2026-11-26, the Director: "evitar que as armas entrem no casaco durante as movimentações"): on every stocked
+    long gun the straight raise takes the butt up the coat's right front (the family shotgun's own raise, in the game: up to 22 coat
+    triangles at 25; the stockless sawed-off is clean), and a larger forward bow does not cure it (the left arm runs out of reach first).
+    `yaw_deg` also TURNS the gun about the vertical through the left palm in mid-raise, a sin(pi s / yaw_end) bump (the muzzle to the
+    figure's left, the butt out beside the coat's flank, back into the shoulder by the end; `yaw_end` < 1 ends the turn earlier); the
+    left hand keeps its place on the gun and turns with it. `bulge_end` bows the arc's second control point by its own amount. The short
+    stock: the female 4 cm and 15 deg, the male 3 cm and 25 deg (his coat is wider). With the defaults (no turn) the raise is as before.
+    Written as a new file, never over one."""
     if os.path.abspath(src_blend) == os.path.abspath(out_blend) or os.path.exists(out_blend):
         fail(f"{os.path.relpath(out_blend, ROOT)}: the raise is written as a new file, never over one")
     if not breakdowns or not all(f0 < f < f1 for f in breakdowns):
@@ -1521,13 +1531,20 @@ def raise_from_gun(src_blend, out_blend, f0, f1, breakdowns, bulge=RAISE_BULGE_M
                 @ Matrix.Translation(-c0.lerp(c1, s)))
 
     def gun_at(s):
-        b1, b2, u = P0 + fwd * bulge, P1 + fwd * bulge, 1.0 - s
+        b1, b2, u = P0 + fwd * bulge, P1 + fwd * (bulge if bulge_end is None else bulge_end), 1.0 - s
         pos = P0 * (u ** 3) + b1 * (3.0 * u * u * s) + b2 * (3.0 * u * s * s) + P1 * (s ** 3)
         sc_ = S0.lerp(S1, s)
-        return Matrix.Translation(pos) @ Q0.slerp(Q1, s).to_matrix().to_4x4() @ Matrix.Diagonal((sc_.x, sc_.y, sc_.z, 1.0))
+        G = Matrix.Translation(pos) @ Q0.slerp(Q1, s).to_matrix().to_4x4() @ Matrix.Diagonal((sc_.x, sc_.y, sc_.z, 1.0))
+        if not yaw_deg or s >= yaw_end:
+            return G
+        piv = G @ c0.lerp(c1, s)                      # the left palm's point on the gun: the turn's pivot
+        ang = math.radians(yaw_deg) * math.sin(math.pi * s / yaw_end)
+        return Matrix.Translation(piv) @ Matrix.Rotation(ang, 4, Vector((0.0, 0.0, 1.0))) @ Matrix.Translation(-piv) @ G
 
     print(f"[family_lab] raise {f0}-{f1} of {os.path.basename(src_blend)}: the {gun.name} turns {math.degrees(Q0.rotation_difference(Q1).angle):.1f} deg and "
-          f"travels {(P1 - P0).length * 100:.1f} cm, bowed {bulge * 100:.0f} cm forward; the left hand slides {(c1 - c0).length * S0.x * 1000:.0f} mm along it")
+          f"travels {(P1 - P0).length * 100:.1f} cm, bowed {bulge * 100:.0f} cm forward"
+          f"{'' if bulge_end is None else f' ({bulge_end * 100:.0f} cm at its end)'}{f', turned {yaw_deg:.0f} deg at mid-raise' if yaw_deg else ''}; "
+          f"the left hand slides {(c1 - c0).length * S0.x * 1000:.0f} mm along it")
     names = [s + b for s in ("Left", "Right") for b in ("Arm", "ForeArm", "Hand")]
     for f in sorted(breakdowns):
         s = _ease((f - f0) / float(f1 - f0))
@@ -1565,7 +1582,10 @@ def raise_from_gun(src_blend, out_blend, f0, f1, breakdowns, bulge=RAISE_BULGE_M
         qprev = gun.rotation_quaternion.copy()
         for path in ("location", "rotation_quaternion", "scale"):
             gun.keyframe_insert(path, frame=f)
-    arm["lab_raise"] = json.dumps({"from": os.path.basename(src_blend), "span": [f0, f1], "breakdowns": sorted(breakdowns), "bulge_m": bulge})
+    rec = {"from": os.path.basename(src_blend), "span": [f0, f1], "breakdowns": sorted(breakdowns), "bulge_m": bulge}
+    if yaw_deg or bulge_end is not None:
+        rec.update({"yaw_deg": yaw_deg, "yaw_end": yaw_end, "bulge_end_m": bulge_end})
+    arm["lab_raise"] = json.dumps(rec)
     sc.frame_set(1)
     os.makedirs(os.path.dirname(out_blend), exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=out_blend)
@@ -1626,7 +1646,8 @@ def main():
         in_step(a[1], a[2], a[3], a[4])
     elif a[0] == "raise":
         raise_from_gun(a[1], a[2], int(a[3]), int(a[4]), [int(x) for x in a[5].split(",") if x],
-                       float(a[6]) if len(a) > 6 else RAISE_BULGE_M)
+                       float(a[6]) if len(a) > 6 else RAISE_BULGE_M, float(a[7]) if len(a) > 7 else 0.0,
+                       float(a[8]) if len(a) > 8 else 1.0, float(a[9]) if len(a) > 9 and a[9] != "-" else None)
     elif a[0] == "swap":
         swap(a[1], a[2], a[3], a[4])
     elif a[0] == "readback":

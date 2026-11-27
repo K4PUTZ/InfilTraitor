@@ -40,11 +40,17 @@ FINGERS = LGP.FINGERS
 TRUNK = ("Spine", "Spine1", "Spine2")
 
 # Targets in units of the hip height H, in the figure's frame: fwd (the way it faces), left, up; from the LEFT hip joint (LeftUpLeg's head).
-SKIRT_AT = (0.02, 0.15, -0.12)     # the left hand at the skirt's edge, beside the thigh
-OPEN_AT = (0.03, 0.26, -0.10)      # the skirt pushed out
-POCKET_AT = (0.06, 0.15, -0.02)    # the right hand's palm at the side of the waist, by the left pocket, in the gap
-LEAN_DEG = (8.0, 6.0)              # the trunk's lean at open / appear: forward, toward the left (spread over the spine)
-ARC_FWD, ARC_UP = 1.10, 0.30      # the lift's curve: its control point ahead of and above the middle of pocket -> hip (units of H)
+# The Director's sketch (2026-11-27, after the first candidate: "os braços ficaram todos tortos ... a ideia é mais simples"): the LEFT hand
+# takes the coat's FRONT edge at the thigh and draws it out to the side, opening the front; the RIGHT hand crosses to the FRONT of the left
+# thigh, where the coat was, and the gun starts there pointing down, in the room there is, as if drawn from under the coat. Both hands keep
+# the idle's turn (the first candidate's turned wrists bent the arms); the targets sit high on the thigh, since the Agent's arms are short
+# (measured: the front of the thigh 0.10 H below the hip joint is 109-115 % of the right arm); the gun is turned about its own barrel so the right hand needs the
+# least turn from its idle.
+SKIRT_AT = (0.11, 0.07, -0.06)     # the left hand at the coat's front edge, over the left thigh
+OPEN_AT = (0.07, 0.19, -0.05)      # the edge drawn out to the side
+POCKET_AT = (0.15, 0.02, -0.02)    # the right hand's palm in front of the left thigh
+LEAN_DEG = (6.0, 0.0)              # a slight bow while the right hand reaches (no side lean: the first candidate's 6 deg went with the twisted arms)
+ARC_FWD, ARC_UP = 0.80, 0.30      # the lift's curve: its control point ahead of and above the middle of pocket -> hip (units of H)
 REACH_CAP = 0.95                   # a hand target is taken no further than this share of the arm
 LEVEL_EARLY = 1.0                  # the turn to level against the carry (t ** this; 1.0 measured best, 2026-11-27: 0-17 cut triangles a frame from 13 to 21)
 TRUNK_SHARE = {"skirt": 0.0, "open": 0.05, "appear": 0.1, "lift": 0.5, "join": 0.85}
@@ -152,8 +158,19 @@ def build(src, out, stops=(5, 9, 11, 15, 19)):
     axes = [gx @ Vector(v) for v in ((1, 0, 0), (0, 1, 0), (0, 0, 1), (-1, 0, 0), (0, -1, 0), (0, 0, -1))]
     barrel_local = [Vector(v) for v in ((1, 0, 0), (0, 1, 0), (0, 0, 1), (-1, 0, 0), (0, -1, 0), (0, 0, -1))][max(range(6), key=lambda i: axes[i].dot(fwd))]
     barrel_w = gx @ barrel_local
-    down_turn = barrel_w.rotation_difference((-up + fwd * 0.25 + left * 0.15).normalized())      # barrel down, a little forward and out
-    q_down = down_turn @ q_hip
+    down_dir = (-up + fwd * 0.25).normalized()                     # barrel down, a little forward
+    q_down0 = barrel_w.rotation_difference(down_dir) @ q_hip
+    sc.frame_set(f_idle)
+    bpy.context.view_layer.update()
+    rh_idle_q = (mw @ pb[P + "RightHand"].matrix).to_quaternion()
+    lh_idle_q = (mw @ pb[P + "LeftHand"].matrix).to_quaternion()
+    q_grip = grip_r.to_quaternion()
+    yaw = min(range(0, 360, 5), key=lambda d: ((Quaternion(down_dir, math.radians(d)) @ q_down0) @ q_grip.inverted()).rotation_difference(rh_idle_q).angle)
+    q_down = Quaternion(down_dir, math.radians(yaw)) @ q_down0
+    print(f"[launcher_draw] the gun turned {yaw} deg about its barrel at `appear`: the right hand "
+          f"{math.degrees((q_down @ q_grip.inverted()).rotation_difference(rh_idle_q).angle):.0f} deg from its idle turn")
+    sc.frame_set(f_hip)
+    bpy.context.view_layer.update()
     palm_r_in_hand = pb[P + "RightHand"].matrix.inverted() @ ((pb[P + "RightHand"].head + pb[P + "RightHandMiddle1"].head) * 0.5)
     pocket = _at(fr, POCKET_AT)
     R_down = q_down.to_matrix().to_4x4()
@@ -216,14 +233,7 @@ def build(src, out, stops=(5, 9, 11, 15, 19)):
         t_a = (to_a @ point) - (R_a.to_matrix() @ pin)
         return mw @ (Matrix.Translation(t_a) @ R_a.to_matrix().to_4x4())
 
-    # the left hand on the skirt: palm OUT (toward the figure's left), fingers down
-    def palm_out_q():
-        x_ = -fwd                     # the hand bone's axes (Mixamo): y along the fingers, z out of the back of the hand
-        y_ = -up
-        z_ = -left
-        return Matrix((x_, y_, z_)).transposed().to_quaternion()
-
-    q_skirt = palm_out_q()
+    q_skirt = lh_idle_q
     sc.frame_set(f_idle)
     bpy.context.view_layer.update()
     rh_idle = mw @ pb[P + "RightHand"].matrix
@@ -238,7 +248,7 @@ def build(src, out, stops=(5, 9, 11, 15, 19)):
     LH_join = G_j @ left_on
     LH_join = Matrix.Translation(LH_join.to_translation() - up * 0.05 * H) @ LH_join.to_quaternion().to_matrix().to_4x4()
     lh_lift_p = _at(fr, OPEN_AT).lerp(LH_join.to_translation(), 0.45) - left * 0.03 * H
-    key_pose(S["lift"], TRUNK_SHARE["lift"], (LEAN_DEG[0] * 0.3, 0.0),
+    key_pose(S["lift"], TRUNK_SHARE["lift"], None,
              Matrix.Translation(lh_lift_p) @ q_skirt.slerp(LH_join.to_quaternion(), 0.5).to_matrix().to_4x4(), G_l @ grip_r.inverted(), True)
     # the left hand at `join`: toward its place under the gun's front as far as the arm reaches (`REACH_CAP`); it settles on the gun at the hip
     sc.frame_set(S["join"])

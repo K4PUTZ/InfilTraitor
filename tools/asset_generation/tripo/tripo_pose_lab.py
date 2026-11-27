@@ -39,6 +39,10 @@ PROP_GLB = {"pistol": os.path.join(ROOT, "ASSETS", "props", "pistol_quaternius",
             # the game's model (2026-11-26): the pack's `Shotgun Short Stock.glb` with its ejection port closed by a black floor
             # (`glb_close_opening.py`; the Director: "poe o fundo preto na janela e pode instalar")
             "shotgun_short_stock": os.path.join(ROOT, "ASSETS", "props", "shotgun_short_stock", "shotgun_short_stock.glb"),
+            # the pack's other PUMP shotgun, a draw of its own (2026-11-26, the Director: "Para as outras shotguns que tem a bomba, usamos o mesmo
+            # mecanismo, adaptando onde for necessário"): its pack source until an H3 row copies it into ASSETS/props/<id>/
+            "shotgun_zmptnh7njl": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "quaternius_ultimate_guns_pack", "extracted",
+                                               "Shotgun-ZmPTnh7njL.glb"),
             # the sci-fi sniper, a grip of its own (2026-11-25, the Director: "montar a cena completa só da 17 com draw, hip e aim")
             "scifi_sniper_vu7qizyae0": os.path.join(ROOT, "ASSETS", "ISOMETRIC", "source_assets", "imported_models", "items_polypizza", "scifi",
                                                     "Scifi_Sniper-VU7QiZYae0.glb"),
@@ -866,7 +870,7 @@ LONG_COAT_KEY = "LongDrawFix"
 LONG_SUPPORT_FWD_DEG = 20.0
 LONG_SUPPORT_CURL_DEG = (45.0, 80.0, 50.0)    # each finger's three joints (knuckle, middle, tip)
 LONG_PALM_DEPTH = 0.008                       # from the hand's bone line to the palm's skin
-LONG_GUN_SEQUENCES = ("draw_shotgun", "draw_bullpup", "draw_shotgun_sawed_off", "draw_shotgun_short_stock", "draw_scifi_sniper_vu7qizyae0", "draw_scifi_sniper_46615jyfm7")   # the long guns' draw timelines: their read-back keeps the fingers (`sequence`); the bullpup's
+LONG_GUN_SEQUENCES = ("draw_shotgun", "draw_bullpup", "draw_shotgun_sawed_off", "draw_shotgun_short_stock", "draw_shotgun_zmptnh7njl", "draw_scifi_sniper_vu7qizyae0", "draw_scifi_sniper_46615jyfm7")   # the long guns' draw timelines: their read-back keeps the fingers (`sequence`); the bullpup's
                                                          # is its own (2026-11-24, `family_lab.py seq`)
 
 

@@ -37,7 +37,9 @@ centre / hip / aim), each written as a NEW file, never over one (the Director's 
                   so a target fixed to the moving grip would drag the hand down and forward and back again).
               Then `family_lab.py raise` rebuilds the raise from the new hip (with its mid-raise turn, the butt out of the coat) and
               `gun_cuts.py scan` checks what still cuts. The short stock (2026-11-26): both figures 15 deg; the female `auto` (3.75 cm) with
-              `approach` 19; the male `auto` with 1.5 cm to his right (-1.5 side: the butt out of the coat's skirt), 5 cm.
+              `approach` 19; the male `auto` with 1.5 cm to his right (-1.5 side: the butt out of the coat's skirt), 5 cm. A FULL stock
+              (the pack's shotgun 02, like the family's 01) runs through the coat's front at the hip and out of its back: `up`, `side` and
+              `tilt` (deg about the gun's own local y through the left palm) take the butt out beside the coat, tucked by the forearm.
 
   pump_grip   The left hand put on the target model's PUMP the way a DONOR timeline holds ITS pump (another pump gun: the short stock, whose
               hold the Director posed on the female, "usando o mesmo shape dos ossos"; then "Para as outras shotguns que tem a bomba, usamos o
@@ -49,14 +51,19 @@ centre / hip / aim), each written as a NEW file, never over one (the Director's 
               arm within `cap` % of its reach, the arm reaching for the rest: the aim); the right hand, where its palm held the gun, keeps its
               place on it. Then the slides named are re-baked from the stops beside them (`tripo_pose_lab._bake_slide`: a baked slide is
               derived from its two stops).
+  nudge       The gun moved with the left hand (and the right one where its palm holds the gun) by a world offset at given frames (fwd = -Y,
+              side = +X = the figure's left, up = Z; figure cm), each keyed there (a new stop, smoothed into the stops round it by the
+              interpolation): the smallest move that takes the gun out of the figure at a frame `gun_cuts.py` flags (`offset_common.py` finds
+              one offset for a run of sub-frames). The right hand, off the gun, keeps its place.
   drop        Every armature key at the given frames removed (they stop being stops): the shotgun's inherited 18 and 20 in a model's own
               timeline (the Director, 2026-11-24: "sem 18/20"), the turn to the hip spread over 16-23.
 
   blender -b --python long_gun_pose.py -- grip_donor <donor SEQ> <target SEQ> <out .blend> [slide 0..1] [<f>=<slide>,...|-] [<f>=<fwd>:<side>:<up>,...|-]
   blender -b --python long_gun_pose.py -- drop <SEQ .blend> <out .blend> <frames,comma>
+  blender -b --python long_gun_pose.py -- nudge <SEQ .blend> <out .blend> <f>=<fwd>:<side>:<up>,...
   blender -b --python long_gun_pose.py -- pump_grip <target SEQ> <donor SEQ> <out .blend> <stops,comma> [<f>=<slide>|<f>=auto,...|-] [cap %] [<a>-<b>,... re-baked slides]
   blender -b --python long_gun_pose.py -- hip_probe <SEQ .blend> <start> <hip> <turns deg,comma> [cap %]
-  blender -b --python long_gun_pose.py -- hip <SEQ .blend> <out .blend> <start> <hip> <turn deg> <fwd cm|auto> [cap %] [side cm] [up cm] [approach]
+  blender -b --python long_gun_pose.py -- hip <SEQ .blend> <out .blend> <start> <hip> <turn deg> <fwd cm|auto> [cap %] [side cm] [up cm] [approach|-] [tilt deg]
 """
 import bpy, sys, os, math, json
 from mathutils import Matrix, Vector
@@ -401,6 +408,28 @@ def pump_grip(target, donor, out, stops, ks=None, cap=97.0, rebake=()):
     _save(sc, arm, out)
 
 
+def nudge(src, out, offsets):
+    if os.path.exists(out) or os.path.realpath(out) == os.path.realpath(src):
+        fail(f"{out} exists or is the input: a timeline is never written over")
+    sc, arm, gun = _open(src)
+    pb = arm.pose.bones
+    to_arm = arm.matrix_world.to_3x3().inverted()
+    for f, (fw, sd, up) in sorted(offsets.items()):
+        sc.frame_set(f)
+        bpy.context.view_layer.update()
+        T = Matrix.Translation(to_arm @ (Vector((sd, -fw, up)) / 100.0))
+        before = {n: pb[P + n].rotation_quaternion.copy() for n in ARMS}
+        LH, RH = pb[P + "LeftHand"].matrix.copy(), pb[P + "RightHand"].matrix.copy()
+        r_on = FL._bvh_world(gun).find_nearest(FL._palm(arm, "Right"))[3] * 100.0
+        mL, rL = FL._reach(arm, "Left", T @ LH)
+        mR, rR = FL._reach(arm, "Right", (T @ RH) if r_on <= FL.IN_STEP_PALM_CM else RH)
+        _key_arms(arm, ARMS, before, f)
+        print(f"[long_gun_pose] nudge {f}: the gun moved fwd {fw} side {sd} up {up} cm with the left hand ({rL * 100:.0f} % of the arm, missed by "
+              f"{mL:.2f} cm); the right hand {'with it' if r_on <= FL.IN_STEP_PALM_CM else 'kept'} ({mR:.2f} cm)")
+    arm["lab_nudges"] = json.dumps({str(k): list(v) for k, v in offsets.items()})
+    _save(sc, arm, out)
+
+
 def drop(src, out, frames):
     if os.path.exists(out) or os.path.realpath(out) == os.path.realpath(src):
         fail(f"{out} exists or is the input: a timeline is never written over")
@@ -501,7 +530,7 @@ def hip_probe(src, hip, turns, cap=97.0):
               f"misses {mL:.2f} {mR:.2f}")
 
 
-def hip(src, out, start, hip_f, twist, fwd_arg, cap=97.0, side_cm=0.0, up_cm=0.0, approach=None):
+def hip(src, out, start, hip_f, twist, fwd_arg, cap=97.0, side_cm=0.0, up_cm=0.0, approach=None, tilt=0.0):
     if os.path.exists(out) or os.path.realpath(out) == os.path.realpath(src):
         fail(f"{out} exists or is the input: a timeline is never written over")
     sc, arm, gun = _open(src)
@@ -519,7 +548,16 @@ def hip(src, out, start, hip_f, twist, fwd_arg, cap=97.0, side_cm=0.0, up_cm=0.0
         sc.frame_set(f)
         bpy.context.view_layer.update()
         orig[f] = (pb[P + "LeftHand"].matrix.copy(), pb[P + "RightHand"].matrix.copy(),
-                   FL._bvh_world(gun).find_nearest(FL._palm(arm, "Right"))[3] * 100.0)
+                   FL._bvh_world(gun).find_nearest(FL._palm(arm, "Right"))[3] * 100.0,
+                   _palm_a(arm, "Left"), (h.W.to_3x3().inverted() @ (gun.matrix_world.to_3x3().normalized() @ Vector((0.0, 1.0, 0.0)))).normalized())
+
+    def tilted(f, deg):
+        """The gun turned by `deg` about its own local y through the left palm, as a move of the hands (armature space)."""
+        if not deg:
+            return Matrix.Identity(4)
+        p = orig[f][3]
+        return Matrix.Translation(p) @ Matrix.Rotation(math.radians(deg), 4, orig[f][4]) @ Matrix.Translation(-p)
+
     sc.frame_set(hip_f)
     bpy.context.view_layer.update()
     if fwd_arg == "auto":
@@ -530,7 +568,7 @@ def hip(src, out, start, hip_f, twist, fwd_arg, cap=97.0, side_cm=0.0, up_cm=0.0
     else:
         fwd = float(fwd_arg)
     print(f"[long_gun_pose] hip {os.path.basename(src)}: stops {stops}, trunk keyed at {trunk_at}; chest turned {twist} deg, the gun moved fwd {fwd} "
-          f"side {side_cm} up {up_cm} cm at {hip_f}")
+          f"side {side_cm} up {up_cm} cm{f', tilted {tilt} deg' if tilt else ''} at {hip_f}")
     # 1) the chest turned where the trunk is keyed (the arms are solved after: they read the trunk as interpolated)
     for f in trunk_at:
         sc.frame_set(f)
@@ -539,12 +577,12 @@ def hip(src, out, start, hip_f, twist, fwd_arg, cap=97.0, side_cm=0.0, up_cm=0.0
         h.twist_chest(twist * ease(f))
         _key_arms(arm, list(before), before, f)
     # 2) the gun and the left hand moved, the right hand kept / brought down onto the grip, each arm solved, at every stop
-    T_hip = h.offset(fwd, side_cm, up_cm)
+    T_hip = h.offset(fwd, side_cm, up_cm) @ tilted(hip_f, tilt)
     for f in stops:
         sc.frame_set(f)
         bpy.context.view_layer.update()
         w = ease(f)
-        T = h.offset(fwd * w, side_cm * w, up_cm * w)
+        T = h.offset(fwd * w, side_cm * w, up_cm * w) @ tilted(f, tilt * w)
         before = {n: pb[P + n].rotation_quaternion.copy() for n in ARMS}
         mL, rL = FL._reach(arm, "Left", T @ orig[f][0])
         bpy.context.view_layer.update()
@@ -563,7 +601,7 @@ def hip(src, out, start, hip_f, twist, fwd_arg, cap=97.0, side_cm=0.0, up_cm=0.0
               f"left reach {rL * 100:3.0f}% bend {h.wrist_bend('Left'):3.0f} | wrists miss {mL:.2f} {mR:.2f} | right hand {how}, palm to the gun "
               f"{orig[f][2]:.1f} -> {r_on:.1f} cm")
     arm["lab_hip_natural"] = json.dumps({"from": os.path.basename(src), "start": start, "hip": hip_f, "twist_deg": twist, "fwd_cm": fwd,
-                                         "side_cm": side_cm, "up_cm": up_cm, "approach": approach})
+                                         "side_cm": side_cm, "up_cm": up_cm, "approach": approach, "tilt_deg": tilt})
     _save(sc, arm, out)
 
 
@@ -580,13 +618,15 @@ def main():
         ks = {int(k): (v if v == "auto" else float(v)) for k, v in (x.split("=") for x in a[5].split(","))} if len(a) > 5 and a[5] != "-" else {}
         rebake = [tuple(int(v) for v in x.split("-")) for x in a[7].split(",")] if len(a) > 7 and a[7] != "-" else []
         pump_grip(a[1], a[2], a[3], [int(x) for x in a[4].split(",")], ks, float(a[6]) if len(a) > 6 else 97.0, rebake)
+    elif a[0] == "nudge":
+        nudge(a[1], a[2], {int(k): tuple(float(c) for c in v.split(":")) for k, v in (x.split("=") for x in a[3].split(","))})
     elif a[0] == "drop":
         drop(a[1], a[2], [int(x) for x in a[3].split(",")])
     elif a[0] == "hip_probe":
         hip_probe(a[1], int(a[3]), [float(x) for x in a[4].split(",")], float(a[5]) if len(a) > 5 else 97.0)
     elif a[0] == "hip":
         hip(a[1], a[2], int(a[3]), int(a[4]), float(a[5]), a[6], float(a[7]) if len(a) > 7 else 97.0, float(a[8]) if len(a) > 8 else 0.0,
-            float(a[9]) if len(a) > 9 else 0.0, int(a[10]) if len(a) > 10 else None)
+            float(a[9]) if len(a) > 9 else 0.0, int(a[10]) if len(a) > 10 and a[10] != "-" else None, float(a[11]) if len(a) > 11 else 0.0)
     else:
         fail(f"unknown command {a[0]}")
 

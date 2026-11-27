@@ -173,6 +173,8 @@ if __name__ == "__main__" and "--attachments" in sys.argv:
 # lab name -> (row id = the model id of its timeline `draw_<id>`, template row, extra tags, surface materials). Held as the shotgun (one body);
 # `model.draw` names the row's own timeline, played on every figure that has it (`ActorMesh3D`), the family's with `held_like` on one that does not.
 H3_OWN = {
+    # the pack's other PUMP shotgun (2026-11-26, the Director: "Para as outras shotguns que tem a bomba, usamos o mesmo mecanismo"; "Pode instalar")
+    "02 Shotgun-ZmPTnh7njL": ("shotgun_zmptnh7njl", "shotgun", [], PACK),
     "03 Shotgun Sawed Off": ("shotgun_sawed_off", "shotgun", [], PACK),
     "04 Shotgun Short Stock": ("shotgun_short_stock", "shotgun", [], PACK),
     "08 Bullpup": ("bullpup", "assault_rifle", [], PACK),

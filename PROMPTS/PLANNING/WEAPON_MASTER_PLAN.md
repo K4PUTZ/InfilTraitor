@@ -955,7 +955,7 @@ smoke).
 ### ⚠️ Third note (Director, 2026-11-26): the actions worked by hand after a shot
 
 Found on renders of the 21 long guns (`MOVEMENT` §11.6, top block of 2026-11-26), with the Director's rulings: the short stock (in
-the game) and the pack's `Shotgun-ZmPTnh7njL` (no row yet) are PUMP guns, so their recoil will rack the fore-end with the support hand
+the game) and the pack's `Shotgun-ZmPTnh7njL` (row `shotgun_zmptnh7njl`, in the game since 2026-11-26) are PUMP guns, so their recoil will rack the fore-end with the support hand
 and throw the shell out of the ejection port (the row's `fx.case` is false today); the pack's four snipers (09-12) work a BOLT with
 the right hand, animated later (*"Deixa pra depois a animação do ferrolho das snipers"*). The certified shotgun is a COMMON shotgun,
 its wooden fore-end held by a ring (*"Acho que é uma shotgun comum"*): nothing per shot; the sawed-off breaks open. What it asks of

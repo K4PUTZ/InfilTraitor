@@ -1833,6 +1833,25 @@
           "note": "MOVEMENT 2026-11-26: short_stock_draw at a quarter speed (TIME_SCALE: every in-between its own frame), to judge a motion frame by frame (made for the gun-phase A/B). Run with INFILTRAITOR_TRIPO_FIGURE=male|female."
         },
         {
+          "id": "shotgun_draw_close",
+          "profile": "engine",
+          "rail": "agent_long_shot_rail",
+          "steps": [
+            "place_guard 4 @shot_target_left",
+            "draw shotgun",
+            "wait 1.8",
+            "stance aimed",
+            "wait 1.6",
+            "shot_cancel",
+            "wait 1.6"
+          ],
+          "at_key": 0,
+          "after_hold": 0,
+          "length": 330,
+          "seed": 1,
+          "note": "MOVEMENT 2026-11-26: the family shotgun (01) alone, close, as the own-draw takes: drawn to the hip, raised to the aim, put away (its hip tucked out of the coat that night). Run with INFILTRAITOR_TRIPO_FIGURE=male|female."
+        },
+        {
           "id": "shotgun_zmptnh7njl_draw",
           "profile": "engine",
           "rail": "agent_long_shot_rail",

@@ -1,7 +1,7 @@
 # Session summary 2026-11-26 — the short stock finished, the gun's phase in the engine, the other pump shotgun
 
 Picks up `RESUMO_SESSAO_2026-11-25_DOCS_AND_HEALTH.md` §7-§8 (the own grips in the game, early on 2026-11-26). The full record, with
-every number, is `MOVEMENT_MASTER_PLAN`'s top blocks of 2026-11-26 ("later", "night", "night, later", "night, end", "night, install").
+every number, is `MOVEMENT_MASTER_PLAN`'s top blocks of 2026-11-26 ("later", "night", "night, later", "night, end", "night, install", "night, the gun's phase", "night, 01's hip").
 
 ## What was done
 
@@ -32,15 +32,19 @@ every number, is `MOVEMENT_MASTER_PLAN`'s top blocks of 2026-11-26 ("later", "ni
   não mexi em nada. Pode instalar."*: row from its `H3_OWN` entry, both timelines read back (9 and 11 stops), take
   `shotgun_zmptnh7njl_draw`, added to `long_own_draws`; seen in the game on both figures. Six rows play their own timeline.
 
+- **01's hip tucked out of the coat, both figures** (*"Pode ligar [...] o hip da 01"*): his family timelines with 02's tuck (up 2, side
+  -2 cm, tilt -6°, no forward move); only 17-30 move. The butt no longer runs through the coat at the hip (the forearm's sleeve rests on
+  the stock, as on 02); read back after proving the read-back of his untouched files reproduces the game; take `shotgun_draw_close`
+  filmed before and after. His raise (straight 23 -> 31) still takes the butt up the coat's front: 02's mid-raise turn on it is a
+  candidate (`temp/h3_family/s01/SEQ_draw_shotgun_{MALE,FEMALE}_raise_candidate.blend`), not installed.
+
 ## Found, not touched
 
-- **01's hip in the game:** the family shotgun's full stock runs through the coat at the hip (10 coat triangles on him, 14 on her, the
-  butt showing behind the coat). 02's tuck (`hip` up 2, side -2 cm, tilt -6°) would clear it; his hip, so his word.
 - **A trap for the rows:** `temp/h3_family/rows/rb_SHOTGUNS_m.json` (2026-11-26 01:27) still names the pack's short stock as its source;
   `family_rows.py --h3` on it would copy the open-port model over the closed one. 02's row was written from a read-back holding 02 alone.
 
 ## Next
 
-1. His word on 01's hip.
+1. His word on 01's raise candidate (02's mid-raise turn on the family's raise).
 2. The grenade launchers (his sizes); the snipers' hip shot in the engine; the H3 rows of the models without their own timeline.
 3. Then step 12: the pump (the short stock and 02), the bolt (snipers 09-12), the reloads.

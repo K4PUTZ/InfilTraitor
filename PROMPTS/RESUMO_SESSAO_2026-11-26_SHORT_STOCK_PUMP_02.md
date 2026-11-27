@@ -1,7 +1,8 @@
 # Session summary 2026-11-26 — the short stock finished, the gun's phase in the engine, the other pump shotgun
 
 Picks up `RESUMO_SESSAO_2026-11-25_DOCS_AND_HEALTH.md` §7-§8 (the own grips in the game, early on 2026-11-26). The full record, with
-every number, is `MOVEMENT_MASTER_PLAN`'s top blocks of 2026-11-26 ("later", "night", "night, later", "night, end", "night, install", "night, the gun's phase", "night, 01's hip").
+every number, is `MOVEMENT_MASTER_PLAN`'s top blocks of 2026-11-26 ("later", "night", "night, later", "night, end", "night, install", "night, the gun's phase", "night, 01's hip"), and the
+2026-11-27 block (01's raise).
 
 ## What was done
 
@@ -35,8 +36,9 @@ every number, is `MOVEMENT_MASTER_PLAN`'s top blocks of 2026-11-26 ("later", "ni
 - **01's hip tucked out of the coat, both figures** (*"Pode ligar [...] o hip da 01"*): his family timelines with 02's tuck (up 2, side
   -2 cm, tilt -6°, no forward move); only 17-30 move. The butt no longer runs through the coat at the hip (the forearm's sleeve rests on
   the stock, as on 02); read back after proving the read-back of his untouched files reproduces the game; take `shotgun_draw_close`
-  filmed before and after. His raise (straight 23 -> 31) still takes the butt up the coat's front: 02's mid-raise turn on it is a
-  candidate (`temp/h3_family/s01/SEQ_draw_shotgun_{MALE,FEMALE}_raise_candidate.blend`), not installed.
+  filmed before and after. His raise (straight 23 -> 31) still took the butt up the coat's front: 02's mid-raise turn on it, built as a
+  candidate, was installed after midnight on *"Tudo ok, fechei sem salvar. Pode instalar."* (2026-11-27): the raise keeps the butt
+  beside the coat until it meets the shoulder (in the game's read, 2 of 15 samples on him, 6 of 17 on her).
 
 ## Found, not touched
 
@@ -45,6 +47,5 @@ every number, is `MOVEMENT_MASTER_PLAN`'s top blocks of 2026-11-26 ("later", "ni
 
 ## Next
 
-1. His word on 01's raise candidate (02's mid-raise turn on the family's raise).
-2. The grenade launchers (his sizes); the snipers' hip shot in the engine; the H3 rows of the models without their own timeline.
-3. Then step 12: the pump (the short stock and 02), the bolt (snipers 09-12), the reloads.
+1. The grenade launchers (his sizes); the snipers' hip shot in the engine; the H3 rows of the models without their own timeline.
+2. Then step 12: the pump (the short stock and 02), the bolt (snipers 09-12), the reloads.

@@ -20,7 +20,7 @@ copied into `ASSETS/props/<id>/<id>.glb` (the game's import tree; the sources ma
 `held_like.figures` names each figure's grip explicitly (Director, 2026-11-17): the male's read-back, and the female's with
 `--female`; a figure left out is warned at load (`WeaponDef`), never filled from the other.
 """
-import json, os, shutil, sys, datetime
+import json, os, shutil, sys, datetime, filecmp
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 WEAPONS = os.path.join(ROOT, "weapons")
@@ -52,6 +52,21 @@ H1 = {
 }
 NO_DAMAGE = ("stun", "dart", "flare", "device")    # these leave no bullet in a wall: their effect is GAMEPLAY-01's
 
+
+
+def install_model(src, dst):
+    """Copy a pack model into the game tree, never over an edited install.
+
+    An installed model may carry a byte edit (glb_close_opening.py closed the short stock's port, 2026-11-26); copying the
+    pack's original over it would undo that in silence. Such a file is kept unless --force-model is given."""
+    if os.path.abspath(src) == os.path.abspath(dst):
+        return
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    if os.path.exists(dst) and not filecmp.cmp(src, dst, shallow=False) and "--force-model" not in sys.argv:
+        print(f"[family_rows] KEEP {os.path.relpath(dst, ROOT)}: differs from {os.path.relpath(src, ROOT)} "
+              f"(an edited install); --force-model to overwrite")
+        return
+    shutil.copyfile(src, dst)
 
 def held_like(family_ref, r, f):
     """Both figures EXPLICIT (Director, 2026-11-17): each its own read-back, none inherited."""
@@ -108,8 +123,7 @@ def main():
               f"  figures {sorted(row['model']['held_like']['figures'])}")
         if dry:
             continue
-        os.makedirs(os.path.dirname(os.path.join(ROOT, dst_rel)), exist_ok=True)
-        shutil.copyfile(src, os.path.join(ROOT, dst_rel))
+        install_model(src, os.path.join(ROOT, dst_rel))
         with open(path, "w") as f:
             json.dump(row, f, indent=2)
             f.write("\n")
@@ -157,8 +171,7 @@ def write_attachments(rb, dry):
         if dry:
             continue
         dst = os.path.join(ROOT, f"ASSETS/props/{aid}/{aid}.glb")
-        os.makedirs(os.path.dirname(dst), exist_ok=True)
-        shutil.copyfile(os.path.join(ROOT, r["source"]), dst)
+        install_model(os.path.join(ROOT, r["source"]), dst)
         with open(os.path.join(out, aid + ".json"), "w") as f:
             json.dump(row, f, indent=2)
             f.write("\n")
@@ -215,9 +228,7 @@ def write_h3_own(male_rbs, female_rbs, dry):
             if dry:
                 continue
             src, dst = os.path.join(ROOT, r["source"]), os.path.join(ROOT, dst_rel)
-            os.makedirs(os.path.dirname(dst), exist_ok=True)
-            if os.path.abspath(src) != os.path.abspath(dst):
-                shutil.copyfile(src, dst)
+            install_model(src, dst)
             with open(path, "w") as f:
                 json.dump(row, f, indent=2)
                 f.write("\n")

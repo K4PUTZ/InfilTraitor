@@ -82,6 +82,7 @@ every number, is `MOVEMENT_MASTER_PLAN`'s top blocks of 2026-11-26 ("later", "ni
   2026-11-16, so not from this session's change.
 - **A trap for the rows:** `temp/h3_family/rows/rb_SHOTGUNS_m.json` (2026-11-26 01:27) still names the pack's short stock as its source;
   `family_rows.py --h3` on it would copy the open-port model over the closed one. 02's row was written from a read-back holding 02 alone.
+  **Investigated 2026-11-27: not a leak.** Under `--verbose` the 8 are the blast chain's scripts (`grenade_controller`, `detonation_presenter`, `detonation_entry_writer`, `world_delta`, `voxel_light_field`, `light_source`, `shadow_result`, `voxel`) held by two pending coroutines: the take ends at frame 420 while `DetonationPresenter._wait_for_smoke` (up to 3.5 s) still runs. The same take with its last wait at 10 s logs "smoke cleared after 3.52s" and exits with zero leaked instances. Nothing to fix; a take cut mid-blast prints it.
 
 ## Next
 

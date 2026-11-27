@@ -25,7 +25,6 @@ const PREFIX: String = "INFILTRAITOR_"
 ## name -> [default, description]. Sorted by name. Dev-only: nothing here is a gameplay setting.
 const FLAGS: Dictionary = {
 	"AGENT_START_GU": ["", "\"x,y\": puts the agent's spawn (and so the camera's first centre) there without editing the map"],
-	"AIM_GUN_EASED": ["", "1: a timeline's gun / grenade and coat keys follow the body's EASED path weight, in step with the arms (the gun-phase A/B, MOVEMENT 2026-11-26)"],
 	"BENCHMARK": ["", "1: run the detonation benchmark (`_run_detonation_benchmark`) once the map is up, then quit"],
 	"BENCH_GRENADE": ["0", "the benchmark's grenade index among the dev grenades"],
 	"BENCH_RUNS": ["3", "how many detonations the benchmark times"],

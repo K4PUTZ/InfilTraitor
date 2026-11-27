@@ -159,9 +159,6 @@ var _fx_spent: bool = false            ## the piece has left (the gun is "unload
 var _hook_handle: Dictionary = {}
 var drum_turns_per_s: float = 4.0
 var _attach_node: Node3D = null      ## its model, a child of the holder beside the weapon's
-## MOVEMENT 2026-11-26: a timeline's gun (or grenade) and coat keys read at the BODY's eased path weight (`ActorAimPose3D.eased_weight`), in step with the
-## arms, instead of the linear weight the layer is handed. Behind `AIM_GUN_EASED=1` while the Director compares the two (the gun's phase A/B).
-var _props_in_step: bool = DevFlag.on("AIM_GUN_EASED")
 var _throw: ActorAimPoseRef = null   ## the throw's path layer (null: the figure has no throw timeline)
 var _throw_seq: AimSequenceRef = null
 var _throw_w: float = 0.0            ## where along the throw's timeline the body is, 0..1
@@ -710,7 +707,9 @@ func _update_throw(state: Dictionary) -> void:
 				_throw_w = 0.0
 				_throw_phase = ""
 	_throw.weight = _throw_w
-	var here: Dictionary = _throw_seq.at(_throw.eased_weight(_throw_w) if _props_in_step else _throw_w) if _throw_w > 0.0 else {}
+	## the grenade and the coat keys at the BODY's eased path weight, in step with the arms (MOVEMENT 2026-11-26, the gun's phase: the
+	## linear weight the layer is handed put the grenade up to a frame ahead of the hand or behind it)
+	var here: Dictionary = _throw_seq.at(_throw.eased_weight(_throw_w)) if _throw_w > 0.0 else {}
 	if _throw_grenade != null:
 		_throw_grenade.visible = _throw_w > 0.0 and bool(here["visible"])
 		if _throw_w > 0.0:
@@ -979,7 +978,9 @@ func _update_aim(state: Dictionary) -> void:
 	_aim_t = move_toward(_aim_t, _aim_target, dt / (_raise_s if _aim_target > _aim_t else _lower_s))
 	_aim.weight = _aim_t
 	if _sequence != null:   ## his timeline: the coat, the gun's visibility and placement are what he keyed
-		var here: Dictionary = _sequence.at(_aim.eased_weight(_aim_t) if _props_in_step else _aim_t)
+		## read at the BODY's eased path weight (`ActorAimPose3D.eased_weight`), in step with the arms (MOVEMENT 2026-11-26, the gun's phase:
+		## at the linear weight the gun showed out of the coat before the hand reached it and hung under the hands after they had closed)
+		var here: Dictionary = _sequence.at(_aim.eased_weight(_aim_t))
 		if _coat != null:
 			_coat.set_blend_shape_value(_coat_draw_shape, float(here["coat"]))
 		var morphs: Dictionary = here["morphs"]

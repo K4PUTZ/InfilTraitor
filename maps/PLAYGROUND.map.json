@@ -1808,7 +1808,7 @@
           "after_hold": 0,
           "length": 330,
           "seed": 1,
-          "note": "MOVEMENT 2026-11-26: the short stock alone, close: drawn to the hip, raised to the aim, put away. Run with INFILTRAITOR_TRIPO_FIGURE=male|female; the gun-phase A/B with INFILTRAITOR_AIM_GUN_EASED=1."
+          "note": "MOVEMENT 2026-11-26: the short stock alone, close: drawn to the hip, raised to the aim, put away. Run with INFILTRAITOR_TRIPO_FIGURE=male|female."
         },
         {
           "id": "short_stock_draw_slow",
@@ -1830,7 +1830,7 @@
           "after_hold": 0,
           "length": 1320,
           "seed": 1,
-          "note": "MOVEMENT 2026-11-26: short_stock_draw at a quarter speed (TIME_SCALE: every in-between its own frame), for the gun-phase A/B (INFILTRAITOR_AIM_GUN_EASED=1). Run with INFILTRAITOR_TRIPO_FIGURE=male|female."
+          "note": "MOVEMENT 2026-11-26: short_stock_draw at a quarter speed (TIME_SCALE: every in-between its own frame), to judge a motion frame by frame (made for the gun-phase A/B). Run with INFILTRAITOR_TRIPO_FIGURE=male|female."
         },
         {
           "id": "shotgun_zmptnh7njl_draw",

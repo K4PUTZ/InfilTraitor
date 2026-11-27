@@ -21,8 +21,9 @@ every number, is `MOVEMENT_MASTER_PLAN`'s top blocks of 2026-11-26 ("later", "ni
   Rebuilt from the backups they give the installed short stocks exactly.
 - **The gun's phase in the engine.** `ActorMesh3D` places the gun (and the throw's grenade, and the coat's keys) at the LINEAR path
   weight while `ActorAimPose3D` eases the body: the gun shows out of the coat before the hand reaches it and hangs under the hands at
-  the holster. The fix (`ActorAimPose3D.eased_weight`) sits behind the dev flag `AIM_GUN_EASED`, OFF; `TIME_SCALE` slows a take
-  (`short_stock_draw_slow`); the A/B at a quarter speed is in `temp/videos/gunphase/`.
+  the holster. The fix (`ActorAimPose3D.eased_weight`) was compared behind a dev flag at a quarter speed (`TIME_SCALE`, take
+  `short_stock_draw_slow`; `temp/videos/gunphase/`), then turned ON for good on *"Pode ligar a correção do descompasso"*: the flag is
+  gone, and the slow take on the new default is byte-identical to the corrected one on both figures (1324 of 1324 frames).
 - **Planned on his note:** the pump, the bolt and then every weapon's reload, after every weapon's draw / hip / aim (§11.6 step 12);
   the draws checked crouched (step 4).
 - **The pack's other pump shotgun, 02 (`shotgun_zmptnh7njl`)** (*"Para as outras shotguns que tem a bomba, usamos o mesmo mecanismo,
@@ -40,7 +41,6 @@ every number, is `MOVEMENT_MASTER_PLAN`'s top blocks of 2026-11-26 ("later", "ni
 
 ## Next
 
-1. His ruling on the gun's phase fix; on a yes the flag goes and the eased read is the only one (pistol, long guns, throw).
-2. His word on 01's hip.
-3. The grenade launchers (his sizes); the snipers' hip shot in the engine; the H3 rows of the models without their own timeline.
-4. Then step 12: the pump (the short stock and 02), the bolt (snipers 09-12), the reloads.
+1. His word on 01's hip.
+2. The grenade launchers (his sizes); the snipers' hip shot in the engine; the H3 rows of the models without their own timeline.
+3. Then step 12: the pump (the short stock and 02), the bolt (snipers 09-12), the reloads.

@@ -10,13 +10,13 @@ own mesh is left out (they hold the gun; `hand_in_gun`-style checks measure thei
   scan   Per sample, what is cut, as BLENDER plays the timeline (sub-frames) and as the GAME plays it (`ActorAimPose3D` + `ActorMesh3D`): the
          path's weight runs linearly in time (the draw to the hip, then on to the aim); the body is the stops slerped at the weight EASED by a
          smoothstep between two resting stops (passing stops passed linearly in it); the gun's place in its hand and the coat's morphs are
-         read at the LINEAR weight (`AimSequence.at(_aim_t)`), or at the eased one in `gamefix` (`AIM_GUN_EASED=1`, the gun's phase A/B).
-         `bones` names the bone each cut triangle follows. Nothing saved.
+         read at that same eased weight (`AimSequence.at(_aim.eased_weight(_aim_t))`; at the linear weight until the gun's phase fix of
+         2026-11-26). `bones` names the bone each cut triangle follows. Nothing saved.
   still  Stills at given (sub-)frames from given views, the gun painted orange and each cut triangle red, aimed at the chest. Writes
          <prefix>_<frame>_<n>.png. Nothing saved to the .blend. The camera is tripo_pose_lab._aim_camera's (az 0 = in front of the figure,
          +90 = its left, -90 = its right).
 
-  blender -b --python gun_cuts.py -- scan <SEQ .blend> <first> <last> [steps a frame, 4] [cuff cm, 6] [blender|game|gamefix|both] [bones]
+  blender -b --python gun_cuts.py -- scan <SEQ .blend> <first> <last> [steps a frame, 4] [cuff cm, 6] [blender|game|both] [bones]
   blender -b --python gun_cuts.py -- still <SEQ .blend> <out prefix> <frames,comma> <az:el,...> <size px> [dist m] [cuff cm]
 """
 import bpy, sys, os, math
@@ -110,6 +110,8 @@ def _report(cut, klass, dombone, bones):
 
 
 def scan(path, A, B, steps=4, cuff=0.06, mode="both", bones=False):
+    if mode not in ("blender", "game", "both"):
+        fail(f"mode '{mode}': blender | game | both (`gamefix` went with the gun's phase fix: `game` is the engine's eased read now)")
     sc, arm, gun, meshes = _open(path)
     klass, dombone = _classes(meshes)
     pb = arm.pose.bones
@@ -181,16 +183,15 @@ def scan(path, A, B, steps=4, cuff=0.06, mode="both", bones=False):
                     bad += 1
                     print(f"[gun_cuts] blender {f + k / float(steps):6.2f}: {c}")
         print(f"[gun_cuts] blender: {bad} cutting samples of {(B - A) * steps + 1}")
-    for fix in ([False] if mode == "game" else [True] if mode == "gamefix" else [False, True] if mode == "both" else []):
+    if mode in ("game", "both"):
         bad, n = 0, (B - A) * steps
-        label = "gamefix" if fix else "game"
         for i in range(n + 1):
             p = wt(A) + (wt(B) - wt(A)) * i / float(n)
             gp = game_pose(p)
             if gp is None:
                 continue
             f0, f1, t, eased = gp
-            Fl = first + (eased if fix else p) * (last - first)
+            Fl = first + eased * (last - first)   # the gun and the coat's morphs where the body is (the engine since 2026-11-26)
             fi = min(int(math.floor(Fl)), last)
             fj = min(fi + 1, last)
             u = Fl - fi
@@ -212,8 +213,8 @@ def scan(path, A, B, steps=4, cuff=0.06, mode="both", bones=False):
             c = _report(cut_polys(arm, gun, meshes, klass, cuff), klass, dombone, bones)
             if c:
                 bad += 1
-                print(f"[gun_cuts] {label:7s} {Fl:6.2f} (body at {first + eased * (last - first):6.2f}, {f0}->{f1} {t:.2f}): {c}")
-        print(f"[gun_cuts] {label}: {bad} cutting samples of {n + 1}")
+                print(f"[gun_cuts] game    {Fl:6.2f} ({f0}->{f1} {t:.2f}): {c}")
+        print(f"[gun_cuts] game: {bad} cutting samples of {n + 1}")
 
 
 def still(path, out, frames, views, size, dist=1.4, cuff=0.06):
@@ -271,7 +272,7 @@ def still(path, out, frames, views, size, dist=1.4, cuff=0.06):
 def main():
     a = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     if not a:
-        fail("usage: -- scan <SEQ> <first> <last> [steps] [cuff cm] [blender|game|gamefix|both] [bones] | still <SEQ> <prefix> <frames> <az:el,...> <px> [dist] [cuff cm]")
+        fail("usage: -- scan <SEQ> <first> <last> [steps] [cuff cm] [blender|game|both] [bones] | still <SEQ> <prefix> <frames> <az:el,...> <px> [dist] [cuff cm]")
     if a[0] == "scan":
         scan(a[1], int(a[2]), int(a[3]), int(a[4]) if len(a) > 4 else 4, (float(a[5]) if len(a) > 5 else 6.0) / 100.0,
              a[6] if len(a) > 6 else "both", len(a) > 7 and a[7] == "bones")

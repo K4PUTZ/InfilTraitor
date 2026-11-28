@@ -27,6 +27,7 @@ Coat: the inherited lapel-draw keys (`DrawFix_*`, `LongDrawFix_*`) go, an EMPTY 
 Director to sculpt the skirt (`docs/pipelines/timeline_coat_keys.md`).
 
   blender -b --python launcher_draw.py -- build <HIP timeline .blend> <out .blend> [stops: skirt,open,appear,lift,join frames; 5,9,11,15,19]
+  blender -b --python launcher_draw.py -- relax <timeline> <out .blend> [frame; the `skirt` marker]   (both hands at the rig's rest)
   blender -b --python launcher_draw.py -- transfer <finished launcher timeline> <HIP timeline .blend> <out .blend>
 """
 import bpy, sys, os, math, json
@@ -315,7 +316,46 @@ def build(src, out, stops=(5, 9, 11, 15, 19)):
         sc.timeline_markers.new(n, frame=S[n])
     arm["lab_launcher_draw"] = json.dumps({"src": os.path.basename(src), "stops": S, "skirt": SKIRT_AT, "open": OPEN_AT, "pocket": POCKET_AT,
                                            "lean": LEAN_DEG, "trunk": TRUNK_SHARE})
+    relax_hands(sc, arm, S["skirt"])
     LGP._save(sc, arm, out)
+
+
+def relax_hands(sc, arm, frame):
+    """THE HANDS RESET at the stop after the idle (the Director, 2026-11-28): the idle's hands arrive turned and curled, and every later
+    stop had its fingers fitted against that; so at `frame` both Hand bones and all their fingers go back to the rig's rest (rotation 0,
+    location 0: the wrist straight on the forearm, the fingers in the rig's own pose) and are keyed there. From the 19 on; the 20 is kept."""
+    sc.frame_set(frame)
+    n = 0
+    for b in arm.pose.bones:
+        short = b.name[len(P):] if b.name.startswith(P) else b.name
+        if short in ("LeftHand", "RightHand") or (short.startswith(("LeftHand", "RightHand")) and any(x in short for x in FINGERS)):
+            b.rotation_quaternion = Quaternion((1.0, 0.0, 0.0, 0.0))
+            b.location = Vector((0.0, 0.0, 0.0))
+            b.keyframe_insert("rotation_quaternion", frame=frame)
+            b.keyframe_insert("location", frame=frame)
+            n += 1
+    bpy.context.view_layer.update()
+    print(f"[launcher_draw] frame {frame}: {n} hand and finger bones at the rig's rest")
+
+
+def relax(src, out, frame=None):
+    if os.path.exists(out) or os.path.realpath(out) == os.path.realpath(src):
+        fail(f"{out} exists or is the input: a timeline is never written over")
+    sc, arm, gun = _open_any(src)
+    mk = {m.name: m.frame for m in sc.timeline_markers}
+    relax_hands(sc, arm, frame if frame is not None else mk["skirt"])
+    LGP._save(sc, arm, out)
+
+
+def _open_any(path):
+    """open a launcher timeline whatever hand its gun rides"""
+    bpy.ops.wm.open_mainfile(filepath=path)
+    arm = next(o for o in bpy.data.objects if o.type == "ARMATURE")
+    gun = next((o for o in bpy.data.objects if o.name.startswith("PROP_") and o.type == "MESH"), None)
+    if arm.mode != "OBJECT":
+        bpy.context.view_layer.objects.active = arm
+        bpy.ops.object.mode_set(mode="OBJECT")
+    return bpy.context.scene, arm, gun
 
 
 def transfer(ref, src, out):
@@ -396,6 +436,7 @@ def transfer(ref, src, out):
                     k = fc.keyframe_points.insert(co[0], co[1])
                     k.interpolation, k.handle_left_type, k.handle_right_type = it, hlt, hrt
                     k.handle_left, k.handle_right = hl, hr
+    relax_hands(sc, arm, mk["skirt"])
     arm["lab_launcher_draw_ref"] = os.path.basename(ref)
     print(f"[launcher_draw] {os.path.basename(out)}: the body of {os.path.basename(ref)} at {stops}, {len(sculpt)} coat keys copied, the gun's turn in the hand at {sorted(turns)}")
     LGP._save(sc, arm, out + ".tmp.blend")
@@ -404,7 +445,9 @@ def transfer(ref, src, out):
 
 def main():
     a = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    if len(a) >= 4 and a[0] == "transfer":
+    if len(a) >= 3 and a[0] == "relax":
+        relax(a[1], a[2], int(a[3]) if len(a) > 3 else None)
+    elif len(a) >= 4 and a[0] == "transfer":
         transfer(a[1], a[2], a[3])
     elif len(a) >= 3 and a[0] == "build":
         build(a[1], a[2], tuple(int(x) for x in a[3].split(",")) if len(a) > 3 else (5, 9, 11, 15, 19))

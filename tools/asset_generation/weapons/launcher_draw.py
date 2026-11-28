@@ -344,13 +344,18 @@ def transfer(ref, src, out):
         sc.frame_set(f)
         turns[f] = gun.matrix_basis @ ref_hip_inv
     coat = bpy.data.objects.get("Outfit_Coat")
-    sculpt = {}
+    sculpt, curves = {}, {}
     if coat is not None and coat.data.shape_keys:
         kb = coat.data.shape_keys.key_blocks
         base = [v.co.copy() for v in kb[0].data]
         for k in kb:
             if k.name.startswith("LauncherDrawFix"):
                 sculpt[k.name] = [k.data[i].co - base[i] for i in range(len(base))]
+        # and WHEN each key plays, as he keyed it (2026-11-27: the f09 opening holds at 100 % to the next stop, while the gun leaves)
+        for fc in FL._curves(coat.data.shape_keys.animation_data):
+            if "LauncherDrawFix" in fc.data_path:
+                curves[fc.data_path] = [(tuple(k.co), tuple(k.handle_left), tuple(k.handle_right), k.interpolation,
+                                         k.handle_left_type, k.handle_right_type) for k in fc.keyframe_points]
     names = [n for n in ("skirt", "open", "appear", "lift", "join")]
     build(src, out, tuple(mk[n] for n in names))
     bpy.ops.wm.open_mainfile(filepath=out)
@@ -384,6 +389,13 @@ def transfer(ref, src, out):
                 continue
             for i, v in enumerate(kb[0].data):
                 kb[name].data[i].co = v.co + d[i]
+        for fc in FL._curves(coat.data.shape_keys.animation_data):
+            if fc.data_path in curves:
+                _drop(fc, lambda f: True)
+                for co, hl, hr, it, hlt, hrt in curves[fc.data_path]:
+                    k = fc.keyframe_points.insert(co[0], co[1])
+                    k.interpolation, k.handle_left_type, k.handle_right_type = it, hlt, hrt
+                    k.handle_left, k.handle_right = hl, hr
     arm["lab_launcher_draw_ref"] = os.path.basename(ref)
     print(f"[launcher_draw] {os.path.basename(out)}: the body of {os.path.basename(ref)} at {stops}, {len(sculpt)} coat keys copied, the gun's turn in the hand at {sorted(turns)}")
     LGP._save(sc, arm, out + ".tmp.blend")

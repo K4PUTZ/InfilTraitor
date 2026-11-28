@@ -27,6 +27,7 @@ Coat: the inherited lapel-draw keys (`DrawFix_*`, `LongDrawFix_*`) go, an EMPTY 
 Director to sculpt the skirt (`docs/pipelines/timeline_coat_keys.md`).
 
   blender -b --python launcher_draw.py -- build <HIP timeline .blend> <out .blend> [stops: skirt,open,appear,lift,join frames; 5,9,11,15,19]
+  blender -b --python launcher_draw.py -- transfer <finished launcher timeline> <HIP timeline .blend> <out .blend>
 """
 import bpy, sys, os, math, json
 from mathutils import Matrix, Vector, Quaternion
@@ -317,9 +318,83 @@ def build(src, out, stops=(5, 9, 11, 15, 19)):
     LGP._save(sc, arm, out)
 
 
+def transfer(ref, src, out):
+    """ANOTHER LAUNCHER FROM A FINISHED ONE (2026-11-27: the Director finished the 20 by hand). `build` the launcher `src` (its own hip)
+    as usual, then lay the REFERENCE timeline's body over every stop before the hip (each bone's rotation, the hips' location; the hip
+    stays the launcher's own, whose grip he finishes) and copy the reference coat's `LauncherDrawFix_*` sculpt (the same coat mesh, as
+    offsets from its Basis). The gun keeps its own hip grip, turned in the hand at each reference gun key as the reference turns against ITS hip grip."""
+    bpy.ops.wm.open_mainfile(filepath=ref)
+    sc = bpy.context.scene
+    arm = next(o for o in bpy.data.objects if o.type == "ARMATURE")
+    mk = {m.name: m.frame for m in sc.timeline_markers}
+    stops = sorted({round(k.co[0]) for fc in FL._curves(arm.animation_data) for k in fc.keyframe_points if mk["idle"] < round(k.co[0]) < mk["hip"]})
+    poses = {}
+    for f in stops:
+        sc.frame_set(f)
+        poses[f] = ({b.name: b.rotation_quaternion.copy() for b in arm.pose.bones}, {b.name: b.location.copy() for b in arm.pose.bones})
+    gun = next(o for o in bpy.data.objects if o.name.startswith("PROP_"))
+    if gun.parent_bone != P + "RightHand":
+        fail("the reference's gun does not ride the RightHand")
+    gun_keys = sorted({round(k.co[0]) for fc in FL._curves(gun.animation_data) if fc.data_path in ("location", "rotation_quaternion")
+                       for k in fc.keyframe_points})
+    sc.frame_set(mk["hip"])
+    ref_hip_inv = gun.matrix_basis.inverted()
+    turns = {}                                            # the gun's turn IN THE HAND at each of its keys, against its hip grip
+    for f in gun_keys:
+        sc.frame_set(f)
+        turns[f] = gun.matrix_basis @ ref_hip_inv
+    coat = bpy.data.objects.get("Outfit_Coat")
+    sculpt = {}
+    if coat is not None and coat.data.shape_keys:
+        kb = coat.data.shape_keys.key_blocks
+        base = [v.co.copy() for v in kb[0].data]
+        for k in kb:
+            if k.name.startswith("LauncherDrawFix"):
+                sculpt[k.name] = [k.data[i].co - base[i] for i in range(len(base))]
+    names = [n for n in ("skirt", "open", "appear", "lift", "join")]
+    build(src, out, tuple(mk[n] for n in names))
+    bpy.ops.wm.open_mainfile(filepath=out)
+    sc = bpy.context.scene
+    arm = next(o for o in bpy.data.objects if o.type == "ARMATURE")
+    for f in stops:
+        sc.frame_set(f)
+        rot, loc = poses[f]
+        for b in arm.pose.bones:
+            if b.name in rot:
+                b.rotation_quaternion = rot[b.name]
+                b.location = loc[b.name]
+                b.keyframe_insert("rotation_quaternion", frame=f)
+                b.keyframe_insert("location", frame=f)
+    gun = next(o for o in bpy.data.objects if o.name.startswith("PROP_"))
+    sc.frame_set(mk["hip"])
+    own_hip = gun.matrix_basis.copy()
+    for f, D in turns.items():
+        sc.frame_set(f)
+        gun.matrix_basis = D @ own_hip
+        gun.keyframe_insert("location", frame=f)
+        gun.keyframe_insert("rotation_quaternion", frame=f)
+    coat = bpy.data.objects.get("Outfit_Coat")
+    if sculpt and coat is not None:
+        kb = coat.data.shape_keys.key_blocks
+        if len(kb[0].data) != len(next(iter(sculpt.values()))):
+            fail("the reference coat and this one differ in vertex count: the sculpt does not carry")
+        for name, d in sculpt.items():
+            if name not in kb:
+                print(f"[launcher_draw] {name}: no such key here (the stops differ), skipped")
+                continue
+            for i, v in enumerate(kb[0].data):
+                kb[name].data[i].co = v.co + d[i]
+    arm["lab_launcher_draw_ref"] = os.path.basename(ref)
+    print(f"[launcher_draw] {os.path.basename(out)}: the body of {os.path.basename(ref)} at {stops}, {len(sculpt)} coat keys copied, the gun's turn in the hand at {sorted(turns)}")
+    LGP._save(sc, arm, out + ".tmp.blend")
+    os.replace(out + ".tmp.blend", out)
+
+
 def main():
     a = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    if len(a) >= 3 and a[0] == "build":
+    if len(a) >= 4 and a[0] == "transfer":
+        transfer(a[1], a[2], a[3])
+    elif len(a) >= 3 and a[0] == "build":
         build(a[1], a[2], tuple(int(x) for x in a[3].split(",")) if len(a) > 3 else (5, 9, 11, 15, 19))
     else:
         fail("usage: -- build <HIP timeline .blend> <out .blend> [skirt,open,appear,lift,join]")

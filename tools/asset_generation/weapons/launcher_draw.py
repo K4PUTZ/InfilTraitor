@@ -27,6 +27,7 @@ Coat: the inherited lapel-draw keys (`DrawFix_*`, `LongDrawFix_*`) go, an EMPTY 
 Director to sculpt the skirt (`docs/pipelines/timeline_coat_keys.md`).
 
   blender -b --python launcher_draw.py -- build <HIP timeline .blend> <out .blend> [stops: skirt,open,appear,lift,join frames; 5,9,11,15,19]
+  blender -b --python launcher_draw.py -- zero_moves <timeline> <out .blend>   (the fingers' moves cleared after the idle)
   blender -b --python launcher_draw.py -- relax <timeline> <out .blend> [frame; the `skirt` marker]   (both hands at the rig's rest)
   blender -b --python launcher_draw.py -- transfer <finished launcher timeline> <HIP timeline .blend> <out .blend>
 """
@@ -317,6 +318,7 @@ def build(src, out, stops=(5, 9, 11, 15, 19)):
     arm["lab_launcher_draw"] = json.dumps({"src": os.path.basename(src), "stops": S, "skirt": SKIRT_AT, "open": OPEN_AT, "pocket": POCKET_AT,
                                            "lean": LEAN_DEG, "trunk": TRUNK_SHARE})
     relax_hands(sc, arm, S["skirt"])
+    zero_finger_moves(sc, arm, f_idle)
     LGP._save(sc, arm, out)
 
 
@@ -336,6 +338,33 @@ def relax_hands(sc, arm, frame):
             n += 1
     bpy.context.view_layer.update()
     print(f"[launcher_draw] frame {frame}: {n} hand and finger bones at the rig's rest")
+
+
+def zero_finger_moves(sc, arm, after):
+    """THE FINGERS ONLY TURN after the idle (the Director's convention, 2026-11-28): the idle clip carries a small MOVE on the finger
+    bones (1 mm to 1.4 cm), right for the idle itself, but the game reads rotations only (the Hips' location aside), so a moved finger
+    shows one way in Blender and another in the game. Every armature key after `after` gets location 0 on both hands' fingers;
+    rotations untouched. From the 19 on; the 20 is kept."""
+    frames = sorted({round(k.co[0]) for fc in FL._curves(arm.animation_data) for k in fc.keyframe_points if round(k.co[0]) > after})
+    fingers = [b for b in arm.pose.bones if b.name[len(P):].startswith(("LeftHand", "RightHand")) and any(x in b.name for x in FINGERS)]
+    # the idle keeps its moves: they had no key of their own there (held back from the next key), so they get one before the rest clears
+    sc.frame_set(after)
+    for b in fingers:
+        b.keyframe_insert("location", frame=after)
+    for f in frames:
+        sc.frame_set(f)
+        for b in fingers:
+            b.location = Vector((0.0, 0.0, 0.0))
+            b.keyframe_insert("location", frame=f)
+    print(f"[launcher_draw] {len(fingers)} finger bones at location 0 on frames {frames}")
+
+
+def zero_moves(src, out):
+    if os.path.exists(out) or os.path.realpath(out) == os.path.realpath(src):
+        fail(f"{out} exists or is the input: a timeline is never written over")
+    sc, arm, gun = _open_any(src)
+    zero_finger_moves(sc, arm, {m.name: m.frame for m in sc.timeline_markers}["idle"])
+    LGP._save(sc, arm, out)
 
 
 def relax(src, out, frame=None):
@@ -437,6 +466,7 @@ def transfer(ref, src, out):
                     k.interpolation, k.handle_left_type, k.handle_right_type = it, hlt, hrt
                     k.handle_left, k.handle_right = hl, hr
     relax_hands(sc, arm, mk["skirt"])
+    zero_finger_moves(sc, arm, mk["idle"])
     arm["lab_launcher_draw_ref"] = os.path.basename(ref)
     print(f"[launcher_draw] {os.path.basename(out)}: the body of {os.path.basename(ref)} at {stops}, {len(sculpt)} coat keys copied, the gun's turn in the hand at {sorted(turns)}")
     LGP._save(sc, arm, out + ".tmp.blend")
@@ -445,7 +475,9 @@ def transfer(ref, src, out):
 
 def main():
     a = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    if len(a) >= 3 and a[0] == "relax":
+    if len(a) >= 3 and a[0] == "zero_moves":
+        zero_moves(a[1], a[2])
+    elif len(a) >= 3 and a[0] == "relax":
         relax(a[1], a[2], int(a[3]) if len(a) > 3 else None)
     elif len(a) >= 4 and a[0] == "transfer":
         transfer(a[1], a[2], a[3])
